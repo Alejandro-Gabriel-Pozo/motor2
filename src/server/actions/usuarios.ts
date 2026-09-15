@@ -80,12 +80,12 @@ export async function agregarOActualizarUsuario(input: {
 
 /** Equivalente de actualizarActivoUsuario (Core.js:1181-1211). */
 export async function actualizarActivoMembresia(membresiaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("gestion_usuarios", async () => {
+  return conPermiso("gestion_usuarios", async (ctx) => {
     const membresia = await prisma.usuarioSucursal.findUnique({
       where: { id: membresiaId },
       include: { rol: true },
     });
-    if (!membresia) return error("No se encontró esa membresía.");
+    if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
 
     if (!activo && membresia.rol.nombre === "admin") {
       const quedan = await contarAdminsActivosExcluyendo(membresiaId);

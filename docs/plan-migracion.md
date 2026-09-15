@@ -1649,3 +1649,79 @@ lee el costo LOCAL de la sucursal (no el de otra).
   `sessionToken` conocido e inyectada como cookie `authjs.session-token`
   en el contexto de Playwright — mismo mecanismo que usa Auth.js v5 con
   estrategia de sesión en base de datos, sin tocar el flujo de OAuth real.
+
+## Post-migración: auditoría de backend (seguridad, rate limiting, observabilidad) — 2026-09-15
+
+Primera pasada de backend con el mismo rigor que ya se venía aplicando del
+lado de UX (ver `docs/comparativa-ux-erpnext-dolibarr.md`). Grounded
+leyendo cada `server/actions/*.ts` real, no supuesto.
+
+**Sólido, sin cambios**: gates de permiso (toda mutación pasa por
+`conPermiso`, incluso indirectamente vía composición — `agregarIngredien
+teAReceta` → `guardarReceta`), el único `$executeRaw` (parametrizado con
+tagged template de Prisma, no concatena strings), cero XSS/`eval`,
+secretos correctamente fuera de git, manejo de errores (Next.js redacta
+del lado del cliente en producción sin necesitar código propio).
+
+**Hallazgo real y corregido — IDs cruzados entre sucursales sin
+re-validar**: algunas mutaciones que reciben el ID de un registro
+existente chequeaban el permiso contra `ctx.sucursalId` pero después
+operaban sobre CUALQUIER ID que les pasaran, sin confirmar que ese
+registro fuera de esa sucursal — a diferencia de otras partes del código
+(`traspasos.ts`, `stock-minimo.ts`, `secciones.ts`, `precio-local.ts`)
+que ya lo hacían bien. Corregido en:
+- `resolverConteoPendiente`/`cancelarConteoFisico`
+  (`server/actions/conteo-fisico.ts`): ahora exigen `conteo.sucursalId
+  === ctx.sucursalId`.
+- `actualizarActivoMembresia` (`server/actions/usuarios.ts`): ahora exige
+  `membresia.sucursalId === ctx.sucursalId`.
+Deliberadamente NO se tocó `agregarOActualizarUsuario` (deja elegir
+cualquier sucursal destino a propósito, es la base del selector de
+sucursal activa) ni `actualizarCapacidad` (es "la Central" gobernando
+cualquier sucursal, mismo criterio) — esas dos son identidad/gobierno
+cross-sucursal por diseño, no el mismo tipo de hueco. Test de regresión
+en `test/movimientos/conteo-fisico.test.ts` y `test/administracion/
+usuarios.test.ts` (incluye el caso: alguien con el permiso en SU
+sucursal no puede tocar un registro de otra).
+
+**Rate limiting, agregado**: no existía ninguno. `src/core/permisos/
+limitador-tasa.ts` — limitador en memoria por `usuarioId`, enganchado en
+`conPermiso` (el único punto de entrada de toda mutación). Deliberadamente
+"best effort", no distribuido: Vercel corre funciones serverless sin
+estado compartido entre instancias, así que esto no reemplaza un Redis/
+WAF real si algún día hace falta defenderse en serio — sí corta de raíz
+el caso barato y real (un loop por bug o una cuenta comprometida
+martillando la misma mutación). Límite generoso (300/min) a propósito,
+para no interferir con cargas legítimas masivas (ej. confirmar la grilla
+de Conteo Físico, que dispara muchos `registrarConteoFisico` seguidos).
+
+**`npm audit`, investigado y NO forzado**: reporta 4 vulnerabilidades
+altas (`mysql2`, `deepmerge-ts`), pero `npm audit fix --force` las
+"arregla" bajando `prisma` de 7.10.0 a 6.19.3 — un downgrade mayor, no un
+fix. Verificado: ambos paquetes viven exclusivamente en el CLI de Prisma
+(`prisma migrate`/`generate`, herramienta de desarrollo) — el runtime de
+la app (`src/lib/db.ts`) solo instancia `PrismaPg`/`PrismaNeon`, nunca
+toca MySQL. Riesgo real: ninguno, el código vulnerable es inalcanzable
+desde la app desplegada. Queda documentado como falso positivo, a
+revisar cuando Prisma estabilice una major que resuelva la cadena
+transitiva sin bajar de versión.
+
+**Observabilidad, agregada**: no había nada — los errores solo quedaban
+en los logs de Vercel (existen gratis, pero nadie los mira proactivo).
+Proyecto Sentry nuevo (`zuluhub/motor2`) conectado vía `@sentry/nextjs`:
+`src/instrumentation.ts` (server + edge), `src/instrumentation-client.ts`
+(browser + navegación), `next.config.ts` envuelto con `withSentryConfig`.
+DSN vía `NEXT_PUBLIC_SENTRY_DSN` (no es secreto — viaja al navegador a
+propósito — pero igual por env, no hardcodeado). Verificado con un error
+real disparado a mano contra `next build` + `next dev` — la app lo
+maneja y el build de producción compila limpio con el wrapper puesto; la
+entrega end-to-end a Sentry.io no se pudo confirmar desde esta sesión
+(la política de red del entorno de desarrollo bloquea el host de
+ingesta de Sentry con 403 — no es una falla de la integración, es la
+política de egress de este sandbox puntual) — sí va a funcionar en
+Vercel, que no tiene esa restricción. Falta agregar
+`NEXT_PUBLIC_SENTRY_DSN` a las variables de entorno de Vercel para que
+tome efecto en producción (mismo valor que quedó en `.env` local).
+Sin `SENTRY_AUTH_TOKEN` configurado, el build sube sin source maps
+(los stack traces en Sentry se van a ver minificados) — agregar ese
+token es un paso opcional a futuro, no bloqueante.

@@ -112,6 +112,30 @@ describe("Conteo Físico", () => {
     expect(resultado.ok).toBe(false);
   });
 
+  it("cancelarConteoFisico y resolverConteoPendiente rechazan un conteo de otra sucursal, aunque el usuario tenga el permiso en la suya", async () => {
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
+    const conteoResuelto = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    const conteoPendiente = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId, estado: "PENDIENTE" } });
+
+    const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+    const otroAdmin = await crearUsuarioConMembresia({
+      email: "admin2@test.com",
+      sucursalId: otraSucursal.id,
+      rolId: (await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } })).id,
+    });
+    await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
+
+    const cancelado = await cancelarConteoFisico(conteoResuelto.id);
+    expect(cancelado.ok).toBe(false);
+    const resuelto = await resolverConteoPendiente(conteoPendiente.id, "resuelto");
+    expect(resuelto.ok).toBe(false);
+
+    // El estado original no se tocó — el rechazo fue antes de cualquier escritura.
+    expect((await prisma.conteoFisico.findUniqueOrThrow({ where: { id: conteoResuelto.id } })).estado).toBe("RESUELTO");
+    expect((await prisma.conteoFisico.findUniqueOrThrow({ where: { id: conteoPendiente.id } })).estado).toBe("PENDIENTE");
+  });
+
   it("obtenerHistorialConteosFisicos nunca mezcla conteos de otra sucursal (bug encontrado escribiendo la UI)", async () => {
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
 

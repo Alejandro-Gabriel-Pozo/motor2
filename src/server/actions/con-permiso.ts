@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso } from "@/core/permisos/gate";
+import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { error, type ResultadoAccion } from "./tipos";
 
@@ -21,6 +22,10 @@ export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
   // la misma rama `{ ok: false; mensaje: string }` — T solo agrega campos
   // a la rama `ok: true`, nunca a la de error.
   if (!ctx) return error("No autenticado, o tu usuario no tiene ninguna sucursal asignada.") as T;
+
+  if (limitadorMutaciones.excedeLimite(ctx.usuarioId)) {
+    return error("Demasiadas acciones seguidas — esperá un minuto e intentá de nuevo.") as T;
+  }
 
   const gate = await requierePermiso(ctx.usuarioId, ctx.sucursalId, accionClave);
   if (!gate.ok) return error(gate.mensaje) as T;
