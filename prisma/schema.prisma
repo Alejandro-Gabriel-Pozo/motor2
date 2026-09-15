@@ -1,0 +1,412 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===================================================================
+// IDENTIDAD (Auth.js) — nombres en inglés a propósito: @auth/prisma-adapter
+// espera literalmente los modelos User/Account/Session/VerificationToken
+// (son los accessors que usa internamente, prisma.user/prisma.account/...).
+// Es infraestructura de autenticación, no dominio de negocio — coherente
+// con la convención del proyecto (dominio en español, framework en inglés).
+// ===================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  /// Kill-switch de cuenta a nivel sistema, distinto de "activo" por sucursal
+  /// (ver UsuarioSucursal.activo) — equivalente a poder desactivar a alguien
+  /// sin tener que tocar cada una de sus membresías.
+  activoGlobal  Boolean   @default(true)
+  creadoEn      DateTime  @default(now())
+
+  accounts   Account[]
+  sessions   Session[]
+  sucursales UsuarioSucursal[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ===================================================================
+// DOMINIO: sucursales, roles y permisos
+//
+// Un solo negocio, varias sucursales (NO multi-tenant SaaS) — ver Contexto
+// del plan. Roles y permisos son un catálogo ÚNICO compartido por todo el
+// negocio (decisión confirmada con el dueño); el alcance por sucursal se
+// resuelve aparte, en CapacidadSucursal y UsuarioSucursal, nunca como
+// columna dentro de la matriz de permisos — patrón validado contra ERPNext
+// ("User Permission" / "Company Restriction") frente a Dolibarr, que no
+// tiene ningún gate de este tipo dentro de una misma empresa.
+// ===================================================================
+
+model Sucursal {
+  id       String   @id @default(cuid())
+  /// Equivalente a Hosterias.Nombre (Sucursales.js) — nombre visible único.
+  nombre   String   @unique
+  activo   Boolean  @default(true)
+  creadoEn DateTime @default(now())
+
+  usuarios    UsuarioSucursal[]
+  capacidades CapacidadSucursal[]
+}
+
+model Rol {
+  id     String  @id @default(cuid())
+  /// Catálogo único para todo el negocio — guardar siempre en minúscula,
+  /// mismo criterio que ROLES_VALIDOS/obtenerRolesActivos_ en Core.js.
+  nombre String  @unique
+  activo Boolean @default(true)
+
+  usuarios UsuarioSucursal[]
+  permisos PermisoRol[]
+}
+
+/// Reemplaza el 1:1 "un usuario, una hostería" de hoy por N:M: una persona
+/// puede tener rol distinto en cada sucursal donde participa. Análogo al
+/// patrón "User Permission" de ERPNext (usuario restringido/asignado a
+/// valores específicos de una dimensión), aplicado acá a Sucursal.
+model UsuarioSucursal {
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    User     @relation(fields: [usuarioId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  rolId      String
+  rol        Rol      @relation(fields: [rolId], references: [id])
+  /// Equivalente a la columna "Activo" de la hoja Usuarios.
+  activo     Boolean  @default(true)
+  notas      String?
+  creadoEn   DateTime @default(now())
+
+  @@unique([usuarioId, sucursalId])
+}
+
+/// Catálogo de acciones gateables — clave global definida por el código
+/// (no por cada sucursal), migrado 1:1 desde las semillas de
+/// inicializarHojaPermisosSiFalta (Core.js:1293-1356).
+model Accion {
+  clave       String @id
+  descripcion String
+
+  permisos    PermisoRol[]
+  capacidades CapacidadSucursal[]
+}
+
+/// Matriz única rol × acción para todo el negocio (normaliza la hoja
+/// Permisos, hoy "Roles Editar"/"Roles Ver" como CSV en una celda).
+/// Invariante de negocio (Core.js:1534, "Ver ⊇ Editar"): puedeEditar=true
+/// implica puedeVer=true — se hace cumplir en la capa de aplicación
+/// (actualizarPermisoDesdeAdmin, equivalente a actualizarPermisoDesdePanel).
+model PermisoRol {
+  id          String  @id @default(cuid())
+  rolId       String
+  rol         Rol     @relation(fields: [rolId], references: [id])
+  accionClave String
+  accion      Accion  @relation(fields: [accionClave], references: [clave])
+  puedeVer    Boolean @default(false)
+  puedeEditar Boolean @default(false)
+
+  @@unique([rolId, accionClave])
+}
+
+/// Switch "esta acción está habilitada en esta sucursal", independiente del
+/// rol — equivalente directo a CapacidadesSucursal (Sucursales.js) y al
+/// patrón "Company Restriction" de ERPNext. sucursalId NULL = fila default
+/// (mismo significado que "Sucursal" vacío hoy, Sucursales.js:594-601);
+/// la migración inicial agrega un índice único parcial para permitir como
+/// máximo UNA fila default por acción (ver migration.sql).
+model CapacidadSucursal {
+  id          String    @id @default(cuid())
+  accionClave String
+  accion      Accion    @relation(fields: [accionClave], references: [clave])
+  sucursalId  String?
+  sucursal    Sucursal? @relation(fields: [sucursalId], references: [id])
+  habilitado  Boolean
+
+  @@unique([accionClave, sucursalId])
+}
+
+// ===================================================================
+// CATÁLOGO: productos, insumos/grupos, categorías, unidades,
+// presentaciones, proveedores, recetas.
+//
+// Todo esto es Catálogo Central (HOJAS_CATALOGO_CENTRAL, Core.js/
+// Catalogo.js) — compartido por todas las sucursales. Por eso NINGÚN
+// modelo de acá abajo tiene sucursalId: el alcance por sucursal se
+// resuelve, como en el resto del sistema, en CapacidadSucursal (gate de
+// la Accion), nunca acá.
+// ===================================================================
+
+enum TipoProducto {
+  MP
+  PV
+}
+
+enum MagnitudUnidad {
+  PESO
+  VOLUMEN
+  CANTIDAD
+}
+
+/// Reemplaza Hoja listado + Productos (Catalogo.js:213-344): en Sheets eran
+/// dos hojas porque Apps Script no tiene transacciones/FK reales y
+/// necesitaba una vista de lectura rápida aparte de la fuente de escritura.
+/// Acá no hace falta: una sola tabla es fuente de verdad Y de lectura. Esto
+/// elimina de raíz reconstruirProductosDesdeListado (Catalogo.js:72-177) y
+/// la acción de permiso 'reconstruir_productos'.
+model Producto {
+  id     String       @id @default(cuid())
+  /// Clave real, fija desde el alta. Autogenerada como `${tipo}_<uuid6>` si
+  /// no se pasa a mano (Catalogo.js:1151) — ver src/core/catalogo/generar-codigo.ts.
+  codigo String       @unique
+  nombre String
+  tipo   TipoProducto
+
+  /// "Uso" (Catalogo.js:1053-1062) NO se persiste: es 100% derivable de
+  /// `tipo` (MP siempre COMPRA, PV siempre VENTA, sesión "eliminar
+  /// COMPRA+VENTA") — ver src/core/catalogo/producto.ts::usoDeTipo().
+
+  /// Rubro comercial (Catalogo.js:2969-2989) — sin relación con Unidad.magnitud.
+  categoriaId String?
+  categoria   CategoriaProducto? @relation(fields: [categoriaId], references: [id])
+
+  unidadCompraId   String?
+  unidadCompra     Unidad? @relation("ProductoUnidadCompra", fields: [unidadCompraId], references: [id])
+  unidadStockId    String
+  unidadStock      Unidad  @relation("ProductoUnidadStock", fields: [unidadStockId], references: [id])
+  /// Unidades de stock por 1 unidad de compra (Catalogo.js:1083/1095): > 0.
+  factorConversion Decimal @default(1) @db.Decimal(14, 4)
+
+  activo        Boolean @default(true)
+  observaciones String?
+
+  /// Solo tiene sentido si tipo=MP (Catalogo.js:951, 1723-1726) — un PV no
+  /// se compra, no tiene Insumo. Se valida en la capa de aplicación, con el
+  /// mismo criterio no-bloqueante que hoy (avisa, no impide el alta).
+  insumoId String?
+  insumo   Insumo? @relation(fields: [insumoId], references: [id])
+
+  precioVenta Decimal @default(0) @db.Decimal(14, 2)
+
+  /// Elegibilidad de receta (Catalogo.js:1723-1726): PV siempre elegible;
+  /// MP solo si seProduce=true (se fabrica por lote, ej. una salsa base).
+  seProduce Boolean @default(false)
+
+  esConsignacion          Boolean    @default(false)
+  proveedorConsignacionId String?
+  proveedorConsignacion   Proveedor? @relation("ProveedorConsignacionDe", fields: [proveedorConsignacionId], references: [id])
+  precioConsignacion      Decimal?   @default(0) @db.Decimal(14, 2)
+
+  creadoEn DateTime @default(now())
+
+  presentaciones       Presentacion[]
+  proveedorPorProducto ProveedorPorProducto[]
+  recetaVersiones      RecetaVersion[]        @relation("RecetaVersionProducto")
+  usadoComoIngrediente RecetaIngrediente[]    @relation("RecetaIngredienteInsumo")
+
+  @@index([insumoId])
+  @@index([categoriaId])
+}
+
+/// Nombre interno histórico "Familia" (Catalogo.js:180-197) — de cara al
+/// usuario ya es "Insumo" desde v2.3.0; se adopta el nombre nuevo también
+/// acá para no arrastrar la confusión al código nuevo.
+model Insumo {
+  id     String  @id @default(cuid())
+  nombre String  @unique
+  activo Boolean @default(true)
+
+  /// Relación PLANA 1:1 (hoy "Grupos de Familia", una fila por Insumo) — no
+  /// forma parte del árbol en sí, solo cuelga de un nodo de Grupo.
+  grupoId String?
+  grupo   Grupo?  @relation(fields: [grupoId], references: [id])
+
+  productos Producto[]
+
+  @@index([grupoId])
+}
+
+/// Árbol de Grupos sin límite de niveles (self-referencing), inspirado en
+/// ERPNext Item Group (Catalogo.js:2410-2429). La prevención de ciclos
+/// (creariaCicloGrupo_, Catalogo.js:2483-2489) NO es representable como
+/// constraint de Postgres — se porta como función de aplicación (ver
+/// src/core/catalogo/grupo.ts).
+model Grupo {
+  id           String  @id @default(cuid())
+  nombre       String  @unique
+  activo       Boolean @default(true)
+  grupoPadreId String?
+  grupoPadre   Grupo?  @relation("GrupoArbol", fields: [grupoPadreId], references: [id])
+  hijos        Grupo[] @relation("GrupoArbol")
+
+  insumos Insumo[]
+
+  @@index([grupoPadreId])
+}
+
+/// Rubro comercial (Catalogo.js:2969-2989) — catálogo cerrado simple,
+/// aplica a CUALQUIER producto (MP o PV). Sin jerarquía, sin relación con
+/// el árbol de Grupo (ese agrupa Insumos, no productos de venta).
+model CategoriaProducto {
+  id        String     @id @default(cuid())
+  nombre    String     @unique
+  activo    Boolean    @default(true)
+  productos Producto[]
+}
+
+/// Catálogo cerrado (Catalogo.js:2634-2810). `magnitud` es solo
+/// organizativo/default de decimales — NO valida conversión real entre
+/// unidades (esa validación fuerte real es validarUnidadInsumo_: todos los
+/// productos de un mismo Insumo deben compartir exactamente unidadStock).
+model Unidad {
+  id        String         @id @default(cuid())
+  nombre    String         @unique
+  magnitud  MagnitudUnidad
+  activa    Boolean        @default(true)
+  /// 0-6, validado en la capa de aplicación (Catalogo.js:2777).
+  decimales Int            @default(2)
+
+  productosPorUnidadCompra Producto[]             @relation("ProductoUnidadCompra")
+  productosPorUnidadStock  Producto[]             @relation("ProductoUnidadStock")
+  presentaciones           Presentacion[]
+  proveedorPorProducto     ProveedorPorProducto[]
+  recetaIngredientes       RecetaIngrediente[]
+}
+
+/// Presentaciones de compra ALTERNATIVAS a la default de Producto
+/// (unidadCompra/factorConversion propios) — Catalogo.js:3322-3472.
+model Presentacion {
+  id               String   @id @default(cuid())
+  productoId       String
+  producto         Producto @relation(fields: [productoId], references: [id])
+  unidadCompraId   String
+  unidadCompra     Unidad   @relation(fields: [unidadCompraId], references: [id])
+  factorConversion Decimal  @db.Decimal(14, 4)
+  activa           Boolean  @default(true)
+
+  @@unique([productoId, unidadCompraId])
+}
+
+/// Maestro de Proveedores (Catalogo.js:3677-3775).
+model Proveedor {
+  id              String  @id @default(cuid())
+  /// `PRV_<uuid6>` (Catalogo.js:3737) — mismo patrón de generación/colisión
+  /// que Producto.codigo.
+  codigo          String  @unique
+  nombre          String  @unique
+  contacto        String?
+  telefono        String?
+  email           String?
+  cuit            String?
+  condicionesPago String?
+  notas           String?
+  activo          Boolean @default(true)
+
+  productosConsignados Producto[]             @relation("ProveedorConsignacionDe")
+  proveedorPorProducto ProveedorPorProducto[]
+}
+
+/// Relación proveedor↔producto con precio normalizado a "precio por unidad
+/// de stock" (Catalogo.js:3210-3320). Clave real: (producto, proveedor,
+/// unidad de compra).
+///
+/// El UNIQUE de abajo + un upsert atómico (INSERT ... ON CONFLICT DO
+/// UPDATE, ver src/server/actions/proveedor-por-producto.ts) hacen
+/// ESTRUCTURALMENTE IMPOSIBLE la carrera cross-hostería documentada en el
+/// propio código de Apps Script (Catalogo.js:3278-3294: dos sucursales
+/// comprando el mismo insumo casi simultáneo duplicaban esta fila, hoy
+/// mitigado DESPUÉS de escribir por fusionarDuplicadosProveedorPorProducto_,
+/// Catalogo.js:3303-3320) — acá no hay nada que detectar ni fusionar.
+model ProveedorPorProducto {
+  id                   String    @id @default(cuid())
+  productoId           String
+  producto             Producto  @relation(fields: [productoId], references: [id])
+  proveedorId          String
+  proveedor            Proveedor @relation(fields: [proveedorId], references: [id])
+  unidadCompraId       String
+  unidadCompra         Unidad    @relation(fields: [unidadCompraId], references: [id])
+  /// Precio "crudo" tal como lo cobra el proveedor en esa unidad de compra.
+  precioUnitario       Decimal   @default(0) @db.Decimal(14, 4)
+  /// Normalizado a precio por unidad de stock del producto — permite
+  /// comparar presentaciones distintas del mismo Insumo.
+  precioPorUnidadStock Decimal   @default(0) @db.Decimal(14, 4)
+  ultimaCompra         DateTime  @default(now())
+
+  @@unique([productoId, proveedorId, unidadCompraId])
+}
+
+/// Versionado append-only real (Catalogo.js:1690-1779): NUNCA se pisa ni
+/// borra una versión — una venta pasada referencia esa versión para
+/// costeo/auditoría (Catalogo.js:1696-1706). `version` es un entero simple;
+/// la vigente es SIEMPRE MAX(version) para ese producto, derivado, nunca
+/// un flag a mantener transaccionalmente.
+model RecetaVersion {
+  id         String   @id @default(cuid())
+  /// El plato (PV) o la MP con seProduce=true.
+  productoId String
+  producto   Producto @relation("RecetaVersionProducto", fields: [productoId], references: [id])
+  version    Int
+  creadoEn   DateTime @default(now())
+
+  ingredientes RecetaIngrediente[]
+
+  @@unique([productoId, version])
+}
+
+model RecetaIngrediente {
+  id               String        @id @default(cuid())
+  recetaVersionId  String
+  recetaVersion    RecetaVersion @relation(fields: [recetaVersionId], references: [id], onDelete: Cascade)
+  /// La MP consumida — FK real a Producto. Reemplaza el "renombrar por
+  /// nombre en Recetas" de renombrarProductoEnHistorial_ (Catalogo.js:
+  /// 1270-1314): renombrar un producto ahora es un UPDATE de una fila.
+  insumoProductoId String
+  insumoProducto   Producto      @relation("RecetaIngredienteInsumo", fields: [insumoProductoId], references: [id])
+  cantidad         Decimal       @db.Decimal(14, 4)
+  unidadId         String
+  unidad           Unidad        @relation(fields: [unidadId], references: [id])
+  mermaPorcentaje  Decimal       @default(0) @db.Decimal(6, 2)
+  observaciones    String?
+
+  @@index([insumoProductoId])
+}
