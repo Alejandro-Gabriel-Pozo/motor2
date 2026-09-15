@@ -235,9 +235,15 @@ export async function cancelarConteoFisico(conteoId: string): Promise<ResultadoA
 }
 
 /** Historial de conteos de un producto/sección, más nuevo primero — para el panel. */
-export async function obtenerHistorialConteosFisicos(seccionId?: string) {
+/**
+ * `sucursalId` es obligatorio a propósito (no opcional como en una primera
+ * versión de esta función): sin él, sin `seccionId`, listaría conteos de
+ * CUALQUIER sucursal — bug encontrado escribiendo la UI, mismo tipo de
+ * fuga que Core/Catálogo evitan scopeando todo por sucursal desde el vamos.
+ */
+export async function obtenerHistorialConteosFisicos(sucursalId: string, seccionId?: string) {
   return prisma.conteoFisico.findMany({
-    where: seccionId ? { seccionId } : {},
+    where: { sucursalId, ...(seccionId ? { seccionId } : {}) },
     include: { producto: true, seccion: true },
     orderBy: { fecha: "desc" },
     take: 200,

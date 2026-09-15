@@ -2,19 +2,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
+import { NAV_MOVIMIENTOS } from "@/core/movimientos/ui-config";
 
-const SECCIONES = [
-  { href: "/catalogo/productos", label: "Productos" },
-  { href: "/catalogo/proveedores", label: "Proveedores" },
-  { href: "/catalogo/recetas", label: "Recetas" },
-  { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos" },
-  { href: "/catalogo/categorias", label: "Categorías" },
-  { href: "/catalogo/unidades", label: "Unidades" },
-  { href: "/movimientos/compra", label: "Movimientos →" },
-  { href: "/administracion/usuarios", label: "← Administración" },
-];
-
-export default async function CatalogoLayout({ children }: { children: React.ReactNode }) {
+export default async function MovimientosLayout({ children }: { children: React.ReactNode }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) redirect("/login");
 
@@ -24,11 +14,14 @@ export default async function CatalogoLayout({ children }: { children: React.Rea
         <div className="flex items-center gap-6">
           <span className="font-semibold">Motor2</span>
           <nav className="flex flex-wrap gap-4 text-sm">
-            {SECCIONES.map((s) => (
+            {NAV_MOVIMIENTOS.map((s) => (
               <Link key={s.href} href={s.href} className="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
                 {s.label}
               </Link>
             ))}
+            <Link href="/catalogo/productos" className="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
+              ← Catálogo
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4 text-sm text-neutral-500">

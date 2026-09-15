@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarConteoFisico, resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/conteo-fisico";
+import { registrarConteoFisico, resolverConteoPendiente, cancelarConteoFisico, obtenerHistorialConteosFisicos } from "../../src/server/actions/conteo-fisico";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 describe("Conteo Físico", () => {
@@ -110,5 +110,24 @@ describe("Conteo Físico", () => {
 
     const resultado = await cancelarConteoFisico(conteo.id);
     expect(resultado.ok).toBe(false);
+  });
+
+  it("obtenerHistorialConteosFisicos nunca mezcla conteos de otra sucursal (bug encontrado escribiendo la UI)", async () => {
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
+
+    const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+    const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito otra sucursal");
+    const otroMp = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const otroAdmin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } })).id });
+    await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
+    await registrarConteoFisico({ productoId: otroMp.id, seccionId: otraSeccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
+
+    const historialSucursalOriginal = await obtenerHistorialConteosFisicos(sucursalId);
+    expect(historialSucursalOriginal).toHaveLength(1);
+    expect(historialSucursalOriginal[0].productoId).toBe(mpId);
+
+    const historialOtraSucursal = await obtenerHistorialConteosFisicos(otraSucursal.id);
+    expect(historialOtraSucursal).toHaveLength(1);
+    expect(historialOtraSucursal[0].productoId).toBe(otroMp.id);
   });
 });

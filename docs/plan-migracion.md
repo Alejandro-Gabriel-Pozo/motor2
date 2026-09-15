@@ -72,14 +72,17 @@ Resumen de las decisiones más importantes:
   Producto tiene "+ Nuevo insumo"/"+ Nueva categoría"/"+ Nuevo proveedor"
   sin salir del flujo (mismo patrón que Apps Script ya resolvía bien).
 
-### Porción Movimientos — CÓDIGO Y TESTS COMPLETOS Y VERDES (falta UI)
+### Porción Movimientos — COMPLETA, con UI, verificada en navegador real
 
 Investigación completa de `Movimientos.js`/`Stock.js`/`Sucursales.js` (repo
 `motor`) — ver la sección íntegra más abajo, "Plan de la porción
 Movimientos", para las decisiones con ancla `archivo:línea`. A diferencia
 de Core/Catálogo, esta porción se implementó Y SE VERIFICÓ de punta a
-punta contra Postgres real en la misma sesión (ver "Verificación real"
-más abajo) — no quedó solo "escrita sin correr".
+punta contra Postgres real — servidor corriendo, sesión real (Auth.js,
+estrategia `database`), y un smoke test con Playwright que hizo clic
+sobre el DOM real (no solo `tsc`/tests) para Compra, Merma, Venta, Conteo
+Físico (con su historial), Secciones y Precio Local. No quedó solo
+"escrita sin correr".
 
 Resumen de lo más importante:
 
@@ -116,11 +119,22 @@ Resumen de lo más importante:
 Server actions escritas: `registrarMovimiento` (motor genérico para los 9
 procesos que lo comparten), `registrarVenta`, `registrarConteoFisico`/
 `resolverConteoPendiente`/`cancelarConteoFisico`, CRUD de `Seccion` y de
-`PrecioLocalProducto`. 67 tests de Vitest, todos verdes.
+`PrecioLocalProducto`. 68 tests de Vitest, todos verdes.
 
-Falta (próxima sesión): la UI de carga (paneles guiados, wizard de Compra
-por proveedor, Conteo Físico) — ver la sección completa más abajo, "UI
-prevista".
+UI escrita bajo `/movimientos/*` (`src/app/movimientos/`): un panel
+genérico parametrizado por proceso (`[proceso]/page.tsx` +
+`panel-movimiento-form.tsx`, cubre los 9 procesos del motor genérico —
+equivalente a `mostrarPanelOperacion_` parametrizado), páginas propias
+para Venta y Conteo Físico (con su historial + resolver/cancelar inline),
+y CRUD simple de Secciones y Precio Local (mismo patrón que
+`/catalogo/categorias`). Ver "UI (implementada)" más abajo para el detalle
+de cada página.
+
+Bug encontrado escribiendo la UI (no de Movimientos en sí, de scoping):
+`obtenerHistorialConteosFisicos` sin `seccionId` no filtraba por sucursal
+— listaría conteos de CUALQUIER sucursal. `sucursalId` pasó a ser un
+parámetro obligatorio; test agregado que verifica que dos sucursales
+nunca se mezclan.
 
 ### Bugs de infraestructura encontrados y arreglados (afectaban a TODO el proyecto, no solo Movimientos)
 
@@ -186,39 +200,44 @@ probado de punta a punta contra Postgres real, no solo contra el compilador.
    (parcial en `CapacidadSucursal`, funcionales `lower(nombre)` en
    Producto/Proveedor/Insumo/CategoriaProducto/Unidad/Grupo/Seccion),
    aplicados y verificados contra Postgres real.
-3. ~~Tests escritos pero nunca corridos~~ **RESUELTO** — 67/67 verdes
+3. ~~Tests escritos pero nunca corridos~~ **RESUELTO** — 68/68 verdes
    (Core, Catálogo y Movimientos) contra Postgres real.
-4. Credenciales reales de Google OAuth (Google Cloud Console) — sigue
+4. ~~UI de carga de Movimientos~~ **RESUELTO** — `/movimientos/*`,
+   verificada en navegador real (Chromium vía Playwright) contra Postgres
+   real. Ver "Estado actual" arriba.
+5. Credenciales reales de Google OAuth (Google Cloud Console) — sigue
    pendiente, no verificable sin acceso a Google Cloud Console.
-5. UI de selección de "sucursal activa" para un usuario con más de una
+6. UI de selección de "sucursal activa" para un usuario con más de una
    membresía — deferida a propósito (`src/core/auth/contexto.ts` usa la
    primera membresía activa como MVP).
-6. UI de carga de Movimientos (paneles guiados, wizard de Compra,
-   Conteo Físico) — los server actions y tests ya están, ver "Próximas
-   porciones".
+7. UI de "wizard de Compra por proveedor" con alta rápida de producto
+   inline (`CompraPorProveedor.html`/`IncludeAltaRapidaProducto.html` de
+   Apps Script) — el panel genérico de Compra ya funciona (picker simple),
+   este es un refinamiento de UX, no un bloqueante funcional.
 
 ## Próximas porciones
 
-En este orden de dependencia (Stock y Reportes dependen de Movimientos):
+Movimientos quedó completa (código, tests y UI). En este orden de
+dependencia (Stock y Reportes dependen de Movimientos):
 
-1. **Movimientos — UI** (única parte pendiente de esta porción; el motor
-   de dominio, los server actions y los tests ya están escritos y
-   verificados, ver "Estado actual" arriba y el plan íntegro más abajo).
-   Paneles guiados por proceso bajo `/movimientos/*`, wizard de Compra por
-   proveedor con alta rápida de producto inline (reusar el patrón de
-   Catálogo), y el panel de Conteo Físico. Acá también se termina de
-   enganchar `upsertProveedorPorProducto` (ya construido en Catálogo,
-   consumido por `registrarMovimiento` pero nunca ejercitado desde una UI
-   real todavía).
-2. **Stock** — Kardex + vistas materializadas (`Stock`, `StockConsolidado`,
-   `StockFamilia`, `AlertasStock`), conteo físico.
-3. **Reportes** — `obtenerDatosConsulta` (18 vistas), reportes por período.
+1. **Stock** — Kardex + vistas materializadas (`Stock`, `StockConsolidado`,
+   `StockFamilia`, `AlertasStock`), conteo físico, y `RECLASIFICACIÓN`
+   (`reclasificarStock`, deferida a propósito de esta porción — ver
+   Decisiones). `Stock Mínimo`/`AlertasStock` también quedaron deferidos
+   (Accion `stock_minimo` ya seedeada, sin modelo todavía).
+2. **Reportes** — `obtenerDatosConsulta` (18 vistas), reportes por período.
    Importante: el costo de reposición debe seguir leyendo el Kardex LOCAL
    de cada sucursal (nunca `ProveedorPorProducto`, que es Catálogo Central
    compartido) — mismo criterio que ya tiene Apps Script para no mezclar
    precios entre sucursales.
-4. Traspasos entre sucursales (bandeja de solicitud/aprobación/aceptación,
-   hoy en `Sucursales.js`).
+3. Traspasos entre sucursales (bandeja de solicitud/aprobación/aceptación,
+   hoy en `Sucursales.js` — necesita agregar `TRANSFERENCIA_SALIDA_SUCURSAL`/
+   `TRANSFERENCIA_ENTRADA_SUCURSAL`/`REINGRESO_TRANSFERENCIA_SUCURSAL` al
+   enum `Proceso`, deferido a propósito de la porción Movimientos).
+
+Refinamiento de UX pendiente en Movimientos (no bloqueante, ver
+"Pendiente" arriba): wizard de Compra por proveedor con alta rápida de
+producto inline.
 
 ## Convenciones a mantener en las próximas porciones
 
@@ -696,18 +715,51 @@ mostrando su propio resumen de conversión ANTES de confirmar sin que el
 servidor necesite dos pasos — es responsabilidad de la UI, no del server
 action.
 
-### UI prevista (paneles guiados, patrón ya usado en Catálogo) — ÚNICA PARTE PENDIENTE DE ESTA PORCIÓN
+### UI (implementada, `src/app/movimientos/`)
 
-Un panel por proceso bajo `/movimientos/*` (equivalente a
-`PanelOperacion.html` parametrizado por proceso — Movimientos.js:1777-1825),
-más `CompraPorProveedor.html` (wizard de Compra con alta rápida de
-producto inline, `IncludeAltaRapidaProducto.html`, ya con 3 modos para el
-caso de Devolución Consignación) y `PanelConteoFisico.html`
-(auto-expandir por sección+lote, "Agregar lote nuevo", Reclasificar como
-acción secundaria — aunque `reclasificarStock` en sí quede para la porción
-Stock, su entrada de UI ya vive en este mismo panel en Apps Script).
+- **`[proceso]/page.tsx` + `panel-movimiento-form.tsx`**: panel genérico
+  parametrizado por proceso — equivalente a `mostrarPanelOperacion_`
+  (Movimientos.js:1777-1825) — para los 9 procesos del motor genérico.
+  `src/core/movimientos/ui-config.ts` mapea cada slug de URL
+  (`/movimientos/compra`, `/movimientos/merma`, ...) a su `Proceso`, título
+  y qué campos mostrar (proveedor/factura, motivo, destino, precio/peso
+  real solo si `aplicaFactorConversion`) — con una verificación en tiempo
+  de import de que todo slug tiene su entrada en `TRANSICIONES`, para que
+  agregar un proceso nuevo sin darle config de UI explote temprano.
+  Lista de productos dinámica (agregar/quitar líneas), no hay wizard de
+  Compra por proveedor aparte ni quick-create inline de producto en esta
+  primera versión (`CompraPorProveedor.html`/`IncludeAltaRapidaProducto.html`
+  de Apps Script) — el picker es un `<select>` con todos los productos
+  activos, más simple que el buscador en vivo de Apps Script.
+- **`venta/page.tsx` + `venta-form.tsx`**: propia, sin proveedor/factura
+  obligatorios, solo productos `tipo: PV`.
+- **`conteo-fisico/page.tsx`**: form de carga + tabla de historial
+  (`obtenerHistorialConteosFisicos`) con botones inline
+  ("Ya se cargó"/"Ajustar ahora" para `PENDIENTE`, "Cancelar" para
+  `RESUELTO`) — mismo patrón de `<form action={server action}>` inline que
+  ya usa `/catalogo/categorias`, sin componente cliente para la tabla.
+- **`secciones/page.tsx`**: alta + activar/desactivar, mismo patrón que
+  `/catalogo/categorias` exactamente.
+- **`precio-local/page.tsx` + `precio-local-form.tsx`**: tabla de overrides
+  vigentes + form de alta/edición.
+- **Reclasificar** (`reclasificarStock`, Stock.js — primitiva de la
+  porción Stock) NO tiene entrada de UI todavía, a propósito: en Apps
+  Script vive dentro del panel de Conteo Físico, pero acá se prefirió no
+  construir la UI de una primitiva que la porción Stock ni siquiera
+  diseñó en el schema todavía (ver la nota de `RECLASIFICACIÓN` en
+  Decisiones, arriba).
 
-### Testing — 67/67 verdes contra Postgres real (`test/movimientos/*.test.ts`)
+Verificado en un navegador real (Chromium vía Playwright, no solo
+`tsc`/tests): con una sesión de base de datos real (Auth.js, estrategia
+`database`) se registró una Compra, una Merma, una Venta, un Conteo
+Físico (con su fila apareciendo en el historial y el botón "Cancelar"
+funcionando), un alta de Sección y un Precio Local — los 7 pasos
+terminaron en verde contra `npm run dev` real. Un bug real de la UI en sí
+(no del dominio) apareció y se corrigió en el camino: el `<option>` de
+Proveedor no lleva el código como prefijo (a diferencia del de Producto),
+la primera versión del smoke test asumía que sí.
+
+### Testing — 68/68 verdes contra Postgres real (`test/movimientos/*.test.ts`)
 
 - `registrar-movimiento.test.ts`: signo correcto por proceso (con test
   explícito de que Merma resta — el bug de Apps Script v2.1.0 no puede
@@ -729,7 +781,8 @@ Stock, su entrada de UI ya vive en este mismo panel en Apps Script).
   variantes (incluida "ajustar contra el saldo de HOY, no el del día del
   conteo" con una Compra de por medio), `cancelarConteoFisico` revierte
   exacto y una segunda cancelación falla, cancelar algo que nunca ajustó
-  también falla.
+  también falla, `obtenerHistorialConteosFisicos` nunca mezcla conteos de
+  dos sucursales distintas (bug encontrado escribiendo la UI, ver arriba).
 - `secciones.test.ts`: alta, dedupe case/espacio-insensible, desactivar
   sin borrar.
 
@@ -739,8 +792,13 @@ Stock, su entrada de UI ya vive en este mismo panel en Apps Script).
    más los índices manuales, ya committeados como migraciones reales en
    `prisma/migrations/`.
 2. `npm run db:seed` — seed limpio.
-3. `npm test` — 67/67 verdes.
+3. `npm test` — 68/68 verdes.
 4. `npx tsc --noEmit`, `npx eslint`, `npx next build` — los tres limpios.
+5. `npm run dev` + una sesión real (fila `Session` insertada a mano contra
+   la estrategia `database` de Auth.js, sin depender de OAuth) + Chromium
+   headless vía Playwright: Compra, Merma, Venta, Conteo Físico (con
+   historial), Secciones y Precio Local — los 6 flujos completan y
+   muestran el mensaje de éxito esperado en el DOM real.
 
 Ver "Bugs de infraestructura encontrados y arreglados" (arriba, en
 "Estado actual") para los dos fixes que hicieron falta en `src/lib/db.ts`

@@ -4,14 +4,12 @@ Migración de `motor` (Google Apps Script + Sheets) a Next.js + Postgres/Neon.
 Porciones completadas hasta ahora: **Core** (sucursales, roles, permisos,
 auth), **Catálogo** (productos, insumos/grupos, categorías, unidades,
 presentaciones, proveedores, recetas) y **Movimientos** (Kardex/libro
-mayor de stock, secciones, conteo físico, precio local) — código y 67
-tests de Vitest, todos verificados verdes contra Postgres real. Ver
-`docs/plan-migracion.md` para el contexto de negocio completo y el estado
-detallado de cada porción; esto es la guía de arranque local.
-
-A Movimientos le falta la UI de carga (paneles guiados) — los server
-actions y tests ya están, ver `docs/plan-migracion.md`, sección "Plan de
-la porción Movimientos".
+mayor de stock, secciones, conteo físico, precio local, con UI bajo
+`/movimientos/*`) — código, 68 tests de Vitest y la UI, todos verificados
+contra Postgres real (los tests corriendo la suite, la UI a mano en un
+navegador real vía Playwright). Ver `docs/plan-migracion.md` para el
+contexto de negocio completo y el estado detallado de cada porción; esto
+es la guía de arranque local.
 
 Siguientes porciones (no empezadas): Stock (vistas materializadas,
 Reclasificación), Reportes, Traspasos entre sucursales.
@@ -42,7 +40,7 @@ el Setup de arriba lo ofrecía como opción.
 `npm test` corre Vitest contra Postgres real (no hay mocks — mismo espíritu
 que `Tests.js` en el proyecto Apps Script original). Necesitan una base
 limpia con el schema migrado (local o un branch de Neon) antes de correr.
-Verificado: 67/67 tests verdes contra Postgres 16 local (Core + Catálogo +
+Verificado: 68/68 tests verdes contra Postgres 16 local (Core + Catálogo +
 Movimientos).
 
 ## Pendiente
@@ -54,6 +52,6 @@ Movimientos).
   `src/lib/db.ts` arriba, pero Neon en sí nunca se conectó).
 - La UI de selección de "sucursal activa" para un usuario con más de una
   membresía queda fuera de esta porción (ver `src/core/auth/contexto.ts`).
-- UI de carga de Movimientos (paneles guiados por proceso, wizard de
-  Compra por proveedor, panel de Conteo Físico) — ver
+- Wizard de Compra por proveedor con alta rápida de producto inline
+  (refinamiento de UX sobre `/movimientos/compra`, no bloqueante) — ver
   `docs/plan-migracion.md`.
