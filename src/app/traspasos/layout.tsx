@@ -4,28 +4,14 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 
 const SECCIONES = [
-  { href: "/reportes", label: "Resumen" },
-  { href: "/reportes/periodo", label: "Período" },
-  { href: "/reportes/categorias", label: "Por categoría" },
-  { href: "/reportes/costos", label: "Costos y márgenes" },
-  { href: "/reportes/promociones", label: "Promociones" },
-  { href: "/reportes/perdidas", label: "Pérdidas" },
-  { href: "/reportes/devoluciones", label: "Devoluciones" },
-  { href: "/reportes/vencimientos", label: "Vencimientos" },
-  { href: "/reportes/diferencias", label: "Diferencias de ajuste" },
-  { href: "/reportes/sin-receta", label: "Ventas sin receta" },
-  { href: "/reportes/insumos-sin-receta", label: "Insumos sin receta" },
-  { href: "/reportes/consignacion", label: "Consignación" },
-  { href: "/reportes/salud", label: "Salud por producto" },
-  { href: "/reportes/huecos-catalogo", label: "Huecos de catálogo" },
-  { href: "/reportes/conteos", label: "Conteos físicos" },
-  { href: "/reportes/historial", label: "Historial de un producto" },
-  { href: "/reportes/trazabilidad", label: "Trazabilidad por ID" },
-  { href: "/stock/consolidado", label: "← Stock" },
-  { href: "/traspasos", label: "Traspasos →" },
+  { href: "/traspasos", label: "Bandeja" },
+  { href: "/traspasos/solicitar", label: "Solicitar (pedir a otra sucursal)" },
+  { href: "/traspasos/enviar", label: "Enviar directo" },
+  { href: "/movimientos/compra", label: "← Movimientos" },
+  { href: "/reportes", label: "Reportes →" },
 ];
 
-export default async function ReportesLayout({ children }: { children: React.ReactNode }) {
+export default async function TraspasosLayout({ children }: { children: React.ReactNode }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) redirect("/login");
 

@@ -1,0 +1,184 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { registrarMovimiento } from "../../src/server/actions/movimientos";
+import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import {
+  crearSolicitudTransferencia,
+  crearEnvioDirectoTransferencia,
+  aprobarYEnviarTransferencia,
+  rechazarSolicitudTransferencia,
+  aceptarTransferencia,
+  rechazarTransferencia,
+  confirmarReingresoTransferencia,
+  obtenerBandejaTransferencias,
+} from "../../src/server/actions/traspasos";
+
+describe("Traspasos entre sucursales", () => {
+  let sucursalAId: string;
+  let sucursalBId: string;
+  let seccionAId: string;
+  let seccionBId: string;
+  let unidadKgId: string;
+  let insumoId: string;
+  let adminAId: string;
+  let adminBId: string;
+  let rolAdminId: string;
+  let rolOperadorId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase(); // "Central" = sucursal A
+    sucursalAId = base.sucursal.id;
+    rolAdminId = base.admin.id;
+    rolOperadorId = base.operador.id;
+    const catalogo = await sembrarCatalogoBase();
+    unidadKgId = catalogo.kg.id;
+    insumoId = catalogo.insumo.id;
+    seccionAId = (await sembrarSeccion(sucursalAId, "Depósito A")).id;
+
+    const sucursalB = await prisma.sucursal.create({ data: { nombre: "Sucursal B" } });
+    sucursalBId = sucursalB.id;
+    seccionBId = (await sembrarSeccion(sucursalBId, "Depósito B")).id;
+
+    const adminA = await crearUsuarioConMembresia({ email: "admin-a@test.com", sucursalId: sucursalAId, rolId: rolAdminId });
+    const adminB = await crearUsuarioConMembresia({ email: "admin-b@test.com", sucursalId: sucursalBId, rolId: rolAdminId });
+    adminAId = adminA.id;
+    adminBId = adminB.id;
+  });
+
+  const comoA = () => mockearUsuarioActual({ id: adminAId, email: "admin-a@test.com", nombre: null });
+  const comoB = () => mockearUsuarioActual({ id: adminBId, email: "admin-b@test.com", nombre: null });
+
+  async function crearProductoConStock(codigo: string, cantidad: number) {
+    const mp = await prisma.producto.create({ data: { codigo, nombre: codigo, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad }] });
+    return mp;
+  }
+
+  it("flujo pull completo: B solicita a A, A aprueba (sale de su Sección Origen), B acepta (entra a su Sección Destino)", async () => {
+    const mp = await crearProductoConStock("MP_PULL", 20);
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5, seccionDestinoId: seccionBId });
+    expect(sol.ok).toBe(true);
+    if (!sol.ok) return;
+
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(20); // al solicitar, origen todavía no se toca
+
+    await comoA();
+    const aprobar = await aprobarYEnviarTransferencia(sol.id, seccionAId);
+    expect(aprobar.ok).toBe(true);
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(15);
+    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(0); // todavía no entró nada a destino
+
+    await comoB();
+    const aceptar = await aceptarTransferencia(sol.id, seccionBId);
+    expect(aceptar.ok).toBe(true);
+    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(5);
+  });
+
+  it("flujo push completo: A envía directo a B (sale YA al crear el envío), B acepta", async () => {
+    const mp = await crearProductoConStock("MP_PUSH", 10);
+
+    await comoA();
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
+    expect(envio.ok).toBe(true);
+    if (!envio.ok) return;
+
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6); // ya salió al crear el envío
+
+    await comoB();
+    const aceptar = await aceptarTransferencia(envio.id, seccionBId);
+    expect(aceptar.ok).toBe(true);
+    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(4);
+  });
+
+  it("si destino rechaza lo que le enviaron, el stock queda 'perdido' hasta que origen confirma el reingreso — y ahí vuelve exacto", async () => {
+    const mp = await crearProductoConStock("MP_RECHAZO", 10);
+
+    await comoA();
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 3, seccionOrigenId: seccionAId });
+    if (!envio.ok) throw new Error("esperaba ok");
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(7);
+
+    await comoB();
+    const rechazo = await rechazarTransferencia(envio.id, "No lo necesitamos más");
+    expect(rechazo.ok).toBe(true);
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(7); // rechazar SOLO no devuelve el stock todavía
+
+    await comoA();
+    const reingreso = await confirmarReingresoTransferencia(envio.id);
+    expect(reingreso.ok).toBe(true);
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // vuelve exacto
+  });
+
+  it("origen puede rechazar una Solicitud sin que se toque nada de stock (nunca salió)", async () => {
+    const mp = await crearProductoConStock("MP_RECHAZO_SOL", 8);
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+    if (!sol.ok) throw new Error("esperaba ok");
+
+    await comoA();
+    const rechazo = await rechazarSolicitudTransferencia(sol.id, "No tenemos stock");
+    expect(rechazo.ok).toBe(true);
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(8);
+  });
+
+  it("el lado equivocado no puede accionar: destino no puede aprobar una Solicitada; origen no puede aceptar una Solicitada", async () => {
+    const mp = await crearProductoConStock("MP_GUARD", 8);
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+    if (!sol.ok) throw new Error("esperaba ok");
+
+    // B es Destino de esta fila — no puede aprobarla (ese rol es de Origen, o sea A).
+    const aprobarComoDestino = await aprobarYEnviarTransferencia(sol.id, seccionBId);
+    expect(aprobarComoDestino.ok).toBe(false);
+
+    await comoA();
+    // A es Origen, todavía SOLICITADA — no puede aceptarla como si fuera Destino.
+    const aceptarComoOrigen = await aceptarTransferencia(sol.id, seccionAId);
+    expect(aceptarComoOrigen.ok).toBe(false);
+  });
+
+  it("mismo criterio abierto que proceso_transferencia: un operador puede solicitar una transferencia por defecto", async () => {
+    const mp = await crearProductoConStock("MP_PERMISO", 5);
+
+    const operadorB = await crearUsuarioConMembresia({ email: "operador-b@test.com", sucursalId: sucursalBId, rolId: rolOperadorId });
+    await mockearUsuarioActual({ id: operadorB.id, email: "operador-b@test.com", nombre: null });
+
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 1, seccionDestinoId: seccionBId });
+    expect(sol.ok).toBe(true);
+  });
+
+  it("obtenerBandejaTransferencias separa lo que hay que accionar del historial, para cada lado", async () => {
+    const mp = await crearProductoConStock("MP_BANDEJA", 10);
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+    if (!sol.ok) throw new Error("esperaba ok");
+
+    const bandejaA = await obtenerBandejaTransferencias(sucursalAId);
+    expect(bandejaA.paraAprobar.map((t) => t.id)).toContain(sol.id);
+    expect(bandejaA.historial.map((t) => t.id)).not.toContain(sol.id);
+
+    const bandejaB = await obtenerBandejaTransferencias(sucursalBId);
+    expect(bandejaB.paraAprobar.map((t) => t.id)).not.toContain(sol.id); // B no es Origen acá
+    expect(bandejaB.paraAceptar.map((t) => t.id)).not.toContain(sol.id); // todavía SOLICITADA, no ENVIADA
+
+    await comoA();
+    await aprobarYEnviarTransferencia(sol.id, seccionAId);
+
+    const bandejaBTrasAprobar = await obtenerBandejaTransferencias(sucursalBId);
+    expect(bandejaBTrasAprobar.paraAceptar.map((t) => t.id)).toContain(sol.id);
+    const bandejaATrasAprobar = await obtenerBandejaTransferencias(sucursalAId);
+    expect(bandejaATrasAprobar.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
+    expect(bandejaATrasAprobar.historial.map((t) => t.id)).toContain(sol.id);
+  });
+});

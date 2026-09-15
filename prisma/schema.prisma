@@ -26,11 +26,15 @@ model User {
   activoGlobal  Boolean   @default(true)
   creadoEn      DateTime  @default(now())
 
-  accounts       Account[]
-  sessions       Session[]
-  sucursales     UsuarioSucursal[]
-  operaciones    Operacion[]
-  conteosFisicos ConteoFisico[]
+  accounts                  Account[]
+  sessions                  Session[]
+  sucursales                UsuarioSucursal[]
+  operaciones               Operacion[]
+  conteosFisicos            ConteoFisico[]
+  traspasosCreados          TraspasoSucursal[] @relation("TraspasoCreadoPor")
+  traspasosDecididosOrigen  TraspasoSucursal[] @relation("TraspasoDecididoOrigen")
+  traspasosDecididosDestino TraspasoSucursal[] @relation("TraspasoDecididoDestino")
+  traspasosCerrados         TraspasoSucursal[] @relation("TraspasoCerradoPor")
 }
 
 model Account {
@@ -93,14 +97,16 @@ model Sucursal {
   /// PromocionProducto abajo (porción Reportes).
   promocionesHabilitadas Boolean @default(false)
 
-  usuarios       UsuarioSucursal[]
-  capacidades    CapacidadSucursal[]
-  secciones      Seccion[]
-  operaciones    Operacion[]
-  conteosFisicos ConteoFisico[]
-  preciosLocales PrecioLocalProducto[]
-  stockMinimos   StockMinimoProducto[]
-  promociones    PromocionProducto[]
+  usuarios             UsuarioSucursal[]
+  capacidades          CapacidadSucursal[]
+  secciones            Seccion[]
+  operaciones          Operacion[]
+  conteosFisicos       ConteoFisico[]
+  preciosLocales       PrecioLocalProducto[]
+  stockMinimos         StockMinimoProducto[]
+  promociones          PromocionProducto[]
+  traspasosComoOrigen  TraspasoSucursal[]    @relation("TraspasoOrigen")
+  traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
 }
 
 model Rol {
@@ -261,6 +267,7 @@ model Producto {
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
   promociones          PromocionProducto[]
+  traspasos            TraspasoSucursal[]
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -460,13 +467,16 @@ model RecetaIngrediente {
 /// genérico del Conteo Físico — se gatea con 'proceso_control', mismo
 /// permiso que Conteo Físico, no con una Accion propia).
 ///
-/// A PROPÓSITO no incluye (todavía) TRANSFERENCIA_SALIDA_SUCURSAL/
-/// TRANSFERENCIA_ENTRADA_SUCURSAL/REINGRESO_TRANSFERENCIA_SUCURSAL
-/// (Sucursales.js — gateadas por 'proceso_transferencia_sucursal', propias
-/// de la porción Traspasos entre sucursales): agregar un valor a un enum
-/// de Postgres es una migración aditiva trivial (ALTER TYPE ... ADD
-/// VALUE) — se agregan cuando esa porción se investigue y diseñe de
-/// verdad, no antes.
+/// TRANSFERENCIA_SALIDA_SUCURSAL/TRANSFERENCIA_ENTRADA_SUCURSAL/
+/// REINGRESO_TRANSFERENCIA_SUCURSAL (Sucursales.js, porción Traspasos
+/// entre sucursales) agregados acá — igual que RECLASIFICACION
+/// (porción Stock), ninguno pasa por el motor genérico
+/// (`registrarMovimiento`)/`TRANSICIONES`-como-entrada-de-ACCION_POR_PROCESO:
+/// tienen su propio server action (`src/server/actions/traspasos.ts`),
+/// gateado directo con `proceso_transferencia_sucursal` — la entrada en
+/// `TRANSICIONES` (transiciones.ts) existe solo para que
+/// `esSignoFijo`/`tieneStockReal` puedan resolverlas igual que cualquier
+/// otro proceso al construir `MovimientoStock.cantidad` firmado.
 enum Proceso {
   COMPRA
   PRODUCCION
@@ -481,6 +491,9 @@ enum Proceso {
   DEVOLUCION_CLIENTE
   DEVOLUCION_PROVEEDOR
   RECLASIFICACION
+  TRANSFERENCIA_SALIDA_SUCURSAL
+  TRANSFERENCIA_ENTRADA_SUCURSAL
+  REINGRESO_TRANSFERENCIA_SUCURSAL
 }
 
 /// MOTIVOS_MERMA (Movimientos.js:56). En Apps Script esto se guardaba
@@ -542,6 +555,8 @@ model Seccion {
   movimientos                     MovimientoStock[]
   conteosFisicos                  ConteoFisico[]
   stockMinimos                    StockMinimoProducto[]
+  traspasosComoSeccionOrigen      TraspasoSucursal[]    @relation("TraspasoSeccionOrigen")
+  traspasosComoSeccionDestino     TraspasoSucursal[]    @relation("TraspasoSeccionDestino")
 
   /// Único índice funcional case/espacio-insensible por sucursal (mismo
   /// criterio que Producto/Proveedor/Insumo/... en la porción Catálogo) —
@@ -699,6 +714,14 @@ model MovimientoStock {
   conteoFisicoId String?
   conteoFisico   ConteoFisico? @relation(fields: [conteoFisicoId], references: [id])
 
+  /// Solo si esta línea la generó un paso de un Traspaso entre sucursales
+  /// (salida/entrada/reingreso) — mismo criterio que `conteoFisicoId`: FK
+  /// real en vez de comparar el "ID Operación" de texto contra el ID del
+  /// traspaso (Sucursales.js pasaba `idTraspaso` como `idOperacion` a
+  /// ciegas, ver escribirMovimientoTransferenciaSucursal_).
+  traspasoSucursalId String?
+  traspasoSucursal   TraspasoSucursal? @relation(fields: [traspasoSucursalId], references: [id])
+
   creadoEn DateTime @default(now())
 
   /// Clave de lectura real: "¿cuánto hay de este producto, en esta
@@ -849,4 +872,106 @@ model PromocionProducto {
   activa     Boolean  @default(true)
 
   @@unique([sucursalId, productoId])
+}
+
+// ===================================================================
+// TRASPASOS ENTRE SUCURSALES (Sucursales.js) — última porción funcional.
+//
+// DIFERENCIA CLAVE con Apps Script: ahí cada sucursal ("hostería") es un
+// proyecto Apps Script + planilla separado, sin ningún canal de ejecución
+// directo entre proyectos — por eso `TraspasosSucursales` es una tabla del
+// Catálogo Central que cada lado lee/escribe de forma asincrónica (una
+// bandeja), y hace falta un registro aparte (`Hosterias`) + una hoja
+// Config local (`NombreHosteria`) solo para que cada proyecto sepa "quién
+// es". Acá, motor2 es una única app Next.js sobre una única base
+// Postgres — todas las sucursales ya son filas reales de `Sucursal`
+// (Core), visibles a cualquier request autenticado, y un usuario ya sabe
+// "quién es" vía su `ContextoUsuario.sucursalId` (la sucursal ACTIVA de su
+// sesión, misma noción que "esta hostería" en Apps Script). No hace falta
+// portar ni el registro de hosterías ni el nombre configurable — el WORKFLOW
+// de aprobación (que SÍ importa: el stock no se teletransporta, alguien
+// tiene que confirmar que lo recibió) es lo único que se porta.
+// ===================================================================
+
+/// PULL (el Destino pide) vs. PUSH (el Origen manda directo) — decide qué
+/// lado creó la fila y en qué estado arranca (Sucursales.js:19-25).
+enum IniciadoPorTraspaso {
+  ORIGEN
+  DESTINO
+}
+
+/// Ciclo completo (Sucursales.js:19-25, comentario de cabecera):
+/// PULL: SOLICITADA -(Origen aprueba)-> ENVIADA -(Destino acepta)-> ACEPTADA
+///                   -(Origen rechaza)-> RECHAZADA_ORIGEN (fin, nunca tocó stock)
+/// PUSH: ENVIADA (ya con el stock afuera al crearse) -(Destino acepta)-> ACEPTADA
+///                                                    -(Destino rechaza)-> RECHAZADA_DESTINO -(Origen confirma reingreso)-> CERRADA
+enum EstadoTraspaso {
+  SOLICITADA
+  ENVIADA
+  ACEPTADA
+  RECHAZADA_ORIGEN
+  RECHAZADA_DESTINO
+  CERRADA
+}
+
+/// Reemplaza HOJA_TRASPASOS_SUCURSALES/"TraspasosSucursales"
+/// (Sucursales.js:175-193) — mismas 22 columnas, ahora con FKs reales en
+/// vez de texto (nombre de sucursal, código de producto) y sin la
+/// redundancia "Codigo"/"Unidad" (ya resuelven vía `producto`/
+/// `producto.unidadStock`). `seccionOrigenId`/`seccionDestinoId` quedan
+/// null hasta que ese lado decide (recién Origen sabe de qué Sección sale
+/// al aprobar/enviar; recién Destino sabe a cuál entra al aceptar).
+model TraspasoSucursal {
+  id       String   @id @default(cuid())
+  creadoEn DateTime @default(now())
+
+  origenSucursalId  String
+  origenSucursal    Sucursal @relation("TraspasoOrigen", fields: [origenSucursalId], references: [id])
+  destinoSucursalId String
+  destinoSucursal   Sucursal @relation("TraspasoDestino", fields: [destinoSucursalId], references: [id])
+
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  cantidad   Decimal  @db.Decimal(14, 4)
+
+  seccionOrigenId  String?
+  seccionOrigen    Seccion? @relation("TraspasoSeccionOrigen", fields: [seccionOrigenId], references: [id])
+  seccionDestinoId String?
+  seccionDestino   Seccion? @relation("TraspasoSeccionDestino", fields: [seccionDestinoId], references: [id])
+
+  iniciadoPor IniciadoPorTraspaso
+  estado      EstadoTraspaso      @default(SOLICITADA)
+
+  creadoPorId String
+  creadoPor   User    @relation("TraspasoCreadoPor", fields: [creadoPorId], references: [id])
+  detalle     String?
+
+  /// Decisión de ORIGEN: aprobar+enviar una Solicitada (PULL), o rechazarla
+  /// (-> RECHAZADA_ORIGEN). En un envío directo (PUSH) esto se llena YA en
+  /// el momento de crear la fila (Origen decidió mandar, no hay nada que
+  /// "aprobar" después).
+  fechaDecisionOrigen DateTime?
+  decididoPorOrigenId String?
+  decididoPorOrigen   User?     @relation("TraspasoDecididoOrigen", fields: [decididoPorOrigenId], references: [id])
+  motivoRechazoOrigen String?
+
+  /// Decisión de DESTINO: aceptar una Enviada (-> ACEPTADA), o rechazarla
+  /// (-> RECHAZADA_DESTINO, todavía no devuelve el stock — eso lo confirma
+  /// Origen aparte, `fechaCierre`/`cerradoPor` abajo).
+  fechaDecisionDestino DateTime?
+  decididoPorDestinoId String?
+  decididoPorDestino   User?     @relation("TraspasoDecididoDestino", fields: [decididoPorDestinoId], references: [id])
+  motivoRechazoDestino String?
+
+  /// Solo se llena si Destino rechazó y Origen confirmó el reingreso a su
+  /// propio stock (-> CERRADA) — el único otro cierre real (ACEPTADA) no
+  /// necesita un campo aparte, el `estado` ya lo dice.
+  fechaCierre  DateTime?
+  cerradoPorId String?
+  cerradoPor   User?     @relation("TraspasoCerradoPor", fields: [cerradoPorId], references: [id])
+
+  movimientos MovimientoStock[]
+
+  @@index([origenSucursalId, estado])
+  @@index([destinoSucursalId, estado])
 }

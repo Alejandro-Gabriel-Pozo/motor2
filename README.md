@@ -1,22 +1,25 @@
-# motor2 — Core + Catálogo + Movimientos + Stock + Reportes
+# motor2 — migración completa (Core + Catálogo + Movimientos + Stock + Reportes + Traspasos)
 
 Migración de `motor` (Google Apps Script + Sheets) a Next.js + Postgres/Neon.
-Porciones completadas hasta ahora: **Core** (sucursales, roles, permisos,
-auth), **Catálogo** (productos, insumos/grupos, categorías, unidades,
-presentaciones, proveedores, recetas), **Movimientos** (Kardex/libro
-mayor de stock, secciones, conteo físico, precio local, con UI bajo
-`/movimientos/*`), **Stock** (consolidado, por familia, alertas de stock
-mínimo y reclasificación entre secciones, con UI bajo `/stock/*`) y
-**Reportes** (período, costos y márgenes, promociones, pérdidas,
-devoluciones, vencimientos, diferencias de ajuste, salud por producto,
-consignación, trazabilidad, historial de producto y más — 17 vistas bajo
-`/reportes/*`) — código, 134 tests de Vitest y la UI, todos verificados
+**Las 6 porciones funcionales del proyecto están completas**: **Core**
+(sucursales, roles, permisos, auth), **Catálogo** (productos, insumos/
+grupos, categorías, unidades, presentaciones, proveedores, recetas),
+**Movimientos** (Kardex/libro mayor de stock, secciones, conteo físico,
+precio local, con UI bajo `/movimientos/*`), **Stock** (consolidado, por
+familia, alertas de stock mínimo y reclasificación entre secciones, con UI
+bajo `/stock/*`), **Reportes** (período, costos y márgenes, promociones,
+pérdidas, devoluciones, vencimientos, diferencias de ajuste, salud por
+producto, consignación, trazabilidad, historial de producto y más — 17
+vistas bajo `/reportes/*`) y **Traspasos entre sucursales** (bandeja de
+solicitud/aprobación/aceptación con dos flujos, PULL y PUSH, con UI bajo
+`/traspasos/*`) — código, 141 tests de Vitest y la UI, todos verificados
 contra Postgres real (los tests corriendo la suite, la UI a mano en un
 navegador real vía Playwright). Ver `docs/plan-migracion.md` para el
 contexto de negocio completo y el estado detallado de cada porción; esto
 es la guía de arranque local.
 
-Siguiente porción (no empezada): Traspasos entre sucursales.
+Lo que queda es infraestructura real (Neon de producción, credenciales de
+Google OAuth) y refinamientos de UX no bloqueantes — ver "Pendiente" abajo.
 
 ## Setup
 
@@ -28,7 +31,7 @@ Siguiente porción (no empezada): Traspasos entre sucursales.
    - `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (OAuth de Google Cloud Console — cualquier cuenta del negocio debe poder loguearse).
    - `BOOTSTRAP_ADMIN_EMAILS` — tu email, para quedar admin automático la primera vez (ver `src/core/auth/bootstrap.ts`).
 3. `npm install`
-4. `npm run db:migrate` — aplica el schema (Core + Catálogo + Movimientos + Stock + Reportes, más los índices manuales) y corre el seed (34 acciones + roles admin/operador + sucursal "Central" + unidades base kg/g/l/ml/unidad). Verificado contra Postgres 16 real.
+4. `npm run db:migrate` — aplica el schema completo (Core + Catálogo + Movimientos + Stock + Reportes + Traspasos, más los índices manuales) y corre el seed (34 acciones + roles admin/operador + sucursal "Central" + unidades base kg/g/l/ml/unidad). Verificado contra Postgres 16 real.
 5. `npm run dev` y entrar a `http://localhost:3000`.
 
 `src/lib/db.ts` elige el driver adapter según el host de `DATABASE_URL`:
@@ -44,8 +47,8 @@ el Setup de arriba lo ofrecía como opción.
 `npm test` corre Vitest contra Postgres real (no hay mocks — mismo espíritu
 que `Tests.js` en el proyecto Apps Script original). Necesitan una base
 limpia con el schema migrado (local o un branch de Neon) antes de correr.
-Verificado: 134/134 tests verdes contra Postgres 16 local (Core + Catálogo +
-Movimientos + Stock + Reportes).
+Verificado: 141/141 tests verdes contra Postgres 16 local (Core + Catálogo +
+Movimientos + Stock + Reportes + Traspasos).
 
 ## Pendiente
 
@@ -55,7 +58,9 @@ Movimientos + Stock + Reportes).
   Postgres local; el código soporta los dos casos, ver la nota de
   `src/lib/db.ts` arriba, pero Neon en sí nunca se conectó).
 - La UI de selección de "sucursal activa" para un usuario con más de una
-  membresía queda fuera de esta porción (ver `src/core/auth/contexto.ts`).
+  membresía queda fuera de esta porción (ver `src/core/auth/contexto.ts`) —
+  cobra más relevancia con Traspasos entre sucursales, pero sigue sin ser
+  bloqueante (cada sucursal la opera gente distinta, en la práctica).
 - Wizard de Compra por proveedor con alta rápida de producto inline
   (refinamiento de UX sobre `/movimientos/compra`, no bloqueante) — ver
   `docs/plan-migracion.md`.

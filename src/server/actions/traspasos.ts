@@ -1,0 +1,368 @@
+"use server";
+
+import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { texto } from "@/core/texto";
+import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
+import { calcularSaldoTotal, validarStockSuficiente } from "@/core/movimientos/stock";
+import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import type { ContextoUsuario } from "@/core/auth/contexto";
+import { conPermiso } from "./con-permiso";
+import { error, ok, type ResultadoAccion, type ResultadoConId } from "./tipos";
+
+/**
+ * ===================================================================
+ * TRASPASOS ENTRE SUCURSALES (Sucursales.js, líneas 1-546)
+ * ===================================================================
+ * Ciclo completo (ver el docstring de EstadoTraspaso en schema.prisma):
+ *   PULL: destino solicita -> origen aprueba (recién ahí sale el stock,
+ *         queda "en tránsito") o rechaza -> destino acepta (entra el
+ *         stock) o rechaza -> origen confirma el reingreso a su stock.
+ *   PUSH: origen decide enviar directo (ya aprobado al crearse, el stock
+ *         sale al toque) -> destino acepta o rechaza -> (si rechaza)
+ *         origen confirma el reingreso.
+ *
+ * A diferencia de Apps Script (cada sucursal es un proyecto separado sin
+ * canal de ejecución entre sí — la Bandeja es una tabla del Catálogo
+ * Central que cada lado lee/escribe async), acá no hace falta ningún
+ * registro de "hosterías" ni nombre configurable: `Sucursal` ya es una
+ * tabla real (Core) y `ContextoUsuario.sucursalId` ya identifica "quién
+ * soy" en cada request — ver el docstring del modelo en schema.prisma.
+ *
+ * Gate único: 'proceso_transferencia_sucursal' (ya seedeada desde Core,
+ * anticipando esta porción) — mismo criterio que Apps Script
+ * (requierePermiso_ en cada función de escritura, nunca en la lectura de
+ * la Bandeja).
+ */
+
+async function obtenerProductoTransferible(productoId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
+  const producto = await tx.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
+  if (!producto || !producto.activo) return { ok: false as const, mensaje: "El producto no existe o no está activo." };
+  if (!tieneStockReal(producto.tipo, producto.seProduce)) {
+    return { ok: false as const, mensaje: `"${producto.nombre}" no tiene stock real — no se puede transferir.` };
+  }
+  return { ok: true as const, producto };
+}
+
+async function obtenerSeccionPropia(seccionId: string, sucursalId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
+  const seccion = await tx.seccion.findUnique({ where: { id: seccionId } });
+  if (!seccion || seccion.sucursalId !== sucursalId) return null;
+  return seccion;
+}
+
+async function escribirMovimientoTraspaso(
+  tx: Prisma.TransactionClient,
+  ctx: ContextoUsuario,
+  traspasoId: string,
+  proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" | "TRANSFERENCIA_ENTRADA_SUCURSAL" | "REINGRESO_TRANSFERENCIA_SUCURSAL",
+  productoId: string,
+  seccionId: string,
+  cantidadFirmada: number,
+  detalle: string
+) {
+  const operacion = await tx.operacion.create({
+    data: { sucursalId: ctx.sucursalId, proceso, fecha: new Date(), usuarioId: ctx.usuarioId },
+  });
+  await tx.movimientoStock.create({
+    data: {
+      operacionId: operacion.id,
+      productoId,
+      seccionId,
+      proceso,
+      cantidad: cantidadFirmada,
+      detalle,
+      precioTotal: 0,
+      precioPorUnidadStock: 0,
+      traspasoSucursalId: traspasoId,
+    },
+  });
+}
+
+export interface DatosSolicitudTraspaso {
+  origenSucursalId: string;
+  productoId: string;
+  cantidad: number;
+  seccionDestinoId: string;
+  detalle?: string;
+}
+
+/** PULL: yo soy Destino, le pido a `origenSucursalId`. No toca stock — solo queda SOLICITADA, pendiente de que Origen decida. */
+export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso): Promise<ResultadoConId> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const origenSucursalId = texto(datos.origenSucursalId);
+    if (!origenSucursalId) return error("Elegí de qué sucursal lo pedís.");
+    if (origenSucursalId === ctx.sucursalId) return error("No podés pedirte una transferencia a vos mismo.");
+    if (!(datos.cantidad > 0)) return error("La cantidad debe ser mayor a 0.");
+
+    const origen = await prisma.sucursal.findUnique({ where: { id: origenSucursalId } });
+    if (!origen || !origen.activo) return error("Esa sucursal no existe o no está activa.");
+
+    const seccionDestino = await obtenerSeccionPropia(datos.seccionDestinoId, ctx.sucursalId);
+    if (!seccionDestino) return error("Elegí a qué sección propia tiene que entrar.");
+
+    const resProducto = await obtenerProductoTransferible(datos.productoId);
+    if (!resProducto.ok) return error(resProducto.mensaje);
+
+    const traspaso = await prisma.traspasoSucursal.create({
+      data: {
+        origenSucursalId,
+        destinoSucursalId: ctx.sucursalId,
+        productoId: datos.productoId,
+        cantidad: datos.cantidad,
+        seccionDestinoId: seccionDestino.id,
+        iniciadoPor: "DESTINO",
+        estado: "SOLICITADA",
+        creadoPorId: ctx.usuarioId,
+        detalle: texto(datos.detalle) || null,
+      },
+    });
+
+    return { ok: true, mensaje: `Solicitud enviada a "${origen.nombre}".`, id: traspaso.id, nombre: resProducto.producto.nombre };
+  });
+}
+
+export interface DatosEnvioDirectoTraspaso {
+  destinoSucursalId: string;
+  productoId: string;
+  cantidad: number;
+  seccionOrigenId: string;
+  detalle?: string;
+}
+
+/** PUSH: yo soy Origen, decido enviar directo a `destinoSucursalId` sin que me lo pidan. Valida y descuenta stock YA — queda ENVIADA. */
+export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTraspaso): Promise<ResultadoConId> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const destinoSucursalId = texto(datos.destinoSucursalId);
+    if (!destinoSucursalId) return error("Elegí a qué sucursal se lo mandás.");
+    if (destinoSucursalId === ctx.sucursalId) return error("No podés mandarte una transferencia a vos mismo.");
+    if (!(datos.cantidad > 0)) return error("La cantidad debe ser mayor a 0.");
+
+    const destino = await prisma.sucursal.findUnique({ where: { id: destinoSucursalId } });
+    if (!destino || !destino.activo) return error("Esa sucursal no existe o no está activa.");
+
+    const seccionOrigen = await obtenerSeccionPropia(datos.seccionOrigenId, ctx.sucursalId);
+    if (!seccionOrigen) return error("Elegí de qué sección propia sale.");
+
+    const resProducto = await obtenerProductoTransferible(datos.productoId);
+    if (!resProducto.ok) return error(resProducto.mensaje);
+
+    const chequeoStock = await validarStockSuficiente(datos.productoId, seccionOrigen.id, datos.cantidad);
+    if (!chequeoStock.ok) {
+      return error(`Stock insuficiente de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${chequeoStock.actual}, requerido: ${chequeoStock.requerido}.`);
+    }
+
+    const resultado = await conTransaccionSerializable(async (tx) => {
+      const disponible = await calcularSaldoTotal(datos.productoId, seccionOrigen.id, tx);
+      if (disponible < datos.cantidad) {
+        return error(`Stock insuficiente de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${disponible}, requerido: ${datos.cantidad}.`);
+      }
+
+      const cantidad = redondearACantidadDeUnidad(datos.cantidad, resProducto.producto.unidadStock.decimales);
+      const ahora = new Date();
+      const traspaso = await tx.traspasoSucursal.create({
+        data: {
+          origenSucursalId: ctx.sucursalId,
+          destinoSucursalId,
+          productoId: datos.productoId,
+          cantidad,
+          seccionOrigenId: seccionOrigen.id,
+          iniciadoPor: "ORIGEN",
+          estado: "ENVIADA",
+          creadoPorId: ctx.usuarioId,
+          detalle: texto(datos.detalle) || null,
+          fechaDecisionOrigen: ahora,
+          decididoPorOrigenId: ctx.usuarioId,
+        },
+      });
+
+      await escribirMovimientoTraspaso(
+        tx, ctx, traspaso.id, "TRANSFERENCIA_SALIDA_SUCURSAL", datos.productoId, seccionOrigen.id, -cantidad,
+        `Transferencia a sucursal "${destino.nombre}".`
+      );
+
+      return { ok: true as const, mensaje: `Enviado a "${destino.nombre}". Se descontó ${cantidad} ${resProducto.producto.unidadStock.nombre} de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}".`, id: traspaso.id, nombre: resProducto.producto.nombre };
+    });
+
+    return resultado;
+  });
+}
+
+async function buscarTraspaso(id: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
+  return tx.traspasoSucursal.findUnique({ where: { id }, include: { producto: { include: { unidadStock: true } } } });
+}
+
+/** Origen aprueba una SOLICITADA: valida stock, resta en SU Kardex local, pasa a ENVIADA. */
+export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: string): Promise<ResultadoAccion> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const idTraspaso = texto(id);
+    if (!idTraspaso) return error("Falta el traspaso.");
+
+    const seccionOrigen = await obtenerSeccionPropia(seccionOrigenId, ctx.sucursalId);
+    if (!seccionOrigen) return error("Elegí de qué sección propia sale.");
+
+    return conTransaccionSerializable(async (tx) => {
+      const traspaso = await buscarTraspaso(idTraspaso, tx);
+      if (!traspaso) return error("No se encontró ese traspaso.");
+      if (traspaso.origenSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como origen.");
+      if (traspaso.estado !== "SOLICITADA") return error(`Este traspaso ya está en estado "${traspaso.estado}" — no se puede aprobar de nuevo.`);
+      if (!traspaso.producto.activo) return error(`"${traspaso.producto.nombre}" ya no existe o no está activo.`);
+
+      const cantidad = Number(traspaso.cantidad);
+      const disponible = await calcularSaldoTotal(traspaso.productoId, seccionOrigen.id, tx);
+      if (disponible < cantidad) {
+        return error(`Stock insuficiente de "${traspaso.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${disponible}, requerido: ${cantidad}.`);
+      }
+
+      const destino = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.destinoSucursalId } });
+      await escribirMovimientoTraspaso(
+        tx, ctx, traspaso.id, "TRANSFERENCIA_SALIDA_SUCURSAL", traspaso.productoId, seccionOrigen.id, -cantidad,
+        `Transferencia a sucursal "${destino.nombre}".`
+      );
+
+      await tx.traspasoSucursal.update({
+        where: { id: traspaso.id },
+        data: { seccionOrigenId: seccionOrigen.id, estado: "ENVIADA", fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId },
+      });
+
+      return ok(`Aprobado y enviado a "${destino.nombre}".`);
+    });
+  });
+}
+
+/** Origen rechaza una SOLICITADA sin haber tocado stock (nunca salió). */
+export async function rechazarSolicitudTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const idTraspaso = texto(id);
+    if (!idTraspaso) return error("Falta el traspaso.");
+
+    const traspaso = await buscarTraspaso(idTraspaso);
+    if (!traspaso) return error("No se encontró ese traspaso.");
+    if (traspaso.origenSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como origen.");
+    if (traspaso.estado !== "SOLICITADA") return error(`Este traspaso ya está en estado "${traspaso.estado}" — no se puede rechazar desde acá.`);
+
+    await prisma.traspasoSucursal.update({
+      where: { id: idTraspaso },
+      data: { estado: "RECHAZADA_ORIGEN", fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId, motivoRechazoOrigen: texto(motivo) || null },
+    });
+
+    return ok("Solicitud rechazada.");
+  });
+}
+
+/** Destino acepta una ENVIADA: suma en SU Kardex local, pasa a ACEPTADA. */
+export async function aceptarTransferencia(id: string, seccionDestinoId: string): Promise<ResultadoAccion> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const idTraspaso = texto(id);
+    if (!idTraspaso) return error("Falta el traspaso.");
+
+    const seccionDestino = await obtenerSeccionPropia(seccionDestinoId, ctx.sucursalId);
+    if (!seccionDestino) return error("Elegí a qué sección propia entra.");
+
+    return conTransaccionSerializable(async (tx) => {
+      const traspaso = await buscarTraspaso(idTraspaso, tx);
+      if (!traspaso) return error("No se encontró ese traspaso.");
+      if (traspaso.destinoSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como destino.");
+      if (traspaso.estado !== "ENVIADA") return error(`Este traspaso está en estado "${traspaso.estado}" — no se puede aceptar.`);
+      if (!traspaso.producto.activo) return error(`"${traspaso.producto.nombre}" ya no existe o no está activo.`);
+
+      const cantidad = Number(traspaso.cantidad);
+      const origen = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.origenSucursalId } });
+      await escribirMovimientoTraspaso(
+        tx, ctx, traspaso.id, "TRANSFERENCIA_ENTRADA_SUCURSAL", traspaso.productoId, seccionDestino.id, cantidad,
+        `Transferencia recibida de sucursal "${origen.nombre}".`
+      );
+
+      await tx.traspasoSucursal.update({
+        where: { id: traspaso.id },
+        data: { seccionDestinoId: seccionDestino.id, estado: "ACEPTADA", fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId },
+      });
+
+      return ok(`Recibido de "${origen.nombre}".`);
+    });
+  });
+}
+
+/** Destino rechaza una ENVIADA — todavía NO toca stock: el reingreso lo confirma Origen aparte. */
+export async function rechazarTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const idTraspaso = texto(id);
+    if (!idTraspaso) return error("Falta el traspaso.");
+
+    const traspaso = await buscarTraspaso(idTraspaso);
+    if (!traspaso) return error("No se encontró ese traspaso.");
+    if (traspaso.destinoSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como destino.");
+    if (traspaso.estado !== "ENVIADA") return error(`Este traspaso está en estado "${traspaso.estado}" — no se puede rechazar desde acá.`);
+
+    await prisma.traspasoSucursal.update({
+      where: { id: idTraspaso },
+      data: { estado: "RECHAZADA_DESTINO", fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId, motivoRechazoDestino: texto(motivo) || null },
+    });
+
+    return ok("Transferencia rechazada — queda pendiente que el origen confirme el reingreso a su stock.");
+  });
+}
+
+/** Origen confirma el reingreso tras un rechazo de destino: vuelve a sumar en SU Kardex local, pasa a CERRADA. */
+export async function confirmarReingresoTransferencia(id: string): Promise<ResultadoAccion> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const idTraspaso = texto(id);
+    if (!idTraspaso) return error("Falta el traspaso.");
+
+    return conTransaccionSerializable(async (tx) => {
+      const traspaso = await buscarTraspaso(idTraspaso, tx);
+      if (!traspaso) return error("No se encontró ese traspaso.");
+      if (traspaso.origenSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como origen.");
+      if (traspaso.estado !== "RECHAZADA_DESTINO") return error(`Este traspaso está en estado "${traspaso.estado}" — no hay ningún reingreso pendiente.`);
+      if (!traspaso.seccionOrigenId) return error("Este traspaso no tiene una sección de origen registrada — no se puede reingresar.");
+
+      const cantidad = Number(traspaso.cantidad);
+      const destino = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.destinoSucursalId } });
+      const seccionOrigen = await tx.seccion.findUniqueOrThrow({ where: { id: traspaso.seccionOrigenId } });
+      await escribirMovimientoTraspaso(
+        tx, ctx, traspaso.id, "REINGRESO_TRANSFERENCIA_SUCURSAL", traspaso.productoId, traspaso.seccionOrigenId, cantidad,
+        `Reingreso — rechazado por sucursal "${destino.nombre}".`
+      );
+
+      await tx.traspasoSucursal.update({
+        where: { id: traspaso.id },
+        data: { estado: "CERRADA", fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
+      });
+
+      return ok(`Reingreso confirmado: se sumó de nuevo ${cantidad} de "${traspaso.producto.nombre}" en "${seccionOrigen.nombre}".`);
+    });
+  });
+}
+
+/**
+ * Lectura de la Bandeja — abierta (leer no necesita el permiso de
+ * escritura, mismo criterio que el resto del proyecto), filtra
+ * TraspasoSucursal a lo que involucra a `sucursalId` (como Origen o como
+ * Destino) y lo separa en lo que hay que ACCIONAR vs. el resto (historial).
+ */
+export async function obtenerBandejaTransferencias(sucursalId: string) {
+  const todos = await prisma.traspasoSucursal.findMany({
+    where: { OR: [{ origenSucursalId: sucursalId }, { destinoSucursalId: sucursalId }] },
+    include: {
+      producto: { include: { unidadStock: true } },
+      origenSucursal: true,
+      destinoSucursal: true,
+      seccionOrigen: true,
+      seccionDestino: true,
+      creadoPor: true,
+    },
+    orderBy: { creadoEn: "desc" },
+  });
+
+  const paraAprobar = todos.filter((t) => t.origenSucursalId === sucursalId && t.estado === "SOLICITADA");
+  const paraAceptar = todos.filter((t) => t.destinoSucursalId === sucursalId && t.estado === "ENVIADA");
+  const paraReingreso = todos.filter((t) => t.origenSucursalId === sucursalId && t.estado === "RECHAZADA_DESTINO");
+  const enCurso = new Set([...paraAprobar, ...paraAceptar, ...paraReingreso].map((t) => t.id));
+  const historial = todos.filter((t) => !enCurso.has(t.id));
+
+  return { paraAprobar, paraAceptar, paraReingreso, historial };
+}
+
+/** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. */
+export async function listarSucursalesDisponibles(sucursalId: string) {
+  return prisma.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
+}

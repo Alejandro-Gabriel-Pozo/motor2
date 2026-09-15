@@ -290,6 +290,83 @@ arman un escenario "revisar" de conciliación de vencimientos) sin errores
 de runtime, más las 2 mutaciones reales de Promociones ejercitadas clic a
 clic contra el DOM.
 
+### Porción Traspasos entre sucursales — COMPLETA, con UI, verificada en navegador real
+
+Investigación completa de `Sucursales.js` (708 líneas) — ver "Plan de la
+porción Traspasos" más abajo para las decisiones con ancla `archivo:línea`.
+Esta era la ÚLTIMA porción funcional pendiente del proyecto (ver "Próximas
+porciones" de la sesión anterior); con esto, la migración de `motor` a
+`motor2` queda funcionalmente completa.
+
+Hallazgo de diseño clave, mayor que en cualquier porción anterior: en Apps
+Script cada sucursal ("hostería") es un proyecto Apps Script + planilla
+COMPLETAMENTE SEPARADO, sin ningún canal de ejecución entre proyectos —
+por eso `Sucursales.js` necesita: (1) una tabla de "Bandeja"
+(`TraspasosSucursales`) en el Catálogo Central que cada lado lee/escribe de
+forma asincrónica, porque no hay otra forma de que un proyecto "le hable"
+al otro; (2) un registro de hosterías (`Hosterias`) + una hoja Config local
+(`NombreHosteria`) solo para que cada proyecto sepa "quién es". Ninguna de
+esas dos cosas tiene sentido en `motor2`: es una única app Next.js sobre
+una única base Postgres, `Sucursal` ya es una tabla real y compartida
+(porción Core), y un usuario ya sabe "quién es" vía
+`ContextoUsuario.sucursalId` (la sucursal activa de su sesión — misma
+noción que "esta hostería" en Apps Script). Se portó el WORKFLOW de
+aprobación (que sí importa: el stock no se teletransporta, alguien tiene
+que confirmar que lo recibió, con auditoría de quién decidió qué y
+cuándo) y nada de la infraestructura de mensajería entre proyectos
+separados que ese workflow necesitaba en Apps Script.
+
+Segundo hallazgo: la segunda mitad de `Sucursales.js` (Capacidades por
+sucursal, líneas 547-708) YA estaba completa desde la porción Core —
+`CapacidadSucursal`, la Accion `capacidades_sucursal`, la UI en
+`/administracion/capacidades-sucursal` — así que esta porción es 100%
+Transferencias, nada de Capacidades.
+
+Resumen de lo más importante:
+
+- Modelo nuevo: `TraspasoSucursal` (22 columnas de `TraspasosSucursales`
+  reducidas a FKs reales — `origenSucursalId`/`destinoSucursalId`/
+  `productoId`/`seccionOrigenId`/`seccionDestinoId`/`creadoPorId`/
+  `decididoPorOrigenId`/`decididoPorDestinoId`/`cerradoPorId` en vez de
+  texto — sin la redundancia "Codigo"/"Unidad", que ya resuelven vía
+  `producto`/`producto.unidadStock`).
+- 3 valores nuevos en el enum `Proceso` (`TRANSFERENCIA_SALIDA_SUCURSAL`/
+  `TRANSFERENCIA_ENTRADA_SUCURSAL`/`REINGRESO_TRANSFERENCIA_SUCURSAL`,
+  migración aditiva, anticipados desde la porción Movimientos) — igual que
+  `RECLASIFICACION` en Stock, ninguno pasa por el motor genérico
+  (`registrarMovimiento`): cada paso del workflow escribe su propia línea
+  de Kardex a mano, con el `seccionId` recién conocido en ESE paso.
+- `MovimientoStock.traspasoSucursalId` (FK real, nullable) reemplaza la
+  correlación por texto "ID Operación === ID Traspaso" de Apps Script —
+  mismo criterio que `conteoFisicoId`.
+- Sin ninguna Accion nueva: `proceso_transferencia_sucursal` ya estaba
+  seedeada desde Core, anticipando esta porción.
+
+Server actions escritas (`src/server/actions/traspasos.ts`):
+`crearSolicitudTransferencia` (PULL), `crearEnvioDirectoTransferencia`
+(PUSH), `aprobarYEnviarTransferencia`/`rechazarSolicitudTransferencia`
+(decisión de Origen sobre una Solicitada), `aceptarTransferencia`/
+`rechazarTransferencia` (decisión de Destino sobre una Enviada),
+`confirmarReingresoTransferencia` (Origen cierra tras un rechazo de
+Destino), `obtenerBandejaTransferencias` (lectura, sin gate — separa lo
+que hay que accionar del historial, para cada lado), y
+`listarSucursalesDisponibles` (otras sucursales activas, para los
+`<select>`). 7 tests de Vitest nuevos (141 en total), incluido el mismo
+caso de "guard rail" que tenía Apps Script (el lado equivocado no puede
+accionar: Destino no puede aprobar una Solicitada, Origen no puede
+aceptar una Solicitada).
+
+UI escrita bajo `/traspasos/*`: la Bandeja (`/traspasos`, con 3 secciones
+accionables — Para aprobar/Para aceptar/Para confirmar reingreso — más el
+historial) y los dos formularios de alta (`/traspasos/solicitar` para
+PULL, `/traspasos/enviar` para PUSH). Verificado con un smoke test de
+Playwright con DOS sesiones de navegador reales en paralelo (una por
+sucursal, cookies de sesión distintas) ejercitando los dos ciclos
+completos: PULL (B solicita → A aprueba y envía → B acepta) y PUSH (A
+envía directo → B rechaza → A confirma el reingreso), confirmando el
+saldo exacto en cada sucursal al final (A: 30 − 5 aceptado = 25; B: 5
+recibido) contra el Kardex real, no solo contra lo que mostraba la UI.
+
 ### Bugs de infraestructura encontrados y arreglados (afectaban a TODO el proyecto, no solo Movimientos)
 
 Al intentar correr `npm test` contra un Postgres real por primera vez
@@ -316,7 +393,7 @@ Core y Catálogo — ninguno de los dos tiene que ver con Movimientos en sí:
 
 Con los dos fixes, **la suite completa corre verde contra un Postgres
 real** — la primera vez que esto pasó en el proyecto (sesión Movimientos);
-se mantuvo verde al sumar las porciones Stock y Reportes en sesiones
+se mantuvo verde al sumar Stock, Reportes y Traspasos en sesiones
 posteriores.
 Ver "Verificación real" más abajo para cómo reproducirlo.
 
@@ -325,28 +402,31 @@ Ver "Verificación real" más abajo para cómo reproducirlo.
 1. `npx prisma migrate dev` — aplica todas las migraciones committeadas en
    `prisma/migrations/` (init de Core+Catálogo+Movimientos, índices
    manuales, la migración de la porción Stock — `RECLASIFICACION` +
-   `StockMinimoProducto` — y la de Reportes — `PromocionProducto` +
-   `Sucursal.promocionesHabilitadas`).
+   `StockMinimoProducto` —, la de Reportes — `PromocionProducto` +
+   `Sucursal.promocionesHabilitadas` — y la de Traspasos —
+   `TraspasoSucursal` + los 3 procesos de transferencia entre sucursales).
 2. `npm run db:seed` — seed limpio (34 acciones, roles, sucursal
    "Central", 5 unidades base).
-3. `npm test` — **134/134 tests verdes** (Core, Catálogo, Movimientos,
-   Stock y Reportes).
+3. `npm test` — **141/141 tests verdes** (Core, Catálogo, Movimientos,
+   Stock, Reportes y Traspasos).
 4. `npx tsc --noEmit` y `npx eslint` — limpios.
 5. `npx next build` — build de producción limpio, todas las rutas
    compilan (ver `src/app/` para el listado completo: `/catalogo/*`,
-   `/administracion/*`, `/movimientos/*`, `/stock/*`, `/reportes/*`).
+   `/administracion/*`, `/movimientos/*`, `/stock/*`, `/reportes/*`,
+   `/traspasos/*`).
 6. `npm run dev` + sesión de base de datos real (Auth.js, estrategia
    `database`, sin depender de OAuth) + Chromium headless vía Playwright:
-   cada porción con UI (Movimientos, Stock, Reportes) se ejercitó clic a
-   clic contra el DOM real, no solo contra `tsc`/tests — para Reportes:
-   17 páginas con datos reales (compra, ajuste, merma, consumo, 2 ventas,
-   2 devoluciones, 2 conteos físicos armando un escenario de conciliación
-   "revisar") más las 2 mutaciones de Promociones.
+   cada porción con UI (Movimientos, Stock, Reportes, Traspasos) se
+   ejercitó clic a clic contra el DOM real, no solo contra `tsc`/tests —
+   Traspasos, en particular, con DOS sesiones de navegador simultáneas
+   (una por sucursal) para probar el ciclo completo cruzado, PULL y PUSH,
+   con el saldo final verificado contra el Kardex real.
 
 No se conectó ningún Neon real (sigue pendiente: credenciales de Google
 OAuth, y probar contra Neon en vez de Postgres local) — pero el camino
 completo "schema → migración → seed → server actions → tests → UI" ya está
-probado de punta a punta contra Postgres real, no solo contra el compilador.
+probado de punta a punta contra Postgres real, no solo contra el compilador,
+para las 6 porciones funcionales del proyecto.
 
 ## Pendiente / huecos conocidos
 
@@ -358,7 +438,10 @@ probado de punta a punta contra Postgres real, no solo contra el compilador.
    pendiente, no verificable sin acceso a Google Cloud Console.
 3. UI de selección de "sucursal activa" para un usuario con más de una
    membresía — deferida a propósito (`src/core/auth/contexto.ts` usa la
-   primera membresía activa como MVP).
+   primera membresía activa como MVP). Cobra más relevancia con Traspasos
+   entre sucursales (alguien que gestiona más de una sucursal tiene que
+   poder elegir desde cuál está actuando en cada momento), pero sigue sin
+   ser bloqueante: en la práctica cada sucursal la opera gente distinta.
 4. UI de "wizard de Compra por proveedor" con alta rápida de producto
    inline (`CompraPorProveedor.html`/`IncludeAltaRapidaProducto.html` de
    Apps Script) — el panel genérico de Compra ya funciona (picker simple),
@@ -378,17 +461,15 @@ probado de punta a punta contra Postgres real, no solo contra el compilador.
 
 ## Próximas porciones
 
-Movimientos, Stock y Reportes quedaron completas (código, tests y UI).
-Queda una sola porción funcional pendiente:
-
-1. Traspasos entre sucursales (bandeja de solicitud/aprobación/aceptación,
-   hoy en `Sucursales.js` — necesita agregar `TRANSFERENCIA_SALIDA_SUCURSAL`/
-   `TRANSFERENCIA_ENTRADA_SUCURSAL`/`REINGRESO_TRANSFERENCIA_SUCURSAL` al
-   enum `Proceso`, deferido a propósito de la porción Movimientos).
-
-Refinamientos de UX pendientes (no bloqueantes, ver "Pendiente" arriba):
-wizard de Compra por proveedor con alta rápida de producto inline; alertas
-de stock por mail; exportación CSV del reporte por período.
+Ninguna — Core, Catálogo, Movimientos, Stock, Reportes y Traspasos entre
+sucursales (la última) quedaron completas (código, tests y UI, todo
+verificado contra Postgres real y en navegador). La migración de `motor`
+a `motor2` está funcionalmente completa; lo que queda es exclusivamente
+lo de "Pendiente / huecos conocidos" arriba — infraestructura real
+(Neon de producción, credenciales de Google OAuth) y refinamientos de UX
+no bloqueantes (wizard de Compra por proveedor con alta rápida de
+producto inline; alertas de stock por mail; exportación CSV del reporte
+por período; selección de sucursal activa para multi-membresía).
 
 ## Convenciones a mantener en las próximas porciones
 
@@ -1309,4 +1390,175 @@ patrón de `useTransition` que `/stock/minimo`).
    `/reportes/*` cargan con datos reales sin errores de runtime, más las
    2 mutaciones de Promociones (activar/marcar) ejercitadas clic a clic
    contra el DOM real.
+
+---
+
+## Plan de la porción Traspasos entre sucursales (código, tests, migración y UI completos y verdes)
+
+### Decisiones (resumen)
+
+| Pregunta | Decisión | Por qué |
+|---|---|---|
+| ¿Registro de "hosterías" (`Hosterias`) + nombre configurable (`NombreHosteria`)? | No se porta | Existían solo porque cada sucursal es un proyecto Apps Script separado sin forma de saber "quién es" ni de ver a las demás — acá `Sucursal` ya es una tabla real y compartida (Core), y `ContextoUsuario.sucursalId` ya identifica "quién soy" en cada request. |
+| ¿"Bandeja" como tabla intermedia de mensajería async? | Se porta como tabla de ESTADO (`TraspasoSucursal`), no de mensajería | En Apps Script `TraspasosSucursales` existe porque no hay canal de ejecución entre proyectos — acá ambos lados ya comparten la misma base, así que la tabla es simplemente el registro del traspaso (con su estado), no un buzón que haya que "revisar" de forma asincrónica. |
+| ¿Capacidades por sucursal (segunda mitad de `Sucursales.js`)? | Ya estaba — no se toca | `CapacidadSucursal`/`capacidades_sucursal`/`/administracion/capacidades-sucursal` se implementaron enteros en la porción Core. |
+| Claves de sucursal/producto en la fila del traspaso | FKs reales (`origenSucursalId`/`destinoSucursalId`/`productoId`), nunca texto | Apps Script comparaba nombres de hostería como texto (`mismoTexto_`) porque no tenía otra forma — acá hay una FK real disponible. |
+| Correlación Kardex ↔ Traspaso | `MovimientoStock.traspasoSucursalId` (FK real, nullable) | Reemplaza "ID Operación === ID Traspaso" (Sucursales.js:204-213, un UUID compartido a ciegas entre dos tablas) — mismo criterio que `conteoFisicoId` en la porción Movimientos. |
+| ¿Los 3 procesos nuevos pasan por `registrarMovimiento`? | No — server action propio (`traspasos.ts`), como Reclasificación | Cada paso del workflow recién conoce su `seccionId` EN ESE paso (Origen la elige al aprobar/enviar, Destino al aceptar) — no hay un único "armar línea" genérico que sirva para los 3. La entrada en `TRANSICIONES` existe solo para `esSignoFijo`/`tieneStockReal`. |
+| Gate de acceso | `proceso_transferencia_sucursal` (ya seedeada desde Core) | Sin Accion nueva — Apps Script ya gateaba las 7 funciones de escritura con esta misma clave; la lectura de la Bandeja queda abierta (`obtenerBandejaTransferencias` sin gate), mismo criterio que el resto del proyecto. |
+
+### Modelos (ya aplicados en `motor2/prisma/schema.prisma`, migración `20260915104139_traspasos_sucursal`)
+
+```prisma
+enum IniciadoPorTraspaso {
+  ORIGEN
+  DESTINO
+}
+
+enum EstadoTraspaso {
+  SOLICITADA
+  ENVIADA
+  ACEPTADA
+  RECHAZADA_ORIGEN
+  RECHAZADA_DESTINO
+  CERRADA
+}
+
+model TraspasoSucursal {
+  id       String   @id @default(cuid())
+  creadoEn DateTime @default(now())
+
+  origenSucursalId  String
+  origenSucursal    Sucursal @relation("TraspasoOrigen", fields: [origenSucursalId], references: [id])
+  destinoSucursalId String
+  destinoSucursal   Sucursal @relation("TraspasoDestino", fields: [destinoSucursalId], references: [id])
+
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  cantidad   Decimal  @db.Decimal(14, 4)
+
+  seccionOrigenId  String?
+  seccionOrigen    Seccion? @relation("TraspasoSeccionOrigen", fields: [seccionOrigenId], references: [id])
+  seccionDestinoId String?
+  seccionDestino   Seccion? @relation("TraspasoSeccionDestino", fields: [seccionDestinoId], references: [id])
+
+  iniciadoPor IniciadoPorTraspaso
+  estado      EstadoTraspaso      @default(SOLICITADA)
+
+  creadoPorId String
+  creadoPor   User    @relation("TraspasoCreadoPor", fields: [creadoPorId], references: [id])
+  detalle     String?
+
+  fechaDecisionOrigen  DateTime?
+  decididoPorOrigenId  String?
+  decididoPorOrigen    User?     @relation("TraspasoDecididoOrigen", fields: [decididoPorOrigenId], references: [id])
+  motivoRechazoOrigen  String?
+
+  fechaDecisionDestino DateTime?
+  decididoPorDestinoId String?
+  decididoPorDestino   User?     @relation("TraspasoDecididoDestino", fields: [decididoPorDestinoId], references: [id])
+  motivoRechazoDestino String?
+
+  fechaCierre  DateTime?
+  cerradoPorId String?
+  cerradoPor   User?     @relation("TraspasoCerradoPor", fields: [cerradoPorId], references: [id])
+
+  movimientos MovimientoStock[]
+}
+```
+
+Más 3 valores nuevos en `Proceso` (`TRANSFERENCIA_SALIDA_SUCURSAL`/
+`TRANSFERENCIA_ENTRADA_SUCURSAL`/`REINGRESO_TRANSFERENCIA_SUCURSAL`,
+migración aditiva) y `MovimientoStock.traspasoSucursalId String?` (FK
+nullable, `ON DELETE SET NULL`).
+
+### Algoritmos (con ancla `archivo:línea` de Apps Script)
+
+- `crearSolicitudTransferencia`/PULL (Sucursales.js:243-277) → no toca
+  stock, solo valida (producto transferible, sección propia elegida,
+  sucursal origen distinta de la propia) y crea la fila en `SOLICITADA`.
+- `crearEnvioDirectoTransferencia`/PUSH (Sucursales.js:280-323) → valida
+  stock suficiente y escribe `TRANSFERENCIA_SALIDA_SUCURSAL` (signo −1) en
+  la MISMA transacción serializable que crea la fila ya en `ENVIADA` (con
+  `fechaDecisionOrigen`/`decididoPorOrigenId` llenos desde el arranque:
+  Origen ya decidió mandar).
+- `aprobarYEnviarTransferencia` (Sucursales.js:337-378) → re-valida stock
+  DENTRO de la transacción (Serializable aborta si cambió mientras tanto,
+  mismo criterio que Reclasificación), escribe
+  `TRANSFERENCIA_SALIDA_SUCURSAL`, pasa `SOLICITADA` → `ENVIADA`.
+- `rechazarSolicitudTransferencia` (Sucursales.js:381-403) → nunca tocó
+  stock, pasa `SOLICITADA` → `RECHAZADA_ORIGEN`.
+- `aceptarTransferencia` (Sucursales.js:406-438) → escribe
+  `TRANSFERENCIA_ENTRADA_SUCURSAL` (signo +1), pasa `ENVIADA` → `ACEPTADA`.
+- `rechazarTransferencia` (Sucursales.js:441-463) → todavía NO devuelve el
+  stock (sigue "afuera" en los libros de Origen) — pasa `ENVIADA` →
+  `RECHAZADA_DESTINO`, pendiente de que Origen confirme el reingreso.
+- `confirmarReingresoTransferencia` (Sucursales.js:466-496) → escribe
+  `REINGRESO_TRANSFERENCIA_SUCURSAL` (signo +1) en la sección de origen ya
+  guardada, pasa `RECHAZADA_DESTINO` → `CERRADA`.
+- `obtenerBandejaTransferencias` (Sucursales.js:498-534) → filtra por
+  `origenSucursalId`/`destinoSucursalId` en vez de comparar nombres de
+  hostería como texto; separa `paraAprobar`/`paraAceptar`/`paraReingreso`
+  del resto (`historial`).
+- `obtenerHosteriasDisponibles` (Sucursales.js:161-171) → reemplazado por
+  `listarSucursalesDisponibles` (simplemente `Sucursal` activas ≠ la
+  propia, sin ningún registro que mantener sincronizado).
+
+### Server actions (`src/server/actions/traspasos.ts`)
+
+`crearSolicitudTransferencia`, `crearEnvioDirectoTransferencia`,
+`aprobarYEnviarTransferencia`, `rechazarSolicitudTransferencia`,
+`aceptarTransferencia`, `rechazarTransferencia`,
+`confirmarReingresoTransferencia` (las 7 gateadas
+`proceso_transferencia_sucursal`), `obtenerBandejaTransferencias` y
+`listarSucursalesDisponibles` (lectura, sin gate).
+
+### UI (3 páginas bajo `/traspasos/*` + layout con nav propio)
+
+`/traspasos` (Bandeja: 3 secciones accionables con formularios inline —
+elegir sección propia + botón de aprobar/aceptar, motivo + botón de
+rechazar, o un botón simple de confirmar reingreso — más la tabla de
+historial), `/traspasos/solicitar` (PULL) y `/traspasos/enviar` (PUSH),
+cada uno con su propio form cliente (mismo patrón `useTransition` +
+`router.refresh()` que el resto del proyecto).
+
+### Testing (Vitest, spec de negocio — no el harness de Apps Script)
+
+141 tests en total (7 nuevos, `test/traspasos/traspasos.test.ts`, dos
+sucursales reales con un admin cada una para simular ambos lados):
+
+- Flujo pull completo: B solicita a A (stock de A intacto), A aprueba
+  (sale de la Sección Origen, todavía nada en destino), B acepta (entra a
+  la Sección Destino).
+- Flujo push completo: A envía directo a B (sale YA al crear el envío), B
+  acepta.
+- Rechazo de destino + reingreso devuelve el stock EXACTO a como estaba.
+- Rechazo de una Solicitud por Origen no toca stock (nunca salió).
+- El lado equivocado no puede accionar (Destino no puede aprobar una
+  Solicitada; Origen no puede aceptar una Solicitada).
+- Mismo criterio abierto que el resto de "proceso_*": un operador puede
+  solicitar una transferencia por defecto.
+- `obtenerBandejaTransferencias` separa correctamente lo que hay que
+  accionar del historial, para cada lado de la transacción.
+
+### Verificación de la porción Traspasos
+
+1. `npx prisma migrate dev` aplica `TraspasoSucursal` + los 3 procesos
+   nuevos sin romper nada de lo existente.
+2. Flujo PULL completo (solicitar → aprobar → aceptar) mueve el stock
+   exacto de la sección de Origen a la sección de Destino, sin tocar nada
+   hasta que cada lado decide.
+3. Flujo PUSH completo (enviar directo → aceptar) descuenta el stock YA al
+   enviar, antes de que Destino haga nada.
+4. Rechazo de Destino + reingreso de Origen devuelve el saldo EXACTO a
+   como estaba antes del envío.
+5. El lado equivocado nunca puede accionar (verificado con ambos guard
+   rails).
+6. Suite de Vitest de esta porción verde (`npm test`, 141/141).
+7. `npm run dev` + Chromium headless vía Playwright con DOS sesiones de
+   navegador simultáneas (una por sucursal, cookies distintas): ciclo PULL
+   completo y ciclo PUSH completo (con rechazo + reingreso) ejercitados
+   clic a clic contra el DOM real de ambos lados, con el saldo final
+   verificado contra el Kardex real (no solo lo que mostraba la UI): A
+   30 → 25, B → 5.
 

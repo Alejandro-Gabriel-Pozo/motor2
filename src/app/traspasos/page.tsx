@@ -1,0 +1,63 @@
+import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
+import { listarSeccionesActivas } from "@/server/actions/secciones";
+import { obtenerBandejaTransferencias } from "@/server/actions/traspasos";
+import { Bandeja, type FilaBandeja } from "./bandeja";
+
+const LABEL_ESTADO: Record<string, string> = {
+  SOLICITADA: "Solicitada",
+  ENVIADA: "Enviada",
+  ACEPTADA: "Aceptada",
+  RECHAZADA_ORIGEN: "Rechazada por origen",
+  RECHAZADA_DESTINO: "Rechazada por destino",
+  CERRADA: "Cerrada (reingresada)",
+};
+
+export default async function TraspasosPage() {
+  const ctx = await obtenerContextoUsuario();
+  if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_transferencia_sucursal");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+
+  const [bandeja, secciones] = await Promise.all([obtenerBandejaTransferencias(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
+
+  const aFila = (t: Awaited<ReturnType<typeof obtenerBandejaTransferencias>>["historial"][number]): FilaBandeja => {
+    const soyOrigen = t.origenSucursalId === ctx.sucursalId;
+    return {
+      id: t.id,
+      productoNombre: t.producto.nombre,
+      productoCodigo: t.producto.codigo,
+      cantidad: Number(t.cantidad),
+      unidadNombre: t.producto.unidadStock.nombre,
+      otraSucursalNombre: soyOrigen ? t.destinoSucursal.nombre : t.origenSucursal.nombre,
+      fecha: t.creadoEn.toISOString().slice(0, 10),
+      detalle: t.detalle,
+      estado: LABEL_ESTADO[t.estado] ?? t.estado,
+      motivoRechazoOrigen: t.motivoRechazoOrigen,
+      motivoRechazoDestino: t.motivoRechazoDestino,
+      seccionOrigenNombre: t.seccionOrigen?.nombre ?? null,
+      seccionDestinoNombre: t.seccionDestino?.nombre ?? null,
+      creadoPorEmail: t.creadoPor.email,
+    };
+  };
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h1 className="mb-1 text-xl font-semibold">Traspasos entre sucursales</h1>
+        <p className="text-sm text-neutral-500">
+          El stock no se teletransporta: cada paso queda registrado y auditado. Ver &quot;Solicitar&quot;/&quot;Enviar directo&quot; en el nav
+          para empezar uno nuevo.
+        </p>
+      </div>
+      <Bandeja
+        paraAprobar={bandeja.paraAprobar.map(aFila)}
+        paraAceptar={bandeja.paraAceptar.map(aFila)}
+        paraReingreso={bandeja.paraReingreso.map(aFila)}
+        historial={bandeja.historial.map(aFila)}
+        secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+      />
+    </div>
+  );
+}

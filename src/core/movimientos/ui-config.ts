@@ -28,7 +28,10 @@ export const DESTINOS_CONSUMO: { value: DestinoConsumo; label: string }[] = [
  * ya separa `registrarVenta`/`registrarConteoFisico` de `registrarMovimiento`.
  */
 export interface ProcesoUiConfig {
-  proceso: Exclude<Proceso, "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION" | "RECLASIFICACION">;
+  proceso: Exclude<
+    Proceso,
+    "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION" | "RECLASIFICACION" | "TRANSFERENCIA_SALIDA_SUCURSAL" | "TRANSFERENCIA_ENTRADA_SUCURSAL" | "REINGRESO_TRANSFERENCIA_SUCURSAL"
+  >;
   titulo: string;
   /** Compra/Devolución a Proveedor: hay un proveedor real y conviene pedir N° de factura. */
   requiereProveedor: boolean;

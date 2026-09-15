@@ -17,8 +17,11 @@ import { upsertProveedorPorProducto } from "./proveedor-por-producto";
 import { conPermiso } from "./con-permiso";
 import { error, type ResultadoAccion } from "./tipos";
 
-/** Procesos que pasan por este motor genérico — Venta (registrarVenta), Control (registrarConteoFisico, conteo-fisico.ts) y Reclasificación (reclasificarStock, reclasificacion.ts) tienen cada uno su propio camino, mismo criterio que Apps Script (armarPreviaVentaDesdeItems_/_registrarConteoFisicoSinRecalculo_/dividirClasificacionStock_ nunca pasan por armarRegistroMovimiento_). LIQUIDACION_CONSIGNACION nunca la elige un usuario. */
-export type ProcesoGenerico = Exclude<Proceso, "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION" | "RECLASIFICACION">;
+/** Procesos que pasan por este motor genérico — Venta (registrarVenta), Control (registrarConteoFisico, conteo-fisico.ts), Reclasificación (reclasificarStock, reclasificacion.ts) y los 3 pasos de Traspasos entre sucursales (traspasos.ts) tienen cada uno su propio camino, mismo criterio que Apps Script (armarPreviaVentaDesdeItems_/_registrarConteoFisicoSinRecalculo_/dividirClasificacionStock_/escribirMovimientoTransferenciaSucursal_ nunca pasan por armarRegistroMovimiento_). LIQUIDACION_CONSIGNACION nunca la elige un usuario. */
+export type ProcesoGenerico = Exclude<
+  Proceso,
+  "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION" | "RECLASIFICACION" | "TRANSFERENCIA_SALIDA_SUCURSAL" | "TRANSFERENCIA_ENTRADA_SUCURSAL" | "REINGRESO_TRANSFERENCIA_SUCURSAL"
+>;
 
 export interface ItemMovimientoInput {
   productoId: string;

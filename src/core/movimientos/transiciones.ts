@@ -75,6 +75,15 @@ export const TRANSICIONES: Record<Proceso, Transicion> = {
   // existe solo para que Record<Proceso, Transicion> quede exhaustivo;
   // ningún código la consulta de verdad.
   RECLASIFICACION: { signoStock: 0, permiteCero: false, requiereStockReal: true, aplicaFactorConversion: false, generaConsumoDeReceta: false, exigeSeccion: true },
+  // Traspasos entre sucursales (src/server/actions/traspasos.ts,
+  // Sucursales.js) — igual que Reclasificación/Liquidación: NUNCA pasan
+  // por el motor genérico (cada paso del workflow escribe su propia línea
+  // a mano, con seccionId recién conocido en ESE paso), esta entrada
+  // existe solo para que esSignoFijo/tieneStockReal las resuelvan igual
+  // que cualquier proceso al construir `cantidad` firmada.
+  TRANSFERENCIA_SALIDA_SUCURSAL: { signoStock: -1, permiteCero: false, requiereStockReal: true, aplicaFactorConversion: false, generaConsumoDeReceta: false, exigeSeccion: true },
+  TRANSFERENCIA_ENTRADA_SUCURSAL: { signoStock: 1, permiteCero: false, requiereStockReal: true, aplicaFactorConversion: false, generaConsumoDeReceta: false, exigeSeccion: true },
+  REINGRESO_TRANSFERENCIA_SUCURSAL: { signoStock: 1, permiteCero: false, requiereStockReal: true, aplicaFactorConversion: false, generaConsumoDeReceta: false, exigeSeccion: true },
 };
 
 /** true = magnitud positiva que hay que firmar con signoStock; false = Ajuste/Control (el usuario ya carga el delta con signo) o Transferencia (el motor arma las 2 líneas él mismo). */
