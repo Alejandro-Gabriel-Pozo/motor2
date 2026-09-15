@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { setPrecioLocalProducto } from "@/server/actions/precio-local";
 import { obtenerPrecioVentaProducto } from "@/server/actions/productos";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoNumero } from "@/components/campo-numero";
 
 export function PrecioLocalForm() {
   const router = useRouter();
@@ -56,11 +57,11 @@ export function PrecioLocalForm() {
         <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloActivos: true }} limpiarSenal={resetCount} required />
       </label>
 
-      {precioGlobal !== null && <p className="text-xs text-neutral-500">Precio global actual: {precioGlobal}</p>}
+      {precioGlobal !== null && <p className="text-xs text-neutral-500">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</p>}
 
       <label className="flex flex-col gap-1 text-sm">
         Precio local
-        <input type="number" step="any" min={0} value={precio} onChange={(e) => setPrecio(e.target.value)} required className="rounded border px-3 py-2" />
+        <CampoNumero value={precio} onChange={setPrecio} prefijo="$" required />
       </label>
 
       <label className="flex items-center gap-2 text-sm">

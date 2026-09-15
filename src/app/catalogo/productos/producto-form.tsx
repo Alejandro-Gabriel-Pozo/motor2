@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { QuickCrear } from "@/components/catalogo/quick-crear";
+import { CampoNumero } from "@/components/campo-numero";
 import { darDeAltaProducto, actualizarProducto, type DatosProducto } from "@/server/actions/productos";
 import { crearInsumo } from "@/server/actions/insumos";
 import { crearCategoriaProducto } from "@/server/actions/categorias-producto";
@@ -161,27 +162,15 @@ export function ProductoForm({
         )}
       </div>
 
-      <input
+      <CampoNumero
         name="factorConversion"
-        type="number"
-        step="any"
-        min="0"
         placeholder="Factor de conversión (unidades de stock por unidad de compra)"
-        defaultValue={productoExistente?.factorConversion ?? 1}
+        defaultValue={String(productoExistente?.factorConversion ?? 1)}
         required
-        className="rounded border px-3 py-2"
       />
 
       {tipo === "PV" && (
-        <input
-          name="precioVenta"
-          type="number"
-          step="any"
-          min="0"
-          placeholder="Precio de venta"
-          defaultValue={productoExistente?.precioVenta ?? 0}
-          className="rounded border px-3 py-2"
-        />
+        <CampoNumero name="precioVenta" prefijo="$" placeholder="Precio de venta" defaultValue={String(productoExistente?.precioVenta ?? 0)} />
       )}
 
       {tipo === "MP" && (
@@ -220,14 +209,11 @@ export function ProductoForm({
               }}
             />
           </div>
-          <input
+          <CampoNumero
             name="precioConsignacion"
-            type="number"
-            step="any"
-            min="0"
+            prefijo="$"
             placeholder="Precio de consignación"
-            defaultValue={productoExistente?.precioConsignacion ?? 0}
-            className="rounded border px-3 py-2"
+            defaultValue={String(productoExistente?.precioConsignacion ?? 0)}
           />
         </>
       )}

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { registrarVenta, type ItemVentaInput } from "@/server/actions/venta";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoNumero } from "@/components/campo-numero";
 
 interface FilaVenta {
   productoId: string;
@@ -112,15 +113,7 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
               Cantidad
-              <input
-                type="number"
-                step="any"
-                min={0}
-                value={fila.cantidadVendida}
-                onChange={(e) => actualizarFila(idx, { cantidadVendida: e.target.value })}
-                required
-                className="rounded border px-2 py-1.5 text-sm"
-              />
+              <CampoNumero value={fila.cantidadVendida} onChange={(v) => actualizarFila(idx, { cantidadVendida: v })} required tamano="compacto" />
             </label>
             <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500">
               Lote (solo si &quot;Se produce&quot;)

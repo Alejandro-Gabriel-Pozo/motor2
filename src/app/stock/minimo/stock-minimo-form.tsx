@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setStockMinimoProducto } from "@/server/actions/stock-minimo";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoNumero } from "@/components/campo-numero";
 
 export function StockMinimoForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
   const router = useRouter();
@@ -54,7 +55,7 @@ export function StockMinimoForm({ secciones }: { secciones: { id: string; nombre
 
       <label className="flex flex-col gap-1 text-sm">
         Mínimo
-        <input type="number" step="any" min={0} value={minimo} onChange={(e) => setMinimo(e.target.value)} required className="rounded border px-3 py-2" />
+        <CampoNumero value={minimo} onChange={setMinimo} required />
       </label>
 
       {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}

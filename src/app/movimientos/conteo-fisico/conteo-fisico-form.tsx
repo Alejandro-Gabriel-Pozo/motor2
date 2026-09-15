@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { AccionConteo } from "@prisma/client";
 import { registrarConteoFisico } from "@/server/actions/conteo-fisico";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoNumero } from "@/components/campo-numero";
 
 const ACCIONES: { value: AccionConteo; label: string }[] = [
   { value: "AJUSTAR", label: "Ajustar el stock — la diferencia es real" },
@@ -93,7 +94,7 @@ export function ConteoFisicoForm({ secciones }: { secciones: { id: string; nombr
         </label>
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Conteo real
-          <input type="number" step="any" min={0} value={conteoReal} onChange={(e) => setConteoReal(e.target.value)} required className="rounded border px-3 py-2" />
+          <CampoNumero value={conteoReal} onChange={setConteoReal} required />
         </label>
       </div>
 

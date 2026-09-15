@@ -6,6 +6,7 @@ import type { DestinoConsumo, MotivoMerma } from "@prisma/client";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos";
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoNumero } from "@/components/campo-numero";
 
 interface Opcion {
   id: string;
@@ -196,14 +197,11 @@ export function PanelMovimientoForm({
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
               Cantidad
-              <input
-                type="number"
-                step="any"
-                min={config.cantidadConSigno ? undefined : 0}
+              <CampoNumero
                 value={fila.cantidad}
-                onChange={(e) => actualizarFila(idx, { cantidad: e.target.value })}
+                onChange={(v) => actualizarFila(idx, { cantidad: v })}
                 required
-                className="rounded border px-2 py-1.5 text-sm"
+                tamano="compacto"
               />
             </label>
             <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500">
@@ -219,25 +217,11 @@ export function PanelMovimientoForm({
               <>
                 <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
                   Precio total
-                  <input
-                    type="number"
-                    step="any"
-                    min={0}
-                    value={fila.precioTotal}
-                    onChange={(e) => actualizarFila(idx, { precioTotal: e.target.value })}
-                    className="rounded border px-2 py-1.5 text-sm"
-                  />
+                  <CampoNumero value={fila.precioTotal} onChange={(v) => actualizarFila(idx, { precioTotal: v })} prefijo="$" tamano="compacto" />
                 </label>
                 <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
                   Peso real
-                  <input
-                    type="number"
-                    step="any"
-                    min={0}
-                    value={fila.pesoReal}
-                    onChange={(e) => actualizarFila(idx, { pesoReal: e.target.value })}
-                    className="rounded border px-2 py-1.5 text-sm"
-                  />
+                  <CampoNumero value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
                 </label>
               </>
             )}

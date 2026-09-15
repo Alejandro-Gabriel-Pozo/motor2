@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { reclasificarStock, type DestinoReclasificacion } from "@/server/actions/reclasificacion";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoNumero } from "@/components/campo-numero";
 
 interface FilaDestino {
   seccionId: string;
@@ -118,15 +119,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
               Cantidad
-              <input
-                type="number"
-                step="any"
-                min={0}
-                value={d.cantidad}
-                onChange={(e) => actualizarDestino(idx, { cantidad: e.target.value })}
-                required
-                className="rounded border px-2 py-1.5 text-sm"
-              />
+              <CampoNumero value={d.cantidad} onChange={(v) => actualizarDestino(idx, { cantidad: v })} required tamano="compacto" />
             </label>
             <button type="button" onClick={() => quitarDestino(idx)} disabled={destinos.length === 1} className="rounded border px-2 py-1.5 text-sm text-neutral-500 disabled:opacity-30">
               Quitar

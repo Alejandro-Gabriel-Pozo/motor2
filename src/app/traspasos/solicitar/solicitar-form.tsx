@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { crearSolicitudTransferencia } from "@/server/actions/traspasos";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoNumero } from "@/components/campo-numero";
 
 interface Opcion {
   id: string;
@@ -65,7 +66,7 @@ export function SolicitarForm({ sucursales, secciones }: { sucursales: Opcion[];
 
       <label className="flex flex-col gap-1 text-sm">
         Cantidad
-        <input type="number" step="any" min={0} value={cantidad} onChange={(e) => setCantidad(e.target.value)} required className="rounded border px-3 py-2" />
+        <CampoNumero value={cantidad} onChange={setCantidad} required />
       </label>
 
       <label className="flex flex-col gap-1 text-sm">

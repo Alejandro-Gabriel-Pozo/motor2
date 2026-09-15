@@ -4,6 +4,7 @@ import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
 import { obtenerRecetaVigente, guardarReceta, agregarIngredienteAReceta } from "@/server/actions/recetas";
 import { listarUnidadesActivas } from "@/server/actions/unidades";
+import { CampoNumero } from "@/components/campo-numero";
 
 export default async function RecetasPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -115,7 +116,7 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
               ))}
             </select>
             <div className="flex gap-2">
-              <input name="cantidad" type="number" step="any" min="0" placeholder="Cantidad" required className="flex-1 rounded border px-3 py-2" />
+              <CampoNumero name="cantidad" placeholder="Cantidad" required className="flex-1" />
               <select name="unidadId" required className="flex-1 rounded border px-3 py-2">
                 <option value="">Unidad</option>
                 {unidades.map((u) => (
@@ -124,7 +125,7 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
                   </option>
                 ))}
               </select>
-              <input name="mermaPorcentaje" type="number" step="any" min="0" placeholder="Merma %" className="w-28 rounded border px-3 py-2" />
+              <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
             </div>
             <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
               Agregar
