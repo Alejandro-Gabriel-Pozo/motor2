@@ -66,6 +66,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
     label: "Reportes",
     items: [
       { href: "/reportes", label: "Resumen" },
+      { href: "/reportes/consolidado", label: "Consolidado (mis sucursales)" },
       { href: "/reportes/periodo", label: "Período" },
       { href: "/reportes/categorias", label: "Por categoría" },
       { href: "/reportes/costos", label: "Costos y márgenes" },

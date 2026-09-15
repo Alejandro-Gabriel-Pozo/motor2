@@ -2,6 +2,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV } from "@/core/navegacion/estructura";
 import { SidebarNav } from "./sidebar-nav";
+import { SelectorSucursal } from "./selector-sucursal";
 
 /**
  * Shell persistente de toda la app autenticada — reemplaza las 6 copias
@@ -19,8 +20,14 @@ export function AppShell({ ctx, children }: { ctx: ContextoUsuario; children: Re
       </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-end gap-4 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
-          <span>
-            {ctx.email} · {ctx.sucursalNombre} · {ctx.rolNombre}
+          <span className="flex items-center gap-1">
+            {ctx.email} ·{" "}
+            {ctx.membresias.length > 1 ? (
+              <SelectorSucursal membresias={ctx.membresias} actual={ctx.sucursalId} />
+            ) : (
+              ctx.sucursalNombre
+            )}{" "}
+            · {ctx.rolNombre}
           </span>
           <form
             action={async () => {

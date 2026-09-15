@@ -2,6 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
 import { agregarOActualizarUsuario, actualizarActivoMembresia, listarUsuariosDeSucursal } from "@/server/actions/usuarios";
+import { listarSucursales } from "@/server/actions/sucursales";
 
 export default async function UsuariosPage() {
   const ctx = await obtenerContextoUsuario();
@@ -10,9 +11,10 @@ export default async function UsuariosPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "gestion_usuarios");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [membresias, roles] = await Promise.all([
+  const [membresias, roles, sucursales] = await Promise.all([
     listarUsuariosDeSucursal(ctx.sucursalId),
     prisma.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    listarSucursales(),
   ]);
 
   return (
@@ -57,13 +59,24 @@ export default async function UsuariosPage() {
           await agregarOActualizarUsuario({
             email: String(formData.get("email") ?? ""),
             rolId: String(formData.get("rolId") ?? ""),
-            sucursalId: ctx.sucursalId,
+            sucursalId: String(formData.get("sucursalId") ?? ctx.sucursalId),
           });
         }}
         className="flex max-w-md flex-col gap-2"
       >
         <h2 className="font-medium">Agregar / actualizar usuario</h2>
         <input name="email" type="email" placeholder="email@negocio.com" required className="rounded border px-3 py-2" />
+        <label className="flex flex-col gap-1 text-sm text-neutral-500">
+          Sucursal
+          <select name="sucursalId" defaultValue={ctx.sucursalId} required className="rounded border px-3 py-2 text-neutral-900 dark:text-neutral-100">
+            {sucursales.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+                {s.id === ctx.sucursalId ? " (donde estás ahora)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
         <select name="rolId" required className="rounded border px-3 py-2">
           {roles.map((r) => (
             <option key={r.id} value={r.id}>
@@ -75,6 +88,10 @@ export default async function UsuariosPage() {
           Guardar
         </button>
       </form>
+      <p className="max-w-md text-xs text-neutral-500">
+        Para que alguien vea varias sucursales (ej. un súper admin de las 5), agregalo acá una vez por cada sucursal — con la membresía elegirá
+        cuál ver desde el selector arriba a la derecha.
+      </p>
     </div>
   );
 }

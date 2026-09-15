@@ -436,12 +436,22 @@ para las 6 porciones funcionales del proyecto.
    de `src/lib/db.ts` arriba), pero Neon en sí nunca se conectó.
 2. Credenciales reales de Google OAuth (Google Cloud Console) — sigue
    pendiente, no verificable sin acceso a Google Cloud Console.
-3. UI de selección de "sucursal activa" para un usuario con más de una
-   membresía — deferida a propósito (`src/core/auth/contexto.ts` usa la
-   primera membresía activa como MVP). Cobra más relevancia con Traspasos
-   entre sucursales (alguien que gestiona más de una sucursal tiene que
-   poder elegir desde cuál está actuando en cada momento), pero sigue sin
-   ser bloqueante: en la práctica cada sucursal la opera gente distinta.
+3. ~~UI de selección de "sucursal activa" para un usuario con más de una
+   membresía~~ — **resuelto (2026-09-15)**. `src/core/auth/contexto.ts`
+   ahora expone `membresias` (todas las sucursales activas del usuario) y
+   resuelve la activa por cookie (`cambiarSucursalActiva`,
+   `src/server/actions/sucursal-activa.ts`) si coincide con una membresía
+   real, o la más antigua si no — la cookie nunca se confía a ciegas
+   (verificado con test, ver `test/auth/contexto.test.ts`). El selector
+   (`src/components/selector-sucursal.tsx`) aparece en el header solo
+   cuando el usuario tiene 2+ sucursales. `administracion/usuarios` ahora
+   deja elegir a qué sucursal se agrega cada membresía nueva (antes
+   siempre la propia), así una persona puede sumarse como admin a varias
+   sucursales — un "súper admin" es simplemente alguien con membresía
+   activa en todas. `reportes/consolidado` (nuevo) junta el resumen
+   operativo de todas las sucursales de quien lo mira, lado a lado —
+   invisible para alguien con una sola sucursal (ese es todo el negocio
+   hoy, por diseño: nadie ve una sucursal a la que no pertenece).
 4. UI de "wizard de Compra por proveedor" con alta rápida de producto
    inline (`CompraPorProveedor.html`/`IncludeAltaRapidaProducto.html` de
    Apps Script) — el panel genérico de Compra ya funciona (picker simple),
