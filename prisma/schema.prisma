@@ -88,6 +88,11 @@ model Sucursal {
   activo   Boolean  @default(true)
   creadoEn DateTime @default(now())
 
+  /// Feature opcional apagada por defecto (Catalogo.js:2183, clave de Config
+  /// "PromocionesHabilitado") — no todos los clientes arman combos; ver
+  /// PromocionProducto abajo (porción Reportes).
+  promocionesHabilitadas Boolean @default(false)
+
   usuarios       UsuarioSucursal[]
   capacidades    CapacidadSucursal[]
   secciones      Seccion[]
@@ -95,6 +100,7 @@ model Sucursal {
   conteosFisicos ConteoFisico[]
   preciosLocales PrecioLocalProducto[]
   stockMinimos   StockMinimoProducto[]
+  promociones    PromocionProducto[]
 }
 
 model Rol {
@@ -254,6 +260,7 @@ model Producto {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  promociones          PromocionProducto[]
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -813,4 +820,33 @@ model StockMinimoProducto {
   minimo     Decimal  @db.Decimal(14, 4)
 
   @@unique([productoId, seccionId])
+}
+
+// ===================================================================
+// REPORTES: el resto de la porción (período, costos, pérdidas,
+// devoluciones, vencimientos, diferencias de ajuste, salud por producto,
+// trazabilidad, historial por producto, etc.) es 100% lectura en vivo
+// sobre Operacion/MovimientoStock/ConteoFisico/RecetaVersion ya existentes
+// — no agrega ninguna tabla nueva (ver src/core/reportes/*.ts). Promociones
+// y Combos es la única excepción real: es un catálogo LOCAL (por sucursal,
+// no Catálogo Central — la misma "Menú ejecutivo" puede ser promoción en
+// una sucursal y plato normal en otra, Catalogo.js:2170-2173) que el
+// sistema no puede derivar de ningún otro dato.
+// ===================================================================
+
+/// Reemplaza HOJA_PROMOCIONES/"Promociones" (Catalogo.js:2182-2251) — qué
+/// PV cuenta como Promoción/Combo para obtenerReportePromociones_
+/// (src/core/reportes/promociones.ts). Fila ausente = no marcado (mismo
+/// criterio que "no aparece en el mapa" de Apps Script); no se borra al
+/// desmarcar, se pone `activa=false` (mismo patrón que el resto del
+/// catálogo).
+model PromocionProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  activa     Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
 }

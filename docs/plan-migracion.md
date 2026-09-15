@@ -190,6 +190,106 @@ smoke test de Playwright igual que Movimientos: Compra → Conteo Físico con
 desvío → las 3 vistas de solo lectura lo reflejan → fijar un mínimo →
 Alertas lo detecta → Reclasificar mueve el saldo entero a otra sección.
 
+### Porción Reportes — COMPLETA, con UI, verificada en navegador real
+
+Investigación completa de `Reportes.js` (repo `motor`, 2108 líneas — 8
+módulos históricos consolidados: ReportePeriodo, ReporteVencimientos,
+ReporteDiferenciasAjustes, ReporteVentasSinReceta, TrazabilidadPorID,
+ExportacionCSVPDF, DashboardOperativo, PanelAlertasStock) más los reportes
+agregados en auditorías posteriores directo en ese mismo archivo
+(Consignación, Devoluciones, Salud por producto, Huecos de catálogo,
+Ventas por categoría, Promociones) — ver "Plan de la porción Reportes" más
+abajo para las 19 vistas con ancla `archivo:línea`.
+
+Hallazgo de diseño clave (mismo espíritu que Stock): en Apps Script, buena
+parte de la complejidad de estos reportes existía para compensar
+limitaciones de Sheets como base de datos — texto libre donde hacía falta
+un enum (`MotivoMerma`/`DestinoConsumo` ya son columnas tipadas de
+`Operacion` desde la porción Movimientos, así que `generarReportePerdidas`
+agrupa directo, sin la regex `/^[^:]+:\s*([^—]+)/` que el original
+necesitaba para separar el motivo del texto libre del detalle), IDs de
+texto comparados a mano donde hace falta una FK (`generarReporteVentasSinReceta`
+compara `MovimientoStock.operacionId` real en vez de un string "ID
+Operación" compartido a ciegas entre filas), y un mapa por NOMBRE de
+producto donde hace falta uno por FK (ningún reporte de esta porción
+necesitó reconstruir "a qué producto se refiere esta fila" parseando
+texto — siempre hay un `productoId` real). El resultado es que esta
+porción, pese a ser la de mayor superficie del proyecto (19 vistas), NO
+agregó ninguna tabla de libro mayor nueva: todo es lectura en vivo sobre
+`Operacion`/`MovimientoStock`/`ConteoFisico`/`RecetaVersion` ya existentes.
+
+La única excepción real es **Promociones y Combos**: un catálogo LOCAL (por
+sucursal, no Catálogo Central — la misma "Menú ejecutivo" puede ser
+promoción en una sucursal y plato normal en otra) que el sistema no puede
+derivar de ningún otro dato. Se agregó `PromocionProducto` (sucursalId +
+productoId + activa) y `Sucursal.promocionesHabilitadas` (el apagador
+general de la feature, default `false` — no todos los clientes arman
+combos). La Accion `promociones_config` ya estaba seedeada desde la
+porción Catálogo anticipando esto.
+
+Otro hallazgo importante, esta vez de un bug real que introdujo esta misma
+porción y se corrigió antes de commitear (no heredado de Apps Script): los
+reportes de período (`obtenerReportePorPeriodo`, y todo lo que se apoya en
+él — Ventas del período, Compras del período, Margen, Diferencias de
+Ajuste, Pérdidas, Devoluciones) necesitan la CANTIDAD como magnitud
+positiva para los procesos de signo fijo (Venta/Compra/Merma/Consumo/
+Producción/Devolución×2) y como delta YA firmado para
+Ajuste/Control/Transferencia — exactamente el mismo criterio que la
+columna "Cantidad" de la Hoja 7 original. Como `MovimientoStock.cantidad`
+en este proyecto se graba SIEMPRE con el signo aplicado (decisión de la
+porción Movimientos, para no repetir el bug de Merma sin signo de Apps
+Script v2.1.0), un primer intento de portar `calcularVentasDelPeriodo_`
+tal cual traía el delta firmado directo — multiplicaba una venta de $100
+por -1 y daba un total de ventas negativo. Se corrigió con
+`esSignoFijo(proceso)` (ya existía en `transiciones.ts` desde Movimientos)
+para decidir cuándo tomar `Math.abs(cantidad)` y cuándo dejar el delta tal
+cual — 5 tests lo detectaron antes de llegar a la UI.
+
+Server actions/funciones escritas bajo `src/core/reportes/` (todas de
+lectura, agnósticas de permiso — el gate vive en la página, igual que el
+resto del proyecto): `periodo.ts` (`obtenerReportePorPeriodo`,
+`generarReporteVentasPorCategoria`, `resumenPeriodicoPorProceso`),
+`costos.ts` (`calcularCostosYMargenes`, `calcularImpactoInsumos`),
+`promociones.ts` (`obtenerReportePromociones`), `vencimientos.ts`
+(lotes próximos a vencer + conciliación), `diferencias-ajustes.ts`,
+`insumos-sin-receta.ts`, `huecos-catalogo.ts`, `salud-por-producto.ts`
+(cruza Consolidado/Alertas/Diferencias/Sin-receta sin reimplementar
+ninguno), `consignacion.ts`, `ventas-sin-receta.ts`, `trazabilidad.ts`,
+`historial-producto.ts`, `perdidas.ts`, `devoluciones.ts`,
+`resumen-operativo.ts` (dashboard). Más `src/server/actions/promociones.ts`
+(las 3 mutaciones reales de la porción: `actualizarPromocionesHabilitado`/
+`marcarProductoComoPromocion`, gateadas `promociones_config`).
+
+Gate de acceso: en Apps Script, `mostrarPanelConsultar` (y Alertas, Conteo
+Físico, Trazabilidad) están **deliberadamente** abiertos a cualquier
+Editor autenticado (`VISTAS_WEBAPP_.consultar.accion: null`, documentado
+así explícitamente en `WebApp.js` — a diferencia del hueco real de
+seguridad que sí se encontró y cerró en la porción Stock). Acá se respeta
+el mismo criterio: las páginas de Reportes solo exigen
+`obtenerContextoUsuario()` (sesión + membresía activa), sin una Accion
+nueva — con una única excepción ya heredada de Apps Script: la sección
+"insumos con unidad mezclada" dentro de Huecos de catálogo sigue
+exigiendo `insumos_mezclados` (admin-only), igual que en el original.
+
+134 tests de Vitest en total (40 nuevos de esta porción), todos verdes.
+
+UI escrita bajo `/reportes/*` (17 páginas + nav propio): Resumen (dashboard),
+Período, Por categoría, Costos y márgenes, Promociones (management + reporte),
+Pérdidas, Devoluciones, Vencimientos, Diferencias de ajuste, Ventas sin
+receta, Insumos sin receta, Consignación, Salud por producto, Huecos de
+catálogo, Conteos físicos, Historial de un producto, Trazabilidad por ID.
+Los filtros de fecha/días/producto usan `<form method="GET">` + Server
+Components leyendo `searchParams` (sin JavaScript de cliente para lo que es
+"solo lectura, con filtro") — la única página con interactividad de cliente
+real es Promociones (togglear la feature, marcar un producto), mismo
+patrón que `/stock/minimo`. Verificado con un smoke test de Playwright:
+17 páginas cargan con datos reales (compra, ajuste, merma, consumo,
+2 ventas —una con receta con merma%, otra que liquida consignación—,
+devolución de cliente, devolución a proveedor, y dos conteos físicos que
+arman un escenario "revisar" de conciliación de vencimientos) sin errores
+de runtime, más las 2 mutaciones reales de Promociones ejercitadas clic a
+clic contra el DOM.
+
 ### Bugs de infraestructura encontrados y arreglados (afectaban a TODO el proyecto, no solo Movimientos)
 
 Al intentar correr `npm test` contra un Postgres real por primera vez
@@ -216,27 +316,32 @@ Core y Catálogo — ninguno de los dos tiene que ver con Movimientos en sí:
 
 Con los dos fixes, **la suite completa corre verde contra un Postgres
 real** — la primera vez que esto pasó en el proyecto (sesión Movimientos);
-se mantuvo verde al sumar la porción Stock en la misma sesión de trabajo.
+se mantuvo verde al sumar las porciones Stock y Reportes en sesiones
+posteriores.
 Ver "Verificación real" más abajo para cómo reproducirlo.
 
 ### Verificación real (Postgres 16 local — repetible en cualquier sesión)
 
 1. `npx prisma migrate dev` — aplica todas las migraciones committeadas en
    `prisma/migrations/` (init de Core+Catálogo+Movimientos, índices
-   manuales, y la migración de la porción Stock — `RECLASIFICACION` +
-   `StockMinimoProducto`).
+   manuales, la migración de la porción Stock — `RECLASIFICACION` +
+   `StockMinimoProducto` — y la de Reportes — `PromocionProducto` +
+   `Sucursal.promocionesHabilitadas`).
 2. `npm run db:seed` — seed limpio (34 acciones, roles, sucursal
    "Central", 5 unidades base).
-3. `npm test` — **94/94 tests verdes** (Core, Catálogo, Movimientos y
-   Stock).
+3. `npm test` — **134/134 tests verdes** (Core, Catálogo, Movimientos,
+   Stock y Reportes).
 4. `npx tsc --noEmit` y `npx eslint` — limpios.
 5. `npx next build` — build de producción limpio, todas las rutas
    compilan (ver `src/app/` para el listado completo: `/catalogo/*`,
-   `/administracion/*`, `/movimientos/*`, `/stock/*`).
+   `/administracion/*`, `/movimientos/*`, `/stock/*`, `/reportes/*`).
 6. `npm run dev` + sesión de base de datos real (Auth.js, estrategia
    `database`, sin depender de OAuth) + Chromium headless vía Playwright:
-   cada porción con UI (Movimientos, Stock) se ejercitó clic a clic contra
-   el DOM real, no solo contra `tsc`/tests.
+   cada porción con UI (Movimientos, Stock, Reportes) se ejercitó clic a
+   clic contra el DOM real, no solo contra `tsc`/tests — para Reportes:
+   17 páginas con datos reales (compra, ajuste, merma, consumo, 2 ventas,
+   2 devoluciones, 2 conteos físicos armando un escenario de conciliación
+   "revisar") más las 2 mutaciones de Promociones.
 
 No se conectó ningún Neon real (sigue pendiente: credenciales de Google
 OAuth, y probar contra Neon en vez de Postgres local) — pero el camino
@@ -263,25 +368,27 @@ probado de punta a punta contra Postgres real, no solo contra el compilador.
    equivalente configurado en este proyecto todavía (Resend/SendGrid/
    etc.). `notificar_alertas` ya está seedeada como Accion, anticipando
    esto cuando haya un proveedor de mail elegido.
+6. `exportarReportePeriodoCSV`/`exportarOperacionAHoja` (Reportes.js:
+   1367-1430) no se portaron — el primero es trivial de agregar como
+   endpoint de descarga cuando haga falta (arma un CSV a partir de
+   `obtenerReportePorPeriodo`, que ya existe); el segundo no tiene sentido
+   acá (volcaba a una hoja de la misma planilla porque Apps Script no tenía
+   otra forma de "exportar" sin tocar Drive — con una base de datos real
+   alcanza con mirar la propia página de Trazabilidad).
 
 ## Próximas porciones
 
-Movimientos y Stock quedaron completas (código, tests y UI). En este
-orden de dependencia:
+Movimientos, Stock y Reportes quedaron completas (código, tests y UI).
+Queda una sola porción funcional pendiente:
 
-1. **Reportes** — `obtenerDatosConsulta` (18 vistas), reportes por período.
-   Importante: el costo de reposición debe seguir leyendo el Kardex LOCAL
-   de cada sucursal (nunca `ProveedorPorProducto`, que es Catálogo Central
-   compartido) — mismo criterio que ya tiene Apps Script para no mezclar
-   precios entre sucursales.
-2. Traspasos entre sucursales (bandeja de solicitud/aprobación/aceptación,
+1. Traspasos entre sucursales (bandeja de solicitud/aprobación/aceptación,
    hoy en `Sucursales.js` — necesita agregar `TRANSFERENCIA_SALIDA_SUCURSAL`/
    `TRANSFERENCIA_ENTRADA_SUCURSAL`/`REINGRESO_TRANSFERENCIA_SUCURSAL` al
    enum `Proceso`, deferido a propósito de la porción Movimientos).
 
 Refinamientos de UX pendientes (no bloqueantes, ver "Pendiente" arriba):
 wizard de Compra por proveedor con alta rápida de producto inline; alertas
-de stock por mail.
+de stock por mail; exportación CSV del reporte por período.
 
 ## Convenciones a mantener en las próximas porciones
 
@@ -996,4 +1103,210 @@ el saldo entero a otra sección — los 7 pasos completan contra el DOM real.
    sin escribir nada; exacta → el saldo se mueve entero, total global sin
    cambios.
 6. Suite de Vitest de esta porción verde (`npm test`).
+
+---
+
+## Plan de la porción Reportes (código, tests, migración y UI completos y verdes)
+
+### Decisiones (resumen)
+
+| Pregunta | Decisión | Por qué |
+|---|---|---|
+| ¿Nueva tabla de libro mayor? | No, ninguna | `MovimientoStock`/`Operacion`/`ConteoFisico` (Movimientos) ya tienen todo lo que estos 19 reportes necesitan — mismo argumento que ya cerró Stock: agregar aquí sería duplicar datos que Postgres puede agregar en tiempo real. |
+| Promociones y Combos | `PromocionProducto` (sucursalId+productoId+activa) + `Sucursal.promocionesHabilitadas` | Único dato real que el sistema no puede derivar: qué PV es "promoción" es una decisión LOCAL de cada sucursal (Catalogo.js:2170-2173), no del Catálogo Central. |
+| Gate de acceso de las páginas | Ninguna Accion nueva — solo `obtenerContextoUsuario()` | `WebApp.js:26-28` documenta `accion: null` para Consultar/Alertas/Conteo/Trazabilidad como DELIBERADO ("abierta a cualquier Editor"), a diferencia del hueco real sin ningún gate que sí motivó agregar `ver_stock` en la porción Stock. |
+| Excepción al gate anterior | `insumos_mezclados` (admin-only) sigue exigido dentro de Huecos de catálogo | Es el único sub-reporte que en Apps Script SÍ tenía `requierePermiso_` propio (hallazgo de auditoría, Reportes.js:857-863) — se respeta tal cual. |
+| Costo de reposición | Lee `MovimientoStock` filtrado por `sucursalId` (nunca `ProveedorPorProducto`) | Mismo criterio que ya fijó la porción Stock/Catálogo: `ProveedorPorProducto` es Catálogo Central compartido por todas las sucursales — usarlo para costear mezclaría precios de otra sucursal (bug real que Apps Script ya había tenido que corregir, Reportes.js:1652-1663). |
+| `MotivoMerma`/`DestinoConsumo` en Pérdidas | Se agrupa directo por la columna tipada de `Operacion` | Apps Script necesitaba parsear "Proceso: Motivo — libre" con una regex porque el motivo vivía plegado en el texto del detalle; acá ya es una columna enum real desde la porción Movimientos. |
+| Consignante de una Liquidación | `Producto.proveedorConsignacionId` (nunca `Operacion.proveedorId`) | `Operacion.proveedorId` de una Venta es "a quién se le vende" (el cliente), compartido por TODAS las líneas de esa venta (consumo + liquidación incluidos) — el consignante real es un dato fijo del producto, no de la operación puntual. Bug real encontrado y corregido antes de commitear (ver tests de `consignacion.test.ts`). |
+| Cantidad en reportes de período | `Math.abs(cantidad)` para procesos de signo fijo, delta firmado tal cual para Ajuste/Control/Transferencia (`esSignoFijo`, ya existía en `transiciones.ts`) | `MovimientoStock.cantidad` viene SIEMPRE firmado (decisión de Movimientos) — multiplicar una venta por su cantidad firmada (negativa) da un total de ventas negativo. Bug real encontrado por los tests antes de llegar a la UI. |
+| Rango de fechas de un período | `setUTCHours` en vez de `setHours` | Los `Date` "de solo día" que llegan del cliente (`new Date('yyyy-MM-dd')`) son SIEMPRE medianoche UTC, sin importar la TZ del navegador — comparar el límite del rango en UTC evita el mismo bug de día corrido que Apps Script documentó y corrigió con `parsearFechaLocal_` (acá no hace falta ese helper: no hay ningún string que reparsear del lado del servidor). |
+
+### Modelos (ya aplicados en `motor2/prisma/schema.prisma`, migración `20260915095511_reportes_porcion`)
+
+```prisma
+model PromocionProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  activa     Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
+}
+```
+
+Más `Sucursal.promocionesHabilitadas Boolean @default(false)` (una columna,
+no un modelo aparte — es el apagador general de la feature).
+
+### Algoritmos (con ancla `archivo:línea` de Apps Script)
+
+- `obtenerReportePorPeriodo` (Reportes.js:30-109) → `src/core/reportes/periodo.ts`.
+  1 query a `MovimientoStock` (join `Operacion`+`Seccion`) filtrada por
+  sucursal+fecha+filtros opcionales, en vez de rescanear la hoja completa.
+- `calcularVentasDelPeriodo_`/`calcularComprasDelPeriodo_`/
+  `calcularMargenDelPeriodo_` (Reportes.js:128-352) → mismo archivo. El
+  precio de venta "vigente" para estimar ventas viejas sale de
+  `construirMapaProductos` (`comun.ts`), que YA resuelve Precio Local
+  (mismo criterio que `construirMapaProductosConTipo_` original, que
+  también llamaba a `resolverPrecioVenta_` internamente — no es el precio
+  global crudo).
+- `generarReporteVentasPorCategoria` (Reportes.js:243-283) → reusa
+  `calcularVentasDelPeriodo` en vez de reimplementar real-vs-estimado.
+- `obtenerCostoActualPorMP_`/`calcularCostosYMargenes_`/
+  `calcularImpactoInsumos_` (Reportes.js:1645-1818) →
+  `src/core/reportes/{comun,costos}.ts`. "Última compra, no la más
+  barata" — mismo criterio, ahora sobre `MovimientoStock` en vez de
+  `ProveedoresPorProducto`.
+- `obtenerReportePromociones_` (Reportes.js:373-458) →
+  `src/core/reportes/promociones.ts`. Habilitado/marcado leen
+  `PromocionProducto`/`Sucursal.promocionesHabilitadas` en vez de la hoja
+  local "Promociones"/Config.
+- `generarReporteLotesProximosAVencer_`/`generarConciliacionVencimientos_`
+  (Reportes.js:573-680) → `src/core/reportes/vencimientos.ts`. La
+  conciliación compara, sección por sección, conteos POR LOTE de días
+  consecutivos — mismo algoritmo, ahora sobre filas de `ConteoFisico` con
+  FK reales en vez de un `Map` armado a mano desde la hoja de conteos.
+- `generarReporteDiferenciasAjustes_` (Reportes.js:724-805) →
+  `diferencias-ajustes.ts`. Grupo a (sin receta, tolerancia 0) vs grupo b
+  (solo receta, diferencia esperable) — igual, con `AJUSTE`/`CONTROL` ya
+  separados por columna tipada desde el día uno (acá nunca existió el bug
+  de sumarlos juntos que el propio Apps Script documenta haber corregido).
+- `generarReporteInsumosSinRecetaVinculada_`/`generarReporteHuecosCatalogo_`
+  (Reportes.js:826-894) → `insumos-sin-receta.ts`/`huecos-catalogo.ts`.
+  "Unidad mezclada" se separó en `obtenerProblemasUnidadMezclada` (sin
+  gate propio — el gate `insumos_mezclados` se aplica en la página) para
+  no mezclar una función agnóstica de permiso con un chequeo de rol.
+- `generarReporteSaludPorProducto_` (Reportes.js:918-979) →
+  `salud-por-producto.ts`. Cruce puro de los 4 reportes ya existentes
+  (Consolidado/Alertas/Diferencias/Sin-receta), sin lógica de negocio
+  nueva — igual que el original.
+- `generarReporteConsignacion_` (Reportes.js:993-1028) → `consignacion.ts`.
+  Ver la fila de la tabla de decisiones arriba (consignante = del
+  Producto, no de la Operacion de Venta).
+- `generarReporteVentasSinReceta_` (Reportes.js:1063-1112) →
+  `ventas-sin-receta.ts`. "¿Esta venta generó consumo?" se resuelve con
+  `MovimientoStock.operacionId` real (cada venta es su propia `Operacion`,
+  ver `registrarVenta`) en vez de comparar el string "ID Operación".
+- `obtenerOperacionPorId`/`buscarOperacionesPorProducto` (Reportes.js:
+  1133-1197) → `trazabilidad.ts`. `obtenerOperacionPorId` se acota a
+  `sucursalId` a propósito — huella nueva respecto a Apps Script (donde
+  cada hostería ya era un spreadsheet separado, así que "adivinar" un ID
+  de otra hostería ni siquiera era posible).
+- `obtenerHistorialProducto` (Reportes.js:1241-1331) →
+  `historial-producto.ts`. El saldo corriente ya no necesita
+  `signoDeProceso_`/`esDeltaConSignoLibre_` para reconstruir el signo al
+  leer — `cantidad` ya viene firmada, así que es una suma acumulada
+  directa en orden cronológico.
+- `generarReportePerdidas_`/`generarReporteDevoluciones_` (Reportes.js:
+  1832-2012) → `perdidas.ts`/`devoluciones.ts`. Agrupan directo por
+  `Operacion.motivo`/`.destino` (columnas enum tipadas) en vez de parsear
+  el texto del detalle con una regex.
+- `obtenerResumenOperativo`/`obtenerResumenFinancieroMesActual_`
+  (Reportes.js:1460-1528) → `resumen-operativo.ts`. Dashboard: reusa
+  `obtenerResumenAlertasStock` (Stock) y `obtenerReportePorPeriodo`
+  acotado al mes calendario actual.
+- `obtenerDatosConsulta`/`VISTAS_WEBAPP_` (Reportes.js:2027-2094,
+  WebApp.js:33-100) → no se portó como un único dispatcher: cada vista es
+  su propia ruta bajo `/reportes/*` (mismo patrón de ruteo que ya usa Next
+  App Router para el resto del proyecto — un dispatcher central tenía
+  sentido en Apps Script porque HtmlService solo podía servir UN archivo
+  por request).
+
+### Server actions/funciones (`src/core/reportes/*.ts`, agnósticas de permiso; `src/server/actions/promociones.ts`, gateado)
+
+`obtenerReportePorPeriodo`, `generarReporteVentasPorCategoria`,
+`resumenPeriodicoPorProceso`, `calcularCostosYMargenes`,
+`calcularImpactoInsumos`, `obtenerReportePromociones`,
+`generarReporteLotesProximosAVencer`, `generarConciliacionVencimientos`,
+`obtenerReporteVencimientosDatos`, `generarReporteDiferenciasAjustes`,
+`generarReporteInsumosSinRecetaVinculada`, `generarReporteHuecosCatalogo`,
+`obtenerProblemasUnidadMezclada`, `generarReporteSaludPorProducto`,
+`generarReporteConsignacion`, `generarReporteVentasSinReceta`,
+`obtenerOperacionPorId`, `buscarOperacionesPorProducto`,
+`obtenerHistorialProducto`, `buscarProductoParaHistorial`,
+`generarReportePerdidas`, `generarReporteDevoluciones`,
+`obtenerResumenOperativo`, `obtenerResumenFinancieroMesActual`. Más
+`actualizarPromocionesHabilitado`/`marcarProductoComoPromocion`/
+`buscarProductoParaPromocion` (gateadas `promociones_config`) y la
+reutilización directa de `obtenerHistorialConteosFisicos` (Movimientos)
+para la vista "Conteos físicos".
+
+### UI (17 páginas bajo `/reportes/*` + layout con nav propio)
+
+`/reportes` (resumen/dashboard), `/reportes/periodo`,
+`/reportes/categorias`, `/reportes/costos`, `/reportes/promociones` (+
+`promocion-form.tsx`, cliente), `/reportes/perdidas`,
+`/reportes/devoluciones`, `/reportes/vencimientos`,
+`/reportes/diferencias`, `/reportes/sin-receta`,
+`/reportes/insumos-sin-receta`, `/reportes/consignacion`,
+`/reportes/salud`, `/reportes/huecos-catalogo`, `/reportes/conteos`,
+`/reportes/historial`, `/reportes/trazabilidad`. Filtros de
+fecha/días/producto/sección vía `<form>` GET + `searchParams` en Server
+Components (sin cliente) — único componente cliente real:
+`promocion-form.tsx` (togglear la feature + marcar productos, mismo
+patrón de `useTransition` que `/stock/minimo`).
+
+### Testing (Vitest, spec de negocio — no el harness de Apps Script)
+
+134 tests en total (40 nuevos de esta porción, `test/reportes/`):
+
+- `periodo.test.ts`: no se corre un día por timezone (límite UTC exacto),
+  ventas reales vs. estimadas al precio vigente (con Precio Local
+  resuelto), compras agrupadas por proveedor con aviso de "sin precio",
+  margen marca `costoIncompleto` sin inventar un número, ventas por
+  categoría agrupa y detecta PV sin categoría.
+- `costos.test.ts`: usa la ÚLTIMA compra (no la más barata), marca
+  costoIncompleto por insumo faltante, aplica la Merma % de la receta,
+  lee el Kardex LOCAL de la sucursal (nunca el de otra), impacto de
+  insumos acumula a través de varios platos.
+- `promociones.test.ts`: apagada por defecto, ambas mutaciones requieren
+  admin, separa facturación Promoción/Combo vs. a la carta y calcula el
+  valor a la carta con el precio de venta individual de cada insumo.
+- `vencimientos.test.ts`: filtra por días e incluye ya vencidos,
+  conciliación detecta consistente vs. revisar.
+- `diferencias-ajustes.test.ts`: clasifica grupo a/b con estado distinto,
+  separa Ajuste de Conteo Físico sin mezclarlos, OK sin diferencia real.
+- `insumos-sin-receta.test.ts`: detecta la huérfana y excluye la
+  vinculada, marca `tieneProveedor` correcto.
+- `huecos-catalogo.test.ts`: PV sin venta nunca, MP con receta sin
+  proveedor, unidad mezclada respeta el permiso (operador no puede verla).
+- `salud-por-producto.test.ts`: sin receta vinculada dispara Atención
+  aunque los otros 3 ejes estén bien, OK cuando los 4 ejes están bien.
+- `consignacion.test.ts`: debido por consignante y stock sin vender.
+- `ventas-sin-receta.test.ts`: detecta el corte (con receta no aparece).
+- `trazabilidad.test.ts`: trae los movimientos de la operación, nunca la
+  de otra sucursal; búsqueda por nombre o código sin duplicar operación.
+- `historial-producto.test.ts`: saldo corriente acumulado + conteos
+  mergeados en la línea de tiempo, `desde`/`hasta` solo recorta qué se
+  MUESTRA (el saldo sigue arrancando del primer movimiento real).
+- `perdidas.test.ts`: agrupa por motivo tipado y valoriza, no inventa el
+  costo sin compra registrada, separa consumo manual de consumo
+  automático por receta.
+- `devoluciones.test.ts`: cliente agrupado por producto, proveedor
+  agrupado por proveedor.
+- `resumen-operativo.test.ts`: cuenta combinaciones con movimientos,
+  detecta negativos, trae el financiero del mes actual.
+
+### Verificación de la porción Reportes
+
+1. `npx prisma migrate dev` aplica `PromocionProducto` +
+   `Sucursal.promocionesHabilitadas` sin romper nada de lo existente.
+2. Venta con Precio Total real vs. una venta vieja sin precio guardado →
+   la segunda se estima al precio vigente y queda marcada `estimado`, sin
+   mezclarse con el importe real de la primera.
+3. Una Merma con motivo `VENCIDO` aparece agrupada por ese motivo exacto
+   en Pérdidas, valorizada al costo de reposición LOCAL.
+4. Dos conteos físicos consecutivos del mismo lote (uno con saldo, el
+   siguiente en 0) sin que las ventas+consumos del período lo expliquen →
+   Vencimientos > Conciliación lo marca "revisar".
+5. Activar Promociones y marcar un PV con receta → el reporte separa su
+   facturación de la venta a la carta y calcula el valor a la carta con el
+   precio de venta individual de cada insumo.
+6. Suite de Vitest de esta porción verde (`npm test`, 134/134).
+7. `npm run dev` + Chromium headless vía Playwright: 17 páginas de
+   `/reportes/*` cargan con datos reales sin errores de runtime, más las
+   2 mutaciones de Promociones (activar/marcar) ejercitadas clic a clic
+   contra el DOM real.
 

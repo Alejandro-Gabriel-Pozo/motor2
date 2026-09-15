@@ -76,6 +76,7 @@ export const NAV_MOVIMIENTOS: { href: string; label: string }[] = [
   { href: "/movimientos/secciones", label: "Secciones" },
   { href: "/movimientos/precio-local", label: "Precio local" },
   { href: "/stock/consolidado", label: "Stock →" },
+  { href: "/reportes", label: "Reportes →" },
 ];
 
 // Verificación en tiempo de import: todo slug de PROCESOS_UI tiene que
