@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { getUsuarioActual } from "./session";
 
@@ -15,8 +16,14 @@ export interface ContextoUsuario {
  * (ordenada por antigüedad). La UI de selección explícita para alguien con
  * más de una sucursal queda fuera de esta porción — ver plan, "Fuera de
  * esta porción".
+ *
+ * `cache()` de React: esta función se llama en casi todo layout Y su page
+ * (49 call sites) — sin dedupear por request, cada navegación paga la
+ * consulta de membresía (`usuarioSucursal.findFirst`) tantas veces como
+ * componentes la llamen, encima del round-trip que ya dedupea
+ * `getUsuarioActual`. Ver el mismo comentario ahí.
  */
-export async function obtenerContextoUsuario(): Promise<ContextoUsuario | null> {
+export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | null> => {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
 
@@ -34,4 +41,4 @@ export async function obtenerContextoUsuario(): Promise<ContextoUsuario | null> 
     sucursalNombre: membresia.sucursal.nombre,
     rolNombre: membresia.rol.nombre,
   };
-}
+});
