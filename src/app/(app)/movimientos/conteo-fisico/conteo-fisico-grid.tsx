@@ -151,13 +151,13 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-neutral-500">
-            <th className="py-1">Producto</th>
-            <th>Lote</th>
-            <th className="text-right">Sistema</th>
-            <th className="text-right">Contado</th>
-            <th className="text-right">Diferencia</th>
-            <th>Acción</th>
-            <th>Detalle</th>
+            <th className="py-1 pr-2">Producto</th>
+            <th className="px-2">Lote</th>
+            <th className="px-2 text-right">Sistema</th>
+            <th className="px-2 text-right">Contado</th>
+            <th className="px-2 text-right">Diferencia</th>
+            <th className="px-2">Acción</th>
+            <th className="px-2">Detalle</th>
             <th />
           </tr>
         </thead>
@@ -168,8 +168,8 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
             const diferencia = estado.conteoReal.trim() !== "" ? Number(estado.conteoReal) - f.saldoSistema : null;
             return (
               <tr key={f.key} className="border-b">
-                <td className="py-1">{f.etiqueta}</td>
-                <td>
+                <td className="py-1 pr-2">{f.etiqueta}</td>
+                <td className="px-2">
                   {esManual ? (
                     <input
                       type="date"
@@ -181,12 +181,12 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
                     (f.loteVencimiento ?? "—")
                   )}
                 </td>
-                <td className="text-right">{f.saldoSistema}</td>
-                <td className="w-28">
+                <td className="px-2 text-right">{f.saldoSistema}</td>
+                <td className="w-28 px-2">
                   <CampoNumero value={estado.conteoReal} onChange={(v) => actualizarEstado(f.key, { conteoReal: v })} tamano="compacto" />
                 </td>
-                <td className={`text-right ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}</td>
-                <td>
+                <td className={`px-2 text-right ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}</td>
+                <td className="px-2">
                   <select
                     value={estado.accion}
                     onChange={(e) => actualizarEstado(f.key, { accion: e.target.value as AccionConteo })}
@@ -199,7 +199,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
                     ))}
                   </select>
                 </td>
-                <td>
+                <td className="px-2">
                   <input
                     value={estado.detalle}
                     onChange={(e) => actualizarEstado(f.key, { detalle: e.target.value })}
@@ -207,7 +207,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
                     className="w-full rounded border px-2 py-1.5 text-sm"
                   />
                 </td>
-                <td>
+                <td className="px-2">
                   {esManual && (
                     <button type="button" onClick={() => quitarManual(f.key)} className="text-xs text-neutral-500 underline">
                       quitar

@@ -90,7 +90,7 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
               <th
                 key={c.clave}
                 onClick={() => alHacerClicEncabezado(c.clave, Boolean(c.valor))}
-                className={`py-1 ${c.valor ? "cursor-pointer select-none hover:text-neutral-900" : ""} ${c.alinear === "derecha" ? "text-right" : ""}`}
+                className={`px-2 py-1 first:pl-0 ${c.valor ? "cursor-pointer select-none hover:text-neutral-900" : ""} ${c.alinear === "derecha" ? "text-right" : ""}`}
               >
                 {c.etiqueta}
                 {ordenPor === c.clave ? (direccion === "asc" ? " ▲" : " ▼") : ""}
@@ -102,7 +102,7 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
           {filasOrdenadas.map((f, i) => (
             <tr key={claveFila(f, i)} className="border-b">
               {columnas.map((c) => (
-                <td key={c.clave} className={`py-1 ${c.alinear === "derecha" ? "text-right" : ""}`}>
+                <td key={c.clave} className={`px-2 py-1 first:pl-0 ${c.alinear === "derecha" ? "text-right" : ""}`}>
                   {c.render(f)}
                 </td>
               ))}

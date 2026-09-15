@@ -76,27 +76,27 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-neutral-500">
-              <th className="py-2">Fecha</th>
-              <th>Producto</th>
-              <th>Sección</th>
-              <th>Sistema</th>
-              <th>Contado</th>
-              <th>Diferencia</th>
-              <th>Estado</th>
+              <th className="py-2 pr-2">Fecha</th>
+              <th className="px-2">Producto</th>
+              <th className="px-2">Sección</th>
+              <th className="px-2">Sistema</th>
+              <th className="px-2">Contado</th>
+              <th className="px-2">Diferencia</th>
+              <th className="px-2">Estado</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {historial.map((c) => (
               <tr key={c.id} className="border-b">
-                <td className="py-2">{c.fecha.toISOString().slice(0, 10)}</td>
-                <td>{c.producto.nombre}</td>
-                <td>{c.seccion.nombre}</td>
-                <td>{Number(c.saldoSistema)}</td>
-                <td>{Number(c.conteoReal)}</td>
-                <td>{Number(c.diferencia) > 0 ? "+" : ""}{Number(c.diferencia)}</td>
-                <td className={ESTADO_COLOR[c.estado]}>{c.estado}</td>
-                <td className="flex gap-2 py-2">
+                <td className="py-2 pr-2">{c.fecha.toISOString().slice(0, 10)}</td>
+                <td className="px-2">{c.producto.nombre}</td>
+                <td className="px-2">{c.seccion.nombre}</td>
+                <td className="px-2">{Number(c.saldoSistema)}</td>
+                <td className="px-2">{Number(c.conteoReal)}</td>
+                <td className="px-2">{Number(c.diferencia) > 0 ? "+" : ""}{Number(c.diferencia)}</td>
+                <td className={`px-2 ${ESTADO_COLOR[c.estado]}`}>{c.estado}</td>
+                <td className="flex gap-2 px-2 py-2">
                   {c.estado === "PENDIENTE" && (
                     <>
                       <form

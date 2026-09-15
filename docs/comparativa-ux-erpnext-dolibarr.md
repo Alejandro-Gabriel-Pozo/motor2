@@ -275,6 +275,57 @@ Script (que tiene el mismo problema en sus formularios HTML).
 
 ---
 
+## 5. Shell de navegación — sin persistencia global, ya resuelto
+
+**Brecha real, ya resuelta** (2026-09-15). No es un hallazgo de una
+pantalla puntual como los anteriores — es estructural: `src/app/layout.tsx`
+(el layout raíz) no tenía nav. Cada una de las 6 secciones
+(`administracion`, `catalogo`, `movimientos`, `reportes`, `stock`,
+`traspasos`) tenía su **propio** `layout.tsx`, reimplementando a mano el
+mismo header y su propio array de links — para ir de una sección a otra no
+había menú, solo links tipo `"← Catálogo"` / `"Reportes →"` insertados a
+mano apuntando a la sección vecina (navegación tipo lista enlazada, cada
+sección solo conocía a su vecina inmediata). En Reportes eso eran 19 links
+grises en una sola fila envuelta en 2 líneas, sin agrupar, sin marcar en
+cuál estás parado.
+
+### Cómo lo resuelven ambos
+
+- **Dolibarr** (`htdocs/main.inc.php::llxHeader()`, verificado): UNA
+  función central llama a `top_menu()` + `left_menu()` en cada página —
+  top bar + sidebar persistentes, nunca duplicados por módulo.
+- **ERPNext** (local, `frappe/public/scss/desk/sidebar.scss`,
+  `public/js/frappe/ui/toolbar/navbar.html`): top navbar fijo + sidebar
+  colapsable organizado por Workspace (grupos de módulos con sub-ítems).
+
+### Estado: implementado (2026-09-15)
+
+- `src/core/navegacion/estructura.ts` — fuente única del árbol de
+  navegación (6 grupos, uno por sección, cada uno con sus ítems), donde
+  antes había 6 arrays `SECCIONES` duplicados con criterio propio cada uno.
+- `src/components/app-shell.tsx` + `src/components/sidebar-nav.tsx` —
+  sidebar persistente con los 6 grupos siempre visibles (colapsables, el
+  grupo de la ruta activa se abre solo sin cerrar los que el usuario ya
+  tenía abiertos), reemplaza los 6 `layout.tsx` de sección — ahora hay uno
+  solo, `src/app/(app)/layout.tsx`, que gatea sesión una sola vez para
+  las 6 secciones (route group `(app)`, invisible en la URL).
+- Bug de fuente encontrado de paso: `globals.css` tenía `body {
+  font-family: Arial, Helvetica, sans-serif }` pisando la fuente Geist que
+  `layout.tsx` sí cargaba pero que nada aplicaba — toda la app renderizaba
+  en Arial por accidente. Corregido a `font-family: var(--font-sans), ...`.
+- Bug de spacing encontrado de paso: las tablas (`TablaReporte` y las de
+  Conteo Físico) no tenían padding horizontal entre columnas — visible como
+  texto de encabezado pegado (`DiferenciaAcción`). Corregido con `px-2` en
+  `<th>`/`<td>`, beneficia a los ~18 reportes de una sola vez al estar en
+  el componente compartido.
+
+No se portó el resto del shell de ninguno de los dos ERPs de referencia
+(buscador global, notificaciones, selector de sucursal en el navbar) — no
+hay pedido de eso todavía, y el negocio no lo necesita con 5 sucursales
+fijas conocidas de antemano.
+
+---
+
 ## Resumen para portar a Apps Script (`motor`)
 
 | Hallazgo | Estado en motor2 | Aplica a Apps Script |
@@ -283,6 +334,7 @@ Script (que tiene el mismo problema en sus formularios HTML).
 | Reportes sin orden/export/drill-down | **Resuelto en motor2** (orden, CSV, drill-down) | Sí — los reportes de Apps Script (`Reportes.js`) tienen la misma limitación de base, aunque ahí el export a Sheets es más directo que un CSV |
 | Número de factura sin validar formato | **No es brecha** — ambos ERPs de referencia hacen lo mismo | No aplica un fix — si Apps Script ya valida algo ahí, no hace falta tocarlo |
 | `<input type="number">` nativo en plata/cantidad | **Resuelto en motor2** | Sí — los HTML de Apps Script (`PanelOperacion.html`, etc.) probablemente tienen el mismo `type="number"` nativo |
+| Sin shell de navegación persistente (6 headers duplicados, sin sidebar) | **Resuelto en motor2** (sidebar único, 6 grupos, `src/core/navegacion/estructura.ts`) | Parcial — `Nav.html` en Apps Script ya es un include único (no duplicado), pero vale revisar si agrupa por módulo o es una lista plana como era acá |
 
 Fuentes primarias completas (con más citas de archivo:línea de las
 resumidas acá) quedan en el historial de esta sesión — este documento es el
