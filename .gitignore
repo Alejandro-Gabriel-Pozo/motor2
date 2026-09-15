@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# worktrees de agentes en background (Agent tool, isolation: "worktree")
+.claude/worktrees/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
