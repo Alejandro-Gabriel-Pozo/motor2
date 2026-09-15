@@ -26,6 +26,15 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "proveedores", descripcion: "Administrar el catálogo de Proveedores (activar/desactivar)", rolesEditarSemilla: ["admin"] },
   { clave: "categorias", descripcion: "Administrar el catálogo de Categorías", rolesEditarSemilla: ["admin"] },
   { clave: "stock_minimo", descripcion: "Fijar Stock Mínimo (global o por sección)", rolesEditarSemilla: ["admin"] },
+  // Nueva (no existía en Apps Script — ver plan, porción Stock):
+  // calcularStockConsolidado_/calcularStockPorFamilia_/calcularAlertasStock_
+  // no tenían NINGÚN gate propio ahí (solo se ocultaban a nivel de menú de
+  // Sheets, que no es una barrera real — la función seguía siendo
+  // client-callable directo). Acá SÍ hay una capa de permisos real: se le
+  // da una Accion propia, abierta a operador (ver stock es visibilidad
+  // operativa del día a día, distinto de FIJAR el mínimo, que sigue
+  // admin-only en 'stock_minimo').
+  { clave: "ver_stock", descripcion: "Ver Stock consolidado, por familia y alertas", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "precio_local", descripcion: "Fijar Precio Local por sucursal", rolesEditarSemilla: ["admin"] },
   { clave: "promociones_config", descripcion: "Activar Promociones y marcar productos como Combo", rolesEditarSemilla: ["admin"] },
   { clave: "comparar_precios", descripcion: "Comparar precios por proveedor", rolesEditarSemilla: ["admin"] },

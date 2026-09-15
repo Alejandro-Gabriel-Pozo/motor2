@@ -1,8 +1,21 @@
+import path from "node:path";
 import { defineConfig } from "vitest/config";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      // `import "server-only"` revienta fuera del bundler de Next (que
+      // define la condición `react-server`) — acá los server actions se
+      // importan directo bajo Node/Vitest, sin ese boundary. El paquete
+      // solo existe para tirar un error en tiempo de build si un Client
+      // Component lo importa; en tests no hay Client Components, así que
+      // se reemplaza por un módulo vacío (mismo criterio recomendado por
+      // Next.js para testear código server-only con Vitest/Jest).
+      "server-only": path.resolve(__dirname, "test/setup/server-only-stub.ts"),
+    },
+  },
   test: {
     environment: "node",
     // Estos tests pegan contra Postgres real (Neon branch efímero o local)

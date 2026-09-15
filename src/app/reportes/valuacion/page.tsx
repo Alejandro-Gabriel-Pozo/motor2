@@ -1,0 +1,90 @@
+import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { calcularValuacionInventario } from "@/core/reportes/valuacion";
+
+export default async function ValuacionPage() {
+  const ctx = await obtenerContextoUsuario();
+  if (!ctx) return null;
+
+  const rep = await calcularValuacionInventario(ctx.sucursalId);
+  const sinCosto = rep.filas.filter((f) => f.sinCosto);
+  const conCosto = rep.filas.filter((f) => !f.sinCosto);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="mb-1 text-xl font-semibold">Valuación de inventario</h1>
+        <p className="text-sm text-neutral-500">
+          Stock actual de esta sucursal valorizado al costo de reposición (misma fuente que Costos y márgenes: la compra local más reciente de
+          cada producto).
+        </p>
+      </div>
+
+      <div className="rounded border px-4 py-3">
+        <div className="text-xs uppercase text-neutral-500">Total valorizado</div>
+        <div className="text-2xl font-semibold">${rep.totalValorizado.toLocaleString("es-AR")}</div>
+        {rep.cantidadSinCosto > 0 && (
+          <div className="mt-1 text-xs text-amber-600">
+            {rep.cantidadSinCosto} producto{rep.cantidadSinCosto === 1 ? "" : "s"} con stock pero sin ninguna compra registrada — no incluido
+            {rep.cantidadSinCosto === 1 ? "" : "s"} en el total (ver abajo).
+          </div>
+        )}
+      </div>
+
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b text-left text-neutral-500">
+            <th className="py-1">Producto</th>
+            <th>Saldo</th>
+            <th>Costo unitario</th>
+            <th>Valor</th>
+            <th>Proveedor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {conCosto.map((f) => (
+            <tr key={f.productoId} className="border-b">
+              <td className="py-1">{f.productoCodigo} — {f.productoNombre}</td>
+              <td>
+                {f.saldo} {f.unidadStockNombre}
+              </td>
+              <td>${f.costoUnitario!.toLocaleString("es-AR")}</td>
+              <td className="font-medium">${f.valor!.toLocaleString("es-AR")}</td>
+              <td>{f.proveedorNombre ?? "—"}</td>
+            </tr>
+          ))}
+          {!conCosto.length && (
+            <tr>
+              <td className="py-1 text-neutral-500" colSpan={5}>
+                Sin stock valorizable en esta sucursal.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {sinCosto.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-medium">Con stock, sin costo conocido (no valorizado)</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-neutral-500">
+                <th className="py-1">Producto</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sinCosto.map((f) => (
+                <tr key={f.productoId} className="border-b">
+                  <td className="py-1">{f.productoCodigo} — {f.productoNombre}</td>
+                  <td>
+                    {f.saldo} {f.unidadStockNombre}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

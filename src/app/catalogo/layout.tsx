@@ -10,6 +10,7 @@ const SECCIONES = [
   { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos" },
   { href: "/catalogo/categorias", label: "Categorías" },
   { href: "/catalogo/unidades", label: "Unidades" },
+  { href: "/movimientos/compra", label: "Movimientos →" },
   { href: "/administracion/usuarios", label: "← Administración" },
 ];
 

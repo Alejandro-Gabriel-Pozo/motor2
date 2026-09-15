@@ -26,9 +26,15 @@ model User {
   activoGlobal  Boolean   @default(true)
   creadoEn      DateTime  @default(now())
 
-  accounts   Account[]
-  sessions   Session[]
-  sucursales UsuarioSucursal[]
+  accounts                  Account[]
+  sessions                  Session[]
+  sucursales                UsuarioSucursal[]
+  operaciones               Operacion[]
+  conteosFisicos            ConteoFisico[]
+  traspasosCreados          TraspasoSucursal[] @relation("TraspasoCreadoPor")
+  traspasosDecididosOrigen  TraspasoSucursal[] @relation("TraspasoDecididoOrigen")
+  traspasosDecididosDestino TraspasoSucursal[] @relation("TraspasoDecididoDestino")
+  traspasosCerrados         TraspasoSucursal[] @relation("TraspasoCerradoPor")
 }
 
 model Account {
@@ -86,8 +92,21 @@ model Sucursal {
   activo   Boolean  @default(true)
   creadoEn DateTime @default(now())
 
-  usuarios    UsuarioSucursal[]
-  capacidades CapacidadSucursal[]
+  /// Feature opcional apagada por defecto (Catalogo.js:2183, clave de Config
+  /// "PromocionesHabilitado") — no todos los clientes arman combos; ver
+  /// PromocionProducto abajo (porción Reportes).
+  promocionesHabilitadas Boolean @default(false)
+
+  usuarios             UsuarioSucursal[]
+  capacidades          CapacidadSucursal[]
+  secciones            Seccion[]
+  operaciones          Operacion[]
+  conteosFisicos       ConteoFisico[]
+  preciosLocales       PrecioLocalProducto[]
+  stockMinimos         StockMinimoProducto[]
+  promociones          PromocionProducto[]
+  traspasosComoOrigen  TraspasoSucursal[]    @relation("TraspasoOrigen")
+  traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
 }
 
 model Rol {
@@ -243,6 +262,12 @@ model Producto {
   proveedorPorProducto ProveedorPorProducto[]
   recetaVersiones      RecetaVersion[]        @relation("RecetaVersionProducto")
   usadoComoIngrediente RecetaIngrediente[]    @relation("RecetaIngredienteInsumo")
+  movimientos          MovimientoStock[]
+  conteosFisicos       ConteoFisico[]
+  preciosLocales       PrecioLocalProducto[]
+  stockMinimos         StockMinimoProducto[]
+  promociones          PromocionProducto[]
+  traspasos            TraspasoSucursal[]
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -344,6 +369,7 @@ model Proveedor {
 
   productosConsignados Producto[]             @relation("ProveedorConsignacionDe")
   proveedorPorProducto ProveedorPorProducto[]
+  operaciones          Operacion[]
 }
 
 /// Relación proveedor↔producto con precio normalizado a "precio por unidad
@@ -409,4 +435,543 @@ model RecetaIngrediente {
   observaciones    String?
 
   @@index([insumoProductoId])
+}
+
+// ===================================================================
+// MOVIMIENTOS: Kardex (libro mayor de stock), operaciones, secciones,
+// conteo físico y precio local por sucursal.
+//
+// A diferencia de Core/Catálogo (Catálogo Central, SIN sucursalId),
+// TODO acá vive scopeado por sucursal — reemplaza el modelo viejo de
+// "1 container de Apps Script = 1 sucursal, 1 Kardex propio" por
+// sucursalId como columna real en una sola base compartida.
+//
+// Diseño en dos niveles, análogo a ERPNext (Stock Entry → Stock Ledger
+// Entry), pero sin una tabla de "detalle" redundante: Operacion es el
+// encabezado (lo que el usuario INICIÓ — gatea el permiso de Movimientos.js
+// ACCION_POR_PROCESO_), MovimientoStock es cada línea del libro mayor (el
+// EFECTO real sobre el stock: 1 fila = 1 movimiento con signo).
+//
+// Ver docs/plan-migracion.md, sección "Plan de la porción Movimientos",
+// para la investigación completa (anclas archivo:línea) y las decisiones.
+// ===================================================================
+
+/// Los procesos gateables de ACCION_POR_PROCESO_ (Movimientos.js:510-525),
+/// más LIQUIDACION_CONSIGNACION (Movimientos.js:250-258: generada SOLA por
+/// confirmarRegistrarVenta_ConLock_/confirmarRegistrarMovimientos al
+/// producir, nunca un proceso que un usuario elija — por eso no tiene
+/// Accion propia en src/core/permisos/acciones.ts) y RECLASIFICACION
+/// (Stock.js:1899-1991 — agregada en la porción Stock; NUNCA pasa por
+/// TRANSICIONES en Apps Script porque no es una "acción de Permisos" con
+/// su propio filtroTipo/exigeSeccion/etc., sino la primitiva de split
+/// genérico del Conteo Físico — se gatea con 'proceso_control', mismo
+/// permiso que Conteo Físico, no con una Accion propia).
+///
+/// TRANSFERENCIA_SALIDA_SUCURSAL/TRANSFERENCIA_ENTRADA_SUCURSAL/
+/// REINGRESO_TRANSFERENCIA_SUCURSAL (Sucursales.js, porción Traspasos
+/// entre sucursales) agregados acá — igual que RECLASIFICACION
+/// (porción Stock), ninguno pasa por el motor genérico
+/// (`registrarMovimiento`)/`TRANSICIONES`-como-entrada-de-ACCION_POR_PROCESO:
+/// tienen su propio server action (`src/server/actions/traspasos.ts`),
+/// gateado directo con `proceso_transferencia_sucursal` — la entrada en
+/// `TRANSICIONES` (transiciones.ts) existe solo para que
+/// `esSignoFijo`/`tieneStockReal` puedan resolverlas igual que cualquier
+/// otro proceso al construir `MovimientoStock.cantidad` firmado.
+enum Proceso {
+  COMPRA
+  PRODUCCION
+  CONSUMO
+  AJUSTE
+  CONTROL
+  TRANSFERENCIA
+  MERMA
+  VENTA
+  DEVOLUCION_CONSIGNACION
+  LIQUIDACION_CONSIGNACION
+  DEVOLUCION_CLIENTE
+  DEVOLUCION_PROVEEDOR
+  RECLASIFICACION
+  TRANSFERENCIA_SALIDA_SUCURSAL
+  TRANSFERENCIA_ENTRADA_SUCURSAL
+  REINGRESO_TRANSFERENCIA_SUCURSAL
+}
+
+/// MOTIVOS_MERMA (Movimientos.js:56). En Apps Script esto se guardaba
+/// plegado como texto dentro de "Movimiento detalle" ("no hace falta
+/// cambiar el esquema" — el motivo real de esa limitación); acá hay schema
+/// real, así que es una columna tipada de Operacion en vez de texto a
+/// parsear para poder agrupar (Reportes.js: generarReportePerdidas_).
+enum MotivoMerma {
+  VENCIDO
+  ROTO_O_CAIDO
+  MAL_PREPARADO_O_QUEMADO
+  /// Nombre aclarado a propósito en v-actual de Apps Script (BUGFIX A-3,
+  /// AUDITORIA-movimientos.md): devuelto pero NO revendible → resta stock
+  /// de verdad. Si es revendible, es DEVOLUCION_CLIENTE (proceso propio,
+  /// signoStock +1), nunca este motivo.
+  DEVOLUCION_CLIENTE_NO_REVENDIBLE
+  ROBO_O_FALTANTE
+  OTRO
+}
+
+/// DESTINOS_CONSUMO (Movimientos.js:59) — mismo criterio que MotivoMerma.
+enum DestinoConsumo {
+  PERSONAL
+  DEGUSTACION_CORTESIA
+  EVENTO
+  ELABORACION_INTERNA
+  OTRO
+}
+
+/// ACCIONES_CONTEO_FISICO (Stock.js:1066-1088).
+enum AccionConteo {
+  AJUSTAR
+  FALTA_MOVIMIENTO
+  DESCARTAR
+}
+
+/// Estados de ConteoFisico.estado (Stock.js: 'Resuelto'/'Pendiente'/
+/// 'Descartado'/'Cancelado' — este último de cancelarConteoFisico,
+/// Stock.js:2097-2141).
+enum EstadoConteo {
+  RESUELTO
+  PENDIENTE
+  DESCARTADO
+  CANCELADO
+}
+
+/// Reemplaza HOJA_SECCIONES (Stock.js:1316-1415) — antes una hoja POR
+/// CONTENEDOR (cada sucursal ya tenía sus propias Secciones porque cada
+/// una era un spreadsheet separado); acá sucursalId es una columna real
+/// porque ya no hay un contenedor propio que la implique.
+model Seccion {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  nombre     String
+  activa     Boolean  @default(true)
+
+  operacionesTransferenciaDestino Operacion[]           @relation("OperacionSeccionDestino")
+  movimientos                     MovimientoStock[]
+  conteosFisicos                  ConteoFisico[]
+  stockMinimos                    StockMinimoProducto[]
+  traspasosComoSeccionOrigen      TraspasoSucursal[]    @relation("TraspasoSeccionOrigen")
+  traspasosComoSeccionDestino     TraspasoSucursal[]    @relation("TraspasoSeccionDestino")
+
+  /// Único índice funcional case/espacio-insensible por sucursal (mismo
+  /// criterio que Producto/Proveedor/Insumo/... en la porción Catálogo) —
+  /// agregar a mano en la migración generada, ver README.
+  @@unique([sucursalId, nombre])
+}
+
+/// Encabezado de una confirmación de movimiento — agrupa 1+ líneas de
+/// MovimientoStock que se escribieron JUNTAS en un solo confirm() (mismo
+/// alcance que "ID Operación" en Kardex, Movimientos.js:963-974, pero como
+/// FK real en vez de un UUID de texto compartido a ciegas entre filas).
+///
+/// GRANULARIDAD (importante, difiere por proceso — ver el comentario de
+/// confirmarRegistrarMovimientos vs. confirmarRegistrarVenta_ConLock_ en
+/// Movimientos.js): Compra/Ajuste/Consumo/Producción/Merma/Transferencia/
+/// Devolución×2/Control → UNA Operacion cubre TODO el lote confirmado en
+/// una sola llamada (varios productos). Venta → una Operacion POR CADA
+/// venta individual del lote (cada línea vendida es su propio evento
+/// económico, con su propia Liquidación de consignación si aplica) — un
+/// solo confirmarRegistrarVenta con 3 ítems crea 3 filas Operacion, no 1.
+///
+/// `proceso` acá es el INICIADO por el usuario (lo que gatea el permiso,
+/// ACCION_POR_PROCESO_) — NO necesariamente el de cada línea: una
+/// Operacion de PRODUCCION o VENTA genera líneas hijas con OTRO proceso en
+/// MovimientoStock.proceso (CONSUMO por cada MP de receta, y
+/// LIQUIDACION_CONSIGNACION si esa MP es consignación) — ver el docstring
+/// de MovimientoStock.proceso.
+model Operacion {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  proceso    Proceso
+  fecha      DateTime
+
+  /// Compra/DevolucionProveedor (a quién se compra/devuelve) o Venta ("a
+  /// quién se vende" — Movimientos.js:1769 usa 'Mostrador' como texto
+  /// libre por defecto cuando no hay proveedor real; se modela como
+  /// nullable en vez de forzar un Proveedor "Mostrador" ficticio).
+  proveedorId String?
+  proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
+  nroFactura  String?
+
+  /// Solo Transferencia (Movimientos.js:425-431, TRANSICIONES.TRANSFERENCIA
+  /// no tiene exigeSeccion porque el origen YA es un campo obligatorio
+  /// propio, distinto del "elegí sección" de los procesos que reparten
+  /// stock existente). El origen de cada línea ya sale de
+  /// MovimientoStock.seccionId — este campo es solo para no perder cuál
+  /// era el destino elegido a nivel de la operación completa.
+  seccionDestinoId String?
+  seccionDestino   Seccion? @relation("OperacionSeccionDestino", fields: [seccionDestinoId], references: [id])
+
+  /// Solo MERMA (Movimientos.js:56, MOTIVOS_MERMA) / CONSUMO
+  /// (Movimientos.js:59, DESTINOS_CONSUMO) respectivamente — null para
+  /// cualquier otro proceso, validado en la capa de aplicación (mismo
+  /// criterio no-bloqueante-por-constraint que el resto del proyecto usa
+  /// para reglas condicionadas por otro campo, ej. Producto.insumoId).
+  motivo       MotivoMerma?
+  destino      DestinoConsumo?
+  /// Texto libre adicional (ctx.detalleLibre, Movimientos.js:767) — en
+  /// Apps Script terminaba plegado dentro de "Movimiento detalle" de cada
+  /// fila; acá queda en su propia columna, una vez por operación.
+  detalleLibre String?
+
+  /// NUEVO respecto a Apps Script: no existía ninguna columna "Usuario" en
+  /// Kardex (Session.getActiveUser() del script deployado no se guardaba
+  /// en ningún lado salvo en ConteosFisicos) — acá SÍ hay autenticación
+  /// real por persona (Auth.js, porción Core), así que se agrega a
+  /// propósito: saber quién registró cada operación es valioso y ahora es
+  /// gratis, no es una expansión de alcance de esta porción.
+  usuarioId String
+  usuario   User   @relation(fields: [usuarioId], references: [id])
+
+  creadoEn DateTime @default(now())
+
+  movimientos MovimientoStock[]
+
+  @@index([sucursalId, proceso, fecha])
+}
+
+/// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
+/// libro mayor real. 1 fila = 1 movimiento de stock, YA CON EL SIGNO
+/// APLICADO en `cantidad`.
+///
+/// DECISIÓN CLAVE (fuente única del signo, de una vez): en Apps Script
+/// `cantidad` se guardaba SIN signo para los procesos de signo fijo
+/// (Compra/Consumo/Venta/Merma/...) y el signo se aplicaba recién AL LEER
+/// (signoDeProceso_() en acumularMovimientoEnSaldoMap_, Stock.js:214-231)
+/// — eso es EXACTAMENTE lo que causó el bug de MERMA en v2.1.0
+/// (Movimientos.js:433-455: se agregó MERMA a TRANSICIONES con signoStock
+/// -1, pero la lista de signos vivía duplicada aparte y nadie la
+/// actualizó — una merma se registraba pero no descontaba nada). Acá NO
+/// hay una segunda fuente que mantener sincronizada: `cantidad` se graba
+/// YA multiplicada por el signo del proceso en el momento de escribir (ver
+/// el `Proceso`/TRANSICIONES-equivalente en código, a implementar en
+/// src/core/movimientos/), así que el saldo de cualquier producto/sección/
+/// lote es SIEMPRE `SUM(cantidad)` — sin excepción por proceso, sin tabla
+/// paralela, sin lookup al leer.
+///
+/// `proceso` es el efecto REAL de esta línea puntual — para la mayoría de
+/// las Operacion es igual a Operacion.proceso, pero DIFIERE en las dos que
+/// generan hijos (Movimientos.js: generaConsumoDeReceta): una Operacion
+/// PRODUCCION escribe 1 línea proceso=PRODUCCION (+lo producido) y N
+/// líneas proceso=CONSUMO (−cada MP de receta, con LIQUIDACION_CONSIGNACION
+/// extra si esa MP es consignación); una Operacion VENTA escribe 1 línea
+/// proceso=VENTA (el PV vendido) + N líneas proceso=CONSUMO + Liquidación
+/// si aplica. Ver signoDeProceso_/esDeltaConSignoLibre_ (Movimientos.js:
+/// 452-485) para qué procesos son signo fijo vs. delta con signo libre —
+/// para AJUSTE/CONTROL/TRANSFERENCIA el valor YA viene con el signo que
+/// cargó/calculó el usuario, ninguna multiplicación adicional al escribir.
+///
+/// Kardex es APPEND-ONLY, siempre — ni renombrar un producto (ver
+/// Producto.codigo como FK real de abajo, ya no hace falta reescribir
+/// filas viejas como renombrarProductoEnHistorial_) ni cancelar un conteo
+/// (Stock.js:2077-2141) editan una fila existente: cancelar escribe una
+/// fila de REVERSIÓN nueva con el mismo ConteoFisico enlazado.
+model MovimientoStock {
+  id          String    @id @default(cuid())
+  operacionId String
+  operacion   Operacion @relation(fields: [operacionId], references: [id])
+
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  seccionId  String
+  seccion    Seccion  @relation(fields: [seccionId], references: [id])
+  proceso    Proceso
+
+  /// Ya con signo — ver el docstring del modelo. + entra, − sale.
+  cantidad        Decimal   @db.Decimal(14, 4)
+  /// FEFO simplificado (Stock.js:403-425, IDEA-conteo-fisico-por-lote.md):
+  /// a propósito NO hay una entidad "Lote" separada ni tracking FIFO real
+  /// — es la misma simplificación deliberada de Apps Script, portada tal
+  /// cual (una salida sin lote elegido asume el que vence antes; si eso
+  /// queda mal, se corrige con Conteo Físico/Reclasificación).
+  loteVencimiento DateTime? @db.Date
+
+  /// Texto calculado por línea (conversión de unidad, peso real, etc. —
+  /// Movimientos.js:766-812) — el CÓMO, no el POR QUÉ (eso es
+  /// Operacion.motivo/destino/detalleLibre).
+  detalle String
+
+  /// Precio Total = importe real de ESTA línea (Compra: lo que dice la
+  /// factura para esa línea; Venta: cantidadVendida × precioVenta vigente
+  /// al momento — Movimientos.js:1287). 0 para líneas que no representan
+  /// un hecho financiero propio (Consumo, Transferencia, Ajuste/Control).
+  precioTotal          Decimal @default(0) @db.Decimal(14, 2)
+  /// Precio por unidad de STOCK — permite comparar compras en
+  /// presentaciones distintas del mismo producto (mismo criterio que
+  /// ProveedorPorProducto.precioPorUnidadStock, porción Catálogo).
+  precioPorUnidadStock Decimal @default(0) @db.Decimal(14, 4)
+
+  /// Solo si esta línea la generó un ajuste de Conteo Físico (incluida su
+  /// eventual reversión al cancelar) — reemplaza la correlación por texto
+  /// "idOperacion === idConteo" (Stock.js:2129, Kardex e HOJA_CONTEOS_FISICOS
+  /// comparten el mismo UUID a ciegas) por una FK real.
+  conteoFisicoId String?
+  conteoFisico   ConteoFisico? @relation(fields: [conteoFisicoId], references: [id])
+
+  /// Solo si esta línea la generó un paso de un Traspaso entre sucursales
+  /// (salida/entrada/reingreso) — mismo criterio que `conteoFisicoId`: FK
+  /// real en vez de comparar el "ID Operación" de texto contra el ID del
+  /// traspaso (Sucursales.js pasaba `idTraspaso` como `idOperacion` a
+  /// ciegas, ver escribirMovimientoTransferenciaSucursal_).
+  traspasoSucursalId String?
+  traspasoSucursal   TraspasoSucursal? @relation(fields: [traspasoSucursalId], references: [id])
+
+  creadoEn DateTime @default(now())
+
+  /// Clave de lectura real: "¿cuánto hay de este producto, en esta
+  /// sección, de este lote?" — SUM(cantidad) filtrando por estos 3 campos.
+  /// A diferencia de Apps Script (HOJA_STOCK, una hoja materializada
+  /// mantenida a mano por aplicarMovimientosAStockIncremental_ porque
+  /// rescanear TODO Kardex en cada venta se volvía proporcional a la
+  /// historia completa de la hostería, Stock.js:268-294), acá Postgres
+  /// puede sumar sobre este índice en tiempo real sin necesidad de
+  /// mantener una segunda tabla a mano — si el volumen real lo justifica
+  /// más adelante, una vista materializada (REFRESH bajo demanda, o
+  /// mantenida por trigger) es una optimización de la porción Stock, no
+  /// una tabla que Movimientos tenga que duplicar y sincronizar él mismo.
+  @@index([productoId, seccionId, loteVencimiento])
+  @@index([operacionId])
+}
+
+/// Reemplaza HOJA_CONTEOS_FISICOS/"ConteosFisicos" (Stock.js:1043-1141) —
+/// la bitácora de auditoría de cada conteo (separada del Kardex: un
+/// conteo con acción FALTA_MOVIMIENTO o DESCARTAR no mueve stock, pero
+/// igual queda registrado que se contó).
+model ConteoFisico {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  fecha      DateTime
+
+  productoId      String
+  producto        Producto  @relation(fields: [productoId], references: [id])
+  seccionId       String
+  seccion         Seccion   @relation(fields: [seccionId], references: [id])
+  /// El LOTE contado (puede quedar vacío: "total, sin lote puntual" — ver
+  /// Stock.js:1094-1103), no la fecha del conteo (esa es `fecha` arriba).
+  loteVencimiento DateTime? @db.Date
+
+  saldoSistema Decimal @db.Decimal(14, 4)
+  conteoReal   Decimal @db.Decimal(14, 4)
+  /// = conteoReal − saldoSistema, guardado (no recalculado) porque es
+  /// histórico: referencia el saldo del momento del conteo, no el actual.
+  diferencia   Decimal @db.Decimal(14, 4)
+
+  accion  AccionConteo
+  estado  EstadoConteo
+  detalle String?
+
+  usuarioId String
+  usuario   User   @relation(fields: [usuarioId], references: [id])
+
+  creadoEn DateTime @default(now())
+
+  /// 0, 1 (ajuste original) o 2 (ajuste + reversión al cancelar) líneas de
+  /// Kardex generadas por este conteo — ver el docstring de
+  /// MovimientoStock.conteoFisicoId.
+  movimientos MovimientoStock[]
+
+  @@index([sucursalId, productoId, seccionId])
+}
+
+/// Reemplaza HOJA_PRECIO_LOCAL/"Precio Local" (Catalogo.js:2043-2077) —
+/// HUECO REAL encontrado investigando Venta (armarPreviaVentaDesdeItems_,
+/// Movimientos.js:1751-1759, lee precioVenta YA resuelto con override
+/// local vía resolverPrecioVenta_): la porción Catálogo nunca modeló esto
+/// porque en Apps Script vive en la hoja LOCAL de cada hostería (no en
+/// HOJAS_CATALOGO_CENTRAL), no porque no hiciera falta — sin esto, Venta
+/// no puede calcular el precio real cobrado por sucursal. Se agrega acá,
+/// no en Catálogo, porque el único consumidor funcional es Venta.
+/// `precio_local` ya está seedeado en ACCIONES (acciones.ts) desde Core,
+/// anticipando esta porción.
+model PrecioLocalProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  precio     Decimal  @db.Decimal(14, 2)
+  /// Local si está cargado Y habilitado; si no, fallback a
+  /// Producto.precioVenta (mismo criterio que resolverPrecioVenta_,
+  /// Catalogo.js:2072-2077) — no se borra la fila al deshabilitar, mismo
+  /// patrón que el resto del catálogo (activo/habilitado, nunca DELETE).
+  habilitado Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
+}
+
+// ===================================================================
+// STOCK: mínimos por sucursal/sección y la primitiva de Reclasificación.
+//
+// A diferencia de Apps Script (HOJA_STOCK/StockConsolidado/StockFamilia/
+// AlertasStock — hojas MATERIALIZADAS, recalculadas enteras en cada
+// recalcularX(), porque rescanear Kardex en cada lectura era proporcional
+// a toda la historia acumulada), acá esas 3 vistas NO son tablas: son
+// consultas en vivo sobre MovimientoStock/ConteoFisico (ver
+// src/core/stock/*.ts) — el mismo argumento que ya justificó no
+// materializar el saldo simple en la porción Movimientos (ver el
+// docstring de MovimientoStock) aplica con más razón acá: Postgres agrega
+// en tiempo real sobre índices reales, no hay necesidad de una segunda
+// copia de los datos que se pueda desincronizar del Kardex. Lo único que
+// esta porción agrega de verdad como TABLA es la configuración de Stock
+// Mínimo (dato que el sistema no puede derivar de ningún otro lado).
+// ===================================================================
+
+/// Reemplaza HOJA_STOCK_MINIMO/"Stock Minimo" (Catalogo.js:1922-2019) —
+/// mismo patrón que PrecioLocalProducto: vive local a cada sucursal (no es
+/// Catálogo Central). `seccionId` nulo = fila "global" de esa sucursal
+/// (aplica salvo que haya una fila más específica para esa sección) —
+/// mismo criterio de resolución que resolverStockMinimo_ (gana la fila de
+/// la sección exacta si existe, si no la global). El índice único parcial
+/// para "como máximo una fila global por sucursal+producto" se agrega a
+/// mano en la migración (mismo criterio que CapacidadSucursal.sucursalId
+/// NULL) — ver README.
+model StockMinimoProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  seccionId  String?
+  seccion    Seccion? @relation(fields: [seccionId], references: [id])
+  minimo     Decimal  @db.Decimal(14, 4)
+
+  @@unique([productoId, seccionId])
+}
+
+// ===================================================================
+// REPORTES: el resto de la porción (período, costos, pérdidas,
+// devoluciones, vencimientos, diferencias de ajuste, salud por producto,
+// trazabilidad, historial por producto, etc.) es 100% lectura en vivo
+// sobre Operacion/MovimientoStock/ConteoFisico/RecetaVersion ya existentes
+// — no agrega ninguna tabla nueva (ver src/core/reportes/*.ts). Promociones
+// y Combos es la única excepción real: es un catálogo LOCAL (por sucursal,
+// no Catálogo Central — la misma "Menú ejecutivo" puede ser promoción en
+// una sucursal y plato normal en otra, Catalogo.js:2170-2173) que el
+// sistema no puede derivar de ningún otro dato.
+// ===================================================================
+
+/// Reemplaza HOJA_PROMOCIONES/"Promociones" (Catalogo.js:2182-2251) — qué
+/// PV cuenta como Promoción/Combo para obtenerReportePromociones_
+/// (src/core/reportes/promociones.ts). Fila ausente = no marcado (mismo
+/// criterio que "no aparece en el mapa" de Apps Script); no se borra al
+/// desmarcar, se pone `activa=false` (mismo patrón que el resto del
+/// catálogo).
+model PromocionProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  activa     Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
+}
+
+// ===================================================================
+// TRASPASOS ENTRE SUCURSALES (Sucursales.js) — última porción funcional.
+//
+// DIFERENCIA CLAVE con Apps Script: ahí cada sucursal ("hostería") es un
+// proyecto Apps Script + planilla separado, sin ningún canal de ejecución
+// directo entre proyectos — por eso `TraspasosSucursales` es una tabla del
+// Catálogo Central que cada lado lee/escribe de forma asincrónica (una
+// bandeja), y hace falta un registro aparte (`Hosterias`) + una hoja
+// Config local (`NombreHosteria`) solo para que cada proyecto sepa "quién
+// es". Acá, motor2 es una única app Next.js sobre una única base
+// Postgres — todas las sucursales ya son filas reales de `Sucursal`
+// (Core), visibles a cualquier request autenticado, y un usuario ya sabe
+// "quién es" vía su `ContextoUsuario.sucursalId` (la sucursal ACTIVA de su
+// sesión, misma noción que "esta hostería" en Apps Script). No hace falta
+// portar ni el registro de hosterías ni el nombre configurable — el WORKFLOW
+// de aprobación (que SÍ importa: el stock no se teletransporta, alguien
+// tiene que confirmar que lo recibió) es lo único que se porta.
+// ===================================================================
+
+/// PULL (el Destino pide) vs. PUSH (el Origen manda directo) — decide qué
+/// lado creó la fila y en qué estado arranca (Sucursales.js:19-25).
+enum IniciadoPorTraspaso {
+  ORIGEN
+  DESTINO
+}
+
+/// Ciclo completo (Sucursales.js:19-25, comentario de cabecera):
+/// PULL: SOLICITADA -(Origen aprueba)-> ENVIADA -(Destino acepta)-> ACEPTADA
+///                   -(Origen rechaza)-> RECHAZADA_ORIGEN (fin, nunca tocó stock)
+/// PUSH: ENVIADA (ya con el stock afuera al crearse) -(Destino acepta)-> ACEPTADA
+///                                                    -(Destino rechaza)-> RECHAZADA_DESTINO -(Origen confirma reingreso)-> CERRADA
+enum EstadoTraspaso {
+  SOLICITADA
+  ENVIADA
+  ACEPTADA
+  RECHAZADA_ORIGEN
+  RECHAZADA_DESTINO
+  CERRADA
+}
+
+/// Reemplaza HOJA_TRASPASOS_SUCURSALES/"TraspasosSucursales"
+/// (Sucursales.js:175-193) — mismas 22 columnas, ahora con FKs reales en
+/// vez de texto (nombre de sucursal, código de producto) y sin la
+/// redundancia "Codigo"/"Unidad" (ya resuelven vía `producto`/
+/// `producto.unidadStock`). `seccionOrigenId`/`seccionDestinoId` quedan
+/// null hasta que ese lado decide (recién Origen sabe de qué Sección sale
+/// al aprobar/enviar; recién Destino sabe a cuál entra al aceptar).
+model TraspasoSucursal {
+  id       String   @id @default(cuid())
+  creadoEn DateTime @default(now())
+
+  origenSucursalId  String
+  origenSucursal    Sucursal @relation("TraspasoOrigen", fields: [origenSucursalId], references: [id])
+  destinoSucursalId String
+  destinoSucursal   Sucursal @relation("TraspasoDestino", fields: [destinoSucursalId], references: [id])
+
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  cantidad   Decimal  @db.Decimal(14, 4)
+
+  seccionOrigenId  String?
+  seccionOrigen    Seccion? @relation("TraspasoSeccionOrigen", fields: [seccionOrigenId], references: [id])
+  seccionDestinoId String?
+  seccionDestino   Seccion? @relation("TraspasoSeccionDestino", fields: [seccionDestinoId], references: [id])
+
+  iniciadoPor IniciadoPorTraspaso
+  estado      EstadoTraspaso      @default(SOLICITADA)
+
+  creadoPorId String
+  creadoPor   User    @relation("TraspasoCreadoPor", fields: [creadoPorId], references: [id])
+  detalle     String?
+
+  /// Decisión de ORIGEN: aprobar+enviar una Solicitada (PULL), o rechazarla
+  /// (-> RECHAZADA_ORIGEN). En un envío directo (PUSH) esto se llena YA en
+  /// el momento de crear la fila (Origen decidió mandar, no hay nada que
+  /// "aprobar" después).
+  fechaDecisionOrigen DateTime?
+  decididoPorOrigenId String?
+  decididoPorOrigen   User?     @relation("TraspasoDecididoOrigen", fields: [decididoPorOrigenId], references: [id])
+  motivoRechazoOrigen String?
+
+  /// Decisión de DESTINO: aceptar una Enviada (-> ACEPTADA), o rechazarla
+  /// (-> RECHAZADA_DESTINO, todavía no devuelve el stock — eso lo confirma
+  /// Origen aparte, `fechaCierre`/`cerradoPor` abajo).
+  fechaDecisionDestino DateTime?
+  decididoPorDestinoId String?
+  decididoPorDestino   User?     @relation("TraspasoDecididoDestino", fields: [decididoPorDestinoId], references: [id])
+  motivoRechazoDestino String?
+
+  /// Solo se llena si Destino rechazó y Origen confirmó el reingreso a su
+  /// propio stock (-> CERRADA) — el único otro cierre real (ACEPTADA) no
+  /// necesita un campo aparte, el `estado` ya lo dice.
+  fechaCierre  DateTime?
+  cerradoPorId String?
+  cerradoPor   User?     @relation("TraspasoCerradoPor", fields: [cerradoPorId], references: [id])
+
+  movimientos MovimientoStock[]
+
+  @@index([origenSucursalId, estado])
+  @@index([destinoSucursalId, estado])
 }

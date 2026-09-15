@@ -6,6 +6,18 @@ export { prisma };
 
 /** Borra todo (orden respetando FKs) — se llama en beforeEach de cada test file. */
 export async function limpiarBaseDeTest() {
+  // Movimientos primero: Operacion/ConteoFisico referencian User/Sucursal/
+  // Proveedor, que se borran más abajo — y MovimientoStock referencia a
+  // los tres (Operacion/ConteoFisico incluidos).
+  await prisma.movimientoStock.deleteMany();
+  await prisma.conteoFisico.deleteMany();
+  await prisma.operacion.deleteMany();
+  await prisma.precioLocalProducto.deleteMany();
+  await prisma.stockMinimoProducto.deleteMany();
+  await prisma.promocionProducto.deleteMany();
+  await prisma.traspasoSucursal.deleteMany();
+  await prisma.seccion.deleteMany();
+
   await prisma.usuarioSucursal.deleteMany();
   await prisma.permisoRol.deleteMany();
   await prisma.capacidadSucursal.deleteMany();
@@ -87,4 +99,9 @@ export async function crearUsuarioConMembresia(params: {
     },
   });
   return usuario;
+}
+
+/** Fixtures mínimas de Movimientos: una Sección ("Depósito") en la sucursal dada. */
+export async function sembrarSeccion(sucursalId: string, nombre = "Depósito") {
+  return prisma.seccion.create({ data: { sucursalId, nombre } });
 }

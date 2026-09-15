@@ -1,0 +1,97 @@
+import { prisma } from "@/lib/db";
+import { construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
+
+export interface FilaPvSinVenta {
+  productoId: string;
+  producto: string;
+  codigo: string;
+}
+export interface FilaInsumoConRecetaSinProveedor {
+  productoId: string;
+  producto: string;
+  codigo: string;
+  insumoNombre: string | null;
+}
+export interface ProblemaUnidadMezclada {
+  insumoId: string;
+  insumo: string;
+  unidades: string[];
+  productos: { nombre: string; unidad: string }[];
+}
+
+export interface ReporteHuecosCatalogo {
+  pvSinVentaNunca: FilaPvSinVenta[];
+  insumosConRecetaSinProveedor: FilaInsumoConRecetaSinProveedor[];
+}
+
+/**
+ * Port de las primeras dos secciones de generarReporteHuecosCatalogo_
+ * (Reportes.js:864-893; hallazgo M-7). La tercera sección (unidad
+ * mezclada) queda en obtenerProblemasUnidadMezclada — abajo — porque en
+ * Apps Script está gateada con 'insumos_mezclados' DENTRO del reporte; acá
+ * ese gate vive en la capa de server action/página (mismo criterio que el
+ * resto del proyecto: los módulos de src/core/ son agnósticos de permisos).
+ *
+ * 1) PV activo que nunca se vendió EN ESTA SUCURSAL — no es un error (puede
+ *    ser nuevo en el menú), es una señal para revisar precio/receta.
+ * 2) MP vinculada a una receta (se puede vender) pero sin ningún proveedor
+ *    en el Catálogo Central — se puede recibir por Compra igual, pero
+ *    "Comparar precios"/Alta rápida no tienen de dónde sacar referencia.
+ */
+export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db = prisma): Promise<ReporteHuecosCatalogo> {
+  const productos = await construirMapaProductos(undefined, db);
+  const { mpsEnRecetas } = await construirIndiceRecetas(db);
+
+  const vendidos = await db.movimientoStock.findMany({
+    where: { proceso: "VENTA", seccion: { sucursalId } },
+    select: { productoId: true },
+    distinct: ["productoId"],
+  });
+  const vendidosAlgunaVez = new Set(vendidos.map((v) => v.productoId));
+
+  const conProveedor = new Set(
+    (await db.proveedorPorProducto.findMany({ select: { productoId: true }, distinct: ["productoId"] })).map((p) => p.productoId)
+  );
+
+  const pvSinVentaNunca = Array.from(productos.values())
+    .filter((info) => info.tipo === "PV" && info.activo && !vendidosAlgunaVez.has(info.id))
+    .map((info) => ({ productoId: info.id, producto: info.nombre, codigo: info.codigo }))
+    .sort((a, b) => a.producto.localeCompare(b.producto));
+
+  const insumosConRecetaSinProveedor = Array.from(productos.values())
+    .filter((info) => info.tipo === "MP" && info.activo && mpsEnRecetas.has(info.id) && !conProveedor.has(info.id))
+    .map((info) => ({ productoId: info.id, producto: info.nombre, codigo: info.codigo, insumoNombre: info.insumoNombre }))
+    .sort((a, b) => a.producto.localeCompare(b.producto));
+
+  return { pvSinVentaNunca, insumosConRecetaSinProveedor };
+}
+
+/**
+ * Port de detectarInsumosConUnidadMezclada (Catalogo.js:4134-4161) —
+ * auditoría de CATÁLOGO pura (no depende de stock ni de sucursal, a
+ * diferencia de FilaStockPorFamilia.unidadesMezcladas en
+ * src/core/stock/por-familia.ts, que es la misma señal pero acotada a lo
+ * que tiene movimientos en una sección puntual). Incluye productos
+ * inactivos a propósito — mismo criterio que el original
+ * (obtenerUnidadPorInsumo_ no filtra por activo).
+ */
+export async function obtenerProblemasUnidadMezclada(db: Db = prisma): Promise<ProblemaUnidadMezclada[]> {
+  const productos = await db.producto.findMany({
+    where: { insumoId: { not: null } },
+    include: { insumo: true, unidadStock: true },
+  });
+
+  const porInsumo = new Map<string, { insumoNombre: string; productos: { nombre: string; unidad: string }[] }>();
+  for (const p of productos) {
+    if (!p.insumo) continue;
+    if (!porInsumo.has(p.insumo.id)) porInsumo.set(p.insumo.id, { insumoNombre: p.insumo.nombre, productos: [] });
+    porInsumo.get(p.insumo.id)!.productos.push({ nombre: p.nombre, unidad: p.unidadStock.nombre });
+  }
+
+  const problemas: ProblemaUnidadMezclada[] = [];
+  for (const [insumoId, g] of porInsumo) {
+    const unidades = Array.from(new Set(g.productos.map((p) => p.unidad)));
+    if (unidades.length > 1) problemas.push({ insumoId, insumo: g.insumoNombre, unidades, productos: g.productos });
+  }
+  return problemas.sort((a, b) => a.insumo.localeCompare(b.insumo));
+}
