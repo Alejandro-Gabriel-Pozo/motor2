@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerResumenOperativo } from "@/core/reportes/resumen-operativo";
+import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-resumen";
 
 export default async function ReportesResumenPage() {
   const ctx = await obtenerContextoUsuario();
@@ -44,67 +45,17 @@ export default async function ReportesResumenPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <h2 className="mb-2 text-sm font-medium">Top productos vendidos (mes)</h2>
-          <table className="w-full text-sm">
-            <tbody>
-              {r.financiero.topProductos.map((p) => (
-                <tr key={p.producto} className="border-b">
-                  <td className="py-1">{p.producto}</td>
-                  <td className="text-right">${p.importe.toLocaleString("es-AR")}</td>
-                </tr>
-              ))}
-              {!r.financiero.topProductos.length && (
-                <tr>
-                  <td className="py-1 text-neutral-500">Sin ventas todavía este mes.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <TablaTopProductos filas={r.financiero.topProductos} />
         </div>
         <div>
           <h2 className="mb-2 text-sm font-medium">Top proveedores (mes)</h2>
-          <table className="w-full text-sm">
-            <tbody>
-              {r.financiero.topProveedores.map((p) => (
-                <tr key={p.proveedor} className="border-b">
-                  <td className="py-1">{p.proveedor}</td>
-                  <td className="text-right">${p.importe.toLocaleString("es-AR")}</td>
-                </tr>
-              ))}
-              {!r.financiero.topProveedores.length && (
-                <tr>
-                  <td className="py-1 text-neutral-500">Sin compras todavía este mes.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <TablaTopProveedores filas={r.financiero.topProveedores} />
         </div>
       </div>
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Stock con saldo en 0 o negativo (top 10)</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="py-1">Producto</th>
-              <th>Sección</th>
-              <th>Saldo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {r.topStockBajo.map((s, i) => (
-              <tr key={i} className="border-b">
-                <td className="py-1">{s.producto}</td>
-                <td>{s.seccion}</td>
-                <td className={s.saldo < 0 ? "text-red-600" : ""}>{s.saldo}</td>
-              </tr>
-            ))}
-            {!r.topStockBajo.length && (
-              <tr>
-                <td className="py-1 text-neutral-500">Sin productos en 0 o negativo.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <TablaStockBajo filas={r.topStockBajo} />
       </div>
 
       <p className="text-xs text-neutral-500">

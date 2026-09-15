@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { generarReporteVentasPorCategoria } from "@/core/reportes/periodo";
+import { TablaProductosCategoria } from "./tabla-categorias";
 
 function primerDiaDelMesISO() {
   const hoy = new Date();
@@ -43,17 +44,7 @@ export default async function CategoriasPage({ searchParams }: { searchParams: P
           <h2 className="mb-2 text-sm font-medium">
             {c.categoria} — ${c.importe.toLocaleString("es-AR")} ({c.cantidad} unid.)
           </h2>
-          <table className="w-full text-sm">
-            <tbody>
-              {c.productos.map((p, i) => (
-                <tr key={i} className="border-b">
-                  <td className="py-1">{p.producto}</td>
-                  <td>{p.cantidad}</td>
-                  <td>${p.importe.toLocaleString("es-AR")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TablaProductosCategoria filas={c.productos} nombreExport={`ventas-categoria-${c.categoria}`} />
         </div>
       ))}
       {!rep.porCategoria.length && <p className="text-sm text-neutral-500">Sin ventas en el período.</p>}

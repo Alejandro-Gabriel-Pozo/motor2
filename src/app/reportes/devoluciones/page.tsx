@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { generarReporteDevoluciones } from "@/core/reportes/devoluciones";
+import { TablaDevolucionesClientes, TablaDevolucionesProveedor } from "./tabla-devoluciones";
 
 export default async function DevolucionesPage({ searchParams }: { searchParams: Promise<{ dias?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -30,33 +31,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Devoluciones de clientes (revendibles)</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="py-1">Producto</th>
-              <th>Cantidad</th>
-              <th>Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rep.clientes.map((c, i) => (
-              <tr key={i} className="border-b">
-                <td className="py-1">
-                  {c.producto} {c.sinPrecio && <span className="text-amber-600">(sin precio)</span>}
-                </td>
-                <td>{c.cantidad}</td>
-                <td>${c.valor.toLocaleString("es-AR")}</td>
-              </tr>
-            ))}
-            {!rep.clientes.length && (
-              <tr>
-                <td className="py-1 text-neutral-500" colSpan={3}>
-                  Sin devoluciones de clientes en el período.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <TablaDevolucionesClientes filas={rep.clientes} />
       </div>
 
       <div>
@@ -66,17 +41,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
             <p className="text-sm font-medium">
               {p.proveedor} — ${p.valor.toLocaleString("es-AR")}
             </p>
-            <table className="w-full text-sm">
-              <tbody>
-                {p.productos.map((prod, i) => (
-                  <tr key={i} className="border-b">
-                    <td className="py-1">{prod.producto}</td>
-                    <td>{prod.cantidad}</td>
-                    <td>${prod.valor.toLocaleString("es-AR")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <TablaDevolucionesProveedor filas={p.productos} nombreExport={`devoluciones-${p.proveedor}`} />
           </div>
         ))}
         {!rep.proveedores.length && <p className="text-sm text-neutral-500">Sin devoluciones a proveedores en el período.</p>}

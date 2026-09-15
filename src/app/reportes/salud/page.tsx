@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { generarReporteSaludPorProducto } from "@/core/reportes/salud-por-producto";
+import { TablaSaludPorProducto } from "./tabla-salud";
 
 export default async function SaludPage() {
   const ctx = await obtenerContextoUsuario();
@@ -17,39 +18,7 @@ export default async function SaludPage() {
           para revisar. {conAtencion} de {filas.length} fila(s) necesitan atención.
         </p>
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-neutral-500">
-            <th className="py-1">Producto</th>
-            <th>Sección</th>
-            <th>Consolidado</th>
-            <th>Alerta</th>
-            <th>Diferencias</th>
-            <th>Sin receta</th>
-            <th>Resumen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((f, i) => (
-            <tr key={i} className="border-b">
-              <td className="py-1">{f.codigo} — {f.producto}</td>
-              <td>{f.seccionNombre}</td>
-              <td>{f.estadoConsolidado}</td>
-              <td>{f.estadoAlerta}</td>
-              <td>{f.estadoDiferencias}</td>
-              <td>{f.sinRecetaVinculada ? "Sí" : "No"}</td>
-              <td className={f.resumen === "Atención" ? "text-red-600 font-medium" : "text-neutral-500"}>{f.resumen}</td>
-            </tr>
-          ))}
-          {!filas.length && (
-            <tr>
-              <td className="py-1 text-neutral-500" colSpan={7}>
-                Sin productos con movimientos o conteos todavía.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <TablaSaludPorProducto filas={filas} />
     </div>
   );
 }

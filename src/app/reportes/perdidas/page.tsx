@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { generarReportePerdidas } from "@/core/reportes/perdidas";
+import { TablaMermas, TablaConsumoInterno } from "./tabla-perdidas";
 
 export default async function PerdidasPage({ searchParams }: { searchParams: Promise<{ dias?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -31,64 +32,12 @@ export default async function PerdidasPage({ searchParams }: { searchParams: Pro
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Mermas por motivo</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="py-1">Motivo</th>
-              <th>Cantidad</th>
-              <th>Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rep.mermas.map((m, i) => (
-              <tr key={i} className="border-b">
-                <td className="py-1">
-                  {m.motivo} {m.costoIncompleto && <span className="text-amber-600">(costo incompleto)</span>}
-                </td>
-                <td>{m.cantidad}</td>
-                <td>${m.valor.toLocaleString("es-AR")}</td>
-              </tr>
-            ))}
-            {!rep.mermas.length && (
-              <tr>
-                <td className="py-1 text-neutral-500" colSpan={3}>
-                  Sin mermas en el período.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <TablaMermas filas={rep.mermas} />
       </div>
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Consumo interno por destino</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="py-1">Destino</th>
-              <th>Cantidad</th>
-              <th>Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rep.consumos.map((c, i) => (
-              <tr key={i} className="border-b">
-                <td className="py-1">
-                  {c.motivo} {c.costoIncompleto && <span className="text-amber-600">(costo incompleto)</span>}
-                </td>
-                <td>{c.cantidad}</td>
-                <td>${c.valor.toLocaleString("es-AR")}</td>
-              </tr>
-            ))}
-            {!rep.consumos.length && (
-              <tr>
-                <td className="py-1 text-neutral-500" colSpan={3}>
-                  Sin consumo interno en el período.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <TablaConsumoInterno filas={rep.consumos} />
       </div>
     </div>
   );

@@ -74,8 +74,8 @@ escaneo ni el motivo por línea — en motivo, motor2 ya está mejor que los dos
 
 ## 2. Reportes — filtros, orden, export, drill-down
 
-**Brecha real** — los ~16 reportes de motor2 son tablas HTML planas: sin
-orden de columna, sin filtros más allá de algún rango de fechas puntual, sin
+**Brecha real, ya resuelta en su mayor parte** (2026-09-15): los ~16
+reportes de motor2 eran tablas HTML planas: sin orden de columna, sin
 exportar a nada, sin links entre reportes relacionados.
 
 ### Cómo lo resuelven ambos
@@ -135,6 +135,33 @@ Por costo/beneficio, en orden:
    — el que más justifica ya tener un dato que hoy no se puede acotar.
 No hace falta el motor de "vistas guardadas" de ninguno de los dos — es
 demasiado para el tamaño de este negocio.
+
+### Estado: 1-3 implementados (2026-09-15)
+
+`src/components/tabla-reporte.tsx` — tabla genérica client-side con orden
+por columna (clic en encabezado, flecha ▲/▼) y export a CSV (BOM UTF-8,
+separador `,`, valores entre comillas). Se usa en los ~16 reportes bajo
+`/reportes/*`, con links de drill-down hacia `/reportes/historial
+?productoId=...` donde el reporte tiene un producto identificable.
+
+Un detalle no obvio de esta porción, para no repetir el error: `<TablaRepor
+te>` es `"use client"`, así que las columnas (`render`/`valor`, que son
+funciones) **no pueden definirse en el Server Component de cada `page.tsx`
+y pasarse como prop** — Next.js corta la serialización RSC ahí ("Functions
+cannot be passed directly to Client Components"), cosa que `tsc`/Vitest no
+detectan (ninguno ejercita el árbol de Server→Client real) y que solo salió
+a la luz corriendo la app de verdad. La solución adoptada: cada reporte
+tiene un `tabla-<nombre>.tsx` chico con `"use client"` propio, que define
+las columnas y envuelve `<TablaReporte>` — el `page.tsx` (Server Component)
+solo hace fetch de datos planos y se los pasa como prop. Mismo motivo por
+el que `reportes/conteos/page.tsx` mapea las filas de Prisma a un DTO plano
+antes de pasarlas: los `Decimal` de Prisma tampoco cruzan ese límite.
+
+Punto 4 (filtros de fecha donde faltan) quedó afuera a propósito: la
+mayoría de los reportes ya tiene el filtro que corresponde (rango de fecha,
+días atrás) o es una foto del estado actual sin ventana temporal que
+filtrar (ej. Salud por producto, Diferencias de ajuste) — no había
+brecha real que cerrar ahí, más allá de las dos ya cubiertas.
 
 ---
 
@@ -203,7 +230,7 @@ Script (que tiene el mismo problema en sus formularios HTML).
 | Hallazgo | Estado en motor2 | Aplica a Apps Script |
 |---|---|---|
 | Conteo físico "un producto a la vez" vs. grilla precargada | Brecha abierta | Sí — mismo patrón "un producto por vez" en `PanelConteoFisico.html` |
-| Reportes sin orden/filtro/export/drill-down | Brecha abierta | Sí — los reportes de Apps Script (`Reportes.js`) tienen la misma limitación |
+| Reportes sin orden/export/drill-down | **Resuelto en motor2** (orden, CSV, drill-down) | Sí — los reportes de Apps Script (`Reportes.js`) tienen la misma limitación de base, aunque ahí el export a Sheets es más directo que un CSV |
 | Número de factura sin validar formato | **No es brecha** — ambos ERPs de referencia hacen lo mismo | No aplica un fix — si Apps Script ya valida algo ahí, no hace falta tocarlo |
 | `<input type="number">` nativo en plata/cantidad | **Resuelto en motor2** | Sí — los HTML de Apps Script (`PanelOperacion.html`, etc.) probablemente tienen el mismo `type="number"` nativo |
 

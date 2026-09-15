@@ -2,6 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerReportePromociones } from "@/core/reportes/promociones";
 import { obtenerPromocionesHabilitadas, buscarProductoParaPromocion } from "@/server/actions/promociones";
 import { PromocionForm } from "./promocion-form";
+import { TablaPromociones } from "./tabla-promociones";
 
 function primerDiaDelMes() {
   const hoy = new Date();
@@ -36,35 +37,7 @@ export default async function PromocionesPage() {
             Este mes: ${rep.totalFacturadoPromociones.toLocaleString("es-AR")} en promociones ({rep.porcentajePromociones}% del total)
           </h2>
           <p className="mb-2 text-xs text-neutral-500">{rep.aviso}</p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-neutral-500">
-                <th className="py-1">Producto</th>
-                <th>Cantidad</th>
-                <th>Facturado</th>
-                <th>Valor a la carta</th>
-                <th>Descuento</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rep.promociones.map((p, i) => (
-                <tr key={i} className="border-b">
-                  <td className="py-1">{p.producto}</td>
-                  <td>{p.cantidad}</td>
-                  <td>${p.importe.toLocaleString("es-AR")}</td>
-                  <td>{p.valorALaCartaUnitario === null ? <span className="text-amber-600">incompleto</span> : `$${p.valorALaCartaUnitario.toLocaleString("es-AR")}`}</td>
-                  <td>{p.descuentoPct === null ? "—" : `${p.descuentoPct}%`}</td>
-                </tr>
-              ))}
-              {!rep.promociones.length && (
-                <tr>
-                  <td className="py-1 text-neutral-500" colSpan={5}>
-                    Sin ventas de promociones este mes.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <TablaPromociones filas={rep.promociones} />
         </div>
       )}
     </div>

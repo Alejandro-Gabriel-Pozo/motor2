@@ -2,6 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { obtenerHistorialProducto } from "@/core/reportes/historial-producto";
 import { HistorialFiltros } from "./historial-filtros";
+import { TablaHistorialEventos } from "./tabla-historial";
 
 export default async function HistorialProductoPage({
   searchParams,
@@ -47,37 +48,7 @@ export default async function HistorialProductoPage({
             {historial.totalMovimientos} movimiento(s), {historial.totalConteos} conteo(s) en total (el saldo corriente arranca del primer movimiento
             real, no del rango elegido).
           </p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-neutral-500">
-                <th className="py-1">Fecha</th>
-                <th>Tipo</th>
-                <th>Detalle</th>
-                <th>Sección</th>
-                <th>Cantidad</th>
-                <th>Saldo corriente</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historial.eventos.map((ev, i) => (
-                <tr key={i} className="border-b">
-                  <td className="py-1">{ev.fecha.toISOString().slice(0, 10)}</td>
-                  <td>{ev.tipo === "movimiento" ? ev.proceso : "Conteo"}</td>
-                  <td>{ev.detalle}</td>
-                  <td>{ev.seccionNombre}</td>
-                  <td>{ev.tipo === "movimiento" ? ev.cantidadConSigno : `${ev.conteoReal} (dif. ${ev.diferencia})`}</td>
-                  <td>{ev.tipo === "movimiento" ? ev.saldoCorriente : "—"}</td>
-                </tr>
-              ))}
-              {!historial.eventos.length && (
-                <tr>
-                  <td className="py-1 text-neutral-500" colSpan={6}>
-                    Sin eventos en el rango elegido.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <TablaHistorialEventos filas={historial.eventos} nombreExport={`historial-${historial.codigo}`} />
         </div>
       )}
     </div>

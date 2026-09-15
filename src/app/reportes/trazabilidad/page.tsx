@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/core/reportes/trazabilidad";
+import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
 
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<{ producto?: string; idOperacion?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -32,30 +32,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
       {encontradas.length > 0 && (
         <div>
           <h2 className="mb-2 text-sm font-medium">Operaciones encontradas</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-neutral-500">
-                <th className="py-1">Fecha</th>
-                <th>Proceso</th>
-                <th>Sección</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {encontradas.map((e) => (
-                <tr key={e.idOperacion} className="border-b">
-                  <td className="py-1">{e.fecha.toISOString().slice(0, 10)}</td>
-                  <td>{e.proceso}</td>
-                  <td>{e.seccionNombre}</td>
-                  <td>
-                    <Link href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(e.idOperacion)}`} className="underline">
-                      Ver operación
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TablaOperacionesEncontradas filas={encontradas} />
         </div>
       )}
       {sp.producto && !encontradas.length && !sp.idOperacion && <p className="text-sm text-neutral-500">Sin operaciones para ese producto.</p>}
@@ -73,28 +50,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
               {operacion.nroFactura && `Factura: ${operacion.nroFactura}.`}
             </p>
           )}
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-neutral-500">
-                <th className="py-1">Producto</th>
-                <th>Proceso</th>
-                <th>Sección</th>
-                <th>Cantidad</th>
-                <th>Detalle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {operacion.items.map((it) => (
-                <tr key={it.idMovimiento} className="border-b">
-                  <td className="py-1">{it.productoCodigo} — {it.productoNombre}</td>
-                  <td>{it.proceso}</td>
-                  <td>{it.seccionNombre}</td>
-                  <td>{it.cantidad}</td>
-                  <td>{it.detalle}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TablaItemsOperacion filas={operacion.items} nombreExport={`operacion-${operacion.idOperacion}`} />
         </div>
       )}
     </div>
