@@ -27,7 +27,7 @@ motor2: una sucursal es una fila `Sucursal` en Postgres.
 
 ## Estado actual (commiteado en este repo)
 
-### Porción Core — COMPLETA (código y tests escritos, sin correr contra DB real)
+### Porción Core — COMPLETA (código y tests verificados verdes contra Postgres real)
 
 - Modelos: `Sucursal`, `Usuario`→`User` (Auth.js), `Rol`, `PermisoRol`,
   `UsuarioSucursal`, `Accion`, `CapacidadSucursal`.
@@ -48,7 +48,7 @@ motor2: una sucursal es una fila `Sucursal` en Postgres.
 - Alta de sucursal (`alta_sucursal`, acción nueva que no existía en Apps
   Script) crea la sucursal Y su primer admin en una transacción.
 
-### Porción Catálogo — COMPLETA (código y tests escritos, sin correr contra DB real)
+### Porción Catálogo — COMPLETA (código y tests verificados verdes contra Postgres real)
 
 Investigación exhaustiva de `Catalogo.js` (repo `motor`) antes de diseñar:
 ver el detalle completo (schema Prisma, decisiones, server actions, tests)
@@ -72,20 +72,25 @@ Resumen de las decisiones más importantes:
   Producto tiene "+ Nuevo insumo"/"+ Nueva categoría"/"+ Nuevo proveedor"
   sin salir del flujo (mismo patrón que Apps Script ya resolvía bien).
 
-### Porción Movimientos — SCHEMA DISEÑADO (`prisma/schema.prisma`), sin server actions/UI/tests
+### Porción Movimientos — CÓDIGO Y TESTS COMPLETOS Y VERDES (falta UI)
 
 Investigación completa de `Movimientos.js`/`Stock.js`/`Sucursales.js` (repo
-`motor`) hecha e incorporada al schema — ver la sección íntegra más abajo,
-"Plan de la porción Movimientos", para las decisiones con ancla
-`archivo:línea`. Resumen de lo más importante:
+`motor`) — ver la sección íntegra más abajo, "Plan de la porción
+Movimientos", para las decisiones con ancla `archivo:línea`. A diferencia
+de Core/Catálogo, esta porción se implementó Y SE VERIFICÓ de punta a
+punta contra Postgres real en la misma sesión (ver "Verificación real"
+más abajo) — no quedó solo "escrita sin correr".
 
-- Modelos nuevos: `Seccion`, `Operacion`, `MovimientoStock` (el Kardex),
+Resumen de lo más importante:
+
+- Modelos: `Seccion`, `Operacion`, `MovimientoStock` (el Kardex),
   `ConteoFisico`, `PrecioLocalProducto` — y los enums `Proceso`,
   `MotivoMerma`, `DestinoConsumo`, `AccionConteo`, `EstadoConteo`.
 - `MovimientoStock.cantidad` se graba **siempre ya con el signo aplicado**
   (nunca una segunda tabla de signos que leer aparte) — cierra de raíz la
   MISMA clase de bug que causó el bug de Merma sin signo en Apps Script
   v2.1.0 (dos fuentes de verdad para el signo que se desincronizaron).
+  Verificado con un test que confirma exactamente esto.
 - `Operacion` (encabezado, agrupa 1+ líneas escritas juntas) + `MovimientoStock`
   (línea del libro mayor) reemplaza el "ID Operación" de texto compartido a
   ciegas entre filas de Apps Script por una FK real.
@@ -97,6 +102,10 @@ Investigación completa de `Movimientos.js`/`Stock.js`/`Sucursales.js` (repo
   realmente cobrado, y esa hoja vivía LOCAL a cada hostería, no en el
   Catálogo Central. `precio_local` ya estaba seedeado en `acciones.ts`
   anticipando esto.
+- Concurrencia: sin `LockService`/`conLock_` (no existe un lock de
+  aplicación acá), se usa aislamiento **Serializable** + reintento
+  (`src/core/movimientos/con-reintento.ts`) — verificado con un test real
+  de 2 requests concurrentes que juntas sobre-venderían: solo una gana.
 - A propósito el schema todavía NO incluye `RECLASIFICACIÓN` (primitiva de
   Stock, nunca pasa por TRANSICIONES) ni los 3 procesos de transferencia
   entre sucursales (`TRANSFERENCIA_SALIDA/ENTRADA_SUCURSAL`,
@@ -104,49 +113,103 @@ Investigación completa de `Movimientos.js`/`Stock.js`/`Sucursales.js` (repo
   a un enum de Postgres es aditivo y trivial: se agregan cuando esas
   porciones se investiguen de verdad, no antes.
 
-Falta (próxima sesión): portar `TRANSICIONES` (signo/validaciones por
-proceso) a TS, escribir los server actions de los 12 procesos, la UI de
-carga (paneles guiados, wizard de Compra por proveedor, Conteo Físico), y
-los tests de negocio. Ver la sección completa más abajo.
+Server actions escritas: `registrarMovimiento` (motor genérico para los 9
+procesos que lo comparten), `registrarVenta`, `registrarConteoFisico`/
+`resolverConteoPendiente`/`cancelarConteoFisico`, CRUD de `Seccion` y de
+`PrecioLocalProducto`. 67 tests de Vitest, todos verdes.
 
-## Pendiente / huecos conocidos (bloquean probar esto de verdad)
+Falta (próxima sesión): la UI de carga (paneles guiados, wizard de Compra
+por proveedor, Conteo Físico) — ver la sección completa más abajo, "UI
+prevista".
 
-1. **No hay Postgres real conectado todavía** — decisión explícita tomada
-   durante el diseño (se avanzó con el código sin DB). Falta:
-   - Crear un proyecto Neon (o levantar `docker compose up -d` local).
-   - Completar `.env` real (`DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`,
-     `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`, `BOOTSTRAP_ADMIN_EMAILS`).
-   - `npm run db:migrate` (aplica schema + corre `prisma/seed.ts`).
-2. **Índices únicos que Prisma no puede declarar** — agregar a mano en la
-   migración SQL generada:
-   - Parcial en `CapacidadSucursal` (como máximo una fila "default",
-     `sucursalId IS NULL`, por acción).
-   - Funcionales `lower(nombre)` en `Producto`, `Proveedor`, `Insumo`,
-     `CategoriaProducto`, `Unidad`, `Grupo` (unicidad case-insensible).
-   - Funcional `lower(nombre)` en `Seccion`, **scopeado por sucursal**:
-     `CREATE UNIQUE INDEX ON "Seccion" (sucursalId, lower(nombre));`
-     (porción Movimientos, mismo criterio que el resto).
-3. **Tests escritos pero nunca corridos** (`npm test`) — necesitan la DB de
-   arriba. Cubren permisos/bootstrap (Core) y productos/recetas/grupos/
-   concurrencia de proveedores (Catálogo).
-4. Credenciales reales de Google OAuth (Google Cloud Console).
+### Bugs de infraestructura encontrados y arreglados (afectaban a TODO el proyecto, no solo Movimientos)
+
+Al intentar correr `npm test` contra un Postgres real por primera vez
+(nunca se había hecho, ver "Pendiente" de sesiones anteriores), aparecieron
+dos bugs preexistentes que bloqueaban CUALQUIER test, incluidos los de
+Core y Catálogo — ninguno de los dos tiene que ver con Movimientos en sí:
+
+1. **`src/lib/db.ts` no podía conectar a Postgres local/docker-compose.**
+   `PrismaNeon` habla el protocolo HTTP/WebSocket propio de la
+   infraestructura de Neon — con un Postgres liso (`docker compose up -d`,
+   como promete el README) tira `Received network error or non-101 status
+   code` apenas se ejecuta la primera query. Fix: `crearPrismaClient()`
+   ahora elige el adapter según el host de `DATABASE_URL` — `PrismaNeon`
+   solo si es un host `neon.tech`, `PrismaPg` (driver `pg` estándar) para
+   cualquier otro caso (local, otro proveedor). Se agregaron
+   `@prisma/adapter-pg`/`pg`/`@types/pg` como dependencias.
+2. **`import "server-only"` rompía cualquier test que tocara un server
+   action.** Ese paquete tira error fuera del bundler de Next (que define
+   la condición `react-server`) — bajo Vitest/Node directo, cualquier test
+   que importara algo con `conPermiso` (o sea, casi todos) fallaba antes
+   de correr un solo `it`. Fix: alias en `vitest.config.ts` que reemplaza
+   `server-only` por un módulo vacío en tests (mismo criterio que
+   recomienda Next.js para testear código server-only).
+
+Con los dos fixes, **la suite completa (Core + Catálogo + Movimientos, 67
+tests) corre verde contra un Postgres real** — la primera vez que esto pasa
+en el proyecto. Ver "Verificación real" más abajo para cómo reproducirlo.
+
+### Verificación real (esta sesión, Postgres 16 local)
+
+1. `npx prisma migrate dev` — corrió limpio, generó
+   `prisma/migrations/20260915034059_init/` (todo el schema hasta acá:
+   Core + Catálogo + Movimientos, nunca antes migrado) y
+   `prisma/migrations/20260915034450_indices_manuales/` (los índices
+   únicos funcionales/parciales documentados en "Pendiente" — ya escritos
+   a mano y committeados, no quedan como TODO).
+2. `npm run db:seed` — corrió limpio (33 acciones, roles, sucursal
+   "Central", 5 unidades base).
+3. `npm test` — **67/67 tests verdes**, incluidos los de Core/Catálogo que
+   nunca se habían corrido contra una DB real antes de esta sesión.
+4. `npx tsc --noEmit` y `npx eslint` — limpios.
+5. `npx next build` — build de producción limpio, las 15 rutas existentes
+   compilan.
+
+No se conectó ningún Neon real (sigue pendiente: credenciales de Google
+OAuth, y probar contra Neon en vez de Postgres local) — pero el camino
+completo "schema → migración → seed → server actions → tests" ya está
+probado de punta a punta contra Postgres real, no solo contra el compilador.
+
+## Pendiente / huecos conocidos
+
+1. ~~No hay Postgres real conectado todavía~~ **RESUELTO (sesión
+   Movimientos) para desarrollo local** — `npx prisma migrate dev` +
+   `npm run db:seed` + `npm test` corridos contra Postgres 16 real, los
+   tres limpios (ver "Verificación real" arriba). Sigue pendiente para
+   PRODUCCIÓN: crear el proyecto Neon real y completar `.env` con sus
+   credenciales (`DATABASE_URL`/`DIRECT_URL` de Neon) — el código ya
+   soporta los dos casos (ver el bugfix de `src/lib/db.ts` arriba).
+2. ~~Índices únicos que Prisma no puede declarar~~ **RESUELTO** — escritos
+   a mano y committeados en
+   `prisma/migrations/20260915034450_indices_manuales/migration.sql`
+   (parcial en `CapacidadSucursal`, funcionales `lower(nombre)` en
+   Producto/Proveedor/Insumo/CategoriaProducto/Unidad/Grupo/Seccion),
+   aplicados y verificados contra Postgres real.
+3. ~~Tests escritos pero nunca corridos~~ **RESUELTO** — 67/67 verdes
+   (Core, Catálogo y Movimientos) contra Postgres real.
+4. Credenciales reales de Google OAuth (Google Cloud Console) — sigue
+   pendiente, no verificable sin acceso a Google Cloud Console.
 5. UI de selección de "sucursal activa" para un usuario con más de una
    membresía — deferida a propósito (`src/core/auth/contexto.ts` usa la
    primera membresía activa como MVP).
+6. UI de carga de Movimientos (paneles guiados, wizard de Compra,
+   Conteo Físico) — los server actions y tests ya están, ver "Próximas
+   porciones".
 
-## Próximas porciones (no empezadas)
+## Próximas porciones
 
-En este orden de dependencia (Movimientos depende de Catálogo; Stock y
-Reportes dependen de Movimientos):
+En este orden de dependencia (Stock y Reportes dependen de Movimientos):
 
-1. **Movimientos** — **schema ya diseñado y aplicado** (`prisma/schema.prisma`
-   — `Seccion`/`Operacion`/`MovimientoStock`/`ConteoFisico`/`PrecioLocalProducto`,
-   ver "Estado actual" arriba y el plan íntegro más abajo). Falta portar
-   `TRANSICIONES` a TS, los server actions de los 12 procesos gateables
-   (Compra, Producción, Consumo, Ajuste, Control, Transferencia, Merma,
-   Venta, Devolución×3), la UI de carga y los tests. Acá también se
-   engancha de verdad `upsertProveedorPorProducto` (ya construido en
-   Catálogo, sin usar todavía) al confirmar una Compra.
+1. **Movimientos — UI** (única parte pendiente de esta porción; el motor
+   de dominio, los server actions y los tests ya están escritos y
+   verificados, ver "Estado actual" arriba y el plan íntegro más abajo).
+   Paneles guiados por proceso bajo `/movimientos/*`, wizard de Compra por
+   proveedor con alta rápida de producto inline (reusar el patrón de
+   Catálogo), y el panel de Conteo Físico. Acá también se termina de
+   enganchar `upsertProveedorPorProducto` (ya construido en Catálogo,
+   consumido por `registrarMovimiento` pero nunca ejercitado desde una UI
+   real todavía).
 2. **Stock** — Kardex + vistas materializadas (`Stock`, `StockConsolidado`,
    `StockFamilia`, `AlertasStock`), conteo físico.
 3. **Reportes** — `obtenerDatosConsulta` (18 vistas), reportes por período.
@@ -492,7 +555,7 @@ falla (integridad referencial real, `onDelete: Restrict` default).
 
 ---
 
-## Plan de la porción Movimientos (schema diseñado y aplicado; server actions/UI/tests pendientes)
+## Plan de la porción Movimientos (código, tests y migración completos y verdes; falta UI)
 
 Investigación hecha (repo `motor`) antes de tocar el schema, siguiendo la
 misma convención que Core/Catálogo: `Movimientos.js` completo (1825
@@ -538,75 +601,102 @@ Apps Script) como investigación adelantada del dominio.
 decisión y el ancla a Apps Script. `npx prisma validate`/`generate` ya
 corridos sin errores contra este schema.
 
-### Algoritmos a portar (server actions — próxima sesión, todavía sin escribir)
+### Algoritmos (implementados — `src/core/movimientos/`)
 
 - **`TRANSICIONES` → `src/core/movimientos/transiciones.ts`**: const TS 1:1
-  con Movimientos.js:61-348 (`requiereDiaHabil`, `permiteCero`, `filtroUso`,
-  `filtroTipo`, `aplicaFactorConversion`, `generaConsumoDeReceta`,
-  `exigeSeccion`, y el signo — usado UNA vez, al construir `cantidad` antes
-  de insertar, nunca al leer). Fuente única, mismo criterio que ya defendió
+  con Movimientos.js:61-348 (`permiteCero`, `requiereStockReal` — cubre
+  también Producción, ver docstring en el archivo —, `aplicaFactorConversion`,
+  `generaConsumoDeReceta`, `exigeSeccion`, y el signo — usado UNA vez, al
+  construir `cantidad` antes de insertar, nunca al leer). `filtroUso` de
+  Apps Script NO se portó: "Uso" ya no existe como dato persistido
+  (porción Catálogo), así que donde Apps Script filtraba por Uso (solo
+  Compra) acá se filtra por `tipo === 'MP'` directo — mismo resultado,
+  sin el dato redundante. Fuente única, mismo criterio que ya defendió
   Apps Script después del bug de Merma.
-- **`armarLineaMovimiento` (equivalente a `armarRegistroMovimiento_`,
-  Movimientos.js:724-872)**: conversión de unidad (factor / presentación
-  alternativa / peso real), redondeo por decimales de la `Unidad`, cálculo
-  de `precioUnitario`/`precioPorUnidadStock`, chequeo de sección obligatoria
-  con pista de "tiene stock en: ..." armada contra un `SUM(cantidad)` real
-  en vez de rescanear un array de stock precalculado.
-- **`calcularConsumosProduccion`/`resolverConsumoPorFamilia`** (Movimientos.js:632-659,
-  Stock.js:481-524): al Producir o Vender un PV con receta, expandir cada
+- **`armarLineaMovimiento`** (`src/server/actions/movimientos.ts`, equivalente
+  a `armarRegistroMovimiento_`, Movimientos.js:724-872): conversión de
+  unidad (factor / presentación alternativa / peso real), redondeo por
+  decimales de la `Unidad`, cálculo de `precioUnitario`/`precioPorUnidadStock`.
+  La pista de "tiene stock en: ..." (`seccionesConStock`,
+  `src/core/movimientos/stock.ts`) se arma contra un `SUM(cantidad) GROUP
+  BY seccionId` real, no un array de stock precalculado.
+- **`calcularConsumosProduccion`/`resolverConsumoPorFamilia`**
+  (`src/core/movimientos/stock.ts`, equivalente a Movimientos.js:632-659,
+  Stock.js:481-524): al Producir o Vender un PV con receta, expande cada
   ingrediente a 1+ líneas de Consumo — con reparto entre "hermanos" del
-  mismo `Insumo` (ya modelado en Catálogo, `Producto.insumoId`) si el
-  puntual no alcanza. FEFO simplificado: sin lote elegido, `ORDER BY
-  loteVencimiento ASC` sobre el saldo agregado (equivalente a
-  `obtenerLoteMasProximoAVencer_`, Stock.js:426-480).
-- **Validación de stock suficiente**: `SUM(cantidad) GROUP BY productoId,
-  seccionId` (con el índice `@@index([productoId, seccionId, loteVencimiento])`
-  ya en el schema) reemplaza `validarStockSuficiente_`/`obtenerStockMP_`
-  (Stock.js:573-598) — sin necesidad de una hoja "Stock" materializada a
-  mano: Postgres puede agregar en tiempo real. Acumular por clave dentro
-  del mismo payload ANTES de escribir nada (bugfix C-1, ver tabla arriba),
-  dentro de una transacción Prisma (reemplaza `conLock_`/`LockService`).
-- **Venta** (`confirmarRegistrarVenta_ConLock_`, Movimientos.js:1154-1332):
-  por cada ítem vendido → 1 `Operacion` propia con N `MovimientoStock`
-  (`VENTA` para el PV + `CONSUMO` por cada MP de receta + `LIQUIDACION_CONSIGNACION`
+  mismo `Insumo` (`Producto.insumoId`, porción Catálogo) si el puntual no
+  alcanza. FEFO simplificado: `groupBy` + orden ascendente sobre
+  `loteVencimiento` (equivalente a `obtenerLoteMasProximoAVencer_`,
+  Stock.js:426-480), con-fecha antes que sin-fecha.
+- **Validación de stock suficiente** (`validarStockSuficiente`,
+  `src/core/movimientos/stock.ts`): `SUM(cantidad) GROUP BY productoId,
+  seccionId` sobre el índice `@@index([productoId, seccionId, loteVencimiento])`
+  reemplaza `validarStockSuficiente_`/`obtenerStockMP_` (Stock.js:573-598)
+  — sin hoja "Stock" materializada a mano: Postgres agrega en tiempo real.
+  Acumulado por clave dentro del mismo payload ANTES de escribir nada
+  (bugfix C-1, ver tabla arriba, con test que lo prueba), dentro de una
+  transacción **Serializable + reintento**
+  (`src/core/movimientos/con-reintento.ts`) que reemplaza `conLock_`/
+  `LockService` — sin un lock de aplicación (no aplica en Postgres), se
+  deja que la propia base rechace (código P2034) y se reintente cualquier
+  escritura que resultaría en una condición de carrera real; verificado
+  con un test de 2 requests concurrentes reales (`Promise.all`), no solo
+  de agregación dentro de un mismo payload.
+- **Venta** (`src/server/actions/venta.ts`, equivalente a
+  `confirmarRegistrarVenta_ConLock_`, Movimientos.js:1154-1332): por cada
+  ítem vendido → 1 `Operacion` propia con N `MovimientoStock` (`VENTA`
+  para el PV + `CONSUMO` por cada MP de receta + `LIQUIDACION_CONSIGNACION`
   si esa MP tiene `Producto.esConsignacion`, con `cantidad: 0` y
-  `precioTotal = cantidadConsumida × Producto.precioConsignacion`). Precio
-  de venta: `PrecioLocalProducto` (si existe y `habilitado`) o
-  `Producto.precioVenta` (fallback) — mismo criterio que `resolverPrecioVenta_`.
-- **Conteo Físico** (`_registrarConteoFisicoSinRecalculo_`/`resolverConteoPendiente`/
-  `cancelarConteoFisico`, Stock.js:1523-2141): 3 acciones (`AJUSTAR` escribe
-  el `MovimientoStock` de corrección; `FALTA_MOVIMIENTO` deja el
+  `precioTotal = cantidadConsumida × Producto.precioConsignacion`; quién
+  es el consignante se lee vía FK, `producto.proveedorConsignacion`, sin
+  duplicarlo en la fila como hacía Apps Script). Precio de venta:
+  `resolverPrecioVenta` (`src/core/movimientos/precio-venta.ts`) —
+  `PrecioLocalProducto` si existe y `habilitado`, si no `Producto.precioVenta`.
+- **Conteo Físico** (`src/server/actions/conteo-fisico.ts`, equivalente a
+  `_registrarConteoFisicoSinRecalculo_`/`resolverConteoPendiente`/
+  `cancelarConteoFisico`, Stock.js:1523-2141): 3 acciones (`AJUSTAR`
+  escribe el `MovimientoStock` de corrección; `FALTA_MOVIMIENTO` deja el
   `ConteoFisico` en `PENDIENTE` sin tocar stock; `DESCARTAR` no ajusta ni
-  cuenta como válido) — mismo state machine, ahora con `ConteoFisico.movimientos`
-  como FK real en vez de correlación por string.
-- **Transferencia** (`confirmarRegistrarMovimientos`, rama `esTransferencia`,
-  Movimientos.js:991-1022): 1 `Operacion` (`TRANSFERENCIA`) con 2
-  `MovimientoStock` por línea (−cantidad en `seccionId` origen, +cantidad
-  en `Operacion.seccionDestinoId`), ambas con `proceso: TRANSFERENCIA`.
-- **Duplicado de factura** (`validarFacturaNoDuplicada_`, Movimientos.js:402-416):
+  cuenta como válido) — mismo state machine, con `MovimientoStock.conteoFisicoId`
+  como FK real en vez de correlación por string (`idOperacion === idConteo`).
+- **Transferencia** (dentro de `registrarMovimiento`, rama `esTransferencia`,
+  equivalente a `confirmarRegistrarMovimientos`, Movimientos.js:991-1022):
+  1 `Operacion` (`TRANSFERENCIA`) con 2 `MovimientoStock` por línea
+  (−cantidad en `seccionId` origen, +cantidad en `Operacion.seccionDestinoId`),
+  ambas con `proceso: TRANSFERENCIA`.
+- **Duplicado de factura** (dentro de `registrarMovimiento`, equivalente a
+  `validarFacturaNoDuplicada_`, Movimientos.js:402-416):
   `WHERE proceso = COMPRA AND proveedorId = X AND nroFactura = Y` sobre
   `Operacion` — más simple que escanear Kardex por texto, ahora que
   proveedor/factura son columnas reales de `Operacion`, no texto por fila.
 
-### Server actions previstas (patrón `conPermiso`, ya usado en Core/Catálogo)
+### Server actions (implementadas, patrón `conPermiso` ya usado en Core/Catálogo)
 
-Una acción por proceso gateable, cada una contra su `Accion` ya seedeada en
-`acciones.ts`: `registrarCompra` → `proceso_compra` · `registrarProduccion`
-→ `proceso_produccion` · `registrarConsumo` → `proceso_consumo` ·
-`registrarAjuste` → `proceso_ajuste` · `registrarTransferencia` →
-`proceso_transferencia` · `registrarMerma` → `proceso_merma` ·
-`registrarVenta` → `proceso_venta` · `registrarDevolucionConsignacion`/
-`registrarDevolucionCliente`/`registrarDevolucionProveedor` →
-`proceso_devolucion_*` · `registrarConteoFisico`/`resolverConteoPendiente`/
-`cancelarConteoFisico` → `proceso_control`/`cancelar_conteo` ·
-`crearSeccion`/`actualizarActivaSeccion` → `secciones` ·
-`setPrecioLocalProducto` → `precio_local`. Cada una con su "vista previa"
-(equivalente a `calcularPreviaOperacion`/`armarPreviaVentaDesdeItems_`) y
-su "confirmar" (equivalente a `confirmarRegistrarMovimientos`/
-`confirmarRegistrarVenta`), mismo patrón de 2 pasos que ya usan los paneles
-de Apps Script.
+- **`registrarMovimiento`** (`src/server/actions/movimientos.ts`) — motor
+  genérico para los 9 procesos que comparten forma de payload: Compra,
+  Producción, Consumo, Ajuste, Transferencia, Merma, Devolución×3. Gatea
+  contra `ACCION_POR_PROCESO[proceso]` (`proceso_compra`/`proceso_produccion`/
+  etc., ya seedeadas en `acciones.ts`).
+- **`registrarVenta`** (`src/server/actions/venta.ts`) → `proceso_venta`.
+- **`registrarConteoFisico`/`resolverConteoPendiente`/`cancelarConteoFisico`**
+  (`src/server/actions/conteo-fisico.ts`) → `proceso_control`/`cancelar_conteo`.
+- **`crearSeccion`/`actualizarActivaSeccion`/`listarSeccionesActivas`/
+  `listarSeccionesParaPanel`** (`src/server/actions/secciones.ts`) → `secciones`.
+- **`setPrecioLocalProducto`/`obtenerPrecioLocalProducto`/`listarPreciosLocales`**
+  (`src/server/actions/precio-local.ts`) → `precio_local`.
 
-### UI prevista (paneles guiados, patrón ya usado en Catálogo)
+A diferencia de Apps Script (vista previa `calcularPreviaOperacion` +
+confirmación `confirmarRegistrarMovimientos` como dos llamadas RPC
+separadas, necesario porque el panel de Sheets mostraba un modal
+intermedio), acá quedó en UNA sola llamada por acción — el cálculo
+(`armarLineaMovimiento`) y la escritura viven en la misma transacción
+porque la validación de stock necesita ser atómica con la escritura de
+todas formas (ver Serializable + reintento arriba); la UI puede seguir
+mostrando su propio resumen de conversión ANTES de confirmar sin que el
+servidor necesite dos pasos — es responsabilidad de la UI, no del server
+action.
+
+### UI prevista (paneles guiados, patrón ya usado en Catálogo) — ÚNICA PARTE PENDIENTE DE ESTA PORCIÓN
 
 Un panel por proceso bajo `/movimientos/*` (equivalente a
 `PanelOperacion.html` parametrizado por proceso — Movimientos.js:1777-1825),
@@ -617,41 +707,45 @@ caso de Devolución Consignación) y `PanelConteoFisico.html`
 acción secundaria — aunque `reclasificarStock` en sí quede para la porción
 Stock, su entrada de UI ya vive en este mismo panel en Apps Script).
 
-### Testing previsto (Vitest, casos a portar de `Tests.js`)
+### Testing — 67/67 verdes contra Postgres real (`test/movimientos/*.test.ts`)
 
-Signo correcto por proceso (con foco explícito en que agregar un proceso
-nuevo no pueda repetir el bug de Merma sin signo); sección obligatoria
-rechaza sin elegir para los 6 procesos que la exigen, no la exige para los
-que dan de alta stock nuevo; validación de stock agregada por clave
-producto+sección dentro de un mismo payload (2 líneas que juntas superan
-el stock, cada una por separado no); FEFO elige el lote que vence antes
-cuando no se especifica; reparto de consumo entre hermanos de un mismo
-Insumo cuando el puntual no alcanza; Venta de un PV con receta genera
-Consumo + Liquidación Consignación si la MP es consignación, con
-`cantidad: 0` en la Liquidación; Precio Local habilitado pisa el precio
-global, deshabilitado no; duplicado de factura (mismo proveedor+número)
-rechazado, distinto proveedor con mismo número no choca; Conteo Físico:
-`AJUSTAR` escribe movimiento y `SUM(cantidad)` post-ajuste coincide con lo
-contado, `FALTA_MOVIMIENTO` no toca stock y queda `PENDIENTE`,
-`cancelarConteoFisico` sobre un conteo `RESUELTO` escribe la reversión
-exacta y dos llamadas seguidas fallan la segunda (`estadoActual === 'Cancelado'`);
-Transferencia entre 2 secciones deja el `SUM` global sin cambios.
+- `registrar-movimiento.test.ts`: signo correcto por proceso (con test
+  explícito de que Merma resta — el bug de Apps Script v2.1.0 no puede
+  repetirse), Ajuste con delta ya firmado, sección obligatoria, bugfix C-1
+  (2 líneas del mismo payload que juntas superan el stock, cada una por
+  separado no), **2 requests concurrentes reales** que juntas
+  sobre-venderían (solo una gana — prueba el aislamiento Serializable +
+  reintento, no solo la agregación dentro de un payload), Transferencia
+  entre 2 secciones sin cambiar el total global, factura duplicada
+  rechazada, factor de conversión de unidad, reparto de consumo entre
+  "hermanos" de un mismo Insumo, Producción de un insumo en consignación
+  genera Consumo + Liquidación con `cantidad: 0`.
+- `venta.test.ts`: rechaza vender algo que no es PV, Venta con receta
+  consume la MP sin descontar el propio PV, un PV "Se produce" no vuelve a
+  consumir su receta al venderse, consignación vía receta de Venta,
+  Precio Local pisa/no pisa el global, rechaza si no alcanza el stock.
+- `conteo-fisico.test.ts`: `AJUSTAR`/`FALTA_MOVIMIENTO`/`DESCARTAR`,
+  diferencia 0 siempre `RESUELTO`, `resolverConteoPendiente` en sus dos
+  variantes (incluida "ajustar contra el saldo de HOY, no el del día del
+  conteo" con una Compra de por medio), `cancelarConteoFisico` revierte
+  exacto y una segunda cancelación falla, cancelar algo que nunca ajustó
+  también falla.
+- `secciones.test.ts`: alta, dedupe case/espacio-insensible, desactivar
+  sin borrar.
 
-### Verificación de la porción Movimientos
+### Verificación real (repetible)
 
-1. `npx prisma migrate dev` aplica el schema nuevo sin romper Core/Catálogo
-   ya existentes; agregar a mano el índice funcional de `Seccion` (ver
-   "Pendiente" arriba).
-2. Compra con 2 líneas del mismo producto en la misma sección → 1
-   `Operacion`, 2 `MovimientoStock`, `SUM(cantidad)` = la suma de ambas.
-3. Merma de una `Unidad` sin `exigeSeccion` cumplido → rechazada; con
-   sección elegida → `MovimientoStock.cantidad` negativo, saldo baja.
-4. Vender un PV con receta de 2 MP, una marcada `esConsignacion` → 1
-   `Operacion`, filas `VENTA`+`CONSUMO`×2+`LIQUIDACION_CONSIGNACION`×1, la
-   liquidación con `cantidad: 0` y `precioTotal` > 0.
-5. Cancelar un Conteo Físico `RESUELTO` → nueva fila de reversión, saldo
-   vuelve al de antes del ajuste, segunda cancelación sobre el mismo
-   conteo rechazada.
+1. `npx prisma migrate dev` — aplica todo el schema (Core+Catálogo+Movimientos)
+   más los índices manuales, ya committeados como migraciones reales en
+   `prisma/migrations/`.
+2. `npm run db:seed` — seed limpio.
+3. `npm test` — 67/67 verdes.
+4. `npx tsc --noEmit`, `npx eslint`, `npx next build` — los tres limpios.
+
+Ver "Bugs de infraestructura encontrados y arreglados" (arriba, en
+"Estado actual") para los dos fixes que hicieron falta en `src/lib/db.ts`
+y `vitest.config.ts` antes de que esto corriera — ninguno específico de
+Movimientos, afectaban a Core/Catálogo también.
 6. Dos líneas del mismo payload pidiendo más del mismo producto+sección
    del que hay → rechazado ANTES de escribir nada (ninguna fila parcial
    en Kardex).
