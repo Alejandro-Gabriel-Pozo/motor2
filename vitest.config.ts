@@ -14,6 +14,9 @@ export default defineConfig({
       // se reemplaza por un módulo vacío (mismo criterio recomendado por
       // Next.js para testear código server-only con Vitest/Jest).
       "server-only": path.resolve(__dirname, "test/setup/server-only-stub.ts"),
+      // `cookies()` real revienta fuera de un request de Next.js — ver
+      // test/setup/next-headers-stub.ts.
+      "next/headers": path.resolve(__dirname, "test/setup/next-headers-stub.ts"),
     },
   },
   test: {

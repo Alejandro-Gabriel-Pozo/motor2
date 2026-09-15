@@ -126,7 +126,7 @@ export async function resolverConteoPendiente(conteoId: string, comoResolver: "r
   return conPermiso("proceso_control", async (ctx) => {
     return conTransaccionSerializable(async (tx) => {
       const conteo = await tx.conteoFisico.findUnique({ where: { id: conteoId } });
-      if (!conteo) return error("No se encontró ese conteo.");
+      if (!conteo || conteo.sucursalId !== ctx.sucursalId) return error("No se encontró ese conteo.");
       if (conteo.estado !== "PENDIENTE") return error("Ese conteo no está pendiente.");
 
       if (comoResolver === "resuelto") {
@@ -192,7 +192,7 @@ export async function cancelarConteoFisico(conteoId: string): Promise<ResultadoA
   return conPermiso("cancelar_conteo", async (ctx) => {
     return conTransaccionSerializable(async (tx) => {
       const conteo = await tx.conteoFisico.findUnique({ where: { id: conteoId } });
-      if (!conteo) return error("No se encontró ese conteo.");
+      if (!conteo || conteo.sucursalId !== ctx.sucursalId) return error("No se encontró ese conteo.");
       if (conteo.estado === "CANCELADO") return error("Ese conteo ya está cancelado.");
       if (conteo.estado !== "RESUELTO") {
         return error(

@@ -47,6 +47,11 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
   });
 }
 
+/** Un producto puntual por id, en la misma forma que el combobox — para mostrar su etiqueta después de elegirlo (ej. Conteo Físico, al agregar una fila manual). */
+export async function obtenerProductoOpcion(productoId: string): Promise<ProductoOpcion | null> {
+  return prisma.producto.findUnique({ where: { id: productoId }, select: { id: true, codigo: true, nombre: true } });
+}
+
 /** Precio de venta global de un producto puntual — usado por Precio Local para mostrar "precio global actual" sin traer el catálogo entero. */
 export async function obtenerPrecioVentaProducto(productoId: string): Promise<number | null> {
   const p = await prisma.producto.findUnique({ where: { id: productoId }, select: { precioVenta: true } });
