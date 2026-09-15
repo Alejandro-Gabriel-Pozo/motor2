@@ -2,7 +2,8 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { obtenerHistorialConteosFisicos, resolverConteoPendiente, cancelarConteoFisico } from "@/server/actions/conteo-fisico";
-import { ConteoFisicoForm } from "./conteo-fisico-form";
+import { listarStockParaConteo } from "@/core/movimientos/stock";
+import { ConteoFisicoGrid, type FilaBaseConteo } from "./conteo-fisico-grid";
 
 const ESTADO_COLOR: Record<string, string> = {
   RESUELTO: "text-green-700",
@@ -11,23 +12,63 @@ const ESTADO_COLOR: Record<string, string> = {
   CANCELADO: "text-neutral-500",
 };
 
-export default async function ConteoFisicoPage() {
+export default async function ConteoFisicoPage({ searchParams }: { searchParams: Promise<{ seccionId?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
+  const sp = await searchParams;
   const [secciones, { items: historial }] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
     obtenerHistorialConteosFisicos(ctx.sucursalId),
   ]);
 
+  // Con una sola sección activa, no hace falta elegir — se precarga sola
+  // (ver diseño acordado: "sección = sucursal entera" cuando hay una sola).
+  const seccionElegida = sp.seccionId && secciones.some((s) => s.id === sp.seccionId) ? sp.seccionId : secciones.length === 1 ? secciones[0].id : "";
+
+  const filasBase: FilaBaseConteo[] = seccionElegida
+    ? (await listarStockParaConteo(seccionElegida)).map((f) => ({
+        productoId: f.productoId,
+        productoCodigo: f.productoCodigo,
+        productoNombre: f.productoNombre,
+        unidadStockNombre: f.unidadStockNombre,
+        loteVencimiento: f.loteVencimiento ? f.loteVencimiento.toISOString().slice(0, 10) : null,
+        saldoSistema: f.saldoSistema,
+      }))
+    : [];
+
   return (
     <div className="flex flex-col gap-10">
-      <div className="max-w-2xl">
-        <h1 className="mb-4 text-xl font-semibold">Conteo físico</h1>
-        <ConteoFisicoForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
+      <div>
+        <h1 className="mb-1 text-xl font-semibold">Conteo físico</h1>
+        <p className="mb-4 text-sm text-neutral-500">
+          La grilla trae precargado todo lo que ya tiene stock en la sección elegida — tipeá solo lo que difiere, dejá vacío lo que coincide.
+        </p>
+        <form className="mb-4 flex items-end gap-3 text-sm">
+          <label className="flex flex-col gap-1">
+            Sección a contar
+            <select name="seccionId" defaultValue={seccionElegida} className="rounded border px-3 py-2">
+              <option value="">Elegí una sección</option>
+              {secciones.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+            Cargar
+          </button>
+        </form>
+
+        {seccionElegida ? (
+          <ConteoFisicoGrid seccionId={seccionElegida} filasBase={filasBase} />
+        ) : (
+          <p className="text-sm text-neutral-500">Elegí una sección para ver su grilla de conteo.</p>
+        )}
       </div>
 
       <div>

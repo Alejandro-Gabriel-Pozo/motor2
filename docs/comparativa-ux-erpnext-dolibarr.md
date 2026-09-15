@@ -15,7 +15,7 @@ no simple desconocimiento).
 
 ## 1. Conteo físico (inventario)
 
-**Brecha real** — motor2 hoy es "un producto a la vez" (elegís producto,
+**Brecha real, ya resuelta** (2026-09-15) — motor2 era "un producto a la vez" (elegís producto,
 sección, tipeás el conteo real, confirmás). Los dos sistemas de referencia
 usan el mismo patrón entre sí, distinto al de motor2:
 
@@ -69,6 +69,56 @@ default. Confirmar/cerrar el conteo como paso explícito separado de guardar
 cantidades parciales (ya existe algo de esto vía `FALTA_MOVIMIENTO`, pero no
 como flujo "guardar borrador, cerrar después"). No hace falta copiar el modo
 escaneo ni el motivo por línea — en motivo, motor2 ya está mejor que los dos.
+
+### Estado: implementado (2026-09-15)
+
+`src/app/movimientos/conteo-fisico/conteo-fisico-grid.tsx` reemplaza por
+completo el formulario "un producto a la vez". Decisiones de diseño,
+grounded contra ambos ERPs de referencia:
+
+- **Alcance por sección, no total** — mismo criterio que ERPNext
+  (`stock_reconciliation.js`: el campo `Warehouse` es `reqd: 1`, un solo
+  valor, no hay modo "toda la empresa junta"). Dolibarr sí permite dejar
+  `fk_warehouse` vacío y traer stock de todos los almacenes a la vez
+  (`inventory.class.php::validate()`, el filtro `AND ps.fk_entrepot = X`
+  solo se aplica `if ($this->fk_warehouse > 0)`), pero es la excepción
+  técnica, no el flujo recomendado — no se portó. Con una sola sección
+  activa en la sucursal (caso real de este negocio), se preselecciona sola
+  y el efecto práctico es "toda la sucursal", sin necesitar el modo
+  cross-sección de Dolibarr.
+- **Precarga automática** — `listarStockParaConteo` (`src/core/movimientos/
+  stock.ts`) trae una fila por cada combinación (producto, lote) con saldo
+  != 0 en la sección, mismo criterio que ERPNext (`get_items` arma la
+  grilla a partir de la tabla `Bin` — solo lo que ya tiene historial de
+  stock ahí, nunca el catálogo entero) y que Dolibarr (una fila por
+  `(almacén, producto, lote)`). Saldo 0 se excluye a propósito: nada que
+  verificar ahí.
+- **"+ Agregar producto"** — el escape para el caso real de un ítem que
+  nunca se contó ni tiene factura (está físicamente, el sistema no sabe
+  nada de él): en ERPNext el fetch por Bin tampoco lo trae solo, pero Stock
+  Reconciliation permite agregar una fila a mano igual, y al confirmarla
+  esa queda como el primer movimiento real de ese producto en ese almacén.
+  Mismo mecanismo en motor2: una fila manual con saldoSistema=0, y al
+  confirmarla genera el mismo `ConteoFisico`/`MovimientoStock` `CONTROL`
+  de siempre (`registrarConteoFisico` nunca exigió historial previo) — no
+  hizo falta ningún proceso nuevo.
+- **Diferencia en vivo por fila**, calculada client-side mientras se tipea
+  — mismo que `stock_reconciliation.js:233-240` en ERPNext (aunque ahí no
+  está en las columnas por defecto; acá sí, siempre visible).
+- **Acción por fila (Ajustar/Falta movimiento/Descartar), no una sola para
+  todo el lote** — ninguno de los dos ERPs de referencia tiene este
+  concepto (ya señalado arriba como punto a favor de motor2), así que se
+  preservó como estaba en el formulario individual en vez de degradarlo a
+  una sola elección para toda la sesión de conteo.
+- **Motivo/detalle**: se mantiene opcional por fila, igual que en el
+  formulario individual.
+
+Cada fila tipeada dispara su propio `registrarConteoFisico` (secuencial,
+no en batch) — reutiliza 100% la validación/lógica ya existente y probada,
+sin server action nueva para el alta. Lo único nuevo del lado servidor es
+la consulta de lectura (`listarStockParaConteo`) y un lookup de producto
+por id para mostrar la etiqueta de una fila agregada a mano
+(`obtenerProductoOpcion`).
 
 ---
 
@@ -229,7 +279,7 @@ Script (que tiene el mismo problema en sus formularios HTML).
 
 | Hallazgo | Estado en motor2 | Aplica a Apps Script |
 |---|---|---|
-| Conteo físico "un producto a la vez" vs. grilla precargada | Brecha abierta | Sí — mismo patrón "un producto por vez" en `PanelConteoFisico.html` |
+| Conteo físico "un producto a la vez" vs. grilla precargada | **Resuelto en motor2** (grilla por sección, precarga, diferencia en vivo, "+ Agregar producto") | Sí — mismo patrón "un producto por vez" en `PanelConteoFisico.html` |
 | Reportes sin orden/export/drill-down | **Resuelto en motor2** (orden, CSV, drill-down) | Sí — los reportes de Apps Script (`Reportes.js`) tienen la misma limitación de base, aunque ahí el export a Sheets es más directo que un CSV |
 | Número de factura sin validar formato | **No es brecha** — ambos ERPs de referencia hacen lo mismo | No aplica un fix — si Apps Script ya valida algo ahí, no hace falta tocarlo |
 | `<input type="number">` nativo en plata/cantidad | **Resuelto en motor2** | Sí — los HTML de Apps Script (`PanelOperacion.html`, etc.) probablemente tienen el mismo `type="number"` nativo |
