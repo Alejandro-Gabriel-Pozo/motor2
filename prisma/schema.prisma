@@ -397,6 +397,11 @@ model ProveedorPorProducto {
   /// comparar presentaciones distintas del mismo Insumo.
   precioPorUnidadStock Decimal   @default(0) @db.Decimal(14, 4)
   ultimaCompra         DateTime  @default(now())
+  /// Cómo llama ESTE proveedor a este producto (su propio código o
+  /// nombre de catálogo) — nunca existió ni en la planilla vieja, que
+  /// solo guardaba nuestro propio código. Puramente informativo, para
+  /// reconocerlo más fácil al recargar una compra futura.
+  referenciaProveedor  String?
 
   @@unique([productoId, proveedorId, unidadCompraId])
 }

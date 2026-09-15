@@ -1725,3 +1725,100 @@ tome efecto en producción (mismo valor que quedó en `.env` local).
 Sin `SENTRY_AUTH_TOKEN` configurado, el build sube sin source maps
 (los stack traces en Sentry se van a ver minificados) — agregar ese
 token es un paso opcional a futuro, no bloqueante.
+
+## Post-migración: funcionalidades "quality of life" del proyecto anterior
+que no sobrevivieron — 2026-09-15
+
+A pedido explícito del usuario ("fijate que otra funcionalidad dejaste
+atrás que sea así como esta, esta es como un quality of life...", a raíz
+de pedir precarga de productos por proveedor). Grounded leyendo
+`motor` (Apps Script) real, no por memoria.
+
+### 1. Precarga de productos por proveedor en Compra — implementado
+
+**Pedido**: "que cuando elijamos un proveedor... nos traiga los productos
+que nosotros le compramos al proveedor... podríamos tener el nombre o el
+código que tiene el proveedor y así cargarlos de manera más fácil."
+
+`ProveedorPorProducto` ya existía en motor2 y ya se escribía en cada
+Compra (`upsertProveedorPorProducto`, hookup en
+`server/actions/movimientos.ts`), pero nunca se leía de vuelta en la UI
+— se guardaba y no se usaba para nada. Implementado:
+
+- `src/server/actions/proveedor-por-producto.ts`:
+  `listarProductosDeProveedor(proveedorId)` — trae todo lo comprado a ese
+  proveedor, más reciente primero, excluye productos inactivos.
+  Deliberadamente sin gate propio (mismo criterio que
+  `buscarProductosSelector`/`listarProveedores`: lectura de catálogo para
+  poblar un selector, no una mutación).
+- Campo nuevo `referenciaProveedor` en `ProveedorPorProducto` (migración
+  `20260915195523_proveedor_referencia`) — "cómo llama ESTE proveedor a
+  este producto" (su propio código/nombre). Es un campo genuinamente
+  nuevo: ni siquiera el sistema viejo lo tenía (su columna "Codigo MP" en
+  `HOJA_PROVEEDORES_POR_PRODUCTO`, `Catalogo.js:3184`, era el código
+  PROPIO del negocio, no uno del proveedor). Mismo criterio de upsert que
+  el precio: un valor vacío nunca pisa uno ya cargado
+  (`$executeRaw` con `CASE WHEN`).
+- `src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx`: al
+  elegir proveedor en una Compra, precarga la grilla de items con los
+  productos ya comprados (código/nombre, última referencia del
+  proveedor, último precio como texto de ayuda) — completar cantidad
+  solo en lo que se está comprando ahora, el resto queda sin cambios. Si
+  el proveedor no tiene historial, mensaje explícito invitando a usar "+
+  Agregar producto" (que también sigue disponible para productos nuevos
+  para ese proveedor). Acotado a `proceso === "COMPRA"` (no
+  Devolución a Proveedor) porque el hookup de escritura tampoco corre ahí.
+- Bug encontrado y corregido de paso: `limpiarSenal` de
+  `SelectorProducto` dispara su efecto de "vaciar" en el primer mount
+  también (no solo cuando cambia), así que combinado con el remount por
+  `key` que ya hacía falta para que `etiquetaInicial` tome el valor
+  precargado, terminaba vaciando el buscador apenas lo llenaba. Se sacó
+  `limpiarSenal`/`resetCount` de este formulario — el remount por `key`
+  (`versionItems`) ya cubre los dos casos (reset post-submit y precarga
+  por proveedor) sin ese efecto contradictorio.
+- Tests: `test/catalogo/proveedor-por-producto.test.ts` (upsert de
+  `referenciaProveedor`, `listarProductosDeProveedor`),
+  `test/movimientos/registrar-movimiento.test.ts` (hookup end-to-end).
+  Verificado también con Playwright contra Postgres real: proveedor con
+  historial precarga 2 filas con buscador y referencia correctos;
+  proveedor sin historial muestra el mensaje de "todavía no comprado".
+
+### 2–4. Encontrados, no implementados todavía — a priorizar por el usuario
+
+Investigación completa contra código real de `motor` (Apps Script);
+ninguno de los tres sobrevivió a la migración. Se listan para que el
+usuario decida si/cuándo:
+
+- **Sugerencia automática de Insumo/Familia mientras se tipea el nombre
+  de un producto nuevo.** Viejo: `sugerirFamilia_`
+  (`Catalogo.js:818-839`) + `sugerirFamiliaParaNombre`
+  (`Catalogo.js:961-969`), debounced 400ms en `AltaProducto.html:525-548`
+  — compara la primera palabra significativa del nombre tipeado contra
+  Familias/Insumos existentes y sugiere. motor2 (`producto-form.tsx`)
+  tiene un `<select>` estático, sin ningún lookup.
+- **Memoria de los últimos valores usados en el Alta de producto, por
+  usuario.** Viejo: `obtenerMemoriaAltaProducto_`/
+  `guardarMemoriaAltaProducto_`/`borrarMemoriaAltaProducto`
+  (`Catalogo.js:841-879`, vía `PropertiesService.getUserProperties()`) —
+  precarga Tipo/Uso/Categoría/Unidad de compra/Unidad de stock/Factor
+  con lo último que usó ESE usuario, con botón "Olvidar". En motor2 solo
+  existe precarga para EDITAR un producto existente
+  (`defaultValue={productoExistente?.campo}`), no memoria de sesión para
+  un alta nueva.
+- **Búsqueda inteligente en Conteo Físico: buscar por nombre de venta
+  resuelve la materia prima real a contar, vía receta.** Viejo:
+  `buscarMpParaConteo` (`Stock.js:1227-1282`) — si el término de búsqueda
+  matchea un producto de venta cuya receta tiene un solo ingrediente,
+  muestra esa MP marcada `viaReceta` ("encontrado buscando 'Coca 500cc'
+  — esto es lo que hay que contar"). En motor2,
+  `buscarProductosSelector` solo compara nombre/código directo, sin
+  cruce por receta; además `listarStockParaConteo` excluye productos de
+  venta sin stock real directo, así que hoy ese cruce no tiene ni dónde
+  engancharse sin tocar ese filtro también.
+
+Confirmado que sobrevivieron (no son brecha, no van en esta lista): la
+precarga del último conteo de una sección (mecanismo distinto —
+`listarStockParaConteo`— pero mismo resultado), la comparativa de
+precios por proveedor (`catalogo/proveedores/comparativa/page.tsx`), y
+el alta rápida de producto inline en cada panel de movimiento (ya
+trackeado como brecha aparte, no se duplica acá).

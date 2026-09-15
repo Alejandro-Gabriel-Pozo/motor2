@@ -1,3 +1,5 @@
+"use server";
+
 import { prisma } from "@/lib/db";
 import { requierePermisoVer } from "@/core/permisos/gate";
 
@@ -23,24 +25,71 @@ export async function upsertProveedorPorProducto(datos: {
   precioUnitario: number;
   precioPorUnidadStock: number;
   fechaCompra?: Date;
+  /** Cómo llama el proveedor a este producto — igual criterio que el precio: un valor vacío nunca pisa uno ya cargado. */
+  referenciaProveedor?: string;
 }): Promise<void> {
   const id = crypto.randomUUID();
   const fecha = datos.fechaCompra ?? new Date();
+  const referencia = datos.referenciaProveedor?.trim() || null;
 
   await prisma.$executeRaw`
     INSERT INTO "ProveedorPorProducto"
-      (id, "productoId", "proveedorId", "unidadCompraId", "precioUnitario", "precioPorUnidadStock", "ultimaCompra")
+      (id, "productoId", "proveedorId", "unidadCompraId", "precioUnitario", "precioPorUnidadStock", "ultimaCompra", "referenciaProveedor")
     VALUES
       (${id}, ${datos.productoId}, ${datos.proveedorId}, ${datos.unidadCompraId},
-       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, ${fecha})
+       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, ${fecha}, ${referencia})
     ON CONFLICT ("productoId", "proveedorId", "unidadCompraId")
     DO UPDATE SET
       "precioUnitario" = CASE WHEN excluded."precioUnitario" > 0
         THEN excluded."precioUnitario" ELSE "ProveedorPorProducto"."precioUnitario" END,
       "precioPorUnidadStock" = CASE WHEN excluded."precioPorUnidadStock" > 0
         THEN excluded."precioPorUnidadStock" ELSE "ProveedorPorProducto"."precioPorUnidadStock" END,
-      "ultimaCompra" = excluded."ultimaCompra"
+      "ultimaCompra" = excluded."ultimaCompra",
+      "referenciaProveedor" = CASE WHEN excluded."referenciaProveedor" IS NOT NULL
+        THEN excluded."referenciaProveedor" ELSE "ProveedorPorProducto"."referenciaProveedor" END
   `;
+}
+
+export interface ProductoDeProveedor {
+  productoId: string;
+  productoCodigo: string;
+  productoNombre: string;
+  unidadCompraId: string;
+  unidadCompraNombre: string;
+  unidadStockNombre: string;
+  referenciaProveedor: string | null;
+  ultimoPrecioPorUnidadStock: number;
+  ultimaCompra: Date;
+}
+
+/**
+ * Productos ya comprados a este proveedor, más recientes primero — hueco
+ * real encontrado auditando UX (docs/comparativa-ux-erpnext-dolibarr.md
+ * no lo cubre, viene de un pedido directo): `ProveedorPorProducto` ya se
+ * actualiza en cada Compra (ver el hookup en movimientos.ts) pero hasta
+ * ahora nada la leía — la relación se guardaba y nunca se usaba. Mismo
+ * dato que `obtenerProductosDeProveedor` (Catalogo.js:3901) del proyecto
+ * viejo, para precargar el carrito de una Compra sin buscar de nuevo lo
+ * que ya se le compra siempre a este proveedor.
+ */
+export async function listarProductosDeProveedor(proveedorId: string): Promise<ProductoDeProveedor[]> {
+  const filas = await prisma.proveedorPorProducto.findMany({
+    where: { proveedorId, producto: { activo: true } },
+    include: { producto: { include: { unidadStock: true } }, unidadCompra: true },
+    orderBy: { ultimaCompra: "desc" },
+  });
+
+  return filas.map((f) => ({
+    productoId: f.productoId,
+    productoCodigo: f.producto.codigo,
+    productoNombre: f.producto.nombre,
+    unidadCompraId: f.unidadCompraId,
+    unidadCompraNombre: f.unidadCompra.nombre,
+    unidadStockNombre: f.producto.unidadStock.nombre,
+    referenciaProveedor: f.referenciaProveedor,
+    ultimoPrecioPorUnidadStock: Number(f.precioPorUnidadStock),
+    ultimaCompra: f.ultimaCompra,
+  }));
 }
 
 interface OfertaComparativa {
