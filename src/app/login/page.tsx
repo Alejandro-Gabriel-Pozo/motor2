@@ -1,10 +1,40 @@
 import { redirect } from "next/navigation";
-import { signIn } from "@/lib/auth";
+import { signIn, signOut } from "@/lib/auth";
 import { getUsuarioActual } from "@/core/auth/session";
+import { obtenerContextoUsuario } from "@/core/auth/contexto";
 
 export default async function LoginPage() {
   const usuario = await getUsuarioActual();
-  if (usuario) redirect("/administracion/usuarios");
+
+  if (usuario) {
+    const ctx = await obtenerContextoUsuario();
+    if (ctx) redirect("/administracion/usuarios");
+
+    // Sesión válida pero sin ninguna sucursal asignada todavía. NO
+    // redirigir de vuelta a /login desde acá — el layout de administración
+    // exige ctx y rebotaría para acá de nuevo (ERR_TOO_MANY_REDIRECTS).
+    return (
+      <main className="flex flex-1 items-center justify-center p-8">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <h1 className="text-2xl font-semibold">Motor2</h1>
+          <p className="text-sm text-neutral-500">
+            Iniciaste sesión como {usuario.email}, pero todavía no tenés acceso a ninguna
+            sucursal. Pedile a un admin que te dé de alta.
+          </p>
+          <form
+            action={async () => {
+              "use server";
+              await signOut();
+            }}
+          >
+            <button type="submit" className="text-sm text-neutral-500 underline hover:text-neutral-900">
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center p-8">
