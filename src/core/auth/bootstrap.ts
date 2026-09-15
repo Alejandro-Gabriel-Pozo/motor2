@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
-function obtenerEmailsBootstrap(): string[] {
+export function obtenerEmailsBootstrap(): string[] {
   return (process.env.BOOTSTRAP_ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())

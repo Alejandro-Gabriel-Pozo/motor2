@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { intentarBootstrapAdmin } from "@/core/auth/bootstrap";
+import { emailPuedeIniciarSesion } from "@/core/auth/acceso";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -24,6 +25,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // que motivó reemplazar el modelo de auth entero).
   session: { strategy: "database" },
   callbacks: {
+    // Gate de acceso: rechaza el login ANTES de que el adapter cree
+    // User/Account, para que una cuenta de Google fuera de la empresa (y
+    // no dada de alta a mano) ni siquiera llegue a tener sesión. Detalle
+    // de las reglas en emailPuedeIniciarSesion.
+    async signIn({ user, profile }) {
+      if (!user.email || profile?.email_verified !== true) return false;
+      const hd = typeof profile.hd === "string" ? profile.hd : undefined;
+      return emailPuedeIniciarSesion(user.email, hd);
+    },
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
