@@ -72,6 +72,43 @@ Resumen de las decisiones más importantes:
   Producto tiene "+ Nuevo insumo"/"+ Nueva categoría"/"+ Nuevo proveedor"
   sin salir del flujo (mismo patrón que Apps Script ya resolvía bien).
 
+### Porción Movimientos — SCHEMA DISEÑADO (`prisma/schema.prisma`), sin server actions/UI/tests
+
+Investigación completa de `Movimientos.js`/`Stock.js`/`Sucursales.js` (repo
+`motor`) hecha e incorporada al schema — ver la sección íntegra más abajo,
+"Plan de la porción Movimientos", para las decisiones con ancla
+`archivo:línea`. Resumen de lo más importante:
+
+- Modelos nuevos: `Seccion`, `Operacion`, `MovimientoStock` (el Kardex),
+  `ConteoFisico`, `PrecioLocalProducto` — y los enums `Proceso`,
+  `MotivoMerma`, `DestinoConsumo`, `AccionConteo`, `EstadoConteo`.
+- `MovimientoStock.cantidad` se graba **siempre ya con el signo aplicado**
+  (nunca una segunda tabla de signos que leer aparte) — cierra de raíz la
+  MISMA clase de bug que causó el bug de Merma sin signo en Apps Script
+  v2.1.0 (dos fuentes de verdad para el signo que se desincronizaron).
+- `Operacion` (encabezado, agrupa 1+ líneas escritas juntas) + `MovimientoStock`
+  (línea del libro mayor) reemplaza el "ID Operación" de texto compartido a
+  ciegas entre filas de Apps Script por una FK real.
+- Todo lo de esta porción tiene `sucursalId` real (a diferencia de
+  Core/Catálogo): en Apps Script "la sucursal" era implícita — cada una
+  tenía su propio contenedor/spreadsheet con su propio Kardex/Secciones.
+- Hueco real encontrado (no estaba en la porción Catálogo): `PrecioLocalProducto`
+  — Venta necesita el override de precio por sucursal para calcular lo
+  realmente cobrado, y esa hoja vivía LOCAL a cada hostería, no en el
+  Catálogo Central. `precio_local` ya estaba seedeado en `acciones.ts`
+  anticipando esto.
+- A propósito el schema todavía NO incluye `RECLASIFICACIÓN` (primitiva de
+  Stock, nunca pasa por TRANSICIONES) ni los 3 procesos de transferencia
+  entre sucursales (`TRANSFERENCIA_SALIDA/ENTRADA_SUCURSAL`,
+  `REINGRESO_TRANSFERENCIA_SUCURSAL` — porción Traspasos): agregar un valor
+  a un enum de Postgres es aditivo y trivial: se agregan cuando esas
+  porciones se investiguen de verdad, no antes.
+
+Falta (próxima sesión): portar `TRANSICIONES` (signo/validaciones por
+proceso) a TS, escribir los server actions de los 12 procesos, la UI de
+carga (paneles guiados, wizard de Compra por proveedor, Conteo Físico), y
+los tests de negocio. Ver la sección completa más abajo.
+
 ## Pendiente / huecos conocidos (bloquean probar esto de verdad)
 
 1. **No hay Postgres real conectado todavía** — decisión explícita tomada
@@ -86,6 +123,9 @@ Resumen de las decisiones más importantes:
      `sucursalId IS NULL`, por acción).
    - Funcionales `lower(nombre)` en `Producto`, `Proveedor`, `Insumo`,
      `CategoriaProducto`, `Unidad`, `Grupo` (unicidad case-insensible).
+   - Funcional `lower(nombre)` en `Seccion`, **scopeado por sucursal**:
+     `CREATE UNIQUE INDEX ON "Seccion" (sucursalId, lower(nombre));`
+     (porción Movimientos, mismo criterio que el resto).
 3. **Tests escritos pero nunca corridos** (`npm test`) — necesitan la DB de
    arriba. Cubren permisos/bootstrap (Core) y productos/recetas/grupos/
    concurrencia de proveedores (Catálogo).
@@ -99,14 +139,14 @@ Resumen de las decisiones más importantes:
 En este orden de dependencia (Movimientos depende de Catálogo; Stock y
 Reportes dependen de Movimientos):
 
-1. **Movimientos** — los 14 procesos de TRANSICIONES de `Movimientos.js`
+1. **Movimientos** — **schema ya diseñado y aplicado** (`prisma/schema.prisma`
+   — `Seccion`/`Operacion`/`MovimientoStock`/`ConteoFisico`/`PrecioLocalProducto`,
+   ver "Estado actual" arriba y el plan íntegro más abajo). Falta portar
+   `TRANSICIONES` a TS, los server actions de los 12 procesos gateables
    (Compra, Producción, Consumo, Ajuste, Control, Transferencia, Merma,
-   Venta, Devolución×3, Transferencia entre sucursales×3). El signo de
-   stock por proceso tiene que vivir en una sola tabla/config — el bug
-   v2.4.0 de Apps Script (signo definido en 3 lugares) es la advertencia
-   más concreta a no repetir. Acá también se engancha de verdad
-   `upsertProveedorPorProducto` (ya construido en Catálogo, sin usar
-   todavía) al confirmar una Compra.
+   Venta, Devolución×3), la UI de carga y los tests. Acá también se
+   engancha de verdad `upsertProveedorPorProducto` (ya construido en
+   Catálogo, sin usar todavía) al confirmar una Compra.
 2. **Stock** — Kardex + vistas materializadas (`Stock`, `StockConsolidado`,
    `StockFamilia`, `AlertasStock`), conteo físico.
 3. **Reportes** — `obtenerDatosConsulta` (18 vistas), reportes por período.
@@ -449,4 +489,171 @@ falla (integridad referencial real, `onDelete: Restrict` default).
    una sola fila en `ProveedorPorProducto`.
 5. Intentar `Grupo.grupoPadre` en ciclo (directo o por cadena) → rechazado.
 6. Suite de Vitest de esta porción verde (`npm test`).
+
+---
+
+## Plan de la porción Movimientos (schema diseñado y aplicado; server actions/UI/tests pendientes)
+
+Investigación hecha (repo `motor`) antes de tocar el schema, siguiendo la
+misma convención que Core/Catálogo: `Movimientos.js` completo (1825
+líneas — `TRANSICIONES`, `armarRegistroMovimiento_`,
+`confirmarRegistrarMovimientos`, `confirmarRegistrarVenta_ConLock_`,
+`calcularPreviaOperacion`/`armarPreviaVentaDesdeItems_`), las secciones
+relevantes de `Stock.js` (libro mayor incremental, Secciones, Conteo
+Físico, Reclasificación — `calcularStockActual_`,
+`aplicarMovimientosAStockIncremental_`, `_registrarConteoFisicoSinRecalculo_`,
+`resolverConteoPendiente`, `cancelarConteoFisico`, `dividirClasificacionStock_`),
+`Catalogo.js:2043-2077` (Precio Local, hueco encontrado — ver abajo), y
+`Sucursales.js` (solo la definición de `TRANSFERENCIA_*_SUCURSAL` en
+`TRANSICIONES`, no el flujo de bandeja — eso es la porción Traspasos). Se
+aprovechó `AUDITORIA-movimientos.md` e `IDEA-conteo-fisico-por-lote.md`
+(auditoría ya cerrada, 2026-09-13, con sus 5 hallazgos ya resueltos en
+Apps Script) como investigación adelantada del dominio.
+
+### Decisiones (resumen)
+
+| Tema | Decisión | Por qué |
+|---|---|---|
+| Signo de stock | `MovimientoStock.cantidad` se graba **siempre ya firmado** (+ entra, − sale); no hay una tabla/lista de signos aparte que leer | Apps Script v2.4.0 (Movimientos.js:433-455) documenta el bug real: se agregó MERMA a `TRANSICIONES` con `signoStock: -1`, pero una segunda lista de signos (hardcodeada, separada) no se actualizó — la merma se registraba pero no restaba nada del stock. Con `cantidad` ya firmado el saldo es siempre `SUM(cantidad)`, sin lookup al leer, sin segunda fuente que desincronizar. |
+| Kardex en dos niveles: `Operacion` + `MovimientoStock` | Se promueve "ID Operación" (Movimientos.js:963-974 — hoy un UUID de texto compartido a ciegas entre filas de Sheets) a tabla propia con FK real | `WHERE operacionId = X` en vez de escanear Kardex filtrando por string; separa lo constante-por-lote (sucursal, proceso, proveedor, factura, fecha, motivo, usuario) de lo variable-por-línea (producto, sección, cantidad, precio, detalle). Mismo patrón que ERPNext (Stock Entry → Stock Ledger Entry), sin una tabla de "detalle" redundante porque cada línea YA es un movimiento real, no un input a procesar aparte. |
+| Granularidad de `Operacion` varía por proceso | Se porta tal cual: Compra/Ajuste/Consumo/Producción/Merma/Transferencia/Devolución×2/Control → una `Operacion` cubre todo un lote confirmado en una sola llamada; Venta → una `Operacion` por CADA venta individual (Movimientos.js:1211-1217, `idOperacionVenta` propio por línea vendida) | Cada venta es su propio evento económico (con su propia Liquidación de consignación si aplica) — mezclarlas en una sola operación perdería esa trazabilidad, que Apps Script ya resuelve así. |
+| `proceso` a dos niveles | `Operacion.proceso` = lo que el usuario INICIÓ (gatea el permiso, `ACCION_POR_PROCESO_`); `MovimientoStock.proceso` = el efecto real de esa línea puntual (puede diferir: una Operacion de Producción o Venta genera líneas hijas `CONSUMO`/`LIQUIDACION_CONSIGNACION`) | Igual que Apps Script distingue `payload.proceso` de `r.procesoOriginal`/`'Consumo'`/`'Liquidacion Consignacion'` por fila dentro del mismo `idOperacion` — el signo se calcula con el proceso de LA LÍNEA, no el de la operación. |
+| Sucursal explícita en todo | `Seccion`, `Operacion`, `ConteoFisico`, `PrecioLocalProducto` tienen `sucursalId` real | En Apps Script la sucursal era implícita (1 contenedor/spreadsheet = 1 sucursal, con su propio Kardex/Secciones/Precio Local). Acá todas comparten una sola base — sin esta columna no hay cómo scopear ninguna de estas tablas. |
+| Secciones por sucursal | `Seccion.sucursalId` + `@@unique([sucursalId, nombre])`, no un catálogo global | Mismo motivo — cada sucursal define su propio conjunto de secciones/depósitos. |
+| Sección siempre obligatoria | Se porta tal cual la decisión de Apps Script (2026-09-13): `CONSUMO`/`AJUSTE`/`CONTROL`/`MERMA`/`DEVOLUCION_CONSIGNACION`/`DEVOLUCION_PROVEEDOR` exigen elegir sección explícitamente (nunca se adivina, ni con una sola sección con stock); `COMPRA`/`PRODUCCION`/`DEVOLUCION_CLIENTE`/`VENTA` no la exigen (dan de alta stock nuevo); `TRANSFERENCIA` no la exige porque el origen ya es un campo obligatorio propio | Investigación de referencia ya hecha en Apps Script contra Dolibarr/ERPNext (ninguno de los dos auto-imputa ubicación) — no hay motivo para reabrir la decisión, se porta la config `exigeSeccion` por proceso tal cual. |
+| FEFO simplificado, no FIFO real | `MovimientoStock.loteVencimiento` nullable, sin entidad `Lote` propia ni saldo remanente por lote trackeado | Decisión de negocio ya tomada (Stock.js:403-425): una salida sin lote asume el que vence antes, sin repartir entre varios lotes si no alcanza. FIFO real es un cambio de arquitectura que esta porción no necesita — se puede corregir a mano con Conteo Físico/Reclasificación, igual que hoy. |
+| Motivo/Destino tipados | `MotivoMerma`/`DestinoConsumo` (enum) en `Operacion`, no plegados en el texto de detalle | En Sheets se plegaban dentro de "Movimiento detalle" porque agregar una columna real era costoso — el propio código lo dice ("para que los reportes puedan agrupar por causa sin cambiar el esquema"). Acá el schema evoluciona con una migración normal: se tipa de una vez. |
+| `PrecioLocalProducto` nuevo (no en Catálogo) | Se agrega en esta porción, con `@@unique([sucursalId, productoId])` | Hueco real encontrado investigando Venta (`armarPreviaVentaDesdeItems_`, Movimientos.js:1751-1759, usa `precioVenta` ya resuelto con override local vía `resolverPrecioVenta_`, Catalogo.js:2072-2077) — la porción Catálogo nunca lo modeló porque en Apps Script vive en la hoja LOCAL de cada hostería (`HOJA_PRECIO_LOCAL`), no en Catálogo Central. `precio_local` ya estaba seedeado en `acciones.ts` anticipando esto. |
+| `Operacion.usuarioId` nuevo (no existía) | Se agrega a propósito, fuera del alcance original de Apps Script | Apps Script no guardaba quién ejecutó cada movimiento en el Kardex (`Session.getActiveUser()` solo se guardaba en `ConteosFisicos`, porque corría como script deployado). Acá hay Auth.js real (porción Core) — es gratis agregarlo ahora y valioso para auditoría. |
+| Validación de stock agregada por payload, no por línea | Portar tal cual el bugfix C-1 de Apps Script (Movimientos.js:910-961): sumar todo lo requerido por clave `producto+sección` dentro de un mismo payload ANTES de validar, una sola vez por clave | Dos líneas del mismo payload pidiendo el mismo producto+sección (ej. dos Mermas del mismo insumo en la misma tanda) pasaban la validación individual aunque juntas superaran el stock disponible — sin esto, Kardex terminaba con más salida de la que había, sin aviso. |
+| Cancelar Conteo Físico = reversión, nunca edición | `ConteoFisico.movimientos` es una relación 1:N (0, 1 con el ajuste original, o 2 con la reversión al cancelar) — Kardex nunca se edita ni se borra | Ya es así en Apps Script (Stock.js:2077-2141: "nunca se edita ni se borra la fila original... se escribe una fila de REVERSIÓN"). Se porta el comportamiento tal cual, con una FK real en vez de correlacionar por string (`idOperacion === idConteo`). |
+| `RECLASIFICACIÓN` y transferencias entre sucursales, deferidos | El enum `Proceso` no los incluye todavía | Son primitivas de otras porciones ya identificadas (Stock: Reclasificación nunca pasa por `TRANSICIONES`, Stock.js:1899-1991; Traspasos: `TRANSFERENCIA_*_SUCURSAL`, gateadas por `proceso_transferencia_sucursal`, con su propia bandeja de solicitud/aprobación en `Sucursales.js`). Agregarlas ahora sería diseñar esas porciones sin investigarlas primero — contra la convención del proyecto. Un valor de enum nuevo es una migración aditiva trivial cuando llegue el momento. |
+| Stock Mínimo / `AlertasStock`, deferidos | No se modela en esta porción | `stock_minimo` (Accion ya seedeada) solo alimenta `AlertasStock` (Stock.js) — a diferencia de Precio Local, Movimientos no lo necesita funcionalmente para escribir ningún movimiento. Queda para cuando se investigue la porción Stock. |
+
+### Modelos (ya en `prisma/schema.prisma`, no se duplica acá para que no diverjan)
+
+`Proceso`, `MotivoMerma`, `DestinoConsumo`, `AccionConteo`, `EstadoConteo`
+(enums) + `Seccion`, `Operacion`, `MovimientoStock`, `ConteoFisico`,
+`PrecioLocalProducto` (modelos) — cada uno con su docstring explicando la
+decisión y el ancla a Apps Script. `npx prisma validate`/`generate` ya
+corridos sin errores contra este schema.
+
+### Algoritmos a portar (server actions — próxima sesión, todavía sin escribir)
+
+- **`TRANSICIONES` → `src/core/movimientos/transiciones.ts`**: const TS 1:1
+  con Movimientos.js:61-348 (`requiereDiaHabil`, `permiteCero`, `filtroUso`,
+  `filtroTipo`, `aplicaFactorConversion`, `generaConsumoDeReceta`,
+  `exigeSeccion`, y el signo — usado UNA vez, al construir `cantidad` antes
+  de insertar, nunca al leer). Fuente única, mismo criterio que ya defendió
+  Apps Script después del bug de Merma.
+- **`armarLineaMovimiento` (equivalente a `armarRegistroMovimiento_`,
+  Movimientos.js:724-872)**: conversión de unidad (factor / presentación
+  alternativa / peso real), redondeo por decimales de la `Unidad`, cálculo
+  de `precioUnitario`/`precioPorUnidadStock`, chequeo de sección obligatoria
+  con pista de "tiene stock en: ..." armada contra un `SUM(cantidad)` real
+  en vez de rescanear un array de stock precalculado.
+- **`calcularConsumosProduccion`/`resolverConsumoPorFamilia`** (Movimientos.js:632-659,
+  Stock.js:481-524): al Producir o Vender un PV con receta, expandir cada
+  ingrediente a 1+ líneas de Consumo — con reparto entre "hermanos" del
+  mismo `Insumo` (ya modelado en Catálogo, `Producto.insumoId`) si el
+  puntual no alcanza. FEFO simplificado: sin lote elegido, `ORDER BY
+  loteVencimiento ASC` sobre el saldo agregado (equivalente a
+  `obtenerLoteMasProximoAVencer_`, Stock.js:426-480).
+- **Validación de stock suficiente**: `SUM(cantidad) GROUP BY productoId,
+  seccionId` (con el índice `@@index([productoId, seccionId, loteVencimiento])`
+  ya en el schema) reemplaza `validarStockSuficiente_`/`obtenerStockMP_`
+  (Stock.js:573-598) — sin necesidad de una hoja "Stock" materializada a
+  mano: Postgres puede agregar en tiempo real. Acumular por clave dentro
+  del mismo payload ANTES de escribir nada (bugfix C-1, ver tabla arriba),
+  dentro de una transacción Prisma (reemplaza `conLock_`/`LockService`).
+- **Venta** (`confirmarRegistrarVenta_ConLock_`, Movimientos.js:1154-1332):
+  por cada ítem vendido → 1 `Operacion` propia con N `MovimientoStock`
+  (`VENTA` para el PV + `CONSUMO` por cada MP de receta + `LIQUIDACION_CONSIGNACION`
+  si esa MP tiene `Producto.esConsignacion`, con `cantidad: 0` y
+  `precioTotal = cantidadConsumida × Producto.precioConsignacion`). Precio
+  de venta: `PrecioLocalProducto` (si existe y `habilitado`) o
+  `Producto.precioVenta` (fallback) — mismo criterio que `resolverPrecioVenta_`.
+- **Conteo Físico** (`_registrarConteoFisicoSinRecalculo_`/`resolverConteoPendiente`/
+  `cancelarConteoFisico`, Stock.js:1523-2141): 3 acciones (`AJUSTAR` escribe
+  el `MovimientoStock` de corrección; `FALTA_MOVIMIENTO` deja el
+  `ConteoFisico` en `PENDIENTE` sin tocar stock; `DESCARTAR` no ajusta ni
+  cuenta como válido) — mismo state machine, ahora con `ConteoFisico.movimientos`
+  como FK real en vez de correlación por string.
+- **Transferencia** (`confirmarRegistrarMovimientos`, rama `esTransferencia`,
+  Movimientos.js:991-1022): 1 `Operacion` (`TRANSFERENCIA`) con 2
+  `MovimientoStock` por línea (−cantidad en `seccionId` origen, +cantidad
+  en `Operacion.seccionDestinoId`), ambas con `proceso: TRANSFERENCIA`.
+- **Duplicado de factura** (`validarFacturaNoDuplicada_`, Movimientos.js:402-416):
+  `WHERE proceso = COMPRA AND proveedorId = X AND nroFactura = Y` sobre
+  `Operacion` — más simple que escanear Kardex por texto, ahora que
+  proveedor/factura son columnas reales de `Operacion`, no texto por fila.
+
+### Server actions previstas (patrón `conPermiso`, ya usado en Core/Catálogo)
+
+Una acción por proceso gateable, cada una contra su `Accion` ya seedeada en
+`acciones.ts`: `registrarCompra` → `proceso_compra` · `registrarProduccion`
+→ `proceso_produccion` · `registrarConsumo` → `proceso_consumo` ·
+`registrarAjuste` → `proceso_ajuste` · `registrarTransferencia` →
+`proceso_transferencia` · `registrarMerma` → `proceso_merma` ·
+`registrarVenta` → `proceso_venta` · `registrarDevolucionConsignacion`/
+`registrarDevolucionCliente`/`registrarDevolucionProveedor` →
+`proceso_devolucion_*` · `registrarConteoFisico`/`resolverConteoPendiente`/
+`cancelarConteoFisico` → `proceso_control`/`cancelar_conteo` ·
+`crearSeccion`/`actualizarActivaSeccion` → `secciones` ·
+`setPrecioLocalProducto` → `precio_local`. Cada una con su "vista previa"
+(equivalente a `calcularPreviaOperacion`/`armarPreviaVentaDesdeItems_`) y
+su "confirmar" (equivalente a `confirmarRegistrarMovimientos`/
+`confirmarRegistrarVenta`), mismo patrón de 2 pasos que ya usan los paneles
+de Apps Script.
+
+### UI prevista (paneles guiados, patrón ya usado en Catálogo)
+
+Un panel por proceso bajo `/movimientos/*` (equivalente a
+`PanelOperacion.html` parametrizado por proceso — Movimientos.js:1777-1825),
+más `CompraPorProveedor.html` (wizard de Compra con alta rápida de
+producto inline, `IncludeAltaRapidaProducto.html`, ya con 3 modos para el
+caso de Devolución Consignación) y `PanelConteoFisico.html`
+(auto-expandir por sección+lote, "Agregar lote nuevo", Reclasificar como
+acción secundaria — aunque `reclasificarStock` en sí quede para la porción
+Stock, su entrada de UI ya vive en este mismo panel en Apps Script).
+
+### Testing previsto (Vitest, casos a portar de `Tests.js`)
+
+Signo correcto por proceso (con foco explícito en que agregar un proceso
+nuevo no pueda repetir el bug de Merma sin signo); sección obligatoria
+rechaza sin elegir para los 6 procesos que la exigen, no la exige para los
+que dan de alta stock nuevo; validación de stock agregada por clave
+producto+sección dentro de un mismo payload (2 líneas que juntas superan
+el stock, cada una por separado no); FEFO elige el lote que vence antes
+cuando no se especifica; reparto de consumo entre hermanos de un mismo
+Insumo cuando el puntual no alcanza; Venta de un PV con receta genera
+Consumo + Liquidación Consignación si la MP es consignación, con
+`cantidad: 0` en la Liquidación; Precio Local habilitado pisa el precio
+global, deshabilitado no; duplicado de factura (mismo proveedor+número)
+rechazado, distinto proveedor con mismo número no choca; Conteo Físico:
+`AJUSTAR` escribe movimiento y `SUM(cantidad)` post-ajuste coincide con lo
+contado, `FALTA_MOVIMIENTO` no toca stock y queda `PENDIENTE`,
+`cancelarConteoFisico` sobre un conteo `RESUELTO` escribe la reversión
+exacta y dos llamadas seguidas fallan la segunda (`estadoActual === 'Cancelado'`);
+Transferencia entre 2 secciones deja el `SUM` global sin cambios.
+
+### Verificación de la porción Movimientos
+
+1. `npx prisma migrate dev` aplica el schema nuevo sin romper Core/Catálogo
+   ya existentes; agregar a mano el índice funcional de `Seccion` (ver
+   "Pendiente" arriba).
+2. Compra con 2 líneas del mismo producto en la misma sección → 1
+   `Operacion`, 2 `MovimientoStock`, `SUM(cantidad)` = la suma de ambas.
+3. Merma de una `Unidad` sin `exigeSeccion` cumplido → rechazada; con
+   sección elegida → `MovimientoStock.cantidad` negativo, saldo baja.
+4. Vender un PV con receta de 2 MP, una marcada `esConsignacion` → 1
+   `Operacion`, filas `VENTA`+`CONSUMO`×2+`LIQUIDACION_CONSIGNACION`×1, la
+   liquidación con `cantidad: 0` y `precioTotal` > 0.
+5. Cancelar un Conteo Físico `RESUELTO` → nueva fila de reversión, saldo
+   vuelve al de antes del ajuste, segunda cancelación sobre el mismo
+   conteo rechazada.
+6. Dos líneas del mismo payload pidiendo más del mismo producto+sección
+   del que hay → rechazado ANTES de escribir nada (ninguna fila parcial
+   en Kardex).
+7. Suite de Vitest de esta porción verde (`npm test`).
 

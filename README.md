@@ -3,12 +3,19 @@
 Migración de `motor` (Google Apps Script + Sheets) a Next.js + Postgres/Neon.
 Porciones completadas hasta ahora: **Core** (sucursales, roles, permisos,
 auth) y **Catálogo** (productos, insumos/grupos, categorías, unidades,
-presentaciones, proveedores, recetas). Ver el plan completo en el historial
-de la sesión para el contexto de negocio; esto es la guía de arranque local.
+presentaciones, proveedores, recetas). Ver `docs/plan-migracion.md` para el
+contexto de negocio completo y el estado detallado de cada porción; esto es
+la guía de arranque local.
 
-Siguientes porciones (no empezadas): Movimientos (los 14 procesos de
-TRANSICIONES), Stock (vistas materializadas), Reportes, Traspasos entre
-sucursales.
+**Movimientos** (Kardex/libro mayor de stock, los 12 procesos gateables de
+TRANSICIONES) tiene el schema diseñado y aplicado en `prisma/schema.prisma`
+(`Seccion`, `Operacion`, `MovimientoStock`, `ConteoFisico`,
+`PrecioLocalProducto`) pero todavía sin server actions/UI/tests — ver
+`docs/plan-migracion.md`, sección "Plan de la porción Movimientos", para
+retomarla.
+
+Siguientes porciones (no empezadas): Stock (vistas materializadas,
+Reclasificación), Reportes, Traspasos entre sucursales.
 
 ## Setup
 
@@ -43,6 +50,8 @@ limpia con el schema migrado (local o un branch de Neon) antes de correr.
     `Insumo`, `CategoriaProducto`, `Unidad` y `Grupo` (unicidad case/espacio-
     insensible, mismo criterio que `mismoTexto_` — ver el plan de la porción
     Catálogo para el SQL exacto).
+  - Índice único funcional `lower(nombre)` en `Seccion`, scopeado por
+    `sucursalId` (porción Movimientos) — ver el plan de esa porción.
 - Credenciales reales de Google OAuth.
 - La UI de selección de "sucursal activa" para un usuario con más de una
   membresía queda fuera de esta porción (ver `src/core/auth/contexto.ts`).
