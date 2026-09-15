@@ -109,12 +109,12 @@ Resumen de lo más importante:
   aplicación acá), se usa aislamiento **Serializable** + reintento
   (`src/core/movimientos/con-reintento.ts`) — verificado con un test real
   de 2 requests concurrentes que juntas sobre-venderían: solo una gana.
-- A propósito el schema todavía NO incluye `RECLASIFICACIÓN` (primitiva de
-  Stock, nunca pasa por TRANSICIONES) ni los 3 procesos de transferencia
+- A propósito el schema todavía NO incluye los 3 procesos de transferencia
   entre sucursales (`TRANSFERENCIA_SALIDA/ENTRADA_SUCURSAL`,
   `REINGRESO_TRANSFERENCIA_SUCURSAL` — porción Traspasos): agregar un valor
-  a un enum de Postgres es aditivo y trivial: se agregan cuando esas
-  porciones se investiguen de verdad, no antes.
+  a un enum de Postgres es aditivo y trivial — se agrega cuando esa
+  porción se investigue de verdad, no antes. (`RECLASIFICACION` sí se
+  agregó, en la porción Stock — ver más abajo.)
 
 Server actions escritas: `registrarMovimiento` (motor genérico para los 9
 procesos que lo comparten), `registrarVenta`, `registrarConteoFisico`/
@@ -135,6 +135,60 @@ Bug encontrado escribiendo la UI (no de Movimientos en sí, de scoping):
 — listaría conteos de CUALQUIER sucursal. `sucursalId` pasó a ser un
 parámetro obligatorio; test agregado que verifica que dos sucursales
 nunca se mezclan.
+
+### Porción Stock — COMPLETA, con UI, verificada en navegador real
+
+Investigación completa de las partes de `Stock.js` no cubiertas todavía en
+la investigación de Movimientos (`calcularStockConsolidado_`,
+`calcularStockPorFamilia_`, `calcularAlertasStock_`,
+`dividirClasificacionStock_`) más `HOJA_STOCK_MINIMO` (Catalogo.js:1922-2019)
+— ver "Plan de la porción Stock" más abajo para las decisiones con ancla
+`archivo:línea`.
+
+Hallazgo de diseño clave: en Apps Script las 4 vistas (`Stock`,
+`StockConsolidado`, `StockFamilia`, `AlertasStock`) son hojas
+MATERIALIZADAS porque rescanear Kardex en cada lectura era proporcional a
+toda la historia acumulada de la hostería. Acá ese argumento no aplica —
+ya se resolvió en la porción Movimientos (`MovimientoStock` + índice real,
+`SUM` en tiempo real) — así que esta porción **no agrega ninguna tabla de
+libro mayor nueva**, solo:
+
+- Un modelo de configuración real: `StockMinimoProducto` (sucursalId +
+  productoId + seccionId opcional = mínimo, mismo patrón que
+  `PrecioLocalProducto` de Movimientos: fila "global" de la sucursal si
+  `seccionId` es null, fila específica si hay una).
+- `RECLASIFICACION` agregado al enum `Proceso` (migración aditiva, ver
+  el comentario que ya lo anticipaba en el schema desde Movimientos).
+- 3 funciones de consulta en vivo (`src/core/stock/`:
+  `calcularStockConsolidado`, `calcularStockPorFamilia`,
+  `calcularAlertasStock`) — ninguna escribe nada, agregan sobre
+  `MovimientoStock`/`ConteoFisico`/`Producto`/`Insumo`/`Grupo` en cada
+  request.
+- 1 mutación nueva: `reclasificarStock` (primitiva de split genérico,
+  gateada con `proceso_control` — mismo permiso que Conteo Físico, sin
+  Accion propia, igual que en Apps Script).
+
+Hueco real encontrado (gap de seguridad, no solo de dato): en Apps Script,
+`calcularStockConsolidado_`/`calcularStockPorFamilia_`/`calcularAlertasStock_`
+**no tenían ningún gate de permiso propio** — solo se ocultaban a nivel de
+menú de Sheets, que no es una barrera real (la función seguía siendo
+client-callable directo). Se agregó una Accion nueva, `ver_stock`
+(abierta a admin+operador — visibilidad operativa del día a día, distinto
+de FIJAR el mínimo, que sigue admin-only en `stock_minimo`), y las 3
+páginas de solo lectura la exigen igual que cualquier otra página del
+proyecto.
+
+Server actions escritas: `reclasificarStock`, CRUD de `StockMinimoProducto`
+(`setStockMinimoProducto`/`eliminarStockMinimo`/`listarStockMinimo`). 94
+tests de Vitest en total (26 nuevos de esta porción), todos verdes.
+
+UI escrita bajo `/stock/*`: `consolidado`, `por-familia` y `alertas` (solo
+lectura, tablas server-rendered), `minimo` (CRUD, mismo patrón que
+`/movimientos/precio-local`) y `reclasificar` (form con lista dinámica de
+destinos, mismo patrón que los paneles de Movimientos). Verificado con un
+smoke test de Playwright igual que Movimientos: Compra → Conteo Físico con
+desvío → las 3 vistas de solo lectura lo reflejan → fijar un mínimo →
+Alertas lo detecta → Reclasificar mueve el saldo entero a otra sección.
 
 ### Bugs de infraestructura encontrados y arreglados (afectaban a TODO el proyecto, no solo Movimientos)
 
@@ -160,84 +214,74 @@ Core y Catálogo — ninguno de los dos tiene que ver con Movimientos en sí:
    `server-only` por un módulo vacío en tests (mismo criterio que
    recomienda Next.js para testear código server-only).
 
-Con los dos fixes, **la suite completa (Core + Catálogo + Movimientos, 67
-tests) corre verde contra un Postgres real** — la primera vez que esto pasa
-en el proyecto. Ver "Verificación real" más abajo para cómo reproducirlo.
+Con los dos fixes, **la suite completa corre verde contra un Postgres
+real** — la primera vez que esto pasó en el proyecto (sesión Movimientos);
+se mantuvo verde al sumar la porción Stock en la misma sesión de trabajo.
+Ver "Verificación real" más abajo para cómo reproducirlo.
 
-### Verificación real (esta sesión, Postgres 16 local)
+### Verificación real (Postgres 16 local — repetible en cualquier sesión)
 
-1. `npx prisma migrate dev` — corrió limpio, generó
-   `prisma/migrations/20260915034059_init/` (todo el schema hasta acá:
-   Core + Catálogo + Movimientos, nunca antes migrado) y
-   `prisma/migrations/20260915034450_indices_manuales/` (los índices
-   únicos funcionales/parciales documentados en "Pendiente" — ya escritos
-   a mano y committeados, no quedan como TODO).
-2. `npm run db:seed` — corrió limpio (33 acciones, roles, sucursal
+1. `npx prisma migrate dev` — aplica todas las migraciones committeadas en
+   `prisma/migrations/` (init de Core+Catálogo+Movimientos, índices
+   manuales, y la migración de la porción Stock — `RECLASIFICACION` +
+   `StockMinimoProducto`).
+2. `npm run db:seed` — seed limpio (34 acciones, roles, sucursal
    "Central", 5 unidades base).
-3. `npm test` — **67/67 tests verdes**, incluidos los de Core/Catálogo que
-   nunca se habían corrido contra una DB real antes de esta sesión.
+3. `npm test` — **94/94 tests verdes** (Core, Catálogo, Movimientos y
+   Stock).
 4. `npx tsc --noEmit` y `npx eslint` — limpios.
-5. `npx next build` — build de producción limpio, las 15 rutas existentes
-   compilan.
+5. `npx next build` — build de producción limpio, todas las rutas
+   compilan (ver `src/app/` para el listado completo: `/catalogo/*`,
+   `/administracion/*`, `/movimientos/*`, `/stock/*`).
+6. `npm run dev` + sesión de base de datos real (Auth.js, estrategia
+   `database`, sin depender de OAuth) + Chromium headless vía Playwright:
+   cada porción con UI (Movimientos, Stock) se ejercitó clic a clic contra
+   el DOM real, no solo contra `tsc`/tests.
 
 No se conectó ningún Neon real (sigue pendiente: credenciales de Google
 OAuth, y probar contra Neon en vez de Postgres local) — pero el camino
-completo "schema → migración → seed → server actions → tests" ya está
+completo "schema → migración → seed → server actions → tests → UI" ya está
 probado de punta a punta contra Postgres real, no solo contra el compilador.
 
 ## Pendiente / huecos conocidos
 
-1. ~~No hay Postgres real conectado todavía~~ **RESUELTO (sesión
-   Movimientos) para desarrollo local** — `npx prisma migrate dev` +
-   `npm run db:seed` + `npm test` corridos contra Postgres 16 real, los
-   tres limpios (ver "Verificación real" arriba). Sigue pendiente para
-   PRODUCCIÓN: crear el proyecto Neon real y completar `.env` con sus
-   credenciales (`DATABASE_URL`/`DIRECT_URL` de Neon) — el código ya
-   soporta los dos casos (ver el bugfix de `src/lib/db.ts` arriba).
-2. ~~Índices únicos que Prisma no puede declarar~~ **RESUELTO** — escritos
-   a mano y committeados en
-   `prisma/migrations/20260915034450_indices_manuales/migration.sql`
-   (parcial en `CapacidadSucursal`, funcionales `lower(nombre)` en
-   Producto/Proveedor/Insumo/CategoriaProducto/Unidad/Grupo/Seccion),
-   aplicados y verificados contra Postgres real.
-3. ~~Tests escritos pero nunca corridos~~ **RESUELTO** — 68/68 verdes
-   (Core, Catálogo y Movimientos) contra Postgres real.
-4. ~~UI de carga de Movimientos~~ **RESUELTO** — `/movimientos/*`,
-   verificada en navegador real (Chromium vía Playwright) contra Postgres
-   real. Ver "Estado actual" arriba.
-5. Credenciales reales de Google OAuth (Google Cloud Console) — sigue
+1. Conectar un proyecto Neon real de PRODUCCIÓN y completar `.env` con sus
+   credenciales (`DATABASE_URL`/`DIRECT_URL`) — todo lo de acá se verificó
+   contra Postgres local; el código soporta los dos casos (ver el bugfix
+   de `src/lib/db.ts` arriba), pero Neon en sí nunca se conectó.
+2. Credenciales reales de Google OAuth (Google Cloud Console) — sigue
    pendiente, no verificable sin acceso a Google Cloud Console.
-6. UI de selección de "sucursal activa" para un usuario con más de una
+3. UI de selección de "sucursal activa" para un usuario con más de una
    membresía — deferida a propósito (`src/core/auth/contexto.ts` usa la
    primera membresía activa como MVP).
-7. UI de "wizard de Compra por proveedor" con alta rápida de producto
+4. UI de "wizard de Compra por proveedor" con alta rápida de producto
    inline (`CompraPorProveedor.html`/`IncludeAltaRapidaProducto.html` de
    Apps Script) — el panel genérico de Compra ya funciona (picker simple),
    este es un refinamiento de UX, no un bloqueante funcional.
+5. `notificarAlertasStockPorMail` (Stock.js:2342-2387) no se portó — pedía
+   un servicio de mail real (`MailApp` de Apps Script) que no tiene
+   equivalente configurado en este proyecto todavía (Resend/SendGrid/
+   etc.). `notificar_alertas` ya está seedeada como Accion, anticipando
+   esto cuando haya un proveedor de mail elegido.
 
 ## Próximas porciones
 
-Movimientos quedó completa (código, tests y UI). En este orden de
-dependencia (Stock y Reportes dependen de Movimientos):
+Movimientos y Stock quedaron completas (código, tests y UI). En este
+orden de dependencia:
 
-1. **Stock** — Kardex + vistas materializadas (`Stock`, `StockConsolidado`,
-   `StockFamilia`, `AlertasStock`), conteo físico, y `RECLASIFICACIÓN`
-   (`reclasificarStock`, deferida a propósito de esta porción — ver
-   Decisiones). `Stock Mínimo`/`AlertasStock` también quedaron deferidos
-   (Accion `stock_minimo` ya seedeada, sin modelo todavía).
-2. **Reportes** — `obtenerDatosConsulta` (18 vistas), reportes por período.
+1. **Reportes** — `obtenerDatosConsulta` (18 vistas), reportes por período.
    Importante: el costo de reposición debe seguir leyendo el Kardex LOCAL
    de cada sucursal (nunca `ProveedorPorProducto`, que es Catálogo Central
    compartido) — mismo criterio que ya tiene Apps Script para no mezclar
    precios entre sucursales.
-3. Traspasos entre sucursales (bandeja de solicitud/aprobación/aceptación,
+2. Traspasos entre sucursales (bandeja de solicitud/aprobación/aceptación,
    hoy en `Sucursales.js` — necesita agregar `TRANSFERENCIA_SALIDA_SUCURSAL`/
    `TRANSFERENCIA_ENTRADA_SUCURSAL`/`REINGRESO_TRANSFERENCIA_SUCURSAL` al
    enum `Proceso`, deferido a propósito de la porción Movimientos).
 
-Refinamiento de UX pendiente en Movimientos (no bloqueante, ver
-"Pendiente" arriba): wizard de Compra por proveedor con alta rápida de
-producto inline.
+Refinamientos de UX pendientes (no bloqueantes, ver "Pendiente" arriba):
+wizard de Compra por proveedor con alta rápida de producto inline; alertas
+de stock por mail.
 
 ## Convenciones a mantener en las próximas porciones
 
@@ -808,4 +852,148 @@ Movimientos, afectaban a Core/Catálogo también.
    del que hay → rechazado ANTES de escribir nada (ninguna fila parcial
    en Kardex).
 7. Suite de Vitest de esta porción verde (`npm test`).
+
+---
+
+## Plan de la porción Stock (código, tests, migración y UI completos y verdes)
+
+Investigación (repo `motor`): las partes de `Stock.js` no leídas todavía
+en la investigación de Movimientos —
+`calcularStockConsolidado_`/`recalcularStockConsolidado` (Stock.js:692-829),
+`calcularStockPorFamilia_`/`recalcularStockPorFamilia` (Stock.js:856-980),
+`calcularAlertasStock_`/`recalcularAlertasStock`/`obtenerResumenAlertasStock`/
+`notificarAlertasStockPorMail` (Stock.js:2210-2387) — más
+`HOJA_STOCK_MINIMO`/`resolverStockMinimo_`/`setStockMinimoProducto_`
+(Catalogo.js:1922-2019).
+
+### Decisiones (resumen)
+
+| Tema | Decisión | Por qué |
+|---|---|---|
+| Sin tablas de libro mayor nuevas | `StockConsolidado`/`StockFamilia`/`AlertasStock` son funciones de consulta en vivo (`src/core/stock/`), no modelos Prisma | En Apps Script eran hojas MATERIALIZADAS porque rescanear Kardex en cada lectura era proporcional a toda la historia acumulada — el mismo argumento que ya resolvió la porción Movimientos (`MovimientoStock` + índice real) aplica acá: Postgres agrega en tiempo real, no hace falta una segunda copia que se pueda desincronizar del Kardex. |
+| `StockMinimoProducto` sí es tabla | Config real (el sistema no puede derivar un mínimo de ningún otro dato) — mismo patrón que `PrecioLocalProducto`: local a la sucursal, `seccionId` nulo = fila "global" de esa sucursal, con índice único parcial `(sucursalId, productoId) WHERE seccionId IS NULL` (mismo criterio que `CapacidadSucursal`). | Sin esto no hay nada contra qué comparar el saldo para las Alertas. |
+| `RECLASIFICACION` al enum `Proceso` | Migración aditiva (`ALTER TYPE ... ADD VALUE`), ya anticipada en el comentario del schema desde la porción Movimientos | Es la primera porción que realmente investiga y necesita esta primitiva — agregarla antes hubiera sido diseñar Stock sin haberlo investigado todavía. |
+| `reclasificarStock` sin Accion propia | Gateada con `proceso_control`, mismo permiso que Conteo Físico | Port fiel de Apps Script (Stock.js:1899-1905: "mismo permiso que Conteo Físico... no es un proceso propio con su propia entrada en `ACCION_POR_PROCESO_`"). |
+| `ver_stock`, Accion NUEVA (no existía en Apps Script) | Gatea las 3 páginas de solo lectura (`/stock/consolidado`, `/stock/por-familia`, `/stock/alertas`), abierta a admin+operador | Hueco real de seguridad encontrado: en Apps Script estas 3 funciones no tenían NINGÚN gate propio, solo se ocultaban a nivel de menú de Sheets (no es una barrera real, la función seguía siendo client-callable). Acá SÍ hay una capa de permisos real — no tener una Accion hubiera sido repetir el hueco a propósito. |
+| `AlertaStock` sin `proveedorUltimo` | Simplificación deliberada de esta primera versión | Requeriría un join adicional por fila solo para un dato informativo que ya está disponible en la comparativa de precios de Catálogo. |
+| `notificarAlertasStockPorMail` no portado | Deferido — Accion `notificar_alertas` ya seedeada | Necesita un proveedor de mail real (Resend/SendGrid/...) configurado, que no existe en este proyecto todavía. No es una decisión de dominio, es una dependencia externa sin credenciales. |
+| Último conteo válido | Se ignoran conteos `DESCARTADO`/`CANCELADO` al elegir "el último conteo físico" de una clave | Port exacto de Stock.js:706-714/BUGFIX A-1 (auditoría integral): un conteo cancelado no puede seguir contando como el conteo vigente para calcular el desvío. |
+
+### Modelos (ya en `prisma/schema.prisma`)
+
+`StockMinimoProducto` + `RECLASIFICACION` agregado al enum `Proceso` — ver
+sus docstrings en el schema para el detalle completo. Migración:
+`prisma/migrations/20260915084615_stock_porcion/`, con el índice único
+parcial agregado a mano (mismo criterio que las migraciones anteriores).
+
+### Algoritmos (implementados — `src/core/stock/`)
+
+- **`calcularStockConsolidado`** (`consolidado.ts`, port de
+  `calcularStockConsolidado_`, Stock.js:692-794): LEFT JOIN real contra el
+  catálogo completo — todo producto elegible (MP, o PV "Se produce")
+  aparece, tenga o no movimientos, tenga o no conteo (el bugfix que el
+  propio Apps Script documenta: antes un producto recién dado de alta
+  "desaparecía" del stock). Estado por fila: `NEGATIVO` > `CON_DESVIO` >
+  `SIN_CONTEO` > `SIN_MOVIMIENTOS` > `CONCILIADO` (mismo orden de
+  prioridad que Apps Script). "Diferencia" es la del ÚLTIMO conteo,
+  congelada — no se recalcula contra el teórico de hoy (eso siempre daría
+  0 después de un ajuste).
+- **`calcularStockPorFamilia`** (`por-familia.ts`, port de
+  `calcularStockPorFamilia_`, Stock.js:887-957): agrupa por Insumo
+  ("Familia") + Sección, solo MP con Insumo asignado (un PV nunca se
+  compra — sumarlo mezclaría ventas negativas con compras positivas, mismo
+  bugfix que `resolverConsumoPorFamilia` en Movimientos). Reusa
+  `textoCadenaDeGrupos` (ya construida en Catálogo) para el breadcrumb de
+  Grupo. Marca `unidadesMezcladas` en vez de mostrar un total sumado sin
+  sentido cuando dos productos del mismo Insumo tienen distinta unidad de
+  stock.
+- **`calcularAlertasStock`/`obtenerResumenAlertasStock`** (`alertas.ts`,
+  port de `calcularAlertasStock_`/`obtenerResumenAlertasStock`,
+  Stock.js:2255-2340): agrega TODO el saldo de un producto+sección
+  (sumando todos los lotes — un lote chico por vencer no puede disparar
+  una alerta falsa) y lo compara contra `resolverStockMinimo` (gana la
+  fila de la sección exacta, si no la global de la sucursal). `CRITICO` si
+  el saldo llegó a 0 o menos, `BAJO` si está en o por debajo del mínimo
+  pero positivo, nada si está OK o sin mínimo configurado.
+- **`resolverStockMinimo`** (`stock-minimo.ts`, port de
+  `resolverStockMinimo_`, Catalogo.js:1968-1979): null (no 0) cuando no
+  hay ninguna fila cargada — "sin mínimo" y "mínimo en 0" son cosas
+  distintas.
+- **`reclasificarStock`** (`src/server/actions/reclasificacion.ts`, port
+  de `dividirClasificacionStock_`, Stock.js:1899-1991): 1 `Operacion`
+  (`RECLASIFICACION`) con 1 línea de salida (todo el disponible del
+  origen, negativo) + N líneas de entrada (una por destino) — la suma de
+  los destinos tiene que coincidir EXACTO con el disponible (ni de más ni
+  de menos), leído dentro de la transacción Serializable (mismo criterio
+  de concurrencia que el resto de Movimientos).
+
+### Server actions (implementadas)
+
+- **`reclasificarStock`** (`src/server/actions/reclasificacion.ts`) →
+  `proceso_control`.
+- **`setStockMinimoProducto`/`eliminarStockMinimo`/`listarStockMinimo`**
+  (`src/server/actions/stock-minimo.ts`) → `stock_minimo`.
+- Las 3 vistas de solo lectura (`calcularStockConsolidado`/
+  `calcularStockPorFamilia`/`calcularAlertasStock`) se importan directo
+  desde `src/core/stock/` en cada `page.tsx` (mismo precedente que
+  `textoCadenaDeGrupos` en `/catalogo/insumos-grupos`) — no necesitan un
+  wrapper en `server/actions/` porque no son mutaciones ni se llaman desde
+  un componente cliente.
+
+### UI (implementada, `src/app/stock/`)
+
+- **`consolidado/`, `por-familia/`, `alertas/`**: páginas de solo lectura
+  (server component, sin interactividad), gateadas con `ver_stock`.
+- **`minimo/`**: CRUD (form + tabla + eliminar), mismo patrón que
+  `/movimientos/precio-local`.
+- **`reclasificar/`**: form con lista dinámica de destinos (agregar/quitar
+  filas), mismo patrón de los paneles de Movimientos.
+
+Verificado en un navegador real (Chromium vía Playwright, sesión de base
+de datos real): Compra → Conteo Físico con diferencia → Consolidado
+muestra `CON_DESVIO` → Por Familia agrupa el Insumo → fijar Stock Mínimo
+por encima del saldo → Alertas lo detecta como `BAJO` → Reclasificar mueve
+el saldo entero a otra sección — los 7 pasos completan contra el DOM real.
+
+### Testing — 94/94 verdes contra Postgres real (`test/stock/*.test.ts`, 26 nuevos)
+
+- `consolidado.test.ts`: cada estado (`SIN_MOVIMIENTOS`, `SIN_CONTEO`,
+  `CONCILIADO`, `CON_DESVIO`, `NEGATIVO` — este último vendiendo de más un
+  PV "Se produce", el único camino real para llegar a negativo ya que
+  Ajuste/Merma/Consumo/Transferencia siempre validan stock suficiente),
+  un conteo `DESCARTADO` no cuenta como el último válido, un PV normal
+  (no "Se produce") nunca aparece.
+- `por-familia.test.ts`: agrupa 2 productos del mismo Insumo, uno sin
+  Insumo queda afuera, `unidadesMezcladas` se detecta, `grupoCadena` se
+  arma bien con 2 niveles.
+- `alertas.test.ts`: sin mínimo nunca alerta, `BAJO` vs. sin alerta según
+  el mínimo, Merma que deja el saldo en 0 dispara `CRITICO`, el mínimo por
+  sección gana sobre el global, `obtenerResumenAlertasStock` cuenta
+  críticos/bajos por separado.
+- `reclasificacion.test.ts`: reparto exacto entre 2 destinos (el origen
+  queda en 0, el total global no cambia), rechaza si la suma no coincide
+  exacto (de más o de menos, sin escribir nada), rechaza sin saldo
+  disponible, reclasifica por lote puntual sin tocar otros lotes del mismo
+  producto+sección.
+- `stock-minimo.test.ts`: sin fila da `null` (no 0), fija global y se
+  resuelve para cualquier sección, una fila por sección gana sobre la
+  global, volver a fijar el global actualiza (no duplica), eliminar saca
+  la fila.
+
+### Verificación de la porción Stock
+
+1. `npx prisma migrate dev` aplica `RECLASIFICACION` + `StockMinimoProducto`
+   sin romper Core/Catálogo/Movimientos ya existentes.
+2. Compra sin conteo físico todavía → `SIN_CONTEO` en Consolidado; conteo
+   sin diferencia → `CONCILIADO`; con diferencia → `CON_DESVIO` con el
+   valor exacto.
+3. Dos productos del mismo Insumo en la misma sección → Por Familia suma
+   ambos saldos bajo una sola fila.
+4. Saldo por debajo del Stock Mínimo (sección o global) → aparece en
+   Alertas con el estado correcto (`CRITICO`/`BAJO`); por encima, no
+   aparece.
+5. Reclasificar con la suma de destinos distinta al disponible → rechazado
+   sin escribir nada; exacta → el saldo se mueve entero, total global sin
+   cambios.
+6. Suite de Vitest de esta porción verde (`npm test`).
 

@@ -94,6 +94,7 @@ model Sucursal {
   operaciones    Operacion[]
   conteosFisicos ConteoFisico[]
   preciosLocales PrecioLocalProducto[]
+  stockMinimos   StockMinimoProducto[]
 }
 
 model Rol {
@@ -252,6 +253,7 @@ model Producto {
   movimientos          MovimientoStock[]
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
+  stockMinimos         StockMinimoProducto[]
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -444,16 +446,20 @@ model RecetaIngrediente {
 /// más LIQUIDACION_CONSIGNACION (Movimientos.js:250-258: generada SOLA por
 /// confirmarRegistrarVenta_ConLock_/confirmarRegistrarMovimientos al
 /// producir, nunca un proceso que un usuario elija — por eso no tiene
-/// Accion propia en src/core/permisos/acciones.ts).
+/// Accion propia en src/core/permisos/acciones.ts) y RECLASIFICACION
+/// (Stock.js:1899-1991 — agregada en la porción Stock; NUNCA pasa por
+/// TRANSICIONES en Apps Script porque no es una "acción de Permisos" con
+/// su propio filtroTipo/exigeSeccion/etc., sino la primitiva de split
+/// genérico del Conteo Físico — se gatea con 'proceso_control', mismo
+/// permiso que Conteo Físico, no con una Accion propia).
 ///
-/// A PROPÓSITO no incluye (todavía) RECLASIFICACIÓN (Stock.js:1899-1991,
-/// NUNCA pasa por TRANSICIONES — ver el comentario ahí — es primitiva de la
-/// porción Stock) ni TRANSFERENCIA_SALIDA_SUCURSAL/TRANSFERENCIA_ENTRADA_SUCURSAL/
-/// REINGRESO_TRANSFERENCIA_SUCURSAL (Sucursales.js — gateadas por
-/// 'proceso_transferencia_sucursal', propias de la porción Traspasos entre
-/// sucursales): agregar un valor a un enum de Postgres es una migración
-/// aditiva trivial (ALTER TYPE ... ADD VALUE) — se agregan cuando esa
-/// porción se investigue y diseñe de verdad, no antes.
+/// A PROPÓSITO no incluye (todavía) TRANSFERENCIA_SALIDA_SUCURSAL/
+/// TRANSFERENCIA_ENTRADA_SUCURSAL/REINGRESO_TRANSFERENCIA_SUCURSAL
+/// (Sucursales.js — gateadas por 'proceso_transferencia_sucursal', propias
+/// de la porción Traspasos entre sucursales): agregar un valor a un enum
+/// de Postgres es una migración aditiva trivial (ALTER TYPE ... ADD
+/// VALUE) — se agregan cuando esa porción se investigue y diseñe de
+/// verdad, no antes.
 enum Proceso {
   COMPRA
   PRODUCCION
@@ -467,6 +473,7 @@ enum Proceso {
   LIQUIDACION_CONSIGNACION
   DEVOLUCION_CLIENTE
   DEVOLUCION_PROVEEDOR
+  RECLASIFICACION
 }
 
 /// MOTIVOS_MERMA (Movimientos.js:56). En Apps Script esto se guardaba
@@ -524,9 +531,10 @@ model Seccion {
   nombre     String
   activa     Boolean  @default(true)
 
-  operacionesTransferenciaDestino Operacion[]       @relation("OperacionSeccionDestino")
+  operacionesTransferenciaDestino Operacion[]           @relation("OperacionSeccionDestino")
   movimientos                     MovimientoStock[]
   conteosFisicos                  ConteoFisico[]
+  stockMinimos                    StockMinimoProducto[]
 
   /// Único índice funcional case/espacio-insensible por sucursal (mismo
   /// criterio que Producto/Proveedor/Insumo/... en la porción Catálogo) —
@@ -766,4 +774,43 @@ model PrecioLocalProducto {
   habilitado Boolean  @default(true)
 
   @@unique([sucursalId, productoId])
+}
+
+// ===================================================================
+// STOCK: mínimos por sucursal/sección y la primitiva de Reclasificación.
+//
+// A diferencia de Apps Script (HOJA_STOCK/StockConsolidado/StockFamilia/
+// AlertasStock — hojas MATERIALIZADAS, recalculadas enteras en cada
+// recalcularX(), porque rescanear Kardex en cada lectura era proporcional
+// a toda la historia acumulada), acá esas 3 vistas NO son tablas: son
+// consultas en vivo sobre MovimientoStock/ConteoFisico (ver
+// src/core/stock/*.ts) — el mismo argumento que ya justificó no
+// materializar el saldo simple en la porción Movimientos (ver el
+// docstring de MovimientoStock) aplica con más razón acá: Postgres agrega
+// en tiempo real sobre índices reales, no hay necesidad de una segunda
+// copia de los datos que se pueda desincronizar del Kardex. Lo único que
+// esta porción agrega de verdad como TABLA es la configuración de Stock
+// Mínimo (dato que el sistema no puede derivar de ningún otro lado).
+// ===================================================================
+
+/// Reemplaza HOJA_STOCK_MINIMO/"Stock Minimo" (Catalogo.js:1922-2019) —
+/// mismo patrón que PrecioLocalProducto: vive local a cada sucursal (no es
+/// Catálogo Central). `seccionId` nulo = fila "global" de esa sucursal
+/// (aplica salvo que haya una fila más específica para esa sección) —
+/// mismo criterio de resolución que resolverStockMinimo_ (gana la fila de
+/// la sección exacta si existe, si no la global). El índice único parcial
+/// para "como máximo una fila global por sucursal+producto" se agrega a
+/// mano en la migración (mismo criterio que CapacidadSucursal.sucursalId
+/// NULL) — ver README.
+model StockMinimoProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  seccionId  String?
+  seccion    Seccion? @relation(fields: [seccionId], references: [id])
+  minimo     Decimal  @db.Decimal(14, 4)
+
+  @@unique([productoId, seccionId])
 }

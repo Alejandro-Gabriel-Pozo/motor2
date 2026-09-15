@@ -69,6 +69,12 @@ export const TRANSICIONES: Record<Proceso, Transicion> = {
   LIQUIDACION_CONSIGNACION: { signoStock: 0, permiteCero: true, requiereStockReal: false, aplicaFactorConversion: false, generaConsumoDeReceta: false, exigeSeccion: false },
   DEVOLUCION_CLIENTE: { signoStock: 1, permiteCero: false, requiereStockReal: true, aplicaFactorConversion: false, generaConsumoDeReceta: false, exigeSeccion: false },
   DEVOLUCION_PROVEEDOR: { signoStock: -1, permiteCero: false, requiereStockReal: true, aplicaFactorConversion: true, generaConsumoDeReceta: false, exigeSeccion: true },
+  // Primitiva de la porción Stock (reclasificarStock, Stock.js:1899-1991)
+  // — NUNCA pasa por este motor genérico ni por TRANSICIONES en Apps
+  // Script (arma sus propias líneas con signo ya puesto). Esta entrada
+  // existe solo para que Record<Proceso, Transicion> quede exhaustivo;
+  // ningún código la consulta de verdad.
+  RECLASIFICACION: { signoStock: 0, permiteCero: false, requiereStockReal: true, aplicaFactorConversion: false, generaConsumoDeReceta: false, exigeSeccion: true },
 };
 
 /** true = magnitud positiva que hay que firmar con signoStock; false = Ajuste/Control (el usuario ya carga el delta con signo) o Transferencia (el motor arma las 2 líneas él mismo). */

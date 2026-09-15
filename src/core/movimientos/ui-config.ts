@@ -28,7 +28,7 @@ export const DESTINOS_CONSUMO: { value: DestinoConsumo; label: string }[] = [
  * ya separa `registrarVenta`/`registrarConteoFisico` de `registrarMovimiento`.
  */
 export interface ProcesoUiConfig {
-  proceso: Exclude<Proceso, "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION">;
+  proceso: Exclude<Proceso, "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION" | "RECLASIFICACION">;
   titulo: string;
   /** Compra/Devolución a Proveedor: hay un proveedor real y conviene pedir N° de factura. */
   requiereProveedor: boolean;
@@ -75,6 +75,7 @@ export const NAV_MOVIMIENTOS: { href: string; label: string }[] = [
   { href: "/movimientos/conteo-fisico", label: "Conteo físico" },
   { href: "/movimientos/secciones", label: "Secciones" },
   { href: "/movimientos/precio-local", label: "Precio local" },
+  { href: "/stock/consolidado", label: "Stock →" },
 ];
 
 // Verificación en tiempo de import: todo slug de PROCESOS_UI tiene que

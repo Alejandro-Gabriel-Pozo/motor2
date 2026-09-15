@@ -1,5 +1,7 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
+
+type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Sube de hijo a raíz siguiendo grupoPadreId — equivalente de
@@ -8,7 +10,7 @@ import { prisma } from "@/lib/db";
  * Devuelve los NOMBRES, del grupo dado hacia la raíz (el propio grupo va
  * primero).
  */
-export async function cadenaDeGrupos(grupoId: string, db: PrismaClient = prisma): Promise<string[]> {
+export async function cadenaDeGrupos(grupoId: string, db: Db = prisma): Promise<string[]> {
   const cadena: string[] = [];
   const vistos = new Set<string>();
   let actualId: string | null = grupoId;
@@ -27,7 +29,7 @@ export async function cadenaDeGrupos(grupoId: string, db: PrismaClient = prisma)
 }
 
 /** Breadcrumb legible "Bebidas > Bebidas sin alcohol" (raíz primero) — equivalente de textoCadenaDeGrupos_ (Catalogo.js:2477-2480). */
-export async function textoCadenaDeGrupos(grupoId: string, db: PrismaClient = prisma): Promise<string> {
+export async function textoCadenaDeGrupos(grupoId: string, db: Db = prisma): Promise<string> {
   const cadena = await cadenaDeGrupos(grupoId, db);
   return cadena.reverse().join(" > ");
 }
@@ -41,7 +43,7 @@ export async function textoCadenaDeGrupos(grupoId: string, db: PrismaClient = pr
 export async function creariaCiclo(
   grupoId: string,
   padreNuevoId: string | null,
-  db: PrismaClient = prisma
+  db: Db = prisma
 ): Promise<boolean> {
   if (!padreNuevoId) return false; // sin padre = pasa a ser raíz, nunca hay ciclo
   if (padreNuevoId === grupoId) return true;

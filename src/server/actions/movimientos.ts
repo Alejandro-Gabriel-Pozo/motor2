@@ -17,8 +17,8 @@ import { upsertProveedorPorProducto } from "./proveedor-por-producto";
 import { conPermiso } from "./con-permiso";
 import { error, type ResultadoAccion } from "./tipos";
 
-/** Procesos que pasan por este motor genérico — Venta (registrarVenta) y Control (registrarConteoFisico, conteo-fisico.ts) tienen cada uno su propio camino, mismo criterio que Apps Script (armarPreviaVentaDesdeItems_/_registrarConteoFisicoSinRecalculo_ nunca pasan por armarRegistroMovimiento_). LIQUIDACION_CONSIGNACION nunca la elige un usuario. */
-export type ProcesoGenerico = Exclude<Proceso, "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION">;
+/** Procesos que pasan por este motor genérico — Venta (registrarVenta), Control (registrarConteoFisico, conteo-fisico.ts) y Reclasificación (reclasificarStock, reclasificacion.ts) tienen cada uno su propio camino, mismo criterio que Apps Script (armarPreviaVentaDesdeItems_/_registrarConteoFisicoSinRecalculo_/dividirClasificacionStock_ nunca pasan por armarRegistroMovimiento_). LIQUIDACION_CONSIGNACION nunca la elige un usuario. */
+export type ProcesoGenerico = Exclude<Proceso, "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION" | "RECLASIFICACION">;
 
 export interface ItemMovimientoInput {
   productoId: string;

@@ -1,18 +1,19 @@
-# motor2 — Core + Catálogo + Movimientos
+# motor2 — Core + Catálogo + Movimientos + Stock
 
 Migración de `motor` (Google Apps Script + Sheets) a Next.js + Postgres/Neon.
 Porciones completadas hasta ahora: **Core** (sucursales, roles, permisos,
 auth), **Catálogo** (productos, insumos/grupos, categorías, unidades,
-presentaciones, proveedores, recetas) y **Movimientos** (Kardex/libro
+presentaciones, proveedores, recetas), **Movimientos** (Kardex/libro
 mayor de stock, secciones, conteo físico, precio local, con UI bajo
-`/movimientos/*`) — código, 68 tests de Vitest y la UI, todos verificados
-contra Postgres real (los tests corriendo la suite, la UI a mano en un
-navegador real vía Playwright). Ver `docs/plan-migracion.md` para el
-contexto de negocio completo y el estado detallado de cada porción; esto
-es la guía de arranque local.
+`/movimientos/*`) y **Stock** (consolidado, por familia, alertas de stock
+mínimo y reclasificación entre secciones, con UI bajo `/stock/*`) —
+código, 94 tests de Vitest y la UI, todos verificados contra Postgres real
+(los tests corriendo la suite, la UI a mano en un navegador real vía
+Playwright). Ver `docs/plan-migracion.md` para el contexto de negocio
+completo y el estado detallado de cada porción; esto es la guía de
+arranque local.
 
-Siguientes porciones (no empezadas): Stock (vistas materializadas,
-Reclasificación), Reportes, Traspasos entre sucursales.
+Siguientes porciones (no empezadas): Reportes, Traspasos entre sucursales.
 
 ## Setup
 
@@ -24,7 +25,7 @@ Reclasificación), Reportes, Traspasos entre sucursales.
    - `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (OAuth de Google Cloud Console — cualquier cuenta del negocio debe poder loguearse).
    - `BOOTSTRAP_ADMIN_EMAILS` — tu email, para quedar admin automático la primera vez (ver `src/core/auth/bootstrap.ts`).
 3. `npm install`
-4. `npm run db:migrate` — aplica el schema (Core + Catálogo + Movimientos, más los índices manuales) y corre el seed (33 acciones + roles admin/operador + sucursal "Central" + unidades base kg/g/l/ml/unidad). Verificado contra Postgres 16 real.
+4. `npm run db:migrate` — aplica el schema (Core + Catálogo + Movimientos + Stock, más los índices manuales) y corre el seed (34 acciones + roles admin/operador + sucursal "Central" + unidades base kg/g/l/ml/unidad). Verificado contra Postgres 16 real.
 5. `npm run dev` y entrar a `http://localhost:3000`.
 
 `src/lib/db.ts` elige el driver adapter según el host de `DATABASE_URL`:
@@ -40,8 +41,8 @@ el Setup de arriba lo ofrecía como opción.
 `npm test` corre Vitest contra Postgres real (no hay mocks — mismo espíritu
 que `Tests.js` en el proyecto Apps Script original). Necesitan una base
 limpia con el schema migrado (local o un branch de Neon) antes de correr.
-Verificado: 68/68 tests verdes contra Postgres 16 local (Core + Catálogo +
-Movimientos).
+Verificado: 94/94 tests verdes contra Postgres 16 local (Core + Catálogo +
+Movimientos + Stock).
 
 ## Pendiente
 
