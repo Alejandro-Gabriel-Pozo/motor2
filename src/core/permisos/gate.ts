@@ -11,23 +11,33 @@ function denegado(mensaje: string): ResultadoGate {
   return { ok: false, mensaje };
 }
 
-async function obtenerMembresiaActiva(
+/**
+ * Trae membresía + rol + el `PermisoRol` de ESTA acción en una sola
+ * consulta (join anidado) — antes eran 2 round-trips secuenciales
+ * (membresía primero, recién con `rolId` en mano el permiso), porque
+ * Prisma sí puede resolver esa dependencia server-side con un `include`
+ * filtrado en vez de esperar el resultado del primer query en JS.
+ */
+async function obtenerMembresiaConPermiso(
   usuarioId: string,
   sucursalId: string,
+  accionClave: AccionClave,
   db: PrismaClient
 ) {
   const membresia = await db.usuarioSucursal.findUnique({
     where: { usuarioId_sucursalId: { usuarioId, sucursalId } },
-    include: { rol: true },
+    include: { rol: { include: { permisos: { where: { accionClave } } } } },
   });
   if (!membresia || !membresia.activo || !membresia.rol.activo) return null;
-  return membresia;
+  return { membresia, permiso: membresia.rol.permisos[0] ?? null };
 }
 
 /**
  * Equivalente de requierePermiso_ (Core.js:1455-1459): gate de EDITAR.
  * Orden de chequeo, igual que hoy: capacidad de sucursal → rol del usuario
- * en esa sucursal → permiso del rol para la acción.
+ * en esa sucursal → permiso del rol para la acción — ahora en 2 queries
+ * en vez de hasta 4 (ver `sucursalTieneCapacidad` y
+ * `obtenerMembresiaConPermiso`).
  */
 export async function requierePermiso(
   usuarioId: string,
@@ -39,18 +49,14 @@ export async function requierePermiso(
     return denegado(`La Central no habilitó "${accionClave}" para esta sucursal.`);
   }
 
-  const membresia = await obtenerMembresiaActiva(usuarioId, sucursalId, db);
-  if (!membresia) {
+  const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
+  if (!resultado) {
     return denegado("No tenés acceso a esta sucursal, o tu usuario está inactivo.");
   }
 
-  const permiso = await db.permisoRol.findUnique({
-    where: { rolId_accionClave: { rolId: membresia.rolId, accionClave } },
-  });
-
-  if (!permiso?.puedeEditar) {
+  if (!resultado.permiso?.puedeEditar) {
     return denegado(
-      `No tenés permiso para esta acción. Tu rol ("${membresia.rol.nombre}") no tiene "${accionClave}" habilitado. Pedile a un admin que te lo habilite.`
+      `No tenés permiso para esta acción. Tu rol ("${resultado.membresia.rol.nombre}") no tiene "${accionClave}" habilitado. Pedile a un admin que te lo habilite.`
     );
   }
   return OK;
@@ -73,18 +79,14 @@ export async function requierePermisoVer(
     return denegado(`La Central no habilitó "${accionClave}" para esta sucursal.`);
   }
 
-  const membresia = await obtenerMembresiaActiva(usuarioId, sucursalId, db);
-  if (!membresia) {
+  const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
+  if (!resultado) {
     return denegado("No tenés acceso a esta sucursal, o tu usuario está inactivo.");
   }
 
-  const permiso = await db.permisoRol.findUnique({
-    where: { rolId_accionClave: { rolId: membresia.rolId, accionClave } },
-  });
-
-  if (!permiso?.puedeVer) {
+  if (!resultado.permiso?.puedeVer) {
     return denegado(
-      `No tenés permiso para ver esta sección. Tu rol ("${membresia.rol.nombre}") no tiene "${accionClave}" habilitado.`
+      `No tenés permiso para ver esta sección. Tu rol ("${resultado.membresia.rol.nombre}") no tiene "${accionClave}" habilitado.`
     );
   }
   return OK;
@@ -92,7 +94,11 @@ export async function requierePermisoVer(
 
 /**
  * Equivalente de obtenerMiNivelPermiso (Core.js:1480-1485) — para que el
- * cliente sepa si mostrar controles de edición o solo la lista.
+ * cliente sepa si mostrar controles de edición o solo la lista. A
+ * diferencia de llamar `requierePermisoVer`+`requierePermiso` por
+ * separado (4 queries, 2 pares en paralelo), acá se resuelve la
+ * membresía+permiso UNA sola vez y se derivan ambos flags de ahí — 2
+ * queries en total.
  */
 export async function obtenerMiNivelPermiso(
   usuarioId: string,
@@ -100,9 +106,12 @@ export async function obtenerMiNivelPermiso(
   accionClave: AccionClave,
   db: PrismaClient = prisma
 ): Promise<{ ver: boolean; editar: boolean }> {
-  const [ver, editar] = await Promise.all([
-    requierePermisoVer(usuarioId, sucursalId, accionClave, db),
-    requierePermiso(usuarioId, sucursalId, accionClave, db),
-  ]);
-  return { ver: ver.ok, editar: editar.ok };
+  if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
+    return { ver: false, editar: false };
+  }
+
+  const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
+  if (!resultado) return { ver: false, editar: false };
+
+  return { ver: resultado.permiso?.puedeVer ?? false, editar: resultado.permiso?.puedeEditar ?? false };
 }

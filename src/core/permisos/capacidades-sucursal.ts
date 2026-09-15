@@ -6,6 +6,12 @@ import { prisma } from "@/lib/db";
  * Gate de RED (aplica a cualquier usuario/rol de esa sucursal), previo al
  * de rol — la Central puede deshabilitar una acción entera para una
  * sucursal completa.
+ *
+ * Antes eran hasta 2 round-trips secuenciales (fila específica, y solo si
+ * no existía, la fila default) — acá es 1 sola consulta que trae ambas
+ * candidatas de una (a lo sumo 2 filas) y elige en JS. Esta función se
+ * llama en cada `requierePermiso`/`requierePermisoVer`, o sea en casi
+ * toda página — con Neon, cada round-trip menos importa.
  */
 export async function sucursalTieneCapacidad(
   sucursalId: string,
@@ -17,18 +23,18 @@ export async function sucursalTieneCapacidad(
   // volver a habilitar algo que deshabilitó por error.
   if (accionClave === "capacidades_sucursal") return true;
 
-  const especifica = await db.capacidadSucursal.findUnique({
-    where: { accionClave_sucursalId: { accionClave, sucursalId } },
+  const candidatas = await db.capacidadSucursal.findMany({
+    where: { accionClave, OR: [{ sucursalId }, { sucursalId: null }] },
   });
+
+  const especifica = candidatas.find((c) => c.sucursalId === sucursalId);
   if (especifica) return especifica.habilitado;
 
-  // Fila "default" (sucursalId NULL) — usar findFirst, no findUnique: la
-  // unicidad de "como máximo una fila default por acción" la garantiza un
-  // índice único parcial en la migración (Postgres no la garantiza sola
-  // sobre una columna nullable dentro de un @@unique compuesto).
-  const porDefecto = await db.capacidadSucursal.findFirst({
-    where: { accionClave, sucursalId: null },
-  });
+  // Fila "default" (sucursalId NULL) — a lo sumo una por acción, lo
+  // garantiza un índice único parcial en la migración (Postgres no lo
+  // garantiza solo con una columna nullable dentro de un @@unique
+  // compuesto).
+  const porDefecto = candidatas.find((c) => c.sucursalId === null);
 
   // Sin ninguna fila configurada = habilitado (Sucursales.js:621: "si no
   // hay fila para esta acción, se puede").
