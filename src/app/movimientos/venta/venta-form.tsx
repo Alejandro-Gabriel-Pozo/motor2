@@ -3,12 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { registrarVenta, type ItemVentaInput } from "@/server/actions/venta";
-
-interface Opcion {
-  id: string;
-  nombre: string;
-  codigo: string;
-}
+import { SelectorProducto } from "@/components/selector-producto";
 
 interface FilaVenta {
   productoId: string;
@@ -22,7 +17,7 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function VentaForm({ productos, secciones }: { productos: Opcion[]; secciones: { id: string; nombre: string }[] }) {
+export function VentaForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(hoyISO());
   const [seccionId, setSeccionId] = useState("");
@@ -33,6 +28,7 @@ export function VentaForm({ productos, secciones }: { productos: Opcion[]; secci
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [resetCount, setResetCount] = useState(0);
 
   const actualizarFila = (idx: number, cambios: Partial<FilaVenta>) => {
     setVentas((prev) => prev.map((f, i) => (i === idx ? { ...f, ...cambios } : f)));
@@ -70,6 +66,7 @@ export function VentaForm({ productos, secciones }: { productos: Opcion[]; secci
       setOk(resultado.ok);
       if (resultado.ok) {
         setVentas([{ ...FILA_VACIA }]);
+        setResetCount((n) => n + 1);
         router.refresh();
       }
     });
@@ -105,19 +102,13 @@ export function VentaForm({ productos, secciones }: { productos: Opcion[]; secci
           <div key={idx} className="flex flex-wrap items-end gap-2 rounded border p-2">
             <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500">
               Producto
-              <select
+              <SelectorProducto
                 value={fila.productoId}
-                onChange={(e) => actualizarFila(idx, { productoId: e.target.value })}
+                onChange={(id) => actualizarFila(idx, { productoId: id })}
+                filtro={{ tipo: "PV", soloActivos: true }}
+                limpiarSenal={resetCount}
                 required
-                className="rounded border px-2 py-1.5 text-sm"
-              >
-                <option value="">Elegí un producto</option>
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.codigo} — {p.nombre}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
               Cantidad

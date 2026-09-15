@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -210,12 +211,14 @@ export function Bandeja({
   paraAceptar,
   paraReingreso,
   historial,
+  nextCursorHistorial,
   secciones,
 }: {
   paraAprobar: FilaBandeja[];
   paraAceptar: FilaBandeja[];
   paraReingreso: FilaBandeja[];
   historial: FilaBandeja[];
+  nextCursorHistorial: string | null;
   secciones: Opcion[];
 }) {
   return (
@@ -285,6 +288,11 @@ export function Bandeja({
             )}
           </tbody>
         </table>
+        {nextCursorHistorial && (
+          <Link href={`/traspasos?cursor=${nextCursorHistorial}`} className="mt-2 inline-block text-sm underline">
+            Página siguiente →
+          </Link>
+        )}
       </div>
     </div>
   );

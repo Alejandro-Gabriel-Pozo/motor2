@@ -1,17 +1,19 @@
+import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerHistorialConteosFisicos } from "@/server/actions/conteo-fisico";
 
-export default async function ConteosPage() {
+export default async function ConteosPage({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const conteos = await obtenerHistorialConteosFisicos(ctx.sucursalId);
+  const { cursor } = await searchParams;
+  const { items: conteos, nextCursor } = await obtenerHistorialConteosFisicos(ctx.sucursalId, undefined, cursor);
 
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Historial de conteos físicos</h1>
-        <p className="text-sm text-neutral-500">Últimos 200 conteos registrados en esta sucursal.</p>
+        <p className="text-sm text-neutral-500">Más recientes primero.</p>
       </div>
       <table className="w-full text-sm">
         <thead>
@@ -48,6 +50,11 @@ export default async function ConteosPage() {
           )}
         </tbody>
       </table>
+      {nextCursor && (
+        <Link href={`/reportes/conteos?cursor=${nextCursor}`} className="text-sm underline">
+          Página siguiente →
+        </Link>
+      )}
     </div>
   );
 }

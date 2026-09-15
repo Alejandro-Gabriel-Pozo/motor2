@@ -1,17 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { setPrecioLocalProducto } from "@/server/actions/precio-local";
+import { obtenerPrecioVentaProducto } from "@/server/actions/productos";
+import { SelectorProducto } from "@/components/selector-producto";
 
-interface ProductoPV {
-  id: string;
-  nombre: string;
-  codigo: string;
-  precioVenta: number;
-}
-
-export function PrecioLocalForm({ productos }: { productos: ProductoPV[] }) {
+export function PrecioLocalForm() {
   const router = useRouter();
   const [productoId, setProductoId] = useState("");
   const [precio, setPrecio] = useState("");
@@ -19,8 +14,22 @@ export function PrecioLocalForm({ productos }: { productos: ProductoPV[] }) {
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [resetCount, setResetCount] = useState(0);
+  const [precioGlobal, setPrecioGlobal] = useState<number | null>(null);
 
-  const productoElegido = productos.find((p) => p.id === productoId);
+  useEffect(() => {
+    if (!productoId) {
+      setPrecioGlobal(null);
+      return;
+    }
+    let cancelado = false;
+    obtenerPrecioVentaProducto(productoId).then((p) => {
+      if (!cancelado) setPrecioGlobal(p);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [productoId]);
 
   return (
     <form
@@ -33,6 +42,7 @@ export function PrecioLocalForm({ productos }: { productos: ProductoPV[] }) {
           if (resultado.ok) {
             setProductoId("");
             setPrecio("");
+            setResetCount((n) => n + 1);
             router.refresh();
           }
         });
@@ -43,17 +53,10 @@ export function PrecioLocalForm({ productos }: { productos: ProductoPV[] }) {
 
       <label className="flex flex-col gap-1 text-sm">
         Producto (PV)
-        <select value={productoId} onChange={(e) => setProductoId(e.target.value)} required className="rounded border px-3 py-2">
-          <option value="">Elegí un producto</option>
-          {productos.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.codigo} — {p.nombre}
-            </option>
-          ))}
-        </select>
+        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloActivos: true }} limpiarSenal={resetCount} required />
       </label>
 
-      {productoElegido && <p className="text-xs text-neutral-500">Precio global actual: {productoElegido.precioVenta}</p>}
+      {precioGlobal !== null && <p className="text-xs text-neutral-500">Precio global actual: {precioGlobal}</p>}
 
       <label className="flex flex-col gap-1 text-sm">
         Precio local

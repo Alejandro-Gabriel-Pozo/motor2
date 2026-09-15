@@ -4,12 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { AccionConteo } from "@prisma/client";
 import { registrarConteoFisico } from "@/server/actions/conteo-fisico";
-
-interface Opcion {
-  id: string;
-  nombre: string;
-  codigo: string;
-}
+import { SelectorProducto } from "@/components/selector-producto";
 
 const ACCIONES: { value: AccionConteo; label: string }[] = [
   { value: "AJUSTAR", label: "Ajustar el stock — la diferencia es real" },
@@ -21,7 +16,7 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function ConteoFisicoForm({ productos, secciones }: { productos: Opcion[]; secciones: { id: string; nombre: string }[] }) {
+export function ConteoFisicoForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
   const router = useRouter();
   const [fechaConteo, setFechaConteo] = useState(hoyISO());
   const [productoId, setProductoId] = useState("");
@@ -33,6 +28,7 @@ export function ConteoFisicoForm({ productos, secciones }: { productos: Opcion[]
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [resetCount, setResetCount] = useState(0);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +49,7 @@ export function ConteoFisicoForm({ productos, secciones }: { productos: Opcion[]
         setConteoReal("");
         setLoteVencimiento("");
         setDetalle("");
+        setResetCount((n) => n + 1);
         router.refresh();
       }
     });
@@ -80,14 +77,13 @@ export function ConteoFisicoForm({ productos, secciones }: { productos: Opcion[]
 
       <label className="flex flex-col gap-1 text-sm">
         Producto
-        <select value={productoId} onChange={(e) => setProductoId(e.target.value)} required className="rounded border px-3 py-2">
-          <option value="">Elegí un producto</option>
-          {productos.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.codigo} — {p.nombre}
-            </option>
-          ))}
-        </select>
+        <SelectorProducto
+          value={productoId}
+          onChange={setProductoId}
+          filtro={{ soloActivos: true, soloConStockReal: true }}
+          limpiarSenal={resetCount}
+          required
+        />
       </label>
 
       <div className="flex gap-3">

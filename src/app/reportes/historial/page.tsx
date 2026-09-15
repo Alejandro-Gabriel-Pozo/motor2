@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { listarProductos } from "@/server/actions/productos";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { obtenerHistorialProducto } from "@/core/reportes/historial-producto";
+import { HistorialFiltros } from "./historial-filtros";
 
 export default async function HistorialProductoPage({
   searchParams,
@@ -12,7 +12,7 @@ export default async function HistorialProductoPage({
   if (!ctx) return null;
 
   const sp = await searchParams;
-  const [productos, secciones] = await Promise.all([listarProductos(), listarSeccionesActivas(ctx.sucursalId)]);
+  const secciones = await listarSeccionesActivas(ctx.sucursalId);
 
   const historial = sp.productoId
     ? await obtenerHistorialProducto(
@@ -28,41 +28,14 @@ export default async function HistorialProductoPage({
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Historial de un producto</h1>
-        <form className="flex flex-wrap items-end gap-3 text-sm">
-          <label className="flex flex-col gap-1">
-            Producto
-            <select name="productoId" defaultValue={sp.productoId ?? ""} required className="rounded border px-3 py-2">
-              <option value="">Elegí un producto</option>
-              {productos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.codigo} — {p.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            Sección (opcional)
-            <select name="seccionId" defaultValue={sp.seccionId ?? ""} className="rounded border px-3 py-2">
-              <option value="">Todas</option>
-              {secciones.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            Desde
-            <input type="date" name="desde" defaultValue={sp.desde ?? ""} className="rounded border px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-1">
-            Hasta
-            <input type="date" name="hasta" defaultValue={sp.hasta ?? ""} className="rounded border px-3 py-2" />
-          </label>
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Ver historial
-          </button>
-        </form>
+        <HistorialFiltros
+          secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+          productoId={sp.productoId ?? ""}
+          productoEtiqueta={historial ? `${historial.codigo} — ${historial.producto}` : ""}
+          seccionId={sp.seccionId ?? ""}
+          desde={sp.desde ?? ""}
+          hasta={sp.hasta ?? ""}
+        />
       </div>
 
       {historial && (

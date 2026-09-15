@@ -1,6 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductos } from "@/server/actions/productos";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { listarStockMinimo, eliminarStockMinimo } from "@/server/actions/stock-minimo";
 import { StockMinimoForm } from "./stock-minimo-form";
@@ -12,11 +11,7 @@ export default async function StockMinimoPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_minimo");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [filas, productos, secciones] = await Promise.all([
-    listarStockMinimo(ctx.sucursalId),
-    listarProductos({ soloActivos: true }),
-    listarSeccionesActivas(ctx.sucursalId),
-  ]);
+  const [filas, secciones] = await Promise.all([listarStockMinimo(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
@@ -56,7 +51,7 @@ export default async function StockMinimoPage() {
       </div>
 
       <div>
-        <StockMinimoForm productos={productos.map((p) => ({ id: p.id, nombre: p.nombre, codigo: p.codigo }))} secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
+        <StockMinimoForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
       </div>
     </div>
   );

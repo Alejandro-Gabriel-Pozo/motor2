@@ -8,6 +8,7 @@ const SECCIONES = [
   { href: "/reportes/periodo", label: "Período" },
   { href: "/reportes/categorias", label: "Por categoría" },
   { href: "/reportes/costos", label: "Costos y márgenes" },
+  { href: "/reportes/valuacion", label: "Valuación de inventario" },
   { href: "/reportes/promociones", label: "Promociones" },
   { href: "/reportes/perdidas", label: "Pérdidas" },
   { href: "/reportes/devoluciones", label: "Devoluciones" },

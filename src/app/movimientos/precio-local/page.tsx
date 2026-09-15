@@ -1,6 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductos } from "@/server/actions/productos";
 import { listarPreciosLocales, setPrecioLocalProducto } from "@/server/actions/precio-local";
 import { PrecioLocalForm } from "./precio-local-form";
 
@@ -11,10 +10,7 @@ export default async function PrecioLocalPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "precio_local");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [precios, productosPV] = await Promise.all([
-    listarPreciosLocales(ctx.sucursalId),
-    listarProductos({ tipo: "PV", soloActivos: true }),
-  ]);
+  const precios = await listarPreciosLocales(ctx.sucursalId);
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
@@ -56,7 +52,7 @@ export default async function PrecioLocalPage() {
       </div>
 
       <div>
-        <PrecioLocalForm productos={productosPV.map((p) => ({ id: p.id, nombre: p.nombre, codigo: p.codigo, precioVenta: Number(p.precioVenta) }))} />
+        <PrecioLocalForm />
       </div>
     </div>
   );

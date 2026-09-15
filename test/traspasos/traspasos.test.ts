@@ -181,4 +181,38 @@ describe("Traspasos entre sucursales", () => {
     expect(bandejaATrasAprobar.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
     expect(bandejaATrasAprobar.historial.map((t) => t.id)).toContain(sol.id);
   });
+
+  it("obtenerBandejaTransferencias pagina el historial por cursor sin perder ni duplicar filas, y no pagina lo en curso", async () => {
+    const mp = await crearProductoConStock("MP_PAGINA", 100);
+
+    // 5 traspasos PUSH cerrados (historial) — uno por uno para que `creadoEn` quede en orden distinto.
+    const ids: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      await comoA();
+      const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 1, seccionOrigenId: seccionAId });
+      if (!envio.ok) throw new Error("esperaba ok");
+      await comoB();
+      const aceptar = await aceptarTransferencia(envio.id, seccionBId);
+      if (!aceptar.ok) throw new Error("esperaba ok");
+      ids.push(envio.id);
+    }
+
+    // Uno en curso (Solicitada, sin cerrar) — nunca debería contarse en la paginación del historial.
+    await comoB();
+    const enCurso = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 1, seccionDestinoId: seccionBId });
+    if (!enCurso.ok) throw new Error("esperaba ok");
+
+    const pagina1 = await obtenerBandejaTransferencias(sucursalAId, undefined);
+    expect(pagina1.paraAprobar.map((t) => t.id)).toEqual([enCurso.id]);
+    expect(pagina1.historial.map((t) => t.id)).not.toContain(enCurso.id);
+    // 5 cerrados < tamaño de página: entran todos de una, sin próxima página.
+    expect(new Set(pagina1.historial.map((t) => t.id))).toEqual(new Set(ids));
+    expect(pagina1.nextCursorHistorial).toBeNull();
+
+    // El cursor de una fila puntual arranca la página siguiente justo después de esa fila, sin repetirla.
+    const cursor = pagina1.historial[2].id;
+    const pagina2 = await obtenerBandejaTransferencias(sucursalAId, cursor);
+    expect(pagina2.historial.map((t) => t.id)).not.toContain(cursor);
+    expect(pagina2.historial.length).toBe(2); // las 2 filas que quedaban después del cursor
+  });
 });

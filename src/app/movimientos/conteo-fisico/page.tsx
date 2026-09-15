@@ -1,6 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductos } from "@/server/actions/productos";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { obtenerHistorialConteosFisicos, resolverConteoPendiente, cancelarConteoFisico } from "@/server/actions/conteo-fisico";
 import { ConteoFisicoForm } from "./conteo-fisico-form";
@@ -19,24 +18,16 @@ export default async function ConteoFisicoPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [productosTodos, secciones, historial] = await Promise.all([
-    listarProductos({ soloActivos: true }),
+  const [secciones, { items: historial }] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
     obtenerHistorialConteosFisicos(ctx.sucursalId),
   ]);
-
-  // Conteo físico es sobre MP siempre, o un PV solo si está marcado "Se
-  // produce" (tieneStockReal) — mismo filtro que aplica registrarConteoFisico.
-  const productos = productosTodos.filter((p) => p.tipo === "MP" || p.seProduce);
 
   return (
     <div className="flex flex-col gap-10">
       <div className="max-w-2xl">
         <h1 className="mb-4 text-xl font-semibold">Conteo físico</h1>
-        <ConteoFisicoForm
-          productos={productos.map((p) => ({ id: p.id, nombre: p.nombre, codigo: p.codigo }))}
-          secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
-        />
+        <ConteoFisicoForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
       </div>
 
       <div>

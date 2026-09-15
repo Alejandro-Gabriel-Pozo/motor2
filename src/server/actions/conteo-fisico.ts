@@ -234,18 +234,28 @@ export async function cancelarConteoFisico(conteoId: string): Promise<ResultadoA
   });
 }
 
-/** Historial de conteos de un producto/sección, más nuevo primero — para el panel. */
+const TAMANO_PAGINA_CONTEOS = 50;
+
 /**
+ * Historial de conteos de un producto/sección, más nuevo primero — para el
+ * panel, paginado por cursor (antes un `take: 200` fijo sin forma de ver
+ * conteos más viejos — hallazgo de la diligencia de motor2).
+ *
  * `sucursalId` es obligatorio a propósito (no opcional como en una primera
  * versión de esta función): sin él, sin `seccionId`, listaría conteos de
  * CUALQUIER sucursal — bug encontrado escribiendo la UI, mismo tipo de
  * fuga que Core/Catálogo evitan scopeando todo por sucursal desde el vamos.
  */
-export async function obtenerHistorialConteosFisicos(sucursalId: string, seccionId?: string) {
-  return prisma.conteoFisico.findMany({
+export async function obtenerHistorialConteosFisicos(sucursalId: string, seccionId?: string, cursor?: string) {
+  const items = await prisma.conteoFisico.findMany({
     where: { sucursalId, ...(seccionId ? { seccionId } : {}) },
     include: { producto: true, seccion: true },
-    orderBy: { fecha: "desc" },
-    take: 200,
+    orderBy: [{ fecha: "desc" }, { id: "desc" }],
+    take: TAMANO_PAGINA_CONTEOS + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
+
+  const hayMas = items.length > TAMANO_PAGINA_CONTEOS;
+  const pagina = hayMas ? items.slice(0, TAMANO_PAGINA_CONTEOS) : items;
+  return { items: pagina, nextCursor: hayMas ? pagina[pagina.length - 1].id : null };
 }

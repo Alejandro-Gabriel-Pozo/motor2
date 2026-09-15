@@ -3,14 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { crearSolicitudTransferencia } from "@/server/actions/traspasos";
+import { SelectorProducto } from "@/components/selector-producto";
 
 interface Opcion {
   id: string;
   nombre: string;
-  codigo?: string;
 }
 
-export function SolicitarForm({ sucursales, productos, secciones }: { sucursales: Opcion[]; productos: Opcion[]; secciones: Opcion[] }) {
+export function SolicitarForm({ sucursales, secciones }: { sucursales: Opcion[]; secciones: Opcion[] }) {
   const router = useRouter();
   const [origenSucursalId, setOrigenSucursalId] = useState("");
   const [productoId, setProductoId] = useState("");
@@ -20,6 +20,7 @@ export function SolicitarForm({ sucursales, productos, secciones }: { sucursales
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [resetCount, setResetCount] = useState(0);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +38,7 @@ export function SolicitarForm({ sucursales, productos, secciones }: { sucursales
         setProductoId("");
         setCantidad("");
         setDetalle("");
+        setResetCount((n) => n + 1);
         router.refresh();
       }
     });
@@ -58,14 +60,7 @@ export function SolicitarForm({ sucursales, productos, secciones }: { sucursales
 
       <label className="flex flex-col gap-1 text-sm">
         Producto
-        <select value={productoId} onChange={(e) => setProductoId(e.target.value)} required className="rounded border px-3 py-2">
-          <option value="">Elegí un producto</option>
-          {productos.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.codigo} — {p.nombre}
-            </option>
-          ))}
-        </select>
+        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloActivos: true }} limpiarSenal={resetCount} required />
       </label>
 
       <label className="flex flex-col gap-1 text-sm">

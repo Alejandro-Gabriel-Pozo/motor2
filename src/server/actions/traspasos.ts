@@ -333,33 +333,60 @@ export async function confirmarReingresoTransferencia(id: string): Promise<Resul
   });
 }
 
+const INCLUDE_BANDEJA = {
+  producto: { include: { unidadStock: true } },
+  origenSucursal: true,
+  destinoSucursal: true,
+  seccionOrigen: true,
+  seccionDestino: true,
+  creadoPor: true,
+} satisfies Prisma.TraspasoSucursalInclude;
+
+const TAMANO_PAGINA_HISTORIAL = 30;
+
+/** Las 3 condiciones "hay algo para accionar" — quien las cumple nunca es historial. */
+function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInput[] {
+  return [
+    { origenSucursalId: sucursalId, estado: "SOLICITADA" },
+    { destinoSucursalId: sucursalId, estado: "ENVIADA" },
+    { origenSucursalId: sucursalId, estado: "RECHAZADA_DESTINO" },
+  ];
+}
+
 /**
  * Lectura de la Bandeja — abierta (leer no necesita el permiso de
- * escritura, mismo criterio que el resto del proyecto), filtra
- * TraspasoSucursal a lo que involucra a `sucursalId` (como Origen o como
- * Destino) y lo separa en lo que hay que ACCIONAR vs. el resto (historial).
+ * escritura, mismo criterio que el resto del proyecto). Separa lo que hay
+ * que ACCIONAR (siempre un puñado de traspasos en tránsito, sin límite:
+ * por diseño de negocio nunca crece) del historial (crece con cada
+ * traspaso resuelto desde que existe la sucursal — paginado por cursor,
+ * hallazgo de la diligencia de motor2: "bandeja de traspasos sin límite").
  */
-export async function obtenerBandejaTransferencias(sucursalId: string) {
-  const todos = await prisma.traspasoSucursal.findMany({
-    where: { OR: [{ origenSucursalId: sucursalId }, { destinoSucursalId: sucursalId }] },
-    include: {
-      producto: { include: { unidadStock: true } },
-      origenSucursal: true,
-      destinoSucursal: true,
-      seccionOrigen: true,
-      seccionDestino: true,
-      creadoPor: true,
-    },
-    orderBy: { creadoEn: "desc" },
-  });
+export async function obtenerBandejaTransferencias(sucursalId: string, cursorHistorial?: string) {
+  const [enCurso, historialMasUno] = await Promise.all([
+    prisma.traspasoSucursal.findMany({
+      where: { OR: condicionesEnCurso(sucursalId) },
+      include: INCLUDE_BANDEJA,
+      orderBy: { creadoEn: "desc" },
+    }),
+    prisma.traspasoSucursal.findMany({
+      where: {
+        AND: [{ OR: [{ origenSucursalId: sucursalId }, { destinoSucursalId: sucursalId }] }, { NOT: { OR: condicionesEnCurso(sucursalId) } }],
+      },
+      include: INCLUDE_BANDEJA,
+      orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
+      take: TAMANO_PAGINA_HISTORIAL + 1,
+      ...(cursorHistorial ? { cursor: { id: cursorHistorial }, skip: 1 } : {}),
+    }),
+  ]);
 
-  const paraAprobar = todos.filter((t) => t.origenSucursalId === sucursalId && t.estado === "SOLICITADA");
-  const paraAceptar = todos.filter((t) => t.destinoSucursalId === sucursalId && t.estado === "ENVIADA");
-  const paraReingreso = todos.filter((t) => t.origenSucursalId === sucursalId && t.estado === "RECHAZADA_DESTINO");
-  const enCurso = new Set([...paraAprobar, ...paraAceptar, ...paraReingreso].map((t) => t.id));
-  const historial = todos.filter((t) => !enCurso.has(t.id));
+  const paraAprobar = enCurso.filter((t) => t.origenSucursalId === sucursalId && t.estado === "SOLICITADA");
+  const paraAceptar = enCurso.filter((t) => t.destinoSucursalId === sucursalId && t.estado === "ENVIADA");
+  const paraReingreso = enCurso.filter((t) => t.origenSucursalId === sucursalId && t.estado === "RECHAZADA_DESTINO");
 
-  return { paraAprobar, paraAceptar, paraReingreso, historial };
+  const hayMasHistorial = historialMasUno.length > TAMANO_PAGINA_HISTORIAL;
+  const historial = hayMasHistorial ? historialMasUno.slice(0, TAMANO_PAGINA_HISTORIAL) : historialMasUno;
+
+  return { paraAprobar, paraAceptar, paraReingreso, historial, nextCursorHistorial: hayMasHistorial ? historial[historial.length - 1].id : null };
 }
 
 /** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. */

@@ -1562,3 +1562,80 @@ sucursales reales con un admin cada una para simular ambos lados):
    verificado contra el Kardex real (no solo lo que mostraba la UI): A
    30 → 25, B → 5.
 
+
+## Post-migración: valuación de inventario y paginación (fuera del alcance de una porción — hallazgos de una diligencia técnica)
+
+Después de completar las 6 porciones funcionales se corrió una diligencia
+técnica comparando motor2 contra ERPNext y Dolibarr (agentes/skills de
+auditoría ERP, no parte del plan original). Dos hallazgos se priorizaron
+para resolver de inmediato; el resto queda en el expediente de esa
+diligencia, no acá.
+
+### Corrección al propio hallazgo de "costeo"
+
+La diligencia inicial decía "no hay costeo" — inexacto: `src/core/
+reportes/costos.ts` (porción Reportes) ya calcula margen/food-cost por
+receta con costo de reposición (última compra local, `obtenerCostoActualPorMP`
+en `comun.ts`) — una decisión de negocio documentada más arriba en este
+plan ("Costo de reposición… última compra, no la más barata"), no un
+método PMP/FIFO. Lo que realmente faltaba era una **valuación total de
+inventario** (cuánto vale el stock hoy), no un método de costeo nuevo.
+
+### Valuación de inventario (`src/core/reportes/valuacion.ts`, nuevo)
+
+`calcularValuacionInventario(sucursalId)` reutiliza el mismo costo de
+reposición de Costos y márgenes, agregado por producto en vez de por
+receta: `saldo actual (groupBy sobre MovimientoStock) × costoUnitario`.
+Mismo criterio que ya fijó `calcularCostosYMargenes`: un producto con
+stock pero sin ninguna compra registrada queda `sinCosto` y afuera del
+total — no se inventa un valor. UI en `/reportes/valuacion`. 4 tests
+nuevos (`test/reportes/valuacion.test.ts`) contra Postgres real, incl. que
+lee el costo LOCAL de la sucursal (no el de otra).
+
+### Paginación (hallazgo verificado: catálogo/listados sin límite real)
+
+- **`listarProductos()` (sin límite, usado en 9 `<select>` distintos)** →
+  reemplazado por `buscarProductosSelector` (búsqueda server-side, tope
+  20) + el componente `<SelectorProducto>` (`src/components/
+  selector-producto.tsx`, combobox con debounce de 250ms) en los 9 puntos
+  que antes recibían el catálogo entero como prop: Venta, panel genérico
+  de Movimientos, Conteo físico, Traspasos (enviar/solicitar),
+  Reclasificar, Stock mínimo, Precio local, Historial de un producto.
+- **`/catalogo/productos` (tabla de administración)** → paginado por
+  cursor real (`listarProductosPagina`, 50 por página) + buscador, en vez
+  de traer el catálogo completo en cada carga.
+- **`obtenerHistorialConteosFisicos` (tope fijo `take: 200`, sin forma de
+  ver conteos más viejos)** → paginado por cursor real (50 por página) en
+  `/reportes/conteos`; `/movimientos/conteo-fisico` sigue mostrando solo
+  la primera página como "reciente".
+- **`obtenerBandejaTransferencias` (sin ningún límite — crecía para
+  siempre con cada traspaso)** → separado en dos queries: lo "en curso"
+  (para aprobar/aceptar/reingreso) sigue sin límite a propósito, por
+  diseño de negocio nunca crece; el historial de traspasos cerrados ahora
+  pagina por cursor (30 por página).
+- `historial-producto.ts` (eventos de un producto puntual) queda
+  deliberadamente sin paginar en esta pasada: el saldo corriente se
+  calcula sumando el historial completo desde el primer movimiento real,
+  así que paginar solo la lista visible sin tocar ese cálculo pedía más
+  diseño del que ameritaba esta pasada — señalado para una próxima, no
+  resuelto a las apuradas.
+
+### Testing y verificación
+
+- 147/147 tests de Vitest verdes contra Postgres real (145 + 2 nuevos:
+  paginación por cursor de `obtenerBandejaTransferencias` y de
+  `obtenerHistorialConteosFisicos`, además de los 4 de valuación).
+- `npx tsc --noEmit` limpio.
+- `npm run dev` + Chromium headless vía Playwright (paquete instalado
+  ad-hoc con `--no-save`, no queda en `package.json`): 17 verificaciones
+  contra el DOM real con datos sembrados a propósito (65 productos para
+  forzar la paginación del catálogo, un producto con stock sin compra
+  para la sección "sin costo" de Valuación, conteos y traspasos de
+  prueba) — título y total de Valuación, paginación de catálogo (50 +
+  16), búsqueda por texto, el combobox de producto (busca, resalta,
+  elige, cierra, deja el `productoId` real en un input oculto), Conteos y
+  la Bandeja de Traspasos. Sesión autenticada saltando el login real de
+  Google (imposible en este entorno): fila de `Session` creada a mano con
+  `sessionToken` conocido e inyectada como cookie `authjs.session-token`
+  en el contexto de Playwright — mismo mecanismo que usa Auth.js v5 con
+  estrategia de sesión en base de datos, sin tocar el flujo de OAuth real.

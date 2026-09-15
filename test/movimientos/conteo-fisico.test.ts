@@ -123,11 +123,26 @@ describe("Conteo Físico", () => {
     await registrarConteoFisico({ productoId: otroMp.id, seccionId: otraSeccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
 
     const historialSucursalOriginal = await obtenerHistorialConteosFisicos(sucursalId);
-    expect(historialSucursalOriginal).toHaveLength(1);
-    expect(historialSucursalOriginal[0].productoId).toBe(mpId);
+    expect(historialSucursalOriginal.items).toHaveLength(1);
+    expect(historialSucursalOriginal.items[0].productoId).toBe(mpId);
 
     const historialOtraSucursal = await obtenerHistorialConteosFisicos(otraSucursal.id);
-    expect(historialOtraSucursal).toHaveLength(1);
-    expect(historialOtraSucursal[0].productoId).toBe(otroMp.id);
+    expect(historialOtraSucursal.items).toHaveLength(1);
+    expect(historialOtraSucursal.items[0].productoId).toBe(otroMp.id);
+  });
+
+  it("obtenerHistorialConteosFisicos pagina por cursor sin repetir ni saltar filas", async () => {
+    for (let i = 0; i < 7; i++) {
+      await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: i, fechaConteo: new Date(2026, 0, i + 1), accion: "AJUSTAR" });
+    }
+
+    const pagina1 = await obtenerHistorialConteosFisicos(sucursalId, undefined, undefined);
+    expect(pagina1.items).toHaveLength(7); // menos que TAMANO_PAGINA_CONTEOS: entran todos, sin próxima página
+    expect(pagina1.nextCursor).toBeNull();
+
+    const cursor = pagina1.items[2].id;
+    const pagina2 = await obtenerHistorialConteosFisicos(sucursalId, undefined, cursor);
+    expect(pagina2.items.map((c) => c.id)).not.toContain(cursor);
+    expect(pagina2.items).toHaveLength(4); // las 4 filas que quedaban después del cursor
   });
 });

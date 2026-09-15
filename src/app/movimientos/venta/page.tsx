@@ -1,6 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductos } from "@/server/actions/productos";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { VentaForm } from "./venta-form";
 
@@ -11,18 +10,12 @@ export default async function VentaPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_venta");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [productos, secciones] = await Promise.all([
-    listarProductos({ tipo: "PV", soloActivos: true }),
-    listarSeccionesActivas(ctx.sucursalId),
-  ]);
+  const secciones = await listarSeccionesActivas(ctx.sucursalId);
 
   return (
     <div className="max-w-2xl">
       <h1 className="mb-4 text-xl font-semibold">Venta</h1>
-      <VentaForm
-        productos={productos.map((p) => ({ id: p.id, nombre: p.nombre, codigo: p.codigo }))}
-        secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
-      />
+      <VentaForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
     </div>
   );
 }

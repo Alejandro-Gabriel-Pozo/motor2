@@ -3,12 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { reclasificarStock, type DestinoReclasificacion } from "@/server/actions/reclasificacion";
-
-interface Opcion {
-  id: string;
-  nombre: string;
-  codigo: string;
-}
+import { SelectorProducto } from "@/components/selector-producto";
 
 interface FilaDestino {
   seccionId: string;
@@ -22,7 +17,7 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function ReclasificarForm({ productos, secciones }: { productos: Opcion[]; secciones: { id: string; nombre: string }[] }) {
+export function ReclasificarForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(hoyISO());
   const [productoId, setProductoId] = useState("");
@@ -80,14 +75,7 @@ export function ReclasificarForm({ productos, secciones }: { productos: Opcion[]
         </label>
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Producto
-          <select value={productoId} onChange={(e) => setProductoId(e.target.value)} required className="rounded border px-3 py-2">
-            <option value="">Elegí un producto</option>
-            {productos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.codigo} — {p.nombre}
-              </option>
-            ))}
-          </select>
+          <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloActivos: true }} required />
         </label>
       </div>
 

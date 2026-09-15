@@ -13,14 +13,18 @@ const LABEL_ESTADO: Record<string, string> = {
   CERRADA: "Cerrada (reingresada)",
 };
 
-export default async function TraspasosPage() {
+export default async function TraspasosPage({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_transferencia_sucursal");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [bandeja, secciones] = await Promise.all([obtenerBandejaTransferencias(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
+  const { cursor } = await searchParams;
+  const [bandeja, secciones] = await Promise.all([
+    obtenerBandejaTransferencias(ctx.sucursalId, cursor),
+    listarSeccionesActivas(ctx.sucursalId),
+  ]);
 
   const aFila = (t: Awaited<ReturnType<typeof obtenerBandejaTransferencias>>["historial"][number]): FilaBandeja => {
     const soyOrigen = t.origenSucursalId === ctx.sucursalId;
@@ -56,6 +60,7 @@ export default async function TraspasosPage() {
         paraAceptar={bandeja.paraAceptar.map(aFila)}
         paraReingreso={bandeja.paraReingreso.map(aFila)}
         historial={bandeja.historial.map(aFila)}
+        nextCursorHistorial={bandeja.nextCursorHistorial}
         secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
       />
     </div>

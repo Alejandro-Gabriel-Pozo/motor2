@@ -3,14 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setStockMinimoProducto } from "@/server/actions/stock-minimo";
+import { SelectorProducto } from "@/components/selector-producto";
 
-interface Opcion {
-  id: string;
-  nombre: string;
-  codigo: string;
-}
-
-export function StockMinimoForm({ productos, secciones }: { productos: Opcion[]; secciones: { id: string; nombre: string }[] }) {
+export function StockMinimoForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
   const router = useRouter();
   const [productoId, setProductoId] = useState("");
   const [seccionId, setSeccionId] = useState("");
@@ -18,6 +13,7 @@ export function StockMinimoForm({ productos, secciones }: { productos: Opcion[];
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [resetCount, setResetCount] = useState(0);
 
   return (
     <form
@@ -30,6 +26,7 @@ export function StockMinimoForm({ productos, secciones }: { productos: Opcion[];
           if (resultado.ok) {
             setProductoId("");
             setMinimo("");
+            setResetCount((n) => n + 1);
             router.refresh();
           }
         });
@@ -40,14 +37,7 @@ export function StockMinimoForm({ productos, secciones }: { productos: Opcion[];
 
       <label className="flex flex-col gap-1 text-sm">
         Producto
-        <select value={productoId} onChange={(e) => setProductoId(e.target.value)} required className="rounded border px-3 py-2">
-          <option value="">Elegí un producto</option>
-          {productos.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.codigo} — {p.nombre}
-            </option>
-          ))}
-        </select>
+        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloActivos: true }} limpiarSenal={resetCount} required />
       </label>
 
       <label className="flex flex-col gap-1 text-sm">

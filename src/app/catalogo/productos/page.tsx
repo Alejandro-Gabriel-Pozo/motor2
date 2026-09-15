@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductos } from "@/server/actions/productos";
+import { listarProductosPagina } from "@/server/actions/productos";
 import { listarUnidadesActivas } from "@/server/actions/unidades";
 import { listarInsumos } from "@/server/actions/insumos";
 import { listarCategoriasProducto } from "@/server/actions/categorias-producto";
@@ -12,7 +12,7 @@ import { ProductoForm, type ProductoExistente } from "./producto-form";
 export default async function ProductosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>;
+  searchParams: Promise<{ id?: string; q?: string; cursor?: string }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -20,10 +20,10 @@ export default async function ProductosPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { id } = await searchParams;
+  const { id, q, cursor } = await searchParams;
 
-  const [productos, unidades, insumos, categorias, proveedores] = await Promise.all([
-    listarProductos(),
+  const [pagina, unidades, insumos, categorias, proveedores] = await Promise.all([
+    listarProductosPagina(cursor, q),
     listarUnidadesActivas(),
     listarInsumos(),
     listarCategoriasProducto(),
@@ -58,6 +58,17 @@ export default async function ProductosPage({
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_420px]">
       <div>
         <h1 className="mb-4 text-xl font-semibold">Productos</h1>
+        <form className="mb-3 flex gap-2 text-sm">
+          <input type="text" name="q" defaultValue={q ?? ""} placeholder="Buscar por código o nombre…" className="w-64 rounded border px-3 py-2" />
+          <button type="submit" className="rounded border px-3 py-2">
+            Buscar
+          </button>
+          {q && (
+            <Link href="/catalogo/productos" className="self-center text-sm underline">
+              Limpiar
+            </Link>
+          )}
+        </form>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-neutral-500">
@@ -69,7 +80,7 @@ export default async function ProductosPage({
             </tr>
           </thead>
           <tbody>
-            {productos.map((p) => (
+            {pagina.items.map((p) => (
               <tr key={p.id} className="border-b">
                 <td className="py-2">{p.codigo}</td>
                 <td>{p.nombre}</td>
@@ -82,8 +93,20 @@ export default async function ProductosPage({
                 </td>
               </tr>
             ))}
+            {!pagina.items.length && (
+              <tr>
+                <td className="py-2 text-neutral-500" colSpan={5}>
+                  Sin productos{q ? " que coincidan con la búsqueda" : ""}.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+        {pagina.nextCursor && (
+          <Link href={`/catalogo/productos?${q ? `q=${encodeURIComponent(q)}&` : ""}cursor=${pagina.nextCursor}`} className="mt-3 inline-block text-sm underline">
+            Página siguiente →
+          </Link>
+        )}
       </div>
 
       <div>

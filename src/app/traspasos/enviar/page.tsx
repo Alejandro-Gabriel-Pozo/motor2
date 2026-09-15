@@ -1,6 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductos } from "@/server/actions/productos";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { listarSucursalesDisponibles } from "@/server/actions/traspasos";
 import { EnviarForm } from "./enviar-form";
@@ -12,9 +11,8 @@ export default async function EnviarTraspasoPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_transferencia_sucursal");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [sucursales, productos, secciones] = await Promise.all([
+  const [sucursales, secciones] = await Promise.all([
     listarSucursalesDisponibles(ctx.sucursalId),
-    listarProductos({ soloActivos: true }),
     listarSeccionesActivas(ctx.sucursalId),
   ]);
 
@@ -25,11 +23,7 @@ export default async function EnviarTraspasoPage() {
         Le mandás stock a otra sucursal sin que te lo pida (PUSH) — el stock sale de tu sección YA, al enviar. Queda &quot;Enviada&quot; hasta
         que la sucursal destino la acepte o la rechace.
       </p>
-      <EnviarForm
-        sucursales={sucursales.map((s) => ({ id: s.id, nombre: s.nombre }))}
-        productos={productos.map((p) => ({ id: p.id, nombre: p.nombre, codigo: p.codigo }))}
-        secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
-      />
+      <EnviarForm sucursales={sucursales.map((s) => ({ id: s.id, nombre: s.nombre }))} secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
     </div>
   );
 }
