@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { reclasificarStock } from "../../src/server/actions/reclasificacion";
+import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/reclasificacion";
 import { calcularSaldoPorLote, calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 describe("reclasificarStock", () => {
@@ -88,5 +88,24 @@ describe("reclasificarStock", () => {
     expect(await calcularSaldoPorLote(mpId, origenId, lote1)).toBe(0);
     expect(await calcularSaldoPorLote(mpId, origenId, null)).toBe(10); // el lote "sin fecha" original, intacto
     expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(5);
+  });
+
+  describe("obtenerSaldoDisponibleParaReclasificar (hallazgo de la auditoría: el form no mostraba el disponible antes de enviar)", () => {
+    it("devuelve el saldo disponible en origen (sin lote)", async () => {
+      expect(await obtenerSaldoDisponibleParaReclasificar(mpId, origenId, null)).toBe(10);
+    });
+
+    it("devuelve el saldo de un lote puntual, no el total del producto+sección", async () => {
+      const lote1 = new Date("2027-01-01");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }] });
+
+      expect(await obtenerSaldoDisponibleParaReclasificar(mpId, origenId, lote1)).toBe(5);
+      expect(await obtenerSaldoDisponibleParaReclasificar(mpId, origenId, null)).toBe(10);
+    });
+
+    it("devuelve null sin producto o sin sección origen todavía elegidos", async () => {
+      expect(await obtenerSaldoDisponibleParaReclasificar("", origenId, null)).toBeNull();
+      expect(await obtenerSaldoDisponibleParaReclasificar(mpId, "", null)).toBeNull();
+    });
   });
 });

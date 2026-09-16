@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { reclasificarStock, type DestinoReclasificacion } from "@/server/actions/reclasificacion";
+import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar, type DestinoReclasificacion } from "@/server/actions/reclasificacion";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 
@@ -29,6 +29,23 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [disponible, setDisponible] = useState<number | null>(null);
+
+  // Antes había que adivinar la cantidad a repartir y recién se veía el
+  // saldo real si la suma no cerraba (el servidor lo informaba en el
+  // mensaje de error) — a diferencia de Conteo Físico, que sí muestra el
+  // saldo de entrada. Se recalcula cada vez que cambia producto/sección
+  // origen/lote origen.
+  useEffect(() => {
+    let cancelado = false;
+    // Sin producto/sección origen todavía, la propia acción devuelve null.
+    obtenerSaldoDisponibleParaReclasificar(productoId, seccionOrigenId, loteOrigen ? new Date(loteOrigen) : null).then((d) => {
+      if (!cancelado) setDisponible(d);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [productoId, seccionOrigenId, loteOrigen]);
 
   const actualizarDestino = (idx: number, cambios: Partial<FilaDestino>) => {
     setDestinos((prev) => prev.map((d, i) => (i === idx ? { ...d, ...cambios } : d)));
@@ -98,8 +115,16 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         </label>
       </div>
 
+      {productoId && seccionOrigenId && (
+        <p className="text-sm text-neutral-500">
+          Disponible en origen: <span className="font-medium text-neutral-900 dark:text-neutral-100">{disponible ?? "—"}</span>
+        </p>
+      )}
+
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Destinos (la suma tiene que ser exacta al disponible)</span>
+        <span className="text-sm font-medium">
+          Destinos (la suma tiene que ser exacta al disponible{disponible != null ? `: ${disponible}` : ""})
+        </span>
         {destinos.map((d, idx) => (
           <div key={idx} className="flex flex-wrap items-end gap-2 rounded border p-2">
             <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500">

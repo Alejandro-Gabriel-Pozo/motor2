@@ -7,6 +7,21 @@ import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { conPermiso } from "./con-permiso";
 import { error, ok, type ResultadoAccion } from "./tipos";
 
+/**
+ * Solo lectura — la usa el cliente para mostrar el saldo disponible en
+ * origen ANTES de enviar el form, a diferencia de antes (que solo lo
+ * informaba el servidor recién al fallar el submit si la suma no cerraba,
+ * a diferencia de su hermano Conteo Físico, que sí lo muestra de entrada).
+ */
+export async function obtenerSaldoDisponibleParaReclasificar(
+  productoId: string,
+  seccionId: string,
+  loteVencimiento: Date | null
+): Promise<number | null> {
+  if (!productoId || !seccionId) return null;
+  return calcularSaldoPorLote(productoId, seccionId, loteVencimiento);
+}
+
 export interface DestinoReclasificacion {
   seccionId: string;
   loteVencimiento?: Date | null;
