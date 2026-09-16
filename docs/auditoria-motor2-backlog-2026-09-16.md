@@ -44,7 +44,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad media**
 
-- **El historial de versiones de receta solo muestra ingredientes — pasos y ficha técnica quedan invisibles aunque se versionan juntos.** guardarReceta versiona ingredientes/pasos/cabecera como una unidad, pero la pantalla de Historial solo renderiza `v.ingredientes`; un cambio solo en pasos o cabecera aparece indistinguible de la versión anterior.
+- ~~**El historial de versiones de receta solo muestra ingredientes — pasos y ficha técnica quedan invisibles aunque se versionan juntos.**~~ — **resuelto (2026-09-16)**. `listarVersionesDeReceta` ya traía todo (`INCLUDE_RECETA_COMPLETA`); ahora la pantalla también renderiza el resumen de ficha técnica y los pasos por versión (commit `5877da4`).
 
 ### movimientos
 
