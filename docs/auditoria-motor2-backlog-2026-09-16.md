@@ -78,7 +78,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 **Prioridad baja**
 
 - ~~**Reclasificar no impide un destino idéntico al origen (sección+lote), generando un par de movimientos Kardex sin efecto real.**~~ — **resuelto (2026-09-16)**. Rechazado cuando hay un único destino idéntico al origen; repartir entre 2+ sigue permitido (commit `9ab628d`).
-- **Stock Mínimo no ofrece "editar" desde la fila.** Hay que rebuscar producto y sección desde cero cada vez que se quiere ajustar un mínimo existente, con riesgo de crear una fila duplicada por error de sección.
+- ~~**Stock Mínimo no ofrece "editar" desde la fila.**~~ — **resuelto (2026-09-16)**. Link "Editar" por fila (`?editar=<id>`) que precarga el form (commit `9f9f040`).
 
 ### reportes
 
