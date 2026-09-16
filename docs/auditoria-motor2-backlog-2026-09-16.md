@@ -72,7 +72,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad media**
 
-- **Reclasificar no muestra el saldo disponible antes de enviar, a diferencia de su hermano Conteo Físico.** El usuario tiene que adivinar la cantidad a repartir y recién ve el saldo real si la suma no cierra y el servidor lo informa en el mensaje de error, en vez de mostrarlo antes del submit como sí hace Conteo Físico.
+- ~~**Reclasificar no muestra el saldo disponible antes de enviar, a diferencia de su hermano Conteo Físico.**~~ — **resuelto (2026-09-16)**. Nueva `obtenerSaldoDisponibleParaReclasificar`, consultada al cambiar producto/sección/lote origen — "Disponible en origen: X" antes del submit (commit `f1f4464`).
 - **"Eliminar" en Stock Mínimo es la única acción de borrado duro de la app y no pide confirmación.** Un clic accidental borra la fila (no es un movimiento de Kardex reversible) y deja de alertar silenciosamente sobre un producto/sección.
 
 **Prioridad baja**
