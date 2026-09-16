@@ -22,7 +22,7 @@ export default async function RecetaEditorPage({
   searchParams,
 }: {
   params: Promise<{ productoId: string }>;
-  searchParams: Promise<{ editar?: string; sugerido?: string; editarPaso?: string }>;
+  searchParams: Promise<{ editar?: string; sugerido?: string; editarPaso?: string; editarFicha?: string }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -31,7 +31,7 @@ export default async function RecetaEditorPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;
-  const { editar, sugerido, editarPaso } = await searchParams;
+  const { editar, sugerido, editarPaso, editarFicha } = await searchParams;
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpActivas, unidades] = await Promise.all([
@@ -94,87 +94,118 @@ export default async function RecetaEditorPage({
       {vigente && (
         <div className="flex flex-col gap-2">
           <h2 className="font-medium">Ficha técnica</h2>
-          <FormConResultado
-            accion={async (formData: FormData) => {
-              "use server";
-              return actualizarCabeceraDeReceta(producto.id, {
-                rendimientoCantidad: formData.get("rendimientoCantidad") ? Number(formData.get("rendimientoCantidad")) : undefined,
-                rendimientoUnidadId: String(formData.get("rendimientoUnidadId") ?? "") || undefined,
-                racionesCantidad: formData.get("racionesCantidad") ? Number(formData.get("racionesCantidad")) : undefined,
-                racionTamano: formData.get("racionTamano") ? Number(formData.get("racionTamano")) : undefined,
-                racionUnidadId: String(formData.get("racionUnidadId") ?? "") || undefined,
-                tiempoPreparacionMinutos: formData.get("tiempoPreparacionMinutos") ? Number(formData.get("tiempoPreparacionMinutos")) : undefined,
-                tiempoCoccionMinutos: formData.get("tiempoCoccionMinutos") ? Number(formData.get("tiempoCoccionMinutos")) : undefined,
-                comentarios: String(formData.get("comentarios") ?? ""),
-                presentacionEmplatado: String(formData.get("presentacionEmplatado") ?? ""),
-                notasAdicionales: String(formData.get("notasAdicionales") ?? ""),
-                equipamientoNecesario: String(formData.get("equipamientoNecesario") ?? ""),
-              });
-            }}
-            className="flex flex-col gap-2 text-sm"
-          >
-            <div className="flex flex-wrap gap-2">
+          {editarFicha ? (
+            <FormConResultado
+              accion={async (formData: FormData) => {
+                "use server";
+                const resultado = await actualizarCabeceraDeReceta(producto.id, {
+                  rendimientoCantidad: formData.get("rendimientoCantidad") ? Number(formData.get("rendimientoCantidad")) : undefined,
+                  rendimientoUnidadId: String(formData.get("rendimientoUnidadId") ?? "") || undefined,
+                  racionesCantidad: formData.get("racionesCantidad") ? Number(formData.get("racionesCantidad")) : undefined,
+                  racionTamano: formData.get("racionTamano") ? Number(formData.get("racionTamano")) : undefined,
+                  racionUnidadId: String(formData.get("racionUnidadId") ?? "") || undefined,
+                  tiempoPreparacionMinutos: formData.get("tiempoPreparacionMinutos") ? Number(formData.get("tiempoPreparacionMinutos")) : undefined,
+                  tiempoCoccionMinutos: formData.get("tiempoCoccionMinutos") ? Number(formData.get("tiempoCoccionMinutos")) : undefined,
+                  comentarios: String(formData.get("comentarios") ?? ""),
+                  presentacionEmplatado: String(formData.get("presentacionEmplatado") ?? ""),
+                  notasAdicionales: String(formData.get("notasAdicionales") ?? ""),
+                  equipamientoNecesario: String(formData.get("equipamientoNecesario") ?? ""),
+                });
+                // Sale del modo edición al guardar — mismo criterio que Ingredientes/Pasos.
+                if (resultado.ok) redirect(volver);
+                return resultado;
+              }}
+              className="flex flex-col gap-2 text-sm"
+            >
+              <div className="flex flex-wrap gap-2">
+                <label className="flex flex-col gap-1">
+                  Rendimiento
+                  <div className="flex gap-1">
+                    <CampoNumero name="rendimientoCantidad" defaultValue={vigente.rendimientoCantidad ? String(Number(vigente.rendimientoCantidad)) : ""} className="w-24" tamano="compacto" />
+                    <select name="rendimientoUnidadId" defaultValue={vigente.rendimientoUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
+                      <option value="">Unidad</option>
+                      {unidades.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+                <label className="flex flex-col gap-1">
+                  Raciones
+                  <CampoNumero name="racionesCantidad" defaultValue={vigente.racionesCantidad ? String(vigente.racionesCantidad) : ""} className="w-20" tamano="compacto" />
+                </label>
+                <label className="flex flex-col gap-1">
+                  Tamaño de ración
+                  <div className="flex gap-1">
+                    <CampoNumero name="racionTamano" defaultValue={vigente.racionTamano ? String(Number(vigente.racionTamano)) : ""} className="w-24" tamano="compacto" />
+                    <select name="racionUnidadId" defaultValue={vigente.racionUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
+                      <option value="">Unidad</option>
+                      {unidades.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+                <label className="flex flex-col gap-1">
+                  Prep. (min)
+                  <CampoNumero name="tiempoPreparacionMinutos" defaultValue={vigente.tiempoPreparacionMinutos ? String(vigente.tiempoPreparacionMinutos) : ""} className="w-20" tamano="compacto" />
+                </label>
+                <label className="flex flex-col gap-1">
+                  Cocción (min)
+                  <CampoNumero name="tiempoCoccionMinutos" defaultValue={vigente.tiempoCoccionMinutos ? String(vigente.tiempoCoccionMinutos) : ""} className="w-20" tamano="compacto" />
+                </label>
+              </div>
               <label className="flex flex-col gap-1">
-                Rendimiento
-                <div className="flex gap-1">
-                  <CampoNumero name="rendimientoCantidad" defaultValue={vigente.rendimientoCantidad ? String(Number(vigente.rendimientoCantidad)) : ""} className="w-24" tamano="compacto" />
-                  <select name="rendimientoUnidadId" defaultValue={vigente.rendimientoUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
-                    <option value="">Unidad</option>
-                    {unidades.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nombre}
-                      </option>
-                    ))}
-                  </select>
+                Comentarios
+                <textarea name="comentarios" defaultValue={vigente.comentarios ?? ""} className="rounded border px-3 py-2" rows={2} />
+              </label>
+              <label className="flex flex-col gap-1">
+                Presentación o emplatado
+                <textarea name="presentacionEmplatado" defaultValue={vigente.presentacionEmplatado ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
+              </label>
+              <label className="flex flex-col gap-1">
+                Notas adicionales
+                <textarea name="notasAdicionales" defaultValue={vigente.notasAdicionales ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
+              </label>
+              <label className="flex flex-col gap-1">
+                Equipamiento necesario
+                <textarea name="equipamientoNecesario" defaultValue={vigente.equipamientoNecesario ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
+              </label>
+              <div className="flex gap-3">
+                <button type="submit" className="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+                  Guardar ficha técnica
+                </button>
+                <Link href={volver} className="self-center text-sm underline">
+                  Cancelar
+                </Link>
+              </div>
+            </FormConResultado>
+          ) : (
+            (() => {
+              const detalles: string[] = [];
+              if (vigente.rendimientoCantidad != null) detalles.push(`Rendimiento: ${Number(vigente.rendimientoCantidad)} ${vigente.rendimientoUnidad?.nombre ?? ""}`.trim());
+              if (vigente.racionesCantidad != null) detalles.push(`Raciones: ${vigente.racionesCantidad}`);
+              if (vigente.racionTamano != null) detalles.push(`Tamaño de ración: ${Number(vigente.racionTamano)} ${vigente.racionUnidad?.nombre ?? ""}`.trim());
+              if (vigente.tiempoPreparacionMinutos != null) detalles.push(`Prep.: ${vigente.tiempoPreparacionMinutos} min`);
+              if (vigente.tiempoCoccionMinutos != null) detalles.push(`Cocción: ${vigente.tiempoCoccionMinutos} min`);
+              return (
+                <div className="flex flex-col gap-1 text-sm">
+                  {detalles.length > 0 ? <p>{detalles.join(" — ")}</p> : <p className="text-neutral-500">Sin ficha técnica cargada.</p>}
+                  {vigente.comentarios && <p className="text-neutral-500">Comentarios: {vigente.comentarios}</p>}
+                  {vigente.presentacionEmplatado && <p className="text-neutral-500">Presentación o emplatado: {vigente.presentacionEmplatado}</p>}
+                  {vigente.notasAdicionales && <p className="text-neutral-500">Notas adicionales: {vigente.notasAdicionales}</p>}
+                  {vigente.equipamientoNecesario && <p className="text-neutral-500">Equipamiento necesario: {vigente.equipamientoNecesario}</p>}
+                  <Link href={`${volver}?editarFicha=1`} className="self-start underline">
+                    Editar
+                  </Link>
                 </div>
-              </label>
-              <label className="flex flex-col gap-1">
-                Raciones
-                <CampoNumero name="racionesCantidad" defaultValue={vigente.racionesCantidad ? String(vigente.racionesCantidad) : ""} className="w-20" tamano="compacto" />
-              </label>
-              <label className="flex flex-col gap-1">
-                Tamaño de ración
-                <div className="flex gap-1">
-                  <CampoNumero name="racionTamano" defaultValue={vigente.racionTamano ? String(Number(vigente.racionTamano)) : ""} className="w-24" tamano="compacto" />
-                  <select name="racionUnidadId" defaultValue={vigente.racionUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
-                    <option value="">Unidad</option>
-                    {unidades.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-              <label className="flex flex-col gap-1">
-                Prep. (min)
-                <CampoNumero name="tiempoPreparacionMinutos" defaultValue={vigente.tiempoPreparacionMinutos ? String(vigente.tiempoPreparacionMinutos) : ""} className="w-20" tamano="compacto" />
-              </label>
-              <label className="flex flex-col gap-1">
-                Cocción (min)
-                <CampoNumero name="tiempoCoccionMinutos" defaultValue={vigente.tiempoCoccionMinutos ? String(vigente.tiempoCoccionMinutos) : ""} className="w-20" tamano="compacto" />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1">
-              Comentarios
-              <textarea name="comentarios" defaultValue={vigente.comentarios ?? ""} className="rounded border px-3 py-2" rows={2} />
-            </label>
-            <label className="flex flex-col gap-1">
-              Presentación o emplatado
-              <textarea name="presentacionEmplatado" defaultValue={vigente.presentacionEmplatado ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
-            </label>
-            <label className="flex flex-col gap-1">
-              Notas adicionales
-              <textarea name="notasAdicionales" defaultValue={vigente.notasAdicionales ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
-            </label>
-            <label className="flex flex-col gap-1">
-              Equipamiento necesario
-              <textarea name="equipamientoNecesario" defaultValue={vigente.equipamientoNecesario ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
-            </label>
-            <button type="submit" className="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
-              Guardar ficha técnica
-            </button>
-          </FormConResultado>
+              );
+            })()
+          )}
         </div>
       )}
 
