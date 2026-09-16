@@ -51,7 +51,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 **Prioridad alta**
 
 - ~~**Una Venta confirmada no se puede anular ni corregir.**~~ — **resuelto (2026-09-16)**. `anularVenta` (gate `anular_venta`, admin-only) revierte el consumo y la Liquidación de consignación con una Operacion AJUSTE nueva, marca la venta original `anuladaEn`/`anuladaPorId` (migración aditiva) — botón "Anular venta" en Trazabilidad (commit `b347e61`).
-- **exigeSeccion existe en el dominio pero la UI nunca lo lee.** TRANSICIONES define exigeSeccion para que Compra/Producción/Devolución de cliente/Venta puedan preseleccionar "General" sin preguntar, pero panel-movimiento-form.tsx y venta-form.tsx nunca lo consultan: el select de Sección siempre arranca vacío y required en los 9 procesos por igual.
+- ~~**exigeSeccion existe en el dominio pero la UI nunca lo lee.**~~ — **resuelto (2026-09-16)**. `PROCESOS_UI` ahora deriva `exigeSeccion` de `TRANSICIONES` (nunca a mano); Compra/Producción/Transferencia/Dev. cliente/Venta preseleccionan la primera sección activa (no había ninguna sección "General" seedeada para asumir ese nombre), el resto sigue arrancando vacío — el campo sigue obligatorio en los 9 (commit `fab4cee`).
 
 **Prioridad media**
 
