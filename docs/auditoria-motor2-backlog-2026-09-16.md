@@ -8,7 +8,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 ## Pendiente, ya identificado antes de esta auditoría
 
-- Sidebar sin ningún mecanismo de colapso, en ningún tamaño de pantalla (src/components/app-shell.tsx:17, `w-56 flex-shrink-0`, sin toggle ni estado) — no es un problema exclusivo de mobile (en desktop tampoco se puede achicar para ganar espacio en tablas anchas como Costos o Rendimiento real de recetas), pero en mobile el efecto es mucho más grave: 224px fijos sobre ~400px de pantalla le comen más de la mitad al contenido.
+- ~~Sidebar sin ningún mecanismo de colapso, en ningún tamaño de pantalla~~ — **resuelto (2026-09-16)**. Nuevo `SidebarColapsable` (toggle siempre visible, preferencia persistida en localStorage) (commit `a3c8c51`).
 - Costos y márgenes sin explicación de fórmula (Margen $/%, Food cost %, umbral 40% hardcodeado) — agregar AyudaIcono como ya se hizo en Rendimiento real de recetas.
 - Proveedores sin edición (src/app/(app)/catalogo/proveedores/page.tsx) — solo Activar/Desactivar, no se puede corregir contacto/teléfono/email/CUIT/condiciones de pago de uno ya creado.
 - Diferencias de ajuste: el grupo "Solo receta" queda en "ESPERADO" sin sugerir cuánto debería cambiar la Merma% ni linkear a la receta.
