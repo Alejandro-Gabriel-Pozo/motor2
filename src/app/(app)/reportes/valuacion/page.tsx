@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { calcularValuacionInventario } from "@/core/reportes/valuacion";
+import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacion";
 
 export default async function ValuacionPage() {
   const ctx = await obtenerContextoUsuario();
@@ -30,59 +31,12 @@ export default async function ValuacionPage() {
         )}
       </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-neutral-500">
-            <th className="py-1">Producto</th>
-            <th>Saldo</th>
-            <th>Costo unitario</th>
-            <th>Valor</th>
-            <th>Proveedor</th>
-          </tr>
-        </thead>
-        <tbody>
-          {conCosto.map((f) => (
-            <tr key={f.productoId} className="border-b">
-              <td className="py-1">{f.productoCodigo} — {f.productoNombre}</td>
-              <td>
-                {f.saldo} {f.unidadStockNombre}
-              </td>
-              <td>${f.costoUnitario!.toLocaleString("es-AR")}</td>
-              <td className="font-medium">${f.valor!.toLocaleString("es-AR")}</td>
-              <td>{f.proveedorNombre ?? "—"}</td>
-            </tr>
-          ))}
-          {!conCosto.length && (
-            <tr>
-              <td className="py-1 text-neutral-500" colSpan={5}>
-                Sin stock valorizable en esta sucursal.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <TablaValuacionConCosto filas={conCosto} />
 
       {sinCosto.length > 0 && (
         <div>
           <h2 className="mb-2 text-sm font-medium">Con stock, sin costo conocido (no valorizado)</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-neutral-500">
-                <th className="py-1">Producto</th>
-                <th>Saldo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sinCosto.map((f) => (
-                <tr key={f.productoId} className="border-b">
-                  <td className="py-1">{f.productoCodigo} — {f.productoNombre}</td>
-                  <td>
-                    {f.saldo} {f.unidadStockNombre}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TablaValuacionSinCosto filas={sinCosto} />
         </div>
       )}
     </div>
