@@ -8,7 +8,7 @@ export default async function LoginPage() {
 
   if (usuario) {
     const ctx = await obtenerContextoUsuario();
-    if (ctx) redirect("/administracion/usuarios");
+    if (ctx) redirect("/reportes");
 
     // Sesión válida pero sin ninguna sucursal asignada todavía. NO
     // redirigir de vuelta a /login desde acá — el layout de administración
