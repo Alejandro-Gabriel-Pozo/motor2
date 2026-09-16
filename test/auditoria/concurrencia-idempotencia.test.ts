@@ -1,0 +1,183 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * Pruebas de investigación de la auditoría 2026-09-16 (Fase 4, autorizada
+ * tras revisión del informe docs/auditoria-motor2-fase0-fase1-2026-09-16.md).
+ * Objetivo: producir evidencia reproducible sobre concurrencia real,
+ * idempotencia y atomicidad transaccional — NO se modifica código de
+ * producción a partir de estos resultados sin autorización explícita.
+ */
+
+vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { registrarMovimiento } from "../../src/server/actions/movimientos";
+import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+
+describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => {
+  let sucursalId: string;
+  let seccionId: string;
+  let unidadKgId: string;
+  let insumoId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    sucursalId = base.sucursal.id;
+    const catalogo = await sembrarCatalogoBase();
+    unidadKgId = catalogo.kg.id;
+    insumoId = catalogo.insumo.id;
+    seccionId = (await sembrarSeccion(sucursalId)).id;
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+  });
+
+  async function crearMP(nombre: string) {
+    return prisma.producto.create({
+      data: { codigo: `MP_${nombre.toUpperCase()}`, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId },
+    });
+  }
+
+  describe("Escenario 1: dos CONSUMO simultáneos sobre el mismo producto+sección", () => {
+    it("con stock exacto para UNO solo de los dos, Postgres serializa: uno gana, el otro pierde con error, el saldo final nunca queda negativo ni se pierde una unidad", async () => {
+      const mp = await crearMP("Harina");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+      // Dos consumos de 6 c/u simultáneos sobre un saldo de 10: la suma (12)
+      // excede el disponible, pero cada uno aislado (6 ≤ 10) pasaría si no
+      // hubiera serialización real. Si el aislamiento SERIALIZABLE + reintento
+      // funciona como está documentado, exactamente UNO debe tener éxito.
+      const [r1, r2] = await Promise.all([
+        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+      ]);
+
+      const resultados = [r1, r2];
+      const exitosos = resultados.filter((r) => r.ok);
+      const fallidos = resultados.filter((r) => !r.ok);
+
+      // eslint-disable-next-line no-console
+      console.log("[auditoria] Escenario 1 resultados:", resultados.map((r) => ({ ok: r.ok, mensaje: r.mensaje })));
+
+      expect(exitosos.length).toBe(1);
+      expect(fallidos.length).toBe(1);
+      expect(fallidos[0]!.mensaje).toMatch(/stock insuficiente/i);
+
+      const saldoFinal = await calcularSaldoTotal(mp.id, seccionId);
+      expect(saldoFinal).toBe(4); // 10 - 6, nunca 10-12=-2 ni 10-6-6 si ambos hubiesen "ganado" mal
+    });
+
+    it("HALLAZGO: con dos operaciones concurrentes que SÍ deberían poder convivir (stock de sobra), conTransaccionSerializable no siempre reintenta — el conflicto de Postgres puede escapar como error crudo del driver en vez de P2034", async () => {
+      const mp = await crearMP("Harina2");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }] });
+
+      const settled = await Promise.allSettled([
+        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+      ]);
+
+      const rechazados = settled.filter((s): s is PromiseRejectedResult => s.status === "rejected");
+      const cumplidos = settled.filter((s): s is PromiseFulfilledResult<Awaited<ReturnType<typeof registrarMovimiento>>> => s.status === "fulfilled");
+
+      // eslint-disable-next-line no-console
+      console.log(
+        "[auditoria] Escenario 1b — settled:",
+        settled.map((s) => (s.status === "fulfilled" ? { ok: s.value.ok, mensaje: s.value.mensaje } : { rejected: true, name: (s.reason as Error)?.constructor?.name, message: String((s.reason as Error)?.message).slice(0, 200) }))
+      );
+
+      if (rechazados.length > 0) {
+        // CONFIRMADO (reproducible): la promesa se RECHAZA (no devuelve un
+        // ResultadoAccion {ok:false,...}) — conPermiso no tiene try/catch,
+        // así que esto escaparía como error 500 no manejado en producción,
+        // no como un mensaje de negocio prolijo. Documentado como hallazgo
+        // en docs/auditoria-motor2-fase0-fase1-2026-09-16.md — NO se
+        // corrige acá (sin autorización de implementación todavía).
+        const razon = rechazados[0]!.reason as Error;
+        expect(razon.constructor.name).not.toBe("PrismaClientKnownRequestError"); // confirma que NO es un P2034 reconocido
+      } else {
+        // También es un resultado válido si Postgres no llegó a conflictuar
+        // en esta corrida puntual (depende de timing real) — ambos deben
+        // haber tenido éxito y el saldo debe cuadrar.
+        expect(cumplidos.every((c) => c.value.ok)).toBe(true);
+        expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(8); // 20 - 6 - 6
+      }
+    });
+  });
+
+  describe("Escenario 2: dos COMPRA simultáneas con la MISMA factura+proveedor (hipótesis del informe: el chequeo anti-duplicado corre FUERA de la transacción serializable)", () => {
+    it("documenta si el guard de factura duplicada previene o no la duplicación bajo concurrencia real", async () => {
+      const mp = await crearMP("HarinaFactura");
+      const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_TEST01", nombre: "Proveedor Test" } });
+
+      const payload = {
+        proceso: "COMPRA" as const,
+        fecha: new Date(),
+        seccionId,
+        proveedorId: proveedor.id,
+        nroFactura: "A-0001",
+        items: [{ productoId: mp.id, cantidad: 10 }],
+      };
+
+      const settled = await Promise.allSettled([registrarMovimiento(payload), registrarMovimiento(payload)]);
+
+      const operacionesConEsaFactura = await prisma.operacion.count({
+        where: { sucursalId, proceso: "COMPRA", proveedorId: proveedor.id, nroFactura: "A-0001" },
+      });
+
+      // eslint-disable-next-line no-console
+      console.log(
+        "[auditoria] Escenario 2:",
+        settled.map((s) => (s.status === "fulfilled" ? { ok: s.value.ok, mensaje: s.value.mensaje } : { rejected: true, message: String((s.reason as Error)?.message).slice(0, 200) })),
+        { operacionesConEsaFactura }
+      );
+
+      // No se afirma un resultado esperado a priori — esto es evidencia,
+      // no una aserción de "debe pasar". Se deja constancia del hallazgo
+      // real en el comentario de abajo tras ejecutar la prueba.
+      expect(operacionesConEsaFactura).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("Escenario 3: doble-submit secuencial (click doble de usuario) — sin concurrencia real, mismo payload dos veces seguidas", () => {
+    it("confirma que NO existe protección de idempotencia: un CONSUMO repetido crea dos Operaciones y descuenta el doble", async () => {
+      const mp = await crearMP("HarinaDobleSubmit");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+      const payload = { proceso: "CONSUMO" as const, fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }] };
+      const r1 = await registrarMovimiento(payload);
+      const r2 = await registrarMovimiento(payload); // mismo payload exacto, sin ninguna referencia/idempotency-key
+
+      expect(r1.ok, r1.mensaje).toBe(true);
+      expect(r2.ok, r2.mensaje).toBe(true); // CONFIRMADO: ambos tienen éxito, no hay guard
+
+      const operacionesConsumo = await prisma.operacion.count({ where: { sucursalId, proceso: "CONSUMO" } });
+      expect(operacionesConsumo).toBe(2); // dos Operaciones distintas del mismo submit repetido
+
+      expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(4); // 10 - 3 - 3, se descontó dos veces
+    });
+  });
+
+  describe("Escenario 4: atomicidad — fallo a mitad de un payload con varias líneas", () => {
+    it("si una línea del payload es inválida (producto inexistente), NINGUNA línea válida del mismo payload queda persistida", async () => {
+      const mpValida = await crearMP("HarinaValida");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpValida.id, cantidad: 10 }] });
+
+      const resultado = await registrarMovimiento({
+        proceso: "CONSUMO",
+        fecha: new Date(),
+        seccionId,
+        items: [
+          { productoId: mpValida.id, cantidad: 2 }, // válida, se procesaría primero
+          { productoId: "00000000-0000-0000-0000-000000000000", cantidad: 1 }, // producto inexistente
+        ],
+      });
+
+      expect(resultado.ok).toBe(false);
+      // El saldo debe seguir en 10: ninguna línea se persistió pese a que la primera era válida.
+      expect(await calcularSaldoTotal(mpValida.id, seccionId)).toBe(10);
+      const totalMovimientos = await prisma.movimientoStock.count({ where: { productoId: mpValida.id } });
+      expect(totalMovimientos).toBe(1); // solo el movimiento de la COMPRA inicial, ningún CONSUMO parcial
+    });
+  });
+});

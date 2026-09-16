@@ -185,3 +185,163 @@ Revisión aprobada con ajustes menores: distinción explícita entre ausencia ve
 7. Benchmark de reportes y agregaciones antes de considerar `StockBalance`.
 
 No autorizado todavía: `StockBalance`, Zod, `decimal.js`, TanStack, Redis, ni ningún otro cambio de stack o de código de producción.
+
+---
+
+## 8. Fase 4 (parcial) — Hallazgos confirmados por prueba reproducible (2026-09-16)
+
+Pruebas nuevas en `test/auditoria/concurrencia-idempotencia.test.ts` (no modifica código de producción; solo agrega pruebas de investigación). Ejecutadas 5+ veces cada escenario contra Postgres local real, con `Promise.allSettled` para capturar tanto resultados `{ok:false,...}` de negocio como rechazos de promesa (errores no manejados).
+
+### Hallazgo 1 — El reintento de `conTransaccionSerializable` no cubre todos los conflictos de serialización reales
+
+```text
+Hallazgo: conTransaccionSerializable solo reintenta cuando el error es
+  Prisma.PrismaClientKnownRequestError con code "P2034". En pruebas de
+  concurrencia real con el motor genérico (registrarMovimiento), el
+  conflicto de Postgres a veces se manifiesta en un punto distinto (muy
+  probablemente al COMMIT, no en una sentencia individual) y llega como
+  DriverAdapterError({ kind: "TransactionWriteConflict" }) — una clase
+  distinta, que la condición `e instanceof Prisma.PrismaClientKnownRequestError`
+  no reconoce. El catch no lo reintenta: lo relanza en el primer intento.
+
+Evidencia: test/auditoria/concurrencia-idempotencia.test.ts, "Escenario
+  1b" — de 5 corridas con dos CONSUMO concurrentes sobre stock de sobra
+  (20, dos consumos de 6 c/u — ambos deberían poder convivir sin
+  conflicto de negocio), 2 de 5 terminaron con una promesa RECHAZADA
+  (name: "DriverAdapterError", message: "TransactionWriteConflict") en
+  vez de dos ResultadoAccion {ok:true,...}. Reproducido también de forma
+  aislada (fuera del motor de negocio) con dos transacciones Serializable
+  concurrentes sobre el mismo Producto vía la API de modelos de Prisma.
+
+Ubicaciones: src/core/movimientos/con-reintento.ts:17-28
+  (conTransaccionSerializable); consumido por
+  src/server/actions/movimientos.ts, venta.ts, conteo-fisico.ts,
+  reclasificacion.ts, traspasos.ts — es decir, TODA escritura de Kardex.
+
+Comportamiento actual: cuando el conflicto llega como DriverAdapterError
+  en vez de P2034, la función se relanza sin reintentar. Como
+  conPermiso() (src/server/actions/con-permiso.ts) NO tiene try/catch
+  alrededor de fn(ctx), el error se propaga sin convertirse en un
+  ResultadoAccion {ok:false, mensaje:...} — llega crudo al Server Action,
+  y de ahí al error boundary de Next.js (no un mensaje de negocio
+  prolijo tipo "Stock insuficiente").
+
+Impacto: dos usuarios (o el mismo usuario con doble-submit rápido)
+  operando sobre el mismo producto+sección al mismo tiempo, incluso con
+  stock más que suficiente para ambos, pueden ver una de las dos
+  operaciones fallar con un error crudo/no descriptivo en vez de tener
+  éxito silenciosamente (que es el comportamiento que el propio diseño
+  documentado busca garantizar). No es pérdida de datos ni corrupción de
+  stock — es una falla de UX/confiabilidad: una operación legítima
+  falla cuando no debería.
+
+Tipo de problema: FALLO_CONFIRMADO (reproducido, no es solo hipótesis).
+Nivel de certeza: alto — reproducido en 2 de 5 corridas del escenario
+  designado para esto, y en una reproducción aislada mínima.
+Severidad: media — no corrompe datos ni permite sobreventa; degrada
+  confiabilidad bajo concurrencia real (más probable a mayor tráfico
+  simultáneo por sucursal).
+Causa probable: la condición de reconocimiento del conflicto
+  (`e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034"`)
+  es más estrecha que el conjunto real de errores que Postgres/el driver
+  pg pueden lanzar para SQLSTATE 40001 (serialization_failure) y 40P01
+  (deadlock_detected) — ambos mapeados por @prisma/adapter-pg a
+  DriverAdapterError({kind:"TransactionWriteConflict"}), pero solo
+  ALGUNOS caminos internos de Prisma 7 envuelven ese error como P2034
+  antes de que llegue al código de aplicación.
+Opciones de solución (no implementadas, solo relevadas):
+  (a) ampliar la condición de conTransaccionSerializable para reconocer
+      también DriverAdapterError con kind "TransactionWriteConflict" (o
+      chequear message/SQLSTATE en vez de solo instanceof+code);
+  (b) agregar un try/catch en conPermiso (o en cada action) que traduzca
+      cualquier excepción no reconocida en un ResultadoAccion genérico,
+      como red de seguridad además del fix puntual en (a).
+Solución recomendada: no corresponde proponer todavía — pendiente de
+  autorización de implementación.
+Archivos afectados (si se autoriza): src/core/movimientos/con-reintento.ts,
+  posiblemente src/server/actions/con-permiso.ts.
+Pruebas previas: test/auditoria/concurrencia-idempotencia.test.ts
+  (Escenario 1b) ya reproduce el problema tal como está.
+Pruebas posteriores (si se corrige): correr el mismo escenario N veces
+  y confirmar 0 rechazos de promesa en todas las corridas.
+Riesgos: ninguno evidente en ampliar el reconocimiento del conflicto —
+  es estrictamente más permisivo con los reintentos, no cambia semántica
+  de negocio.
+Plan de rollback: revertir el cambio en con-reintento.ts (archivo chico,
+  sin migraciones de por medio).
+¿Requiere decisión de negocio?: no — es una corrección de robustez
+  interna, no un cambio de comportamiento visible salvo "menos errores
+  espurios bajo concurrencia".
+```
+
+### Hallazgo 2 — El guard de factura duplicada (COMPRA) es una condición de carrera real, no solo teórica
+
+```text
+Hallazgo: el chequeo "¿ya existe una Compra con este proveedor+factura?"
+  (src/server/actions/movimientos.ts:220-227) usa prisma.operacion.findFirst
+  ANTES de entrar a conTransaccionSerializable — un patrón
+  check-then-act clásico, fuera de cualquier aislamiento transaccional
+  compartido entre las dos requests.
+
+Evidencia: test/auditoria/concurrencia-idempotencia.test.ts, "Escenario
+  2" — en 1 de 5 corridas con dos COMPRA concurrentes, mismo
+  proveedor+nroFactura exacto, AMBAS tuvieron éxito
+  (operacionesConEsaFactura: 2 en la base). En las otras 4 corridas el
+  guard sí funcionó (una de las dos fue rechazada, por el guard o por el
+  Hallazgo 1) — confirma que es una condición de carrera real con
+  ventana angosta pero explotable, no un evento imposible.
+
+Ubicaciones: src/server/actions/movimientos.ts:220-227.
+Comportamiento actual: bajo concurrencia real, es posible cargar la
+  misma factura de compra dos veces para el mismo proveedor — el guard
+  que existe para evitarlo (Movimientos.js:402-416 en Apps Script,
+  portado tal cual) no es atómico con la escritura.
+Impacto: doble carga de una compra (stock duplicado + gasto duplicado)
+  si dos personas/pestañas cargan la misma factura casi al mismo tiempo
+  — escenario plausible en un ERP con más de un cajero/encargado de
+  depósito.
+Tipo de problema: FALLO_CONFIRMADO (reproducido).
+Nivel de certeza: alto — reproducido 1 de 5 veces con solo 2 requests
+  concurrentes; la probabilidad crece con más tráfico real.
+Severidad: media-alta — a diferencia del Hallazgo 1, este SÍ corrompe
+  datos de negocio (factura contada dos veces), no solo UX.
+Causa probable: falta un `@@unique` de base de datos que respalde la
+  regla de negocio "una factura por proveedor por sucursal no se carga
+  dos veces" — hoy es 100% una regla de aplicación no atómica.
+Opciones de solución (no implementadas, solo relevadas):
+  (a) `@@unique([sucursalId, proceso, proveedorId, nroFactura])` en
+      Operacion (con proceso fijo en 'COMPRA' o un índice parcial),
+      dejando que Postgres sea el árbitro final — mismo criterio que ya
+      usa este proyecto para RecetaVersion/Presentacion/etc.;
+  (b) mover el chequeo findFirst DENTRO de conTransaccionSerializable,
+      aunque sin (a) seguiría siendo vulnerable a la misma condición de
+      carrera dentro de la ventana Serializable si Postgres no lo
+      detecta como conflicto de lectura-escritura real sobre índices
+      distintos.
+Solución recomendada: (a) es la que sigue el patrón ya establecido en
+  este código (dejar que la constraint de DB sea el árbitro), pero
+  requiere migración — no corresponde implementar sin autorización.
+Archivos afectados (si se autoriza): prisma/schema.prisma (migración
+  nueva), src/server/actions/movimientos.ts (manejar el error de
+  constraint violada con un mensaje de negocio, mismo patrón que
+  crearConCodigoAutogenerado ante P2002).
+Pruebas previas: test/auditoria/concurrencia-idempotencia.test.ts
+  (Escenario 2) ya reproduce el problema.
+Pruebas posteriores (si se corrige): mismo escenario, N corridas, 0
+  casos con operacionesConEsaFactura > 1.
+Riesgos: un `@@unique` nuevo podría chocar con datos ya cargados en
+  producción si alguna vez se duplicó una factura antes de esta
+  corrección — habría que auditar datos existentes antes de aplicar la
+  migración (no evaluado en esta entrega).
+Plan de rollback: revertir la migración (down) y el manejo de error
+  agregado.
+¿Requiere decisión de negocio?: parcialmente — confirmar que "una
+  factura por proveedor por sucursal es siempre única" es una regla de
+  negocio real y sin excepciones (ej. notas de crédito con el mismo
+  número, facturas de distintas sucursales del mismo proveedor) antes
+  de convertirla en constraint de base de datos.
+```
+
+**Actualiza la matriz de §4**: la fila "Concurrencia" pasa de "no probado" a **FALLO_CONFIRMADO parcial** (Hallazgo 1); la fila "Idempotencia" gana evidencia concreta adicional más allá de COMPRA — el propio guard de COMPRA, que era la única protección existente, también es racy (Hallazgo 2).
+
+Quedan pendientes de esta misma etapa: reintento/rollback ya cubierto parcialmente (ver Escenario 4, atomicidad confirmada — ningún dato parcial persiste ante un payload inválido), traspasos "en tránsito", precisión numérica, reconstrucción de saldo, benchmark de reportes.
