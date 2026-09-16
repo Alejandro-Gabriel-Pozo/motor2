@@ -68,7 +68,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad alta**
 
-- **Alertas de stock ignora un Stock Mínimo explícito de 0 (y puede ocultar saldo negativo).** calcularAlertasStock reimplementa su propia resolución y trata cualquier `stockMinimo <= 0` como "sin mínimo configurado", saltando la fila antes de comparar el saldo — incluso si el saldo es negativo. El helper correcto (resolverStockMinimo, que distingue null de 0) existe pero no lo llama nadie.
+- ~~**Alertas de stock ignora un Stock Mínimo explícito de 0 (y puede ocultar saldo negativo).**~~ — **resuelto (2026-09-16)**. La resolución en memoria de `calcularAlertasStock` ahora distingue "ninguna fila cargada" (null, se saltea) de "mínimo cargado en 0" (participa como umbral real), mismo criterio que `resolverStockMinimo` (commit `59f7cb4`).
 
 **Prioridad media**
 
