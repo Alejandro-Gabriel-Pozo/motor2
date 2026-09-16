@@ -245,10 +245,29 @@ const TAMANO_PAGINA_CONTEOS = 50;
  * versión de esta función): sin él, sin `seccionId`, listaría conteos de
  * CUALQUIER sucursal — bug encontrado escribiendo la UI, mismo tipo de
  * fuga que Core/Catálogo evitan scopeando todo por sucursal desde el vamos.
+ *
+ * `seccionId`/`productoId`/`desde`/`hasta` existían como filtro posible
+ * (seccionId) o eran triviales de agregar (productoId, rango de fechas),
+ * pero /reportes/conteos nunca los exponía en la página, a diferencia de
+ * casi todos los demás reportes del módulo (hallazgo de la auditoría).
  */
-export async function obtenerHistorialConteosFisicos(sucursalId: string, seccionId?: string, cursor?: string) {
+export interface FiltroHistorialConteos {
+  seccionId?: string;
+  productoId?: string;
+  desde?: Date;
+  hasta?: Date;
+  cursor?: string;
+}
+
+export async function obtenerHistorialConteosFisicos(sucursalId: string, filtro: FiltroHistorialConteos = {}) {
+  const { seccionId, productoId, desde, hasta, cursor } = filtro;
   const items = await prisma.conteoFisico.findMany({
-    where: { sucursalId, ...(seccionId ? { seccionId } : {}) },
+    where: {
+      sucursalId,
+      ...(seccionId ? { seccionId } : {}),
+      ...(productoId ? { productoId } : {}),
+      ...(desde || hasta ? { fecha: { ...(desde ? { gte: desde } : {}), ...(hasta ? { lte: hasta } : {}) } } : {}),
+    },
     include: { producto: true, seccion: true },
     orderBy: [{ fecha: "desc" }, { id: "desc" }],
     take: TAMANO_PAGINA_CONTEOS + 1,

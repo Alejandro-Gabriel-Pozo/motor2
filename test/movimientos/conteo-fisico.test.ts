@@ -160,13 +160,29 @@ describe("Conteo Físico", () => {
       await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: i, fechaConteo: new Date(2026, 0, i + 1), accion: "AJUSTAR" });
     }
 
-    const pagina1 = await obtenerHistorialConteosFisicos(sucursalId, undefined, undefined);
+    const pagina1 = await obtenerHistorialConteosFisicos(sucursalId);
     expect(pagina1.items).toHaveLength(7); // menos que TAMANO_PAGINA_CONTEOS: entran todos, sin próxima página
     expect(pagina1.nextCursor).toBeNull();
 
     const cursor = pagina1.items[2].id;
-    const pagina2 = await obtenerHistorialConteosFisicos(sucursalId, undefined, cursor);
+    const pagina2 = await obtenerHistorialConteosFisicos(sucursalId, { cursor });
     expect(pagina2.items.map((c) => c.id)).not.toContain(cursor);
     expect(pagina2.items).toHaveLength(4); // las 4 filas que quedaban después del cursor
+  });
+
+  it("obtenerHistorialConteosFisicos filtra por producto y por rango de fechas (hallazgo de la auditoría: existían pero nunca se exponían)", async () => {
+    const otroMp = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: otroMp.id, cantidad: 5 }] });
+
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 3, fechaConteo: new Date(2026, 0, 5), accion: "AJUSTAR" });
+    await registrarConteoFisico({ productoId: otroMp.id, seccionId, conteoReal: 2, fechaConteo: new Date(2026, 0, 15), accion: "AJUSTAR" });
+
+    const porProducto = await obtenerHistorialConteosFisicos(sucursalId, { productoId: mpId });
+    expect(porProducto.items).toHaveLength(1);
+    expect(porProducto.items[0].productoId).toBe(mpId);
+
+    const porFecha = await obtenerHistorialConteosFisicos(sucursalId, { desde: new Date(2026, 0, 10), hasta: new Date(2026, 0, 20) });
+    expect(porFecha.items).toHaveLength(1);
+    expect(porFecha.items[0].productoId).toBe(otroMp.id);
   });
 });
