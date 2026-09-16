@@ -3,7 +3,16 @@ import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
-import { obtenerRecetaVigente, guardarReceta, agregarIngredienteAReceta, actualizarIngredienteDeReceta } from "@/server/actions/recetas";
+import {
+  obtenerRecetaVigente,
+  agregarIngredienteAReceta,
+  actualizarIngredienteDeReceta,
+  quitarIngredienteDeReceta,
+  agregarPasoAReceta,
+  actualizarPasoDeReceta,
+  quitarPasoDeReceta,
+  actualizarCabeceraDeReceta,
+} from "@/server/actions/recetas";
 import { listarUnidadesActivas } from "@/server/actions/unidades";
 import { CampoNumero } from "@/components/campo-numero";
 
@@ -12,7 +21,7 @@ export default async function RecetaEditorPage({
   searchParams,
 }: {
   params: Promise<{ productoId: string }>;
-  searchParams: Promise<{ editar?: string; sugerido?: string }>;
+  searchParams: Promise<{ editar?: string; sugerido?: string; editarPaso?: string }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -21,7 +30,8 @@ export default async function RecetaEditorPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;
-  const { editar, sugerido } = await searchParams;
+  const { editar, sugerido, editarPaso } = await searchParams;
+  const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpActivas, unidades] = await Promise.all([
     prisma.producto.findUnique({ where: { id: productoId } }),
@@ -56,9 +66,11 @@ export default async function RecetaEditorPage({
   }
 
   const vigente = await obtenerRecetaVigente(producto.id);
+  const volver = `/catalogo/recetas/${producto.id}`;
+  const siguienteOrdenPaso = vigente?.pasos.length ? Math.max(...vigente.pasos.map((p) => p.orden)) + 1 : 1;
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="flex max-w-2xl flex-col gap-8">
       <div>
         <Link href="/catalogo/recetas" className="text-sm underline">
           ← Volver a Recetas
@@ -68,7 +80,7 @@ export default async function RecetaEditorPage({
         </h1>
         {vigente && (
           <div className="flex gap-3">
-            <Link href={`/catalogo/recetas/${producto.id}/historial`} className="text-sm text-neutral-500 underline">
+            <Link href={`${volver}/historial`} className="text-sm text-neutral-500 underline">
               Ver historial de versiones ({vigente.version})
             </Link>
             <Link href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline">
@@ -79,96 +91,173 @@ export default async function RecetaEditorPage({
       </div>
 
       {vigente && (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="py-2">Ingrediente</th>
-              <th>Cantidad</th>
-              <th>Unidad</th>
-              <th>Merma %</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {vigente.ingredientes.map((ing) => {
-              const enEdicion = editar === ing.insumoProductoId;
-              return (
-                <tr key={ing.id} className="border-b">
-                  {enEdicion ? (
-                    <td colSpan={5} className="py-2">
-                      <form
-                        action={async (formData: FormData) => {
-                          "use server";
-                          const resultado = await actualizarIngredienteDeReceta(producto.id, ing.insumoProductoId, {
-                            cantidad: Number(formData.get("cantidad")),
-                            unidadId: String(formData.get("unidadId") ?? ""),
-                            mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
-                          });
-                          // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
-                          if (resultado.ok) redirect(`/catalogo/recetas/${producto.id}`);
-                        }}
-                        className="flex flex-wrap items-end gap-2"
-                      >
-                        <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                        <CampoNumero name="cantidad" defaultValue={sugerido || String(Number(ing.cantidad))} required className="w-28" />
-                        {sugerido && (
-                          <span className="text-xs text-neutral-500">
-                            (sugerido por rendimiento real — tenías {Number(ing.cantidad)})
-                          </span>
-                        )}
-                        <select name="unidadId" defaultValue={ing.unidadId} required className="rounded border px-2 py-1.5 text-sm">
-                          {unidades.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.nombre}
-                            </option>
-                          ))}
-                        </select>
-                        <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
-                        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
-                          Guardar
-                        </button>
-                        <Link href={`/catalogo/recetas/${producto.id}`} className="text-sm underline">
-                          Cancelar
-                        </Link>
-                      </form>
-                    </td>
-                  ) : (
-                    <>
-                      <td className="py-2">{ing.insumoProducto.nombre}</td>
-                      <td>{Number(ing.cantidad)}</td>
-                      <td>{ing.unidad.nombre}</td>
-                      <td>{Number(ing.mermaPorcentaje)}</td>
-                      <td className="flex gap-3">
-                        <Link href={`/catalogo/recetas/${producto.id}?editar=${ing.insumoProductoId}`} className="text-sm underline">
-                          Editar
-                        </Link>
+        <div className="flex flex-col gap-2">
+          <h2 className="font-medium">Ficha técnica</h2>
+          <form
+            action={async (formData: FormData) => {
+              "use server";
+              await actualizarCabeceraDeReceta(producto.id, {
+                rendimientoCantidad: formData.get("rendimientoCantidad") ? Number(formData.get("rendimientoCantidad")) : undefined,
+                rendimientoUnidadId: String(formData.get("rendimientoUnidadId") ?? "") || undefined,
+                racionesCantidad: formData.get("racionesCantidad") ? Number(formData.get("racionesCantidad")) : undefined,
+                racionTamano: formData.get("racionTamano") ? Number(formData.get("racionTamano")) : undefined,
+                racionUnidadId: String(formData.get("racionUnidadId") ?? "") || undefined,
+                tiempoPreparacionMinutos: formData.get("tiempoPreparacionMinutos") ? Number(formData.get("tiempoPreparacionMinutos")) : undefined,
+                tiempoCoccionMinutos: formData.get("tiempoCoccionMinutos") ? Number(formData.get("tiempoCoccionMinutos")) : undefined,
+                comentarios: String(formData.get("comentarios") ?? ""),
+                presentacionEmplatado: String(formData.get("presentacionEmplatado") ?? ""),
+                notasAdicionales: String(formData.get("notasAdicionales") ?? ""),
+                equipamientoNecesario: String(formData.get("equipamientoNecesario") ?? ""),
+              });
+            }}
+            className="flex flex-col gap-2 text-sm"
+          >
+            <div className="flex flex-wrap gap-2">
+              <label className="flex flex-col gap-1">
+                Rendimiento
+                <div className="flex gap-1">
+                  <CampoNumero name="rendimientoCantidad" defaultValue={vigente.rendimientoCantidad ? String(Number(vigente.rendimientoCantidad)) : ""} className="w-24" tamano="compacto" />
+                  <select name="rendimientoUnidadId" defaultValue={vigente.rendimientoUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
+                    <option value="">Unidad</option>
+                    {unidades.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+              <label className="flex flex-col gap-1">
+                Raciones
+                <CampoNumero name="racionesCantidad" defaultValue={vigente.racionesCantidad ? String(vigente.racionesCantidad) : ""} className="w-20" tamano="compacto" />
+              </label>
+              <label className="flex flex-col gap-1">
+                Tamaño de ración
+                <div className="flex gap-1">
+                  <CampoNumero name="racionTamano" defaultValue={vigente.racionTamano ? String(Number(vigente.racionTamano)) : ""} className="w-24" tamano="compacto" />
+                  <select name="racionUnidadId" defaultValue={vigente.racionUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
+                    <option value="">Unidad</option>
+                    {unidades.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+              <label className="flex flex-col gap-1">
+                Prep. (min)
+                <CampoNumero name="tiempoPreparacionMinutos" defaultValue={vigente.tiempoPreparacionMinutos ? String(vigente.tiempoPreparacionMinutos) : ""} className="w-20" tamano="compacto" />
+              </label>
+              <label className="flex flex-col gap-1">
+                Cocción (min)
+                <CampoNumero name="tiempoCoccionMinutos" defaultValue={vigente.tiempoCoccionMinutos ? String(vigente.tiempoCoccionMinutos) : ""} className="w-20" tamano="compacto" />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1">
+              Comentarios
+              <textarea name="comentarios" defaultValue={vigente.comentarios ?? ""} className="rounded border px-3 py-2" rows={2} />
+            </label>
+            <label className="flex flex-col gap-1">
+              Presentación o emplatado
+              <textarea name="presentacionEmplatado" defaultValue={vigente.presentacionEmplatado ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
+            </label>
+            <label className="flex flex-col gap-1">
+              Notas adicionales
+              <textarea name="notasAdicionales" defaultValue={vigente.notasAdicionales ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
+            </label>
+            <label className="flex flex-col gap-1">
+              Equipamiento necesario
+              <textarea name="equipamientoNecesario" defaultValue={vigente.equipamientoNecesario ?? ""} placeholder="Un renglón por ítem" className="rounded border px-3 py-2" rows={2} />
+            </label>
+            <button type="submit" className="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+              Guardar ficha técnica
+            </button>
+          </form>
+        </div>
+      )}
+
+      {vigente && (
+        <div className="flex flex-col gap-2">
+          <h2 className="font-medium">Ingredientes</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-neutral-500">
+                <th className="py-2">Ingrediente</th>
+                <th>Cantidad</th>
+                <th>Unidad</th>
+                <th>Merma %</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {vigente.ingredientes.map((ing) => {
+                const enEdicion = editar === ing.insumoProductoId;
+                return (
+                  <tr key={ing.id} className="border-b">
+                    {enEdicion ? (
+                      <td colSpan={5} className="py-2">
                         <form
-                          action={async () => {
+                          action={async (formData: FormData) => {
                             "use server";
-                            const restantes = vigente.ingredientes
-                              .filter((otro) => otro.id !== ing.id)
-                              .map((otro) => ({
-                                insumoProductoId: otro.insumoProductoId,
-                                cantidad: Number(otro.cantidad),
-                                unidadId: otro.unidadId,
-                                mermaPorcentaje: Number(otro.mermaPorcentaje),
-                                observaciones: otro.observaciones ?? undefined,
-                              }));
-                            await guardarReceta(producto.id, restantes);
+                            const resultado = await actualizarIngredienteDeReceta(producto.id, ing.insumoProductoId, {
+                              cantidad: Number(formData.get("cantidad")),
+                              unidadId: String(formData.get("unidadId") ?? ""),
+                              mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
+                            });
+                            // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
+                            if (resultado.ok) redirect(volver);
                           }}
+                          className="flex flex-wrap items-end gap-2"
                         >
-                          <button type="submit" className="text-sm underline">
-                            Quitar
+                          <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
+                          <CampoNumero name="cantidad" defaultValue={sugerido || String(Number(ing.cantidad))} required className="w-28" />
+                          {sugerido && <span className="text-xs text-neutral-500">(sugerido por rendimiento real — tenías {Number(ing.cantidad)})</span>}
+                          <select name="unidadId" defaultValue={ing.unidadId} required className="rounded border px-2 py-1.5 text-sm">
+                            {unidades.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.nombre}
+                              </option>
+                            ))}
+                          </select>
+                          <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
+                          <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+                            Guardar
                           </button>
+                          <Link href={volver} className="text-sm underline">
+                            Cancelar
+                          </Link>
                         </form>
                       </td>
-                    </>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    ) : (
+                      <>
+                        <td className="py-2">{ing.insumoProducto.nombre}</td>
+                        <td>{Number(ing.cantidad)}</td>
+                        <td>{ing.unidad.nombre}</td>
+                        <td>{Number(ing.mermaPorcentaje)}</td>
+                        <td className="flex gap-3">
+                          <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline">
+                            Editar
+                          </Link>
+                          <form
+                            action={async () => {
+                              "use server";
+                              await quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
+                            }}
+                          >
+                            <button type="submit" className="text-sm underline">
+                              Quitar
+                            </button>
+                          </form>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <form
@@ -208,6 +297,131 @@ export default async function RecetaEditorPage({
           Agregar
         </button>
       </form>
+
+      {vigente && (
+        <div className="flex flex-col gap-2">
+          <h2 className="font-medium">Método de preparación</h2>
+          {vigente.pasos.length === 0 ? (
+            <p className="text-sm text-neutral-500">Todavía no hay ningún paso cargado.</p>
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {vigente.pasos.map((paso) => {
+                const enEdicion = ordenEnEdicion === paso.orden;
+                return (
+                  <li key={paso.id} className="rounded border p-3 text-sm">
+                    {enEdicion ? (
+                      <form
+                        action={async (formData: FormData) => {
+                          "use server";
+                          const resultado = await actualizarPasoDeReceta(producto.id, paso.orden, {
+                            nombre: String(formData.get("nombre") ?? ""),
+                            instruccion: String(formData.get("instruccion") ?? ""),
+                            minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
+                            insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
+                          });
+                          if (resultado.ok) redirect(volver);
+                        }}
+                        className="flex flex-col gap-2"
+                      >
+                        <input name="nombre" defaultValue={paso.nombre ?? ""} placeholder="Nombre corto (opcional)" className="rounded border px-2 py-1.5" />
+                        <textarea name="instruccion" defaultValue={paso.instruccion} required className="rounded border px-2 py-1.5" rows={2} />
+                        <CampoNumero name="minutos" defaultValue={paso.minutos ? String(paso.minutos) : ""} placeholder="Minutos (opcional)" className="w-32" tamano="compacto" />
+                        {vigente.ingredientes.length > 0 && (
+                          <fieldset className="flex flex-col gap-1">
+                            <span className="text-xs text-neutral-500">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
+                            {vigente.ingredientes.map((ing) => (
+                              <label key={ing.id} className="flex items-center gap-1 text-xs">
+                                <input
+                                  type="checkbox"
+                                  name="insumoProductoIds"
+                                  value={ing.insumoProductoId}
+                                  defaultChecked={paso.ingredientes.some((pi) => pi.recetaIngrediente.insumoProductoId === ing.insumoProductoId)}
+                                />
+                                {ing.insumoProducto.nombre}
+                              </label>
+                            ))}
+                          </fieldset>
+                        )}
+                        <div className="flex gap-3">
+                          <button type="submit" className="self-start rounded bg-neutral-900 px-3 py-1.5 text-xs text-white">
+                            Guardar
+                          </button>
+                          <Link href={volver} className="text-xs underline">
+                            Cancelar
+                          </Link>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-medium">
+                            {paso.orden}. {paso.nombre || "Paso"}
+                          </span>
+                          {paso.minutos != null && <span className="text-xs text-neutral-500">({paso.minutos} min)</span>}
+                        </div>
+                        <p>{paso.instruccion}</p>
+                        {paso.ingredientes.length > 0 && (
+                          <p className="text-xs text-neutral-500">
+                            Ingredientes de este paso: {paso.ingredientes.map((pi) => pi.recetaIngrediente.insumoProducto.nombre).join(", ")}
+                          </p>
+                        )}
+                        <div className="flex gap-3">
+                          <Link href={`${volver}?editarPaso=${paso.orden}`} className="text-xs underline">
+                            Editar
+                          </Link>
+                          <form
+                            action={async () => {
+                              "use server";
+                              await quitarPasoDeReceta(producto.id, paso.orden);
+                            }}
+                          >
+                            <button type="submit" className="text-xs underline">
+                              Quitar
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
+          <form
+            action={async (formData: FormData) => {
+              "use server";
+              await agregarPasoAReceta(producto.id, {
+                orden: siguienteOrdenPaso,
+                nombre: String(formData.get("nombre") ?? ""),
+                instruccion: String(formData.get("instruccion") ?? ""),
+                minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
+                insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
+              });
+            }}
+            className="flex max-w-lg flex-col gap-2"
+          >
+            <h3 className="text-sm font-medium">Agregar paso (genera la próxima versión)</h3>
+            <input name="nombre" placeholder="Nombre corto (opcional)" className="rounded border px-3 py-2" />
+            <textarea name="instruccion" placeholder="Instrucción" required className="rounded border px-3 py-2" rows={2} />
+            <CampoNumero name="minutos" placeholder="Minutos (opcional)" className="w-32" />
+            {vigente.ingredientes.length > 0 && (
+              <fieldset className="flex flex-col gap-1">
+                <span className="text-xs text-neutral-500">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
+                {vigente.ingredientes.map((ing) => (
+                  <label key={ing.id} className="flex items-center gap-1 text-xs">
+                    <input type="checkbox" name="insumoProductoIds" value={ing.insumoProductoId} />
+                    {ing.insumoProducto.nombre}
+                  </label>
+                ))}
+              </fieldset>
+            )}
+            <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
+              Agregar paso
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
