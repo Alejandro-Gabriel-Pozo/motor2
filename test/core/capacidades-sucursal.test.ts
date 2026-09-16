@@ -35,4 +35,13 @@ describe("sucursalTieneCapacidad", () => {
     await prisma.capacidadSucursal.create({ data: { accionClave: "capacidades_sucursal", sucursalId, habilitado: false } });
     expect(await sucursalTieneCapacidad(sucursalId, "capacidades_sucursal")).toBe(true);
   });
+
+  it("'gestion_usuarios' y 'gestion_permisos' también se auto-protegen, aunque se intenten deshabilitar por fila específica o default", async () => {
+    await prisma.capacidadSucursal.create({ data: { accionClave: "gestion_usuarios", sucursalId, habilitado: false } });
+    await prisma.capacidadSucursal.create({ data: { accionClave: "gestion_permisos", sucursalId: null, habilitado: false } });
+
+    expect(await sucursalTieneCapacidad(sucursalId, "gestion_usuarios")).toBe(true);
+    expect(await sucursalTieneCapacidad(sucursalId, "gestion_permisos")).toBe(true);
+    expect(await sucursalTieneCapacidad(otraSucursalId, "gestion_permisos")).toBe(true); // la fila default tampoco alcanza a bloquearla
+  });
 });

@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE } from "./acciones";
 
 /**
  * Equivalente directo de sucursalTieneCapacidad_ (Sucursales.js:616-628).
@@ -20,8 +21,13 @@ export async function sucursalTieneCapacidad(
 ): Promise<boolean> {
   // Auto-protección (Sucursales.js:618): la matriz de capacidades nunca
   // puede autobloquearse, si no la Central podría quedar sin forma de
-  // volver a habilitar algo que deshabilitó por error.
-  if (accionClave === "capacidades_sucursal") return true;
+  // volver a habilitar algo que deshabilitó por error. Mismo criterio se
+  // extiende a gestion_usuarios/gestion_permisos (ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE,
+  // acciones.ts): esta capa se evalúa ANTES que el permiso de rol
+  // (ver gate.ts), así que sin esto un admin podía lograr acá exactamente
+  // lo que esa otra protección ya existe para evitar — dejar a todo el
+  // mundo, en todas las sucursales, sin forma de entrar a Usuarios/Permisos.
+  if (accionClave === "capacidades_sucursal" || (ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE as readonly string[]).includes(accionClave)) return true;
 
   const candidatas = await db.capacidadSucursal.findMany({
     where: { accionClave, OR: [{ sucursalId }, { sucursalId: null }] },
