@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { creariaCiclo } from "@/core/catalogo/grupo";
+import { validarFusionInsumos } from "@/core/catalogo/producto";
 import { conPermiso } from "./con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "./tipos";
 
@@ -45,13 +46,39 @@ export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string 
 }
 
 /**
+ * Solo lectura — no toca nada. La usa el cliente para decidir, ANTES de
+ * llamar a renombrarOFusionarInsumo, si el nombre tipeado va a disparar una
+ * fusión (y con qué insumo), para poder mostrar la confirmación explícita
+ * que renombrarOFusionarInsumo exige (confirmarFusion) en vez de fusionar
+ * de una sin que el usuario se entere de qué está pasando.
+ */
+export async function previsualizarFusionInsumo(insumoId: string, nombreNuevo: string): Promise<string | null> {
+  const nuevo = texto(nombreNuevo);
+  if (!nuevo) return null;
+  const existente = await prisma.insumo.findFirst({
+    where: { nombre: { equals: nuevo, mode: "insensitive" }, id: { not: insumoId } },
+  });
+  return existente?.nombre ?? null;
+}
+
+/**
  * Equivalente de renombrarFamilia (Catalogo.js:2565-2618) — mucho más
  * simple que en Sheets: como Producto.insumoId es FK real (no texto
  * duplicado en Hoja listado), fusionar es un UPDATE ... WHERE insumoId,
  * no un "buscar y reemplazar" fila por fila. Nunca toca Receta/Kardex —
  * Insumo nunca viajó a esas hojas (Catalogo.js:2557-2559).
+ *
+ * Cuando el nombre nuevo matchea un insumo existente, esto FUSIONA (mueve
+ * todos los productos y borra el insumo viejo) en vez de solo renombrar —
+ * por eso exige confirmarFusion=true explícito (ver previsualizarFusionInsumo
+ * y validarFusionInsumos, que además bloquea fusionar unidades de stock
+ * mezcladas bajo el mismo Insumo).
  */
-export async function renombrarOFusionarInsumo(insumoId: string, nombreNuevo: string): Promise<ResultadoAccion> {
+export async function renombrarOFusionarInsumo(
+  insumoId: string,
+  nombreNuevo: string,
+  confirmarFusion = false
+): Promise<ResultadoAccion> {
   return conPermiso("grupos_familia", async () => {
     const nuevo = texto(nombreNuevo);
     if (!nuevo) return error("El nombre nuevo no puede estar vacío.");
@@ -66,6 +93,13 @@ export async function renombrarOFusionarInsumo(insumoId: string, nombreNuevo: st
     });
 
     if (existente) {
+      const chocaUnidad = await validarFusionInsumos(insumoId, existente.id);
+      if (chocaUnidad) return error(chocaUnidad);
+
+      if (!confirmarFusion) {
+        return error(`Ya existe el insumo "${existente.nombre}" — hace falta confirmar la fusión antes de aplicarla.`);
+      }
+
       await prisma.$transaction([
         prisma.producto.updateMany({ where: { insumoId }, data: { insumoId: existente.id } }),
         prisma.insumo.delete({ where: { id: insumoId } }),

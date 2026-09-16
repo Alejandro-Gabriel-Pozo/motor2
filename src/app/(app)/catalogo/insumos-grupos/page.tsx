@@ -4,13 +4,13 @@ import {
   crearInsumo,
   actualizarActivoInsumo,
   actualizarGrupoDeInsumo,
-  renombrarOFusionarInsumo,
   crearOActualizarGrupo,
   actualizarActivoGrupo,
   listarInsumos,
   listarGrupos,
 } from "@/server/actions/insumos";
 import { textoCadenaDeGrupos } from "@/core/catalogo/grupo";
+import { FormRenombrarInsumo } from "@/components/catalogo/form-renombrar-insumo";
 
 export default async function InsumosGruposPage() {
   const ctx = await obtenerContextoUsuario();
@@ -39,18 +39,7 @@ export default async function InsumosGruposPage() {
             {insumos.map((i) => (
               <tr key={i.id} className="border-b align-top">
                 <td className="py-2">
-                  <form
-                    action={async (formData: FormData) => {
-                      "use server";
-                      await renombrarOFusionarInsumo(i.id, String(formData.get("nombre") ?? ""));
-                    }}
-                    className="flex gap-1"
-                  >
-                    <input name="nombre" defaultValue={i.nombre} className="w-32 rounded border px-2 py-1" />
-                    <button type="submit" className="text-sm underline">
-                      Renombrar/fusionar
-                    </button>
-                  </form>
+                  <FormRenombrarInsumo insumoId={i.id} nombreActual={i.nombre} />
                 </td>
                 <td>
                   <form
