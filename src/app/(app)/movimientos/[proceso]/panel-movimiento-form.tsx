@@ -9,6 +9,7 @@ import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { AyudaIcono } from "@/components/ayuda-campo";
 
 interface Opcion {
   id: string;
@@ -295,10 +296,16 @@ export function PanelMovimientoForm({
               {fila.ultimaCompraTexto && <span className="text-neutral-400">{fila.ultimaCompraTexto}</span>}
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
-              Cantidad
+              <span>
+                Cantidad
+                {config.cantidadConSigno && (
+                  <AyudaIcono texto="El ajuste es el DELTA, ya con signo: cargá negativo (ej. -5) para bajar el stock, positivo para subirlo." />
+                )}
+              </span>
               <CampoNumero
                 value={fila.cantidad}
                 onChange={(v) => actualizarFila(idx, { cantidad: v })}
+                placeholder={config.cantidadConSigno ? "ej. -5 o 5" : undefined}
                 required
                 tamano="compacto"
               />
