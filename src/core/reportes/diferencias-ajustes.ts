@@ -3,6 +3,12 @@ import { construirIndiceRecetas, construirMapaProductos, redondearCantidad, type
 
 export type EstadoDiferencia = "REVISAR" | "ESPERADO" | "OK";
 
+export interface RecetaQueUsaInsumo {
+  productoVentaId: string;
+  productoVentaNombre: string;
+  mermaPorcentajeActual: number;
+}
+
 export interface FilaDiferenciaAjuste {
   productoId: string;
   producto: string;
@@ -16,6 +22,22 @@ export interface FilaDiferenciaAjuste {
   ultimaFechaConteo: Date | null;
   ultimaCantidadConteo: number;
   estado: EstadoDiferencia;
+  /**
+   * Solo grupo "b" (Solo receta): en qué recetas aparece este insumo, con
+   * la merma % vigente en cada una — para poder linkear directo a
+   * corregirla, en vez de dejar "ESPERADO" sin ningún siguiente paso.
+   */
+  recetasQueLoUsan: RecetaQueUsaInsumo[];
+  /**
+   * Señal direccional (nunca un número puntual — atribuir la magnitud
+   * exacta a una receta en particular exigiría prorratear el consumo
+   * entre todas las recetas que usan este insumo, cada una con su propia
+   * merma%, y arriesgarse a un cálculo tan engañoso como el que ya se
+   * descartó para "Rendimiento real de recetas" opción B): si el neto de
+   * Ajustes+Conteos es negativo, la merma real fue MAYOR a la cargada
+   * (conviene subir el %); si es positivo, fue MENOR (conviene bajarlo).
+   */
+  sugerenciaMerma: "aumentar" | "disminuir" | null;
 }
 
 const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1, OK: 2 };
@@ -35,7 +57,20 @@ const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1
  */
 export async function generarReporteDiferenciasAjustes(sucursalId: string, db: Db = prisma): Promise<FilaDiferenciaAjuste[]> {
   const productos = await construirMapaProductos(sucursalId, db);
-  const { mpsEnRecetas } = await construirIndiceRecetas(db);
+  const { recetaPorProducto, mpsEnRecetas } = await construirIndiceRecetas(db);
+
+  // Índice inverso: por cada insumo (MP), en qué recetas (PV) aparece y con
+  // qué merma % vigente — para poder linkear directo a corregirla.
+  const recetasPorInsumo = new Map<string, RecetaQueUsaInsumo[]>();
+  for (const [productoVentaId, ingredientes] of recetaPorProducto) {
+    const productoVenta = productos.get(productoVentaId);
+    if (!productoVenta) continue;
+    for (const ing of ingredientes) {
+      const lista = recetasPorInsumo.get(ing.insumoProductoId) ?? [];
+      lista.push({ productoVentaId, productoVentaNombre: productoVenta.nombre, mermaPorcentajeActual: ing.mermaPorcentaje });
+      recetasPorInsumo.set(ing.insumoProductoId, lista);
+    }
+  }
 
   const movimientos = await db.movimientoStock.findMany({
     where: { seccion: { sucursalId }, proceso: { in: ["AJUSTE", "CONTROL"] } },
@@ -76,6 +111,10 @@ export async function generarReporteDiferenciasAjustes(sucursalId: string, db: D
     const huboDiferencia = ajuste.suma !== 0 || conteo.suma !== 0;
     const estado: EstadoDiferencia = grupo === "a" ? (huboDiferencia ? "REVISAR" : "OK") : "ESPERADO";
 
+    const netoAjustesYConteos = ajuste.suma + conteo.suma;
+    const sugerenciaMerma: FilaDiferenciaAjuste["sugerenciaMerma"] =
+      grupo === "b" && netoAjustesYConteos !== 0 ? (netoAjustesYConteos < 0 ? "aumentar" : "disminuir") : null;
+
     filas.push({
       productoId: info.id,
       producto: info.nombre,
@@ -89,6 +128,8 @@ export async function generarReporteDiferenciasAjustes(sucursalId: string, db: D
       ultimaFechaConteo: conteo.ultimaFecha,
       ultimaCantidadConteo: redondearCantidad(conteo.ultimaCantidad),
       estado,
+      recetasQueLoUsan: grupo === "b" ? (recetasPorInsumo.get(info.id) ?? []) : [],
+      sugerenciaMerma,
     });
   }
 
