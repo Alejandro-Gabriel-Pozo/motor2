@@ -23,11 +23,16 @@ export interface FilaAlertaStock {
  * de un producto+sección (sumando todos los lotes — un lote chico por
  * vencer no puede disparar una alerta falsa si el total de esa MP+sección
  * está bien) y lo compara contra el Stock Mínimo resuelto para esa
- * sección puntual (resolverStockMinimo: gana la fila de sección si existe,
- * si no la global de la sucursal). CRITICO si el saldo llegó a 0 o menos,
- * BAJO si está en o por debajo del mínimo pero todavía positivo, nada si
- * está OK o no hay mínimo cargado (`stockMinimo <= 0` se trata como "sin
- * mínimo configurado", mismo criterio que Apps Script).
+ * sección puntual (mismo criterio que resolverStockMinimo, ver
+ * stock-minimo.ts: gana la fila de sección si existe, si no la global de
+ * la sucursal — acá en memoria, sobre lo ya traído en bloque, para no
+ * hacer una query por fila). CRITICO si el saldo llegó a 0 o menos, BAJO
+ * si está en o por debajo del mínimo pero todavía positivo, nada si está
+ * OK o no hay NINGUNA fila de mínimo cargada para ese producto/sección —
+ * "sin mínimo cargado" (null) y "mínimo cargado en 0" (avisame si esto se
+ * termina del todo) son cosas distintas, así que solo el primer caso se
+ * saltea (antes: `stockMinimo <= 0` trataba a los dos igual, así que un
+ * mínimo de 0 con saldo negativo nunca alertaba).
  *
  * A diferencia de Apps Script no incluye "Proveedor Último" (requeriría un
  * join adicional por fila solo para un dato informativo) — simplificación
@@ -66,8 +71,9 @@ export async function calcularAlertasStock(sucursalId: string, db: Db = prisma):
     const seccion = seccionPorId.get(s.seccionId);
     if (!seccion) continue;
 
-    const stockMinimo = minimoPorSeccion.get(`${s.productoId}||${s.seccionId}`) ?? minimoGlobal.get(s.productoId) ?? 0;
-    if (stockMinimo <= 0) continue;
+    const claveSeccion = `${s.productoId}||${s.seccionId}`;
+    const stockMinimo = minimoPorSeccion.has(claveSeccion) ? minimoPorSeccion.get(claveSeccion)! : minimoGlobal.get(s.productoId);
+    if (stockMinimo == null) continue; // ninguna fila de mínimo cargada: no hay alerta posible
 
     const saldoActual = Number(s._sum.cantidad ?? 0);
     if (saldoActual > stockMinimo) continue; // OK: no es una alerta

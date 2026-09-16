@@ -59,6 +59,23 @@ describe("calcularAlertasStock", () => {
     expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("CRITICO");
   });
 
+  it("mínimo configurado en 0 SÍ alerta si el saldo queda en 0 o negativo — distinto de 'sin mínimo cargado' (hallazgo de la auditoría)", async () => {
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
+    await setStockMinimoProducto(mpId, 0); // "avisame si esto se termina del todo", no "sin mínimo"
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "VENCIDO", items: [{ productoId: mpId, cantidad: 5 }] });
+
+    const alertas = await calcularAlertasStock(sucursalId);
+    expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("CRITICO");
+  });
+
+  it("mínimo configurado en 0 con saldo positivo no alerta", async () => {
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
+    await setStockMinimoProducto(mpId, 0);
+
+    const alertas = await calcularAlertasStock(sucursalId);
+    expect(alertas.find((a) => a.productoId === mpId)).toBeUndefined();
+  });
+
   it("el mínimo por sección gana sobre el mínimo global de la sucursal", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 8 }] });
     await setStockMinimoProducto(mpId, 3); // global: 8 > 3, no alertaría
