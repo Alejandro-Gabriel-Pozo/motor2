@@ -225,6 +225,14 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
   return conPermiso("editar_producto", async () => {
     const existente = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
+    // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
+    // tipo de un producto con historial (recetas, ventas, stock) rompe
+    // invariantes reales, así que se rechaza explícito en vez de
+    // silenciarlo (antes: se ignoraba sin aviso, "Producto actualizado"
+    // mostraba éxito con el tipo viejo intacto).
+    if (datos.tipo !== existente.tipo) {
+      return error(`El tipo no se puede cambiar — este producto ya es "${existente.tipo}". Dado de baja y creá uno nuevo si necesitás el otro tipo.`);
+    }
 
     const invalido = await validarComun(datos, productoId);
     if (invalido) return error(invalido);

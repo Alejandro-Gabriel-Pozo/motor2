@@ -88,14 +88,24 @@ export function ProductoForm({
     >
       <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>
 
-      <div className="flex gap-4">
-        <label className="flex items-center gap-1 text-sm">
-          <input type="radio" name="tipoRadio" checked={tipo === "MP"} onChange={() => setTipo("MP")} /> Materia prima (MP)
-        </label>
-        <label className="flex items-center gap-1 text-sm">
-          <input type="radio" name="tipoRadio" checked={tipo === "PV"} onChange={() => setTipo("PV")} /> Producto de venta (PV)
-        </label>
-      </div>
+      {editando ? (
+        <div className="flex flex-col gap-1">
+          <p className="text-sm">{tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"}</p>
+          <AyudaCampo>
+            El tipo no se puede cambiar una vez creado el producto — recetas, ventas y stock ya asumen cuál es. Si te equivocaste de tipo, dá de
+            baja este producto y creá uno nuevo con el tipo correcto.
+          </AyudaCampo>
+        </div>
+      ) : (
+        <div className="flex gap-4">
+          <label className="flex items-center gap-1 text-sm">
+            <input type="radio" name="tipoRadio" checked={tipo === "MP"} onChange={() => setTipo("MP")} /> Materia prima (MP)
+          </label>
+          <label className="flex items-center gap-1 text-sm">
+            <input type="radio" name="tipoRadio" checked={tipo === "PV"} onChange={() => setTipo("PV")} /> Producto de venta (PV)
+          </label>
+        </div>
+      )}
 
       {!editando && <input name="codigo" placeholder="Código (opcional, se autogenera)" className="rounded border px-3 py-2" />}
       <input name="nombre" placeholder="Nombre" defaultValue={productoExistente?.nombre} required className="rounded border px-3 py-2" />

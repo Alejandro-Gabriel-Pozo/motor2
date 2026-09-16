@@ -84,6 +84,22 @@ describe("productos", () => {
     expect(actualizado.nombre).toBe("Fideos guiseros");
   });
 
+  it("rechaza cambiar el tipo al editar, en vez de ignorarlo en silencio", async () => {
+    await darDeAltaProducto({ nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1 });
+    const producto = await prisma.producto.findFirstOrThrow({ where: { nombre: "Harina 000" } });
+
+    const resultado = await actualizarProducto(producto.id, {
+      nombre: "Harina 000",
+      tipo: "PV", // intento real de cambiar MP -> PV
+      unidadStockId: unidadKgId,
+      factorConversion: 1,
+    });
+    expect(resultado.ok).toBe(false);
+
+    const sigueIgual = await prisma.producto.findUniqueOrThrow({ where: { id: producto.id } });
+    expect(sigueIgual.tipo).toBe("MP");
+  });
+
   it("rechaza consignación sin proveedor o sin precio", async () => {
     const resultado = await darDeAltaProducto({
       nombre: "Vino consignado",
