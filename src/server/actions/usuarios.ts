@@ -102,6 +102,21 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
 }
 
 /**
+ * El campo "notas" de la membresía existía en el modelo (se llenaba solo
+ * por flujos automáticos de bootstrap) pero no se podía ver ni editar
+ * desde la UI — hallazgo de la auditoría de motor2.
+ */
+export async function actualizarNotasMembresia(membresiaId: string, notas: string): Promise<ResultadoAccion> {
+  return conPermiso("gestion_usuarios", async (ctx) => {
+    const membresia = await prisma.usuarioSucursal.findUnique({ where: { id: membresiaId } });
+    if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
+
+    await prisma.usuarioSucursal.update({ where: { id: membresiaId }, data: { notas: texto(notas) || null } });
+    return ok("Notas actualizadas.");
+  });
+}
+
+/**
  * Kill-switch de cuenta a nivel sistema (User.activoGlobal) — a diferencia
  * de actualizarActivoMembresia (una fila UsuarioSucursal, una sucursal a
  * la vez), esto corta el acceso en TODAS las sucursales de una sola vez,

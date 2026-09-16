@@ -1,8 +1,15 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
-import { agregarOActualizarUsuario, actualizarActivoMembresia, actualizarActivoGlobalUsuario, listarUsuariosDeSucursal } from "@/server/actions/usuarios";
+import {
+  agregarOActualizarUsuario,
+  actualizarActivoMembresia,
+  actualizarActivoGlobalUsuario,
+  actualizarNotasMembresia,
+  listarUsuariosDeSucursal,
+} from "@/server/actions/usuarios";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { FormConResultado } from "@/components/form-con-resultado";
 import { listarSucursales } from "@/server/actions/sucursales";
 
 export default async function UsuariosPage() {
@@ -32,16 +39,31 @@ export default async function UsuariosPage() {
               Cuenta
               <AyudaIcono texto="Kill-switch a nivel sistema — corta el acceso en TODAS las sucursales de una sola vez, sin tener que desactivar cada membresía por separado. Distinto de 'Activo', que es solo por sucursal." />
             </th>
+            <th>Notas</th>
             <th />
           </tr>
         </thead>
         <tbody>
           {membresias.map((m) => (
-            <tr key={m.id} className="border-b">
+            <tr key={m.id} className="border-b align-top">
               <td className="py-2">{m.usuario.email}</td>
               <td>{m.rol.nombre}</td>
               <td>{m.activo ? "Sí" : "No"}</td>
               <td className={m.usuario.activoGlobal ? "" : "text-red-600"}>{m.usuario.activoGlobal ? "Activa" : "Desactivada"}</td>
+              <td>
+                <FormConResultado
+                  accion={async (formData: FormData) => {
+                    "use server";
+                    return actualizarNotasMembresia(m.id, String(formData.get("notas") ?? ""));
+                  }}
+                  className="flex gap-1"
+                >
+                  <input name="notas" defaultValue={m.notas ?? ""} placeholder="sin notas" className="w-32 rounded border px-2 py-1 text-xs" />
+                  <button type="submit" className="text-sm underline">
+                    Guardar
+                  </button>
+                </FormConResultado>
+              </td>
               <td className="flex gap-3">
                 <form
                   action={async () => {
@@ -69,13 +91,14 @@ export default async function UsuariosPage() {
         </tbody>
       </table>
 
-      <form
-        action={async (formData: FormData) => {
+      <FormConResultado
+        accion={async (formData: FormData) => {
           "use server";
-          await agregarOActualizarUsuario({
+          return agregarOActualizarUsuario({
             email: String(formData.get("email") ?? ""),
             rolId: String(formData.get("rolId") ?? ""),
             sucursalId: String(formData.get("sucursalId") ?? ctx.sucursalId),
+            notas: String(formData.get("notas") ?? "") || undefined,
           });
         }}
         className="flex max-w-md flex-col gap-2"
@@ -100,10 +123,11 @@ export default async function UsuariosPage() {
             </option>
           ))}
         </select>
+        <input name="notas" placeholder="Notas (opcional)" className="rounded border px-3 py-2" />
         <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
           Guardar
         </button>
-      </form>
+      </FormConResultado>
       <p className="max-w-md text-xs text-neutral-500">
         Para que alguien vea varias sucursales (ej. un súper admin de las 5), agregalo acá una vez por cada sucursal — con la membresía elegirá
         cuál ver desde el selector arriba a la derecha.

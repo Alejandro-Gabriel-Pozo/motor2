@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { actualizarActivoMembresia, actualizarActivoGlobalUsuario } from "../../src/server/actions/usuarios";
+import { actualizarActivoMembresia, actualizarActivoGlobalUsuario, actualizarNotasMembresia } from "../../src/server/actions/usuarios";
 
 describe("actualizarActivoMembresia", () => {
   beforeEach(async () => {
@@ -94,5 +94,48 @@ describe("actualizarActivoGlobalUsuario", () => {
     const resultado = await actualizarActivoGlobalUsuario(operador.id, true);
     expect(resultado.ok, resultado.mensaje).toBe(true);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: operador.id } })).activoGlobal).toBe(true);
+  });
+});
+
+describe("actualizarNotasMembresia (hallazgo de la auditoría: notas no se podía ver ni editar desde la UI)", () => {
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+  });
+
+  it("guarda notas en una membresía de la propia sucursal", async () => {
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    const membresia = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: operador.id } });
+    const resultado = await actualizarNotasMembresia(membresia.id, "Encargado de turno noche");
+    expect(resultado.ok, resultado.mensaje).toBe(true);
+    expect((await prisma.usuarioSucursal.findUniqueOrThrow({ where: { id: membresia.id } })).notas).toBe("Encargado de turno noche");
+  });
+
+  it("un texto vacío borra las notas (guarda null, no una cadena vacía)", async () => {
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    const membresia = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: operador.id } });
+    await actualizarNotasMembresia(membresia.id, "Algo");
+    await actualizarNotasMembresia(membresia.id, "  ");
+    expect((await prisma.usuarioSucursal.findUniqueOrThrow({ where: { id: membresia.id } })).notas).toBeNull();
+  });
+
+  it("rechaza tocar una membresía de otra sucursal", async () => {
+    const base = await sembrarBase();
+    const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const ajeno = await crearUsuarioConMembresia({ email: "ajeno@test.com", sucursalId: otraSucursal.id, rolId: base.operador.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    const membresiaAjena = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: ajeno.id } });
+    const resultado = await actualizarNotasMembresia(membresiaAjena.id, "intento ajeno");
+    expect(resultado.ok).toBe(false);
+    expect((await prisma.usuarioSucursal.findUniqueOrThrow({ where: { id: membresiaAjena.id } })).notas).toBeNull();
   });
 });
