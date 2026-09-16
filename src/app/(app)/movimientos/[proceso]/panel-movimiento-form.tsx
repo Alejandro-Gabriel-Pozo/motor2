@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { DestinoConsumo, MotivoMerma } from "@prisma/client";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos";
 import { listarProductosDeProveedor } from "@/server/actions/proveedor-por-producto";
+import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/productos";
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
@@ -22,6 +23,8 @@ interface FilaItem {
   loteVencimiento: string;
   precioTotal: string;
   pesoReal: string;
+  /** Solo Compra/Devolución a proveedor: Presentacion.unidadCompraId elegida — vacío = usa la unidad de compra por defecto del producto. */
+  unidadCompraId: string;
   /** Solo Compra: cómo llama el proveedor a este producto — se guarda en ProveedorPorProducto. */
   referenciaProveedor: string;
   /** Solo referencia visual, no se manda al servidor. */
@@ -35,6 +38,7 @@ const FILA_VACIA: FilaItem = {
   loteVencimiento: "",
   precioTotal: "",
   pesoReal: "",
+  unidadCompraId: "",
   referenciaProveedor: "",
   ultimaCompraTexto: "",
 };
@@ -62,6 +66,8 @@ export function PanelMovimientoForm({
   const [destino, setDestino] = useState("");
   const [detalleLibre, setDetalleLibre] = useState("");
   const [items, setItems] = useState<FilaItem[]>([{ ...FILA_VACIA }]);
+  /** Presentaciones de compra activas del producto de cada fila, por índice — se completa al elegir un producto (ver cambiarProducto). Solo tiene entradas cuando hay alguna presentación alternativa cargada para ese producto (agregarPresentacionAlternativa, en /catalogo/productos). */
+  const [presentacionesPorFila, setPresentacionesPorFila] = useState<Record<number, PresentacionOpcion[]>>({});
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -80,6 +86,21 @@ export function PanelMovimientoForm({
     setItems((prev) => prev.map((f, i) => (i === idx ? { ...f, ...cambios } : f)));
   };
 
+  const cambiarProducto = (idx: number, productoId: string) => {
+    actualizarFila(idx, { productoId, unidadCompraId: "" });
+    setPresentacionesPorFila((prev) => {
+      if (!(idx in prev)) return prev;
+      const resto = { ...prev };
+      delete resto[idx];
+      return resto;
+    });
+    if (!config.esCompraLike || !productoId) return;
+    listarPresentaciones(productoId).then((todas) => {
+      const activas = todas.filter((p) => p.activa);
+      if (activas.length) setPresentacionesPorFila((prev) => ({ ...prev, [idx]: activas }));
+    });
+  };
+
   const agregarFila = () => setItems((prev) => [...prev, { ...FILA_VACIA }]);
   const quitarFila = (idx: number) => setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
 
@@ -89,6 +110,7 @@ export function PanelMovimientoForm({
 
     if (!id) {
       setItems([{ ...FILA_VACIA }]);
+      setPresentacionesPorFila({});
       setVersionItems((n) => n + 1);
       setInfoProveedor("");
       return;
@@ -100,6 +122,7 @@ export function PanelMovimientoForm({
       setCargandoProveedor(false);
       if (!productos.length) {
         setItems([{ ...FILA_VACIA }]);
+        setPresentacionesPorFila({});
         setVersionItems((n) => n + 1);
         setInfoProveedor("Todavía no le compraste nada a este proveedor — agregalo con \"+ Agregar producto\". La próxima vez va a aparecer solo acá.");
         return;
@@ -113,10 +136,12 @@ export function PanelMovimientoForm({
           loteVencimiento: "",
           precioTotal: "",
           pesoReal: "",
+          unidadCompraId: "",
           referenciaProveedor: p.referenciaProveedor ?? "",
           ultimaCompraTexto: p.ultimoPrecioPorUnidadStock > 0 ? `última vez: $${p.ultimoPrecioPorUnidadStock.toLocaleString("es-AR")} / ${p.unidadStockNombre}` : "",
         }))
       );
+      setPresentacionesPorFila({});
       setVersionItems((n) => n + 1);
     });
   };
@@ -132,6 +157,7 @@ export function PanelMovimientoForm({
         loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
         precioTotal: f.precioTotal ? Number(f.precioTotal) : undefined,
         pesoReal: f.pesoReal ? Number(f.pesoReal) : null,
+        unidadCompraId: config.esCompraLike && f.unidadCompraId ? f.unidadCompraId : undefined,
         referenciaProveedor: precargaPorProveedor ? f.referenciaProveedor || undefined : undefined,
       }));
 
@@ -158,6 +184,7 @@ export function PanelMovimientoForm({
       setOk(resultado.ok);
       if (resultado.ok) {
         setItems([{ ...FILA_VACIA }]);
+        setPresentacionesPorFila({});
         setInfoProveedor("");
         setVersionItems((n) => n + 1);
         router.refresh();
@@ -255,7 +282,7 @@ export function PanelMovimientoForm({
               Producto
               <SelectorProducto
                 value={fila.productoId}
-                onChange={(id) => actualizarFila(idx, { productoId: id })}
+                onChange={(id) => cambiarProducto(idx, id)}
                 filtro={{ soloActivos: true }}
                 etiquetaInicial={fila.etiquetaInicial}
                 required
@@ -290,6 +317,23 @@ export function PanelMovimientoForm({
                   Peso real
                   <CampoNumero value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
                 </label>
+                {(presentacionesPorFila[idx]?.length ?? 0) > 0 && (
+                  <label className="flex w-44 flex-col gap-1 text-xs text-neutral-500">
+                    Presentación
+                    <select
+                      value={fila.unidadCompraId}
+                      onChange={(e) => actualizarFila(idx, { unidadCompraId: e.target.value })}
+                      className="rounded border px-2 py-1.5 text-sm"
+                    >
+                      <option value="">Unidad de compra por defecto</option>
+                      {presentacionesPorFila[idx].map((p) => (
+                        <option key={p.id} value={p.unidadCompraId}>
+                          {p.unidadCompraNombre} (×{p.factorConversion})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </>
             )}
             {precargaPorProveedor && (

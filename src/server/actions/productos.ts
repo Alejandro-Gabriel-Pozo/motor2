@@ -249,6 +249,34 @@ export async function actualizarActivoProducto(productoId: string, activo: boole
   });
 }
 
+export interface PresentacionOpcion {
+  id: string;
+  unidadCompraId: string;
+  unidadCompraNombre: string;
+  factorConversion: number;
+  activa: boolean;
+}
+
+/**
+ * Solo lectura. La usan tanto la pantalla de gestión (producto-form, lista
+ * completa incluyendo inactivas para poder reactivarlas) como el form de
+ * Compra (filtra a `.activa` — ver PanelMovimientoForm).
+ */
+export async function listarPresentaciones(productoId: string): Promise<PresentacionOpcion[]> {
+  const filas = await prisma.presentacion.findMany({
+    where: { productoId },
+    include: { unidadCompra: true },
+    orderBy: { unidadCompra: { nombre: "asc" } },
+  });
+  return filas.map((p) => ({
+    id: p.id,
+    unidadCompraId: p.unidadCompraId,
+    unidadCompraNombre: p.unidadCompra.nombre,
+    factorConversion: Number(p.factorConversion),
+    activa: p.activa,
+  }));
+}
+
 export async function agregarPresentacionAlternativa(
   productoId: string,
   unidadCompraId: string,

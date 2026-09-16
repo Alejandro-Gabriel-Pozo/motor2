@@ -12,6 +12,7 @@ describe("registrarMovimiento", () => {
   let seccionAId: string;
   let seccionBId: string;
   let unidadKgId: string;
+  let unidadGId: string;
   let insumoId: string;
 
   beforeEach(async () => {
@@ -20,6 +21,7 @@ describe("registrarMovimiento", () => {
     sucursalId = base.sucursal.id;
     const catalogo = await sembrarCatalogoBase();
     unidadKgId = catalogo.kg.id;
+    unidadGId = catalogo.g.id;
     insumoId = catalogo.insumo.id;
 
     const seccionA = await sembrarSeccion(sucursalId, "Depósito A");
@@ -54,6 +56,33 @@ describe("registrarMovimiento", () => {
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+  });
+
+  it("Compra respeta la Presentación alternativa elegida, con su propio factor de conversión (no el default del producto)", async () => {
+    const mp = await crearMP("Harina premium");
+    // Presentación alternativa: "por caja" (unidadGId acá solo como id de
+    // unidad distinto), 1 caja = 20kg — el default del producto es factor 1.
+    const presentacion = await prisma.presentacion.create({
+      data: { productoId: mp.id, unidadCompraId: unidadGId, factorConversion: 20 },
+    });
+
+    const resultado = await registrarMovimiento({
+      proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
+      items: [{ productoId: mp.id, cantidad: 2, unidadCompraId: presentacion.unidadCompraId }],
+    });
+    expect(resultado.ok, resultado.mensaje).toBe(true);
+    // 2 cajas × 20kg/caja = 40kg de stock, no 2kg (que daría el factor default de 1).
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(40);
+  });
+
+  it("Compra ignora un unidadCompraId que no es una Presentación real/activa de ese producto, y usa el factor default", async () => {
+    const mp = await crearMP("Harina simple");
+    const resultado = await registrarMovimiento({
+      proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
+      items: [{ productoId: mp.id, cantidad: 5, unidadCompraId: unidadGId }], // no existe ninguna Presentacion para este producto
+    });
+    expect(resultado.ok, resultado.mensaje).toBe(true);
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(5);
   });
 
   it("Merma resta stock (signoStock -1) — el bug de v2.1.0 (Merma sin signo) no puede repetirse: el signo sale de un solo lugar (TRANSICIONES), no de una lista aparte", async () => {

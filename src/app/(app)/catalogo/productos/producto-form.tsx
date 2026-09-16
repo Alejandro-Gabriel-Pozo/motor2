@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { QuickCrear } from "@/components/catalogo/quick-crear";
 import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
+import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
-import { darDeAltaProducto, actualizarProducto, type DatosProducto } from "@/server/actions/productos";
+import { darDeAltaProducto, actualizarProducto, type DatosProducto, type PresentacionOpcion } from "@/server/actions/productos";
 import { crearInsumo } from "@/server/actions/insumos";
 import { crearCategoriaProducto } from "@/server/actions/categorias-producto";
 import { altaProveedor } from "@/server/actions/proveedores";
@@ -27,12 +28,14 @@ export function ProductoForm({
   categoriasIniciales,
   proveedoresIniciales,
   productoExistente,
+  presentacionesIniciales,
 }: {
   unidades: Opcion[];
   insumosIniciales: Opcion[];
   categoriasIniciales: Opcion[];
   proveedoresIniciales: Opcion[];
   productoExistente?: ProductoExistente;
+  presentacionesIniciales?: PresentacionOpcion[];
 }) {
   const router = useRouter();
   const [insumos, setInsumos] = useState(insumosIniciales);
@@ -210,6 +213,10 @@ export function ProductoForm({
 
       {tipo === "PV" && (
         <CampoNumero name="precioVenta" prefijo="$" placeholder="Precio de venta" defaultValue={String(productoExistente?.precioVenta ?? 0)} />
+      )}
+
+      {editando && tipo === "MP" && (
+        <GestionPresentaciones productoId={productoExistente!.id} unidades={unidades} presentacionesIniciales={presentacionesIniciales ?? []} />
       )}
 
       {tipo === "MP" && (

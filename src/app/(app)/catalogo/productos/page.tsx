@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductosPagina } from "@/server/actions/productos";
+import { listarProductosPagina, listarPresentaciones, type PresentacionOpcion } from "@/server/actions/productos";
 import { listarUnidadesActivas } from "@/server/actions/unidades";
 import { listarInsumos } from "@/server/actions/insumos";
 import { listarCategoriasProducto } from "@/server/actions/categorias-producto";
@@ -31,6 +31,7 @@ export default async function ProductosPage({
   ]);
 
   let productoExistente: ProductoExistente | undefined;
+  let presentaciones: PresentacionOpcion[] = [];
   if (id) {
     const p = await prisma.producto.findUnique({ where: { id } });
     if (p) {
@@ -51,6 +52,7 @@ export default async function ProductosPage({
         precioConsignacion: p.precioConsignacion ? Number(p.precioConsignacion) : 0,
         observaciones: p.observaciones ?? undefined,
       };
+      if (p.tipo === "MP") presentaciones = await listarPresentaciones(p.id);
     }
   }
 
@@ -121,6 +123,7 @@ export default async function ProductosPage({
           categoriasIniciales={categorias}
           proveedoresIniciales={proveedores}
           productoExistente={productoExistente}
+          presentacionesIniciales={presentaciones}
         />
       </div>
     </div>
