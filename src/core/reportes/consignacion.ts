@@ -3,7 +3,12 @@ import { redondearMoneda } from "@/core/movimientos/transiciones";
 import { construirMapaProductos, redondearCantidad, type Db } from "./comun";
 
 export interface FilaDebidoConsignante {
+  /** null = liquidaciones de una MP esConsignacion sin proveedorConsignacionId cargado (dato incompleto) — no hay a quién asociarle un pago. */
+  proveedorId: string | null;
   proveedor: string;
+  liquidado: number;
+  pagado: number;
+  /** Saldo debido = liquidado - pagado. */
   importe: number;
 }
 export interface FilaStockSinVenderConsignacion {
@@ -19,12 +24,20 @@ export interface ReporteConsignacion {
 }
 
 /**
- * Port de generarReporteConsignacion_ (Reportes.js:993-1028). Dos
- * preguntas: (1) cuánto se le debe a cada consignante — suma de las líneas
- * LIQUIDACION_CONSIGNACION del Kardex (las genera sola registrarVenta/
- * registrarMovimiento al consumir una MP `esConsignacion`, ver
- * TRANSICIONES.LIQUIDACION_CONSIGNACION); (2) cuánto stock en consignación
- * queda sin vender.
+ * Port de generarReporteConsignacion_ (Reportes.js:993-1028), extendido con
+ * un lado que Apps Script nunca tuvo: PagoConsignante. Antes, "Debido por
+ * consignante" era solo SUM(LIQUIDACION_CONSIGNACION) de todo el historial
+ * — no había ninguna forma de marcar un saldo como pagado, así que el
+ * numero solo podía crecer para siempre (hallazgo de la auditoría de
+ * motor2). Ahora: `importe` (saldo debido) = liquidado − pagado.
+ *
+ * `periodo` es opcional y filtra AMBOS lados (liquidaciones y pagos) por
+ * `Operacion.fecha`/`PagoConsignante.fecha` — sin período, el resultado es
+ * el saldo acumulado de siempre (comportamiento por defecto sin cambios);
+ * con período, sirve para reconciliar el movimiento de un mes puntual con
+ * el consignante, no para "el saldo a esa fecha" (eso requeriría sumar
+ * todo lo anterior al período igual, que es exactamente el caso sin
+ * filtro).
  *
  * El consignante de una liquidación es el de la MP CONSUMIDA
  * (`Producto.proveedorConsignacionId`), no `Operacion.proveedor` — ese
@@ -36,19 +49,55 @@ export interface ReporteConsignacion {
  * Movimientos.js:1262) — acá no hace falta duplicar ese dato en
  * MovimientoStock: ya está en el Producto, fijo por definición.
  */
-export async function generarReporteConsignacion(sucursalId: string, db: Db = prisma): Promise<ReporteConsignacion> {
-  const liquidaciones = await db.movimientoStock.findMany({
-    where: { proceso: "LIQUIDACION_CONSIGNACION", seccion: { sucursalId } },
-    select: { precioTotal: true, producto: { select: { proveedorConsignacion: { select: { nombre: true } } } } },
-  });
+export async function generarReporteConsignacion(
+  sucursalId: string,
+  db: Db = prisma,
+  periodo?: { desde?: Date; hasta?: Date }
+): Promise<ReporteConsignacion> {
+  const filtroFecha =
+    periodo?.desde || periodo?.hasta
+      ? { fecha: { ...(periodo.desde ? { gte: periodo.desde } : {}), ...(periodo.hasta ? { lte: periodo.hasta } : {}) } }
+      : null;
 
-  const porConsignante = new Map<string, number>();
-  for (const l of liquidaciones) {
-    const proveedor = l.producto.proveedorConsignacion?.nombre ?? "(sin proveedor)";
-    porConsignante.set(proveedor, (porConsignante.get(proveedor) ?? 0) + Number(l.precioTotal));
+  const [liquidaciones, pagos] = await Promise.all([
+    db.movimientoStock.findMany({
+      where: { proceso: "LIQUIDACION_CONSIGNACION", seccion: { sucursalId }, ...(filtroFecha ? { operacion: filtroFecha } : {}) },
+      select: { precioTotal: true, producto: { select: { proveedorConsignacionId: true, proveedorConsignacion: { select: { nombre: true } } } } },
+    }),
+    db.pagoConsignante.findMany({
+      where: { sucursalId, ...(filtroFecha ?? {}) },
+      select: { importe: true, proveedorId: true, proveedor: { select: { nombre: true } } },
+    }),
+  ]);
+
+  interface Acumulado {
+    nombre: string;
+    liquidado: number;
+    pagado: number;
   }
+  const CLAVE_SIN_PROVEEDOR = "__sin_proveedor__";
+  const porConsignante = new Map<string, Acumulado>();
+
+  for (const l of liquidaciones) {
+    const clave = l.producto.proveedorConsignacionId ?? CLAVE_SIN_PROVEEDOR;
+    const acc = porConsignante.get(clave) ?? { nombre: l.producto.proveedorConsignacion?.nombre ?? "(sin proveedor)", liquidado: 0, pagado: 0 };
+    acc.liquidado += Number(l.precioTotal);
+    porConsignante.set(clave, acc);
+  }
+  for (const p of pagos) {
+    const acc = porConsignante.get(p.proveedorId) ?? { nombre: p.proveedor.nombre, liquidado: 0, pagado: 0 };
+    acc.pagado += Number(p.importe);
+    porConsignante.set(p.proveedorId, acc);
+  }
+
   const debidoPorConsignante = Array.from(porConsignante.entries())
-    .map(([proveedor, importe]) => ({ proveedor, importe: redondearMoneda(importe) }))
+    .map(([clave, acc]) => ({
+      proveedorId: clave === CLAVE_SIN_PROVEEDOR ? null : clave,
+      proveedor: acc.nombre,
+      liquidado: redondearMoneda(acc.liquidado),
+      pagado: redondearMoneda(acc.pagado),
+      importe: redondearMoneda(acc.liquidado - acc.pagado),
+    }))
     .sort((a, b) => b.importe - a.importe);
 
   const productos = await construirMapaProductos(sucursalId, db);

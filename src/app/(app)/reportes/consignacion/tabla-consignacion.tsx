@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
+import { RegistrarPagoConsignante } from "./registrar-pago-consignante";
 import type { FilaDebidoConsignante, FilaStockSinVenderConsignacion } from "@/core/reportes/consignacion";
 
 const COLUMNAS_DEBIDO: ColumnaReporte<FilaDebidoConsignante>[] = [
   { clave: "proveedor", etiqueta: "Proveedor", valor: (d) => d.proveedor, render: (d) => d.proveedor },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (d) => d.importe, render: (d) => `$${d.importe.toLocaleString("es-AR")}` },
+  { clave: "liquidado", etiqueta: "Liquidado", alinear: "derecha", valor: (d) => d.liquidado, render: (d) => `$${d.liquidado.toLocaleString("es-AR")}` },
+  { clave: "pagado", etiqueta: "Pagado", alinear: "derecha", valor: (d) => d.pagado, render: (d) => `$${d.pagado.toLocaleString("es-AR")}` },
+  { clave: "importe", etiqueta: "Saldo debido", alinear: "derecha", valor: (d) => d.importe, render: (d) => `$${d.importe.toLocaleString("es-AR")}` },
+  {
+    clave: "accion",
+    etiqueta: "",
+    render: (d) =>
+      d.proveedorId ? <RegistrarPagoConsignante proveedorId={d.proveedorId} proveedorNombre={d.proveedor} saldoActual={d.importe} /> : null,
+  },
 ];
 
 const COLUMNAS_STOCK: ColumnaReporte<FilaStockSinVenderConsignacion>[] = [

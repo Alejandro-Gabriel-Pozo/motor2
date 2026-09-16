@@ -36,6 +36,7 @@ model User {
   traspasosDecididosOrigen  TraspasoSucursal[] @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino TraspasoSucursal[] @relation("TraspasoDecididoDestino")
   traspasosCerrados         TraspasoSucursal[] @relation("TraspasoCerradoPor")
+  pagosConsignante          PagoConsignante[]
 }
 
 model Account {
@@ -108,6 +109,7 @@ model Sucursal {
   promociones          PromocionProducto[]
   traspasosComoOrigen  TraspasoSucursal[]    @relation("TraspasoOrigen")
   traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
+  pagosConsignante     PagoConsignante[]
 }
 
 model Rol {
@@ -373,6 +375,29 @@ model Proveedor {
   productosConsignados Producto[]             @relation("ProveedorConsignacionDe")
   proveedorPorProducto ProveedorPorProducto[]
   operaciones          Operacion[]
+  pagosConsignante     PagoConsignante[]
+}
+
+/// Pago registrado a un proveedor de consignación, para saldar (parcial o
+/// totalmente) el "Debido por consignante" de reportes/consignacion.ts.
+/// Append-only, igual que el resto del Kardex: nunca se editan/borran las
+/// líneas LIQUIDACION_CONSIGNACION para "saldarlas" — esto es un registro
+/// aparte, y el reporte resta SUM(pagos) de SUM(liquidaciones) por
+/// proveedor para llegar al saldo debido real.
+model PagoConsignante {
+  id          String    @id @default(cuid())
+  sucursalId  String
+  sucursal    Sucursal  @relation(fields: [sucursalId], references: [id])
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [proveedorId], references: [id])
+  importe     Decimal   @db.Decimal(14, 4)
+  fecha       DateTime
+  notas       String?
+  usuarioId   String
+  usuario     User      @relation(fields: [usuarioId], references: [id])
+  creadoEn    DateTime  @default(now())
+
+  @@index([sucursalId, proveedorId])
 }
 
 /// Relación proveedor↔producto con precio normalizado a "precio por unidad
