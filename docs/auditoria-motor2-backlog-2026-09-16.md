@@ -12,7 +12,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 - ~~Costos y márgenes sin explicación de fórmula (Margen $/%, Food cost %, umbral 40% hardcodeado)~~ — **resuelto (2026-09-16)**. `ayuda` en las columnas Margen/Food cost %/Estado (commit `54b56ce`).
 - ~~Proveedores sin edición~~ — **resuelto (2026-09-16)**. Nueva `actualizarProveedor` (nombre queda fuera a propósito) + link "Editar" por fila (commit `7d5ae55`).
 - ~~Diferencias de ajuste: el grupo "Solo receta" queda en "ESPERADO" sin sugerir cuánto debería cambiar la Merma% ni linkear a la receta~~ — **resuelto (2026-09-16)**. Nuevo `recetasQueLoUsan` (link directo a cada receta que usa el insumo, con su merma % vigente) + `sugerenciaMerma` (dirección — aumentar/disminuir — no un número puntual: atribuir la magnitud exacta exigiría prorratear entre recetas, mismo riesgo que la opción B descartada para Rendimiento real) (commit `bd5babb`).
-- Ficha técnica de Recetas (cabecera: rendimiento/raciones/tiempos) es un form siempre editable, sin modo vista — a diferencia de Ingredientes/Pasos en la misma página.
+- ~~Ficha técnica de Recetas (cabecera: rendimiento/raciones/tiempos) es un form siempre editable, sin modo vista~~ — **resuelto (2026-09-16)**. Modo vista de solo lectura + `?editarFicha=1`, mismo patrón que Ingredientes/Pasos (commit `2ed6ae6`).
 
 ## Hallazgos nuevos de la auditoría
 
@@ -122,4 +122,4 @@ Los 5 quedaron resueltos el 2026-09-16, en este orden:
 
 Los 29 hallazgos restantes (todo "prioridad media" y "prioridad baja" de los 6 módulos) quedaron resueltos el 2026-09-16, uno por uno, en el mismo orden en que aparecen arriba — ver cada bullet tachado para su commit. Los 34 hallazgos de "Hallazgos nuevos de la auditoría" quedan cerrados por completo.
 
-Sigue abierta la sección "Pendiente, ya identificado antes de esta auditoría" (arriba del todo) — esos 5 ítems son de una ronda anterior, no del audit de los 6 módulos, y no se tocaron en esta pasada.
+La sección "Pendiente, ya identificado antes de esta auditoría" (arriba del todo) también quedó resuelta el 2026-09-16 — ver cada bullet tachado. Con esto, el documento completo (34 hallazgos de la auditoría de 6 módulos + 5 pendientes de una ronda anterior) queda cerrado.
