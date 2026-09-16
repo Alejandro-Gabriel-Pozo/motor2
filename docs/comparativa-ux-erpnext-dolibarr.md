@@ -455,6 +455,30 @@ de crear el producto nuevo**, antes de que el duplicado exista — ningún
 mecanismo real de los dos ERPs de referencia hace esa prevención
 proactiva en el propio formulario de alta.
 
+### 6.6 Lista vs. editor — restructuración de `/catalogo/recetas`, grounded
+
+**Pedido explícito del usuario**: que la pantalla de Recetas separe "ver
+qué productos ya tienen receta" de "editar una receta puntual", como lo
+hace Dolibarr — en vez de la vista de dos columnas que mezclaba las dos
+cosas en una sola página.
+
+**VERIFICADO contra Dolibarr real**: `bom_list.php` es la lista de BOMs
+YA creados (consulta sobre `llx_bom`, no sobre el catálogo de productos
+entero) con un botón "New" (`bom_list.php:514`,
+`dolGetButtonTitle($langs->trans('New'), ...)`) que manda a
+`bom_card.php?action=create` — una pantalla dedicada aparte. Clickear una
+fila de la lista abre `bom_card.php?id=X`, el editor de ESA receta
+puntual. Nunca la lista y el editor comparten pantalla.
+
+Portado a motor2: `/catalogo/recetas` ahora lista solo productos con al
+menos una `RecetaVersion` (antes listaba TODO producto elegible, tenga
+receta o no). `NuevaReceta` (`nueva-receta.tsx`) es el equivalente del
+botón "New" — un buscador que manda directo a
+`/catalogo/recetas/[productoId]`, el editor dedicado (antes vivía en la
+misma página vía `?id=`). Filtro nuevo en el selector,
+`elegibleParaReceta` (`server/actions/productos.ts`) — criterio PV o MP
+"Se produce", el inverso de `soloConStockReal`.
+
 ---
 
 ## Resumen para portar a Apps Script (`motor`)
