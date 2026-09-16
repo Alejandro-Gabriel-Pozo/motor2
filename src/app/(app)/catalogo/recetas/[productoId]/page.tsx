@@ -15,6 +15,7 @@ import {
 } from "@/server/actions/recetas";
 import { listarUnidadesActivas } from "@/server/actions/unidades";
 import { CampoNumero } from "@/components/campo-numero";
+import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function RecetaEditorPage({
   params,
@@ -93,10 +94,10 @@ export default async function RecetaEditorPage({
       {vigente && (
         <div className="flex flex-col gap-2">
           <h2 className="font-medium">Ficha técnica</h2>
-          <form
-            action={async (formData: FormData) => {
+          <FormConResultado
+            accion={async (formData: FormData) => {
               "use server";
-              await actualizarCabeceraDeReceta(producto.id, {
+              return actualizarCabeceraDeReceta(producto.id, {
                 rendimientoCantidad: formData.get("rendimientoCantidad") ? Number(formData.get("rendimientoCantidad")) : undefined,
                 rendimientoUnidadId: String(formData.get("rendimientoUnidadId") ?? "") || undefined,
                 racionesCantidad: formData.get("racionesCantidad") ? Number(formData.get("racionesCantidad")) : undefined,
@@ -173,7 +174,7 @@ export default async function RecetaEditorPage({
             <button type="submit" className="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
               Guardar ficha técnica
             </button>
-          </form>
+          </FormConResultado>
         </div>
       )}
 
@@ -197,8 +198,8 @@ export default async function RecetaEditorPage({
                   <tr key={ing.id} className="border-b">
                     {enEdicion ? (
                       <td colSpan={5} className="py-2">
-                        <form
-                          action={async (formData: FormData) => {
+                        <FormConResultado
+                          accion={async (formData: FormData) => {
                             "use server";
                             const resultado = await actualizarIngredienteDeReceta(producto.id, ing.insumoProductoId, {
                               cantidad: Number(formData.get("cantidad")),
@@ -207,6 +208,7 @@ export default async function RecetaEditorPage({
                             });
                             // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
                             if (resultado.ok) redirect(volver);
+                            return resultado;
                           }}
                           className="flex flex-wrap items-end gap-2"
                         >
@@ -227,7 +229,7 @@ export default async function RecetaEditorPage({
                           <Link href={volver} className="text-sm underline">
                             Cancelar
                           </Link>
-                        </form>
+                        </FormConResultado>
                       </td>
                     ) : (
                       <>
@@ -239,16 +241,16 @@ export default async function RecetaEditorPage({
                           <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline">
                             Editar
                           </Link>
-                          <form
-                            action={async () => {
+                          <FormConResultado
+                            accion={async () => {
                               "use server";
-                              await quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
+                              return quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
                             }}
                           >
                             <button type="submit" className="text-sm underline">
                               Quitar
                             </button>
-                          </form>
+                          </FormConResultado>
                         </td>
                       </>
                     )}
@@ -260,10 +262,10 @@ export default async function RecetaEditorPage({
         </div>
       )}
 
-      <form
-        action={async (formData: FormData) => {
+      <FormConResultado
+        accion={async (formData: FormData) => {
           "use server";
-          await agregarIngredienteAReceta(producto.id, {
+          return agregarIngredienteAReceta(producto.id, {
             insumoProductoId: String(formData.get("insumoProductoId") ?? ""),
             cantidad: Number(formData.get("cantidad")),
             unidadId: String(formData.get("unidadId") ?? ""),
@@ -296,7 +298,7 @@ export default async function RecetaEditorPage({
         <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
           Agregar
         </button>
-      </form>
+      </FormConResultado>
 
       {vigente && (
         <div className="flex flex-col gap-2">
@@ -310,8 +312,8 @@ export default async function RecetaEditorPage({
                 return (
                   <li key={paso.id} className="rounded border p-3 text-sm">
                     {enEdicion ? (
-                      <form
-                        action={async (formData: FormData) => {
+                      <FormConResultado
+                        accion={async (formData: FormData) => {
                           "use server";
                           const resultado = await actualizarPasoDeReceta(producto.id, paso.orden, {
                             nombre: String(formData.get("nombre") ?? ""),
@@ -320,6 +322,7 @@ export default async function RecetaEditorPage({
                             insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
                           });
                           if (resultado.ok) redirect(volver);
+                          return resultado;
                         }}
                         className="flex flex-col gap-2"
                       >
@@ -350,7 +353,7 @@ export default async function RecetaEditorPage({
                             Cancelar
                           </Link>
                         </div>
-                      </form>
+                      </FormConResultado>
                     ) : (
                       <div className="flex flex-col gap-1">
                         <div className="flex items-baseline gap-2">
@@ -369,16 +372,16 @@ export default async function RecetaEditorPage({
                           <Link href={`${volver}?editarPaso=${paso.orden}`} className="text-xs underline">
                             Editar
                           </Link>
-                          <form
-                            action={async () => {
+                          <FormConResultado
+                            accion={async () => {
                               "use server";
-                              await quitarPasoDeReceta(producto.id, paso.orden);
+                              return quitarPasoDeReceta(producto.id, paso.orden);
                             }}
                           >
                             <button type="submit" className="text-xs underline">
                               Quitar
                             </button>
-                          </form>
+                          </FormConResultado>
                         </div>
                       </div>
                     )}
@@ -388,10 +391,10 @@ export default async function RecetaEditorPage({
             </ol>
           )}
 
-          <form
-            action={async (formData: FormData) => {
+          <FormConResultado
+            accion={async (formData: FormData) => {
               "use server";
-              await agregarPasoAReceta(producto.id, {
+              return agregarPasoAReceta(producto.id, {
                 orden: siguienteOrdenPaso,
                 nombre: String(formData.get("nombre") ?? ""),
                 instruccion: String(formData.get("instruccion") ?? ""),
@@ -419,7 +422,7 @@ export default async function RecetaEditorPage({
             <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
               Agregar paso
             </button>
-          </form>
+          </FormConResultado>
         </div>
       )}
     </div>
