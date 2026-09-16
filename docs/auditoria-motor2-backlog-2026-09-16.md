@@ -62,7 +62,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 **Prioridad baja**
 
 - ~~**Las 3 acciones de Conteo Físico (Ajustar/Falta movimiento/Descartar) no se explican en la UI.**~~ — **resuelto (2026-09-16)**. `AyudaIcono` en el header "Acción" + `title` nativo por opción (commit `920f0f8`).
-- **Secciones no se puede editar el nombre una vez creada.** Solo Crear y Activar/Desactivar; la única salida es desactivar y crear una nueva, fragmentando el historial del Kardex. Mismo patrón de hueco ya señalado para Proveedores en la sección de pendientes conocidos, pero no cubierto acá tampoco.
+- ~~**Secciones no se puede editar el nombre una vez creada.**~~ — **resuelto (2026-09-16)**. Nueva `renombrarSeccion` (commit `feb5af0`).
 
 ### stock
 
