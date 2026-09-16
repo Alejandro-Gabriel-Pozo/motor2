@@ -33,15 +33,28 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
       <div>
         <h1 className="mb-4 text-xl font-semibold">Recetas</h1>
-        <ul className="text-sm">
-          {elegibles.map((p) => (
-            <li key={p.id} className="border-b py-2">
-              <Link href={`/catalogo/recetas?id=${p.id}`} className={p.id === id ? "font-medium underline" : "underline"}>
-                {p.nombre} ({p.tipo})
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {elegibles.length === 0 ? (
+          <div className="flex flex-col gap-2 text-sm text-neutral-500">
+            <p>Todavía no hay ningún producto que pueda tener receta.</p>
+            <p>
+              Una receta es para un <strong>Producto de venta (PV)</strong> — lo que vendés — o una{" "}
+              <strong>Materia prima marcada &quot;Se produce&quot;</strong> — algo que fabricás vos mismo por lote (ej. una salsa base).
+            </p>
+            <Link href="/catalogo/productos" className="underline">
+              Ir a Productos para crear uno →
+            </Link>
+          </div>
+        ) : (
+          <ul className="text-sm">
+            {elegibles.map((p) => (
+              <li key={p.id} className="border-b py-2">
+                <Link href={`/catalogo/recetas?id=${p.id}`} className={p.id === id ? "font-medium underline" : "underline"}>
+                  {p.nombre} ({p.tipo})
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {productoSeleccionado && (
