@@ -21,7 +21,11 @@ export async function conTransaccionSerializable<T>(
 ): Promise<T> {
   for (let intento = 0; intento < maxIntentos; intento++) {
     try {
-      return await prisma.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return await prisma.$transaction(fn, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 30_000,
+        timeout: 300_000,
+      });
     } catch (e) {
       const esConflicto = e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034";
       if (esConflicto && intento < maxIntentos - 1) continue;

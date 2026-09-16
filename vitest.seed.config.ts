@@ -23,7 +23,7 @@ export default defineConfig({
     environment: "node",
     fileParallelism: false,
     include: ["scripts/seed-demo-pizzeria.ts"],
-    testTimeout: 120_000,
-    hookTimeout: 120_000,
+    testTimeout: 600_000,
+    hookTimeout: 600_000,
   },
 });
