@@ -58,7 +58,12 @@ export function PanelMovimientoForm({
 }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(hoyISO());
-  const [seccionId, setSeccionId] = useState("");
+  // TRANSICIONES[proceso].exigeSeccion=false (Compra/Producción/Transferencia/
+  // Dev. cliente): dan de alta stock nuevo o el origen ya es obligatorio
+  // aparte, no hay ambigüedad de "dónde ya está" que resolver — preseleccionar
+  // ahorra un clic. exigeSeccion=true (Consumo/Ajuste/Merma/Dev. consignación/
+  // Dev. proveedor): arranca vacío a propósito, nunca se adivina.
+  const [seccionId, setSeccionId] = useState(() => (config.exigeSeccion ? "" : (secciones[0]?.id ?? "")));
   const [seccionDestinoId, setSeccionDestinoId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [nroFactura, setNroFactura] = useState("");

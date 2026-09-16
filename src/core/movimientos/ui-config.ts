@@ -43,9 +43,11 @@ export interface ProcesoUiConfig {
   pideDestino: boolean;
   /** Solo Ajuste: la cantidad puede ser negativa (el delta ya viene firmado). */
   cantidadConSigno: boolean;
+  /** TRANSICIONES[proceso].exigeSeccion (ver transiciones.ts) — si false, el panel puede preseleccionar una sección por defecto en vez de forzar la elección. Derivado, nunca a mano: mismo criterio anti-duplicación que ya defendió esSignoFijo (bug de Merma sin signo, v2.1.0). */
+  exigeSeccion: boolean;
 }
 
-export const PROCESOS_UI: Record<string, ProcesoUiConfig> = {
+const PROCESOS_UI_SIN_EXIGE_SECCION: Record<string, Omit<ProcesoUiConfig, "exigeSeccion">> = {
   compra: { proceso: "COMPRA", titulo: "Compra", requiereProveedor: true, esCompraLike: true, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   produccion: { proceso: "PRODUCCION", titulo: "Producción", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   consumo: { proceso: "CONSUMO", titulo: "Consumo", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: true, cantidadConSigno: false },
@@ -56,6 +58,10 @@ export const PROCESOS_UI: Record<string, ProcesoUiConfig> = {
   "devolucion-cliente": { proceso: "DEVOLUCION_CLIENTE", titulo: "Devolución de cliente (revendible)", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   "devolucion-proveedor": { proceso: "DEVOLUCION_PROVEEDOR", titulo: "Devolución a proveedor", requiereProveedor: true, esCompraLike: true, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
 };
+
+export const PROCESOS_UI: Record<string, ProcesoUiConfig> = Object.fromEntries(
+  Object.entries(PROCESOS_UI_SIN_EXIGE_SECCION).map(([slug, cfg]) => [slug, { ...cfg, exigeSeccion: TRANSICIONES[cfg.proceso].exigeSeccion }])
+);
 
 export type ProcesoSlug = keyof typeof PROCESOS_UI;
 

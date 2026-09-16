@@ -21,7 +21,9 @@ function hoyISO() {
 export function VentaForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(hoyISO());
-  const [seccionId, setSeccionId] = useState("");
+  // TRANSICIONES.VENTA.exigeSeccion=false (transiciones.ts) — la UI puede
+  // preseleccionar una sección por defecto en vez de forzar la elección.
+  const [seccionId, setSeccionId] = useState(() => secciones[0]?.id ?? "");
   const [proveedorId] = useState<string | undefined>(undefined); // "a quién se vende" — mostrador por defecto (Movimientos.js:1769), sin picker en esta primera versión de la UI
   const [nroFactura, setNroFactura] = useState("");
   const [detalle, setDetalle] = useState("");
