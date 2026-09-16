@@ -26,7 +26,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad media**
 
-- **Sucursales: se puede crear pero nunca desactivar ni editar.** Solo existe alta (crearSucursalConAdmin); no hay actualizarActivoSucursal ni acción de renombrar, aunque Sucursal.activo se usa como filtro real en otros módulos (ej. traspasos).
+- ~~**Sucursales: se puede crear pero nunca desactivar ni editar.**~~ — **resuelto (2026-09-16)**. Nuevas `actualizarActivoSucursal`/`renombrarSucursal` (mismo gate `alta_sucursal`), UI cableada con `FormConResultado` (commit `86aa234`).
 - **Crear un rol nuevo no guía a configurarle permisos.** crearRol no siembra PermisoRol (correcto por deny-by-default), pero no hay link a /administracion/permisos ni mensaje de siguiente paso — un rol recién creado y asignado puede dejar a alguien con sesión válida y sin poder hacer nada, sin ningún error explicativo.
 
 **Prioridad baja**
