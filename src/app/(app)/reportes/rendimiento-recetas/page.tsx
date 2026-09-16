@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { calcularRendimientoRecetasSimples, type FilaRendimientoSimple } from "@/core/reportes/rendimiento-recetas";
+import {
+  calcularRendimientoRecetasSimples,
+  calcularRendimientoRecetasCompartidas,
+  type FilaRendimientoSimple,
+} from "@/core/reportes/rendimiento-recetas";
 
 function primerDiaDelMesISO() {
   const hoy = new Date();
@@ -17,13 +21,31 @@ const ETIQUETA_CONFIANZA: Record<FilaRendimientoSimple["confianza"], string> = {
   sin_datos: "Sin datos",
 };
 
+function celdaDesvio(desviacionPorcentaje: number | null) {
+  return (
+    <td className={desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-600" : ""}>
+      {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
+    </td>
+  );
+}
+
+function celdaUsarValor(productoVentaId: string, insumoProductoId: string, cantidadEstimada: number | null) {
+  if (cantidadEstimada === null) return <td />;
+  return (
+    <td>
+      <Link href={`/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}`} className="text-sm underline">
+        Usar este valor
+      </Link>
+    </td>
+  );
+}
+
 /**
- * Fase 1 del diseño (docs/diseno-rendimiento-recetas-por-sucursal.md):
+ * Fases 1 y 2 del diseño (docs/diseno-rendimiento-recetas-por-sucursal.md):
  * compara la receta cargada contra lo que las compras/ventas reales de
- * ESTA sucursal sugieren que realmente se consume — solo para el caso
- * simple (un producto/insumo usado por un único plato). Corre siempre
- * para la sucursal activa, nunca mezclado con otras (ver §2.4 del
- * diseño: mezclar sucursales destruye la comparación entre cocineros).
+ * ESTA sucursal sugieren que realmente se consume. Corre siempre para la
+ * sucursal activa, nunca mezclado con otras (ver §2.4 del diseño: mezclar
+ * sucursales destruye la comparación entre cocineros).
  */
 export default async function RendimientoRecetasPage({
   searchParams,
@@ -36,15 +58,30 @@ export default async function RendimientoRecetasPage({
   const sp = await searchParams;
   const desdeStr = sp.desde || primerDiaDelMesISO();
   const hastaStr = sp.hasta || hoyISO();
-  const todasLasFilas = await calcularRendimientoRecetasSimples(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr));
-  const filas = sp.productoId ? todasLasFilas.filter((f) => f.productoVentaId === sp.productoId) : todasLasFilas;
+  const desde = new Date(desdeStr);
+  const hasta = new Date(hastaStr);
+
+  const [todasLasSimples, todasLasCompartidas] = await Promise.all([
+    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta),
+    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta),
+  ]);
+  const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;
+  const filasCompartidas = sp.productoId ? todasLasCompartidas.filter((f) => f.productoVentaId === sp.productoId) : todasLasCompartidas;
+
+  const nombreFiltrado = filasSimples[0]?.productoVentaNombre ?? filasCompartidas[0]?.productoVentaNombre;
+
+  const poolsCompartidos = new Map<string, typeof filasCompartidas>();
+  for (const f of filasCompartidas) {
+    if (!poolsCompartidos.has(f.poolClave)) poolsCompartidos.set(f.poolClave, []);
+    poolsCompartidos.get(f.poolClave)!.push(f);
+  }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="mb-1 text-xl font-semibold">
           Rendimiento real de recetas
-          {sp.productoId && filas[0] && ` — ${filas[0].productoVentaNombre}`}
+          {sp.productoId && nombreFiltrado && ` — ${nombreFiltrado}`}
         </h1>
         {sp.productoId && (
           <Link href="/reportes/rendimiento-recetas" className="text-sm underline">
@@ -52,8 +89,7 @@ export default async function RendimientoRecetasPage({
           </Link>
         )}
         <p className="mb-4 text-sm text-neutral-500">
-          Compara la receta cargada contra lo que compras y ventas de esta sucursal sugieren que realmente se consume. Solo platos con un único
-          ingrediente/insumo compartido — los que comparten un mismo insumo entre varios platos todavía no se calculan acá.
+          Compara la receta cargada contra lo que compras y ventas de esta sucursal sugieren que realmente se consume.
         </p>
         <form className="flex items-end gap-3 text-sm">
           {sp.productoId && <input type="hidden" name="productoId" value={sp.productoId} />}
@@ -71,51 +107,84 @@ export default async function RendimientoRecetasPage({
         </form>
       </div>
 
-      {filas.length === 0 ? (
-        <p className="text-sm text-neutral-500">No hay ningún ingrediente en el caso simple (un solo plato por insumo) para comparar todavía.</p>
-      ) : (
-        <table className="w-full max-w-4xl text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="py-2">Plato</th>
-              <th>Insumo</th>
-              <th>Receta actual</th>
-              <th>Rendimiento real</th>
-              <th>Desvío</th>
-              <th>Confianza</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((f) => (
-              <tr key={f.recetaIngredienteId} className="border-b">
-                <td className="py-2">{f.productoVentaNombre}</td>
-                <td>{f.insumoONombre}</td>
-                <td>
-                  {f.cantidadActual} {f.unidadRecetaNombre}
-                </td>
-                <td>
-                  {f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}
-                </td>
-                <td className={f.desviacionPorcentaje !== null && Math.abs(f.desviacionPorcentaje) >= 10 ? "font-medium text-amber-600" : ""}>
-                  {f.desviacionPorcentaje !== null ? `${f.desviacionPorcentaje > 0 ? "+" : ""}${f.desviacionPorcentaje}%` : "—"}
-                </td>
-                <td>{ETIQUETA_CONFIANZA[f.confianza]}</td>
-                <td>
-                  {f.cantidadEstimada !== null && (
-                    <Link
-                      href={`/catalogo/recetas/${f.productoVentaId}?editar=${f.insumoProductoId}&sugerido=${f.cantidadEstimada}`}
-                      className="text-sm underline"
-                    >
-                      Usar este valor
-                    </Link>
-                  )}
-                </td>
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Un solo plato por insumo</h2>
+        {filasSimples.length === 0 ? (
+          <p className="text-sm text-neutral-500">Nada para comparar todavía en este caso.</p>
+        ) : (
+          <table className="w-full max-w-4xl text-sm">
+            <thead>
+              <tr className="border-b text-left text-neutral-500">
+                <th className="py-2">Plato</th>
+                <th>Insumo</th>
+                <th>Receta actual</th>
+                <th>Rendimiento real</th>
+                <th>Desvío</th>
+                <th>Confianza</th>
+                <th />
               </tr>
+            </thead>
+            <tbody>
+              {filasSimples.map((f) => (
+                <tr key={f.recetaIngredienteId} className="border-b">
+                  <td className="py-2">{f.productoVentaNombre}</td>
+                  <td>{f.insumoONombre}</td>
+                  <td>
+                    {f.cantidadActual} {f.unidadRecetaNombre}
+                  </td>
+                  <td>{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
+                  {celdaDesvio(f.desviacionPorcentaje)}
+                  <td>{ETIQUETA_CONFIANZA[f.confianza]}</td>
+                  {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Insumo compartido entre varios platos</h2>
+        {poolsCompartidos.size === 0 ? (
+          <p className="text-sm text-neutral-500">Nada para comparar todavía en este caso.</p>
+        ) : (
+          <div className="flex flex-col gap-6">
+            {Array.from(poolsCompartidos.entries()).map(([poolClave, filas]) => (
+              <div key={poolClave} className="max-w-4xl">
+                <p className="mb-2 text-sm">
+                  <strong>{filas[0].insumoONombre}</strong> — {filas[0].cantidadPlatosEnPool} platos, {filas[0].semanasConDatos} semanas con datos
+                  {filas[0].resoluble && filas[0].r2 !== null && ` — ajuste R² ${filas[0].r2.toFixed(2)}`}
+                </p>
+                {!filas[0].resoluble && <p className="mb-2 text-sm text-amber-600">No se pudo estimar: {filas[0].motivoNoResoluble}</p>}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-neutral-500">
+                      <th className="py-2">Plato</th>
+                      <th>Receta actual</th>
+                      <th>Rendimiento real</th>
+                      <th>Desvío</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filas.map((f) => (
+                      <tr key={f.recetaIngredienteId} className="border-b">
+                        <td className="py-2">{f.productoVentaNombre}</td>
+                        <td>
+                          {f.cantidadActual} {f.unidadRecetaNombre}
+                        </td>
+                        <td>{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
+                        {celdaDesvio(f.desviacionPorcentaje)}
+                        {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ))}
-          </tbody>
-        </table>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
