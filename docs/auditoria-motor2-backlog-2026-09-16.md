@@ -88,7 +88,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad media**
 
-- **Salud por producto muestra los estados de Stock Consolidado en crudo, sin la humanización/color ya definidos en Stock Consolidado.** El mismo tipo EstadoStockConsolidado ya tiene etiquetas legibles y color en otra pantalla del propio código base, pero acá se imprime el enum tal cual ("NEGATIVO", "CON_DESVIO").
+- ~~**Salud por producto muestra los estados de Stock Consolidado en crudo, sin la humanización/color ya definidos en Stock Consolidado.**~~ — **resuelto (2026-09-16)**. Extraídas a `core/stock/estado-consolidado-ui.ts` (separado de `consolidado.ts`, que importa `prisma` — ver el commit, el primer intento co-localizado rompió el build de Turbopack), ambas pantallas ahora comparten la misma fuente (commit `cf5ca76`).
 - **Historial de conteos: filtro por sección ya soportado en el servidor pero nunca expuesto en la página.** obtenerHistorialConteosFisicos acepta seccionId, pero la página siempre pasa undefined; tampoco hay filtro por producto ni rango de fechas, a diferencia de casi todos los demás reportes del módulo.
 - **Promociones: período fijo "este mes", sin filtro desde/hasta como el resto de los reportes de venta.** La función sí soporta un rango arbitrario, pero la página lo hardcodea y no ofrece formulario de fecha.
 
