@@ -495,7 +495,13 @@ describe("seed demo pizzería La Cuadra", () => {
         // Verdulería: aparte, la compra de oportunidad de MP011B (feria, sin proveedor) — 1 vez por semana, jueves.
         if (dow === 4) {
           const necesidadMorron = necesidad.directa.MP011 ?? 0;
-          const cantidadB = Math.max(1, Math.round((necesidadMorron * BUFFER * 0.4) / 1));
+          // Piso mínimo en 5 (no 1): para semanas de poca demanda de
+          // Morrón, Math.round(necesidadMorron * BUFFER * 0.3ish) ya
+          // redondeaba a 1 sin importar el factor — subir el factor de 0.3
+          // a 0.4 no cambiaba nada (mismo piso), y esas semanas se
+          // quedaban cortas contra el pool compartido. Lo que hacía falta
+          // era subir el PISO, no la fracción.
+          const cantidadB = Math.max(5, Math.round((necesidadMorron * BUFFER * 0.4) / 1));
           const rB = await registrarMovimiento({
             proceso: "COMPRA",
             fecha,
