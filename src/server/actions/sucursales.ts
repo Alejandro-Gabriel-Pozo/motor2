@@ -58,3 +58,38 @@ export async function crearSucursalConAdmin(input: {
     return ok(`Sucursal "${nombre}" creada, con "${email}" como primer admin.`);
   });
 }
+
+/**
+ * Antes no existía ninguna forma de desactivar una sucursal (solo alta) —
+ * hallazgo de la auditoría de motor2, con impacto real: Sucursal.activo ya
+ * se usa como filtro (ej. listarSucursalesDisponibles en traspasos) pero
+ * no había ningún botón para ponerlo en false.
+ */
+export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
+  return conPermiso("alta_sucursal", async () => {
+    const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
+    if (!sucursal) return error("No se encontró esa sucursal.");
+
+    await prisma.sucursal.update({ where: { id: sucursalId }, data: { activo } });
+    return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
+  });
+}
+
+/** Renombrar una sucursal existente — antes solo se podía elegir el nombre una vez, al crearla. */
+export async function renombrarSucursal(sucursalId: string, nombreNuevo: string): Promise<ResultadoAccion> {
+  return conPermiso("alta_sucursal", async () => {
+    const nombre = texto(nombreNuevo);
+    if (!nombre) return error("El nombre no puede estar vacío.");
+    const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
+    if (invalido) return error(invalido);
+
+    const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
+    if (!sucursal) return error("No se encontró esa sucursal.");
+
+    const existente = await prisma.sucursal.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" }, id: { not: sucursalId } } });
+    if (existente) return error(`Ya existe una sucursal "${existente.nombre}".`);
+
+    await prisma.sucursal.update({ where: { id: sucursalId }, data: { nombre } });
+    return ok(`Sucursal renombrada a "${nombre}".`);
+  });
+}
