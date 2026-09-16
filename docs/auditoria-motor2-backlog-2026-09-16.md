@@ -9,7 +9,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 ## Pendiente, ya identificado antes de esta auditoría
 
 - ~~Sidebar sin ningún mecanismo de colapso, en ningún tamaño de pantalla~~ — **resuelto (2026-09-16)**. Nuevo `SidebarColapsable` (toggle siempre visible, preferencia persistida en localStorage) (commit `a3c8c51`).
-- Costos y márgenes sin explicación de fórmula (Margen $/%, Food cost %, umbral 40% hardcodeado) — agregar AyudaIcono como ya se hizo en Rendimiento real de recetas.
+- ~~Costos y márgenes sin explicación de fórmula (Margen $/%, Food cost %, umbral 40% hardcodeado)~~ — **resuelto (2026-09-16)**. `ayuda` en las columnas Margen/Food cost %/Estado (commit `54b56ce`).
 - Proveedores sin edición (src/app/(app)/catalogo/proveedores/page.tsx) — solo Activar/Desactivar, no se puede corregir contacto/teléfono/email/CUIT/condiciones de pago de uno ya creado.
 - Diferencias de ajuste: el grupo "Solo receta" queda en "ESPERADO" sin sugerir cuánto debería cambiar la Merma% ni linkear a la receta.
 - Ficha técnica de Recetas (cabecera: rendimiento/raciones/tiempos) es un form siempre editable, sin modo vista — a diferencia de Ingredientes/Pasos en la misma página.
