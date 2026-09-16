@@ -18,6 +18,17 @@ export interface FilaRendimientoSimple {
   totalVendido: number;
   semanasConDatos: number;
   confianza: "alta" | "media" | "baja" | "sin_datos";
+  /**
+   * Venta directa 1:1 sin transformación (1 unidad de receta, 0% merma) —
+   * ej. una bebida envasada que se revende tal cual. Para estos casos el
+   * desvío "real" no puede significar un error de receta (no hay nada que
+   * calibrar: 1 vendido siempre debería consumir exactamente 1 comprado)
+   * — lo que se ve es ruido de lote de compra (comprás por caja, vendés
+   * de a uno) frente a la ventana de fechas elegida. Se marca en vez de
+   * ocultarse: un desvío grande igual puede señalar rotura/robo no
+   * cargado como Merma.
+   */
+  esTrivial: boolean;
 }
 
 export interface FilaRendimientoCompartido {
@@ -39,6 +50,8 @@ export interface FilaRendimientoCompartido {
   r2: number | null;
   resoluble: boolean;
   motivoNoResoluble: string | null;
+  /** Ver el docstring del mismo campo en FilaRendimientoSimple — acá es por fila, no por pool: dos platos pueden compartir un insumo con cantidades/merma distintas. */
+  esTrivial: boolean;
 }
 
 function rangoUtc(desdeIn: Date, hastaIn: Date): { desde: Date; hasta: Date } {
@@ -73,6 +86,12 @@ interface UsoDeInsumo {
   insumoProductoId: string;
   cantidad: number;
   unidadNombre: string;
+  mermaPorcentaje: number;
+}
+
+/** Ver el docstring de `esTrivial` en FilaRendimientoSimple. */
+function esUsoTrivial(uso: Pick<UsoDeInsumo, "cantidad" | "mermaPorcentaje">): boolean {
+  return uso.cantidad === 1 && uso.mermaPorcentaje === 0;
 }
 
 interface Pool {
@@ -128,6 +147,7 @@ async function construirPools(db: Db): Promise<Pool[]> {
         insumoProductoId: ing.insumoProductoId,
         cantidad: Number(ing.cantidad),
         unidadNombre: ing.unidad.nombre,
+        mermaPorcentaje: Number(ing.mermaPorcentaje),
       });
     }
   }
@@ -207,6 +227,7 @@ export async function calcularRendimientoRecetasSimples(
       totalVendido,
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
+      esTrivial: esUsoTrivial(uso),
     });
   }
 
@@ -308,6 +329,7 @@ export async function calcularRendimientoRecetasCompartidas(
         r2,
         resoluble,
         motivoNoResoluble,
+        esTrivial: esUsoTrivial(uso),
       });
     });
   }

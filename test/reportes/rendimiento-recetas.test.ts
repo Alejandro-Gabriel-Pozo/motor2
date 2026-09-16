@@ -46,6 +46,22 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(filas[0].cantidadEstimada).toBe(0.5); // 10 comprado / 20 vendido
     expect(filas[0].desviacionPorcentaje).toBe(25); // (0.5 - 0.4) / 0.4 * 100
     expect(filas[0].confianza).toBe("baja"); // un solo movimiento dentro del rango = 1 semana con datos
+    expect(filas[0].esTrivial).toBe(false); // cantidad != 1
+  });
+
+  it("marca esTrivial cuando la receta es venta directa 1:1 sin merma (ej. una bebida envasada)", async () => {
+    const casoBebida = await prisma.producto.create({ data: { codigo: "MX_BEBIDA", nombre: "Bebida caja x12", tipo: "MP", unidadStockId: unidadKgId } });
+    const bebida = await prisma.producto.create({ data: { codigo: "PV_BEBIDA", nombre: "Bebida 500ml", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: bebida.id, version: 1, ingredientes: { create: [{ insumoProductoId: casoBebida.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
+    });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: casoBebida.id, cantidad: 12 }] });
+    await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: bebida.id, cantidadVendida: 10 }] });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    expect(filas).toHaveLength(1);
+    expect(filas[0].esTrivial).toBe(true);
   });
 
   it("agrupa por Insumo: compras de TODOS los hermanos activos, no solo la MP anclada en la receta", async () => {
@@ -200,6 +216,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
     expect(filaMilanesa.cantidadEstimada).toBeCloseTo(0.15, 2);
     expect(filaBife.cantidadEstimada).toBeCloseTo(0.25, 2);
     expect(filaMilanesa.cantidadPlatosEnPool).toBe(2);
+    expect(filaMilanesa.esTrivial).toBe(false); // cantidad 0.1 != 1
   });
 
   it("no resoluble si hay pocas semanas de historial (menos que platos+1)", async () => {

@@ -5,6 +5,14 @@ import {
   calcularRendimientoRecetasCompartidas,
   type FilaRendimientoSimple,
 } from "@/core/reportes/rendimiento-recetas";
+import { AyudaIcono } from "@/components/ayuda-campo";
+
+const AYUDA_RENDIMIENTO_REAL =
+  "Total comprado ÷ total vendido en el rango de fechas elegido. Es una estimación indirecta, no una medición física: asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12).";
+const AYUDA_DESVIO =
+  "Diferencia entre Rendimiento real y Receta actual. En un producto de venta directa (1 a 1, sin preparación — ver \"venta directa\" en la fila) el desvío no puede ser un error de receta: es ruido de comprar por lote dentro de esta ventana de fechas, no necesariamente algo para corregir.";
+const AYUDA_TRIVIAL =
+  "Venta directa 1:1 sin preparación (1 unidad de receta, 0% merma) — un desvío acá no puede deberse a la receta en sí. Puede ser ruido de lote de compra, o señal real de rotura/robo no cargado como Merma.";
 
 function primerDiaDelMesISO() {
   const hoy = new Date();
@@ -118,8 +126,14 @@ export default async function RendimientoRecetasPage({
                 <th className="py-2">Plato</th>
                 <th>Insumo</th>
                 <th>Receta actual</th>
-                <th>Rendimiento real</th>
-                <th>Desvío</th>
+                <th>
+                  Rendimiento real
+                  <AyudaIcono texto={AYUDA_RENDIMIENTO_REAL} />
+                </th>
+                <th>
+                  Desvío
+                  <AyudaIcono texto={AYUDA_DESVIO} />
+                </th>
                 <th>Confianza</th>
                 <th />
               </tr>
@@ -128,7 +142,14 @@ export default async function RendimientoRecetasPage({
               {filasSimples.map((f) => (
                 <tr key={f.recetaIngredienteId} className="border-b">
                   <td className="py-2">{f.productoVentaNombre}</td>
-                  <td>{f.insumoONombre}</td>
+                  <td>
+                    {f.insumoONombre}
+                    {f.esTrivial && (
+                      <span className="ml-1 text-xs text-neutral-400" title={AYUDA_TRIVIAL}>
+                        (venta directa)
+                      </span>
+                    )}
+                  </td>
                   <td>
                     {f.cantidadActual} {f.unidadRecetaNombre}
                   </td>
@@ -161,15 +182,28 @@ export default async function RendimientoRecetasPage({
                     <tr className="border-b text-left text-neutral-500">
                       <th className="py-2">Plato</th>
                       <th>Receta actual</th>
-                      <th>Rendimiento real</th>
-                      <th>Desvío</th>
+                      <th>
+                        Rendimiento real
+                        <AyudaIcono texto={AYUDA_RENDIMIENTO_REAL} />
+                      </th>
+                      <th>
+                        Desvío
+                        <AyudaIcono texto={AYUDA_DESVIO} />
+                      </th>
                       <th />
                     </tr>
                   </thead>
                   <tbody>
                     {filas.map((f) => (
                       <tr key={f.recetaIngredienteId} className="border-b">
-                        <td className="py-2">{f.productoVentaNombre}</td>
+                        <td className="py-2">
+                          {f.productoVentaNombre}
+                          {f.esTrivial && (
+                            <span className="ml-1 text-xs text-neutral-400" title={AYUDA_TRIVIAL}>
+                              (venta directa)
+                            </span>
+                          )}
+                        </td>
                         <td>
                           {f.cantidadActual} {f.unidadRecetaNombre}
                         </td>
