@@ -66,6 +66,11 @@ export default async function RecetaEditorPage({
         <h1 className="mt-2 text-lg font-medium">
           {producto.nombre} — versión vigente: {vigente?.version ?? "sin receta todavía"}
         </h1>
+        {vigente && (
+          <Link href={`/catalogo/recetas/${producto.id}/historial`} className="text-sm text-neutral-500 underline">
+            Ver historial de versiones ({vigente.version})
+          </Link>
+        )}
       </div>
 
       {vigente && (

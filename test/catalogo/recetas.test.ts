@@ -5,7 +5,13 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/productos";
-import { guardarReceta, agregarIngredienteAReceta, actualizarIngredienteDeReceta, obtenerRecetaVigente } from "../../src/server/actions/recetas";
+import {
+  guardarReceta,
+  agregarIngredienteAReceta,
+  actualizarIngredienteDeReceta,
+  obtenerRecetaVigente,
+  listarVersionesDeReceta,
+} from "../../src/server/actions/recetas";
 
 describe("recetas", () => {
   let unidadKgId: string;
@@ -98,5 +104,22 @@ describe("recetas", () => {
 
     const resultado = await actualizarIngredienteDeReceta(pvId, mp2Id, { cantidad: 1, unidadId: unidadKgId });
     expect(resultado.ok).toBe(false);
+  });
+
+  it("listarVersionesDeReceta trae TODAS las versiones, más reciente primero, cada una con sus propios ingredientes", async () => {
+    await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }]);
+    await guardarReceta(pvId, [
+      { insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId },
+      { insumoProductoId: mp2Id, cantidad: 0.2, unidadId: unidadKgId },
+    ]);
+
+    const versiones = await listarVersionesDeReceta(pvId);
+    expect(versiones.map((v) => v.version)).toEqual([2, 1]);
+    expect(versiones[0].ingredientes).toHaveLength(2);
+    expect(versiones[1].ingredientes).toHaveLength(1);
+  });
+
+  it("listarVersionesDeReceta da vacío si el producto nunca tuvo receta", async () => {
+    expect(await listarVersionesDeReceta(pvId)).toEqual([]);
   });
 });

@@ -22,6 +22,20 @@ export async function obtenerRecetaVigente(productoId: string) {
   });
 }
 
+/**
+ * Todas las versiones de una receta, más reciente primero — el
+ * versionado ya era append-only (nunca se pisa ni se borra una versión
+ * vieja), esto solo expone ese historial que hasta ahora quedaba
+ * guardado pero invisible en la UI (que solo mostraba la vigente).
+ */
+export async function listarVersionesDeReceta(productoId: string) {
+  return prisma.recetaVersion.findMany({
+    where: { productoId },
+    orderBy: { version: "desc" },
+    include: { ingredientes: { include: { insumoProducto: true, unidad: true } } },
+  });
+}
+
 async function validarIngredientes(items: IngredienteInput[]) {
   if (!items.length) return "La receta necesita al menos un ingrediente.";
   for (const item of items) {
