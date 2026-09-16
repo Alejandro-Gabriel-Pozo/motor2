@@ -1,12 +1,80 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/movimientos/transiciones";
-import { construirIndiceRecetas, construirMapaProductos, obtenerCostoActualPorMP, type Db } from "./comun";
+import {
+  construirIndiceRecetas,
+  construirMapaProductos,
+  obtenerCostoActualPorMP,
+  type CostoMP,
+  type Db,
+  type IngredienteRecetaReporte,
+  type InfoProductoReporte,
+} from "./comun";
 
 export type EstadoCosto = "MARGEN_NEGATIVO" | "FOOD_COST_ALTO" | "COSTO_INCOMPLETO" | "SIN_PRECIO_VENTA" | "SIN_RECETA" | "OK";
+
+interface CostoResuelto {
+  costoUnitario: number;
+  proveedorNombre: string | null;
+}
+
+/**
+ * Costo unitario de UN insumo de receta — recursivo para MP "Se produce"
+ * (ej. la prepizza: nunca se compra, se fabrica con SU PROPIA receta de
+ * harina/levadura/sal/aceite). Sin esto, cualquier plato que use un
+ * intermedio fabricado quedaba SIEMPRE en COSTO_INCOMPLETO — no importaba
+ * qué tan completos estuvieran los datos, `obtenerCostoActualPorMP` nunca
+ * iba a encontrar una compra de algo que por diseño no se compra.
+ *
+ * `cache` memoiza por producto (mismo intermedio puede aparecer en varias
+ * recetas); `enCurso` corta un ciclo de recetas (A usa B, B usa A) en vez
+ * de colgarse — no debería pasar nunca en datos reales, es una barrera de
+ * seguridad, no un caso esperado.
+ */
+function resolverCostoUnitario(
+  productoId: string,
+  productos: Map<string, InfoProductoReporte>,
+  recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,
+  costosCompra: Map<string, CostoMP>,
+  cache: Map<string, CostoResuelto | null>,
+  enCurso: Set<string>
+): CostoResuelto | null {
+  if (cache.has(productoId)) return cache.get(productoId) ?? null;
+  if (enCurso.has(productoId)) return null;
+
+  const info = productos.get(productoId);
+  if (!info?.seProduce) {
+    const c = costosCompra.get(productoId);
+    const resultado = c ? { costoUnitario: c.precioPorUnidadStock, proveedorNombre: c.proveedorNombre } : null;
+    cache.set(productoId, resultado);
+    return resultado;
+  }
+
+  enCurso.add(productoId);
+  const items = recetaPorProducto.get(productoId) ?? [];
+  let total = 0;
+  let completo = items.length > 0;
+  for (const it of items) {
+    const sub = resolverCostoUnitario(it.insumoProductoId, productos, recetaPorProducto, costosCompra, cache, enCurso);
+    if (!sub) {
+      completo = false;
+      break;
+    }
+    total += it.cantidad * (1 + it.mermaPorcentaje / 100) * sub.costoUnitario;
+  }
+  enCurso.delete(productoId);
+
+  // Fabricado acá adentro — no tiene "proveedor" propio, el costo sale de
+  // explotar su receta.
+  const resultado = completo ? { costoUnitario: total, proveedorNombre: null } : null;
+  cache.set(productoId, resultado);
+  return resultado;
+}
 
 export interface ComponenteCosto {
   insumoProductoId: string;
   insumoNombre: string;
+  /** Para el link accionable de "costo incompleto": un MP "Se produce" no se compra, se arregla cargando/completando SU receta — no tiene sentido mandarlo a Compra. */
+  insumoSeProduce: boolean;
   cantidad: number;
   mermaPorcentaje: number;
   unidadNombre: string;
@@ -55,6 +123,10 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
   const productos = await construirMapaProductos(sucursalId, db);
   const { recetaPorProducto } = await construirIndiceRecetas(db);
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
+  // Compartido entre todos los PV de este cálculo: un mismo intermedio
+  // fabricado (ej. la prepizza) suele aparecer en varias recetas — no hace
+  // falta re-explotar su BOM cada vez.
+  const cacheCostoIntermedios = new Map<string, CostoResuelto | null>();
 
   const filas: FilaCostoProducto[] = [];
 
@@ -70,7 +142,8 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
 
     if (tieneReceta) {
       for (const it of items) {
-        const c = costos.get(it.insumoProductoId);
+        const infoInsumo = productos.get(it.insumoProductoId);
+        const c = resolverCostoUnitario(it.insumoProductoId, productos, recetaPorProducto, costos, cacheCostoIntermedios, new Set());
         const cantidadConMerma = it.cantidad * (1 + it.mermaPorcentaje / 100);
 
         if (!c) {
@@ -78,6 +151,7 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
           componentes.push({
             insumoProductoId: it.insumoProductoId,
             insumoNombre: it.insumoNombre,
+            insumoSeProduce: infoInsumo?.seProduce ?? false,
             cantidad: it.cantidad,
             mermaPorcentaje: it.mermaPorcentaje,
             unidadNombre: it.unidadNombre,
@@ -89,15 +163,16 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
           continue;
         }
 
-        const costoLinea = cantidadConMerma * c.precioPorUnidadStock;
+        const costoLinea = cantidadConMerma * c.costoUnitario;
         costoTotal += costoLinea;
         componentes.push({
           insumoProductoId: it.insumoProductoId,
           insumoNombre: it.insumoNombre,
+          insumoSeProduce: infoInsumo?.seProduce ?? false,
           cantidad: it.cantidad,
           mermaPorcentaje: it.mermaPorcentaje,
           unidadNombre: it.unidadNombre,
-          costoUnitario: redondearMoneda(c.precioPorUnidadStock),
+          costoUnitario: redondearMoneda(c.costoUnitario),
           costoLinea: redondearMoneda(costoLinea),
           proveedorNombre: c.proveedorNombre,
           sinPrecio: false,
