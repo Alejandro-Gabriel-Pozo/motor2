@@ -57,6 +57,17 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
       if (!(d.cantidad > 0)) return error("Cada destino necesita una cantidad mayor a 0.");
     }
 
+    // Con un único destino idéntico al origen (misma sección+lote), la
+    // "reclasificación" es un par de movimientos que se cancelan entre sí
+    // — no reparte nada, solo agrega ruido a la trazabilidad del Kardex.
+    if (datos.destinos.length === 1) {
+      const unico = datos.destinos[0];
+      const mismoLote = (datos.loteOrigen ?? null)?.getTime() === (unico.loteVencimiento ?? null)?.getTime();
+      if (unico.seccionId === datos.seccionOrigenId && mismoLote) {
+        return error("El único destino es idéntico al origen (misma sección y lote) — no hay nada para reclasificar.");
+      }
+    }
+
     const totalDestinos = datos.destinos.reduce((acc, d) => acc + d.cantidad, 0);
 
     return conTransaccionSerializable(async (tx) => {

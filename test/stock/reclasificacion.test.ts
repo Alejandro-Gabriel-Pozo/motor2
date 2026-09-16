@@ -108,4 +108,44 @@ describe("reclasificarStock", () => {
       expect(await obtenerSaldoDisponibleParaReclasificar(mpId, "", null)).toBeNull();
     });
   });
+
+  describe("destino idéntico al origen (hallazgo de la auditoría: generaba un par de movimientos sin efecto real)", () => {
+    it("rechaza un único destino con la misma sección y el mismo lote (ambos sin lote) que el origen", async () => {
+      const resultado = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: origenId, cantidad: 10 }], fecha: new Date(),
+      });
+      expect(resultado.ok).toBe(false);
+      expect(await calcularSaldoTotal(mpId, origenId)).toBe(10); // nada se tocó
+    });
+
+    it("rechaza un único destino con la misma sección y el mismo lote puntual que el origen", async () => {
+      const lote1 = new Date("2027-01-01");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }] });
+
+      const resultado = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: origenId, loteOrigen: lote1,
+        destinos: [{ seccionId: origenId, loteVencimiento: lote1, cantidad: 5 }], fecha: new Date(),
+      });
+      expect(resultado.ok).toBe(false);
+    });
+
+    it("permite la misma sección si el lote destino es distinto (no es un no-op real)", async () => {
+      const lote1 = new Date("2027-01-01");
+      const resultado = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: origenId,
+        destinos: [{ seccionId: origenId, loteVencimiento: lote1, cantidad: 10 }], fecha: new Date(),
+      });
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+      expect(await calcularSaldoPorLote(mpId, origenId, lote1)).toBe(10);
+      expect(await calcularSaldoPorLote(mpId, origenId, null)).toBe(0);
+    });
+
+    it("permite repartir entre 2+ destinos aunque uno de ellos coincida con el origen", async () => {
+      const resultado = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: origenId,
+        destinos: [{ seccionId: origenId, cantidad: 4 }, { seccionId: destinoAId, cantidad: 6 }], fecha: new Date(),
+      });
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+    });
+  });
 });
