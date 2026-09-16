@@ -108,7 +108,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad media**
 
-- **El detalle y el motivo de rechazo se calculan pero nunca se muestran en la tabla de Historial.** aFila computa detalle/motivos/secciones/creadoPorEmail para cada traspaso, pero la tabla de Historial solo pinta Fecha/Producto/Cantidad/Otra sucursal/Estado — esa información desaparece de la UI apenas el traspaso se resuelve.
+- ~~**El detalle y el motivo de rechazo se calculan pero nunca se muestran en la tabla de Historial.**~~ — **resuelto (2026-09-16)**. Nueva columna "Detalle" (detalle libre, motivo de rechazo, secciones, creado por) (commit `6627ca1`).
 
 ## Top 5 recomendado para atacar primero
 
