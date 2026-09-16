@@ -7,11 +7,16 @@ import { registrarConteoFisico } from "@/server/actions/conteo-fisico";
 import { obtenerProductoOpcion } from "@/server/actions/productos";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { AyudaIcono } from "@/components/ayuda-campo";
 
-const ACCIONES: { value: AccionConteo; label: string }[] = [
-  { value: "AJUSTAR", label: "Ajustar" },
-  { value: "FALTA_MOVIMIENTO", label: "Falta movimiento" },
-  { value: "DESCARTAR", label: "Descartar" },
+const ACCIONES: { value: AccionConteo; label: string; titulo: string }[] = [
+  { value: "AJUSTAR", label: "Ajustar", titulo: "Escribe el movimiento de corrección ahora — el stock queda en lo contado." },
+  {
+    value: "FALTA_MOVIMIENTO",
+    label: "Falta movimiento",
+    titulo: "Deja el conteo pendiente sin tocar stock — usalo si lo que falta es cargar una compra/venta real, para no contar dos veces.",
+  },
+  { value: "DESCARTAR", label: "Descartar", titulo: "No ajusta stock y no cuenta como conteo válido." },
 ];
 
 export interface FilaBaseConteo {
@@ -156,7 +161,10 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
             <th className="px-2 text-right">Sistema</th>
             <th className="px-2 text-right">Contado</th>
             <th className="px-2 text-right">Diferencia</th>
-            <th className="px-2">Acción</th>
+            <th className="px-2">
+              Acción
+              <AyudaIcono texto="Ajustar: escribe el movimiento de corrección ahora, el stock queda en lo contado. Falta movimiento: deja el conteo pendiente SIN tocar stock — usalo si lo que falta es cargar una compra/venta real, para no contar dos veces. Descartar: no ajusta y no cuenta como conteo válido." />
+            </th>
             <th className="px-2">Detalle</th>
             <th />
           </tr>
@@ -193,7 +201,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
                     className="rounded border px-2 py-1.5 text-sm"
                   >
                     {ACCIONES.map((a) => (
-                      <option key={a.value} value={a.value}>
+                      <option key={a.value} value={a.value} title={a.titulo}>
                         {a.label}
                       </option>
                     ))}
