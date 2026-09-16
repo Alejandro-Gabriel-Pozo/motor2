@@ -21,7 +21,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 **Prioridad alta**
 
 - ~~**La auto-protección de CapacidadSucursal no cubre gestion_usuarios/gestion_permisos, a diferencia de PermisoRol.**~~ — **resuelto (2026-09-16)**. `sucursalTieneCapacidad` ahora extiende la auto-protección a `ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE` (commit `a3e1641`).
-- **User.activoGlobal: kill-switch de cuenta documentado en el schema pero nunca implementado.** El campo existe para desactivar a alguien a nivel sistema sin tocar cada membresía, pero no se lee ni se escribe en ningún lado del código (login, contexto de usuario, server actions). Hoy la única baja posible es desactivar UsuarioSucursal sucursal por sucursal, y aun así la persona puede seguir iniciando sesión si su dominio está permitido o es bootstrap admin — solo queda varada en /login sin sucursal.
+- ~~**User.activoGlobal: kill-switch de cuenta documentado en el schema pero nunca implementado.**~~ — **resuelto (2026-09-16)**. Nueva `actualizarActivoGlobalUsuario` (misma salvaguarda "nunca sin ningún admin activo", cruzando sucursales) enforzada en `emailPuedeIniciarSesion` (login nuevo) y en el callback `session` de NextAuth (sesión ya abierta, corta en la próxima request); columna "Cuenta" + botón Desactivar/Reactivar en /administracion/usuarios (commit `270977f`).
 - ~~**Toda sesión nueva aterriza en una página admin-only, sin importar el rol.**~~ — **resuelto (2026-09-16)**. `/` y `/login` ahora redirigen a `/reportes` (sin gate de Acción, abierto a cualquier rol) en vez de `/administracion/usuarios` (commit `96d33be`).
 
 **Prioridad media**
