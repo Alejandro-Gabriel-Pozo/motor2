@@ -100,3 +100,42 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
     return ok(`Usuario ${activo ? "activado" : "desactivado"}.`);
   });
 }
+
+/**
+ * Kill-switch de cuenta a nivel sistema (User.activoGlobal) — a diferencia
+ * de actualizarActivoMembresia (una fila UsuarioSucursal, una sucursal a
+ * la vez), esto corta el acceso en TODAS las sucursales de una sola vez,
+ * sin tener que desactivar cada membresía por separado. Ver el gate real
+ * en src/core/auth/acceso.ts (login nuevo) y el callback `session` de
+ * src/lib/auth.ts (sesión ya abierta, corta en la próxima request).
+ *
+ * Mismo criterio "nunca sin ningún admin activo" que actualizarActivoMembresia
+ * (Core.js:1159-1167), pero a nivel cuenta completa: desactivar a alguien
+ * que es admin activo en CUALQUIER sucursal no puede dejar el sistema sin
+ * ningún admin activo en ninguna.
+ */
+export async function actualizarActivoGlobalUsuario(usuarioId: string, activoGlobal: boolean): Promise<ResultadoAccion> {
+  return conPermiso("gestion_usuarios", async () => {
+    const usuario = await prisma.user.findUnique({ where: { id: usuarioId } });
+    if (!usuario) return error("No se encontró ese usuario.");
+
+    if (!activoGlobal) {
+      const esAdminActivo = await prisma.usuarioSucursal.findFirst({
+        where: { usuarioId, activo: true, rol: { nombre: "admin", activo: true } },
+      });
+      if (esAdminActivo) {
+        const quedan = await prisma.usuarioSucursal.count({
+          where: { activo: true, rol: { nombre: "admin", activo: true }, usuarioId: { not: usuarioId } },
+        });
+        if (quedan === 0) {
+          return error(
+            "Esta operación dejaría el sistema sin ningún admin activo — no se puede desactivar. Activá otro admin antes."
+          );
+        }
+      }
+    }
+
+    await prisma.user.update({ where: { id: usuarioId }, data: { activoGlobal } });
+    return ok(`Cuenta de "${usuario.email}" ${activoGlobal ? "reactivada" : "desactivada"} a nivel sistema.`);
+  });
+}

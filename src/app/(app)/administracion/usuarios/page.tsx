@@ -1,7 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
-import { agregarOActualizarUsuario, actualizarActivoMembresia, listarUsuariosDeSucursal } from "@/server/actions/usuarios";
+import { agregarOActualizarUsuario, actualizarActivoMembresia, actualizarActivoGlobalUsuario, listarUsuariosDeSucursal } from "@/server/actions/usuarios";
+import { AyudaIcono } from "@/components/ayuda-campo";
 import { listarSucursales } from "@/server/actions/sucursales";
 
 export default async function UsuariosPage() {
@@ -26,7 +27,11 @@ export default async function UsuariosPage() {
           <tr className="border-b text-left text-neutral-500">
             <th className="py-2">Email</th>
             <th>Rol</th>
-            <th>Activo</th>
+            <th>Activo (esta sucursal)</th>
+            <th>
+              Cuenta
+              <AyudaIcono texto="Kill-switch a nivel sistema — corta el acceso en TODAS las sucursales de una sola vez, sin tener que desactivar cada membresía por separado. Distinto de 'Activo', que es solo por sucursal." />
+            </th>
             <th />
           </tr>
         </thead>
@@ -36,7 +41,8 @@ export default async function UsuariosPage() {
               <td className="py-2">{m.usuario.email}</td>
               <td>{m.rol.nombre}</td>
               <td>{m.activo ? "Sí" : "No"}</td>
-              <td>
+              <td className={m.usuario.activoGlobal ? "" : "text-red-600"}>{m.usuario.activoGlobal ? "Activa" : "Desactivada"}</td>
+              <td className="flex gap-3">
                 <form
                   action={async () => {
                     "use server";
@@ -45,6 +51,16 @@ export default async function UsuariosPage() {
                 >
                   <button type="submit" className="text-sm underline">
                     {m.activo ? "Desactivar" : "Activar"}
+                  </button>
+                </form>
+                <form
+                  action={async () => {
+                    "use server";
+                    await actualizarActivoGlobalUsuario(m.usuarioId, !m.usuario.activoGlobal);
+                  }}
+                >
+                  <button type="submit" className="text-sm text-red-600 underline">
+                    {m.usuario.activoGlobal ? "Desactivar cuenta" : "Reactivar cuenta"}
                   </button>
                 </form>
               </td>

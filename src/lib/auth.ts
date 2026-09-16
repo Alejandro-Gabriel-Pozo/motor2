@@ -34,8 +34,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const hd = typeof profile.hd === "string" ? profile.hd : undefined;
       return emailPuedeIniciarSesion(user.email, hd);
     },
+    // Kill-switch en vivo: con estrategia 'database', esto corre en CADA
+    // request con sesión (auth() lo llama), no solo al loguearse — así que
+    // desactivar User.activoGlobal corta el acceso en la request
+    // siguiente, no recién quien la próxima vez que esa persona intente
+    // volver a loguearse. No seteamos session.user.id: getUsuarioActual
+    // (única puerta de lectura de sesión del proyecto) ya trata eso como
+    // "sin sesión" (`if (!session?.user?.id...) return null`).
     async session({ session, user }) {
-      if (session.user) {
+      if (session.user && user.activoGlobal) {
         session.user.id = user.id;
       }
       return session;

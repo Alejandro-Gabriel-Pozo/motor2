@@ -34,6 +34,18 @@ export async function emailPuedeIniciarSesion(
   const emailNorm = email.trim().toLowerCase();
   if (!emailNorm) return false;
 
+  // Kill-switch (User.activoGlobal) primero, independiente de las 3 vías
+  // de entrada de abajo — si no fuera lo primero, alguien desactivado a
+  // nivel cuenta pero cuyo email sigue matcheando BOOTSTRAP_ADMIN_EMAILS o
+  // ALLOWED_EMAIL_DOMAINS podría seguir entrando por esas vías sin que el
+  // kill-switch aplicara nunca. Un usuario que todavía no existe (login
+  // nuevo) no tiene fila que consultar acá — no lo bloquea.
+  const usuarioExistente = await db.user.findUnique({
+    where: { email: emailNorm },
+    include: { sucursales: { where: { activo: true }, take: 1 } },
+  });
+  if (usuarioExistente && !usuarioExistente.activoGlobal) return false;
+
   if (obtenerEmailsBootstrap().includes(emailNorm)) return true;
 
   const dominiosPermitidos = obtenerDominiosPermitidos();
@@ -42,9 +54,5 @@ export async function emailPuedeIniciarSesion(
     return true;
   }
 
-  const usuario = await db.user.findUnique({
-    where: { email: emailNorm },
-    include: { sucursales: { where: { activo: true }, take: 1 } },
-  });
-  return Boolean(usuario && usuario.sucursales.length > 0);
+  return Boolean(usuarioExistente && usuarioExistente.sucursales.length > 0);
 }
