@@ -29,6 +29,8 @@ export interface FiltroSelectorProducto {
   soloActivos?: boolean;
   /** MP, o PV solo si está marcado "Se produce" — mismo criterio que `tieneStockReal` (Conteo Físico, Stock consolidado). */
   soloConStockReal?: boolean;
+  /** PV, o MP solo si está marcada "Se produce" — quién puede tener una Receta (`/catalogo/recetas`). Es el criterio inverso a `soloConStockReal`: ahí toda MP entra y el PV es la excepción, acá es al revés. */
+  elegibleParaReceta?: boolean;
 }
 
 export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
@@ -37,6 +39,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.tipo ? [{ tipo: filtro.tipo }] : []),
     ...(filtro?.soloActivos ? [{ activo: true }] : []),
     ...(filtro?.soloConStockReal ? [{ OR: [{ tipo: "MP" as const }, { tipo: "PV" as const, seProduce: true }] }] : []),
+    ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(t ? [{ OR: [{ nombre: { contains: t, mode: "insensitive" as const } }, { codigo: { contains: t, mode: "insensitive" as const } }] }] : []),
   ];
   return prisma.producto.findMany({
@@ -50,6 +53,62 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
 /** Un producto puntual por id, en la misma forma que el combobox — para mostrar su etiqueta después de elegirlo (ej. Conteo Físico, al agregar una fila manual). */
 export async function obtenerProductoOpcion(productoId: string): Promise<ProductoOpcion | null> {
   return prisma.producto.findUnique({ where: { id: productoId }, select: { id: true, codigo: true, nombre: true } });
+}
+
+export interface InsumoDeProducto {
+  productoCodigo: string;
+  productoNombre: string;
+  insumoId: string | null;
+  insumoNombre: string | null;
+  unidadStockId: string;
+  unidadStockNombre: string;
+}
+
+/**
+ * Info de agrupación de una MP existente — usada por el asistente de
+ * "hermanar" del Alta/Editar Producto (`AsistenteHermanar`): al elegir "ya
+ * compro esto con otro nombre/código", esto le dice al asistente si esa MP
+ * ya tiene Insumo (se reusa con un solo click) o hace falta crear uno
+ * nuevo y asignárselo retroactivamente.
+ */
+export async function obtenerInsumoDeProducto(productoId: string): Promise<InsumoDeProducto | null> {
+  const p = await prisma.producto.findUnique({
+    where: { id: productoId },
+    include: { insumo: true, unidadStock: true },
+  });
+  if (!p) return null;
+  return {
+    productoCodigo: p.codigo,
+    productoNombre: p.nombre,
+    insumoId: p.insumoId,
+    insumoNombre: p.insumo?.nombre ?? null,
+    unidadStockId: p.unidadStockId,
+    unidadStockNombre: p.unidadStock.nombre,
+  };
+}
+
+/**
+ * Asigna el Insumo a una MP ya existente — la mitad "retroactiva" del
+ * asistente de hermanar: cuando la MP elegida como "ya la compro" todavía
+ * no tenía Insumo, se crea uno nuevo (`crearInsumo`) y este función se lo
+ * asigna a ELLA, además de a la MP que se está dando de alta/editando
+ * ahora — así el grupo queda armado de los dos lados, no solo del nuevo.
+ * Misma validación de unidad que el alta/edición normal
+ * (`validarUnidadInsumo`): no se puede agrupar si ya hay un producto
+ * activo del mismo Insumo con otra unidad de stock.
+ */
+export async function asignarInsumoAProducto(productoId: string, insumoId: string): Promise<ResultadoAccion> {
+  return conPermiso("editar_producto", async () => {
+    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
+    if (!producto) return error("No se encontró el producto.");
+    if (producto.tipo !== "MP") return error("Solo una materia prima (MP) puede tener Insumo asignado.");
+
+    const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId);
+    if (invalido) return error(invalido);
+
+    await prisma.producto.update({ where: { id: productoId }, data: { insumoId } });
+    return ok("Insumo asignado.");
+  });
 }
 
 /** Precio de venta global de un producto puntual — usado por Precio Local para mostrar "precio global actual" sin traer el catálogo entero. */

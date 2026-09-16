@@ -34,6 +34,8 @@ export interface ItemMovimientoInput {
   pesoReal?: number | null;
   /** Presentación de compra alternativa (Presentacion.unidadCompraId) — si no es una presentación real y activa de este producto, se ignora y sigue con la default. */
   unidadCompraId?: string | null;
+  /** Compra/Devolución a Proveedor: cómo llama el proveedor a este producto — se guarda en ProveedorPorProducto, puramente informativo. */
+  referenciaProveedor?: string;
 }
 
 export interface DatosMovimientoInput {
@@ -65,6 +67,7 @@ interface LineaCalculada {
   /** Solo Compra: para enganchar upsertProveedorPorProducto (Catálogo). */
   precioUnitario: number;
   unidadCompraId: string | null;
+  referenciaProveedor: string | undefined;
   consumosReceta: { productoId: string; cantidad: number; loteVencimiento: Date | null }[];
   /** true si se aplicó factor de conversión o peso real — para el aviso final "se convirtió automáticamente". */
   huboConversion: boolean;
@@ -183,6 +186,7 @@ async function armarLineaMovimiento(
       precioPorUnidadStock,
       precioUnitario,
       unidadCompraId,
+      referenciaProveedor: texto(item.referenciaProveedor) || undefined,
       consumosReceta,
       huboConversion,
     },
@@ -346,6 +350,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
           unidadCompraId: l.unidadCompraId,
           precioUnitario: l.precioUnitario,
           precioPorUnidadStock: l.precioPorUnidadStock,
+          referenciaProveedor: l.referenciaProveedor,
         })),
       };
     });
@@ -370,6 +375,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
             precioUnitario: l.precioUnitario,
             precioPorUnidadStock: l.precioPorUnidadStock,
             fechaCompra: datos.fecha,
+            referenciaProveedor: l.referenciaProveedor,
           });
         } catch (e) {
           console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${(e as Error).message}`);

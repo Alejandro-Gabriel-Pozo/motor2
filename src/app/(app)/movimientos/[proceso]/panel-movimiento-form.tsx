@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { DestinoConsumo, MotivoMerma } from "@prisma/client";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos";
+import { listarProductosDeProveedor } from "@/server/actions/proveedor-por-producto";
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
@@ -15,13 +16,28 @@ interface Opcion {
 
 interface FilaItem {
   productoId: string;
+  /** Precarga desde el proveedor elegido — evita que SelectorProducto arranque vacío para una fila ya resuelta. */
+  etiquetaInicial: string;
   cantidad: string;
   loteVencimiento: string;
   precioTotal: string;
   pesoReal: string;
+  /** Solo Compra: cómo llama el proveedor a este producto — se guarda en ProveedorPorProducto. */
+  referenciaProveedor: string;
+  /** Solo referencia visual, no se manda al servidor. */
+  ultimaCompraTexto: string;
 }
 
-const FILA_VACIA: FilaItem = { productoId: "", cantidad: "", loteVencimiento: "", precioTotal: "", pesoReal: "" };
+const FILA_VACIA: FilaItem = {
+  productoId: "",
+  etiquetaInicial: "",
+  cantidad: "",
+  loteVencimiento: "",
+  precioTotal: "",
+  pesoReal: "",
+  referenciaProveedor: "",
+  ultimaCompraTexto: "",
+};
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -49,7 +65,16 @@ export function PanelMovimientoForm({
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [resetCount, setResetCount] = useState(0);
+  const [cargandoProveedor, setCargandoProveedor] = useState(false);
+  const [infoProveedor, setInfoProveedor] = useState("");
+  // Se incrementa cada vez que `items` se reemplaza en bloque (no fila por
+  // fila) — entra en la `key` de cada fila para forzar el remount de
+  // SelectorProducto, que solo lee `etiquetaInicial` una vez al montar
+  // (useState perezoso): sin esto, precargar los productos del proveedor
+  // dejaría el buscador vacío a la vista aunque `productoId` ya esté puesto.
+  const [versionItems, setVersionItems] = useState(0);
+
+  const precargaPorProveedor = config.proceso === "COMPRA";
 
   const actualizarFila = (idx: number, cambios: Partial<FilaItem>) => {
     setItems((prev) => prev.map((f, i) => (i === idx ? { ...f, ...cambios } : f)));
@@ -57,6 +82,44 @@ export function PanelMovimientoForm({
 
   const agregarFila = () => setItems((prev) => [...prev, { ...FILA_VACIA }]);
   const quitarFila = (idx: number) => setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+
+  const elegirProveedor = (id: string) => {
+    setProveedorId(id);
+    if (!precargaPorProveedor) return;
+
+    if (!id) {
+      setItems([{ ...FILA_VACIA }]);
+      setVersionItems((n) => n + 1);
+      setInfoProveedor("");
+      return;
+    }
+
+    setCargandoProveedor(true);
+    setInfoProveedor("Buscando lo que le comprás a este proveedor...");
+    listarProductosDeProveedor(id).then((productos) => {
+      setCargandoProveedor(false);
+      if (!productos.length) {
+        setItems([{ ...FILA_VACIA }]);
+        setVersionItems((n) => n + 1);
+        setInfoProveedor("Todavía no le compraste nada a este proveedor — agregalo con \"+ Agregar producto\". La próxima vez va a aparecer solo acá.");
+        return;
+      }
+      setInfoProveedor(`${productos.length} producto(s) que ya le comprás. Completá cantidad solo en los que estés comprando ahora — el resto queda sin cambios.`);
+      setItems(
+        productos.map((p) => ({
+          productoId: p.productoId,
+          etiquetaInicial: `${p.productoCodigo} — ${p.productoNombre}`,
+          cantidad: "",
+          loteVencimiento: "",
+          precioTotal: "",
+          pesoReal: "",
+          referenciaProveedor: p.referenciaProveedor ?? "",
+          ultimaCompraTexto: p.ultimoPrecioPorUnidadStock > 0 ? `última vez: $${p.ultimoPrecioPorUnidadStock.toLocaleString("es-AR")} / ${p.unidadStockNombre}` : "",
+        }))
+      );
+      setVersionItems((n) => n + 1);
+    });
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +132,7 @@ export function PanelMovimientoForm({
         loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
         precioTotal: f.precioTotal ? Number(f.precioTotal) : undefined,
         pesoReal: f.pesoReal ? Number(f.pesoReal) : null,
+        referenciaProveedor: precargaPorProveedor ? f.referenciaProveedor || undefined : undefined,
       }));
 
     if (!itemsValidos.length) {
@@ -94,7 +158,8 @@ export function PanelMovimientoForm({
       setOk(resultado.ok);
       if (resultado.ok) {
         setItems([{ ...FILA_VACIA }]);
-        setResetCount((n) => n + 1);
+        setInfoProveedor("");
+        setVersionItems((n) => n + 1);
         router.refresh();
       }
     });
@@ -137,7 +202,7 @@ export function PanelMovimientoForm({
         <div className="flex gap-3">
           <label className="flex flex-1 flex-col gap-1 text-sm">
             Proveedor
-            <select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="rounded border px-3 py-2">
+            <select value={proveedorId} onChange={(e) => elegirProveedor(e.target.value)} className="rounded border px-3 py-2">
               <option value="">Sin proveedor</option>
               {proveedores.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -183,17 +248,19 @@ export function PanelMovimientoForm({
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Productos</span>
+        {precargaPorProveedor && infoProveedor && <p className="text-xs text-neutral-500">{infoProveedor}</p>}
         {items.map((fila, idx) => (
-          <div key={idx} className="flex flex-wrap items-end gap-2 rounded border p-2">
+          <div key={`${versionItems}-${idx}`} className="flex flex-wrap items-end gap-2 rounded border p-2">
             <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500">
               Producto
               <SelectorProducto
                 value={fila.productoId}
                 onChange={(id) => actualizarFila(idx, { productoId: id })}
                 filtro={{ soloActivos: true }}
-                limpiarSenal={resetCount}
+                etiquetaInicial={fila.etiquetaInicial}
                 required
               />
+              {fila.ultimaCompraTexto && <span className="text-neutral-400">{fila.ultimaCompraTexto}</span>}
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
               Cantidad
@@ -225,6 +292,17 @@ export function PanelMovimientoForm({
                 </label>
               </>
             )}
+            {precargaPorProveedor && (
+              <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500">
+                Código/nombre del proveedor
+                <input
+                  value={fila.referenciaProveedor}
+                  onChange={(e) => actualizarFila(idx, { referenciaProveedor: e.target.value })}
+                  placeholder="opcional"
+                  className="rounded border px-2 py-1.5 text-sm"
+                />
+              </label>
+            )}
             <button
               type="button"
               onClick={() => quitarFila(idx)}
@@ -235,8 +313,8 @@ export function PanelMovimientoForm({
             </button>
           </div>
         ))}
-        <button type="button" onClick={agregarFila} className="self-start text-sm underline">
-          + Agregar producto
+        <button type="button" onClick={agregarFila} disabled={cargandoProveedor} className="self-start text-sm underline disabled:opacity-50">
+          + Agregar producto{precargaPorProveedor && proveedorId ? " (que no está en la lista de este proveedor)" : ""}
         </button>
       </div>
 

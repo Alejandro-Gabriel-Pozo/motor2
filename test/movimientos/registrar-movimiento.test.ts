@@ -168,6 +168,26 @@ describe("registrarMovimiento", () => {
     expect(segunda.ok).toBe(false);
   });
 
+  it("Compra con proveedor guarda referenciaProveedor en ProveedorPorProducto", async () => {
+    // Necesita unidadCompraId propio: el hookup de ProveedorPorProducto solo
+    // corre si armarLineaMovimiento resuelve una unidad de compra real
+    // (aplicaFactorConversion), mismo requisito que ya tenía el hookup del
+    // precio — sin esto la línea nunca llega a upsertProveedorPorProducto.
+    const mp = await prisma.producto.create({
+      data: { codigo: "MP_ACEITE", nombre: "Aceite", tipo: "MP", unidadStockId: unidadKgId, unidadCompraId: unidadKgId, insumoId },
+    });
+    const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_2", nombre: "Distribuidora del Sur" } });
+
+    const resultado = await registrarMovimiento({
+      proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id,
+      items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1000, referenciaProveedor: "ACE-5L" }],
+    });
+    expect(resultado.ok).toBe(true);
+
+    const relacion = await prisma.proveedorPorProducto.findFirstOrThrow({ where: { productoId: mp.id, proveedorId: proveedor.id } });
+    expect(relacion.referenciaProveedor).toBe("ACE-5L");
+  });
+
   it("Compra aplica el factor de conversión de unidad de compra a unidad de stock", async () => {
     const g = await prisma.unidad.findFirst({ where: { nombre: "g" } });
     const mp = await prisma.producto.create({

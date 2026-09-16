@@ -326,6 +326,161 @@ fijas conocidas de antemano.
 
 ---
 
+## 6. Ayuda contextual y guía al usuario — grounding del asistente de hermanar
+
+Investigación puntual (2026-09-16) pedida para dar respaldo real a
+`AsistenteHermanar` (`src/components/catalogo/asistente-hermanar.tsx`), el
+wizard de 3 pasos (buscar → confirmar/nombrar) que reemplazó el `<select>`
+crudo de Insumo en `producto-form.tsx` porque "no me parece que sea
+intuitivo". Pregunta: ¿cómo ayudan ERPNext y Dolibarr a un usuario que no
+conoce el modelo de datos a tomar decisiones no obvias, más allá de un
+dropdown?
+
+### 6.1 Ayuda de campo (texto inline, tooltips)
+
+**VERIFICADO en los dos.**
+
+- **ERPNext/Frappe**: cada campo de un DocType puede declarar
+  `"description"` en su JSON — ejemplo real, `item.json:242`
+  (`is_stock_item`): *"ERPNext will make a stock ledger entry for each
+  transaction of this item. Keep unchecked for non-stock or service
+  items."*, o `item.json:170` (`variant_of`) explicando qué campos se
+  heredan de la plantilla. En el cliente, `BaseInput.set_description()`
+  (`base_input.js:223-234`) vuelca ese texto a un `<div class="help-box">`
+  bajo el campo — persistente, no desaparece al tipear ni al perder foco
+  (a diferencia de un placeholder). El mismo método se reusa para mensajes
+  de error contextuales en runtime (ej. `barcode.js`: `Invalid Barcode: …`).
+- **Dolibarr**: `Form::textwithpicto()` — un ícono "?" al lado del label
+  que muestra el texto de ayuda al hover, sin ocupar espacio en el layout.
+  No es solo para pantallas de configuración: se usa también en líneas de
+  documentos reales, ej. `objectline_title.tpl.php:61` — el label "Qty" de
+  una línea de BOM con el tooltip *"QtyRequiredIfNoLoss"* explicando la
+  regla no obvia (cantidad requerida si no hay pérdida configurada).
+
+### 6.2 Wizards guiados / asistentes paso a paso
+
+**Existe, pero acotado a alta inicial — NO ENCONTRADO para carga de datos
+del día a día.**
+
+- ERPNext tiene un framework genérico de wizard multi-paso,
+  `frappe.ui.Slides`/`frappe.ui.Slide` (`slides.js`), del que
+  `SetupWizard extends frappe.ui.Slides` (`setup_wizard.js:94`, slides
+  concretos en `:365`). Grep en los dos repos completos (`frappe` +
+  `erpnext`) por `frappe.ui.Slides`: **el único consumidor es el propio
+  Setup Wizard** — no hay ningún otro flujo del día a día (crear un
+  producto, una factura, un asiento) que use este framework de pasos.
+- Lo que ERPNext y Dolibarr usan en su lugar para decisiones no obvias es
+  un **diálogo único** (no una secuencia de pantallas):
+  - ERPNext, "Crear variantes de un Item" — `item.js:1300-1511`. Un solo
+    `frappe.ui.Dialog` con checkboxes por cada valor de atributo
+    (`"Select Attribute Values"`, `item.js:1302`) y un botón que dice
+    cuántas variantes va a crear en vivo (`update_primary_action`,
+    `item.js:1283-1298`, ej. "Make 3 Variants"). No hay pasos ni
+    navegación atrás/adelante — es una sola pantalla con selección
+    dinámica, más simple que el wizard de motor2.
+  - Frappe, renombrar un documento — `toolbar.js:229-284`: diálogo único
+    con un checkbox **"Merge with existing"** (`:277-281`): si el nuevo
+    nombre coincide con un doc ya existente, en vez de fallar ofrece
+    fusionarlos. Mecanismo genérico de la plataforma, no específico de
+    ningún doctype.
+  - Dolibarr, "Fusionar terceros" — botón dedicado en la ficha
+    (`societe/card.php:3572`) que abre un `formconfirm` con **un solo
+    campo**: un selector de empresa con autocompletado
+    (`select_company()`, no un `<select>` plano) para elegir el tercero
+    "origen" a fusionar (`societe/card.php:3005-3015`,
+    `mergeCompany($soc_origin_id)` en `:232`). Mismo problema de fondo que
+    "hermanar" (dos registros para la misma entidad real, cargados por
+    separado) — pero resuelto en un solo diálogo de confirmación, no en
+    pasos.
+- **Conclusión**: el patrón de motor2 (pasos secuenciales con estado
+  propio: buscar → confirmar/nombrar, cada uno con su propia pantalla) no
+  tiene precedente en el código real de ninguno de los dos ERPs de
+  referencia para una tarea de carga de datos — ambos resuelven el mismo
+  tipo de problema (fusionar/asociar registros) con un diálogo único, no
+  con un wizard de varias pantallas. El wizard de pasos como técnica sí
+  existe en ERPNext, pero reservado a la instalación inicial.
+
+### 6.3 Sugerencias mientras se tipea / detección de duplicados
+
+**Autocompletado real: VERIFICADO. Fuzzy-matching "¿quisiste decir…?":
+NO ENCONTRADO en ninguno de los dos.**
+
+- ERPNext: el campo Link busca contra el servidor en cada tecla
+  (`on_input`, `link.js:446-546`, método `frappe.desk.search.search_link`)
+  y, si el usuario tiene permiso de creación, agrega siempre una opción
+  **"Create a new {X}"** al final de la lista de resultados
+  (`link.js:497-510`) — el mismo patrón "buscar primero, crear si no
+  está" que el paso 1 de `AsistenteHermanar`. `merge_duplicates()`
+  (`link.js:553-566`) solo junta filas con el mismo `value` exacto — no
+  detecta nombres parecidos ("Coca Cola" vs "Coca-Cola").
+- Dolibarr: la unicidad de nombre de tercero es un constraint de base
+  (`DB_ERROR_RECORD_ALREADY_EXISTS`) atrapado recién al guardar
+  (`societe.class.php:1157-1159`, mensaje `ErrorCompanyNameAlreadyExists`)
+  — reactivo, no una sugerencia mientras se tipea.
+- Búsqueda dirigida por "similar name"/fuzzy/Levenshtein en ambos repos:
+  sin resultados — **NO ENCONTRADO**.
+
+### 6.4 Estado vacío (listas/tablas sin datos)
+
+**VERIFICADO — contraste real entre los dos.**
+
+- ERPNext, List View (`list_view.js:701-747`,
+  `get_no_result_message()`): título "No {Doctype} found" (si hay
+  filtros activos) o "No {Doctype} created" (si no), descripción que cae
+  en cascada — "Clear the filters to see all records" → la
+  `meta.description` del propio DocType (el mismo texto de 6.1) → "Create
+  your first {Doctype} to get started" → "Nothing has been added yet."
+  como último recurso —, más botones reales **"Create"** y
+  **"Documentation"** (si el doctype tiene link a docs), armado por
+  `frappe.ui.empty_state.html()`. Vistas más simples (Kanban, etc.) caen
+  al default de la clase base, `base_list.js:352-354`: solo "Nothing to
+  show".
+- Dolibarr: `NoRecordFound` = *"No record found"* (`main.lang:43`), usado
+  como texto plano en una fila de tabla — `company.lib.php:1837`,
+  `company.lib.php:2657`, `html.lib.php:6011`. Sin botón, sin "creá tu
+  primer X", sin sugerencia de qué hacer después — grep exhaustivo en las
+  llamadas a `NoRecordFound` confirma que ninguna agrega un CTA al lado.
+
+### 6.5 Otro mecanismo relevante — fusión como función de plataforma
+
+Los tres mecanismos de "unir dos registros que resultaron ser la misma
+entidad real" encontrados (Frappe rename+merge en 6.2, ERPNext duplicate
+check de variantes en 6.2, Dolibarr Merge Thirdparties en 6.2) comparten
+un rasgo: **existen como función genérica de la plataforma o de un solo
+módulo (terceros/variantes), no como parte del formulario de alta**. El
+usuario crea el registro duplicado primero (sin que nada lo avise en el
+momento) y lo fusiona después, desde una acción separada. `AsistenteHermanar`
+hace lo opuesto y es más temprano en el flujo: se ofrece **en el momento
+de crear el producto nuevo**, antes de que el duplicado exista — ningún
+mecanismo real de los dos ERPs de referencia hace esa prevención
+proactiva en el propio formulario de alta.
+
+### 6.6 Lista vs. editor — restructuración de `/catalogo/recetas`, grounded
+
+**Pedido explícito del usuario**: que la pantalla de Recetas separe "ver
+qué productos ya tienen receta" de "editar una receta puntual", como lo
+hace Dolibarr — en vez de la vista de dos columnas que mezclaba las dos
+cosas en una sola página.
+
+**VERIFICADO contra Dolibarr real**: `bom_list.php` es la lista de BOMs
+YA creados (consulta sobre `llx_bom`, no sobre el catálogo de productos
+entero) con un botón "New" (`bom_list.php:514`,
+`dolGetButtonTitle($langs->trans('New'), ...)`) que manda a
+`bom_card.php?action=create` — una pantalla dedicada aparte. Clickear una
+fila de la lista abre `bom_card.php?id=X`, el editor de ESA receta
+puntual. Nunca la lista y el editor comparten pantalla.
+
+Portado a motor2: `/catalogo/recetas` ahora lista solo productos con al
+menos una `RecetaVersion` (antes listaba TODO producto elegible, tenga
+receta o no). `NuevaReceta` (`nueva-receta.tsx`) es el equivalente del
+botón "New" — un buscador que manda directo a
+`/catalogo/recetas/[productoId]`, el editor dedicado (antes vivía en la
+misma página vía `?id=`). Filtro nuevo en el selector,
+`elegibleParaReceta` (`server/actions/productos.ts`) — criterio PV o MP
+"Se produce", el inverso de `soloConStockReal`.
+
+---
+
 ## Resumen para portar a Apps Script (`motor`)
 
 | Hallazgo | Estado en motor2 | Aplica a Apps Script |
@@ -335,6 +490,7 @@ fijas conocidas de antemano.
 | Número de factura sin validar formato | **No es brecha** — ambos ERPs de referencia hacen lo mismo | No aplica un fix — si Apps Script ya valida algo ahí, no hace falta tocarlo |
 | `<input type="number">` nativo en plata/cantidad | **Resuelto en motor2** | Sí — los HTML de Apps Script (`PanelOperacion.html`, etc.) probablemente tienen el mismo `type="number"` nativo |
 | Sin shell de navegación persistente (6 headers duplicados, sin sidebar) | **Resuelto en motor2** (sidebar único, 6 grupos, `src/core/navegacion/estructura.ts`) | Parcial — `Nav.html` en Apps Script ya es un include único (no duplicado), pero vale revisar si agrupa por módulo o es una lista plana como era acá |
+| Ayuda de campo solo en el `placeholder` (desaparece al tipear), sin texto de ayuda persistente para campos no obvios (ej. "Factor de conversión", "Es consignación") | **Brecha real, no resuelta** — ERPNext (`description` de DocField + `set_description()`, `base_input.js:223-234`) y Dolibarr (`textwithpicto`, ícono "?") muestran la ayuda sin depender de que el campo esté vacío | Sí — mismo problema en los formularios HTML de Apps Script, que también usan placeholder como única explicación |
 
 Fuentes primarias completas (con más citas de archivo:línea de las
 resumidas acá) quedan en el historial de esta sesión — este documento es el

@@ -1,0 +1,190 @@
+import Link from "next/link";
+import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import {
+  calcularRendimientoRecetasSimples,
+  calcularRendimientoRecetasCompartidas,
+  type FilaRendimientoSimple,
+} from "@/core/reportes/rendimiento-recetas";
+
+function primerDiaDelMesISO() {
+  const hoy = new Date();
+  return new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
+}
+function hoyISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+const ETIQUETA_CONFIANZA: Record<FilaRendimientoSimple["confianza"], string> = {
+  alta: "Alta",
+  media: "Media",
+  baja: "Baja",
+  sin_datos: "Sin datos",
+};
+
+function celdaDesvio(desviacionPorcentaje: number | null) {
+  return (
+    <td className={desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-600" : ""}>
+      {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
+    </td>
+  );
+}
+
+function celdaUsarValor(productoVentaId: string, insumoProductoId: string, cantidadEstimada: number | null) {
+  if (cantidadEstimada === null) return <td />;
+  return (
+    <td>
+      <Link href={`/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}`} className="text-sm underline">
+        Usar este valor
+      </Link>
+    </td>
+  );
+}
+
+/**
+ * Fases 1 y 2 del diseño (docs/diseno-rendimiento-recetas-por-sucursal.md):
+ * compara la receta cargada contra lo que las compras/ventas reales de
+ * ESTA sucursal sugieren que realmente se consume. Corre siempre para la
+ * sucursal activa, nunca mezclado con otras (ver §2.4 del diseño: mezclar
+ * sucursales destruye la comparación entre cocineros).
+ */
+export default async function RendimientoRecetasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ desde?: string; hasta?: string; productoId?: string }>;
+}) {
+  const ctx = await obtenerContextoUsuario();
+  if (!ctx) return null;
+
+  const sp = await searchParams;
+  const desdeStr = sp.desde || primerDiaDelMesISO();
+  const hastaStr = sp.hasta || hoyISO();
+  const desde = new Date(desdeStr);
+  const hasta = new Date(hastaStr);
+
+  const [todasLasSimples, todasLasCompartidas] = await Promise.all([
+    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta),
+    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta),
+  ]);
+  const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;
+  const filasCompartidas = sp.productoId ? todasLasCompartidas.filter((f) => f.productoVentaId === sp.productoId) : todasLasCompartidas;
+
+  const nombreFiltrado = filasSimples[0]?.productoVentaNombre ?? filasCompartidas[0]?.productoVentaNombre;
+
+  const poolsCompartidos = new Map<string, typeof filasCompartidas>();
+  for (const f of filasCompartidas) {
+    if (!poolsCompartidos.has(f.poolClave)) poolsCompartidos.set(f.poolClave, []);
+    poolsCompartidos.get(f.poolClave)!.push(f);
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="mb-1 text-xl font-semibold">
+          Rendimiento real de recetas
+          {sp.productoId && nombreFiltrado && ` — ${nombreFiltrado}`}
+        </h1>
+        {sp.productoId && (
+          <Link href="/reportes/rendimiento-recetas" className="text-sm underline">
+            Ver todos los platos
+          </Link>
+        )}
+        <p className="mb-4 text-sm text-neutral-500">
+          Compara la receta cargada contra lo que compras y ventas de esta sucursal sugieren que realmente se consume.
+        </p>
+        <form className="flex items-end gap-3 text-sm">
+          {sp.productoId && <input type="hidden" name="productoId" value={sp.productoId} />}
+          <label className="flex flex-col gap-1">
+            Desde
+            <input type="date" name="desde" defaultValue={desdeStr} className="rounded border px-3 py-2" />
+          </label>
+          <label className="flex flex-col gap-1">
+            Hasta
+            <input type="date" name="hasta" defaultValue={hastaStr} className="rounded border px-3 py-2" />
+          </label>
+          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+            Actualizar
+          </button>
+        </form>
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Un solo plato por insumo</h2>
+        {filasSimples.length === 0 ? (
+          <p className="text-sm text-neutral-500">Nada para comparar todavía en este caso.</p>
+        ) : (
+          <table className="w-full max-w-4xl text-sm">
+            <thead>
+              <tr className="border-b text-left text-neutral-500">
+                <th className="py-2">Plato</th>
+                <th>Insumo</th>
+                <th>Receta actual</th>
+                <th>Rendimiento real</th>
+                <th>Desvío</th>
+                <th>Confianza</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filasSimples.map((f) => (
+                <tr key={f.recetaIngredienteId} className="border-b">
+                  <td className="py-2">{f.productoVentaNombre}</td>
+                  <td>{f.insumoONombre}</td>
+                  <td>
+                    {f.cantidadActual} {f.unidadRecetaNombre}
+                  </td>
+                  <td>{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
+                  {celdaDesvio(f.desviacionPorcentaje)}
+                  <td>{ETIQUETA_CONFIANZA[f.confianza]}</td>
+                  {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Insumo compartido entre varios platos</h2>
+        {poolsCompartidos.size === 0 ? (
+          <p className="text-sm text-neutral-500">Nada para comparar todavía en este caso.</p>
+        ) : (
+          <div className="flex flex-col gap-6">
+            {Array.from(poolsCompartidos.entries()).map(([poolClave, filas]) => (
+              <div key={poolClave} className="max-w-4xl">
+                <p className="mb-2 text-sm">
+                  <strong>{filas[0].insumoONombre}</strong> — {filas[0].cantidadPlatosEnPool} platos, {filas[0].semanasConDatos} semanas con datos
+                  {filas[0].resoluble && filas[0].r2 !== null && ` — ajuste R² ${filas[0].r2.toFixed(2)}`}
+                </p>
+                {!filas[0].resoluble && <p className="mb-2 text-sm text-amber-600">No se pudo estimar: {filas[0].motivoNoResoluble}</p>}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-neutral-500">
+                      <th className="py-2">Plato</th>
+                      <th>Receta actual</th>
+                      <th>Rendimiento real</th>
+                      <th>Desvío</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filas.map((f) => (
+                      <tr key={f.recetaIngredienteId} className="border-b">
+                        <td className="py-2">{f.productoVentaNombre}</td>
+                        <td>
+                          {f.cantidadActual} {f.unidadRecetaNombre}
+                        </td>
+                        <td>{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
+                        {celdaDesvio(f.desviacionPorcentaje)}
+                        {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -336,6 +336,8 @@ model Unidad {
   presentaciones           Presentacion[]
   proveedorPorProducto     ProveedorPorProducto[]
   recetaIngredientes       RecetaIngrediente[]
+  recetaVersionesPorRendimiento RecetaVersion[] @relation("RecetaVersionRendimientoUnidad")
+  recetaVersionesPorRacion      RecetaVersion[] @relation("RecetaVersionRacionUnidad")
 }
 
 /// Presentaciones de compra ALTERNATIVAS a la default de Producto
@@ -397,6 +399,11 @@ model ProveedorPorProducto {
   /// comparar presentaciones distintas del mismo Insumo.
   precioPorUnidadStock Decimal   @default(0) @db.Decimal(14, 4)
   ultimaCompra         DateTime  @default(now())
+  /// Cómo llama ESTE proveedor a este producto (su propio código o
+  /// nombre de catálogo) — nunca existió ni en la planilla vieja, que
+  /// solo guardaba nuestro propio código. Puramente informativo, para
+  /// reconocerlo más fácil al recargar una compra futura.
+  referenciaProveedor  String?
 
   @@unique([productoId, proveedorId, unidadCompraId])
 }
@@ -415,6 +422,35 @@ model RecetaVersion {
   creadoEn   DateTime @default(now())
 
   ingredientes RecetaIngrediente[]
+  pasos        RecetaPaso[]
+
+  /// Cabecera informativa — grounded contra Fudo (POS de gastronomía real,
+  /// docs/grounding-ficha-tecnica-tandoor.md §6). Todo opcional: no rompe
+  /// ninguna receta ya cargada, y no bloquea el guardado si se deja vacío.
+  /// Viaja en la MISMA versión que ingredientes/pasos a propósito — es
+  /// parte de la misma "foto" de qué receta exacta se usó (ver
+  /// razonamiento completo en el documento, sección "Interacción con el
+  /// versionado append-only").
+  rendimientoCantidad Decimal? @db.Decimal(14, 4)
+  rendimientoUnidadId String?
+  rendimientoUnidad   Unidad?  @relation("RecetaVersionRendimientoUnidad", fields: [rendimientoUnidadId], references: [id])
+  racionesCantidad    Int?
+  /// Tamaño de CADA ración — distinto de rendimientoCantidad (lo que
+  /// produce la receta ENTERA). Ej.: rendimiento "1 unidad" (la pizza
+  /// entera), racionesCantidad 8, racionTamano 150 (gramos cada porción).
+  racionTamano             Decimal? @db.Decimal(14, 4)
+  racionUnidadId           String?
+  racionUnidad             Unidad?  @relation("RecetaVersionRacionUnidad", fields: [racionUnidadId], references: [id])
+  tiempoPreparacionMinutos Int?
+  tiempoCoccionMinutos     Int?
+  comentarios              String?
+  /// Cómo se sirve el plato — distinto de los pasos de cocción (Fudo
+  /// separa "Pasos del procedimiento" de "Presentación o emplatado").
+  presentacionEmplatado String?
+  notasAdicionales      String?
+  /// Texto libre, un renglón = un ítem (ej. "Horno pizzero") — no amerita
+  /// un catálogo de equipos propio, ver §6 del documento de grounding.
+  equipamientoNecesario String?
 
   @@unique([productoId, version])
 }
@@ -434,7 +470,43 @@ model RecetaIngrediente {
   mermaPorcentaje  Decimal       @default(0) @db.Decimal(6, 2)
   observaciones    String?
 
+  enPasos RecetaPasoIngrediente[]
+
   @@index([insumoProductoId])
+}
+
+/// Paso de preparación — grounded contra Tandoor Recipes (`Step`) y Fudo
+/// (docs/grounding-ficha-tecnica-tandoor.md). La mayoría de los pasos van
+/// a ser instrucciones de texto simple sin ingredientes propios (Fudo ni
+/// lo ofrece) — `ingredientes` (la sub-lista vía RecetaPasoIngrediente) es
+/// la excepción puntual ("marinar con esto, salsa aparte"), no la norma.
+model RecetaPaso {
+  id              String        @id @default(cuid())
+  recetaVersionId String
+  recetaVersion   RecetaVersion @relation(fields: [recetaVersionId], references: [id], onDelete: Cascade)
+  orden           Int
+  nombre          String?
+  instruccion     String
+  minutos         Int?
+
+  ingredientes RecetaPasoIngrediente[]
+
+  @@index([recetaVersionId])
+}
+
+/// Tabla puente, no un FK simple en RecetaIngrediente — un mismo
+/// ingrediente puede participar de más de un paso (ej. "sal" en dos
+/// preparaciones distintas de la misma receta), mismo criterio que el M2M
+/// real de Tandoor (`Step.ingredients`). No repite cantidad/unidad/merma —
+/// eso sigue viviendo solo en RecetaIngrediente, el paso solo referencia.
+model RecetaPasoIngrediente {
+  id                  String            @id @default(cuid())
+  recetaPasoId        String
+  recetaPaso          RecetaPaso        @relation(fields: [recetaPasoId], references: [id], onDelete: Cascade)
+  recetaIngredienteId String
+  recetaIngrediente   RecetaIngrediente @relation(fields: [recetaIngredienteId], references: [id], onDelete: Cascade)
+
+  @@unique([recetaPasoId, recetaIngredienteId])
 }
 
 // ===================================================================

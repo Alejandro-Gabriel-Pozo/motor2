@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarCatalogoBase, prisma } from "../setup/test-db";
-import { upsertProveedorPorProducto, obtenerComparativaPreciosPorInsumo } from "../../src/server/actions/proveedor-por-producto";
+import { upsertProveedorPorProducto, obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/proveedor-por-producto";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
   let productoId: string;
@@ -53,5 +53,66 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
     const comparativa = await obtenerComparativaPreciosPorInsumo();
     const fila = comparativa.find((f) => f.insumo === "Harina"); // insumo sembrado en sembrarCatalogoBase
     expect(fila?.masBarato?.proveedorNombre).toBe("Proveedor B");
+  });
+
+  it("un referenciaProveedor vacío nunca pisa uno ya cargado (mismo criterio que el precio)", async () => {
+    await upsertProveedorPorProducto({
+      productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: "ACE-5L",
+    });
+    await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110 });
+
+    const fila = await prisma.proveedorPorProducto.findUniqueOrThrow({
+      where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } },
+    });
+    expect(fila.referenciaProveedor).toBe("ACE-5L");
+  });
+
+  it("referenciaProveedor se puede actualizar mandando un valor nuevo no vacío", async () => {
+    await upsertProveedorPorProducto({
+      productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: "ACE-5L",
+    });
+    await upsertProveedorPorProducto({
+      productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110, referenciaProveedor: "ACEITE-BIDON-5",
+    });
+
+    const fila = await prisma.proveedorPorProducto.findUniqueOrThrow({
+      where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } },
+    });
+    expect(fila.referenciaProveedor).toBe("ACEITE-BIDON-5");
+  });
+
+  describe("listarProductosDeProveedor", () => {
+    it("trae los productos ya comprados a ese proveedor, más recientes primero", async () => {
+      const producto2 = await prisma.producto.create({
+        data: { codigo: "MP_TEST_2", nombre: "Vinagre", tipo: "MP", unidadStockId: unidadCompraId },
+      });
+
+      await upsertProveedorPorProducto({
+        productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100,
+        fechaCompra: new Date("2026-01-01"), referenciaProveedor: "ACE-5L",
+      });
+      await upsertProveedorPorProducto({
+        productoId: producto2.id, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 50, precioPorUnidadStock: 50,
+        fechaCompra: new Date("2026-02-01"),
+      });
+      // A otro proveedor no debería aparecer en la lista de A.
+      await upsertProveedorPorProducto({ productoId, proveedorId: proveedorBId, unidadCompraId, precioUnitario: 999, precioPorUnidadStock: 999 });
+
+      const lista = await listarProductosDeProveedor(proveedorAId);
+      expect(lista).toHaveLength(2);
+      expect(lista[0].productoId).toBe(producto2.id); // más reciente primero
+      expect(lista[1]).toMatchObject({ productoId, referenciaProveedor: "ACE-5L", ultimoPrecioPorUnidadStock: 100 });
+    });
+
+    it("sin ninguna compra a ese proveedor, da vacío", async () => {
+      expect(await listarProductosDeProveedor(proveedorAId)).toEqual([]);
+    });
+
+    it("no trae productos inactivos", async () => {
+      await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100 });
+      await prisma.producto.update({ where: { id: productoId }, data: { activo: false } });
+
+      expect(await listarProductosDeProveedor(proveedorAId)).toEqual([]);
+    });
   });
 });
