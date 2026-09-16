@@ -21,7 +21,16 @@ export async function conTransaccionSerializable<T>(
 ): Promise<T> {
   for (let intento = 0; intento < maxIntentos; intento++) {
     try {
-      return await prisma.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return await prisma.$transaction(fn, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        // Default de Prisma (maxWait 2s / timeout 5s) es corto para el caso
+        // de latencia de red más alta de lo normal — esto da más margen sin
+        // dejar una transacción SERIALIZABLE colgada minutos si algo se
+        // cuelga de verdad (eso bloquearía filas para otros usuarios reales
+        // más de lo necesario).
+        maxWait: 5_000,
+        timeout: 15_000,
+      });
     } catch (e) {
       const esConflicto = e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034";
       if (esConflicto && intento < maxIntentos - 1) continue;
