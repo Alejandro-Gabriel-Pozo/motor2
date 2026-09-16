@@ -1,22 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { calcularStockConsolidado, type EstadoStockConsolidado } from "@/core/stock/consolidado";
-
-const ESTADO_COLOR: Record<EstadoStockConsolidado, string> = {
-  NEGATIVO: "text-red-600",
-  CON_DESVIO: "text-amber-600",
-  SIN_CONTEO: "text-neutral-500",
-  SIN_MOVIMIENTOS: "text-neutral-400",
-  CONCILIADO: "text-green-700",
-};
-
-const ESTADO_LABEL: Record<EstadoStockConsolidado, string> = {
-  NEGATIVO: "Negativo (revisar)",
-  CON_DESVIO: "Con desvío",
-  SIN_CONTEO: "Sin conteo",
-  SIN_MOVIMIENTOS: "Sin movimientos",
-  CONCILIADO: "Conciliado",
-};
+import { calcularStockConsolidado } from "@/core/stock/consolidado";
+import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR as ESTADO_COLOR } from "@/core/stock/estado-consolidado-ui";
 
 export default async function StockConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();

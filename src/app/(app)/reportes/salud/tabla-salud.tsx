@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaSaludProducto } from "@/core/reportes/salud-por-producto";
+import { ESTADO_STOCK_CONSOLIDADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR } from "@/core/stock/estado-consolidado-ui";
 
 const COLUMNAS: ColumnaReporte<FilaSaludProducto>[] = [
   {
@@ -16,7 +17,12 @@ const COLUMNAS: ColumnaReporte<FilaSaludProducto>[] = [
     ),
   },
   { clave: "seccion", etiqueta: "Sección", valor: (f) => f.seccionNombre, render: (f) => f.seccionNombre },
-  { clave: "consolidado", etiqueta: "Consolidado", valor: (f) => f.estadoConsolidado, render: (f) => f.estadoConsolidado },
+  {
+    clave: "consolidado",
+    etiqueta: "Consolidado",
+    valor: (f) => f.estadoConsolidado,
+    render: (f) => <span className={ESTADO_STOCK_CONSOLIDADO_COLOR[f.estadoConsolidado]}>{ESTADO_STOCK_CONSOLIDADO_LABEL[f.estadoConsolidado]}</span>,
+  },
   { clave: "alerta", etiqueta: "Alerta", valor: (f) => f.estadoAlerta, render: (f) => f.estadoAlerta },
   { clave: "diferencias", etiqueta: "Diferencias", valor: (f) => f.estadoDiferencias, render: (f) => f.estadoDiferencias },
   { clave: "sinReceta", etiqueta: "Sin receta", valor: (f) => (f.sinRecetaVinculada ? "Sí" : "No"), render: (f) => (f.sinRecetaVinculada ? "Sí" : "No") },
