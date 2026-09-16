@@ -323,25 +323,37 @@ export function Bandeja({
               <th>Cantidad</th>
               <th>Otra sucursal</th>
               <th>Estado</th>
+              <th>Detalle</th>
             </tr>
           </thead>
           <tbody>
             {historial.map((f) => (
               <tr key={f.id} className="border-b">
-                <td className="py-1">{f.fecha}</td>
-                <td>
+                <td className="py-1 align-top">{f.fecha}</td>
+                <td className="align-top">
                   {f.productoCodigo} — {f.productoNombre}
                 </td>
-                <td>
+                <td className="align-top">
                   {f.cantidad} {f.unidadNombre}
                 </td>
-                <td>{f.otraSucursalNombre}</td>
-                <td>{f.estado}</td>
+                <td className="align-top">{f.otraSucursalNombre}</td>
+                <td className="align-top">{f.estado}</td>
+                <td className="max-w-xs align-top text-xs text-neutral-500">
+                  {f.detalle && <p>{f.detalle}</p>}
+                  {f.motivoRechazoOrigen && <p>Rechazo (origen): {f.motivoRechazoOrigen}</p>}
+                  {f.motivoRechazoDestino && <p>Rechazo (destino): {f.motivoRechazoDestino}</p>}
+                  {(f.seccionOrigenNombre || f.seccionDestinoNombre) && (
+                    <p>
+                      Sección: {f.seccionOrigenNombre ?? "—"} → {f.seccionDestinoNombre ?? "—"}
+                    </p>
+                  )}
+                  <p>Creado por: {f.creadoPorEmail}</p>
+                </td>
               </tr>
             ))}
             {!historial.length && (
               <tr>
-                <td className="py-1 text-neutral-500" colSpan={5}>
+                <td className="py-1 text-neutral-500" colSpan={6}>
                   Sin traspasos cerrados todavía.
                 </td>
               </tr>
