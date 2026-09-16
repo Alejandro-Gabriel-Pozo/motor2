@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { crearRol, actualizarActivoRol, listarRoles } from "@/server/actions/roles";
+import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function RolesPage() {
   const ctx = await obtenerContextoUsuario();
@@ -29,34 +31,43 @@ export default async function RolesPage() {
               <td className="py-2">{r.nombre}</td>
               <td>{r.activo ? "Sí" : "No"}</td>
               <td>
-                <form
-                  action={async () => {
+                <FormConResultado
+                  accion={async () => {
                     "use server";
-                    await actualizarActivoRol(r.id, !r.activo);
+                    return actualizarActivoRol(r.id, !r.activo);
                   }}
                 >
                   <button type="submit" className="text-sm underline">
                     {r.activo ? "Desactivar" : "Activar"}
                   </button>
-                </form>
+                </FormConResultado>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <form
-        action={async (formData: FormData) => {
-          "use server";
-          await crearRol(String(formData.get("nombre") ?? ""));
-        }}
-        className="flex max-w-md gap-2"
-      >
-        <input name="nombre" placeholder="nombre del rol" required className="flex-1 rounded border px-3 py-2" />
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Crear
-        </button>
-      </form>
+      <div className="max-w-md space-y-2">
+        <FormConResultado
+          accion={async (formData: FormData) => {
+            "use server";
+            return crearRol(String(formData.get("nombre") ?? ""));
+          }}
+          className="flex gap-2"
+        >
+          <input name="nombre" placeholder="nombre del rol" required className="flex-1 rounded border px-3 py-2" />
+          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+            Crear
+          </button>
+        </FormConResultado>
+        <p className="text-xs text-neutral-500">
+          Un rol recién creado no puede hacer nada todavía (deny-by-default) — anda a{" "}
+          <Link href="/administracion/permisos" className="underline">
+            Permisos
+          </Link>{" "}
+          para elegir qué puede ver y editar, antes de asignárselo a alguien.
+        </p>
+      </div>
     </div>
   );
 }
