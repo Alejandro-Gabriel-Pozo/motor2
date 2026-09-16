@@ -70,6 +70,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/periodo", label: "Período" },
       { href: "/reportes/categorias", label: "Por categoría" },
       { href: "/reportes/costos", label: "Costos y márgenes" },
+      { href: "/reportes/rendimiento-recetas", label: "Rendimiento real de recetas" },
       { href: "/reportes/valuacion", label: "Valuación de inventario" },
       { href: "/reportes/promociones", label: "Promociones" },
       { href: "/reportes/perdidas", label: "Pérdidas" },

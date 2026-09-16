@@ -12,7 +12,7 @@ export default async function RecetaEditorPage({
   searchParams,
 }: {
   params: Promise<{ productoId: string }>;
-  searchParams: Promise<{ editar?: string }>;
+  searchParams: Promise<{ editar?: string; sugerido?: string }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -21,7 +21,7 @@ export default async function RecetaEditorPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;
-  const { editar } = await searchParams;
+  const { editar, sugerido } = await searchParams;
 
   const [producto, mpActivas, unidades] = await Promise.all([
     prisma.producto.findUnique({ where: { id: productoId } }),
@@ -67,9 +67,14 @@ export default async function RecetaEditorPage({
           {producto.nombre} — versión vigente: {vigente?.version ?? "sin receta todavía"}
         </h1>
         {vigente && (
-          <Link href={`/catalogo/recetas/${producto.id}/historial`} className="text-sm text-neutral-500 underline">
-            Ver historial de versiones ({vigente.version})
-          </Link>
+          <div className="flex gap-3">
+            <Link href={`/catalogo/recetas/${producto.id}/historial`} className="text-sm text-neutral-500 underline">
+              Ver historial de versiones ({vigente.version})
+            </Link>
+            <Link href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline">
+              Ver rendimiento real
+            </Link>
+          </div>
         )}
       </div>
 
@@ -105,7 +110,12 @@ export default async function RecetaEditorPage({
                         className="flex flex-wrap items-end gap-2"
                       >
                         <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                        <CampoNumero name="cantidad" defaultValue={String(Number(ing.cantidad))} required className="w-28" />
+                        <CampoNumero name="cantidad" defaultValue={sugerido || String(Number(ing.cantidad))} required className="w-28" />
+                        {sugerido && (
+                          <span className="text-xs text-neutral-500">
+                            (sugerido por rendimiento real — tenías {Number(ing.cantidad)})
+                          </span>
+                        )}
                         <select name="unidadId" defaultValue={ing.unidadId} required className="rounded border px-2 py-1.5 text-sm">
                           {unidades.map((u) => (
                             <option key={u.id} value={u.id}>
