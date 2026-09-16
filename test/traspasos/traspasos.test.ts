@@ -60,6 +60,23 @@ describe("Traspasos entre sucursales", () => {
     return mp;
   }
 
+  it("crearSolicitudTransferencia redondea la cantidad a los decimales de la unidad, igual que crearEnvioDirectoTransferencia (PUSH)", async () => {
+    const mp = await crearProductoConStock("MP_PULL_DEC", 20); // unidadStock = kg, 2 decimales
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5.126, seccionDestinoId: seccionBId });
+    expect(sol.ok).toBe(true);
+    if (!sol.ok) return;
+
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
+    expect(Number(traspaso.cantidad)).toBe(5.13); // redondeado a 2 decimales, no 5.126 crudo
+
+    await comoA();
+    await aprobarYEnviarTransferencia(sol.id, seccionAId);
+    const movimiento = await prisma.movimientoStock.findFirstOrThrow({ where: { traspasoSucursalId: sol.id, proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } });
+    expect(Number(movimiento.cantidad)).toBe(-5.13); // el Kardex nunca recibe el valor sin redondear
+  });
+
   it("flujo pull completo: B solicita a A, A aprueba (sale de su Sección Origen), B acepta (entra a su Sección Destino)", async () => {
     const mp = await crearProductoConStock("MP_PULL", 20);
 

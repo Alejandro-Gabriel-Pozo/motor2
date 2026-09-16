@@ -103,12 +103,18 @@ export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso)
     const resProducto = await obtenerProductoTransferible(datos.productoId);
     if (!resProducto.ok) return error(resProducto.mensaje);
 
+    // Mismo redondeo que crearEnvioDirectoTransferencia (PUSH) — sin esto,
+    // una cantidad sin redondear entraba al Kardex recién en aprobar/
+    // aceptar/reingresar, violando el invariante de que toda cantidad que
+    // llega a MovimientoStock ya está redondeada a los decimales de su unidad.
+    const cantidad = redondearACantidadDeUnidad(datos.cantidad, resProducto.producto.unidadStock.decimales);
+
     const traspaso = await prisma.traspasoSucursal.create({
       data: {
         origenSucursalId,
         destinoSucursalId: ctx.sucursalId,
         productoId: datos.productoId,
-        cantidad: datos.cantidad,
+        cantidad,
         seccionDestinoId: seccionDestino.id,
         iniciadoPor: "DESTINO",
         estado: "SOLICITADA",
