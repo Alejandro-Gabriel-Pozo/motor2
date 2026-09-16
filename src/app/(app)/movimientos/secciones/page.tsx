@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { crearSeccion, actualizarActivaSeccion, listarSeccionesParaPanel } from "@/server/actions/secciones";
+import { crearSeccion, actualizarActivaSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/secciones";
+import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function SeccionesPage() {
   const ctx = await obtenerContextoUsuario();
@@ -25,30 +26,43 @@ export default async function SeccionesPage() {
         </thead>
         <tbody>
           {secciones.map((s) => (
-            <tr key={s.id} className="border-b">
-              <td className="py-2">{s.nombre}</td>
+            <tr key={s.id} className="border-b align-top">
+              <td className="py-2">
+                <FormConResultado
+                  accion={async (formData: FormData) => {
+                    "use server";
+                    return renombrarSeccion(s.id, String(formData.get("nombre") ?? ""));
+                  }}
+                  className="flex gap-1"
+                >
+                  <input name="nombre" defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
+                  <button type="submit" className="text-sm underline">
+                    Renombrar
+                  </button>
+                </FormConResultado>
+              </td>
               <td>{s.activa ? "Sí" : "No"}</td>
               <td>
-                <form
-                  action={async () => {
+                <FormConResultado
+                  accion={async () => {
                     "use server";
-                    await actualizarActivaSeccion(s.id, !s.activa);
+                    return actualizarActivaSeccion(s.id, !s.activa);
                   }}
                 >
                   <button type="submit" className="text-sm underline">
                     {s.activa ? "Desactivar" : "Activar"}
                   </button>
-                </form>
+                </FormConResultado>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <form
-        action={async (formData: FormData) => {
+      <FormConResultado
+        accion={async (formData: FormData) => {
           "use server";
-          await crearSeccion(String(formData.get("nombre") ?? ""));
+          return crearSeccion(String(formData.get("nombre") ?? ""));
         }}
         className="flex max-w-md gap-2"
       >
@@ -56,7 +70,7 @@ export default async function SeccionesPage() {
         <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
           Crear
         </button>
-      </form>
+      </FormConResultado>
     </div>
   );
 }
