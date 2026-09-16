@@ -15,12 +15,20 @@ Fecha: 2026-09-16. Alcance: repositorio `motor2` (Next.js 16 + Prisma 7 + Postgr
   3. `Number()` disperso sobre campos `Decimal` en ~39 archivos, sin capa de conversión centralizada. → **VERIFICADO_EN_CODIGO** como patrón, pero **HIPÓTESIS_A_CONFIRMAR** como bug real (no se probaron casos límite en esta entrega — eso es Fase 5, explícitamente pospuesta).
 - **Decisiones que parecen correctas** (evidencia fuerte de que ya resuelven el problema que el `pasted context` busca resolver, con una arquitectura distinta a la sugerida):
   - Saldo 100% calculado (`SUM(cantidad)` on-the-fly) en vez de `StockBalance` materializado — decisión documentada explícitamente en el propio schema, no una omisión.
-  - `conTransaccionSerializable` (aislamiento `Serializable` + reintento ante `P2034`) como mecanismo de concurrencia, en vez de `updateMany` condicional — cubre el mismo problema que la recomendación de "actualización condicional", con una estrategia distinta (más estricta).
+  - `conTransaccionSerializable` (aislamiento `Serializable` + reintento ante `P2034`) como mecanismo de concurrencia, en vez de `updateMany` condicional. Es una estrategia **potencialmente suficiente** para resolver la misma carrera que la recomendación de "actualización condicional" busca evitar, pero su suficiencia real todavía **no está confirmada** — queda condicionada a una prueba con dos transacciones concurrentes reales y un resultado esperado exacto (Fase 4, pendiente).
   - Trazabilidad repartida por modelo de dominio (`Operacion.usuarioId/fecha/anuladaEn`, `MovimientoStock.creadoEn`, `TraspasoSucursal.creadoPorId/decididoPorOrigenId/...`) en vez de un `AuditLog` genérico.
   - Reversión = movimiento nuevo, siempre: **confirmado exhaustivamente** (`grep` de `.update()/.delete()/.upsert()` sobre `movimientoStock` en todo `src/` → 0 resultados).
 - **Problemas confirmados**: ninguno con reproducción — esta entrega es de lectura de código, no de pruebas (Fase 4/8 quedan para la siguiente etapa).
 - **Hipótesis a confirmar** (listadas en detalle en §5): doble-submit sin idempotencia; comportamiento de traspasos "en tránsito" ante falla de proceso; comportamiento bajo concurrencia real (no simulada).
 - **Recomendación**: continuar a Fase 2 completa (matriz final) y Fase 3 (familia de efectos de inventario con pruebas) — la base de evidencia de Fase 0/1 es sólida y no encontró señales de arquitectura incoherente que ameriten detenerse.
+- **Estado de fases** (para evitar ambigüedad sobre qué está cerrado):
+  ```text
+  Fase 0: completa
+  Fase 1: completa
+  Comparación preliminar con pasted context: completa
+  Fase 2 completa (matriz final): pendiente
+  Fase 3 en adelante: pendiente
+  ```
 
 ---
 
@@ -51,7 +59,7 @@ Fecha: 2026-09-16. Alcance: repositorio `motor2` (Next.js 16 + Prisma 7 + Postgr
 
 ### 3.1 Puntos de entrada de Next.js
 
-- Sin `middleware.ts` en todo el repo (confirmado, ausencia real). La protección de rutas es 100% vía Server Component: `src/app/(app)/layout.tsx:7` hace `redirect("/login")` si `obtenerContextoUsuario()` es `null` — único gate de nivel-ruta.
+- Sin `middleware.ts` en todo el repo (confirmado, ausencia real — un hecho, no en sí mismo una vulnerabilidad). La protección de rutas es 100% vía Server Component: `src/app/(app)/layout.tsx:7` hace `redirect("/login")` si `obtenerContextoUsuario()` es `null` — único gate de nivel-ruta. La protección real ocurre en layouts, contexto (`obtenerContextoUsuario`) y Server Actions (`conPermiso`), no en middleware global. **Pendiente de verificar** (Fase 6, seguridad/contratos): que no existan rutas o Server Actions alcanzables sin pasar por esos gates — la ausencia de middleware no es por sí sola evidencia de una brecha.
 - `src/app/page.tsx`: redirige a `/reportes` o `/login` según contexto.
 - `src/app/login/page.tsx`: `signIn("google")`/`signOut()` como Server Actions inline.
 - `src/app/api/auth/[...nextauth]/route.ts`: handlers de NextAuth v5 (beta).
@@ -113,35 +121,35 @@ Wrapper único de mutaciones: `conPermiso()` (`src/server/actions/con-permiso.ts
 - Conteo físico preserva el saldo histórico del momento: **confirmado** — `ConteoFisico.saldoSistema/conteoReal/diferencia` son campos persistidos, no recalculados.
 - Devoluciones con signo correcto: **confirmado** para las 3 variantes.
 - Traspasos con movimientos coherentes en ambos lados: **parcialmente confirmado** — el vínculo es el registro `TraspasoSucursal` (estado + `traspasoSucursalId` FK), no una transacción ACID distribuida entre ambos lados; el estado "en tránsito" (salida ya bajó, entrada aún no) es un diseño deliberado (workflow con aprobación humana), no un bug — pero **requiere prueba** de que no queda huérfano ante una falla de proceso entre pasos.
-- Doble-submit/duplicación accidental fuera de COMPRA: **sin protección activa encontrada** — **HIPÓTESIS_A_CONFIRMAR**, requiere prueba, no es un bug confirmado.
+- Doble-submit/duplicación accidental fuera de COMPRA: la **ausencia** del mecanismo estructural está **VERIFICADO_EN_CODIGO** (no existe protección de idempotencia general fuera de la guarda específica de compras). Que esa ausencia produzca duplicaciones reales en producción es **HIPÓTESIS_A_CONFIRMAR** — todavía no se ejecutó una prueba de doble-submit o reintento real. Ambas afirmaciones coexisten y no deben mezclarse.
 
 ---
 
 ## 4. Comparación preliminar con el `pasted context`
 
-| Recomendación | Evidencia en motor2 | Estado | Riesgo concreto | Decisión recomendada |
-|---|---|---|---|---|
-| Prisma + Neon | `@prisma/client` 7.10.0, `@prisma/adapter-neon`/`adapter-pg` en dependencias | Ya implementado | Ninguno | Mantener |
-| PostgreSQL local | Cluster 16.13 online, usado por 44/48 archivos de test | Ya implementado | Ninguno | Mantener |
-| Validación runtime (Zod) | Ausente; validación manual (`texto()`, `validarTextoCatalogo`, checks `Number()` inline) en ~15+ server actions | Recomendación no adoptada, con alternativa propia funcionando (296/296 tests pasan) | Duplicación de reglas entre validación manual y UI no demostrada como problema real hoy | **NO_ENCONTRADO problema concreto que Zod resuelva mejor que lo actual** — no recomendar agregar sin evidencia de bug de contrato (regla del documento: "no recomendar dependencia sin problema demostrado") |
-| Decimal y precisión | 14 campos `Decimal(14,x)` en schema; `Number()` disperso en 39 archivos; sin `decimal.js` | Parcial (Decimal en DB, conversión a `Number` en app) | Pérdida de precisión en JS `Number` para cálculos encadenados — **no probado con casos límite en esta entrega** (Fase 5 pospuesta) | HIPÓTESIS_A_CONFIRMAR — necesita Fase 5 con casos límite antes de decidir |
-| Transacciones | `conTransaccionSerializable` (Serializable + reintento P2034) como wrapper único para todo el Kardex, + 3 usos directos de `$transaction` | Ya implementado, con estrategia más estricta que la sugerida | Ninguno confirmado | Mantener |
-| Historial inmutable | `MovimientoStock` append-only, confirmado sin excepciones (`grep` de update/delete/upsert → 0) | Ya implementado | Ninguno | Mantener |
-| Saldo materializado (`StockBalance`) vs calculado | Sin `StockBalance`; saldo 100% `SUM(cantidad)` on-the-fly, decisión documentada explícitamente en el schema | Ya resuelto con otra arquitectura | Ninguno confirmado hoy; posible costo de agregación a volumen alto — **no medido** | No agregar sin antes medir costo real de las agregaciones actuales (regla explícita de Fase 4) — DECISIÓN_DE_NEGOCIO/MEJORA_FUTURA condicionada a volumen |
-| Unidades y conversiones | Sin `UnitConversion`; factor escalar por producto/presentación + regla de unidad compartida por Insumo | Parcial / ya resuelto con otra arquitectura para el caso de uso actual | Ninguno confirmado — no hay evidencia de necesidad de conversión N:M entre unidades abstractas | Mantener; revisar solo si aparece un caso de uso real de conversión cross-unidad genérica |
-| Concurrencia | `Serializable` + reintento (5 intentos) sobre `P2034` | Ya implementado, estrategia distinta a "actualización condicional" | No probado bajo carga concurrente real en esta entrega | Fase 4 (pendiente, con pruebas reales) antes de tocar nada |
-| Idempotencia | Sin `sourceType`/`sourceId`/idempotency-key; solo `findFirst` de factura duplicada en COMPRA | Faltante real fuera de COMPRA | Reintento de red/doble-submit podría duplicar Operaciones en CONSUMO/VENTA/etc. | HIPÓTESIS_A_CONFIRMAR con prueba de doble-submit antes de decidir mecanismo |
-| Auditoría (`AuditLog` genérico) | Sin modelo genérico; actor/fecha/motivo distribuidos por modelo de dominio (`Operacion`, `MovimientoStock`, `TraspasoSucursal`) | Parcial, cubre el caso de uso actual | Ninguno confirmado — no hay requisito de auditoría cross-entidad no cubierto | No agregar sin requisito real concreto (regla explícita del documento) |
-| Pruebas de invariantes | 296/296 tests pasan, 44/48 de integración contra Postgres real | Parcial — cubre casos funcionales; sin pruebas de propiedades (`fast-check`) ni de concurrencia real | Ninguno confirmado como bug; cobertura de invariantes tipo "suma histórica reconstruye saldo" no verificada explícitamente | MEJORA_FUTURA — evaluar `fast-check` para propiedades, sin urgencia |
-| Reportes y paginación | `tabla-reporte.tsx` sin paginación; todo en memoria, orden/export client-side | Faltante real (a escala) | Ninguno hoy con el volumen visto; degradaría con dataset grande | MEJORA_FUTURA — no urgente sin evidencia de volumen problemático |
-| TanStack Query | Ausente; Server Actions + `<form action>` nativo | Recomendación no adoptada, arquitectura Server-Actions-first ya coherente | Ninguno confirmado | No agregar sin problema concreto de estado remoto no resuelto hoy |
-| TanStack Table | Ausente; tabla propia (`tabla-reporte.tsx`) ya resuelve orden/export/filtros básicos | Parcial (resuelve menos que TanStack Table: sin paginación, sin agrupación) | Ninguno confirmado como bloqueante | MEJORA_FUTURA si se necesita paginación/agrupación real |
-| React Hook Form | Ausente; `<form action>` + `FormData` nativo | Recomendación no adoptada, patrón coherente con Server Actions | Ninguno confirmado | No agregar sin duplicación de reglas demostrada |
-| BullMQ + Redis | Ausente; sin procesos asíncronos | No necesario para el alcance actual (todo es síncrono/transaccional) | Ninguno | No agregar (regla explícita: "no lo agregaría para movimientos normales de stock") |
-| Logging (Pino) | Solo 1 `console.error` en todo `src/`; sin logger estructurado | Faltante parcial | Bajo — Sentry ya captura errores | MEJORA_FUTURA, no urgente |
-| Sentry | **Sí integrado**: `@sentry/nextjs` en server+edge+client vía `instrumentation.ts`, DSN configurado | Ya implementado | Ninguno | Mantener |
-| OpenTelemetry | Ausente propio (solo lo que trae Sentry internamente) | No necesario para el alcance actual | Ninguno confirmado | No agregar sin necesidad de tracing distribuido real |
-| Testcontainers | Ausente; Postgres local real fijo, reset por `deleteMany()` entre tests | Ya resuelto con otra estrategia (pragmática, funciona: 296/296 pasan) | Tests dependen de tener Postgres local levantado (no auto-provisionado) | No es un faltante crítico — MEJORA_FUTURA opcional para CI aislado |
+| Recomendación | Evidencia en motor2 | Estado | Riesgo concreto | Evidencia faltante | Decisión recomendada |
+|---|---|---|---|---|---|
+| Prisma + Neon | `@prisma/client` 7.10.0, `@prisma/adapter-neon`/`adapter-pg` en dependencias | Ya implementado | Ninguno | — | Mantener |
+| PostgreSQL local | Cluster 16.13 online, usado por 44/48 archivos de test | Ya implementado | Ninguno | — | Mantener |
+| Validación runtime (Zod) | Ausente; validación manual (`texto()`, `validarTextoCatalogo`, checks `Number()` inline) en ~15+ server actions | Recomendación no adoptada, con alternativa propia funcionando (296/296 tests pasan) | Duplicación de reglas entre validación manual y UI no demostrada como problema real hoy | Ningún caso reproducible de bug de contrato causado por la validación manual actual | **NO_ENCONTRADO problema concreto que Zod resuelva mejor que lo actual** — no recomendar agregar sin evidencia de bug de contrato (regla del documento: "no recomendar dependencia sin problema demostrado") |
+| Decimal y precisión | 14 campos `Decimal(14,x)` en schema; `Number()` disperso en 39 archivos; sin `decimal.js` | Parcial (Decimal en DB, conversión a `Number` en app) | Pérdida de precisión en JS `Number` para cálculos encadenados — **no probado con casos límite en esta entrega** (Fase 5 pospuesta) | Casos límite ejecutados: `0.1+0.2`, cantidades a 4 decimales, conversiones caja/unidad, redondeo por unidad — ninguno corrido todavía | HIPÓTESIS_A_CONFIRMAR — necesita Fase 5 con casos límite antes de decidir |
+| Transacciones | `conTransaccionSerializable` (Serializable + reintento P2034) como wrapper único para todo el Kardex, + 3 usos directos de `$transaction` | Ya implementado, con estrategia más estricta que la sugerida | Ninguno confirmado | — | Mantener |
+| Historial inmutable | `MovimientoStock` append-only, confirmado sin excepciones (`grep` de update/delete/upsert → 0) | Ya implementado | Ninguno | — | Mantener |
+| Saldo materializado (`StockBalance`) vs calculado | Sin `StockBalance`; saldo 100% `SUM(cantidad)` on-the-fly, decisión documentada explícitamente en el schema | Ya resuelto con otra arquitectura | Ninguno confirmado hoy; posible costo de agregación a volumen alto — **no medido** | Benchmark real de `SUM(cantidad)` con volumen representativo de movimientos + plan de ejecución de Postgres (`EXPLAIN ANALYZE`) | No agregar sin antes medir costo real de las agregaciones actuales (regla explícita de Fase 4) — DECISIÓN_DE_NEGOCIO/MEJORA_FUTURA condicionada a volumen |
+| Unidades y conversiones | Sin `UnitConversion`; factor escalar por producto/presentación + regla de unidad compartida por Insumo | Parcial / ya resuelto con otra arquitectura para el caso de uso actual | Ninguno confirmado — no hay evidencia de necesidad de conversión N:M entre unidades abstractas | Un caso de uso real donde el factor escalar por producto no alcance | Mantener; revisar solo si aparece un caso de uso real de conversión cross-unidad genérica |
+| Concurrencia | `Serializable` + reintento (5 intentos) sobre `P2034` | Ya implementado, estrategia distinta a "actualización condicional" | No probado bajo carga concurrente real en esta entrega | Prueba con 2+ transacciones concurrentes reales sobre el mismo producto/sección, con resultado esperado exacto (ganador/perdedor, reintento seguro) | Fase 4 (pendiente, con pruebas reales) antes de tocar nada |
+| Idempotencia | Sin `sourceType`/`sourceId`/idempotency-key; solo `findFirst` de factura duplicada en COMPRA | Faltante real (ausencia del mecanismo) fuera de COMPRA | Reintento de red/doble-submit podría duplicar Operaciones en CONSUMO/VENTA/etc. | Prueba reproducible de doble-submit/reintento en CONSUMO, VENTA, PRODUCCION que confirme (o descarte) duplicación real | HIPÓTESIS_A_CONFIRMAR con prueba de doble-submit antes de decidir mecanismo |
+| Auditoría (`AuditLog` genérico) | Sin modelo genérico; actor/fecha/motivo distribuidos por modelo de dominio (`Operacion`, `MovimientoStock`, `TraspasoSucursal`) | Parcial, cubre el caso de uso actual | Ninguno confirmado — no hay requisito de auditoría cross-entidad no cubierto | Un requisito de negocio/regulatorio concreto no cubierto por la trazabilidad distribuida actual | No agregar sin requisito real concreto (regla explícita del documento) |
+| Pruebas de invariantes | 296/296 tests pasan, 44/48 de integración contra Postgres real | Parcial — cubre casos funcionales; sin pruebas de propiedades (`fast-check`) ni de concurrencia real | Ninguno confirmado como bug; cobertura de invariantes tipo "suma histórica reconstruye saldo" no verificada explícitamente | Prueba explícita de reconstrucción de saldo desde `MovimientoStock` para un producto con historial largo/mixto | MEJORA_FUTURA — evaluar `fast-check` para propiedades, sin urgencia |
+| Reportes y paginación | `tabla-reporte.tsx` sin paginación; todo en memoria, orden/export client-side | Faltante real (a escala) | Ninguno hoy con el volumen visto; degradaría con dataset grande | Benchmark de un reporte con dataset grande (ej. historial de un año, todas las sucursales) midiendo tiempo de carga y memoria | MEJORA_FUTURA — no urgente sin evidencia de volumen problemático |
+| TanStack Query | Ausente; Server Actions + `<form action>` nativo | Recomendación no adoptada, arquitectura Server-Actions-first ya coherente | Ninguno confirmado | — | No agregar sin problema concreto de estado remoto no resuelto hoy |
+| TanStack Table | Ausente; tabla propia (`tabla-reporte.tsx`) ya resuelve orden/export/filtros básicos | Parcial (resuelve menos que TanStack Table: sin paginación, sin agrupación) | Ninguno confirmado como bloqueante | — | MEJORA_FUTURA si se necesita paginación/agrupación real |
+| React Hook Form | Ausente; `<form action>` + `FormData` nativo | Recomendación no adoptada, patrón coherente con Server Actions | Ninguno confirmado | — | No agregar sin duplicación de reglas demostrada |
+| BullMQ + Redis | Ausente; sin procesos asíncronos | No necesario para el alcance actual (todo es síncrono/transaccional) | Ninguno | — | No agregar (regla explícita: "no lo agregaría para movimientos normales de stock") |
+| Logging (Pino) | Solo 1 `console.error` en todo `src/`; sin logger estructurado | Faltante parcial | Bajo — Sentry ya captura errores | — | MEJORA_FUTURA, no urgente |
+| Sentry | **Sí integrado**: `@sentry/nextjs` en server+edge+client vía `instrumentation.ts`, DSN configurado | Ya implementado | Ninguno | — | Mantener |
+| OpenTelemetry | Ausente propio (solo lo que trae Sentry internamente) | No necesario para el alcance actual | Ninguno confirmado | — | No agregar sin necesidad de tracing distribuido real |
+| Testcontainers | Ausente; Postgres local real fijo, reset por `deleteMany()` entre tests | Ya resuelto con otra estrategia (pragmática, funciona: 296/296 pasan) | Tests dependen de tener Postgres local levantado (no auto-provisionado) | — | No es un faltante crítico — MEJORA_FUTURA opcional para CI aislado |
 
 ---
 
@@ -161,4 +169,19 @@ Wrapper único de mutaciones: `conPermiso()` (`src/server/actions/con-permiso.ts
 
 ---
 
-**Fin de la entrega obligatoria (Fase 0 + Fase 1 + comparación preliminar). Detenido aquí, según la regla del documento, a la espera de autorización explícita para continuar con Fase 2 completa / Fase 3 en adelante.**
+**Fin de la entrega obligatoria (Fase 0 + Fase 1 + comparación preliminar).**
+
+## 7. Aprobación y ajustes (2026-09-16)
+
+Revisión aprobada con ajustes menores: distinción explícita entre ausencia verificada de mecanismo (idempotencia) e impacto no confirmado; suficiencia de `Serializable` condicionada a prueba de concurrencia; ausencia de `middleware.ts` desacoplada de una afirmación de vulnerabilidad; columna "Evidencia faltante" agregada a la matriz de §4. Aplicados en este documento.
+
+**Autorizado a continuar** con investigación mediante pruebas (sin agregar dependencias ni cambiar el stack todavía), en este orden:
+1. Concurrencia real sobre el mismo producto y sección.
+2. Doble-submit e idempotencia (ventas, consumos, movimientos).
+3. Reintento y rollback de operaciones transaccionales.
+4. Traspasos entre sucursales en estado "en tránsito" ante fallos.
+5. Casos límite de precisión numérica (`Decimal` → `number`).
+6. Reconstrucción del saldo desde `MovimientoStock`.
+7. Benchmark de reportes y agregaciones antes de considerar `StockBalance`.
+
+No autorizado todavía: `StockBalance`, Zod, `decimal.js`, TanStack, Redis, ni ningún otro cambio de stack o de código de producción.
