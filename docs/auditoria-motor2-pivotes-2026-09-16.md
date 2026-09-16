@@ -118,17 +118,31 @@ Nota de contexto: bajo una autorización previa (revisión del informe Fase 0+1,
 
 ---
 
-## 4. Resumen para la decisión de continuar
+## 4. Consolidación final (revisión del 2026-09-16)
 
-| Pivote | Evidencia ya producida | Pivote de salida candidato | Bloqueado por |
+Estado tras revisión conjunta de los 6 pivotes:
+
+| Pivote | Estado formal | Candidato | Bloqueo real |
 |---|---|---|---|
-| 1. Concurrencia | Sustancial (2/5 casos) | C2 — Ajustar | Casos 2-3 del plan; decisión formal |
-| 2. Idempotencia | Sustancial (2/6 casos) | Depende de política de negocio | Casos 3-6; **decisión de negocio** (quién y qué debe ser idempotente) |
-| 3. Traspasos en tránsito | Sustancial (4/7 casos) | T1 — Mantener | Caso 6 (pregunta de negocio); caso 2 opcional |
-| 4. Precisión numérica | Sustancial (5/8 casos) | N1 — Mantener | Casos 5-7; inventario clasificado; **umbral de negocio** |
-| 5. Escalabilidad | Ninguna medición todavía | Ninguno | **Decisión de negocio** (volumen esperado) — bloqueante para poder medir algo representativo |
-| 6. Auditoría y trazabilidad | Relevamiento general, sin revisión puntual | Ninguno | Revisión campo-por-campo de catálogo/precios/permisos |
+| 1. Concurrencia | **FALLO_CONFIRMADO — parcial** | C2 — Ajustar `con-reintento.ts` (localizado, sin cambiar el modelo de stock) | Solo técnico: casos 2-3 del plan (ventas concurrentes con receta, consumo + merma/transferencia simultáneos) |
+| 2. Idempotencia | **VERIFICADO_EN_CODIGO (ausencia) + FALLO_CONFIRMADO** (COMPRA racy; CONSUMO sin protección alguna) | Mínimo I3 para COMPRA (constraint de DB); I2/I4 para el resto según decisión de negocio | **Decisión de negocio**: alcance, identidad de "misma operación", duración de clave, respuesta ante duplicado |
+| 3. Traspasos en tránsito | **VERIFICADO_EN_CODIGO** — casi cerrado | T1 — Mantener workflow | Menor: prueba de fallo a mitad de proceso (opcional); decisión de negocio sobre cancelar un `ENVIADA` |
+| 4. Precisión numérica | **PARCIAL** — sin fallo confirmado, evidencia favorable | Ninguno todavía (no corresponde elegir N1-N5 sin cerrar los pendientes) | Técnico: clasificar 98 conversiones + casos de costos acumulados/precios/reversiones; **decisión de negocio**: umbral aceptable |
+| 5. Escalabilidad | **HIPÓTESIS_A_CONFIRMAR** — bloqueado | Ninguno todavía | **Decisión de negocio**: volumen de referencia (actual/esperado/crecimiento) — sin esto, cualquier benchmark es arbitrario |
+| 6. Auditoría y trazabilidad | **PARCIAL** | A1 para Kardex (probable); A3 para administración (posible, sin confirmar) | Técnico: revisión campo-por-campo de los 7 sub-flujos, en particular catálogo/precios/permisos (no pasan por el Kardex) |
 
-Ningún pivote reveló un defecto crítico de integridad de stock (ningún caso de pérdida, duplicación no detectada de forma silenciosa, o sobreventa confirmada) — los dos hallazgos confirmados (Hallazgo 1 y 2, concurrencia/idempotencia de COMPRA) son de confiabilidad/robustez, no de corrupción de datos ya ocurrida. Por la regla de la instrucción ("si un pivote revela un defecto crítico, detené los planes posteriores"), no corresponde detener nada — se puede continuar con los pivotes restantes.
+Ningún pivote reveló un defecto crítico de integridad de stock (ninguna pérdida, duplicación silenciosa no detectable, o sobreventa confirmada) — los fallos confirmados (Pivotes 1 y 2) son de confiabilidad/robustez y de duplicación bajo condiciones específicas, no corrupción de datos ya ocurrida en el estado actual del sistema. No corresponde detener los planes posteriores.
 
-**Pido autorización explícita para**: completar los casos faltantes de los Pivotes 1, 2 y 4 (los que no requieren una decisión de negocio previa); y, si el usuario puede darme una cifra aproximada de volumen esperado (movimientos/día, años de historial, cantidad de sucursales), ejecutar el Pivote 5 con esa referencia. El Pivote 6 (revisión de catálogo/precios/permisos) puedo ejecutarlo sin depender de ninguna decisión de negocio previa.
+**Plan de cierre priorizado** (acordado):
+1. Completar Concurrencia (Pivote 1) — solo técnico, sin decisión de negocio pendiente.
+2. Definir política de idempotencia (Pivote 2) — requiere decisión de negocio.
+3. Cerrar Traspasos (Pivote 3) — casi cerrado.
+4. Completar Precisión numérica (Pivote 4) — clasificación + casos restantes, más umbral de negocio.
+5. Obtener volumen de negocio para Escalabilidad (Pivote 5).
+6. Revisar Auditoría administrativa (Pivote 6) — técnico, sin decisión de negocio previa necesaria para empezar.
+
+**Decisiones de negocio pendientes, agrupadas**:
+- Pivote 2 — Idempotencia: alcance (qué procesos), identidad de "misma operación", duración de la clave, comportamiento ante duplicado, alcance exacto de la unicidad de factura (sucursal/proveedor/factura sin número).
+- Pivote 4 — Precisión: umbral aceptable de diferencia numérica.
+- Pivote 5 — Escalabilidad: volumen de referencia (actual, esperado, y de crecimiento si es posible).
+- Pivote 6 — Auditoría: nivel de auditoría administrativa requerido para catálogo/precios/permisos (¿regulatorio o solo control interno?).
