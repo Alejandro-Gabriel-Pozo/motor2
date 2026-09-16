@@ -115,3 +115,39 @@ export async function agregarIngredienteAReceta(
 
   return guardarReceta(productoId, items);
 }
+
+/**
+ * Edita cantidad/unidad/merma de un ingrediente YA cargado, en un solo
+ * paso — antes la única forma de corregir, por ejemplo, "ahora lleva 150g
+ * de harina en vez de 100g" era Quitar (una versión) + Agregar de nuevo
+ * (otra versión), dos pasos sueltos por un solo cambio real. Mismo
+ * criterio que agregarIngredienteAReceta: lee la receta vigente completa,
+ * reemplaza ese ingrediente puntual, y delega en guardarReceta (que genera
+ * la próxima versión con TODOS los ingredientes juntos).
+ */
+export async function actualizarIngredienteDeReceta(
+  productoId: string,
+  insumoProductoId: string,
+  cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number }
+): Promise<ResultadoAccion> {
+  const vigente = await obtenerRecetaVigente(productoId);
+  const existentes = vigente?.ingredientes ?? [];
+
+  if (!existentes.some((i) => i.insumoProductoId === insumoProductoId)) {
+    return error("Ese insumo no está en la receta vigente.");
+  }
+
+  const items: IngredienteInput[] = existentes.map((i) =>
+    i.insumoProductoId === insumoProductoId
+      ? { insumoProductoId, cantidad: cambios.cantidad, unidadId: cambios.unidadId, mermaPorcentaje: cambios.mermaPorcentaje ?? 0, observaciones: i.observaciones ?? undefined }
+      : {
+          insumoProductoId: i.insumoProductoId,
+          cantidad: Number(i.cantidad),
+          unidadId: i.unidadId,
+          mermaPorcentaje: Number(i.mermaPorcentaje),
+          observaciones: i.observaciones ?? undefined,
+        }
+  );
+
+  return guardarReceta(productoId, items);
+}

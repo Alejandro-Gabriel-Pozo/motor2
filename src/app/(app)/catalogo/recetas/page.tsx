@@ -1,19 +1,20 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
-import { obtenerRecetaVigente, guardarReceta, agregarIngredienteAReceta } from "@/server/actions/recetas";
+import { obtenerRecetaVigente, guardarReceta, agregarIngredienteAReceta, actualizarIngredienteDeReceta } from "@/server/actions/recetas";
 import { listarUnidadesActivas } from "@/server/actions/unidades";
 import { CampoNumero } from "@/components/campo-numero";
 
-export default async function RecetasPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+export default async function RecetasPage({ searchParams }: { searchParams: Promise<{ id?: string; editar?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { id } = await searchParams;
+  const { id, editar } = await searchParams;
 
   const elegibles = await prisma.producto.findMany({
     where: { activo: true, OR: [{ tipo: "PV" }, { tipo: "MP", seProduce: true }] },
@@ -61,35 +62,78 @@ export default async function RecetasPage({ searchParams }: { searchParams: Prom
                 </tr>
               </thead>
               <tbody>
-                {vigente.ingredientes.map((ing) => (
-                  <tr key={ing.id} className="border-b">
-                    <td className="py-2">{ing.insumoProducto.nombre}</td>
-                    <td>{Number(ing.cantidad)}</td>
-                    <td>{ing.unidad.nombre}</td>
-                    <td>{Number(ing.mermaPorcentaje)}</td>
-                    <td>
-                      <form
-                        action={async () => {
-                          "use server";
-                          const restantes = vigente.ingredientes
-                            .filter((otro) => otro.id !== ing.id)
-                            .map((otro) => ({
-                              insumoProductoId: otro.insumoProductoId,
-                              cantidad: Number(otro.cantidad),
-                              unidadId: otro.unidadId,
-                              mermaPorcentaje: Number(otro.mermaPorcentaje),
-                              observaciones: otro.observaciones ?? undefined,
-                            }));
-                          await guardarReceta(productoSeleccionado.id, restantes);
-                        }}
-                      >
-                        <button type="submit" className="text-sm underline">
-                          Quitar
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
+                {vigente.ingredientes.map((ing) => {
+                  const enEdicion = editar === ing.insumoProductoId;
+                  return (
+                    <tr key={ing.id} className="border-b">
+                      {enEdicion ? (
+                        <td colSpan={5} className="py-2">
+                          <form
+                            action={async (formData: FormData) => {
+                              "use server";
+                              const resultado = await actualizarIngredienteDeReceta(productoSeleccionado.id, ing.insumoProductoId, {
+                                cantidad: Number(formData.get("cantidad")),
+                                unidadId: String(formData.get("unidadId") ?? ""),
+                                mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
+                              });
+                              // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
+                              if (resultado.ok) redirect(`/catalogo/recetas?id=${productoSeleccionado.id}`);
+                            }}
+                            className="flex flex-wrap items-end gap-2"
+                          >
+                            <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
+                            <CampoNumero name="cantidad" defaultValue={String(Number(ing.cantidad))} required className="w-28" />
+                            <select name="unidadId" defaultValue={ing.unidadId} required className="rounded border px-2 py-1.5 text-sm">
+                              {unidades.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.nombre}
+                                </option>
+                              ))}
+                            </select>
+                            <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
+                            <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+                              Guardar
+                            </button>
+                            <Link href={`/catalogo/recetas?id=${productoSeleccionado.id}`} className="text-sm underline">
+                              Cancelar
+                            </Link>
+                          </form>
+                        </td>
+                      ) : (
+                        <>
+                          <td className="py-2">{ing.insumoProducto.nombre}</td>
+                          <td>{Number(ing.cantidad)}</td>
+                          <td>{ing.unidad.nombre}</td>
+                          <td>{Number(ing.mermaPorcentaje)}</td>
+                          <td className="flex gap-3">
+                            <Link href={`/catalogo/recetas?id=${productoSeleccionado.id}&editar=${ing.insumoProductoId}`} className="text-sm underline">
+                              Editar
+                            </Link>
+                            <form
+                              action={async () => {
+                                "use server";
+                                const restantes = vigente.ingredientes
+                                  .filter((otro) => otro.id !== ing.id)
+                                  .map((otro) => ({
+                                    insumoProductoId: otro.insumoProductoId,
+                                    cantidad: Number(otro.cantidad),
+                                    unidadId: otro.unidadId,
+                                    mermaPorcentaje: Number(otro.mermaPorcentaje),
+                                    observaciones: otro.observaciones ?? undefined,
+                                  }));
+                                await guardarReceta(productoSeleccionado.id, restantes);
+                              }}
+                            >
+                              <button type="submit" className="text-sm underline">
+                                Quitar
+                              </button>
+                            </form>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

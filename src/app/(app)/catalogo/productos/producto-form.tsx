@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { QuickCrear } from "@/components/catalogo/quick-crear";
+import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { CampoNumero } from "@/components/campo-numero";
 import { darDeAltaProducto, actualizarProducto, type DatosProducto } from "@/server/actions/productos";
 import { crearInsumo } from "@/server/actions/insumos";
@@ -39,6 +40,7 @@ export function ProductoForm({
 
   const [tipo, setTipo] = useState<"MP" | "PV">(productoExistente?.tipo ?? "MP");
   const [insumoId, setInsumoId] = useState(productoExistente?.insumoId ?? "");
+  const [unidadStockId, setUnidadStockId] = useState(productoExistente?.unidadStockId ?? "");
   const [categoriaId, setCategoriaId] = useState(productoExistente?.categoriaId ?? "");
   const [esConsignacion, setEsConsignacion] = useState(productoExistente?.esConsignacion ?? false);
   const [proveedorConsignacionId, setProveedorConsignacionId] = useState(productoExistente?.proveedorConsignacionId ?? "");
@@ -59,7 +61,7 @@ export function ProductoForm({
           tipo,
           categoriaId: categoriaId || null,
           unidadCompraId: texto(form.get("unidadCompraId")) || null,
-          unidadStockId: texto(form.get("unidadStockId")),
+          unidadStockId,
           factorConversion: Number(form.get("factorConversion")),
           insumoId: tipo === "MP" ? insumoId || null : null,
           precioVenta: Number(form.get("precioVenta") || 0),
@@ -119,30 +121,39 @@ export function ProductoForm({
       </div>
 
       {tipo === "MP" && (
-        <div className="flex items-center gap-2">
-          <select value={insumoId} onChange={(e) => setInsumoId(e.target.value)} className="flex-1 rounded border px-3 py-2">
-            <option value="">Sin insumo</option>
-            {insumos.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.nombre}
-              </option>
-            ))}
-          </select>
-          <QuickCrear
-            triggerLabel="+ Nuevo insumo"
-            title="Nuevo insumo"
-            campoLabel="Nombre"
-            accion={crearInsumo}
-            onCreado={(item) => {
-              setInsumos((prev) => [...prev, item]);
-              setInsumoId(item.id);
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <select value={insumoId} onChange={(e) => setInsumoId(e.target.value)} className="flex-1 rounded border px-3 py-2">
+              <option value="">Sin insumo</option>
+              {insumos.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.nombre}
+                </option>
+              ))}
+            </select>
+            <QuickCrear
+              triggerLabel="+ Nuevo insumo"
+              title="Nuevo insumo"
+              campoLabel="Nombre"
+              accion={crearInsumo}
+              onCreado={(item) => {
+                setInsumos((prev) => [...prev, item]);
+                setInsumoId(item.id);
+              }}
+            />
+          </div>
+          <AsistenteHermanar
+            unidadStockId={unidadStockId}
+            onResuelto={(id, nombre) => {
+              setInsumos((prev) => (prev.some((i) => i.id === id) ? prev : [...prev, { id, nombre }]));
+              setInsumoId(id);
             }}
           />
         </div>
       )}
 
       <div className="flex gap-2">
-        <select name="unidadStockId" defaultValue={productoExistente?.unidadStockId} required className="flex-1 rounded border px-3 py-2">
+        <select value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required className="flex-1 rounded border px-3 py-2">
           <option value="">Unidad de stock</option>
           {unidades.map((u) => (
             <option key={u.id} value={u.id}>

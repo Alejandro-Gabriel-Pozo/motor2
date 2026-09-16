@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { darDeAltaProducto, actualizarProducto } from "../../src/server/actions/productos";
+import { darDeAltaProducto, actualizarProducto, obtenerInsumoDeProducto, asignarInsumoAProducto } from "../../src/server/actions/productos";
 
 describe("productos", () => {
   let unidadKgId: string;
@@ -93,5 +93,56 @@ describe("productos", () => {
       esConsignacion: true,
     });
     expect(resultado.ok).toBe(false);
+  });
+
+  describe("asistente de hermanar (obtenerInsumoDeProducto / asignarInsumoAProducto)", () => {
+    it("obtenerInsumoDeProducto devuelve null de insumo si el producto todavía no tiene uno", async () => {
+      await darDeAltaProducto({ nombre: "Coca 500cc - Distribuidora Norte", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1 });
+      const producto = await prisma.producto.findFirstOrThrow({ where: { nombre: "Coca 500cc - Distribuidora Norte" } });
+
+      const info = await obtenerInsumoDeProducto(producto.id);
+      expect(info?.insumoId).toBeNull();
+      expect(info?.unidadStockId).toBe(unidadKgId);
+    });
+
+    it("obtenerInsumoDeProducto trae el nombre del insumo si ya está agrupado", async () => {
+      await darDeAltaProducto({ nombre: "Harina marca A", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+      const producto = await prisma.producto.findFirstOrThrow({ where: { nombre: "Harina marca A" } });
+
+      const info = await obtenerInsumoDeProducto(producto.id);
+      expect(info?.insumoId).toBe(insumoId);
+      expect(info?.insumoNombre).toBe("Harina");
+    });
+
+    it("asignarInsumoAProducto agrupa retroactivamente una MP que no tenía insumo", async () => {
+      await darDeAltaProducto({ nombre: "Coca 500cc - Distribuidora Sur", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1 });
+      const producto = await prisma.producto.findFirstOrThrow({ where: { nombre: "Coca 500cc - Distribuidora Sur" } });
+
+      const resultado = await asignarInsumoAProducto(producto.id, insumoId);
+      expect(resultado.ok).toBe(true);
+
+      const actualizado = await prisma.producto.findUniqueOrThrow({ where: { id: producto.id } });
+      expect(actualizado.insumoId).toBe(insumoId);
+    });
+
+    it("asignarInsumoAProducto rechaza si el Insumo ya tiene productos activos con otra unidad de stock", async () => {
+      await darDeAltaProducto({ nombre: "Harina marca A", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+      await darDeAltaProducto({ nombre: "Harina marca B (en gramos)", tipo: "MP", unidadStockId: unidadGId, factorConversion: 1 });
+      const productoB = await prisma.producto.findFirstOrThrow({ where: { nombre: "Harina marca B (en gramos)" } });
+
+      const resultado = await asignarInsumoAProducto(productoB.id, insumoId);
+      expect(resultado.ok).toBe(false);
+
+      const actualizado = await prisma.producto.findUniqueOrThrow({ where: { id: productoB.id } });
+      expect(actualizado.insumoId).toBeNull();
+    });
+
+    it("asignarInsumoAProducto rechaza un PV (solo una MP puede tener insumo)", async () => {
+      await darDeAltaProducto({ nombre: "Pizza muzza", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1 });
+      const pv = await prisma.producto.findFirstOrThrow({ where: { nombre: "Pizza muzza" } });
+
+      const resultado = await asignarInsumoAProducto(pv.id, insumoId);
+      expect(resultado.ok).toBe(false);
+    });
   });
 });
