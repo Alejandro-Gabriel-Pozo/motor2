@@ -38,7 +38,44 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
     clave: "estado",
     etiqueta: "Estado",
     valor: (p) => LABEL_ESTADO[p.estado],
-    render: (p) => <span className={p.estado === "OK" ? "" : "text-amber-600"}>{LABEL_ESTADO[p.estado]}</span>,
+    render: (p) => {
+      // Cada estado de "falta un dato" linkea directo a dónde cargarlo —
+      // MARGEN_NEGATIVO/FOOD_COST_ALTO/OK no son datos faltantes sino una
+      // decisión de negocio (precio/receta a revisar), no hay un único
+      // lugar "correcto" al que mandar.
+      if (p.estado === "SIN_RECETA") {
+        return (
+          <Link href={`/catalogo/recetas/${p.productoId}`} className="text-amber-600 underline">
+            Sin receta — cargarla
+          </Link>
+        );
+      }
+      if (p.estado === "SIN_PRECIO_VENTA") {
+        return (
+          <Link href={`/catalogo/productos?id=${p.productoId}`} className="text-amber-600 underline">
+            Sin precio de venta — cargarlo
+          </Link>
+        );
+      }
+      if (p.estado === "COSTO_INCOMPLETO") {
+        const faltantes = p.componentes.filter((c) => c.sinPrecio);
+        const primero = faltantes[0];
+        const etiqueta =
+          faltantes.length > 1
+            ? `Costo incompleto — falta precio de ${faltantes.length} insumos`
+            : `Costo incompleto — falta precio de "${primero?.insumoNombre}"`;
+        if (!primero) return <span className="text-amber-600">{LABEL_ESTADO[p.estado]}</span>;
+        // Un insumo "Se produce" (ej. una prepizza) no se compra — su costo
+        // sale de completar SU PROPIA receta, no de cargarle un precio de compra.
+        const destino = primero.insumoSeProduce ? `/catalogo/recetas/${primero.insumoProductoId}` : `/movimientos/compra?productoId=${primero.insumoProductoId}`;
+        return (
+          <Link href={destino} className="text-amber-600 underline">
+            {etiqueta}
+          </Link>
+        );
+      }
+      return <span className={p.estado === "OK" ? "" : "text-amber-600"}>{LABEL_ESTADO[p.estado]}</span>;
+    },
   },
 ];
 
