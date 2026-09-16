@@ -639,7 +639,7 @@ describe("seed demo pizzería La Cuadra", () => {
 
       console.log(`\nListo — sucursal "${NOMBRE_SUCURSAL}" (${sucursal.id}), usuario admin "${EMAIL_ADMIN}".`);
     },
-    600_000
+    1_500_000
   );
 });
 
