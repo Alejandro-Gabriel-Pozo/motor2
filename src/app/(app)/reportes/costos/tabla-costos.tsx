@@ -13,6 +13,11 @@ const LABEL_ESTADO: Record<string, string> = {
   OK: "OK",
 };
 
+const AYUDA_MARGEN = "Margen $ = Precio venta − Costo. Margen % = Margen $ / Precio venta × 100.";
+const AYUDA_FOOD_COST = "Food cost % = Costo / Precio venta × 100 — qué porción del precio de venta se va en insumos.";
+const AYUDA_ESTADO =
+  "Margen negativo: el costo supera el precio de venta. Food cost alto: el costo supera el 40% del precio de venta (umbral fijo, no configurable). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular.";
+
 const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   {
     clave: "producto",
@@ -29,14 +34,23 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   {
     clave: "margen",
     etiqueta: "Margen",
+    ayuda: AYUDA_MARGEN,
     alinear: "derecha",
     valor: (p) => p.margen,
     render: (p) => (p.margen === null ? "—" : `$${p.margen.toLocaleString("es-AR")} (${p.margenPct}%)`),
   },
-  { clave: "foodCost", etiqueta: "Food cost %", alinear: "derecha", valor: (p) => p.foodCostPct, render: (p) => (p.foodCostPct === null ? "—" : `${p.foodCostPct}%`) },
+  {
+    clave: "foodCost",
+    etiqueta: "Food cost %",
+    ayuda: AYUDA_FOOD_COST,
+    alinear: "derecha",
+    valor: (p) => p.foodCostPct,
+    render: (p) => (p.foodCostPct === null ? "—" : `${p.foodCostPct}%`),
+  },
   {
     clave: "estado",
     etiqueta: "Estado",
+    ayuda: AYUDA_ESTADO,
     valor: (p) => LABEL_ESTADO[p.estado],
     render: (p) => <span className={p.estado === "OK" ? "" : "text-amber-600"}>{LABEL_ESTADO[p.estado]}</span>,
   },
