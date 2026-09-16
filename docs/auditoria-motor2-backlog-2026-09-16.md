@@ -84,7 +84,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad alta**
 
-- **Consignación: "Debido por consignante" nunca se salda — no hay forma de registrar el pago.** El reporte suma todas las liquidaciones históricas sin filtro de período, y no existe en todo el proyecto ninguna acción para marcar un saldo como pagado. Es un circuito que se abre solo y nunca se puede cerrar desde la UI.
+- ~~**Consignación: "Debido por consignante" nunca se salda — no hay forma de registrar el pago.**~~ — **resuelto (2026-09-16)**. Nuevo modelo `PagoConsignante` (append-only) + `registrarPagoConsignante` (admin-only); el reporte muestra liquidado/pagado/saldo debido con un botón "Registrar pago" por fila, más un filtro de período opcional (commit `c633f62`).
 
 **Prioridad media**
 
