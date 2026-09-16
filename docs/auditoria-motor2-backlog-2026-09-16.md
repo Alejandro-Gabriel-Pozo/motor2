@@ -31,7 +31,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad baja**
 
-- **El campo "notas" de la membresía no se puede ver ni editar desde la UI.** Se llena solo por flujos automáticos de bootstrap; el form de alta manual y la tabla de membresías no lo exponen.
+- ~~**El campo "notas" de la membresía no se puede ver ni editar desde la UI.**~~ — **resuelto (2026-09-16)**. Nueva `actualizarNotasMembresia`; columna editable inline + campo en el form de alta (commit `30abbb2`).
 
 ### catalogo
 
