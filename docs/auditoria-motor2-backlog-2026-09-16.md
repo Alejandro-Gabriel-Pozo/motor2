@@ -95,7 +95,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 **Prioridad baja**
 
 - ~~**Reporte por período: el aviso de "compras sin precio" se calcula pero nunca se muestra.**~~ — **resuelto (2026-09-16)**. `rep.compras.aviso` ahora se renderiza, mismo patrón que ventas/margen (commit `610e1b2`).
-- **Vencimientos: el criterio "consistente" vs. "revisar" de la conciliación no se explica en la pantalla.** La regla real (ventasPeriodo vs. conteoReal) solo está en un comentario del código; la UI solo colorea la palabra sin tooltip ni leyenda.
+- ~~**Vencimientos: el criterio "consistente" vs. "revisar" de la conciliación no se explica en la pantalla.**~~ — **resuelto (2026-09-16)**. Nuevo campo `ayuda` en `ColumnaReporte` (genérico, reusable en cualquier reporte), usado en la columna "Estado" (commit `934f65a`).
 - **Valuación de inventario usa una tabla HTML cruda, sin el orden/export CSV que sí tiene el resto de los reportes.** Todos los demás reportes usan el componente compartido TablaReporte; Valuación, que es justo el caso de uso pensado para llevar a una planilla contable, no.
 
 ### traspasos
