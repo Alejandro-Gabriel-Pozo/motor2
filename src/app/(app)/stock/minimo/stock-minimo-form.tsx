@@ -6,11 +6,26 @@ import { setStockMinimoProducto } from "@/server/actions/stock-minimo";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 
-export function StockMinimoForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
+export interface FilaStockMinimoEnEdicion {
+  productoId: string;
+  productoEtiqueta: string;
+  seccionId: string;
+  minimo: string;
+}
+
+export function StockMinimoForm({
+  secciones,
+  filaEnEdicion,
+}: {
+  secciones: { id: string; nombre: string }[];
+  /** Antes había que rebuscar producto y sección desde cero cada vez que se quería ajustar un mínimo existente — hallazgo de la auditoría. */
+  filaEnEdicion?: FilaStockMinimoEnEdicion;
+}) {
   const router = useRouter();
-  const [productoId, setProductoId] = useState("");
-  const [seccionId, setSeccionId] = useState("");
-  const [minimo, setMinimo] = useState("");
+  const editando = Boolean(filaEnEdicion);
+  const [productoId, setProductoId] = useState(filaEnEdicion?.productoId ?? "");
+  const [seccionId, setSeccionId] = useState(filaEnEdicion?.seccionId ?? "");
+  const [minimo, setMinimo] = useState(filaEnEdicion?.minimo ?? "");
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -25,20 +40,31 @@ export function StockMinimoForm({ secciones }: { secciones: { id: string; nombre
           setMensaje(resultado.mensaje);
           setOk(resultado.ok);
           if (resultado.ok) {
-            setProductoId("");
-            setMinimo("");
-            setResetCount((n) => n + 1);
+            if (editando) {
+              router.push("/stock/minimo");
+            } else {
+              setProductoId("");
+              setMinimo("");
+              setResetCount((n) => n + 1);
+            }
             router.refresh();
           }
         });
       }}
       className="flex flex-col gap-3"
     >
-      <h2 className="font-medium">Fijar Stock Mínimo</h2>
+      <h2 className="font-medium">{editando ? "Editar Stock Mínimo" : "Fijar Stock Mínimo"}</h2>
 
       <label className="flex flex-col gap-1 text-sm">
         Producto
-        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloActivos: true }} limpiarSenal={resetCount} required />
+        <SelectorProducto
+          value={productoId}
+          onChange={setProductoId}
+          filtro={{ soloActivos: true }}
+          etiquetaInicial={filaEnEdicion?.productoEtiqueta}
+          limpiarSenal={resetCount}
+          required
+        />
       </label>
 
       <label className="flex flex-col gap-1 text-sm">
