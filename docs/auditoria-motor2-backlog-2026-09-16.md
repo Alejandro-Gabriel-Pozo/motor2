@@ -103,8 +103,8 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 **Prioridad alta**
 
 - ~~**La cantidad de una solicitud PULL entra al Kardex sin redondear a los decimales de la unidad.**~~ — **resuelto (2026-09-16)**. `crearSolicitudTransferencia` ahora redondea con `redondearACantidadDeUnidad`, mismo criterio que `crearEnvioDirectoTransferencia` (commit `bfd0ec0`).
-- **Los traspasos que el propio usuario inició y todavía están en curso se muestran mezclados en "Historial", no como pendientes.** condicionesEnCurso() no cubre "soy destino y mi SOLICITADA espera respuesta de origen" ni "soy origen y mi ENVIADA (push) espera respuesta de destino". Esos casos caen en la tabla de Historial junto con traspasos realmente cerrados, sin ninguna marca visual que los distinga, y pueden quedar empujados a una página siguiente por la paginación de a 30.
-- **Quien crea una solicitud PULL (SOLICITADA) no tiene ninguna forma de cancelarla ella misma.** crearSolicitudTransferencia aclara que crear una solicitud no toca stock, pero no existe ninguna acción de cancelación para el creador; la única salida es esperar a que la sucursal origen la rechace.
+- ~~**Los traspasos que el propio usuario inició y todavía están en curso se muestran mezclados en "Historial", no como pendientes.**~~ — **resuelto (2026-09-16)**. `condicionesEnCurso()` ahora cubre ambos casos (distinguiendo por `iniciadoPor` para no confundir un PULL ya aprobado con un PUSH propio); nuevo bucket "Esperando respuesta" en la Bandeja, separado de Historial (commit `4a9bc7d`).
+- ~~**Quien crea una solicitud PULL (SOLICITADA) no tiene ninguna forma de cancelarla ella misma.**~~ — **resuelto (2026-09-16)**. Nueva `cancelarSolicitudTransferencia` (estado `CANCELADA`), disponible mientras sigue SOLICITADA — nunca tocó stock en ese estado (commit `4a9bc7d`).
 
 **Prioridad media**
 
