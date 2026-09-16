@@ -68,3 +68,30 @@ export async function actualizarActivaProveedor(proveedorId: string, activo: boo
     return ok(`Proveedor ${activo ? "activado" : "desactivado"}.`);
   });
 }
+
+/**
+ * Antes solo existía alta (altaProveedor) y Activar/Desactivar — no había
+ * forma de corregir contacto/teléfono/email/CUIT/condiciones de pago de un
+ * proveedor ya creado. El nombre no se edita acá a propósito (mismo
+ * criterio de identidad que Insumo/Producto): para eso está
+ * renombrarOFusionarInsumo-style, fuera del alcance de este hallazgo.
+ */
+export async function actualizarProveedor(proveedorId: string, datos: Omit<DatosProveedor, "nombre">): Promise<ResultadoAccion> {
+  return conPermiso("proveedores", async () => {
+    const proveedor = await prisma.proveedor.findUnique({ where: { id: proveedorId } });
+    if (!proveedor) return error("No se encontró ese proveedor.");
+
+    await prisma.proveedor.update({
+      where: { id: proveedorId },
+      data: {
+        contacto: texto(datos.contacto ?? "") || null,
+        telefono: texto(datos.telefono ?? "") || null,
+        email: texto(datos.email ?? "") || null,
+        cuit: texto(datos.cuit ?? "") || null,
+        condicionesPago: texto(datos.condicionesPago ?? "") || null,
+        notas: texto(datos.notas ?? "") || null,
+      },
+    });
+    return ok(`Proveedor "${proveedor.nombre}" actualizado.`);
+  });
+}
