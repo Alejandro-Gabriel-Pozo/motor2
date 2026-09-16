@@ -254,3 +254,185 @@ describe("calcularRendimientoRecetasCompartidas", () => {
     expect(filas).toEqual([]);
   });
 });
+
+describe("escenario realista: 6 insumos × 4 platos, superpuestos entre sí", () => {
+  let sucursalId: string;
+  let seccionId: string;
+  let unidadKgId: string;
+
+  const desde = new Date("2026-01-01");
+  const hasta = new Date("2026-03-15");
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    sucursalId = base.sucursal.id;
+    const catalogo = await sembrarCatalogoBase();
+    unidadKgId = catalogo.kg.id;
+    seccionId = (await sembrarSeccion(sucursalId)).id;
+
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+  });
+
+  /**
+   * Cada insumo es un pool distinto (sin agrupar por Insumo — el mismo
+   * producto puntual referenciado directo desde varias recetas ya alcanza
+   * para "compartido", no hace falta que además sean cortes hermanos).
+   * Ningún plato usa el mismo conjunto de insumos que otro:
+   *   Milanesa → Carne, Pan rallado, Huevo
+   *   Bife     → Carne, Aceite, Queso
+   *   Pollo    → Huevo, Aceite
+   *   Ensalada → Aceite, Lechuga, Queso
+   * Carne/Huevo/Queso: 2 platos. Aceite: 3 platos. Pan rallado/Lechuga: 1
+   * plato (caso simple). Prueba que cada pool se resuelve de forma
+   * independiente con el subconjunto correcto de platos, sin que insumos o
+   * platos no relacionados se crucen entre sí.
+   */
+  it("resuelve cada pool de forma independiente, sin que se crucen platos ni insumos no relacionados", async () => {
+    const [carne, panRallado, huevo, aceite, lechuga, queso] = await Promise.all(
+      ["Carne", "Pan rallado", "Huevo", "Aceite", "Lechuga", "Queso"].map((nombre, i) =>
+        prisma.producto.create({ data: { codigo: `MP_${i}`, nombre, tipo: "MP", unidadStockId: unidadKgId } })
+      )
+    );
+    const [milanesa, bife, pollo, ensalada] = await Promise.all(
+      ["Milanesa", "Bife", "Pollo", "Ensalada"].map((nombre, i) =>
+        prisma.producto.create({ data: { codigo: `PV_${i}`, nombre, tipo: "PV", unidadStockId: unidadKgId } })
+      )
+    );
+
+    const COEF = {
+      carneM: 0.1, carneB: 0.2,
+      panM: 0.03,
+      huevoM: 0.05, huevoP: 0.08,
+      aceiteB: 0.02, aceiteP: 0.015, aceiteE: 0.04,
+      lechugaE: 0.15,
+      quesoB: 0.03, quesoE: 0.06,
+    };
+
+    await prisma.recetaVersion.create({
+      data: {
+        productoId: milanesa.id, version: 1,
+        ingredientes: {
+          create: [
+            { insumoProductoId: carne.id, cantidad: COEF.carneM, unidadId: unidadKgId },
+            { insumoProductoId: panRallado.id, cantidad: COEF.panM, unidadId: unidadKgId },
+            { insumoProductoId: huevo.id, cantidad: COEF.huevoM, unidadId: unidadKgId },
+          ],
+        },
+      },
+    });
+    await prisma.recetaVersion.create({
+      data: {
+        productoId: bife.id, version: 1,
+        ingredientes: {
+          create: [
+            { insumoProductoId: carne.id, cantidad: COEF.carneB, unidadId: unidadKgId },
+            { insumoProductoId: aceite.id, cantidad: COEF.aceiteB, unidadId: unidadKgId },
+            { insumoProductoId: queso.id, cantidad: COEF.quesoB, unidadId: unidadKgId },
+          ],
+        },
+      },
+    });
+    await prisma.recetaVersion.create({
+      data: {
+        productoId: pollo.id, version: 1,
+        ingredientes: {
+          create: [
+            { insumoProductoId: huevo.id, cantidad: COEF.huevoP, unidadId: unidadKgId },
+            { insumoProductoId: aceite.id, cantidad: COEF.aceiteP, unidadId: unidadKgId },
+          ],
+        },
+      },
+    });
+    await prisma.recetaVersion.create({
+      data: {
+        productoId: ensalada.id, version: 1,
+        ingredientes: {
+          create: [
+            { insumoProductoId: aceite.id, cantidad: COEF.aceiteE, unidadId: unidadKgId },
+            { insumoProductoId: lechuga.id, cantidad: COEF.lechugaE, unidadId: unidadKgId },
+            { insumoProductoId: queso.id, cantidad: COEF.quesoE, unidadId: unidadKgId },
+          ],
+        },
+      },
+    });
+
+    // 6 semanas de ventas reales (M/B/P/E), con mezcla variable — y las
+    // compras de cada insumo se derivan EXACTO de esos coeficientes, para
+    // poder afirmar que la regresión los recupera.
+    const semanas = [
+      { fecha: new Date("2026-01-05"), M: 10, B: 4, P: 6, E: 3 },
+      { fecha: new Date("2026-01-15"), M: 6, B: 12, P: 2, E: 9 },
+      { fecha: new Date("2026-01-25"), M: 15, B: 2, P: 10, E: 5 },
+      { fecha: new Date("2026-02-04"), M: 3, B: 9, P: 4, E: 12 },
+      { fecha: new Date("2026-02-14"), M: 8, B: 8, P: 7, E: 6 },
+      { fecha: new Date("2026-02-24"), M: 12, B: 5, P: 3, E: 8 },
+    ];
+
+    for (const s of semanas) {
+      // Compra primero, venta después — una venta consume stock vía receta
+      // (Milanesa/Bife/Pollo/Ensalada generan CONSUMO de sus ingredientes),
+      // así que vender antes de tener stock comprado hace fallar la venta.
+      const compras: Array<[string, number]> = [
+        [carne.id, COEF.carneM * s.M + COEF.carneB * s.B],
+        [panRallado.id, COEF.panM * s.M],
+        [huevo.id, COEF.huevoM * s.M + COEF.huevoP * s.P],
+        [aceite.id, COEF.aceiteB * s.B + COEF.aceiteP * s.P + COEF.aceiteE * s.E],
+        [lechuga.id, COEF.lechugaE * s.E],
+        [queso.id, COEF.quesoB * s.B + COEF.quesoE * s.E],
+      ];
+      for (const [productoId, cantidad] of compras) {
+        // La unidad "kg" solo guarda 2 decimales (redondearCantidadDeUnidad)
+        // — un buffer de menos de 0.01 se pierde en ese redondeo y el saldo
+        // guardado queda por debajo del "requerido" en punto flotante crudo
+        // (ej. 3.00 < 3.0000000000000004). Redondear hacia arriba a 2
+        // decimales y sumar otro 0.01 asegura stock real de sobra, muy por
+        // debajo de la tolerancia de los asserts de más abajo.
+        await registrarMovimiento({ proceso: "COMPRA", fecha: s.fecha, seccionId, items: [{ productoId, cantidad: Math.ceil(cantidad * 100) / 100 + 0.01 }] });
+      }
+
+      const resultadoVenta = await registrarVenta({
+        fecha: s.fecha, seccionId,
+        ventas: [
+          { productoId: milanesa.id, cantidadVendida: s.M },
+          { productoId: bife.id, cantidadVendida: s.B },
+          { productoId: pollo.id, cantidadVendida: s.P },
+          { productoId: ensalada.id, cantidadVendida: s.E },
+        ],
+      });
+      expect(resultadoVenta.ok, resultadoVenta.mensaje).toBe(true);
+    }
+
+    const [simples, compartidas] = await Promise.all([
+      calcularRendimientoRecetasSimples(sucursalId, desde, hasta),
+      calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta),
+    ]);
+
+    // Pan rallado y Lechuga: caso simple, un solo plato cada uno.
+    expect(simples).toHaveLength(2);
+    const filaPan = simples.find((f) => f.insumoONombre === "Pan rallado")!;
+    expect(filaPan.cantidadEstimada).toBeCloseTo(COEF.panM, 2);
+    const filaLechuga = simples.find((f) => f.insumoONombre === "Lechuga")!;
+    expect(filaLechuga.cantidadEstimada).toBeCloseTo(COEF.lechugaE, 2);
+
+    // Carne, Huevo, Queso (2 platos) y Aceite (3 platos): caso compartido, 4 pools, 10 filas.
+    expect(compartidas).toHaveLength(2 + 2 + 3 + 2); // Carne(2) + Huevo(2) + Aceite(3) + Queso(2)
+    expect(compartidas.every((f) => f.resoluble)).toBe(true);
+
+    const porInsumoYPlato = (insumo: string, plato: string) => compartidas.find((f) => f.insumoONombre === insumo && f.productoVentaNombre === plato)!;
+    expect(porInsumoYPlato("Carne", "Milanesa").cantidadEstimada).toBeCloseTo(COEF.carneM, 2);
+    expect(porInsumoYPlato("Carne", "Bife").cantidadEstimada).toBeCloseTo(COEF.carneB, 2);
+    expect(porInsumoYPlato("Huevo", "Milanesa").cantidadEstimada).toBeCloseTo(COEF.huevoM, 2);
+    expect(porInsumoYPlato("Huevo", "Pollo").cantidadEstimada).toBeCloseTo(COEF.huevoP, 2);
+    expect(porInsumoYPlato("Aceite", "Bife").cantidadEstimada).toBeCloseTo(COEF.aceiteB, 2);
+    expect(porInsumoYPlato("Aceite", "Pollo").cantidadEstimada).toBeCloseTo(COEF.aceiteP, 2);
+    expect(porInsumoYPlato("Aceite", "Ensalada").cantidadEstimada).toBeCloseTo(COEF.aceiteE, 2);
+    expect(porInsumoYPlato("Queso", "Bife").cantidadEstimada).toBeCloseTo(COEF.quesoB, 2);
+    expect(porInsumoYPlato("Queso", "Ensalada").cantidadEstimada).toBeCloseTo(COEF.quesoE, 2);
+
+    // Ningún plato/insumo no relacionado se cruzó: Pollo nunca usó Carne/Pan rallado/Lechuga/Queso.
+    expect(compartidas.some((f) => f.productoVentaNombre === "Pollo" && f.insumoONombre === "Carne")).toBe(false);
+    expect(compartidas.some((f) => f.productoVentaNombre === "Milanesa" && f.insumoONombre === "Aceite")).toBe(false);
+  });
+});
