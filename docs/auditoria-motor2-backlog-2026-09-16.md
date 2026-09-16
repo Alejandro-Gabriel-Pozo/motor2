@@ -20,9 +20,9 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad alta**
 
-- **La auto-protección de CapacidadSucursal no cubre gestion_usuarios/gestion_permisos, a diferencia de PermisoRol.** PermisoRol está blindado explícitamente (ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE) para que un admin nunca pueda quitarse a sí mismo el acceso a Usuarios/Permisos. Pero la capa de red (CapacidadSucursal), que se evalúa ANTES que el permiso de rol, solo se auto-protege a sí misma. Un admin puede apagar 'gestion_usuarios' o 'gestion_permisos' en la fila Default desde /administracion/capacidades-sucursal y dejar a TODOS los admins de TODAS las sucursales sin acceso, con un solo clic — exactamente el escenario que la protección de PermisoRol dice evitar, pero sin cubrir en esta capa.
+- ~~**La auto-protección de CapacidadSucursal no cubre gestion_usuarios/gestion_permisos, a diferencia de PermisoRol.**~~ — **resuelto (2026-09-16)**. `sucursalTieneCapacidad` ahora extiende la auto-protección a `ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE` (commit `a3e1641`).
 - **User.activoGlobal: kill-switch de cuenta documentado en el schema pero nunca implementado.** El campo existe para desactivar a alguien a nivel sistema sin tocar cada membresía, pero no se lee ni se escribe en ningún lado del código (login, contexto de usuario, server actions). Hoy la única baja posible es desactivar UsuarioSucursal sucursal por sucursal, y aun así la persona puede seguir iniciando sesión si su dominio está permitido o es bootstrap admin — solo queda varada en /login sin sucursal.
-- **Toda sesión nueva aterriza en una página admin-only, sin importar el rol.** src/app/page.tsx y /login redirigen siempre a "/administracion/usuarios", gateada solo para 'admin' (rolesEditarSemilla). Cualquier operador ve como primera pantalla el texto rojo "No tenés permiso para ver esta sección...", sin dashboard ni indicación de adónde ir. El sidebar tampoco filtra por permiso, así que no hay ninguna señal visual previa al clic fallido.
+- ~~**Toda sesión nueva aterriza en una página admin-only, sin importar el rol.**~~ — **resuelto (2026-09-16)**. `/` y `/login` ahora redirigen a `/reportes` (sin gate de Acción, abierto a cualquier rol) en vez de `/administracion/usuarios` (commit `96d33be`).
 
 **Prioridad media**
 
@@ -37,7 +37,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad alta**
 
-- **El tipo (MP/PV) se puede "cambiar" al editar un producto, pero el cambio se descarta en silencio.** Los radios de tipo quedan habilitados al editar, pero datosParaGuardar no incluye `tipo` (a diferencia del alta, que sí lo pasa explícito). El usuario ve "Producto actualizado" pero el tipo real en la base queda igual, sin aviso.
+- ~~**El tipo (MP/PV) se puede "cambiar" al editar un producto, pero el cambio se descarta en silencio.**~~ — **resuelto (2026-09-16)**. Tratado como inmutable post-alta (mismo criterio que el código): la UI ya no muestra los radios al editar, y `actualizarProducto` rechaza explícito si igual llega un tipo distinto (commit `0850a85`).
 - **"Renombrar/fusionar" un Insumo no valida unidad de stock mezclada, y fusiona sin confirmación ni feedback.** validarUnidadInsumo existe justo para evitar mezclar unidades de stock distintas bajo el mismo Insumo, pero renombrarOFusionarInsumo (que reasigna productos en masa y borra el Insumo viejo) nunca la llama. Además el botón no tiene modal de confirmación y descarta el mensaje de resultado — el usuario no se entera de que acaba de fusionar y borrar un Insumo.
 - **El editor de recetas descarta todos los resultados de error — agregar/editar/quitar ingrediente o paso fallan en silencio.** Ninguna de las mutaciones captura ni muestra el ResultadoAccion. guardarReceta tiene validaciones reales (cantidad ≤0, merma negativa, insumo duplicado, choque de versión concurrente) que hoy se traducen en "no pasó nada visible" para el usuario, a diferencia del resto del catálogo (producto-form, AsistenteHermanar, QuickCrear).
 - **Presentación de compra alternativa: existe en el modelo y se usa al registrar compras, pero no hay ninguna pantalla para crearla.** agregarPresentacionAlternativa y actualizarActivaPresentacion no tienen ningún caller en src/app; el circuito nunca se puede cerrar porque nunca se puede abrir.
@@ -50,7 +50,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad alta**
 
-- **Una Venta confirmada no se puede anular ni corregir.** A diferencia de Conteo Físico (que tiene resolverConteoPendiente/cancelarConteoFisico), no existe ningún camino para corregir cantidad/producto/precio ni anular una venta. La única salida documentada, "Devolución de cliente", es un concepto de negocio distinto y no corrige cargas mal tipeadas.
+- ~~**Una Venta confirmada no se puede anular ni corregir.**~~ — **resuelto (2026-09-16)**. `anularVenta` (gate `anular_venta`, admin-only) revierte el consumo y la Liquidación de consignación con una Operacion AJUSTE nueva, marca la venta original `anuladaEn`/`anuladaPorId` (migración aditiva) — botón "Anular venta" en Trazabilidad (commit `b347e61`).
 - **exigeSeccion existe en el dominio pero la UI nunca lo lee.** TRANSICIONES define exigeSeccion para que Compra/Producción/Devolución de cliente/Venta puedan preseleccionar "General" sin preguntar, pero panel-movimiento-form.tsx y venta-form.tsx nunca lo consultan: el select de Sección siempre arranca vacío y required en los 9 procesos por igual.
 
 **Prioridad media**
@@ -102,7 +102,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad alta**
 
-- **La cantidad de una solicitud PULL entra al Kardex sin redondear a los decimales de la unidad.** crearEnvioDirectoTransferencia (PUSH) redondea explícitamente antes de guardar, pero crearSolicitudTransferencia (PULL) guarda `datos.cantidad` tal cual. El valor sin redondear se usa después en 3 puntos del ciclo (aprobar, aceptar, reingresar), violando el invariante documentado de que toda cantidad que entra al Kardex se redondea a los decimales de su unidad.
+- ~~**La cantidad de una solicitud PULL entra al Kardex sin redondear a los decimales de la unidad.**~~ — **resuelto (2026-09-16)**. `crearSolicitudTransferencia` ahora redondea con `redondearACantidadDeUnidad`, mismo criterio que `crearEnvioDirectoTransferencia` (commit `bfd0ec0`).
 - **Los traspasos que el propio usuario inició y todavía están en curso se muestran mezclados en "Historial", no como pendientes.** condicionesEnCurso() no cubre "soy destino y mi SOLICITADA espera respuesta de origen" ni "soy origen y mi ENVIADA (push) espera respuesta de destino". Esos casos caen en la tabla de Historial junto con traspasos realmente cerrados, sin ninguna marca visual que los distinga, y pueden quedar empujados a una página siguiente por la paginación de a 30.
 - **Quien crea una solicitud PULL (SOLICITADA) no tiene ninguna forma de cancelarla ella misma.** crearSolicitudTransferencia aclara que crear una solicitud no toca stock, pero no existe ninguna acción de cancelación para el creador; la única salida es esperar a que la sucursal origen la rechace.
 
@@ -112,8 +112,12 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 ## Top 5 recomendado para atacar primero
 
-1. **Toda sesión nueva aterriza en una página admin-only (core-administracion)** — bloquea el uso básico de la app para la mayoría de los usuarios (operadores) desde el primer login.
-2. **La auto-protección de CapacidadSucursal no cubre gestion_usuarios/gestion_permisos (core-administracion)** — un solo clic puede dejar a todos los admins de todas las sucursales sin acceso a Usuarios o Permisos.
-3. **Una Venta confirmada no se puede anular ni corregir (movimientos)** — no hay forma de arreglar un error de carga en la operación más frecuente del sistema.
-4. **El tipo (MP/PV) se descarta en silencio al editar un producto (catalogo)** — corrompe el catálogo sin ningún aviso, con impacto en costos y recetas aguas abajo.
-5. **La cantidad de una solicitud PULL entra al Kardex sin redondear (traspasos)** — rompe un invariante de datos ya documentado y contamina la trazabilidad de stock en 3 puntos del ciclo.
+Los 5 quedaron resueltos el 2026-09-16, en este orden:
+
+1. ~~**Toda sesión nueva aterriza en una página admin-only (core-administracion)**~~ — bloqueaba el uso básico de la app para la mayoría de los usuarios (operadores) desde el primer login. Commit `96d33be`.
+2. ~~**La auto-protección de CapacidadSucursal no cubre gestion_usuarios/gestion_permisos (core-administracion)**~~ — un solo clic podía dejar a todos los admins de todas las sucursales sin acceso a Usuarios o Permisos. Commit `a3e1641`.
+3. ~~**Una Venta confirmada no se puede anular ni corregir (movimientos)**~~ — no había forma de arreglar un error de carga en la operación más frecuente del sistema. Commit `b347e61`.
+4. ~~**El tipo (MP/PV) se descarta en silencio al editar un producto (catalogo)**~~ — corrompía el catálogo sin ningún aviso, con impacto en costos y recetas aguas abajo. Commit `0850a85`.
+5. ~~**La cantidad de una solicitud PULL entra al Kardex sin redondear (traspasos)**~~ — rompía un invariante de datos ya documentado y contaminaba la trazabilidad de stock en 3 puntos del ciclo. Commit `bfd0ec0`.
+
+Quedan 29 hallazgos más (ver arriba, por módulo) sin atacar todavía.
