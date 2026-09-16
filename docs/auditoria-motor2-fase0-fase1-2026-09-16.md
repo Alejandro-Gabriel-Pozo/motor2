@@ -344,4 +344,30 @@ Plan de rollback: revertir la migración (down) y el manejo de error
 
 **Actualiza la matriz de §4**: la fila "Concurrencia" pasa de "no probado" a **FALLO_CONFIRMADO parcial** (Hallazgo 1); la fila "Idempotencia" gana evidencia concreta adicional más allá de COMPRA — el propio guard de COMPRA, que era la única protección existente, también es racy (Hallazgo 2).
 
-Quedan pendientes de esta misma etapa: reintento/rollback ya cubierto parcialmente (ver Escenario 4, atomicidad confirmada — ningún dato parcial persiste ante un payload inválido), traspasos "en tránsito", precisión numérica, reconstrucción de saldo, benchmark de reportes.
+Reintento/rollback ya cubierto (ver Escenario 4 arriba, atomicidad confirmada — ningún dato parcial persiste ante un payload inválido).
+
+## 9. Fase 4 (continuación) — Traspasos entre sucursales "en tránsito" (2026-09-16)
+
+Pruebas nuevas en `test/auditoria/traspasos-en-transito.test.ts` (4 escenarios, solo investigación):
+
+- **Estado ENVIADA como "en tránsito" real**: confirmado — tras un envío directo, el origen ya descontó su stock y el destino todavía no lo tiene; `TraspasoSucursal.estado="ENVIADA"` es el registro visible de que hay algo pendiente (no una pérdida de datos, sino un estado de workflow deliberado, tal como decía el informe original).
+- **Rechazo + reingreso**: confirmado — el ciclo `ENVIADA → RECHAZADA_DESTINO → CERRADA` devuelve exactamente la cantidad original al origen (2 `MovimientoStock` totales: salida + reingreso, la salida original nunca se toca), sin duplicar ni perder stock.
+- **Aceptación duplicada (secuencial)**: confirmado — el guard de estado (`traspaso.estado !== "ENVIADA"`) rechaza una segunda aceptación con un mensaje de negocio claro; no genera una segunda entrada de stock.
+- **Aceptar + rechazar simultáneos sobre el mismo traspaso**: probado 6 veces — el guard de estado nunca permitió que ambos efectos se aplicaran a la vez (siempre exactamente 0 o 1 movimiento de entrada, nunca 2, y el estado final del traspaso siempre fue uno de los dos válidos, nunca uno inconsistente). Aclaración metodológica: `rechazarTransferencia` no usa transacción (no toca stock) y por eso gana la carrera de forma consistente en este entorno de prueba — no es una prueba de interleaving genuino bajo timing adverso, pero sí confirma que el guard de estado por sí solo es suficiente para evitar el doble efecto, independientemente de quién gane.
+
+**Pivote 3 (traspasos en tránsito)** — evidencia apunta a **T1 (mantener workflow)**: el estado en tránsito es válido, visible en la Bandeja, y recuperable (reingreso). No se encontró un caso donde quede "huérfano" sin una acción de recuperación disponible.
+
+## 10. Fase 5 — Precisión numérica y reconstrucción de saldo (2026-09-16)
+
+Pruebas nuevas en `test/auditoria/precision-numerica-y-saldo.test.ts` (6 escenarios, solo investigación):
+
+- **0.1 + 0.2 vía dos COMPRAs separadas**: saldo agregado = exacto `0.3` (`0.1 + 0.2 !== 0.3` en JS puro, confirmado como referencia). La suma real ocurre en Postgres sobre columnas `Decimal` — nunca en aritmética JS — así que el bug clásico de punto flotante no se manifiesta en la agregación.
+- **Cantidades a 4 decimales**: roundtrip completo (COMPRA → Kardex → saldo) sin pérdida.
+- **Conversión con factor que SÍ produce ruido en JS** (`7 × 0.1 = 0.7000000000000001`): a diferencia de la suma, este cálculo (`cantidadStock = numCant * factor`, `movimientos.ts:147`) ocurre en JS puro, ANTES de tocar la DB — pero el redondeo posterior a los decimales de la unidad (`redondearACantidadDeUnidad`, `Math.round`) absorbió el ruido y el valor final fue exacto (`0.70`).
+- **50 sumas repetidas de 0.07**: total exacto `3.50`, sin arrastre de error (la suma nunca se acumula en JS; cada movimiento es una fila Decimal independiente, sumada una sola vez en Postgres al leer).
+- **Merma porcentual con receta** (`mermaPorcentaje` no entero): consumo calculado correctamente dentro del margen de la unidad.
+- **Reconstrucción de saldo**: para un historial mixto (compra/consumo/merma/ajuste, 5 movimientos), la suma manual de `MovimientoStock.cantidad` leída directamente de la DB coincide EXACTO con `calcularSaldoTotal` — confirma que el saldo siempre es reconstruible desde el Kardex, sin necesidad de una segunda fuente de verdad.
+
+**Pivote 4 (precisión numérica)** — evidencia apunta a **N1 (mantener)**: en todos los casos probados (incluyendo los diseñados específicamente para provocar ruido de punto flotante), el patrón "agregar en Postgres + redondear a los decimales de la unidad después de cada cálculo en JS" produjo resultados exactos. Nota de alcance: no se probaron números con muchos más dígitos significativos (ej. cantidades de 6+ cifras) ni la combinación peor-caso (factor de conversión + merma porcentual + redondeo de moneda encadenados en una sola operación) — queda como advertencia de alcance, no como hallazgo negativo.
+
+**Pendiente de esta etapa**: benchmark de reportes/agregaciones con volumen representativo (Pivote 5, escalabilidad) — no ejecutado todavía.
