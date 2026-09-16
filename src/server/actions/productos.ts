@@ -31,6 +31,8 @@ export interface FiltroSelectorProducto {
   soloConStockReal?: boolean;
   /** PV, o MP solo si está marcada "Se produce" — quién puede tener una Receta (`/catalogo/recetas`). Es el criterio inverso a `soloConStockReal`: ahí toda MP entra y el PV es la excepción, acá es al revés. */
   elegibleParaReceta?: boolean;
+  /** true = solo productos en consignación (Devolución al consignante); false = excluirlos (Devolución a proveedor — nunca se "compró" algo en consignación). Sin definir = sin filtrar. */
+  esConsignacion?: boolean;
 }
 
 export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
@@ -40,6 +42,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.soloActivos ? [{ activo: true }] : []),
     ...(filtro?.soloConStockReal ? [{ OR: [{ tipo: "MP" as const }, { tipo: "PV" as const, seProduce: true }] }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
+    ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
     ...(t ? [{ OR: [{ nombre: { contains: t, mode: "insensitive" as const } }, { codigo: { contains: t, mode: "insensitive" as const } }] }] : []),
   ];
   return prisma.producto.findMany({

@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { darDeAltaProducto, actualizarProducto, obtenerInsumoDeProducto, asignarInsumoAProducto } from "../../src/server/actions/productos";
+import { darDeAltaProducto, actualizarProducto, obtenerInsumoDeProducto, asignarInsumoAProducto, buscarProductosSelector } from "../../src/server/actions/productos";
 
 describe("productos", () => {
   let unidadKgId: string;
@@ -159,6 +159,41 @@ describe("productos", () => {
 
       const resultado = await asignarInsumoAProducto(pv.id, insumoId);
       expect(resultado.ok).toBe(false);
+    });
+  });
+
+  describe("buscarProductosSelector — filtro esConsignacion (hallazgo de la auditoría: panel de movimientos no filtraba por proceso)", () => {
+    it("esConsignacion:true trae solo productos en consignación", async () => {
+      const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Consignante" } });
+      await darDeAltaProducto({ nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+      const vino = await prisma.producto.findFirstOrThrow({ where: { nombre: "Vino en consignación" } });
+      await prisma.producto.update({ where: { id: vino.id }, data: { esConsignacion: true, proveedorConsignacionId: proveedor.id } });
+      await darDeAltaProducto({ nombre: "Harina normal", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+
+      const resultado = await buscarProductosSelector("", { soloActivos: true, esConsignacion: true });
+      expect(resultado.map((p) => p.nombre)).toEqual(["Vino en consignación"]);
+    });
+
+    it("esConsignacion:false excluye los productos en consignación", async () => {
+      const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Consignante" } });
+      await darDeAltaProducto({ nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+      const vino = await prisma.producto.findFirstOrThrow({ where: { nombre: "Vino en consignación" } });
+      await prisma.producto.update({ where: { id: vino.id }, data: { esConsignacion: true, proveedorConsignacionId: proveedor.id } });
+      await darDeAltaProducto({ nombre: "Harina normal", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+
+      const resultado = await buscarProductosSelector("", { soloActivos: true, esConsignacion: false });
+      expect(resultado.map((p) => p.nombre)).toEqual(["Harina normal"]);
+    });
+
+    it("sin esConsignacion definido, trae los dos", async () => {
+      const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Consignante" } });
+      await darDeAltaProducto({ nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+      const vino = await prisma.producto.findFirstOrThrow({ where: { nombre: "Vino en consignación" } });
+      await prisma.producto.update({ where: { id: vino.id }, data: { esConsignacion: true, proveedorConsignacionId: proveedor.id } });
+      await darDeAltaProducto({ nombre: "Harina normal", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+
+      const resultado = await buscarProductosSelector("", { soloActivos: true });
+      expect(resultado.map((p) => p.nombre).sort()).toEqual(["Harina normal", "Vino en consignación"]);
     });
   });
 });

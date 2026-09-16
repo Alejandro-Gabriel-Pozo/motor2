@@ -288,7 +288,7 @@ export function PanelMovimientoForm({
               <SelectorProducto
                 value={fila.productoId}
                 onChange={(id) => cambiarProducto(idx, id)}
-                filtro={{ soloActivos: true }}
+                filtro={config.filtroProducto}
                 etiquetaInicial={fila.etiquetaInicial}
                 required
               />

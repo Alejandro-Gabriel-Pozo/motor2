@@ -24,3 +24,31 @@ describe("PROCESOS_UI.exigeSeccion", () => {
     expect(obtenerConfigProceso("devolucion-proveedor")?.exigeSeccion).toBe(true);
   });
 });
+
+describe("PROCESOS_UI.filtroProducto (hallazgo de la auditoría: el selector no filtraba por proceso)", () => {
+  it("Compra solo deja elegir Materias Primas", () => {
+    expect(obtenerConfigProceso("compra")?.filtroProducto).toEqual({ soloActivos: true, tipo: "MP" });
+  });
+
+  it("Dev. consignación solo deja elegir productos en consignación", () => {
+    expect(obtenerConfigProceso("devolucion-consignacion")?.filtroProducto).toEqual({
+      soloActivos: true,
+      soloConStockReal: true,
+      esConsignacion: true,
+    });
+  });
+
+  it("Dev. proveedor excluye los productos en consignación (nunca se 'compraron')", () => {
+    expect(obtenerConfigProceso("devolucion-proveedor")?.filtroProducto).toEqual({
+      soloActivos: true,
+      soloConStockReal: true,
+      esConsignacion: false,
+    });
+  });
+
+  it("el resto de los procesos filtra por soloConStockReal, sin filtrar por consignación", () => {
+    for (const slug of ["produccion", "consumo", "ajuste", "transferencia", "merma", "devolucion-cliente"]) {
+      expect(obtenerConfigProceso(slug)?.filtroProducto).toEqual({ soloActivos: true, soloConStockReal: true });
+    }
+  });
+});

@@ -1,5 +1,6 @@
 import type { DestinoConsumo, MotivoMerma, Proceso } from "@prisma/client";
 import { TRANSICIONES } from "./transiciones";
+import type { FiltroSelectorProducto } from "@/server/actions/productos";
 
 /** Etiquetas de MOTIVOS_MERMA (Movimientos.js:56) — import type-only de @prisma/client, no arrastra el cliente de Prisma al bundle del navegador. */
 export const MOTIVOS_MERMA: { value: MotivoMerma; label: string }[] = [
@@ -45,9 +46,29 @@ export interface ProcesoUiConfig {
   cantidadConSigno: boolean;
   /** TRANSICIONES[proceso].exigeSeccion (ver transiciones.ts) — si false, el panel puede preseleccionar una sección por defecto en vez de forzar la elección. Derivado, nunca a mano: mismo criterio anti-duplicación que ya defendió esSignoFijo (bug de Merma sin signo, v2.1.0). */
   exigeSeccion: boolean;
+  /**
+   * Filtro del selector de producto — antes panel-movimiento-form.tsx
+   * hardcodeaba `{ soloActivos: true }` para los 9 procesos por igual, a
+   * diferencia de Venta/Conteo Físico (que sí filtran), así que se podía
+   * elegir p. ej. un PV en Compra o un producto no-consignación en
+   * Devolución al consignante, y el error recién aparecía al confirmar el
+   * form completo. Espejo de las mismas reglas de productoValidoParaProceso
+   * (transiciones.ts) traducidas a un filtro de query — no se pueden
+   * compartir literalmente (un predicado sobre un producto ya cargado vs.
+   * un `where` de Prisma), pero es la misma fuente de verdad.
+   */
+  filtroProducto: FiltroSelectorProducto;
 }
 
-const PROCESOS_UI_SIN_EXIGE_SECCION: Record<string, Omit<ProcesoUiConfig, "exigeSeccion">> = {
+/** Espejo de productoValidoParaProceso (transiciones.ts) para el selector — ver el docstring de `filtroProducto`. */
+function filtroProductoDeProceso(proceso: ProcesoUiConfig["proceso"]): FiltroSelectorProducto {
+  if (proceso === "COMPRA") return { soloActivos: true, tipo: "MP" };
+  if (proceso === "DEVOLUCION_CONSIGNACION") return { soloActivos: true, soloConStockReal: true, esConsignacion: true };
+  if (proceso === "DEVOLUCION_PROVEEDOR") return { soloActivos: true, soloConStockReal: true, esConsignacion: false };
+  return { soloActivos: true, soloConStockReal: true };
+}
+
+const PROCESOS_UI_SIN_DERIVADOS: Record<string, Omit<ProcesoUiConfig, "exigeSeccion" | "filtroProducto">> = {
   compra: { proceso: "COMPRA", titulo: "Compra", requiereProveedor: true, esCompraLike: true, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   produccion: { proceso: "PRODUCCION", titulo: "Producción", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   consumo: { proceso: "CONSUMO", titulo: "Consumo", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: true, cantidadConSigno: false },
@@ -60,7 +81,10 @@ const PROCESOS_UI_SIN_EXIGE_SECCION: Record<string, Omit<ProcesoUiConfig, "exige
 };
 
 export const PROCESOS_UI: Record<string, ProcesoUiConfig> = Object.fromEntries(
-  Object.entries(PROCESOS_UI_SIN_EXIGE_SECCION).map(([slug, cfg]) => [slug, { ...cfg, exigeSeccion: TRANSICIONES[cfg.proceso].exigeSeccion }])
+  Object.entries(PROCESOS_UI_SIN_DERIVADOS).map(([slug, cfg]) => [
+    slug,
+    { ...cfg, exigeSeccion: TRANSICIONES[cfg.proceso].exigeSeccion, filtroProducto: filtroProductoDeProceso(cfg.proceso) },
+  ])
 );
 
 export type ProcesoSlug = keyof typeof PROCESOS_UI;
