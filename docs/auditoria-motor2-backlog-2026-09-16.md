@@ -73,7 +73,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 **Prioridad media**
 
 - ~~**Reclasificar no muestra el saldo disponible antes de enviar, a diferencia de su hermano Conteo Físico.**~~ — **resuelto (2026-09-16)**. Nueva `obtenerSaldoDisponibleParaReclasificar`, consultada al cambiar producto/sección/lote origen — "Disponible en origen: X" antes del submit (commit `f1f4464`).
-- **"Eliminar" en Stock Mínimo es la única acción de borrado duro de la app y no pide confirmación.** Un clic accidental borra la fila (no es un movimiento de Kardex reversible) y deja de alertar silenciosamente sobre un producto/sección.
+- ~~**"Eliminar" en Stock Mínimo es la única acción de borrado duro de la app y no pide confirmación.**~~ — **resuelto (2026-09-16)**. Paso de confirmación inline antes de borrar la fila (commit `6deb789`).
 
 **Prioridad baja**
 
