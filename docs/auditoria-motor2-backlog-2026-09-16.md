@@ -55,7 +55,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 **Prioridad media**
 
-- **El selector de producto del panel genérico no filtra por proceso, a diferencia de Venta y Conteo Físico.** panel-movimiento-form.tsx hardcodea `filtro={{ soloActivos: true }}` para los 9 procesos, así que se puede elegir un PV en Compra o un producto no-consignación en Devolución al consignante, y el error recién aparece al confirmar el formulario completo.
+- ~~**El selector de producto del panel genérico no filtra por proceso, a diferencia de Venta y Conteo Físico.**~~ — **resuelto (2026-09-16)**. Nuevo `filtroProducto` en `ProcesoUiConfig`, derivado por proceso espejando `productoValidoParaProceso` (Compra solo MP, Dev. consignación/proveedor filtran por `esConsignacion`, el resto exige stock real) (commit `18af7b4`).
 - **Ajuste de stock: nada en la UI indica que la cantidad puede ser negativa.** cantidadConSigno está definido para Ajuste (único proceso con delta firmado) pero panel-movimiento-form.tsx nunca lo lee; no hay placeholder ni ayuda que indique que "-5" es válido.
 - **Cancelar/ajustar un conteo físico resuelto o pendiente actúa al instante, sin confirmación.** Los botones "Cancelar" y "Ajustar ahora" son forms conectados directo al server action, sin window.confirm ni diálogo intermedio, siendo las dos acciones del módulo con más potencial de tocar stock por error de un clic.
 
