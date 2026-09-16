@@ -61,6 +61,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
 
       <p className="text-xs text-neutral-500">{rep.ventas.aviso}</p>
       <p className="text-xs text-neutral-500">{rep.margen.aviso}</p>
+      <p className="text-xs text-neutral-500">{rep.compras.aviso}</p>
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Ventas por producto</h2>
