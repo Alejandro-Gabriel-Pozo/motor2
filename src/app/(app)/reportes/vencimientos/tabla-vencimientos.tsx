@@ -4,6 +4,9 @@ import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { obtenerReporteVencimientosDatos } from "@/core/reportes/vencimientos";
 
+const AYUDA_ESTADO_CONCILIACION =
+  "Un lote que tenía saldo contado y en el conteo siguiente desapareció (quedó en 0 o sin contar) — se compara cuánto desapareció contra cuánto se vendió/consumió en el mismo período. Consistente: las ventas+consumos alcanzan o superan lo desaparecido, explica la baja. Revisar: desapareció más de lo que se vendió o consumió — puede ser merma sin registrar, robo o un conteo mal cargado.";
+
 type FilaLote = Awaited<ReturnType<typeof obtenerReporteVencimientosDatos>>["proximosAVencer"][number];
 type FilaConciliacion = Awaited<ReturnType<typeof obtenerReporteVencimientosDatos>>["conciliacion"][number];
 
@@ -45,6 +48,7 @@ const COLUMNAS_CONCILIACION: ColumnaReporte<FilaConciliacion>[] = [
   {
     clave: "estado",
     etiqueta: "Estado",
+    ayuda: AYUDA_ESTADO_CONCILIACION,
     valor: (c) => c.estado,
     render: (c) => <span className={c.estado === "revisar" ? "font-medium text-red-600" : "text-neutral-500"}>{c.estado}</span>,
   },

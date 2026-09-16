@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AyudaIcono } from "@/components/ayuda-campo";
 
 export interface ColumnaReporte<T> {
   clave: string;
@@ -9,6 +10,8 @@ export interface ColumnaReporte<T> {
   /** Si se da, la columna ordena Y este valor entra al CSV exportado. Si no, la columna queda fija (ej. una columna de link/acción). */
   valor?: (fila: T) => string | number | null;
   alinear?: "derecha";
+  /** Icono "?" junto al header, para explicar un criterio no obvio (ej. cómo se calcula un estado) sin ocupar espacio permanente. */
+  ayuda?: string;
 }
 
 interface Props<T> {
@@ -94,6 +97,11 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
               >
                 {c.etiqueta}
                 {ordenPor === c.clave ? (direccion === "asc" ? " ▲" : " ▼") : ""}
+                {c.ayuda && (
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <AyudaIcono texto={c.ayuda} />
+                  </span>
+                )}
               </th>
             ))}
           </tr>
