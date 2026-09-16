@@ -30,6 +30,7 @@ model User {
   sessions                  Session[]
   sucursales                UsuarioSucursal[]
   operaciones               Operacion[]
+  operacionesAnuladas       Operacion[]        @relation("OperacionAnuladaPor")
   conteosFisicos            ConteoFisico[]
   traspasosCreados          TraspasoSucursal[] @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen  TraspasoSucursal[] @relation("TraspasoDecididoOrigen")
@@ -702,6 +703,16 @@ model Operacion {
   usuario   User   @relation(fields: [usuarioId], references: [id])
 
   creadoEn DateTime @default(now())
+
+  /// Solo VENTA — cuándo (y quién) la anuló con anularVenta. null = vigente.
+  /// Mismo criterio append-only que ConteoFisico/cancelarConteoFisico:
+  /// nunca se edita/borra esta fila ni sus MovimientoStock originales, el
+  /// stock se corrige con una Operacion AJUSTE nueva aparte — esto solo
+  /// marca la venta como anulada, para no poder anularla dos veces y para
+  /// que Trazabilidad no la muestre como vigente.
+  anuladaEn    DateTime?
+  anuladaPorId String?
+  anuladaPor   User?     @relation("OperacionAnuladaPor", fields: [anuladaPorId], references: [id])
 
   movimientos MovimientoStock[]
 

@@ -64,6 +64,7 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "proceso_devolucion_proveedor", descripcion: "Devolver mercadería a un proveedor", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_transferencia_sucursal", descripcion: "Solicitar/aprobar/aceptar transferencias con otra sucursal", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "cancelar_conteo", descripcion: "Cancelar un conteo físico ya aplicado", rolesEditarSemilla: ["admin"] },
+  { clave: "anular_venta", descripcion: "Anular una venta ya confirmada", rolesEditarSemilla: ["admin"] },
   { clave: "capacidades_sucursal", descripcion: "Habilitar/deshabilitar qué puede gestionar cada sucursal", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, "Bootstrap de admin"):
   // reemplaza el paso manual crear-contenedor.js por una acción real del

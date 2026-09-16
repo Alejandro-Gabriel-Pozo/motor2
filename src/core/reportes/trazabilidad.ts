@@ -15,10 +15,14 @@ export interface ItemOperacion {
 export interface DatosOperacion {
   idOperacion: string;
   fecha: Date;
+  proceso: string;
   proveedorNombre: string | null;
   nroFactura: string | null;
   total: number;
   items: ItemOperacion[];
+  /** Solo relevante si proceso === "VENTA" — ver anularVenta (server/actions/venta.ts). */
+  anuladaEn: Date | null;
+  anuladaPorEmail: string | null;
 }
 
 /**
@@ -32,16 +36,19 @@ export interface DatosOperacion {
 export async function obtenerOperacionPorId(sucursalId: string, idOperacion: string, db: Db = prisma): Promise<DatosOperacion | null> {
   const operacion = await db.operacion.findFirst({
     where: { id: idOperacion, sucursalId },
-    include: { proveedor: true, movimientos: { include: { producto: true, seccion: true } } },
+    include: { proveedor: true, anuladaPor: true, movimientos: { include: { producto: true, seccion: true } } },
   });
   if (!operacion) return null;
 
   return {
     idOperacion: operacion.id,
     fecha: operacion.fecha,
+    proceso: operacion.proceso,
     proveedorNombre: operacion.proveedor?.nombre ?? null,
     nroFactura: operacion.nroFactura,
     total: operacion.movimientos.length,
+    anuladaEn: operacion.anuladaEn,
+    anuladaPorEmail: operacion.anuladaPor?.email ?? null,
     items: operacion.movimientos.map((m) => ({
       productoNombre: m.producto.nombre,
       productoCodigo: m.producto.codigo,

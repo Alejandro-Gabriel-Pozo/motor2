@@ -190,3 +190,73 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
     return resultado;
   });
 }
+
+/**
+ * Anula una Venta ya confirmada — hueco real señalado en la auditoría
+ * amplia de motor2 (2026-09-16): a diferencia de Conteo Físico
+ * (resolverConteoPendiente/cancelarConteoFisico), no existía ningún camino
+ * para corregir un error de carga en el proceso más frecuente del sistema.
+ * "Devolución de cliente" es un concepto de negocio distinto (mercadería
+ * que vuelve, revendible) y no sirve para esto.
+ *
+ * Mismo criterio append-only que cancelarConteoFisico
+ * (src/server/actions/conteo-fisico.ts): la Operacion/MovimientoStock
+ * original de la venta nunca se edita ni se borra — se escribe una
+ * Operacion AJUSTE nueva que revierte cada línea (mismo producto/sección/
+ * lote, cantidad con el signo invertido), y la venta original se marca
+ * `anuladaEn`/`anuladaPorId` para no poder anularla dos veces.
+ *
+ * Por qué AJUSTE y no un Proceso "ANULACION_VENTA" nuevo: AJUSTE ya es
+ * "delta ya firmado" (esSignoFijo=false, TRANSICIONES.AJUSTE) y ya está
+ * excluido de los reportes de venta/margen que suman por magnitud — reusa
+ * infraestructura ya probada en vez de tener que rewirear esSignoFijo y
+ * cada reporte de período para un Proceso nuevo. La línea
+ * LIQUIDACION_CONSIGNACION (si la venta consumió una MP en consignación)
+ * se revierte con el mismo Proceso, cantidad en 0 igual que el original,
+ * precioTotal/precioPorUnidadStock en negativo — así el reporte de
+ * Consignación (que suma esas líneas tal cual) neta solo automáticamente.
+ *
+ * Gate: 'anular_venta', admin-only en la semilla — mismo criterio que
+ * 'cancelar_conteo' (más restrictivo que el permiso para CARGAR el proceso
+ * original, a propósito).
+ */
+export async function anularVenta(operacionId: string): Promise<ResultadoAccion> {
+  return conPermiso("anular_venta", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const operacion = await tx.operacion.findFirst({
+        where: { id: operacionId, sucursalId: ctx.sucursalId },
+        include: { movimientos: { include: { producto: true } } },
+      });
+      if (!operacion) return error("No se encontró esa operación en esta sucursal.");
+      if (operacion.proceso !== "VENTA") return error(`La operación "${operacionId}" no es una Venta — es "${operacion.proceso}".`);
+      if (operacion.anuladaEn) return error("Esta venta ya está anulada.");
+
+      const reversion = await tx.operacion.create({
+        data: {
+          sucursalId: ctx.sucursalId,
+          proceso: "AJUSTE",
+          fecha: new Date(),
+          detalleLibre: `Anulación de la venta ${operacion.id} (${operacion.fecha.toISOString().slice(0, 10)}).`,
+          usuarioId: ctx.usuarioId,
+        },
+      });
+
+      const filas: Prisma.MovimientoStockCreateManyInput[] = operacion.movimientos.map((m) => ({
+        operacionId: reversion.id,
+        productoId: m.productoId,
+        seccionId: m.seccionId,
+        proceso: m.proceso === "LIQUIDACION_CONSIGNACION" ? "LIQUIDACION_CONSIGNACION" : "AJUSTE",
+        cantidad: -Number(m.cantidad),
+        loteVencimiento: m.loteVencimiento,
+        detalle: `Anulación de venta: revierte "${m.detalle}".`,
+        precioTotal: -Number(m.precioTotal),
+        precioPorUnidadStock: Number(m.precioPorUnidadStock),
+      }));
+      await tx.movimientoStock.createMany({ data: filas });
+
+      await tx.operacion.update({ where: { id: operacion.id }, data: { anuladaEn: new Date(), anuladaPorId: ctx.usuarioId } });
+
+      return ok(`Venta anulada. Se revirtieron ${filas.length} línea(s) de stock${filas.some((f) => f.proceso === "LIQUIDACION_CONSIGNACION") ? " y la liquidación de consignación" : ""}.`);
+    });
+  });
+}

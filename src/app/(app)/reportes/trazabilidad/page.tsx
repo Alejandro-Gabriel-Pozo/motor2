@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/core/reportes/trazabilidad";
+import { anularVenta } from "@/server/actions/venta";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
 
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<{ producto?: string; idOperacion?: string }> }) {
@@ -50,6 +51,25 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
               {operacion.nroFactura && `Factura: ${operacion.nroFactura}.`}
             </p>
           )}
+          {operacion.proceso === "VENTA" &&
+            (operacion.anuladaEn ? (
+              <p className="mb-2 text-xs text-red-600">
+                Anulada el {operacion.anuladaEn.toISOString().slice(0, 10)}
+                {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
+              </p>
+            ) : (
+              <form
+                action={async () => {
+                  "use server";
+                  await anularVenta(operacion.idOperacion);
+                }}
+                className="mb-2"
+              >
+                <button type="submit" className="text-sm text-red-600 underline">
+                  Anular venta
+                </button>
+              </form>
+            ))}
           <TablaItemsOperacion filas={operacion.items} nombreExport={`operacion-${operacion.idOperacion}`} />
         </div>
       )}
