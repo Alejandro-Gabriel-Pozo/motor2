@@ -11,6 +11,7 @@ const LABEL_ESTADO: Record<string, string> = {
   RECHAZADA_ORIGEN: "Rechazada por origen",
   RECHAZADA_DESTINO: "Rechazada por destino",
   CERRADA: "Cerrada (reingresada)",
+  CANCELADA: "Cancelada por quien la pidió",
 };
 
 export default async function TraspasosPage({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
@@ -38,6 +39,9 @@ export default async function TraspasosPage({ searchParams }: { searchParams: Pr
       fecha: t.creadoEn.toISOString().slice(0, 10),
       detalle: t.detalle,
       estado: LABEL_ESTADO[t.estado] ?? t.estado,
+      // Solo mi propia solicitud PULL (destino, SOLICITADA) se puede cancelar —
+      // un envío PUSH propio (origen, ENVIADA) ya movió stock, no es cancelable así.
+      esMiSolicitudCancelable: !soyOrigen && t.estado === "SOLICITADA",
       motivoRechazoOrigen: t.motivoRechazoOrigen,
       motivoRechazoDestino: t.motivoRechazoDestino,
       seccionOrigenNombre: t.seccionOrigen?.nombre ?? null,
@@ -59,6 +63,7 @@ export default async function TraspasosPage({ searchParams }: { searchParams: Pr
         paraAprobar={bandeja.paraAprobar.map(aFila)}
         paraAceptar={bandeja.paraAceptar.map(aFila)}
         paraReingreso={bandeja.paraReingreso.map(aFila)}
+        esperando={bandeja.esperando.map(aFila)}
         historial={bandeja.historial.map(aFila)}
         nextCursorHistorial={bandeja.nextCursorHistorial}
         secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}

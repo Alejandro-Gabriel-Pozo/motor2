@@ -14,6 +14,7 @@ import {
   aceptarTransferencia,
   rechazarTransferencia,
   confirmarReingresoTransferencia,
+  cancelarSolicitudTransferencia,
   obtenerBandejaTransferencias,
 } from "../../src/server/actions/traspasos";
 
@@ -188,15 +189,93 @@ describe("Traspasos entre sucursales", () => {
     const bandejaB = await obtenerBandejaTransferencias(sucursalBId);
     expect(bandejaB.paraAprobar.map((t) => t.id)).not.toContain(sol.id); // B no es Origen acá
     expect(bandejaB.paraAceptar.map((t) => t.id)).not.toContain(sol.id); // todavía SOLICITADA, no ENVIADA
+    // La propia solicitud de B (destino), todavía sin decisión de A: en curso para B, nunca historial (hallazgo de la auditoría).
+    expect(bandejaB.esperando.map((t) => t.id)).toContain(sol.id);
+    expect(bandejaB.historial.map((t) => t.id)).not.toContain(sol.id);
 
     await comoA();
     await aprobarYEnviarTransferencia(sol.id, seccionAId);
 
     const bandejaBTrasAprobar = await obtenerBandejaTransferencias(sucursalBId);
     expect(bandejaBTrasAprobar.paraAceptar.map((t) => t.id)).toContain(sol.id);
+    expect(bandejaBTrasAprobar.esperando.map((t) => t.id)).not.toContain(sol.id); // ya no es "esperando": ahora B tiene algo para accionar (paraAceptar)
     const bandejaATrasAprobar = await obtenerBandejaTransferencias(sucursalAId);
     expect(bandejaATrasAprobar.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
     expect(bandejaATrasAprobar.historial.map((t) => t.id)).toContain(sol.id);
+    // A ya aprobó y ya no tiene nada más que hacer — un PULL que A aprobó
+    // NO es un envío propio de A (lo inició B), así que sigue siendo
+    // historial para A, no "esperando" (a diferencia de un PUSH directo).
+    expect(bandejaATrasAprobar.esperando.map((t) => t.id)).not.toContain(sol.id);
+  });
+
+  it("un PUSH directo propio queda 'esperando' (no historial) para quien lo envió, hasta que la otra sucursal decida", async () => {
+    const mp = await crearProductoConStock("MP_PUSH_ESPERA", 10);
+
+    await comoA();
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 3, seccionOrigenId: seccionAId });
+    if (!envio.ok) throw new Error("esperaba ok");
+
+    const bandejaA = await obtenerBandejaTransferencias(sucursalAId);
+    expect(bandejaA.esperando.map((t) => t.id)).toContain(envio.id);
+    expect(bandejaA.historial.map((t) => t.id)).not.toContain(envio.id);
+
+    await comoB();
+    await aceptarTransferencia(envio.id, seccionBId);
+
+    const bandejaATrasAceptar = await obtenerBandejaTransferencias(sucursalAId);
+    expect(bandejaATrasAceptar.esperando.map((t) => t.id)).not.toContain(envio.id);
+    expect(bandejaATrasAceptar.historial.map((t) => t.id)).toContain(envio.id);
+  });
+
+  describe("cancelarSolicitudTransferencia", () => {
+    it("quien creó la solicitud PULL (destino) la cancela ella misma, sin tocar stock — antes solo podía esperar a que Origen la rechace", async () => {
+      const mp = await crearProductoConStock("MP_CANCELA", 10);
+
+      await comoB();
+      const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+      if (!sol.ok) throw new Error("esperaba ok");
+
+      const resultado = await cancelarSolicitudTransferencia(sol.id);
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+
+      const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
+      expect(traspaso.estado).toBe("CANCELADA");
+      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // nunca se tocó
+
+      const bandejaA = await obtenerBandejaTransferencias(sucursalAId);
+      expect(bandejaA.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
+      expect(bandejaA.historial.map((t) => t.id)).toContain(sol.id);
+    });
+
+    it("Origen no puede cancelar una solicitud que no le pidieron a él cancelar (no es quien la creó)", async () => {
+      const mp = await crearProductoConStock("MP_CANCELA_2", 10);
+
+      await comoB();
+      const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+      if (!sol.ok) throw new Error("esperaba ok");
+
+      await comoA();
+      const resultado = await cancelarSolicitudTransferencia(sol.id);
+      expect(resultado.ok).toBe(false);
+
+      const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
+      expect(traspaso.estado).toBe("SOLICITADA");
+    });
+
+    it("no se puede cancelar una solicitud que Origen ya aprobó (ya no es SOLICITADA)", async () => {
+      const mp = await crearProductoConStock("MP_CANCELA_3", 10);
+
+      await comoB();
+      const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+      if (!sol.ok) throw new Error("esperaba ok");
+
+      await comoA();
+      await aprobarYEnviarTransferencia(sol.id, seccionAId);
+
+      await comoB();
+      const resultado = await cancelarSolicitudTransferencia(sol.id);
+      expect(resultado.ok).toBe(false);
+    });
   });
 
   it("obtenerBandejaTransferencias pagina el historial por cursor sin perder ni duplicar filas, y no pagina lo en curso", async () => {

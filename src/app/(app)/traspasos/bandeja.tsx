@@ -9,6 +9,7 @@ import {
   aceptarTransferencia,
   rechazarTransferencia,
   confirmarReingresoTransferencia,
+  cancelarSolicitudTransferencia,
 } from "@/server/actions/traspasos";
 
 export interface FilaBandeja {
@@ -21,6 +22,8 @@ export interface FilaBandeja {
   fecha: string;
   detalle: string | null;
   estado: string;
+  /** true = es mi propia solicitud PULL (SOLICITADA), la puedo cancelar yo mismo sin esperar a Origen. */
+  esMiSolicitudCancelable: boolean;
   motivoRechazoOrigen: string | null;
   motivoRechazoDestino: string | null;
   seccionOrigenNombre: string | null;
@@ -206,10 +209,56 @@ function FilaParaReingreso({ fila }: { fila: FilaBandeja }) {
   );
 }
 
+function FilaEsperando({ fila }: { fila: FilaBandeja }) {
+  const router = useRouter();
+  const [mensaje, setMensaje] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const cancelar = () => {
+    startTransition(async () => {
+      const r = await cancelarSolicitudTransferencia(fila.id);
+      setMensaje(r.mensaje);
+      setOk(r.ok);
+      if (r.ok) router.refresh();
+    });
+  };
+
+  return (
+    <div className="rounded border p-3">
+      <p className="text-sm text-neutral-500">
+        {fila.esMiSolicitudCancelable ? (
+          <>
+            Le pediste a <strong>{fila.otraSucursalNombre}</strong>
+          </>
+        ) : (
+          <>
+            Le enviaste a <strong>{fila.otraSucursalNombre}</strong>
+          </>
+        )}{" "}
+        {fila.cantidad} {fila.unidadNombre} de{" "}
+        <strong>
+          {fila.productoCodigo} — {fila.productoNombre}
+        </strong>{" "}
+        ({fila.fecha}){fila.detalle && ` — ${fila.detalle}`} — esperando que {fila.otraSucursalNombre} decida.
+      </p>
+      {fila.esMiSolicitudCancelable && (
+        <div className="mt-2">
+          <button type="button" disabled={pending} onClick={cancelar} className="rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50">
+            Cancelar solicitud
+          </button>
+        </div>
+      )}
+      <Mensaje mensaje={mensaje} ok={ok} />
+    </div>
+  );
+}
+
 export function Bandeja({
   paraAprobar,
   paraAceptar,
   paraReingreso,
+  esperando,
   historial,
   nextCursorHistorial,
   secciones,
@@ -217,6 +266,7 @@ export function Bandeja({
   paraAprobar: FilaBandeja[];
   paraAceptar: FilaBandeja[];
   paraReingreso: FilaBandeja[];
+  esperando: FilaBandeja[];
   historial: FilaBandeja[];
   nextCursorHistorial: string | null;
   secciones: Opcion[];
@@ -250,6 +300,16 @@ export function Bandeja({
             <FilaParaReingreso key={f.id} fila={f} />
           ))}
           {!paraReingreso.length && <p className="text-sm text-neutral-500">Nada pendiente de reingreso.</p>}
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Esperando respuesta (lo iniciaste vos)</h2>
+        <div className="flex flex-col gap-2">
+          {esperando.map((f) => (
+            <FilaEsperando key={f.id} fila={f} />
+          ))}
+          {!esperando.length && <p className="text-sm text-neutral-500">Nada propio en curso esperando a la otra sucursal.</p>}
         </div>
       </div>
 

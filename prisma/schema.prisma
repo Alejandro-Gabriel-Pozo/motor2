@@ -1020,6 +1020,10 @@ enum EstadoTraspaso {
   RECHAZADA_ORIGEN
   RECHAZADA_DESTINO
   CERRADA
+  /// Quien creó una solicitud PULL (SOLICITADA) la cancela ella misma,
+  /// antes de que Origen decida — nunca tocó stock, así que no hace falta
+  /// ningún reingreso. Distinto de RECHAZADA_ORIGEN (decisión de Origen).
+  CANCELADA
 }
 
 /// Reemplaza HOJA_TRASPASOS_SUCURSALES/"TraspasosSucursales"

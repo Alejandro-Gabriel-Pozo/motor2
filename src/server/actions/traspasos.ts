@@ -235,6 +235,33 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
   });
 }
 
+/**
+ * Destino (quien la creó) cancela SU PROPIA solicitud PULL mientras siga
+ * SOLICITADA — hasta acá nunca tocó stock (ver crearSolicitudTransferencia),
+ * así que no hace falta ningún reingreso, solo cerrar el traspaso. Antes
+ * de esto, quien pedía una transferencia no tenía ninguna forma de
+ * arrepentirse: solo podía esperar a que Origen la rechace (hallazgo de la
+ * auditoría de motor2).
+ */
+export async function cancelarSolicitudTransferencia(id: string): Promise<ResultadoAccion> {
+  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+    const idTraspaso = texto(id);
+    if (!idTraspaso) return error("Falta el traspaso.");
+
+    const traspaso = await buscarTraspaso(idTraspaso);
+    if (!traspaso) return error("No se encontró ese traspaso.");
+    if (traspaso.destinoSucursalId !== ctx.sucursalId) return error("Esta solicitud no la creó esta sucursal.");
+    if (traspaso.estado !== "SOLICITADA") return error(`Este traspaso ya está en estado "${traspaso.estado}" — no se puede cancelar desde acá.`);
+
+    await prisma.traspasoSucursal.update({
+      where: { id: idTraspaso },
+      data: { estado: "CANCELADA", fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
+    });
+
+    return ok("Solicitud cancelada.");
+  });
+}
+
 /** Origen rechaza una SOLICITADA sin haber tocado stock (nunca salió). */
 export async function rechazarSolicitudTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
@@ -350,12 +377,25 @@ const INCLUDE_BANDEJA = {
 
 const TAMANO_PAGINA_HISTORIAL = 30;
 
-/** Las 3 condiciones "hay algo para accionar" — quien las cumple nunca es historial. */
+/**
+ * Todo lo que sigue "en curso" — quien las cumple nunca es historial. Las
+ * primeras 3 son "hay algo para ACCIONAR" de este lado (paraAprobar/
+ * paraAceptar/paraReingreso); las últimas 2 son lo que ESTA sucursal
+ * INICIÓ (iniciadoPor) y sigue esperando que decida la otra — antes
+ * faltaban del todo, así que una solicitud/envío propio en curso se
+ * mezclaba con el historial ya resuelto (hallazgo de la auditoría de
+ * motor2). `iniciadoPor` es necesario en la condición de ENVIADA: un PULL
+ * que Origen ya aprobó también queda ENVIADA con origenSucursalId=yo,
+ * pero ahí lo inició Destino (paraAceptar del otro lado) — yo ya hice lo
+ * mío, no estoy "esperando" en el mismo sentido que un PUSH propio.
+ */
 function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInput[] {
   return [
     { origenSucursalId: sucursalId, estado: "SOLICITADA" },
     { destinoSucursalId: sucursalId, estado: "ENVIADA" },
     { origenSucursalId: sucursalId, estado: "RECHAZADA_DESTINO" },
+    { destinoSucursalId: sucursalId, estado: "SOLICITADA", iniciadoPor: "DESTINO" }, // mi propia solicitud PULL, esperando que Origen decida
+    { origenSucursalId: sucursalId, estado: "ENVIADA", iniciadoPor: "ORIGEN" }, // mi propio envío PUSH, esperando que Destino decida
   ];
 }
 
@@ -388,11 +428,24 @@ export async function obtenerBandejaTransferencias(sucursalId: string, cursorHis
   const paraAprobar = enCurso.filter((t) => t.origenSucursalId === sucursalId && t.estado === "SOLICITADA");
   const paraAceptar = enCurso.filter((t) => t.destinoSucursalId === sucursalId && t.estado === "ENVIADA");
   const paraReingreso = enCurso.filter((t) => t.origenSucursalId === sucursalId && t.estado === "RECHAZADA_DESTINO");
+  // Lo que ESTA sucursal inició y sigue esperando que decida la otra — nada para accionar acá, solo visibilidad (y, para la solicitud PULL propia, poder cancelarla).
+  const esperando = enCurso.filter(
+    (t) =>
+      (t.destinoSucursalId === sucursalId && t.estado === "SOLICITADA" && t.iniciadoPor === "DESTINO") ||
+      (t.origenSucursalId === sucursalId && t.estado === "ENVIADA" && t.iniciadoPor === "ORIGEN")
+  );
 
   const hayMasHistorial = historialMasUno.length > TAMANO_PAGINA_HISTORIAL;
   const historial = hayMasHistorial ? historialMasUno.slice(0, TAMANO_PAGINA_HISTORIAL) : historialMasUno;
 
-  return { paraAprobar, paraAceptar, paraReingreso, historial, nextCursorHistorial: hayMasHistorial ? historial[historial.length - 1].id : null };
+  return {
+    paraAprobar,
+    paraAceptar,
+    paraReingreso,
+    esperando,
+    historial,
+    nextCursorHistorial: hayMasHistorial ? historial[historial.length - 1].id : null,
+  };
 }
 
 /** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. */
