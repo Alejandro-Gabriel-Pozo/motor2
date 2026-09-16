@@ -11,7 +11,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 - ~~Sidebar sin ningún mecanismo de colapso, en ningún tamaño de pantalla~~ — **resuelto (2026-09-16)**. Nuevo `SidebarColapsable` (toggle siempre visible, preferencia persistida en localStorage) (commit `a3c8c51`).
 - ~~Costos y márgenes sin explicación de fórmula (Margen $/%, Food cost %, umbral 40% hardcodeado)~~ — **resuelto (2026-09-16)**. `ayuda` en las columnas Margen/Food cost %/Estado (commit `54b56ce`).
 - ~~Proveedores sin edición~~ — **resuelto (2026-09-16)**. Nueva `actualizarProveedor` (nombre queda fuera a propósito) + link "Editar" por fila (commit `7d5ae55`).
-- Diferencias de ajuste: el grupo "Solo receta" queda en "ESPERADO" sin sugerir cuánto debería cambiar la Merma% ni linkear a la receta.
+- ~~Diferencias de ajuste: el grupo "Solo receta" queda en "ESPERADO" sin sugerir cuánto debería cambiar la Merma% ni linkear a la receta~~ — **resuelto (2026-09-16)**. Nuevo `recetasQueLoUsan` (link directo a cada receta que usa el insumo, con su merma % vigente) + `sugerenciaMerma` (dirección — aumentar/disminuir — no un número puntual: atribuir la magnitud exacta exigiría prorratear entre recetas, mismo riesgo que la opción B descartada para Rendimiento real) (commit `bd5babb`).
 - Ficha técnica de Recetas (cabecera: rendimiento/raciones/tiempos) es un form siempre editable, sin modo vista — a diferencia de Ingredientes/Pasos en la misma página.
 
 ## Hallazgos nuevos de la auditoría
