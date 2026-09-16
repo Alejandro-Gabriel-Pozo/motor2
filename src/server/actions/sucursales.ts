@@ -53,7 +53,7 @@ export async function crearSucursalConAdmin(input: {
           notas: "Alta automática al crear la sucursal.",
         },
       });
-    }, { maxWait: 30_000, timeout: 300_000 });
+    }, { maxWait: 5_000, timeout: 15_000 });
 
     return ok(`Sucursal "${nombre}" creada, con "${email}" como primer admin.`);
   });
