@@ -57,7 +57,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 - ~~**El selector de producto del panel genérico no filtra por proceso, a diferencia de Venta y Conteo Físico.**~~ — **resuelto (2026-09-16)**. Nuevo `filtroProducto` en `ProcesoUiConfig`, derivado por proceso espejando `productoValidoParaProceso` (Compra solo MP, Dev. consignación/proveedor filtran por `esConsignacion`, el resto exige stock real) (commit `18af7b4`).
 - ~~**Ajuste de stock: nada en la UI indica que la cantidad puede ser negativa.**~~ — **resuelto (2026-09-16)**. `AyudaIcono` + placeholder junto al campo Cantidad, solo cuando `config.cantidadConSigno` (commit `fac9d40`).
-- **Cancelar/ajustar un conteo físico resuelto o pendiente actúa al instante, sin confirmación.** Los botones "Cancelar" y "Ajustar ahora" son forms conectados directo al server action, sin window.confirm ni diálogo intermedio, siendo las dos acciones del módulo con más potencial de tocar stock por error de un clic.
+- ~~**Cancelar/ajustar un conteo físico resuelto o pendiente actúa al instante, sin confirmación.**~~ — **resuelto (2026-09-16)**. Paso de confirmación inline (mismo patrón que `FormRenombrarInsumo`) antes de escribir el ajuste o la reversión; el resultado ahora se muestra siempre (commit `aa02bb1`).
 
 **Prioridad baja**
 
