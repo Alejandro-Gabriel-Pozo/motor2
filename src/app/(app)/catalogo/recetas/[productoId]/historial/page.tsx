@@ -60,6 +60,17 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                   — {v.creadoEn.toLocaleDateString("es-AR")} {v.creadoEn.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </h2>
+              {(() => {
+                const detalles: string[] = [];
+                if (v.rendimientoCantidad != null) detalles.push(`Rendimiento: ${Number(v.rendimientoCantidad)} ${v.rendimientoUnidad?.nombre ?? ""}`.trim());
+                if (v.racionesCantidad != null) detalles.push(`Raciones: ${v.racionesCantidad}`);
+                if (v.racionTamano != null) detalles.push(`Tamaño de ración: ${Number(v.racionTamano)} ${v.racionUnidad?.nombre ?? ""}`.trim());
+                if (v.tiempoPreparacionMinutos != null) detalles.push(`Prep.: ${v.tiempoPreparacionMinutos} min`);
+                if (v.tiempoCoccionMinutos != null) detalles.push(`Cocción: ${v.tiempoCoccionMinutos} min`);
+                return detalles.length > 0 ? <p className="mb-2 text-xs text-neutral-500">{detalles.join(" — ")}</p> : null;
+              })()}
+              {v.comentarios && <p className="mb-2 text-xs text-neutral-500">Comentarios: {v.comentarios}</p>}
+
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-neutral-500">
@@ -80,6 +91,28 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                   ))}
                 </tbody>
               </table>
+
+              {v.pasos.length > 0 && (
+                <div className="mt-3">
+                  <h3 className="mb-1 text-xs font-medium text-neutral-500">Método de preparación</h3>
+                  <ol className="flex flex-col gap-1 text-sm">
+                    {v.pasos.map((paso) => (
+                      <li key={paso.id}>
+                        <span className="font-medium">
+                          {paso.orden}. {paso.nombre || "Paso"}
+                        </span>
+                        {paso.minutos != null && <span className="text-xs text-neutral-500"> ({paso.minutos} min)</span>}
+                        <p className="text-neutral-700 dark:text-neutral-300">{paso.instruccion}</p>
+                        {paso.ingredientes.length > 0 && (
+                          <p className="text-xs text-neutral-500">
+                            Ingredientes: {paso.ingredientes.map((pi) => pi.recetaIngrediente.insumoProducto.nombre).join(", ")}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
             </div>
           ))}
         </div>
