@@ -96,7 +96,7 @@ Este documento consolida los hallazgos de la auditoría de 6 módulos de motor2 
 
 - ~~**Reporte por período: el aviso de "compras sin precio" se calcula pero nunca se muestra.**~~ — **resuelto (2026-09-16)**. `rep.compras.aviso` ahora se renderiza, mismo patrón que ventas/margen (commit `610e1b2`).
 - ~~**Vencimientos: el criterio "consistente" vs. "revisar" de la conciliación no se explica en la pantalla.**~~ — **resuelto (2026-09-16)**. Nuevo campo `ayuda` en `ColumnaReporte` (genérico, reusable en cualquier reporte), usado en la columna "Estado" (commit `934f65a`).
-- **Valuación de inventario usa una tabla HTML cruda, sin el orden/export CSV que sí tiene el resto de los reportes.** Todos los demás reportes usan el componente compartido TablaReporte; Valuación, que es justo el caso de uso pensado para llevar a una planilla contable, no.
+- ~~**Valuación de inventario usa una tabla HTML cruda, sin el orden/export CSV que sí tiene el resto de los reportes.**~~ — **resuelto (2026-09-16)**. Migrado a `TablaReporte` (commit `2e76640`).
 
 ### traspasos
 
@@ -120,4 +120,6 @@ Los 5 quedaron resueltos el 2026-09-16, en este orden:
 4. ~~**El tipo (MP/PV) se descarta en silencio al editar un producto (catalogo)**~~ — corrompía el catálogo sin ningún aviso, con impacto en costos y recetas aguas abajo. Commit `0850a85`.
 5. ~~**La cantidad de una solicitud PULL entra al Kardex sin redondear (traspasos)**~~ — rompía un invariante de datos ya documentado y contaminaba la trazabilidad de stock en 3 puntos del ciclo. Commit `bfd0ec0`.
 
-Quedan 29 hallazgos más (ver arriba, por módulo) sin atacar todavía.
+Los 29 hallazgos restantes (todo "prioridad media" y "prioridad baja" de los 6 módulos) quedaron resueltos el 2026-09-16, uno por uno, en el mismo orden en que aparecen arriba — ver cada bullet tachado para su commit. Los 34 hallazgos de "Hallazgos nuevos de la auditoría" quedan cerrados por completo.
+
+Sigue abierta la sección "Pendiente, ya identificado antes de esta auditoría" (arriba del todo) — esos 5 ítems son de una ronda anterior, no del audit de los 6 módulos, y no se tocaron en esta pasada.
