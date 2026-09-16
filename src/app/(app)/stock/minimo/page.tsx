@@ -1,8 +1,9 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/secciones";
-import { listarStockMinimo, eliminarStockMinimo } from "@/server/actions/stock-minimo";
+import { listarStockMinimo } from "@/server/actions/stock-minimo";
 import { StockMinimoForm } from "./stock-minimo-form";
+import { BotonEliminarStockMinimo } from "./boton-eliminar";
 
 export default async function StockMinimoPage() {
   const ctx = await obtenerContextoUsuario();
@@ -33,16 +34,7 @@ export default async function StockMinimoPage() {
                 <td>{f.seccion?.nombre ?? "Global (toda la sucursal)"}</td>
                 <td>{Number(f.minimo)}</td>
                 <td>
-                  <form
-                    action={async () => {
-                      "use server";
-                      await eliminarStockMinimo(f.id);
-                    }}
-                  >
-                    <button type="submit" className="text-sm underline">
-                      Eliminar
-                    </button>
-                  </form>
+                  <BotonEliminarStockMinimo id={f.id} etiqueta={`"${f.producto.nombre}" en ${f.seccion?.nombre ?? "Global (toda la sucursal)"}`} />
                 </td>
               </tr>
             ))}
