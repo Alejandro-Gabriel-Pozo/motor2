@@ -495,7 +495,7 @@ describe("seed demo pizzería La Cuadra", () => {
         // Verdulería: aparte, la compra de oportunidad de MP011B (feria, sin proveedor) — 1 vez por semana, jueves.
         if (dow === 4) {
           const necesidadMorron = necesidad.directa.MP011 ?? 0;
-          const cantidadB = Math.max(1, Math.round((necesidadMorron * BUFFER * 0.3) / 1));
+          const cantidadB = Math.max(1, Math.round((necesidadMorron * BUFFER * 0.4) / 1));
           const rB = await registrarMovimiento({
             proceso: "COMPRA",
             fecha,
