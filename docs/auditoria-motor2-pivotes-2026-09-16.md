@@ -195,7 +195,7 @@ Script `scripts/auditoria-benchmark-reportes.ts` (queda en el repo como herramie
 3. **Hallazgo adicional no anticipado en el plan original**: `obtenerHistorialProducto` (`src/core/reportes/historial-producto.ts:84-91`) carga el historial COMPLETO de un producto sin ningún filtro de fecha en la consulta a la base — el recorte por `desde`/`hasta` se aplica DESPUÉS, en memoria, sobre el array ya completo (comentario del propio código: "sin recortar por fecha todavía"). En este benchmark no se notó (el producto más movido solo tenía ~2.000 movimientos en 3 años), pero para un producto verdaderamente longevo (años de operación diaria) esta consulta crece sin límite, sin importar qué rango de fechas pida el usuario. **VERIFICADO_EN_CODIGO** como patrón de riesgo, mismo tipo de hallazgo que la ausencia de paginación en `tabla-reporte.tsx` ya señalada en el informe original.
 4. El uso de memoria (333MB de heap) para un solo proceso corriendo estas 8 mediciones es alto pero no alarmante para un servidor típico — no se cruzó ningún límite duro en esta corrida.
 
-**Pivote 5: CERRADO (con hallazgos).** Candidato: **R2 — Optimizar consultas** para `obtenerReportePorPeriodo` (filtrar más en la query, no traer todo a memoria) y `obtenerHistorialProducto` (aplicar `desde`/`hasta` en el `where`, no después). No se encontró evidencia que justifique R4/R5 (proyección de saldo o `StockBalance`) — la agregación base es rápida; el problema está en 2 reportes específicos, no en el modelo de datos.
+**Pivote 5: CERRADO (con hallazgos).** Candidato: **R2 — Optimizar consultas** para `obtenerReportePorPeriodo` (filtrar más en la query, no traer todo a memoria) y `obtenerHistorialProducto` (aplicar `desde`/`hasta` en el `where`, no después). No se encontró evidencia que justifique R4/R5 (proyección de saldo o `StockBalance`) — la agregación base es rápida; el problema está en 2 reportes específicos, no en el modelo de datos. **IMPLEMENTADO** 2026-09-17, commit `9c52d6f` — ver §11 Plan 3 para el detalle completo, incluida una corrección importante: `obtenerReportePorPeriodo` no tenía el mismo defecto que `obtenerHistorialProducto` (SÍ filtraba por fecha) — su lentitud era por hidratación de Prisma con `include` completo, no por falta de filtro; el fix real ahí fue `select` acotado, no un cambio de query de fecha.
 
 ### Pivote 6 — Auditoría y trazabilidad, revisión campo-por-campo (cierre)
 
@@ -555,7 +555,7 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
 | 2. Idempotencia | ¿Debe impedirse que un doble envío/timeout/reintento duplique una operación? | Ausencia confirmada en 6/7 procesos + 2 guardas racy — COMPRA y rechazo de traspaso (§7, §8) | FALLO_CONFIRMADO | **I3** | Sí — modificar código (8 Server Actions) + modificar schema/migración + agregar pruebas | 4 (último — único que toca el modelo de persistencia) | Negocio (política ya definida) + técnica para ejecutar |
 | 3. Traspasos en tránsito | ¿El estado "en tránsito" es válido, visible y recuperable? | 7 casos del plan, sin fallo salvo el hallazgo de rechazo (ya contabilizado en el paquete I3) (§6, §9) | VERIFICADO_EN_CODIGO | **T1** | No | — | Ninguno pendiente |
 | 4. Precisión numérica | ¿Las conversiones Decimal→number y los cálculos acumulados producen diferencias bajo cero tolerancia? | 147 conversiones clasificadas, 12 casos ejecutados, 1 fallo puntual reproducido (§9) | FALLO_CONFIRMADO (puntual) | **N3** | Sí — modificar código (1 línea) + agregar prueba de regresión | 1 (primero — cambio más chico y acotado) — **IMPLEMENTADO** | Técnica |
-| 5. Escalabilidad | ¿Las agregaciones/reportes soportan el volumen esperado (500-1000 mov/día, 5-10 sucursales, 3-5 años)? | Benchmark real con 551.880 movimientos (§8) — 2 consultas degradadas | FALLO_CONFIRMADO (rendimiento) | **R2** | Sí — modificar código (2 queries) | 3 | Técnica |
+| 5. Escalabilidad | ¿Las agregaciones/reportes soportan el volumen esperado (500-1000 mov/día, 5-10 sucursales, 3-5 años)? | Benchmark real con 551.880 movimientos (§8) — 2 consultas degradadas | FALLO_CONFIRMADO (rendimiento) | **R2** | Sí — modificar código (2 queries) — **IMPLEMENTADO** | 3 | Técnica |
 | 6. Auditoría y trazabilidad | ¿Los modelos registran suficiente información para reconstruir decisiones de negocio? | Revisión campo-por-campo (§8) — Kardex fuerte, catálogo/precios/permisos sin ningún rastro | NO_ENCONTRADO (parcial) | **A1** (Kardex) + **A3 candidato** (administración) | No obligatorio ahora — mejora futura condicionada a una decisión de negocio | — | Negocio (alcance regulatorio vs. control interno, todavía sin definir) |
 
 ### Los 4 paquetes de cambio, en el orden acordado
@@ -576,12 +576,13 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
      intentos exigiendo éxito siempre (confirmado rojo antes / verde
      después, 60 intentos totales sin fallo tras el fix)
 
-3. R2 — Escalabilidad
-   Archivos: src/core/reportes/periodo.ts (obtenerReportePorPeriodo),
-     src/core/reportes/historial-producto.ts (obtenerHistorialProducto)
-   Cambio: filtrar por fecha en la query, no en memoria
-   Prueba de regresión: correr scripts/auditoria-benchmark-reportes.ts
-     de nuevo y confirmar la mejora de tiempo
+3. R2 — Escalabilidad — IMPLEMENTADO (commit 9c52d6f, 2026-09-17)
+   Archivos: src/core/reportes/periodo.ts (select acotado, el filtro de
+     fecha ya estaba bien), src/core/reportes/historial-producto.ts
+     (saldoInicial por agregación + detalle filtrado en la query)
+   Medido con un producto sintético de 30.000 movimientos: historial
+     con filtro de 1 mes 1012.8ms → 85.1ms (~12x); período de 3 años
+     3772.1ms → 2119.7ms (~44%). Sin índices ni migraciones nuevas.
 
 4. I3 — Idempotencia (el más grande, separado del resto)
    Archivos: prisma/schema.prisma (migración), 8 Server Actions,
@@ -864,6 +865,41 @@ IMPLEMENTADO 2026-09-17 (commit `5ff3cff`): fix aplicado como
     re-corrido con mejora medible o, si no la hay a esta escala,
     justificación explícita de por qué (dataset del benchmark no
     estresa lo suficiente este caso puntual).
+
+IMPLEMENTADO 2026-09-17 (commit `9c52d6f`): corrección de diagnóstico
+  importante antes de implementar — `obtenerReportePorPeriodo` NO
+  tenía el defecto de "sin filtro de fecha" (ya filtraba en el WHERE,
+  confirmado con EXPLAIN ANALYZE: 106ms de ejecución SQL real para
+  ~69.000 filas). Su lentitud era por el costo de hidratación de
+  Prisma Client con `include` completo — medido específicamente
+  (findMany con include completo vs select acotado, mismo dataset, 3
+  corridas cada uno): ~2000ms vs ~1150ms, ~45% más rápido, sin cambiar
+  el filtro de fecha ni una sola fila del resultado.
+
+  `obtenerHistorialProducto` sí tenía el defecto real (carga sin
+  filtro). Fix: saldoInicial vía `aggregate` SUM(cantidad) WHERE fecha
+  < desde (sin cargar detalle), detalle traído ya filtrado por
+  [desde,hasta] en el WHERE, saldoCorriente arranca de saldoInicial.
+  saldoActual/totalMovimientos/totalConteos calculados aparte, SIN
+  filtro de fecha (agregación/count independientes) — preserva
+  exactamente la invariante ya documentada en el código y visible en
+  la UI ("el saldo corriente arranca del primer movimiento real, no
+  del rango elegido"). Verificado con test/reportes/
+  historial-producto.test.ts: 3 casos preexistentes sin cambios de
+  expectativa + 3 regresiones nuevas (totalMovimientos con `desde`
+  activo, solo `hasta` sin `desde`, seccionId+rango combinados).
+
+  Medición controlada antes/después (git stash del fix, mismo dataset
+  vía scripts/auditoria-benchmark-reportes.ts extendido con un
+  producto sintético de 30.000 movimientos concentrados — casos 5c/5d
+  nuevos del benchmark): historial con filtro de 1 mes 1012,8ms →
+  85,1ms (~12×); el mismo producto SIN filtro de fecha se mantuvo casi
+  igual (917,7ms → 902,3ms — correcto, ahí no hay nada que optimizar,
+  necesita todo el historial igual); período de 3 años 3772,1ms →
+  2119,7ms (~44%); período de 7 días sin cambio significativo (ya era
+  rápido). Ningún índice ni migración fue necesario. Suite completa
+  56/56 archivos, 337/337 tests. `tsc`/`eslint` sin errores nuevos.
+  C2 e I3 sin cambios (diff vacío verificado en 7 archivos).
 ```
 
 ### Plan 4 — I3 (Idempotencia) — el más grande, deliberadamente aislado
@@ -969,4 +1005,4 @@ IMPLEMENTADO 2026-09-17 (commit `5ff3cff`): fix aplicado como
 
 **Orden de implementación**: N3 → C2 → R2 → I3 (acordado). Cada paquete se implementa, prueba y commitea por separado — no se mezclan en un solo cambio.
 
-**Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17) — ver detalle arriba y en §9. C2 **implementado** (commit `5ff3cff`, 2026-09-17) — ver detalle en el Plan 2 arriba. R2, I3 siguen sin implementar, a la espera de autorización explícita paquete por paquete, en ese orden.
+**Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17). C2 **implementado** (commit `5ff3cff`, 2026-09-17). R2 **implementado** (commit `9c52d6f`, 2026-09-17) — ver detalle en el Plan 3 arriba. Solo **I3** sigue sin implementar, a la espera de autorización explícita — es el único paquete que toca schema y varios contratos de Server Actions a la vez.
