@@ -227,6 +227,8 @@ Ningún modelo de catálogo/precios/permisos tiene siquiera un `updatedAt` gené
 
 Cuatro de seis pivotes (1, 3, 5, 6) quedan formalmente cerrados con un candidato técnico único y sin ambigüedad. Dos (2 y 4) tienen la decisión de negocio ya resuelta pero requieren completar trabajo técnico (planes de implementación / casos de prueba restantes) antes de poder considerarse cerrados.
 
+*(Nota: esta tabla es un snapshot histórico, anterior al cierre completo de los Pivotes 2 y 4 y a la implementación de N3/C2/R2. El estado vigente está en §10 "Matriz de decisión final" y el resumen ejecutivo de §11/§12 más abajo.)*
+
 **Ningún código de producción fue modificado en esta etapa** — todo lo anterior es evidencia (pruebas nuevas en `test/auditoria/` + el script de benchmark en `scripts/`). Los cambios de código correspondientes a los candidatos C2 (Pivote 1) e I3 (Pivote 2) requieren un plan de implementación formal (seguí la Sección 13 de la instrucción) y autorización explícita antes de tocar `con-reintento.ts`, `movimientos.ts` o el schema.
 
 ---
@@ -900,6 +902,17 @@ IMPLEMENTADO 2026-09-17 (commit `9c52d6f`): corrección de diagnóstico
   rápido). Ningún índice ni migración fue necesario. Suite completa
   56/56 archivos, 337/337 tests. `tsc`/`eslint` sin errores nuevos.
   C2 e I3 sin cambios (diff vacío verificado en 7 archivos).
+
+  Nota de alcance sobre el benchmark: los milisegundos de arriba salen
+  de un dataset SINTÉTICO (551.880 movimientos del escenario estándar
+  + 30.000 concentrados en un producto puntual, generados vía SQL
+  bulk, no vía tráfico real) corriendo en este contenedor de sesión,
+  no en la infraestructura de producción (Neon). Son comparativos —
+  antes/después sobre el MISMO dataset, en la MISMA corrida — y
+  confiables como evidencia de que el cambio reduce el costo real de
+  estas dos consultas. No deben leerse como una garantía de tiempo de
+  respuesta en producción (que depende de la latencia de red a Neon,
+  el hardware real, y el volumen real del negocio) ni como un SLA.
 ```
 
 ### Plan 4 — I3 (Idempotencia) — el más grande, deliberadamente aislado
@@ -1006,3 +1019,31 @@ IMPLEMENTADO 2026-09-17 (commit `9c52d6f`): corrección de diagnóstico
 **Orden de implementación**: N3 → C2 → R2 → I3 (acordado). Cada paquete se implementa, prueba y commitea por separado — no se mezclan en un solo cambio.
 
 **Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17). C2 **implementado** (commit `5ff3cff`, 2026-09-17). R2 **implementado** (commit `9c52d6f`, 2026-09-17) — ver detalle en el Plan 3 arriba. Solo **I3** sigue sin implementar, a la espera de autorización explícita — es el único paquete que toca schema y varios contratos de Server Actions a la vez.
+
+---
+
+## 12. Revisión general antes de I3 (2026-09-17)
+
+```text
+N3 ✅ implementado — commit 5c0fd96
+C2 ✅ implementado — commit 5ff3cff
+R2 ✅ implementado — commit 9c52d6f
+I3 ⏳ pendiente de autorización
+```
+
+Verificación consolidada (sin repetir auditoría ni rehacer benchmarks):
+
+| Chequeo | Resultado |
+|---|---|
+| Suite acumulada | **56/56 archivos, 337/337 tests** (última corrida, post-R2) |
+| `tsc --noEmit` (repo completo) | Mismos errores preexistentes que antes de N3 (confirmado comparando contra el commit base `82556df`, previo a toda la auditoría) — ninguno en `movimientos.ts`, `con-reintento.ts`, `periodo.ts` ni `historial-producto.ts` |
+| `eslint .` (repo completo) | **5 errores, 24 warnings — idénticos antes y después** de N3/C2/R2 (mismo conteo comparando contra `82556df`); ninguno en archivos tocados por esos 3 paquetes |
+| Working tree | Limpio, sincronizado con `origin/claude/migration-plan-px7c0b` |
+| Commits | 6 commits de N3/C2/R2 (3 de código + 3 de documentación), cada uno con su propio mensaje detallado |
+| Diffs dentro de alcance | Confirmado por paquete (`git show --stat`): N3 solo tocó `movimientos.ts` + 2 tests; C2 solo `con-reintento.ts` + 2 tests; R2 solo los 2 reportes + su test + el benchmark |
+| Schema y migraciones | **Intactos** — `git diff --stat prisma/schema.prisma` vacío; ninguna migración nueva desde antes de esta auditoría |
+| `package.json` / dependencias | Sin cambios en ningún paquete |
+
+**Nota sobre el benchmark de R2**: los milisegundos reportados (§11 Plan 3) salen de un dataset sintético generado en este contenedor de sesión, no de producción — son evidencia comparativa (antes/después, mismo dataset, misma corrida) de que el cambio reduce el costo real de las 2 consultas, no una garantía de tiempo de respuesta en Neon ni un SLA.
+
+**Conclusión de la revisión**: los 3 paquetes implementados (N3, C2, R2) están completos, verificados, documentados, y no dejan ningún cambio pendiente ni deuda nueva. El repositorio está en condiciones de continuar con **I3** — el plan detallado y la auditoría de facturas duplicadas en datos reales (paso previo obligatorio antes de crear el constraint, ver Plan 4 §11 punto 8) son el siguiente paso, no autorizado todavía.
