@@ -61,6 +61,15 @@ function rangoUtc(desde: Date, hasta: Date): { desde: Date; hasta: Date } {
 export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db = prisma) {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
 
+  // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md
+  // §11 Plan 3): el filtro de fecha/sección/producto/proceso YA estaba en
+  // el WHERE (no era el defecto acá) — lo que dominaba el tiempo con
+  // rangos amplios era el costo de hidratar cada fila con el `include`
+  // completo (Producto/Seccion/Operacion+Proveedor enteros), no la
+  // consulta SQL en sí (confirmada rápida con EXPLAIN ANALYZE). Un
+  // `select` acotado a las columnas que el `.map()` de abajo realmente
+  // usa reduce ese costo de hidratación sin cambiar ninguna fila
+  // devuelta ni el resultado final.
   const movimientos = await db.movimientoStock.findMany({
     where: {
       seccion: { sucursalId },
@@ -69,7 +78,21 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
       ...(filtros.seccionId ? { seccionId: filtros.seccionId } : {}),
       ...(filtros.productoId ? { productoId: filtros.productoId } : {}),
     },
-    include: { producto: true, seccion: true, operacion: { include: { proveedor: true } } },
+    select: {
+      id: true,
+      productoId: true,
+      detalle: true,
+      cantidad: true,
+      loteVencimiento: true,
+      proceso: true,
+      seccionId: true,
+      operacionId: true,
+      precioTotal: true,
+      precioPorUnidadStock: true,
+      producto: { select: { nombre: true, codigo: true } },
+      seccion: { select: { nombre: true } },
+      operacion: { select: { fecha: true, nroFactura: true, proveedor: { select: { nombre: true } } } },
+    },
     orderBy: { operacion: { fecha: "asc" } },
   });
 

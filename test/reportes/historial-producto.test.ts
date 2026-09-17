@@ -57,6 +57,44 @@ describe("obtenerHistorialProducto", () => {
     expect(historial?.eventos[0].saldoCorriente).toBe(15); // pero ya arrastra la primera compra
     expect(historial?.saldoActual).toBe(15);
   });
+
+  it("REGRESIÓN (Plan R2): totalMovimientos/totalConteos siguen siendo el total DE SIEMPRE, incluso con un filtro `desde` que oculta movimientos anteriores", async () => {
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }] });
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: new Date("2026-01-03"), accion: "DESCARTAR" });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
+
+    // Filtro que deja fuera del rango visible a los 2 primeros movimientos
+    // y al conteo — igual deben contarse en el total.
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, new Date("2026-01-10"), new Date("2026-01-31"));
+    expect(historial?.eventos.length).toBe(1); // solo la compra del 15 es visible
+    expect(historial?.totalMovimientos).toBe(3); // pero el total sigue contando los 3 movimientos reales
+    expect(historial?.totalConteos).toBe(1); // y el conteo, aunque quedó fuera del rango visible
+  });
+
+  it("REGRESIÓN (Plan R2): con solo `hasta` (sin `desde`), se sigue viendo TODO desde el principio hasta esa fecha — sin necesidad de un saldo inicial separado", async () => {
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-02-01"), seccionId, items: [{ productoId: mpId, cantidad: 3 }] });
+
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, new Date("2026-01-31"));
+    expect(historial?.eventos.length).toBe(2); // las dos compras de enero, no la de febrero
+    expect(historial?.eventos[0].saldoCorriente).toBe(10);
+    expect(historial?.eventos[1].saldoCorriente).toBe(15);
+    expect(historial?.saldoActual).toBe(18); // el saldo REAL de hoy incluye la de febrero también
+  });
+
+  it("REGRESIÓN (Plan R2): con seccionId + rango de fechas combinados, el saldo inicial y el detalle respetan AMBOS filtros a la vez", async () => {
+    const seccionB = (await sembrarSeccion(sucursalId, "Depósito B")).id;
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: seccionB, items: [{ productoId: mpId, cantidad: 100 }] }); // otra sección, no debe contaminar
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
+
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, seccionId, new Date("2026-01-10"), new Date("2026-01-31"));
+    expect(historial?.eventos.length).toBe(1);
+    expect(historial?.eventos[0].saldoCorriente).toBe(15); // 10 (saldo inicial de ESTA sección) + 5, sin la seccionB
+    expect(historial?.totalMovimientos).toBe(2); // solo los 2 de seccionId, no el de seccionB
+  });
 });
 
 describe("buscarProductoParaHistorial", () => {

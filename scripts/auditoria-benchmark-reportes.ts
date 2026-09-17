@@ -131,13 +131,34 @@ async function main() {
   const ms = performance.now() - inicioGen;
   console.log(`  MovimientoStock creados: ${totalMovs.toLocaleString("es-AR")} en ${(ms / 1000).toFixed(1)}s\n`);
 
-  // Producto "caliente" — el que más movimientos acumuló, para el peor
-  // caso de obtenerHistorialProducto (que carga TODO el historial del
-  // producto sin recortar por fecha antes de calcular el saldo corriente).
+  // Producto "caliente" — el que más movimientos acumuló entre los
+  // repartidos pseudo-aleatoriamente (~2.000 en 3 años, no alcanza para
+  // estresar de verdad obtenerHistorialProducto).
   const [productoCaliente] = await prisma.$queryRawUnsafe<{ productoId: string; n: bigint }[]>(`
     SELECT "productoId", count(*) as n FROM "MovimientoStock" WHERE id LIKE 'bench_mov_%' GROUP BY "productoId" ORDER BY n DESC LIMIT 1
   `);
-  console.log(`Producto más movido: ${productoCaliente.productoId} (${productoCaliente.n} movimientos)\n`);
+  console.log(`Producto más movido (reparto general): ${productoCaliente.productoId} (${productoCaliente.n} movimientos)`);
+
+  // Producto "longevo" — caso de estrés real para obtenerHistorialProducto:
+  // un producto puntual con MUCHOS más movimientos concentrados que el
+  // promedio (simula, ej., un insumo de uso diario en una sucursal con
+  // años de antigüedad) — acá sí se nota la diferencia entre cargar todo
+  // el historial vs. solo el rango pedido.
+  const productoLongevo = await prisma.producto.create({
+    data: { codigo: "BENCH_LONGEVO", nombre: "Producto Longevo Benchmark", tipo: "MP", unidadStockId: unidad.id, insumoId: insumo.id },
+  });
+  const N_MOVS_LONGEVO = 30000;
+  await prisma.$executeRawUnsafe(`
+    INSERT INTO "Operacion" (id, "sucursalId", proceso, fecha, "usuarioId", "creadoEn")
+    SELECT 'bench_op_longevo_' || n, '${sucursales[0]!.id}', 'COMPRA', now() - ((n % ${DIAS_HISTORIAL}) || ' days')::interval, '${usuario.id}', now()
+    FROM generate_series(0, ${N_MOVS_LONGEVO - 1}) AS n
+  `);
+  await prisma.$executeRawUnsafe(`
+    INSERT INTO "MovimientoStock" (id, "operacionId", "productoId", "seccionId", proceso, cantidad, detalle, "precioTotal", "precioPorUnidadStock", "creadoEn")
+    SELECT 'bench_mov_longevo_' || op.id, op.id, '${productoLongevo.id}', '${secciones[0]!.id}', 'COMPRA', 1, 'Benchmark longevo', 0, 0, op."creadoEn"
+    FROM "Operacion" op WHERE op.id LIKE 'bench_op_longevo_%'
+  `);
+  console.log(`Producto longevo creado: ${productoLongevo.id} (${N_MOVS_LONGEVO.toLocaleString("es-AR")} movimientos concentrados en 1 producto+sección, distribuidos en los ${DIAS_HISTORIAL} días del historial)\n`);
 
   console.log("--- Mediciones (8 puntos del plan) ---\n");
 
@@ -159,11 +180,21 @@ async function main() {
     obtenerHistorialProducto(sucursales[0]!.id, productoFrio, undefined, undefined, undefined)
   );
 
-  console.log("\n5b) Historial de producto — PEOR CASO (producto con MÁS movimientos, filtrando solo el último mes):");
+  console.log("\n5b) Historial de producto — producto 'caliente' del reparto general, filtrando solo el último mes:");
   const haceUnMes = new Date();
   haceUnMes.setDate(haceUnMes.getDate() - 30);
-  await medir("obtenerHistorialProducto (producto caliente, desde=hace 1 mes) — carga TODO el historial igual, filtra después", () =>
+  await medir("obtenerHistorialProducto (producto caliente, desde=hace 1 mes)", () =>
     obtenerHistorialProducto(sucursales[0]!.id, productoCaliente.productoId, undefined, haceUnMes, new Date())
+  );
+
+  console.log("\n5c) Historial de producto — CASO DE ESTRÉS REAL: producto longevo (30.000 movimientos), filtrando solo el último mes:");
+  await medir(`obtenerHistorialProducto (producto longevo, ${N_MOVS_LONGEVO.toLocaleString("es-AR")} movimientos totales, desde=hace 1 mes)`, () =>
+    obtenerHistorialProducto(sucursales[0]!.id, productoLongevo.id, undefined, haceUnMes, new Date())
+  );
+
+  console.log("\n5d) Historial de producto — mismo producto longevo, SIN filtro de fecha (siempre carga todo, antes y después):");
+  await medir("obtenerHistorialProducto (producto longevo, sin filtro de fecha)", () =>
+    obtenerHistorialProducto(sucursales[0]!.id, productoLongevo.id, undefined, undefined, undefined)
   );
 
   console.log("\n6) Reporte por período (obtenerReportePorPeriodo, rango amplio: 3 años completos):");

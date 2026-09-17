@@ -81,13 +81,41 @@ export async function obtenerHistorialProducto(
   const producto = await db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
   if (!producto) return null;
 
-  const [movimientos, conteos] = await Promise.all([
+  const whereMov = { productoId, seccion: { sucursalId }, ...(seccionId ? { seccionId } : {}) };
+  const whereConteo = { productoId, sucursalId, ...(seccionId ? { seccionId } : {}) };
+
+  // Rango [desde 00:00, hasta 23:59:59.999] — mismo criterio UTC que
+  // reportes/periodo.ts.
+  const finDia = hasta ? new Date(hasta) : undefined;
+  finDia?.setUTCHours(23, 59, 59, 999);
+  const filtroFechaMov = desde || finDia ? { operacion: { fecha: { ...(desde ? { gte: desde } : {}), ...(finDia ? { lte: finDia } : {}) } } } : {};
+  const filtroFechaConteo = desde || finDia ? { fecha: { ...(desde ? { gte: desde } : {}), ...(finDia ? { lte: finDia } : {}) } } : {};
+
+  // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md
+  // §11 Plan 3): antes, esta función cargaba TODO el historial del
+  // producto sin filtrar por fecha en la query, sin importar qué rango
+  // pidiera el usuario — crecía sin límite con productos longevos. Ahora
+  // el detalle SOLO trae lo que cae dentro de [desde,hasta] (si se pidió
+  // alguno), y "saldoInicial" (agregado, no el detalle) captura el efecto
+  // de todo lo anterior a `desde` — la cuenta final da EXACTO lo mismo que
+  // sumar el historial completo hasta ese punto, sin cargarlo entero.
+  // saldoActual/totalMovimientos/totalConteos siguen siendo el total real
+  // (de siempre, no del rango) — invariante documentada arriba y en la UI
+  // (reportes/historial/page.tsx: "no del rango elegido") — se calculan
+  // aparte, sin filtro de fecha, nunca a partir del detalle recortado.
+  const [saldoInicial, saldoActualAgg, totalMovimientos, totalConteos, movimientos, conteos] = await Promise.all([
+    desde
+      ? db.movimientoStock.aggregate({ where: { ...whereMov, operacion: { fecha: { lt: desde } } }, _sum: { cantidad: true } }).then((r) => Number(r._sum.cantidad ?? 0))
+      : Promise.resolve(0),
+    db.movimientoStock.aggregate({ where: whereMov, _sum: { cantidad: true } }).then((r) => Number(r._sum.cantidad ?? 0)),
+    db.movimientoStock.count({ where: whereMov }),
+    db.conteoFisico.count({ where: whereConteo }),
     db.movimientoStock.findMany({
-      where: { productoId, seccion: { sucursalId }, ...(seccionId ? { seccionId } : {}) },
+      where: { ...whereMov, ...filtroFechaMov },
       include: { seccion: true, operacion: { include: { proveedor: true } } },
     }),
     db.conteoFisico.findMany({
-      where: { productoId, sucursalId, ...(seccionId ? { seccionId } : {}) },
+      where: { ...whereConteo, ...filtroFechaConteo },
       include: { seccion: true },
     }),
   ]);
@@ -116,28 +144,17 @@ export async function obtenerHistorialProducto(
     estado: c.estado,
   }));
 
-  // Orden cronológico ASCENDENTE de TODO el historial real (sin recortar
-  // por fecha todavía) — el saldo corriente arranca del primer movimiento.
-  const timeline = [...eventosMovimiento, ...eventosConteo].sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+  // Orden cronológico ASCENDENTE de lo que cae en el rango pedido — el
+  // saldo corriente arranca de saldoInicial (todo lo anterior a `desde`
+  // ya resumido en un número), nunca de 0.
+  const eventosVisibles = [...eventosMovimiento, ...eventosConteo].sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
-  let saldo = 0;
-  for (const ev of timeline) {
+  let saldo = saldoInicial;
+  for (const ev of eventosVisibles) {
     if (ev.tipo !== "movimiento") continue;
     saldo += ev.cantidadConSigno!;
     ev.saldoCorriente = redondearCantidad(saldo);
   }
-
-  // Recién ACÁ se recorta por el rango pedido — el saldoCorriente de cada
-  // evento ya quedó calculado sobre el historial completo.
-  const eventosVisibles = timeline.filter((ev) => {
-    if (desde && ev.fecha < desde) return false;
-    if (hasta) {
-      const finDia = new Date(hasta);
-      finDia.setUTCHours(23, 59, 59, 999);
-      if (ev.fecha > finDia) return false;
-    }
-    return true;
-  });
 
   return {
     productoId: producto.id,
@@ -145,9 +162,9 @@ export async function obtenerHistorialProducto(
     producto: producto.nombre,
     tipo: producto.tipo,
     unidadStockNombre: producto.unidadStock.nombre,
-    saldoActual: redondearCantidad(saldo),
+    saldoActual: redondearCantidad(saldoActualAgg),
     eventos: eventosVisibles,
-    totalMovimientos: eventosMovimiento.length,
-    totalConteos: eventosConteo.length,
+    totalMovimientos,
+    totalConteos,
   };
 }
