@@ -27,6 +27,10 @@
 # worktrees de agentes en background (Agent tool, isolation: "worktree")
 .claude/worktrees/
 
+# config local de Claude Code (puede tener permisos con secretos embebidos,
+# ej. connection strings de DB) — nunca se commitea
+.claude/settings.local.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
