@@ -14,6 +14,7 @@ import {
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
+import { crearCacheProducto } from "@/core/movimientos/producto-cache";
 import { upsertProveedorPorProducto } from "./proveedor-por-producto";
 import { conPermiso } from "./con-permiso";
 import { error, type ResultadoAccion } from "./tipos";
@@ -86,7 +87,8 @@ async function calcularConsumosProduccion(
   productoId: string,
   cantidadProducida: number,
   seccionId: string,
-  tx: Prisma.TransactionClient
+  tx: Prisma.TransactionClient,
+  obtenerProducto: ReturnType<typeof crearCacheProducto>
 ): Promise<{ productoId: string; cantidad: number; loteVencimiento: Date | null }[]> {
   const receta = await tx.recetaVersion.findFirst({ where: { productoId }, orderBy: { version: "desc" }, include: { ingredientes: true } });
   if (!receta?.ingredientes.length) return [];
@@ -94,7 +96,7 @@ async function calcularConsumosProduccion(
   const partes: { productoId: string; cantidad: number; loteVencimiento: Date | null }[] = [];
   for (const ing of receta.ingredientes) {
     const cantidadSalida = cantidadProducida * Number(ing.cantidad) * (1 + Number(ing.mermaPorcentaje) / 100);
-    const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx);
+    const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx, obtenerProducto);
     partes.push(...reparto);
   }
   return partes;
@@ -104,10 +106,11 @@ async function calcularConsumosProduccion(
 async function armarLineaMovimiento(
   item: ItemMovimientoInput,
   datos: DatosMovimientoInput,
-  tx: Prisma.TransactionClient
+  tx: Prisma.TransactionClient,
+  obtenerProducto: ReturnType<typeof crearCacheProducto>
 ): Promise<{ ok: true; linea: LineaCalculada | null } | { ok: false; mensaje: string }> {
   const transicion = TRANSICIONES[datos.proceso];
-  const producto = await tx.producto.findUnique({ where: { id: item.productoId }, include: { unidadStock: true, unidadCompra: true } });
+  const producto = await obtenerProducto(item.productoId);
   if (!producto || !producto.activo) return { ok: false, mensaje: `El producto no existe o está inactivo.` };
 
   if (!productoValidoParaProceso(datos.proceso, producto)) {
@@ -174,7 +177,7 @@ async function armarLineaMovimiento(
     : cantidadStock; // Ajuste: ya viene firmado en `numCant` (aplicaFactorConversion siempre false acá).
 
   const consumosReceta = transicion.generaConsumoDeReceta
-    ? await calcularConsumosProduccion(producto.id, Math.abs(cantidadFirmada), datos.seccionId, tx)
+    ? await calcularConsumosProduccion(producto.id, Math.abs(cantidadFirmada), datos.seccionId, tx, obtenerProducto)
     : [];
 
   return {
@@ -241,10 +244,11 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
       if (chequeo.estado === "duplicado") return { ok: true as const, mensaje: chequeo.mensaje, lineasParaProveedor: [] };
       if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
+      const obtenerProducto = crearCacheProducto(tx);
       // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
       const lineas: LineaCalculada[] = [];
       for (const item of datos.items) {
-        const armado = await armarLineaMovimiento(item, datos, tx);
+        const armado = await armarLineaMovimiento(item, datos, tx, obtenerProducto);
         if (!armado.ok) return error(armado.mensaje);
         if (armado.linea) lineas.push(armado.linea);
       }
@@ -273,7 +277,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
       for (const { productoId, seccionId, cantidad } of requeridoPorClave.values()) {
         const chequeo = await validarStockSuficiente(productoId, seccionId, cantidad, tx);
         if (!chequeo.ok) {
-          const producto = await tx.producto.findUnique({ where: { id: productoId } });
+          const producto = await obtenerProducto(productoId);
           const pista = await seccionesConStock(productoId, ctx.sucursalId, tx);
           const detallePista = pista.length ? ` Tiene stock en: ${pista.join(", ")}.` : "";
           return error(
@@ -329,7 +333,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
             // persistir, se ajusta a los decimales que admite la unidad de
             // stock de ESTE insumo (mismo criterio que ya aplica venta.ts
             // para el consumo de receta generado por una venta).
-            const consumido = await tx.producto.findUnique({ where: { id: c.productoId }, include: { unidadStock: true } });
+            const consumido = await obtenerProducto(c.productoId);
             const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
 
             filas.push({

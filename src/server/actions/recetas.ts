@@ -239,7 +239,7 @@ export async function guardarReceta(
               });
             }
           }
-        });
+        }, { maxWait: 5_000, timeout: 15_000 });
         return ok(`Receta de "${producto.nombre}" guardada como versión ${version}.`);
       } catch (e) {
         if (esErrorDeUnicidad(e) && intento < maxIntentos - 1) continue;

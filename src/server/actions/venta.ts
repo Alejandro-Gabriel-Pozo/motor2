@@ -7,6 +7,7 @@ import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConSt
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
+import { crearCacheProducto } from "@/core/movimientos/producto-cache";
 import { conPermiso } from "./con-permiso";
 import { error, ok, type ResultadoAccion } from "./tipos";
 
@@ -52,12 +53,13 @@ async function armarVentaCalculada(
   item: ItemVentaInput,
   seccionId: string,
   sucursalId: string,
-  tx: Prisma.TransactionClient
+  tx: Prisma.TransactionClient,
+  obtenerProducto: ReturnType<typeof crearCacheProducto>
 ): Promise<{ ok: true; venta: VentaCalculada | null } | { ok: false; mensaje: string }> {
   const cantidad = Number(item.cantidadVendida || 0);
   if (!(cantidad > 0)) return { ok: true, venta: null };
 
-  const producto = await tx.producto.findUnique({ where: { id: item.productoId }, include: { unidadStock: true } });
+  const producto = await obtenerProducto(item.productoId);
   if (!producto || !producto.activo) return { ok: false, mensaje: `El producto no existe o no está activo.` };
   if (producto.tipo !== "PV") {
     return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para venta: solo se puede vender un PV (vinculado por receta a la materia prima que consume).` };
@@ -68,12 +70,12 @@ async function armarVentaCalculada(
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
     const receta = await tx.recetaVersion.findFirst({ where: { productoId: producto.id }, orderBy: { version: "desc" }, include: { ingredientes: true } });
     for (const ing of receta?.ingredientes ?? []) {
-      const mp = await tx.producto.findUnique({ where: { id: ing.insumoProductoId } });
+      const mp = await obtenerProducto(ing.insumoProductoId);
       if (!mp?.activo || mp.tipo !== "MP") {
         return { ok: false, mensaje: `La materia prima de la receta de "${producto.nombre}" no está marcada como MP activa.` };
       }
       const cantidadSalida = cantidad * Number(ing.cantidad) * (1 + Number(ing.mermaPorcentaje) / 100);
-      const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx);
+      const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx, obtenerProducto);
       consumos.push(...reparto);
     }
   }
@@ -124,9 +126,10 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       if (chequeo.estado === "duplicado") return ok(chequeo.mensaje);
       if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
+      const obtenerProducto = crearCacheProducto(tx);
       const ventas: VentaCalculada[] = [];
       for (const item of datos.ventas) {
-        const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, tx);
+        const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, tx, obtenerProducto);
         if (!armado.ok) return error(armado.mensaje);
         if (armado.venta) ventas.push(armado.venta);
       }
@@ -147,7 +150,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       for (const { productoId, cantidad } of requeridoPorClave.values()) {
         const chequeo = await validarStockSuficiente(productoId, datos.seccionId, cantidad, tx);
         if (!chequeo.ok) {
-          const producto = await tx.producto.findUnique({ where: { id: productoId } });
+          const producto = await obtenerProducto(productoId);
           const pista = await seccionesConStock(productoId, ctx.sucursalId, tx);
           const detallePista = pista.length ? ` Tiene stock en: ${pista.join(", ")}.` : "";
           return error(
@@ -159,7 +162,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       const filas: Prisma.MovimientoStockCreateManyInput[] = [];
       let primeraOperacionId: string | null = null;
       for (const venta of ventas) {
-        const producto = await tx.producto.findUnique({ where: { id: venta.productoId }, include: { unidadStock: true } });
+        const producto = await obtenerProducto(venta.productoId);
         const esPrimera: boolean = primeraOperacionId === null;
         const operacion: { id: string } = await tx.operacion.create({
           data: {
@@ -177,7 +180,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
         if (primeraOperacionId === null) primeraOperacionId = operacion.id;
 
         for (const c of venta.consumos) {
-          const consumido = await tx.producto.findUnique({ where: { id: c.productoId }, include: { unidadStock: true } });
+          const consumido = await obtenerProducto(c.productoId);
           const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
           filas.push({
             operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "CONSUMO",

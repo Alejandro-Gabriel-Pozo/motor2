@@ -1,16 +1,9 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
-import {
-  agregarOActualizarUsuario,
-  actualizarActivoMembresia,
-  actualizarActivoGlobalUsuario,
-  actualizarNotasMembresia,
-  listarUsuariosDeSucursal,
-} from "@/server/actions/usuarios";
-import { AyudaIcono } from "@/components/ayuda-campo";
-import { FormConResultado } from "@/components/form-con-resultado";
+import { listarUsuariosDeSucursal } from "@/server/actions/usuarios";
 import { listarSucursales } from "@/server/actions/sucursales";
+import { UsuariosTabla } from "./usuarios-tabla";
 
 export default async function UsuariosPage() {
   const ctx = await obtenerContextoUsuario();
@@ -28,110 +21,7 @@ export default async function UsuariosPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Usuarios — {ctx.sucursalNombre}</h1>
-
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-neutral-500">
-            <th className="py-2">Email</th>
-            <th>Rol</th>
-            <th>Activo (esta sucursal)</th>
-            <th>
-              Cuenta
-              <AyudaIcono texto="Kill-switch a nivel sistema — corta el acceso en TODAS las sucursales de una sola vez, sin tener que desactivar cada membresía por separado. Distinto de 'Activo', que es solo por sucursal." />
-            </th>
-            <th>Notas</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {membresias.map((m) => (
-            <tr key={m.id} className="border-b align-top">
-              <td className="py-2">{m.usuario.email}</td>
-              <td>{m.rol.nombre}</td>
-              <td>{m.activo ? "Sí" : "No"}</td>
-              <td className={m.usuario.activoGlobal ? "" : "text-red-600"}>{m.usuario.activoGlobal ? "Activa" : "Desactivada"}</td>
-              <td>
-                <FormConResultado
-                  accion={async (formData: FormData) => {
-                    "use server";
-                    return actualizarNotasMembresia(m.id, String(formData.get("notas") ?? ""));
-                  }}
-                  className="flex gap-1"
-                >
-                  <input name="notas" defaultValue={m.notas ?? ""} placeholder="sin notas" className="w-32 rounded border px-2 py-1 text-xs" />
-                  <button type="submit" className="text-sm underline">
-                    Guardar
-                  </button>
-                </FormConResultado>
-              </td>
-              <td className="flex gap-3">
-                <form
-                  action={async () => {
-                    "use server";
-                    await actualizarActivoMembresia(m.id, !m.activo);
-                  }}
-                >
-                  <button type="submit" className="text-sm underline">
-                    {m.activo ? "Desactivar" : "Activar"}
-                  </button>
-                </form>
-                <form
-                  action={async () => {
-                    "use server";
-                    await actualizarActivoGlobalUsuario(m.usuarioId, !m.usuario.activoGlobal);
-                  }}
-                >
-                  <button type="submit" className="text-sm text-red-600 underline">
-                    {m.usuario.activoGlobal ? "Desactivar cuenta" : "Reactivar cuenta"}
-                  </button>
-                </form>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <FormConResultado
-        accion={async (formData: FormData) => {
-          "use server";
-          return agregarOActualizarUsuario({
-            email: String(formData.get("email") ?? ""),
-            rolId: String(formData.get("rolId") ?? ""),
-            sucursalId: String(formData.get("sucursalId") ?? ctx.sucursalId),
-            notas: String(formData.get("notas") ?? "") || undefined,
-          });
-        }}
-        className="flex max-w-md flex-col gap-2"
-      >
-        <h2 className="font-medium">Agregar / actualizar usuario</h2>
-        <input name="email" type="email" placeholder="email@negocio.com" required className="rounded border px-3 py-2" />
-        <label className="flex flex-col gap-1 text-sm text-neutral-500">
-          Sucursal
-          <select name="sucursalId" defaultValue={ctx.sucursalId} required className="rounded border px-3 py-2 text-neutral-900 dark:text-neutral-100">
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre}
-                {s.id === ctx.sucursalId ? " (donde estás ahora)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <select name="rolId" required className="rounded border px-3 py-2">
-          {roles.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.nombre}
-            </option>
-          ))}
-        </select>
-        <input name="notas" placeholder="Notas (opcional)" className="rounded border px-3 py-2" />
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Guardar
-        </button>
-      </FormConResultado>
-      <p className="max-w-md text-xs text-neutral-500">
-        Para que alguien vea varias sucursales (ej. un súper admin de las 5), agregalo acá una vez por cada sucursal — con la membresía elegirá
-        cuál ver desde el selector arriba a la derecha.
-      </p>
+      <UsuariosTabla membresiasIniciales={membresias} roles={roles} sucursales={sucursales} sucursalActualId={ctx.sucursalId} />
     </div>
   );
 }

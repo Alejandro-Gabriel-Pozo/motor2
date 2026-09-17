@@ -160,13 +160,18 @@ export async function resolverConsumoPorFamilia(
   productoId: string,
   cantidadNecesaria: number,
   seccionId: string,
-  db: Db = prisma
+  db: Db = prisma,
+  // Permite reusar un cache de producto por transacción (ver
+  // producto-cache.ts) en vez de volver a pedir el mismo producto que el
+  // llamador ya tiene — por defecto pide directo, para los llamadores que
+  // no arman receta (o no les importa el round-trip extra).
+  obtenerProducto: (id: string) => Promise<{ insumoId: string | null } | null> = (id) => db.producto.findUnique({ where: { id } })
 ): Promise<ParteConsumo[]> {
   const sinReparto = async (): Promise<ParteConsumo[]> => [
     { productoId, loteVencimiento: await obtenerLoteMasProximoAVencer(productoId, seccionId, db), cantidad: cantidadNecesaria },
   ];
 
-  const producto = await db.producto.findUnique({ where: { id: productoId } });
+  const producto = await obtenerProducto(productoId);
   if (!producto?.insumoId) return sinReparto();
 
   const hermanos = await db.producto.findMany({

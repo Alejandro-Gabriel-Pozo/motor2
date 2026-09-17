@@ -481,6 +481,81 @@ misma página vía `?id=`). Filtro nuevo en el selector,
 
 ---
 
+## 7. Hallazgos probando la demo real (30 días, pizzería "La Cuadra") — 2026-09-16
+
+Sesión de prueba en vivo contra datos reales (no sintéticos ni de un solo
+caso feliz) — surgieron tres brechas de UX, cada una con causa raíz
+verificada en el código, no solo intuida.
+
+### 7.1 "Costo incompleto" — estado sin acción, y un bug de fondo detrás
+
+**Pedido del usuario**: un estado de la operación (ej. "costo incompleto"
+en Reportes → Costos) no es un flag, es una condición con una necesidad de
+remediación DISTINTA según la causa — mostrar el estado sin la acción para
+resolverlo es dejarle al usuario la tarea de adivinar qué hacer y dónde.
+
+**Encontrado al implementarlo**: `EstadoCosto` (`costos.ts`) ya separaba
+`SIN_RECETA` de `COSTO_INCOMPLETO` a nivel de datos, pero esa granularidad
+se perdía en el resto de reportes (`perdidas.ts`, `devoluciones.ts`,
+`periodo.ts`, `resumen-operativo.ts`) — todos calculan su propio booleano
+suelto (`costoIncompleto`/`hayCostoIncompleto`) sin causa ni acción
+asociada.
+
+Al armar el link accionable apareció un bug real, no solo de UI:
+`calcularCostosYMargenes` buscaba precio de COMPRA para cada ingrediente
+de receta — pero un MP "Se produce" (ej. la prepizza) nunca se compra, se
+fabrica con su propia receta. Cualquier plato que usara un intermedio
+fabricado quedaba SIEMPRE en `COSTO_INCOMPLETO`, sin importar qué tan
+completos estuvieran los datos (verificado: antes del fix, la mayoría del
+menú de la demo estaba en ese estado; después, cero).
+
+**Estado: parcialmente resuelto (PR #5)** — agregado `resolverCostoUnitario`
+(BOM recursivo con cache y corte de ciclos) + links accionables en
+Reportes → Costos (`SIN_RECETA` → cargar receta, `SIN_PRECIO_VENTA` →
+cargar precio, `COSTO_INCOMPLETO` → Compra del insumo faltante, o a SU
+receta si ese insumo es "Se produce"). **Pendiente**: propagar la misma
+distinción causa+acción a los otros 4 reportes que hoy solo muestran el
+booleano plano.
+
+### 7.2 Recetas — el editor no separa "ver" de "editar"
+
+**Pedido del usuario**: "ver es distinto de querer editar" — comparado con
+cómo lo resuelven ERPs como Dolibarr/ERPNext y los POS en general.
+
+Nota: esto es DISTINTO del hallazgo §6.6 (ya resuelto) — §6.6 separó la
+LISTA de productos-con-receta del EDITOR dedicado por producto
+(`/catalogo/recetas` → `/catalogo/recetas/[productoId]`). Lo que falta acá
+es más fino: DENTRO de esa página de editor
+(`catalogo/recetas/[productoId]/page.tsx`), TODO se renderiza siempre como
+formulario editable — la ficha técnica ya aparece como `<form>` con botón
+"Guardar" visible, cada ingrediente tiene "Editar/Quitar" al lado, cada
+paso también. No existe un modo lectura por default; entrar a ver una
+receta ya te para en modo edición.
+
+**Estado: no resuelto — estructural.** Implica decidir el modo de edición
+(¿toda la receta junta, o por sección — ficha/ingredientes/pasos cada una
+con su propio "Editar"?) antes de tocar código; no es un fix chico de una
+sola pantalla.
+
+### 7.3 Reporte por período — tarjetas visualmente iguales para cifras no comparables
+
+Ventas, Margen, Compras y Movimientos se muestran en la misma fila con el
+mismo estilo — sugiere que son cifras relacionadas (`Margen = Ventas −
+Compras`), pero no lo son: Compras es caja gastada en el rango de fechas
+(sin relación temporal con lo vendido ese mismo rango — se puede comprar
+insumos hoy para vender en dos semanas, o vender hoy con stock comprado el
+mes pasado); Margen es ingreso de ventas menos costo de RECETA vigente HOY
+(costo de reposición, no lo que realmente costó comprar en su momento). El
+aviso que aclara esto (`periodo.ts:298-300`) SÍ existe en el código y SÍ se
+renderiza (`periodo/page.tsx:62-63`), pero como texto gris chico al pie,
+deprioritizado frente a la jerarquía visual de las 4 tarjetas iguales.
+
+**Estado: no resuelto** — fix acotado (mover el aviso pegado a cada
+tarjeta que lo necesita, ej. tooltip o subtítulo en "Margen" y "Compras"
+en vez de una nota genérica al final).
+
+---
+
 ## Resumen para portar a Apps Script (`motor`)
 
 | Hallazgo | Estado en motor2 | Aplica a Apps Script |
@@ -491,6 +566,9 @@ misma página vía `?id=`). Filtro nuevo en el selector,
 | `<input type="number">` nativo en plata/cantidad | **Resuelto en motor2** | Sí — los HTML de Apps Script (`PanelOperacion.html`, etc.) probablemente tienen el mismo `type="number"` nativo |
 | Sin shell de navegación persistente (6 headers duplicados, sin sidebar) | **Resuelto en motor2** (sidebar único, 6 grupos, `src/core/navegacion/estructura.ts`) | Parcial — `Nav.html` en Apps Script ya es un include único (no duplicado), pero vale revisar si agrupa por módulo o es una lista plana como era acá |
 | Ayuda de campo solo en el `placeholder` (desaparece al tipear), sin texto de ayuda persistente para campos no obvios (ej. "Factor de conversión", "Es consignación") | **Brecha real, no resuelta** — ERPNext (`description` de DocField + `set_description()`, `base_input.js:223-234`) y Dolibarr (`textwithpicto`, ícono "?") muestran la ayuda sin depender de que el campo esté vacío | Sí — mismo problema en los formularios HTML de Apps Script, que también usan placeholder como única explicación |
+| Estado de la operación ("costo incompleto", etc.) sin acción asociada — el usuario tiene que adivinar dónde resolverlo | **Parcialmente resuelto en motor2** (PR #5: links accionables + bug de BOM recursivo para MP "Se produce" en Reportes → Costos) — **pendiente**: propagar a `perdidas`/`devoluciones`/`periodo`/`resumen-operativo` | Sí — si Apps Script tiene el mismo concepto de "costo incompleto"/estados de reporte, aplica el mismo patrón causa+acción |
+| Editor de Recetas sin modo lectura — todo se renderiza siempre editable (ficha técnica, ingredientes, pasos) | **No resuelto — estructural** (distinto de §6.6, que separó lista de editor; esto es DENTRO del editor) | Sí, si el HTML de recetas de Apps Script tiene el mismo patrón "todo editable siempre" |
+| Reporte por período: tarjetas de Ventas/Margen/Compras/Movimientos visualmente iguales para cifras no comparables (Margen ≠ Ventas − Compras), aviso aclaratorio deprioritizado al pie | **No resuelto** — fix acotado, mover el aviso pegado a cada tarjeta | Sí, si Apps Script muestra un resumen similar sin aclarar la relación (o falta de ella) entre cifras |
 
 Fuentes primarias completas (con más citas de archivo:línea de las
 resumidas acá) quedan en el historial de esta sesión — este documento es el

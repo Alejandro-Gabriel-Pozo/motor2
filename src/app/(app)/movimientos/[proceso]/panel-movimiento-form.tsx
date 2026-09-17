@@ -52,10 +52,13 @@ export function PanelMovimientoForm({
   config,
   secciones,
   proveedores,
+  productoInicial,
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
   proveedores: Opcion[];
+  /** Deep-link accionable (ej. "Costo incompleto" en Reportes → Costos, "falta precio de este insumo") — precarga la primera fila con este producto en vez de arrancar vacía. */
+  productoInicial?: { id: string; etiqueta: string };
 }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(hoyISO());
@@ -71,7 +74,9 @@ export function PanelMovimientoForm({
   const [motivo, setMotivo] = useState("");
   const [destino, setDestino] = useState("");
   const [detalleLibre, setDetalleLibre] = useState("");
-  const [items, setItems] = useState<FilaItem[]>([{ ...FILA_VACIA }]);
+  const [items, setItems] = useState<FilaItem[]>([
+    productoInicial ? { ...FILA_VACIA, productoId: productoInicial.id, etiquetaInicial: productoInicial.etiqueta } : { ...FILA_VACIA },
+  ]);
   /** Presentaciones de compra activas del producto de cada fila, por índice — se completa al elegir un producto (ver cambiarProducto). Solo tiene entradas cuando hay alguna presentación alternativa cargada para ese producto (agregarPresentacionAlternativa, en /catalogo/productos). */
   const [presentacionesPorFila, setPresentacionesPorFila] = useState<Record<number, PresentacionOpcion[]>>({});
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -208,6 +213,11 @@ export function PanelMovimientoForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
+      {productoInicial && (
+        <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Viniste desde un reporte para cargar precio de <strong>{productoInicial.etiqueta}</strong> — completá sección, cantidad y precio para resolverlo.
+        </p>
+      )}
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Fecha
