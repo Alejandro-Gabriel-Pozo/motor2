@@ -6,6 +6,7 @@ import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { conPermiso } from "./con-permiso";
 import { error, ok, type ResultadoAccion } from "./tipos";
 
@@ -23,6 +24,8 @@ export interface DatosVentaInput {
   nroFactura?: string;
   detalle?: string;
   ventas: ItemVentaInput[];
+  /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. Opcional durante el rollout (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.3). */
+  claveIdempotencia?: string;
 }
 
 interface ConsumoCalculado {
@@ -103,8 +106,24 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
   return conPermiso("proceso_venta", async (ctx) => {
     if (!datos.ventas.length) return error("Cargá al menos un producto con cantidad.");
     if (!texto(datos.seccionId)) return error("Elegí una sección.");
+    if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
+      return error("Clave de reintento inválida.");
+    }
 
     const resultado = await conTransaccionSerializable(async (tx) => {
+      // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
+      // A diferencia de registrarMovimiento, este lote escribe UNA
+      // Operacion por venta individual (ver el docstring de la función) —
+      // la clave/hash/resultado del intento completo se guardan solo en la
+      // PRIMERA Operacion del lote, no en cada una (docs/auditoria-motor2-
+      // plan-i3-idempotencia-2026-09-17.md §11.5).
+      const payloadHash = datos.claveIdempotencia
+        ? calcularPayloadHash("VENTA", ctx.sucursalId, { ...datos, claveIdempotencia: undefined })
+        : "";
+      const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
+      if (chequeo.estado === "duplicado") return ok(chequeo.mensaje);
+      if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
+
       const ventas: VentaCalculada[] = [];
       for (const item of datos.ventas) {
         const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, tx);
@@ -138,9 +157,11 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       }
 
       const filas: Prisma.MovimientoStockCreateManyInput[] = [];
+      let primeraOperacionId: string | null = null;
       for (const venta of ventas) {
         const producto = await tx.producto.findUnique({ where: { id: venta.productoId }, include: { unidadStock: true } });
-        const operacion = await tx.operacion.create({
+        const esPrimera: boolean = primeraOperacionId === null;
+        const operacion: { id: string } = await tx.operacion.create({
           data: {
             sucursalId: ctx.sucursalId,
             proceso: "VENTA",
@@ -149,8 +170,11 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
             nroFactura: texto(datos.nroFactura) || null,
             detalleLibre: texto(datos.detalle) || null,
             usuarioId: ctx.usuarioId,
+            claveIdempotencia: esPrimera && datos.claveIdempotencia ? datos.claveIdempotencia : null,
+            payloadHash: esPrimera && datos.claveIdempotencia ? payloadHash : null,
           },
         });
+        if (primeraOperacionId === null) primeraOperacionId = operacion.id;
 
         for (const c of venta.consumos) {
           const consumido = await tx.producto.findUnique({ where: { id: c.productoId }, include: { unidadStock: true } });
@@ -184,7 +208,13 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       }
 
       await tx.movimientoStock.createMany({ data: filas });
-      return ok(`Se registraron ${ventas.length} venta(s) correctamente.`);
+      const mensaje = `Se registraron ${ventas.length} venta(s) correctamente.`;
+
+      if (datos.claveIdempotencia && primeraOperacionId) {
+        await tx.operacion.update({ where: { id: primeraOperacionId }, data: { resultadoMensaje: mensaje } });
+      }
+
+      return ok(mensaje);
     });
 
     return resultado;

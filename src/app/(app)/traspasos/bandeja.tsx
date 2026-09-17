@@ -115,6 +115,12 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  // I3 — un UUID por intento de envío (docs/auditoria-motor2-plan-i3-
+  // idempotencia-2026-09-17.md §9.3): esta fila se desmonta apenas
+  // aceptar() tiene éxito (deja de venir en `paraAceptar` tras el
+  // refresh), así que no hace falta renovar la clave — un solo intento
+  // por vida de este componente.
+  const [claveIdempotencia] = useState(() => crypto.randomUUID());
 
   const aceptar = () => {
     if (!seccionDestinoId) {
@@ -123,7 +129,7 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
       return;
     }
     startTransition(async () => {
-      const r = await aceptarTransferencia(fila.id, seccionDestinoId);
+      const r = await aceptarTransferencia(fila.id, seccionDestinoId, claveIdempotencia);
       setMensaje(r.mensaje);
       setOk(r.ok);
       if (r.ok) router.refresh();
@@ -180,10 +186,14 @@ function FilaParaReingreso({ fila }: { fila: FilaBandeja }) {
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  // I3 — un UUID por intento de envío (docs/auditoria-motor2-plan-i3-
+  // idempotencia-2026-09-17.md §9.3): mismo criterio que FilaParaAceptar
+  // — esta fila se desmonta apenas confirmar() tiene éxito.
+  const [claveIdempotencia] = useState(() => crypto.randomUUID());
 
   const confirmar = () => {
     startTransition(async () => {
-      const r = await confirmarReingresoTransferencia(fila.id);
+      const r = await confirmarReingresoTransferencia(fila.id, claveIdempotencia);
       setMensaje(r.mensaje);
       setOk(r.ok);
       if (r.ok) router.refresh();

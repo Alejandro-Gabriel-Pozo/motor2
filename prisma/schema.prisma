@@ -739,9 +739,34 @@ model Operacion {
   anuladaPorId String?
   anuladaPor   User?     @relation("OperacionAnuladaPor", fields: [anuladaPorId], references: [id])
 
+  /// I3 — idempotencia (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
+  /// §2, §8, §11): UUID generado por el cliente al abrir el formulario,
+  /// reenviado tal cual en reintentos del mismo intento de envío.
+  /// Nulleable durante el rollout gradual (§9.3) — una Operacion sin
+  /// clave simplemente no participa del mecanismo de deduplicación.
+  /// Validada en la capa de aplicación como UUID (§11.1) antes de llegar
+  /// acá. Único GLOBAL (no compuesto con sucursalId/proceso — §2.2,
+  /// corregido tras revisión: el compuesto dejaba reutilizar la misma
+  /// clave entre procesos distintos sin ningún choque).
+  claveIdempotencia String?
+
+  /// I3 — hash SHA-256 del payload validado que efectivamente se
+  /// procesó (incluye sucursalId y un identificador de proceso — §11.2),
+  /// para distinguir "mismo intento reenviado" de "clave reutilizada con
+  /// datos distintos" (§3) sin comparar objetos JSON campo por campo.
+  payloadHash String?
+
+  /// I3 — Opción B (§4.5): mensaje de éxito ya formateado, persistido
+  /// tal cual se devolvió al cliente la primera vez. Se relee sin
+  /// reprocesar nada ante un duplicado — evita reconstruir lógica
+  /// condicional de negocio (avisoConversion, liquidación de
+  /// consignación) en un segundo lugar del código.
+  resultadoMensaje String?
+
   movimientos MovimientoStock[]
 
   @@index([sucursalId, proceso, fecha])
+  @@unique([claveIdempotencia])
 }
 
 /// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el

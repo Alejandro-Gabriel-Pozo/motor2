@@ -679,7 +679,12 @@ I3: planificación — COMPLETADA (este documento, incluidas las 10
     precisiones contractuales de la revisión del usuario, §11)
 I3: auditoría de facturas duplicadas — EJECUTADA (§5) contra datos
     reales (rama demo-pizzeria-la-cuadra, proyecto Neon inventario-api,
-    confirmado por el usuario) — 0 conflictos en las 6 categorías;
-    salvedad pendiente: confirmar si esa rama es producción o demo/piloto
-I3: implementación todavía no autorizada
+    confirmado por el usuario como demo/piloto) — 0 conflictos en las 6
+    categorías
+I3: implementación — AUTORIZADA ("autorizo implementar I3 en el código
+    sin aplicar datos reales") e IMPLEMENTADA (2026-09-17) — ver el
+    documento madre §13 para el detalle completo (schema, mecanismo
+    común, 6 Server Actions, rechazarTransferencia, frontend, 14
+    pruebas nuevas). Migración aplicada SOLO contra la base de test
+    local — nunca contra Neon/inventario-api.
 ```

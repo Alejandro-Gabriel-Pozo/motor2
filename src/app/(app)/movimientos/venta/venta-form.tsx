@@ -32,6 +32,10 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
   const [resetCount, setResetCount] = useState(0);
+  // I3 — un UUID por intento de envío (docs/auditoria-motor2-plan-i3-
+  // idempotencia-2026-09-17.md §9.3), reenviado tal cual en reintentos;
+  // se renueva recién después de un éxito, cuando arranca un intento nuevo.
+  const [claveIdempotencia, setClaveIdempotencia] = useState(() => crypto.randomUUID());
 
   const actualizarFila = (idx: number, cambios: Partial<FilaVenta>) => {
     setVentas((prev) => prev.map((f, i) => (i === idx ? { ...f, ...cambios } : f)));
@@ -64,12 +68,14 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
         nroFactura: nroFactura || undefined,
         detalle: detalle || undefined,
         ventas: itemsValidos,
+        claveIdempotencia,
       });
       setMensaje(resultado.mensaje);
       setOk(resultado.ok);
       if (resultado.ok) {
         setVentas([{ ...FILA_VACIA }]);
         setResetCount((n) => n + 1);
+        setClaveIdempotencia(crypto.randomUUID());
         router.refresh();
       }
     });

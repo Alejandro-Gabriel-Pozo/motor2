@@ -79,6 +79,12 @@ export function PanelMovimientoForm({
   const [pending, startTransition] = useTransition();
   const [cargandoProveedor, setCargandoProveedor] = useState(false);
   const [infoProveedor, setInfoProveedor] = useState("");
+  // I3 — un UUID por intento de envío (docs/auditoria-motor2-plan-i3-
+  // idempotencia-2026-09-17.md §9.3): se genera al montar el formulario y
+  // se reenvía tal cual en cada reintento del MISMO envío (ver `submit`);
+  // recién se renueva después de un éxito, cuando el formulario se
+  // resetea para cargar OTRO movimiento — ese es un intento nuevo.
+  const [claveIdempotencia, setClaveIdempotencia] = useState(() => crypto.randomUUID());
   // Se incrementa cada vez que `items` se reemplaza en bloque (no fila por
   // fila) — entra en la `key` de cada fila para forzar el remount de
   // SelectorProducto, que solo lee `etiquetaInicial` una vez al montar
@@ -185,6 +191,7 @@ export function PanelMovimientoForm({
         destino: config.pideDestino && destino ? (destino as DestinoConsumo) : undefined,
         detalleLibre: detalleLibre || undefined,
         items: itemsValidos,
+        claveIdempotencia,
       });
       setMensaje(resultado.mensaje);
       setOk(resultado.ok);
@@ -193,6 +200,7 @@ export function PanelMovimientoForm({
         setPresentacionesPorFila({});
         setInfoProveedor("");
         setVersionItems((n) => n + 1);
+        setClaveIdempotencia(crypto.randomUUID());
         router.refresh();
       }
     });

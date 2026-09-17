@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { calcularSaldoPorLote } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { conPermiso } from "./con-permiso";
 import { error, ok, type ResultadoAccion } from "./tipos";
 
@@ -35,6 +36,8 @@ export interface DatosReclasificacion {
   destinos: DestinoReclasificacion[];
   fecha: Date;
   detalle?: string;
+  /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. Opcional durante el rollout (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.3). */
+  claveIdempotencia?: string;
 }
 
 /**
@@ -52,6 +55,9 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
     if (!texto(datos.productoId)) return error("Elegí un producto.");
     if (!texto(datos.seccionOrigenId)) return error("Elegí la sección de origen — no se puede dejar en blanco.");
     if (!datos.destinos.length) return error("Agregá al menos un destino.");
+    if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
+      return error("Clave de reintento inválida.");
+    }
     for (const d of datos.destinos) {
       if (!texto(d.seccionId)) return error("Cada destino necesita una sección — no se puede dejar en blanco.");
       if (!(d.cantidad > 0)) return error("Cada destino necesita una cantidad mayor a 0.");
@@ -71,6 +77,14 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
     const totalDestinos = datos.destinos.reduce((acc, d) => acc + d.cantidad, 0);
 
     return conTransaccionSerializable(async (tx) => {
+      // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
+      const payloadHash = datos.claveIdempotencia
+        ? calcularPayloadHash("RECLASIFICACION", ctx.sucursalId, { ...datos, claveIdempotencia: undefined })
+        : "";
+      const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
+      if (chequeo.estado === "duplicado") return ok(chequeo.mensaje);
+      if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
+
       const producto = await tx.producto.findUnique({ where: { id: datos.productoId }, include: { unidadStock: true } });
       if (!producto || !producto.activo) return error("El producto no existe o no está activo.");
 
@@ -94,6 +108,8 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
           fecha: datos.fecha,
           detalleLibre: texto(datos.detalle) || null,
           usuarioId: ctx.usuarioId,
+          claveIdempotencia: datos.claveIdempotencia ?? null,
+          payloadHash: datos.claveIdempotencia ? payloadHash : null,
         },
       });
 
@@ -126,7 +142,12 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
 
       await tx.movimientoStock.createMany({ data: filas });
 
-      return ok(`"${producto.nombre}" reclasificado: ${disponible} repartido en ${datos.destinos.length} destino(s).`);
+      const mensaje = `"${producto.nombre}" reclasificado: ${disponible} repartido en ${datos.destinos.length} destino(s).`;
+      if (datos.claveIdempotencia) {
+        await tx.operacion.update({ where: { id: operacion.id }, data: { resultadoMensaje: mensaje } });
+      }
+
+      return ok(mensaje);
     });
   });
 }

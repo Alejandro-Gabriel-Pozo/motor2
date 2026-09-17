@@ -30,6 +30,10 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
   const [disponible, setDisponible] = useState<number | null>(null);
+  // I3 — un UUID por intento de envío (docs/auditoria-motor2-plan-i3-
+  // idempotencia-2026-09-17.md §9.3), reenviado tal cual en reintentos;
+  // se renueva recién después de un éxito, cuando arranca un intento nuevo.
+  const [claveIdempotencia, setClaveIdempotencia] = useState(() => crypto.randomUUID());
 
   // Antes había que adivinar la cantidad a repartir y recién se veía el
   // saldo real si la suma no cerraba (el servidor lo informaba en el
@@ -74,11 +78,13 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         destinos: destinosValidos,
         fecha: new Date(fecha),
         detalle: detalle || undefined,
+        claveIdempotencia,
       });
       setMensaje(resultado.mensaje);
       setOk(resultado.ok);
       if (resultado.ok) {
         setDestinos([{ ...DESTINO_VACIO }]);
+        setClaveIdempotencia(crypto.randomUUID());
         router.refresh();
       }
     });

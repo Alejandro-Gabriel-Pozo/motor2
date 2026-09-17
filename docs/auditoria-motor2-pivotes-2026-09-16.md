@@ -1018,7 +1018,7 @@ IMPLEMENTADO 2026-09-17 (commit `9c52d6f`): corrección de diagnóstico
 
 **Orden de implementación**: N3 → C2 → R2 → I3 (acordado). Cada paquete se implementa, prueba y commitea por separado — no se mezclan en un solo cambio.
 
-**Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17). C2 **implementado** (commit `5ff3cff`, 2026-09-17). R2 **implementado** (commit `9c52d6f`, 2026-09-17) — ver detalle en el Plan 3 arriba. Solo **I3** sigue sin implementar, a la espera de autorización explícita — es el único paquete que toca schema y varios contratos de Server Actions a la vez.
+**Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17). C2 **implementado** (commit `5ff3cff`, 2026-09-17). R2 **implementado** (commit `9c52d6f`, 2026-09-17) — ver detalle en el Plan 3 arriba. **I3 implementado** (2026-09-17) — ver §13, y el detalle completo en `docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md`.
 
 *(Nota de corrección, 2026-09-17 — fase de planificación de I3: el punto 4 de este borrador contaba "8 Server Actions" y recomendaba tentativamente reconstruir el resultado desde `Operacion`, ambos condicionados a verificarse antes de implementar. Esa verificación ya se hizo — ver `docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md`, el plan formal de la fase de planificación y auditoría de datos autorizada — y corrige ambos puntos: son 6 Server Actions, no 8 (`registrarMovimiento` cubre 7 de los 10 procesos por sí sola), y la recomendación pasa a persistir el resultado (Opción B), no reconstruirlo, porque 2 de los 6 mensajes de éxito tienen lógica condicional de negocio (`avisoConversion` en `registrarMovimiento`, la cláusula de liquidación de consignación en `anularVenta`) que reconstruir implicaría duplicar esa lógica en un segundo lugar. Ese documento también identifica que `rechazarTransferencia` no crea ninguna `Operacion` y por lo tanto no puede cubrirse con la columna de idempotencia general — necesita su propio fix de atomicidad. Este borrador queda como el punto de partida original; el documento nuevo es la versión verificada y vigente.)*
 
@@ -1051,3 +1051,54 @@ Verificación consolidada (sin repetir auditoría ni rehacer benchmarks):
 **Nota sobre el benchmark de R2**: los milisegundos reportados (§11 Plan 3) salen de un dataset sintético generado en este contenedor de sesión, no de producción — son evidencia comparativa (antes/después, mismo dataset, misma corrida) de que el cambio reduce el costo real de las 2 consultas, no una garantía de tiempo de respuesta en Neon ni un SLA.
 
 **Conclusión de la revisión**: los 3 paquetes implementados (N3, C2, R2) están completos, verificados, documentados, y no dejan ningún cambio pendiente ni deuda nueva. El repositorio está en condiciones de continuar con **I3** — el plan detallado y la auditoría de facturas duplicadas en datos reales (paso previo obligatorio antes de crear el constraint, ver Plan 4 §11 punto 8) son el siguiente paso, no autorizado todavía.
+
+---
+
+## 13. I3 implementado (2026-09-17)
+
+Autorización recibida tras la revisión del plan formal (`docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md`): *"Es demo/piloto, pero autorizo implementar I3 en el código sin aplicar datos reales"* — se interpretó como: implementar schema/migración/Server Actions/frontend completos, pero la migración solo se aplicó contra la base de test local (`motor2_test`), nunca contra el proyecto Neon `inventario-api` ni ninguna de sus branches (que solo se leyeron, de solo lectura, durante la fase de auditoría — §5 del plan).
+
+### Qué se implementó
+
+Siguiendo exactamente el diseño del plan (schema §8, mecanismo §2-§3/§7, matriz §11.5, corrección de `rechazarTransferencia` §6.4), con una corrección de diseño real encontrada durante la implementación misma:
+
+1. **Schema** (`prisma/schema.prisma`, migración `20260917020857_i3_idempotencia_operacion`): 3 columnas nulleables en `Operacion` (`claveIdempotencia`, `payloadHash`, `resultadoMensaje`) + `@@unique([claveIdempotencia])` global (no compuesto con `sucursalId`/`proceso` — la corrección que ya había pedido el usuario en la revisión del plan, §2.2/§11.8 del plan). Migración aditiva, generada con `prisma migrate diff` (el entorno no soporta `prisma migrate dev` no interactivo) y aplicada con `prisma migrate deploy` solo contra `motor2_test`.
+2. **Mecanismo común** (`src/core/movimientos/idempotencia.ts`, nuevo): validación de formato UUID, hash SHA-256 del payload validado (incluye `sucursalId` + un identificador explícito de proceso — §11.2 del plan), chequeo de idempotencia dentro de `conTransaccionSerializable` con la regla "fail closed" de §11.3.
+3. **6 Server Actions** (no 8 — corrección del plan §1 confirmada en el código): `registrarMovimiento` (7 procesos), `registrarVenta`, `reclasificarStock`, `aceptarTransferencia`, `confirmarReingresoTransferencia` reciben `claveIdempotencia` opcional y devuelven el `resultadoMensaje` persistido ante un duplicado (Opción B, §4.5 del plan).
+4. **Hallazgo nuevo de implementación**: `registrarVenta` crea **una `Operacion` por línea vendida**, no una por lote (el plan no lo había señalado explícitamente) — la clave/hash/resultado del intento completo se guardan solo en la PRIMERA `Operacion` del lote; un duplicado devuelve el mensaje persistido sin tocar ninguna fila.
+5. **`rechazarTransferencia`**: movido a `conTransaccionSerializable` (guarda de estado atómica, sin clave — no crea `Operacion`, §6.4 del plan) — cierra el hallazgo de "rechazo simultáneo" (§8 del documento madre).
+6. **Frontend**: `crypto.randomUUID()` generado al montar cada uno de los 4 componentes de formulario (`panel-movimiento-form.tsx` cubre los 7 procesos de `registrarMovimiento`; `venta-form.tsx`; `reclasificar-form.tsx`; `bandeja.tsx` para `aceptarTransferencia`/`confirmarReingresoTransferencia`), reenviado tal cual en reintentos, renovado después de un éxito solo en los 3 formularios que se resetean en el lugar para cargar otro intento (los de la Bandeja se desmontan solos tras un éxito, no necesitan renovarlo).
+
+### Pruebas
+
+`test/auditoria/idempotencia-i3-mecanismo.test.ts` (nuevo, 14 tests): por cada uno de los 4 puntos de entrada distintos, los 4 casos del plan (clave nueva; mismo payload → resultado original; payload distinto → conflicto; concurrencia real con `Promise.allSettled` → exactamente 1 efecto), más formato de clave inválido y compatibilidad sin clave. `test/auditoria/traspasos-en-transito.test.ts` — el test de "rechazo simultáneo" (antes condicional, documentaba el defecto) se reescribió como regresión estricta: exactamente 1 de los 2 rechazos gana, el otro recibe un error de estado explícito.
+
+`test/auditoria/idempotencia-resto-de-procesos.test.ts` queda **intacto** — sigue documentando correctamente el comportamiento sin clave (rollout gradual), que no cambió.
+
+### Verificación
+
+| Chequeo | Resultado |
+|---|---|
+| Suite acumulada | **57/57 archivos, 351/351 tests** (337 previos + 14 nuevos) |
+| `tsc --noEmit` | Mismos errores preexistentes que la línea base (`scripts/auditoria-benchmark-reportes.ts`, `precision-costos-precios-reversiones.test.ts`, `traspasos-en-transito.test.ts`) — ninguno nuevo |
+| `eslint .` | 5 errores, 22 warnings — los 5 errores son los mismos preexistentes (ninguno en archivos tocados); 2 warnings menos que la línea base, por 2 comentarios `eslint-disable` que quedaron sin uso al reemplazar `console.log` por `expect()` en el test de rechazo simultáneo (cambio esperado, no una regresión) |
+| `next build` | Turbopack compila correctamente; el paso de typecheck del build falla por los mismos errores preexistentes de `scripts/`/`test/` de siempre (no relacionado con I3) |
+| Diff en alcance | `git status --short`: schema, migración, 4 Server Actions, 1 módulo nuevo, 4 componentes de frontend, 2 archivos de test — nada fuera de lo previsto en el plan |
+| `package.json`/dependencias | Sin cambios |
+| Migración aplicada | Solo contra `motor2_test` (local) — nunca contra Neon/`inventario-api` |
+| Verificación de UI | Build + smoke test del server (`next dev`, las 4 rutas de los formularios responden 307 hacia `/login` sin error de servidor) — **no se hizo un click-through interactivo autenticado en navegador** (el entorno no tiene credenciales de OAuth configuradas); la cobertura funcional real de los 4 puntos de entrada queda en las Server Actions, probadas exhaustivamente contra Postgres real |
+
+### Nota — flake preexistente detectado, no causado por esta implementación
+
+Una corrida aislada de `test/auditoria/` mostró una falla intermitente en `concurrencia-idempotencia.test.ts` (assertion de "ninguna promesa debe rechazarse" bajo carrera real) — no reprodujo en 5 corridas aisladas posteriores del mismo archivo, y el archivo no fue tocado por I3 (confirmado por `git diff`, es del commit de C2). Es un test ya existente de este mismo estilo probabilístico (reintentos de `conTransaccionSerializable` bajo contención real) — se documenta por transparencia, no se investiga más a fondo por estar fuera del alcance de I3.
+
+### Estado
+
+```text
+N3 ✅ implementado — commit 5c0fd96
+C2 ✅ implementado — commit 5ff3cff
+R2 ✅ implementado — commit 9c52d6f
+I3 ✅ implementado (2026-09-17) — schema+migración (solo local), mecanismo
+   común, 6 Server Actions, rechazarTransferencia, frontend, 14 pruebas
+   nuevas — migración NO aplicada contra ningún dato real (Neon)
+```

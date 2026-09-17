@@ -13,6 +13,7 @@ import {
 } from "@/core/movimientos/transiciones";
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { upsertProveedorPorProducto } from "./proveedor-por-producto";
 import { conPermiso } from "./con-permiso";
 import { error, type ResultadoAccion } from "./tipos";
@@ -52,6 +53,8 @@ export interface DatosMovimientoInput {
   destino?: DestinoConsumo;
   detalleLibre?: string;
   items: ItemMovimientoInput[];
+  /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. Opcional durante el rollout (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.3). */
+  claveIdempotencia?: string;
 }
 
 interface LineaCalculada {
@@ -206,6 +209,9 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
   return conPermiso(accionClave, async (ctx) => {
     if (!datos.items.length) return error("Cargá al menos un producto con cantidad.");
     if (!texto(datos.seccionId)) return error("Elegí una sección.");
+    if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
+      return error("Clave de reintento inválida.");
+    }
 
     if (datos.proceso === "TRANSFERENCIA") {
       if (!datos.seccionDestinoId) return error("La sección destino no puede estar vacía.");
@@ -227,6 +233,14 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
     }
 
     const resultado = await conTransaccionSerializable(async (tx) => {
+      // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
+      const payloadHash = datos.claveIdempotencia
+        ? calcularPayloadHash(datos.proceso, ctx.sucursalId, { ...datos, claveIdempotencia: undefined })
+        : "";
+      const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
+      if (chequeo.estado === "duplicado") return { ok: true as const, mensaje: chequeo.mensaje, lineasParaProveedor: [] };
+      if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
+
       // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
       const lineas: LineaCalculada[] = [];
       for (const item of datos.items) {
@@ -281,6 +295,8 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
           destino: datos.destino ?? null,
           detalleLibre: texto(datos.detalleLibre) || null,
           usuarioId: ctx.usuarioId,
+          claveIdempotencia: datos.claveIdempotencia ?? null,
+          payloadHash: datos.claveIdempotencia ? payloadHash : null,
         },
       });
 
@@ -347,10 +363,17 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
       const avisoConversion = lineas.some((l) => l.huboConversion)
         ? " Algunas cantidades se convirtieron automáticamente de unidad de compra a unidad de stock."
         : "";
+      const mensaje = `Se guardaron ${filas.length} movimiento(s).${avisoConversion}`;
+
+      // I3 — Opción B (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
+      // §4.5): se persiste el mensaje ya formateado, no se reconstruye.
+      if (datos.claveIdempotencia) {
+        await tx.operacion.update({ where: { id: operacion.id }, data: { resultadoMensaje: mensaje } });
+      }
 
       return {
         ok: true as const,
-        mensaje: `Se guardaron ${filas.length} movimiento(s).${avisoConversion}`,
+        mensaje,
         // Solo se usa para el hookup de Compra, fuera de la transacción — ver más abajo.
         lineasParaProveedor: lineas.map((l) => ({
           productoId: l.productoId,
