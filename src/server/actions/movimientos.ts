@@ -308,9 +308,17 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
           });
 
           for (const c of l.consumosReceta) {
+            // La cantidad que sale de resolverConsumoPorFamilia/calcularConsumosProduccion
+            // todavía no pasó por ningún redondeo — recién acá, antes de
+            // persistir, se ajusta a los decimales que admite la unidad de
+            // stock de ESTE insumo (mismo criterio que ya aplica venta.ts
+            // para el consumo de receta generado por una venta).
+            const consumido = await tx.producto.findUnique({ where: { id: c.productoId }, include: { unidadStock: true } });
+            const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
+
             filas.push({
               operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "CONSUMO",
-              cantidad: -c.cantidad, loteVencimiento: c.loteVencimiento,
+              cantidad: -cantidadRedondeada, loteVencimiento: c.loteVencimiento,
               detalle: "Consumo por producción.", precioTotal: 0, precioPorUnidadStock: 0,
             });
 
@@ -321,13 +329,12 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
             // consignante se lee vía FK (producto.proveedorConsignacion),
             // no hace falta duplicarlo en la fila (a diferencia de Apps
             // Script, que no podía hacer ese join).
-            const consumido = await tx.producto.findUnique({ where: { id: c.productoId } });
             if (consumido?.esConsignacion) {
               filas.push({
                 operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "LIQUIDACION_CONSIGNACION",
                 cantidad: 0, loteVencimiento: null,
                 detalle: "Liquidación consignación por producción.",
-                precioTotal: redondearMoneda(c.cantidad * Number(consumido.precioConsignacion ?? 0)),
+                precioTotal: redondearMoneda(cantidadRedondeada * Number(consumido.precioConsignacion ?? 0)),
                 precioPorUnidadStock: redondearMoneda(Number(consumido.precioConsignacion ?? 0)),
               });
             }

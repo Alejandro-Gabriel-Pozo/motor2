@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Pivote 4 (Precisión numérica) — HALLAZGO sospechado a partir de la
- * clasificación de conversiones Number(): en src/server/actions/movimientos.ts
- * (PRODUCCION → consumosReceta), la línea `cantidad: -c.cantidad` persiste
- * el consumo de receta SIN pasar por redondearACantidadDeUnidad — a
- * diferencia de venta.ts, que SÍ redondea su equivalente
+ * Pivote 4 (Precisión numérica) — Plan N3 (docs/auditoria-motor2-pivotes-2026-09-16.md
+ * §11): prueba de regresión. Hasta la corrección de este paquete,
+ * src/server/actions/movimientos.ts (PRODUCCION → consumosReceta)
+ * persistía el consumo de receta SIN pasar por redondearACantidadDeUnidad
+ * — a diferencia de venta.ts, que SÍ redondea la misma clase de dato
  * (`cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, ...)`)
- * antes de persistir la misma clase de dato (consumo de receta).
+ * antes de persistir. Exige ahora el comportamiento CORRECTO.
  */
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
@@ -30,7 +30,7 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("HALLAZGO: produce un PV cuya receta consume un insumo de unidad SIN decimales (entera) — el consumo persistido queda con decimales, violando la unidad", async () => {
+  it("REGRESIÓN: produce un PV cuya receta consume un insumo de unidad SIN decimales (entera) — el consumo persistido debe redondearse a un entero, no violar la unidad", async () => {
     const unidadEntera = await prisma.unidad.create({ data: { nombre: "unidad_entera_prod", magnitud: "CANTIDAD", decimales: 0 } });
     const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_HUEVOS", nombre: "Huevos", tipo: "MP", unidadStockId: unidadEntera.id } });
     const pv = await prisma.producto.create({ data: { codigo: "PV_BUDIN", nombre: "Budín", tipo: "PV", unidadStockId: unidadEntera.id, precioVenta: 10, seProduce: true } });
@@ -48,15 +48,14 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     const cantidadPersistida = Number(mov.cantidad);
 
     // eslint-disable-next-line no-console
-    console.log("[auditoria] Consumo persistido para un insumo de unidad SIN decimales:", cantidadPersistida, "(esperado si redondeara: -2)");
+    console.log("[auditoria] Consumo persistido para un insumo de unidad SIN decimales:", cantidadPersistida);
 
-    // CONFIRMADO: la cantidad persistida NO es un entero, pese a que
     // Unidad.decimales=0 dice explícitamente que este insumo no admite
-    // fracciones — el Kardex queda con un valor que la propia unidad del
-    // producto prohíbe, algo que ningún otro proceso permite (COMPRA,
-    // CONSUMO, VENTA, AJUSTE, DEVOLUCIÓN, TRANSFERENCIA sí redondean).
-    expect(Number.isInteger(cantidadPersistida)).toBe(false); // documenta el fallo: debería ser true
-    expect(cantidadPersistida).toBe(-2.247); // el valor crudo sin redondear, exactamente lo que rompe la unidad
+    // fracciones — el Kardex debe quedar con un entero exacto, mismo
+    // criterio que COMPRA/CONSUMO/VENTA/AJUSTE/DEVOLUCIÓN/TRANSFERENCIA
+    // ya respetan hoy.
+    expect(Number.isInteger(cantidadPersistida)).toBe(true);
+    expect(cantidadPersistida).toBe(-2); // redondearACantidadDeUnidad(2.247, 0) === 2
   });
 
   it("Contraste: el mismo escenario via VENTA (no PRODUCCIÓN) SÍ redondea correctamente a la unidad del insumo", async () => {

@@ -95,12 +95,14 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
 
-    // Producir 7 unidades de pan: consumo esperado = 7 × 0.1 × 1.125 = 0.7875
+    // Producir 7 unidades de pan: consumo esperado = 7 × 0.1 × 1.125 = 0.7875,
+    // redondeado a los 3 decimales de la unidad del insumo (Plan N3,
+    // docs/auditoria-motor2-pivotes-2026-09-16.md §11) → 0.788 exacto.
     const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 7 }] });
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
     const saldoInsumo = await calcularSaldoTotal(mpInsumo.id, seccionId);
-    expect(saldoInsumo).toBeCloseTo(10 - 0.7875, 3); // 9.2125, con margen de la unidad (3 decimales)
+    expect(saldoInsumo).toBe(10 - 0.788); // 9.212 exacto, ya no una aproximación
   });
 
   it("reconstrucción del saldo: para un producto con historial mixto (compra, consumo, merma, ajuste), la suma manual de MovimientoStock.cantidad (leída como Decimal string) coincide EXACTO con calcularSaldoTotal", async () => {
