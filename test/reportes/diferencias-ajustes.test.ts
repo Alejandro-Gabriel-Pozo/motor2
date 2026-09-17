@@ -4,8 +4,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/conteo-fisico";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { generarReporteDiferenciasAjustes } from "../../src/core/reportes/diferencias-ajustes";
 
 describe("generarReporteDiferenciasAjustes", () => {

@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { altaProveedor, actualizarActivaProveedor, actualizarProveedor } from "../../src/server/actions/proveedores";
+import { altaProveedor, actualizarActivaProveedor, actualizarProveedor } from "../../src/server/actions/catalogo/proveedores";
 
 describe("Proveedores", () => {
   beforeEach(async () => {

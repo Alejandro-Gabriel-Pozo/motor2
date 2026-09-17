@@ -7,10 +7,10 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
-import { darDeAltaProducto, actualizarProducto, type DatosProducto, type PresentacionOpcion } from "@/server/actions/productos";
-import { crearInsumo } from "@/server/actions/insumos";
-import { crearCategoriaProducto } from "@/server/actions/categorias-producto";
-import { altaProveedor } from "@/server/actions/proveedores";
+import { darDeAltaProducto, actualizarProducto, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import { crearInsumo } from "@/server/actions/catalogo/insumos";
+import { crearCategoriaProducto } from "@/server/actions/catalogo/categorias-producto";
+import { altaProveedor } from "@/server/actions/catalogo/proveedores";
 
 interface Opcion {
   id: string;

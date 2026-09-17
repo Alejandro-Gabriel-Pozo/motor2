@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { actualizarActivoSucursal, renombrarSucursal } from "../../src/server/actions/sucursales";
+import { actualizarActivoSucursal, renombrarSucursal } from "../../src/server/actions/auth/sucursales";
 
 describe("actualizarActivoSucursal / renombrarSucursal", () => {
   beforeEach(async () => {

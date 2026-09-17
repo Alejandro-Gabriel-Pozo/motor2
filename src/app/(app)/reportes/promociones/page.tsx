@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerReportePromociones } from "@/core/reportes/promociones";
-import { obtenerPromocionesHabilitadas, buscarProductoParaPromocion } from "@/server/actions/promociones";
+import { obtenerPromocionesHabilitadas, buscarProductoParaPromocion } from "@/server/actions/reportes/promociones";
 import { PromocionForm } from "./promocion-form";
 import { TablaPromociones } from "./tabla-promociones";
 

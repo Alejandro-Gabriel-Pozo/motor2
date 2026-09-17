@@ -5,8 +5,8 @@ import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 export interface ProductoOpcion {
   id: string;

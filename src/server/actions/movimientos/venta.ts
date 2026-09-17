@@ -9,8 +9,8 @@ import { calcularCostosYMargenes } from "@/core/reportes/costos";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 export interface ItemVentaInput {
   productoId: string;

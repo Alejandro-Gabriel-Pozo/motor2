@@ -4,8 +4,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/reclasificacion";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/reclasificacion";
 import { calcularSaldoPorLote, calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 describe("reclasificarStock", () => {

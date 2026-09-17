@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { setPrecioLocalProducto } from "@/server/actions/precio-local";
-import { obtenerPrecioVentaProducto } from "@/server/actions/productos";
+import { setPrecioLocalProducto } from "@/server/actions/movimientos/precio-local";
+import { obtenerPrecioVentaProducto } from "@/server/actions/catalogo/productos";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 

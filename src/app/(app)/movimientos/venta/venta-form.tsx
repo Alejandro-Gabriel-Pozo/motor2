@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { registrarVenta, type ItemVentaInput } from "@/server/actions/venta";
+import { registrarVenta, type ItemVentaInput } from "@/server/actions/movimientos/venta";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 

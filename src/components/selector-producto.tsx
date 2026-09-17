@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { buscarProductosSelector, type FiltroSelectorProducto, type ProductoOpcion } from "@/server/actions/productos";
+import { buscarProductosSelector, type FiltroSelectorProducto, type ProductoOpcion } from "@/server/actions/catalogo/productos";
 
 interface Props {
   id?: string;

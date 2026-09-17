@@ -2,8 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, type AccionClave } from "@/core/permisos/acciones";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 export async function listarMatrizPermisos() {
   const [acciones, roles, permisos] = await Promise.all([

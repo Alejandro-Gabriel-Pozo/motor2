@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { eliminarStockMinimo } from "@/server/actions/stock-minimo";
+import { eliminarStockMinimo } from "@/server/actions/stock/stock-minimo";
 
 /**
  * "Eliminar" acá es la única acción de borrado duro de toda la app (no es

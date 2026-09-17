@@ -10,8 +10,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarVenta } from "../../src/server/actions/venta";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {

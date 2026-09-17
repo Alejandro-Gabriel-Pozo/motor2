@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarSeccionesActivas } from "@/server/actions/secciones";
+import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { ReclasificarForm } from "./reclasificar-form";
 
 export default async function ReclasificarPage() {

@@ -8,7 +8,7 @@ import {
   actualizarActivoGrupo,
   listarInsumos,
   listarGrupos,
-} from "@/server/actions/insumos";
+} from "@/server/actions/catalogo/insumos";
 import { textoCadenaDeGrupos } from "@/core/catalogo/grupo";
 import { FormRenombrarInsumo } from "@/components/catalogo/form-renombrar-insumo";
 

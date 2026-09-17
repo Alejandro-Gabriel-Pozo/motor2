@@ -10,7 +10,7 @@ import {
   rechazarTransferencia,
   confirmarReingresoTransferencia,
   cancelarSolicitudTransferencia,
-} from "@/server/actions/traspasos";
+} from "@/server/actions/traspasos/traspasos";
 
 export interface FilaBandeja {
   id: string;

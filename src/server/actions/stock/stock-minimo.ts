@@ -1,8 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 /** Todas las filas (global + por sección) de Stock Mínimo de esta sucursal — para el panel de administración. */
 export async function listarStockMinimo(sucursalId: string) {

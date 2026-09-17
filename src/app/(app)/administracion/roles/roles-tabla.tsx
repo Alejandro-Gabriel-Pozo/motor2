@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { crearRol, actualizarActivoRol } from "@/server/actions/roles";
+import { crearRol, actualizarActivoRol } from "@/server/actions/permisos/roles";
 
 interface Rol {
   id: string;

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
-import { actualizarPermiso } from "@/server/actions/permisos";
+import { actualizarPermiso } from "@/server/actions/permisos/permisos";
 import type { AccionClave } from "@/core/permisos/acciones";
 
 interface Accion {

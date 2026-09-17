@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { obtenerHistorialConteosFisicos } from "@/server/actions/conteo-fisico";
-import { listarSeccionesActivas } from "@/server/actions/secciones";
-import { obtenerProductoOpcion } from "@/server/actions/productos";
+import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/conteo-fisico";
+import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
+import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { TablaHistorialConteos, type FilaConteo } from "./tabla-conteos";
 import { FiltrosConteos } from "./filtros-conteos";
 

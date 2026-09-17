@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { actualizarActivoMembresia, actualizarActivoGlobalUsuario, actualizarNotasMembresia } from "../../src/server/actions/usuarios";
+import { actualizarActivoMembresia, actualizarActivoGlobalUsuario, actualizarNotasMembresia } from "../../src/server/actions/auth/usuarios";
 
 describe("actualizarActivoMembresia", () => {
   beforeEach(async () => {

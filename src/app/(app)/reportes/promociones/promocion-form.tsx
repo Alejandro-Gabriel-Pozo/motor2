@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { actualizarPromocionesHabilitado, marcarProductoComoPromocion, type CandidatoPromocion } from "@/server/actions/promociones";
+import { actualizarPromocionesHabilitado, marcarProductoComoPromocion, type CandidatoPromocion } from "@/server/actions/reportes/promociones";
 
 export function PromocionForm({ habilitado, candidatos }: { habilitado: boolean; candidatos: CandidatoPromocion[] }) {
   const router = useRouter();

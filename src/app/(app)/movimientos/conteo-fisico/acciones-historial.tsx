@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { resolverConteoPendiente, cancelarConteoFisico } from "@/server/actions/conteo-fisico";
+import { resolverConteoPendiente, cancelarConteoFisico } from "@/server/actions/movimientos/conteo-fisico";
 
 /**
  * "Ajustar ahora" y "Cancelar" son las dos acciones del módulo con más

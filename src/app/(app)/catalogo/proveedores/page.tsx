@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { altaProveedor, actualizarActivaProveedor, actualizarProveedor, listarProveedores } from "@/server/actions/proveedores";
+import { altaProveedor, actualizarActivaProveedor, actualizarProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {

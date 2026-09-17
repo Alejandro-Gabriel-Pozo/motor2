@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarRoles } from "@/server/actions/roles";
+import { listarRoles } from "@/server/actions/permisos/roles";
 import { RolesTabla } from "./roles-tabla";
 
 export default async function RolesPage() {

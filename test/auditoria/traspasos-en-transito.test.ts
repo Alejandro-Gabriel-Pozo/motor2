@@ -9,14 +9,14 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import {
   crearEnvioDirectoTransferencia,
   aceptarTransferencia,
   rechazarTransferencia,
   confirmarReingresoTransferencia,
-} from "../../src/server/actions/traspasos";
+} from "../../src/server/actions/traspasos/traspasos";
 
 describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tránsito'", () => {
   let sucursalAId: string;

@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { crearSeccion, actualizarActivaSeccion, renombrarSeccion, listarSeccionesActivas } from "../../src/server/actions/secciones";
+import { crearSeccion, actualizarActivaSeccion, renombrarSeccion, listarSeccionesActivas } from "../../src/server/actions/movimientos/secciones";
 
 describe("Secciones", () => {
   let sucursalId: string;

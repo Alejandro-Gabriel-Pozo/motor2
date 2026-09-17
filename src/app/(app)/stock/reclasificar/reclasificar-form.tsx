@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar, type DestinoReclasificacion } from "@/server/actions/reclasificacion";
+import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar, type DestinoReclasificacion } from "@/server/actions/stock/reclasificacion";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 

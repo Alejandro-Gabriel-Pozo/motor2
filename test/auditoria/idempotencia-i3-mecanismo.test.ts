@@ -25,10 +25,10 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarVenta } from "../../src/server/actions/venta";
-import { reclasificarStock } from "../../src/server/actions/reclasificacion";
-import { crearEnvioDirectoTransferencia, aceptarTransferencia, rechazarTransferencia, confirmarReingresoTransferencia } from "../../src/server/actions/traspasos";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { reclasificarStock } from "../../src/server/actions/stock/reclasificacion";
+import { crearEnvioDirectoTransferencia, aceptarTransferencia, rechazarTransferencia, confirmarReingresoTransferencia } from "../../src/server/actions/traspasos/traspasos";
 import type { ResultadoConId } from "../../src/server/actions/tipos";
 
 function idDe(r: ResultadoConId): string {

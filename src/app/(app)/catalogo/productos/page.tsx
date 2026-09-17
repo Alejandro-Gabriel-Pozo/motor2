@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductosPagina, listarPresentaciones, type PresentacionOpcion } from "@/server/actions/productos";
-import { listarUnidadesActivas } from "@/server/actions/unidades";
-import { listarInsumos } from "@/server/actions/insumos";
-import { listarCategoriasProducto } from "@/server/actions/categorias-producto";
-import { listarProveedores } from "@/server/actions/proveedores";
+import { listarProductosPagina, listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
+import { listarInsumos } from "@/server/actions/catalogo/insumos";
+import { listarCategoriasProducto } from "@/server/actions/catalogo/categorias-producto";
+import { listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { prisma } from "@/lib/db";
 import { ProductoForm, type ProductoExistente } from "./producto-form";
 

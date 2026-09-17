@@ -20,8 +20,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarVenta, anularVenta } from "../../src/server/actions/venta";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
 import { calcularValuacionInventario } from "../../src/core/reportes/valuacion";

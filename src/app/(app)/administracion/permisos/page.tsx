@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarMatrizPermisos } from "@/server/actions/permisos";
+import { listarMatrizPermisos } from "@/server/actions/permisos/permisos";
 import { PermisosMatriz } from "./permisos-matriz";
 
 export default async function PermisosPage() {

@@ -2,8 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 export async function listarSucursales() {
   return prisma.sucursal.findMany({ orderBy: { nombre: "asc" } });

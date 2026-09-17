@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { crearSeccion, actualizarActivaSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/secciones";
+import { crearSeccion, actualizarActivaSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/movimientos/secciones";
 import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function SeccionesPage() {

@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarSeccionesActivas } from "@/server/actions/secciones";
-import { listarSucursalesDisponibles } from "@/server/actions/traspasos";
+import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
+import { listarSucursalesDisponibles } from "@/server/actions/traspasos/traspasos";
 import { EnviarForm } from "./enviar-form";
 
 export default async function EnviarTraspasoPage() {

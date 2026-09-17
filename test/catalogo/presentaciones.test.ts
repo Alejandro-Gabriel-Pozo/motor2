@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { agregarPresentacionAlternativa, actualizarActivaPresentacion, listarPresentaciones } from "../../src/server/actions/productos";
+import { agregarPresentacionAlternativa, actualizarActivaPresentacion, listarPresentaciones } from "../../src/server/actions/catalogo/productos";
 
 describe("Presentaciones de compra alternativas", () => {
   let unidadKgId: string;

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import { CampoNumero } from "@/components/campo-numero";
-import { registrarPagoConsignante } from "@/server/actions/consignacion";
+import { registrarPagoConsignante } from "@/server/actions/reportes/consignacion";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);

@@ -1,6 +1,6 @@
 import type { DestinoConsumo, MotivoMerma, Proceso } from "@prisma/client";
 import { TRANSICIONES } from "./transiciones";
-import type { FiltroSelectorProducto } from "@/server/actions/productos";
+import type { FiltroSelectorProducto } from "@/server/actions/catalogo/productos";
 
 /** Etiquetas de MOTIVOS_MERMA (Movimientos.js:56) — import type-only de @prisma/client, no arrastra el cliente de Prisma al bundle del navegador. */
 export const MOTIVOS_MERMA: { value: MotivoMerma; label: string }[] = [

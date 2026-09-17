@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { crearEnvioDirectoTransferencia } from "@/server/actions/traspasos";
+import { crearEnvioDirectoTransferencia } from "@/server/actions/traspasos/traspasos";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 

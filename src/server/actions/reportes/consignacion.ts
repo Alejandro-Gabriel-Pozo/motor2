@@ -1,8 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 /**
  * Registra un pago a un proveedor de consignación, para saldar (parcial o

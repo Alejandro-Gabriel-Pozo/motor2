@@ -8,7 +8,7 @@ import {
   actualizarActivaPresentacion,
   listarPresentaciones,
   type PresentacionOpcion,
-} from "@/server/actions/productos";
+} from "@/server/actions/catalogo/productos";
 
 interface Opcion {
   id: string;

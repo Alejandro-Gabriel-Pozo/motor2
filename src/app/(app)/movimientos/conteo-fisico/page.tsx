@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarSeccionesActivas } from "@/server/actions/secciones";
-import { obtenerHistorialConteosFisicos } from "@/server/actions/conteo-fisico";
+import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
+import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/conteo-fisico";
 import { listarStockParaConteo } from "@/core/movimientos/stock";
 import { ConteoFisicoGrid, type FilaBaseConteo } from "./conteo-fisico-grid";
 import { AccionesConteoPendiente, BotonCancelarConteo } from "./acciones-historial";

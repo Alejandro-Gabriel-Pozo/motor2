@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import { SelectorProducto } from "@/components/selector-producto";
-import { obtenerInsumoDeProducto, asignarInsumoAProducto, type InsumoDeProducto } from "@/server/actions/productos";
-import { crearInsumo } from "@/server/actions/insumos";
+import { obtenerInsumoDeProducto, asignarInsumoAProducto, type InsumoDeProducto } from "@/server/actions/catalogo/productos";
+import { crearInsumo } from "@/server/actions/catalogo/insumos";
 
 /**
  * Asistente guiado para "hermanar" una MP nueva con una que ya existe

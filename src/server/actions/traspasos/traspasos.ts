@@ -8,8 +8,8 @@ import { calcularSaldoTotal, validarStockSuficiente } from "@/core/movimientos/s
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion, type ResultadoConId } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion, type ResultadoConId } from "../tipos";
 
 /**
  * ===================================================================

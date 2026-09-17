@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { construirIndiceRecetas } from "@/core/reportes/comun";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 /** Port de obtenerPromocionesHabilitadas (Catalogo.js:2211-2213) — lectura simple, sin gate propio (mismo criterio que Consultar). */
 export async function obtenerPromocionesHabilitadas(sucursalId: string): Promise<boolean> {

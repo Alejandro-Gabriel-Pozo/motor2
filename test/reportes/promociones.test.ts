@@ -4,9 +4,9 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarVenta } from "../../src/server/actions/venta";
-import { actualizarPromocionesHabilitado, marcarProductoComoPromocion } from "../../src/server/actions/promociones";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { actualizarPromocionesHabilitado, marcarProductoComoPromocion } from "../../src/server/actions/reportes/promociones";
 import { obtenerReportePromociones } from "../../src/core/reportes/promociones";
 
 describe("Promociones y Combos", () => {

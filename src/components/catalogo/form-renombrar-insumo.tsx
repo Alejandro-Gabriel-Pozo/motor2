@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { previsualizarFusionInsumo, renombrarOFusionarInsumo } from "@/server/actions/insumos";
+import { previsualizarFusionInsumo, renombrarOFusionarInsumo } from "@/server/actions/catalogo/insumos";
 
 /**
  * Reemplaza el <form action={server action}> crudo que había en

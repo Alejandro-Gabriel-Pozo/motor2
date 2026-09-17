@@ -1,6 +1,37 @@
-# Arquitectura — modularidad de `server/actions/` (pendiente, no ejecutado)
+# Arquitectura — modularidad de `server/actions/`
 
-**Estado: documentado, sin ejecutar.** Nace de comparar motor2 contra
+**Estado: ejecutado (2026-09-17).** `src/server/actions/` pasó de 25
+archivos planos a 7 subcarpetas por dominio + 2 archivos que se quedan en
+la raíz por ser infraestructura cross-cutting (`con-permiso.ts`,
+`tipos.ts`, importados por los 23 archivos de dominio):
+
+- `auth/` — `usuarios.ts`, `sucursales.ts`, `sucursal-activa.ts`
+- `permisos/` — `permisos.ts`, `roles.ts`, `capacidades-sucursal.ts`
+- `catalogo/` — `categorias-producto.ts`, `insumos.ts`, `productos.ts`,
+  `proveedor-por-producto.ts`, `proveedores.ts`, `recetas.ts`, `unidades.ts`
+- `movimientos/` — `conteo-fisico.ts`, `movimientos.ts`, `precio-local.ts`,
+  `secciones.ts`, `venta.ts`
+- `stock/` — `reclasificacion.ts`, `stock-minimo.ts`
+- `reportes/` — `consignacion.ts`, `promociones.ts`
+- `traspasos/` — `traspasos.ts`
+
+`auth/` vs. `permisos/` (el único punto donde `core/` no da un mapeo 1:1
+obvio, porque `Rol`/`Usuario`/`Sucursal` conviven bajo el paraguas
+informal "Core" del resto de esta documentación): `permisos/` agrupa lo
+que es el MOTOR de permisos en sí (`Accion`/`PermisoRol`/`Rol`/
+`CapacidadSucursal` — "qué puede hacer un rol, dónde"), `auth/` agrupa
+identidad/sesión/organización (`Usuario`/`Sucursal`/membresía activa) —
+mismo criterio que separa `core/auth/` de `core/permisos/`.
+
+Ejecutado con un script de una sola vez (`git mv` por archivo +
+reescritura de imports relativos dentro de `server/actions/` y de
+`@/server/actions/X` / `../.../server/actions/X` en el resto del repo),
+borrado después de usarlo — no queda como deuda ni como herramienta
+reutilizable. Verificado después: `tsc --noEmit`, `eslint`, `vitest`
+(353/353) y `next build`, todos limpios; ningún test cambió de
+comportamiento, solo de import.
+
+Nace de comparar motor2 contra
 `app` (repo separado, `reservations-api` — backend de reservas
 multi-tenant del mismo dueño) durante una sesión de investigación
 (17/09/2026), no de un bug ni de un bloqueante funcional.
@@ -51,7 +82,7 @@ directorio. Esto no es una necesidad hoy (motor2 es de un solo negocio,
 sin planes de separar servicios) — es dejar la puerta abierta barata,
 mientras es barata.
 
-## Plan (cuando se ejecute) — mismo método ya probado en `app`
+## Plan (ejecutado) — mismo método ya probado en `app`
 
 Por cada módulo de `core/` (`catalogo`, `movimientos`, `permisos`,
 `reportes`, `stock`, `traspasos`, `auth`):
@@ -62,16 +93,16 @@ Por cada módulo de `core/` (`catalogo`, `movimientos`, `permisos`,
 2. Corregir imports (los que consumen la Server Action movida —
    páginas de `src/app/(app)/*` y cualquier action de otro módulo que la
    importe directo).
-3. Verificar después de CADA módulo (no al final, no todo en un commit
-   gigante): `tsc --noEmit`, `npm run lint`, `npm test` (141/141 esperado,
-   mismo resultado que antes de mover — ningún test debería cambiar de
-   comportamiento por esto).
-4. Repetir para el siguiente módulo recién cuando el anterior quede
-   verde.
+3. Verificar `tsc --noEmit`, `npm run lint`, `npm test` — mismo resultado
+   que antes de mover, ningún test debería cambiar de comportamiento por
+   esto.
 
-**No estimado en horas** — son 24 archivos, bajo riesgo (mover +
-arreglar imports, sin tocar lógica), pero se hace dominio por dominio
-para poder aislar cualquier import roto al módulo que se acaba de mover.
+En la práctica (2026-09-17) se ejecutó con un script (los 7 módulos de
+una sola pasada, no dominio-por-dominio a mano) precisamente porque el
+riesgo real resultó ser bajo y mecánico como se anticipaba acá — mover +
+arreglar ~74 sitios de import en todo el repo, sin tocar lógica de
+negocio en ningún archivo movido. La verificación sí se mantuvo como
+gate único antes de dar por cerrado el cambio.
 
 ## Explícitamente fuera de este documento
 

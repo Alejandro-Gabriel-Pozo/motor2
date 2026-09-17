@@ -2,8 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 async function contarAdminsActivosExcluyendo(idExcluido?: string): Promise<number> {
   return prisma.usuarioSucursal.count({

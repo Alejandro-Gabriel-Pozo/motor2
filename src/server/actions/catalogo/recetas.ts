@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 export interface IngredienteInput {
   insumoProductoId: string;

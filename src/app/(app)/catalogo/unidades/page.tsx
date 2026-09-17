@@ -6,7 +6,7 @@ import {
   actualizarDecimalesUnidad,
   listarUnidadesParaPanel,
   detectarInsumosConUnidadMezclada,
-} from "@/server/actions/unidades";
+} from "@/server/actions/catalogo/unidades";
 
 export default async function UnidadesPage() {
   const ctx = await obtenerContextoUsuario();

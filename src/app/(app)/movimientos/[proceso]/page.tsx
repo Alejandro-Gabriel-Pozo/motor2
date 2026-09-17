@@ -3,8 +3,8 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { ACCION_POR_PROCESO } from "@/core/movimientos/transiciones";
 import { obtenerConfigProceso } from "@/core/movimientos/ui-config";
-import { listarProveedores } from "@/server/actions/proveedores";
-import { listarSeccionesActivas } from "@/server/actions/secciones";
+import { listarProveedores } from "@/server/actions/catalogo/proveedores";
+import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { prisma } from "@/lib/db";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
 

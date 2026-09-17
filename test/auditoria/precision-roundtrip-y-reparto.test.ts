@@ -14,8 +14,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { actualizarCabeceraDeReceta } from "../../src/server/actions/recetas";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { actualizarCabeceraDeReceta } from "../../src/server/actions/catalogo/recetas";
 import { resolverConsumoPorFamilia } from "../../src/core/movimientos/stock";
 
 describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (cero tolerancia)", () => {
@@ -74,7 +74,7 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp1.id, cantidad: 0.0913, unidadId: unidadKgId, mermaPorcentaje: 1.07 }] } },
     });
 
-    const { agregarIngredienteAReceta } = await import("../../src/server/actions/recetas");
+    const { agregarIngredienteAReceta } = await import("../../src/server/actions/catalogo/recetas");
     const r = await agregarIngredienteAReceta(pv.id, { insumoProductoId: mp2.id, cantidad: 0.25, unidadId: unidadKgId, mermaPorcentaje: 2 });
     expect(r.ok, r.mensaje).toBe(true);
 

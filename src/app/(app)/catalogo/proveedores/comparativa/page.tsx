@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { obtenerComparativaPreciosPorInsumo } from "@/server/actions/proveedor-por-producto";
+import { obtenerComparativaPreciosPorInsumo } from "@/server/actions/catalogo/proveedor-por-producto";
 
 export default async function ComparativaPreciosPage() {
   const ctx = await obtenerContextoUsuario();

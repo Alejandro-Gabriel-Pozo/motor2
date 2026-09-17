@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
-import { listarUsuariosDeSucursal } from "@/server/actions/usuarios";
-import { listarSucursales } from "@/server/actions/sucursales";
+import { listarUsuariosDeSucursal } from "@/server/actions/auth/usuarios";
+import { listarSucursales } from "@/server/actions/auth/sucursales";
 import { UsuariosTabla } from "./usuarios-tabla";
 
 export default async function UsuariosPage() {

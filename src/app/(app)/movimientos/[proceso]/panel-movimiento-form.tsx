@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { DestinoConsumo, MotivoMerma } from "@prisma/client";
-import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos";
-import { listarProductosDeProveedor } from "@/server/actions/proveedor-por-producto";
-import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/productos";
+import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
+import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
+import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";

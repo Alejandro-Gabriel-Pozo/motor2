@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { setStockMinimoProducto } from "@/server/actions/stock-minimo";
+import { setStockMinimoProducto } from "@/server/actions/stock/stock-minimo";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 

@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { actualizarCapacidad, listarCapacidades } from "@/server/actions/capacidades-sucursal";
+import { actualizarCapacidad, listarCapacidades } from "@/server/actions/permisos/capacidades-sucursal";
 import type { AccionClave } from "@/core/permisos/acciones";
 
 export default async function CapacidadesSucursalPage() {

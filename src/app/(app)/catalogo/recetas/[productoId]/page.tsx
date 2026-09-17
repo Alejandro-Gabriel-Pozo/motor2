@@ -12,8 +12,8 @@ import {
   actualizarPasoDeReceta,
   quitarPasoDeReceta,
   actualizarCabeceraDeReceta,
-} from "@/server/actions/recetas";
-import { listarUnidadesActivas } from "@/server/actions/unidades";
+} from "@/server/actions/catalogo/recetas";
+import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AgregarColapsable } from "@/components/agregar-colapsable";

@@ -14,7 +14,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 
 describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin redondear a la unidad del insumo", () => {
   let sucursalId: string;
@@ -66,7 +66,7 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 1000 }] });
 
-    const { registrarVenta } = await import("../../src/server/actions/venta");
+    const { registrarVenta } = await import("../../src/server/actions/movimientos/venta");
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 7 }] });
     expect(resultado.ok, resultado.mensaje).toBe(true);
 

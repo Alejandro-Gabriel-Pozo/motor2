@@ -4,9 +4,9 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarVenta, anularVenta } from "../../src/server/actions/venta";
-import { setPrecioLocalProducto } from "../../src/server/actions/precio-local";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
+import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 describe("registrarVenta", () => {

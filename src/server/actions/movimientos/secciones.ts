@@ -2,8 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { conPermiso } from "./con-permiso";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 
 /**
  * Port de HOJA_SECCIONES (Stock.js:1316-1415) — antes una hoja POR

@@ -2,8 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import type { AccionClave } from "@/core/permisos/acciones";
-import { conPermiso } from "./con-permiso";
-import { error, ok, type ResultadoAccion } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, type ResultadoAccion } from "../tipos";
 
 export async function listarCapacidades() {
   const [acciones, sucursales, capacidades] = await Promise.all([

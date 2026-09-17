@@ -18,8 +18,10 @@ navegador real vía Playwright). Ver `docs/plan-migracion.md` para el
 contexto de negocio completo y el estado detallado de cada porción; esto
 es la guía de arranque local.
 
-Lo que queda es infraestructura real (Neon de producción, credenciales de
-Google OAuth) y refinamientos de UX no bloqueantes — ver "Pendiente" abajo.
+La infraestructura real (Neon de producción, credenciales de Google OAuth)
+ya está conectada en el deploy de Vercel; lo que queda son refinamientos de
+UX no bloqueantes y una modularización de código pendiente — ver
+"Pendiente" abajo.
 
 ## Setup
 
@@ -52,18 +54,19 @@ Movimientos + Stock + Reportes + Traspasos).
 
 ## Pendiente
 
-- Credenciales reales de Google OAuth (Google Cloud Console) — no
-  verificable sin acceso a Google Cloud Console.
-- Probar contra un proyecto Neon real (todo lo de acá se verificó contra
-  Postgres local; el código soporta los dos casos, ver la nota de
-  `src/lib/db.ts` arriba, pero Neon en sí nunca se conectó).
-- La UI de selección de "sucursal activa" para un usuario con más de una
-  membresía queda fuera de esta porción (ver `src/core/auth/contexto.ts`) —
-  cobra más relevancia con Traspasos entre sucursales, pero sigue sin ser
-  bloqueante (cada sucursal la opera gente distinta, en la práctica).
 - Wizard de Compra por proveedor con alta rápida de producto inline
   (refinamiento de UX sobre `/movimientos/compra`, no bloqueante) — ver
   `docs/plan-migracion.md`.
 - Exportación CSV del reporte por período (`exportarReportePeriodoCSV` de
   Apps Script no se portó — endpoint trivial de agregar sobre
   `obtenerReportePorPeriodo`, que ya existe, cuando haga falta).
+- Alertas de stock por mail (`notificarAlertasStockPorMail`) — necesita
+  elegir un proveedor de mail (Resend/SendGrid/etc.), no configurado
+  todavía.
+
+Resuelto y ya no pendiente (quedaba desactualizado en versiones previas
+de este README): credenciales reales de Google OAuth y conexión a un
+proyecto Neon real de producción (ambos ya en el deploy de Vercel), y la
+UI de selección de "sucursal activa" para usuarios con más de una
+membresía (`src/components/selector-sucursal.tsx`, ver
+`docs/plan-migracion.md` punto 3).

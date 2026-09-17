@@ -5,8 +5,8 @@ import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso } from "@/core/permisos/gate";
-import { conPermiso } from "./con-permiso";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "./tipos";
+import { conPermiso } from "../con-permiso";
+import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 
 const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
   CANTIDAD: 0,

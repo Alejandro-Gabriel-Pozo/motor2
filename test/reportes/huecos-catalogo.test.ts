@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarVenta } from "../../src/server/actions/venta";
+import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "../../src/core/reportes/huecos-catalogo";
 import { requierePermisoVer } from "../../src/core/permisos/gate";
 

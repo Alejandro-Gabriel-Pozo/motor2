@@ -16,9 +16,9 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarVenta } from "../../src/server/actions/venta";
-import { reclasificarStock } from "../../src/server/actions/reclasificacion";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { reclasificarStock } from "../../src/server/actions/stock/reclasificacion";
 
 describe("Auditoría — Pivote 2: repetición secuencial en el resto de los procesos de la política I3", () => {
   let sucursalId: string;

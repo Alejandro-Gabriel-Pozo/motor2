@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { setStockMinimoProducto, eliminarStockMinimo, listarStockMinimo } from "../../src/server/actions/stock-minimo";
+import { setStockMinimoProducto, eliminarStockMinimo, listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
 import { resolverStockMinimo } from "../../src/core/stock/stock-minimo";
 
 describe("Stock Mínimo", () => {

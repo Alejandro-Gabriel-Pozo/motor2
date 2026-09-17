@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { listarSeccionesActivas } from "@/server/actions/secciones";
+import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialProducto } from "@/core/reportes/historial-producto";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";

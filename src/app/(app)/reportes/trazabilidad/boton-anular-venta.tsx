@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { anularVenta } from "@/server/actions/venta";
+import { anularVenta } from "@/server/actions/movimientos/venta";
 
 /**
  * Antes era un `<form action={...}>` crudo que descartaba el resultado

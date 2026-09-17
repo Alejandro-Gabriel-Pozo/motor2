@@ -15,9 +15,9 @@ import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConSt
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
-import { upsertProveedorPorProducto } from "./proveedor-por-producto";
-import { conPermiso } from "./con-permiso";
-import { error, type ResultadoAccion } from "./tipos";
+import { upsertProveedorPorProducto } from "../catalogo/proveedor-por-producto";
+import { conPermiso } from "../con-permiso";
+import { error, type ResultadoAccion } from "../tipos";
 
 /** Procesos que pasan por este motor genérico — Venta (registrarVenta), Control (registrarConteoFisico, conteo-fisico.ts), Reclasificación (reclasificarStock, reclasificacion.ts) y los 3 pasos de Traspasos entre sucursales (traspasos.ts) tienen cada uno su propio camino, mismo criterio que Apps Script (armarPreviaVentaDesdeItems_/_registrarConteoFisicoSinRecalculo_/dividirClasificacionStock_/escribirMovimientoTransferenciaSucursal_ nunca pasan por armarRegistroMovimiento_). LIQUIDACION_CONSIGNACION nunca la elige un usuario. */
 export type ProcesoGenerico = Exclude<

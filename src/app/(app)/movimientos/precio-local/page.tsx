@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarPreciosLocales, setPrecioLocalProducto } from "@/server/actions/precio-local";
+import { listarPreciosLocales, setPrecioLocalProducto } from "@/server/actions/movimientos/precio-local";
 import { PrecioLocalForm } from "./precio-local-form";
 
 export default async function PrecioLocalPage() {

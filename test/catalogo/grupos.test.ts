@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { crearOActualizarGrupo } from "../../src/server/actions/insumos";
+import { crearOActualizarGrupo } from "../../src/server/actions/catalogo/insumos";
 import { creariaCiclo } from "../../src/core/catalogo/grupo";
 
 describe("árbol de grupos", () => {

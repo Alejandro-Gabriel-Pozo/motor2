@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarCatalogoBase, prisma } from "../setup/test-db";
-import { upsertProveedorPorProducto, obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/proveedor-por-producto";
+import { upsertProveedorPorProducto, obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
   let productoId: string;

@@ -4,8 +4,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarMovimiento } from "../../src/server/actions/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/conteo-fisico";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
 
 describe("calcularStockConsolidado", () => {
@@ -66,7 +66,7 @@ describe("calcularStockConsolidado", () => {
   });
 
   it("un PV \"Se produce\" vendido de más que lo producido queda NEGATIVO (Venta nunca valida el stock del propio PV, solo el de su receta)", async () => {
-    const { registrarVenta } = await import("../../src/server/actions/venta");
+    const { registrarVenta } = await import("../../src/server/actions/movimientos/venta");
     const pv = await prisma.producto.create({ data: { codigo: "PV_3", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, seProduce: true, precioVenta: 10 } });
     await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 2 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 5 }] });

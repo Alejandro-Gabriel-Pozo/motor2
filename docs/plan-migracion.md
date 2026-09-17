@@ -430,12 +430,16 @@ para las 6 porciones funcionales del proyecto.
 
 ## Pendiente / huecos conocidos
 
-1. Conectar un proyecto Neon real de PRODUCCIÓN y completar `.env` con sus
-   credenciales (`DATABASE_URL`/`DIRECT_URL`) — todo lo de acá se verificó
-   contra Postgres local; el código soporta los dos casos (ver el bugfix
-   de `src/lib/db.ts` arriba), pero Neon en sí nunca se conectó.
-2. Credenciales reales de Google OAuth (Google Cloud Console) — sigue
-   pendiente, no verificable sin acceso a Google Cloud Console.
+1. ~~Conectar un proyecto Neon real de PRODUCCIÓN~~ — **resuelto**. La app
+   está deployada en Vercel contra un proyecto Neon real (rama
+   `demo-pizzeria-la-cuadra`, con datos de varias sucursales cargados);
+   las dos migraciones de §9/§10 (`costoUnitarioVenta`, `IndicePrecio`) ya
+   se aplicaron ahí. Esta entrada quedó desactualizada por sesiones que no
+   la tocaron al conectar Neon — corregido acá (2026-09-17).
+2. ~~Credenciales reales de Google OAuth~~ — **resuelto**. El login de
+   producción funciona hoy vía Google Auth real (dominio del negocio,
+   `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` configuradas en Vercel) — mismo
+   caso que el punto 1: quedó sin marcar al resolverse.
 3. ~~UI de selección de "sucursal activa" para un usuario con más de una
    membresía~~ — **resuelto (2026-09-15)**. `src/core/auth/contexto.ts`
    ahora expone `membresias` (todas las sucursales activas del usuario) y
@@ -468,27 +472,25 @@ para las 6 porciones funcionales del proyecto.
    acá (volcaba a una hoja de la misma planilla porque Apps Script no tenía
    otra forma de "exportar" sin tocar Drive — con una base de datos real
    alcanza con mirar la propia página de Trazabilidad).
-7. `src/server/actions/` está organizado por capa técnica (24 archivos
-   planos), no por módulo de dominio, a diferencia de `src/core/` (que sí
-   está por módulo). No bloqueante hoy, pero marcado como importante por
-   el dueño ("el orden es fundamental") de cara a que un módulo (ej.
-   `stock/`) pueda desprenderse más adelante sin arrastrar el resto — ver
-   `docs/arquitectura-modularidad-server-actions-2026-09-17.md` para el
-   plan completo (mismo método ya verificado en `app`, el otro proyecto
-   del dueño: mover por módulo con `git mv`, verificar `tsc`/lint/tests
-   después de cada uno).
+7. ~~`src/server/actions/` está organizado por capa técnica~~ — **resuelto
+   (2026-09-17)**. Modularizado por dominio (`auth/`, `permisos/`,
+   `catalogo/`, `movimientos/`, `stock/`, `reportes/`, `traspasos/`, más
+   `con-permiso.ts`/`tipos.ts` en la raíz por ser infraestructura
+   compartida) — mismo método ya verificado en `app`, el otro proyecto
+   del dueño. Ver `docs/arquitectura-modularidad-server-actions-2026-09-17.md`
+   para el detalle completo y el mapeo de cada archivo.
 
 ## Próximas porciones
 
 Ninguna — Core, Catálogo, Movimientos, Stock, Reportes y Traspasos entre
 sucursales (la última) quedaron completas (código, tests y UI, todo
 verificado contra Postgres real y en navegador). La migración de `motor`
-a `motor2` está funcionalmente completa; lo que queda es exclusivamente
-lo de "Pendiente / huecos conocidos" arriba — infraestructura real
-(Neon de producción, credenciales de Google OAuth) y refinamientos de UX
-no bloqueantes (wizard de Compra por proveedor con alta rápida de
-producto inline; alertas de stock por mail; exportación CSV del reporte
-por período; selección de sucursal activa para multi-membresía).
+a `motor2` está funcionalmente completa, la infraestructura real (Neon de
+producción, Google OAuth) ya está conectada, y `server/actions/` ya está
+modularizado por dominio (punto 7) — lo que queda es exclusivamente
+refinamientos de UX no bloqueantes (wizard de Compra por proveedor con
+alta rápida de producto inline; alertas de stock por mail; exportación
+CSV del reporte por período).
 
 ## Convenciones a mantener en las próximas porciones
 

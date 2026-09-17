@@ -4,8 +4,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { darDeAltaProducto } from "../../src/server/actions/productos";
-import { renombrarOFusionarInsumo, previsualizarFusionInsumo } from "../../src/server/actions/insumos";
+import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
+import { renombrarOFusionarInsumo, previsualizarFusionInsumo } from "../../src/server/actions/catalogo/insumos";
 
 describe("renombrarOFusionarInsumo", () => {
   let unidadKgId: string;

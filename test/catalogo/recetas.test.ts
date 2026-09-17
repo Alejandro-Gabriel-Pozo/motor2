@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { darDeAltaProducto } from "../../src/server/actions/productos";
+import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
 import {
   guardarReceta,
   agregarIngredienteAReceta,
@@ -16,7 +16,7 @@ import {
   actualizarCabeceraDeReceta,
   obtenerRecetaVigente,
   listarVersionesDeReceta,
-} from "../../src/server/actions/recetas";
+} from "../../src/server/actions/catalogo/recetas";
 
 describe("recetas", () => {
   let unidadKgId: string;

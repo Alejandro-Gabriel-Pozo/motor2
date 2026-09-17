@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { AccionConteo } from "@prisma/client";
-import { registrarConteoFisico } from "@/server/actions/conteo-fisico";
-import { obtenerProductoOpcion } from "@/server/actions/productos";
+import { registrarConteoFisico } from "@/server/actions/movimientos/conteo-fisico";
+import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
