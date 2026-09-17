@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { GrupoNav } from "@/core/navegacion/estructura";
 
 function grupoActivo(grupo: GrupoNav, pathname: string): boolean {
@@ -17,11 +17,15 @@ export function SidebarNav({ grupos }: { grupos: GrupoNav[] }) {
 
   // Al navegar a un grupo distinto, ese grupo se abre solo — sin tocar el
   // estado (abierto/cerrado) que el usuario ya haya elegido para los demás.
-  useEffect(() => {
+  // Ajustado durante el render (no en un efecto) al detectar que
+  // `pathname` cambió desde el render anterior — mismo criterio que
+  // CampoNumero/SelectorProducto.
+  const [pathnamePrevio, setPathnamePrevio] = useState(pathname);
+  if (pathname !== pathnamePrevio) {
+    setPathnamePrevio(pathname);
     const activo = grupos.find((g) => grupoActivo(g, pathname));
     if (activo) setExpandido((prev) => (prev[activo.id] ? prev : { ...prev, [activo.id]: true }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo re-evaluar cuando cambia la ruta.
-  }, [pathname]);
+  }
 
   return (
     <nav className="flex flex-col gap-0.5 overflow-y-auto px-2 py-3 text-sm">

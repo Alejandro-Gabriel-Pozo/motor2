@@ -22,7 +22,6 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
   let sucursalId: string;
   let seccionId: string;
   let unidadKgId: string;
-  let insumoId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -30,7 +29,6 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
     sucursalId = base.sucursal.id;
     const catalogo = await sembrarCatalogoBase();
     unidadKgId = catalogo.kg.id;
-    insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
@@ -61,7 +59,6 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
     expect(vigente.version).toBe(6); // versión inicial + 5 ediciones de cabecera
     const ing = vigente.ingredientes[0]!;
 
-    // eslint-disable-next-line no-console
     console.log("[auditoria] Tras 5 round-trips: cantidad=", ing.cantidad.toString(), "mermaPorcentaje=", ing.mermaPorcentaje.toString());
 
     expect(Number(ing.cantidad)).toBe(0.1357);
@@ -102,7 +99,6 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       const partes = await resolverConsumoPorFamilia(h1.id, totalDisponible, seccionId);
 
       const sumaPartes = partes.reduce((acc, p) => acc + p.cantidad, 0);
-      // eslint-disable-next-line no-console
       console.log("[auditoria] partes:", partes.map((p) => p.cantidad), "suma:", sumaPartes, "pedido:", totalDisponible);
 
       expect(partes.length).toBe(3); // los 3 hermanos participaron
@@ -125,7 +121,6 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       const partes = await resolverConsumoPorFamilia(hermanos[0]!.id, pedido, seccionId);
       const sumaPartes = partes.reduce((acc, p) => acc + p.cantidad, 0);
 
-      // eslint-disable-next-line no-console
       console.log("[auditoria] partes (parcial):", partes.map((p) => ({ productoId: p.productoId, cantidad: p.cantidad })), "suma:", sumaPartes, "pedido:", pedido);
 
       expect(sumaPartes).toBe(pedido);

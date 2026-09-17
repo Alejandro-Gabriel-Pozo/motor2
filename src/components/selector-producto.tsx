@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { buscarProductosSelector, type FiltroSelectorProducto, type ProductoOpcion } from "@/server/actions/productos";
 
 interface Props {
@@ -35,6 +35,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
   const [resaltado, setResaltado] = useState(0);
   const contenedorRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const listboxId = useId();
 
   useEffect(() => {
     function alClicFuera(e: MouseEvent) {
@@ -44,10 +45,15 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
     return () => document.removeEventListener("mousedown", alClicFuera);
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- se dispara a propósito solo cuando el padre cambia limpiarSenal, no en cada render.
-  useEffect(() => {
+  // Limpia `query` cuando el padre cambia `limpiarSenal` (ej. tras un
+  // submit exitoso) — ajustar estado durante el render en vez de en un
+  // efecto, mismo criterio que CampoNumero: no hace falta un round-trip
+  // extra para sincronizar con un valor que ya viene del padre.
+  const [limpiarSenalPrevia, setLimpiarSenalPrevia] = useState(limpiarSenal);
+  if (limpiarSenal !== limpiarSenalPrevia) {
+    setLimpiarSenalPrevia(limpiarSenal);
     if (limpiarSenal !== undefined) setQuery("");
-  }, [limpiarSenal]);
+  }
 
   function buscar(termino: string) {
     clearTimeout(debounceRef.current);
@@ -107,10 +113,11 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
         role="combobox"
         aria-expanded={abierto}
         aria-autocomplete="list"
+        aria-controls={listboxId}
         className="w-full rounded border px-2 py-1.5 text-sm"
       />
       {abierto && (
-        <ul role="listbox" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+        <ul id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
           {cargando && <li className="px-2 py-1.5 text-neutral-500">Buscando…</li>}
           {!cargando && !opciones.length && <li className="px-2 py-1.5 text-neutral-500">Sin resultados.</li>}
           {!cargando &&

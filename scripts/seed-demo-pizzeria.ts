@@ -404,7 +404,6 @@ describe("seed demo pizzería La Cuadra", () => {
         return PRECIOS_REFERENCIA.find((p) => p.productoCodigo === codigo && p.proveedorCodigo === proveedorCodigo) ?? PRECIOS_REFERENCIA.find((p) => p.productoCodigo === codigo)!;
       }
 
-      let contadorEntregaVerduleria = 0;
       let contadorEntregaHarinas = 0;
       let contadorEntregaLacteos = 0;
 

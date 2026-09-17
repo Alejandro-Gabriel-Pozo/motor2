@@ -149,14 +149,12 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     // real pero prueba la robustez del guard de estado ante la carrera).
     const settled = await Promise.allSettled([aceptarTransferencia(envio.id!, seccionBId), rechazarTransferencia(envio.id!, "motivo")]);
 
-    // eslint-disable-next-line no-console
     console.log(
       "[auditoria] Aceptar+Rechazar simultáneos:",
       settled.map((s) => (s.status === "fulfilled" ? { ok: s.value.ok, mensaje: s.value.mensaje } : { rejected: true, message: String((s.reason as Error)?.message).slice(0, 200) }))
     );
 
     const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id! } });
-    // eslint-disable-next-line no-console
     console.log("[auditoria] Estado final del traspaso:", traspaso.estado);
 
     // El resultado válido es UNO solo de los dos efectos, nunca ambos
@@ -214,7 +212,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     const mp = await crearMP("Harina5");
     await comoA();
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
-    const admin = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: usuarioAId } });
+    await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: usuarioAId } }); // precondición: la membresía existe antes de simular el fallo
 
     class FalloSimulado extends Error {}
 

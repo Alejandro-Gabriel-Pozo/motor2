@@ -1041,7 +1041,7 @@ Verificación consolidada (sin repetir auditoría ni rehacer benchmarks):
 |---|---|
 | Suite acumulada | **56/56 archivos, 337/337 tests** (última corrida, post-R2) |
 | `tsc --noEmit` (repo completo) | Mismos errores preexistentes que antes de N3 (confirmado comparando contra el commit base `82556df`, previo a toda la auditoría) — ninguno en `movimientos.ts`, `con-reintento.ts`, `periodo.ts` ni `historial-producto.ts` |
-| `eslint .` (repo completo) | **5 errores, 24 warnings — idénticos antes y después** de N3/C2/R2 (mismo conteo comparando contra `82556df`); ninguno en archivos tocados por esos 3 paquetes |
+| `eslint .` (repo completo) | **5 errores, 24 warnings — idénticos antes y después** de N3/C2/R2; ninguno en archivos tocados por esos 3 paquetes. *(Corrección, 2026-09-17: la comparación contra `82556df` citada acá se hizo con `git checkout 82556df -- .`, que no borra archivos nuevos que no existían en ese commit — quedó contaminada por los tests de la fase de investigación. Con un `git worktree` aislado, 82556df en realidad tiene solo 5 errores y 6 warnings, no 24 — ver `docs/auditoria-motor2-deuda-tecnica-flake-eslint-2026-09-17.md` §B para la cifra correcta y su origen real.)* |
 | Working tree | Limpio, sincronizado con `origin/claude/migration-plan-px7c0b` |
 | Commits | 6 commits de N3/C2/R2 (3 de código + 3 de documentación), cada uno con su propio mensaje detallado |
 | Diffs dentro de alcance | Confirmado por paquete (`git show --stat`): N3 solo tocó `movimientos.ts` + 2 tests; C2 solo `con-reintento.ts` + 2 tests; R2 solo los 2 reportes + su test + el benchmark |
@@ -1153,3 +1153,15 @@ I3 — prueba de humo 5 (concurrencia real contra Neon): NO verificable
 I3 — migración en producción real: NO TOCADA, no forma parte de este
      proyecto Neon ni de esta autorización
 ```
+
+---
+
+## 15. Deuda técnica preexistente: flake de C2 + inventario ESLint (2026-09-17)
+
+Tarea separada de I3, autorizada explícitamente tras la verificación de I3 en la demo Neon. Detalle completo en `docs/auditoria-motor2-deuda-tecnica-flake-eslint-2026-09-17.md`.
+
+**Resumen**:
+- **Flake de C2** (`concurrencia-idempotencia.test.ts`, "REGRESIÓN Plan C2"): investigado con 25 corridas (20 aisladas + 5 de la suite completa, ~390 sub-iteraciones del bucle de concurrencia real) — **0 reproducciones**. Se descartó con evidencia contaminación entre tests, orden de ejecución y cleanup incompleto. No se pudo confirmar la causa exacta (dos hipótesis abiertas: ruido de infraestructura del Postgres local de este contenedor, o un tipo de error de Postgres bajo contención real que `esConflictoDeEscritura` no reconoce) porque no se pudo capturar el error real de la única falla observada. **No se modificó ningún código de producción** (`con-reintento.ts` intacto) — la deuda queda documentada, explícitamente **no declarada cerrada**.
+- **ESLint**: se detectó y corrigió un error metodológico propio de una comparación anterior contra el commit base (§12 de este documento usaba `git checkout 82556df -- .`, que no borra archivos nuevos — quedó contaminada; con un `git worktree` aislado, el baseline real es 5 errores/6 warnings, no 5/24). Se corrigieron los 5 errores reales (4 `react-hooks/set-state-in-effect` con el patrón de React de "ajustar estado durante el render", 1 variable muerta) y los 22 warnings (16 introducidos durante la fase de investigación de la auditoría, no por N3/C2/R2/I3 en sí; 6 preexistentes desde antes de toda la auditoría) — sin desactivar reglas globalmente ni agregar excepciones amplias. Estado final: **0 errores, 0 warnings** en todo el repo.
+
+Commit separado del de I3, sin tocar schema/migraciones/política I3/contratos de Server Actions/Neon.

@@ -76,6 +76,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
   function quitarManual(key: string) {
     setFilasManuales((prev) => prev.filter((f) => f.key !== key));
     setEstados((prev) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructuring para excluir `key` de `resto`, no hay otra forma de omitir una clave sin nombrarla.
       const { [key]: _omitida, ...resto } = prev;
       return resto;
     });

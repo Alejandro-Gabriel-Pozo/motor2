@@ -1,0 +1,188 @@
+# Deuda técnica preexistente: flake de C2 + inventario ESLint (2026-09-17)
+
+**Alcance**: tarea separada de I3, autorizada explícitamente para investigar y, si es posible, resolver dos focos de deuda técnica detectados durante la verificación de I3 pero NO causados por I3: (1) una falla intermitente observada en un test de C2, (2) el conjunto de warnings de ESLint acumulados a lo largo de toda la auditoría (N3/C2/R2/I3).
+
+**Restricciones respetadas**: sin cambios de schema, sin migraciones, sin tocar la política/mecanismo de I3, sin cambiar contratos de Server Actions, sin tocar producción/Neon. Commit separado del de I3.
+
+---
+
+## Parte A — Flake de `concurrencia-idempotencia.test.ts`
+
+### Identificación
+
+El test exacto: `test/auditoria/concurrencia-idempotencia.test.ts`, describe "Escenario 1", it `"REGRESIÓN (Plan C2): con dos operaciones concurrentes que SÍ deberían poder convivir (stock de sobra), conTransaccionSerializable debe reintentar SIEMPRE — nunca un rechazo crudo del driver, 15/15 corridas"`. Internamente hace un loop de 15 iteraciones, cada una lanzando 2 `registrarMovimiento` CONSUMO verdaderamente concurrentes (`Promise.allSettled`) sobre el mismo producto+sección, y afirma `rechazados.length === 0` en cada iteración — es decir, que `conTransaccionSerializable` (el fix de C2) siempre absorbe el conflicto de escritura vía reintento, nunca deja escapar una promesa rechazada.
+
+Se observó **una** falla de esta assertion en una corrida anterior (durante la verificación de I3, corriendo solo el directorio `test/auditoria/`) — no se guardó el log completo de esa corrida específica, así que no se pudo recuperar el tipo/mensaje exacto del error que causó el rechazo.
+
+### Reproducción (secuencia exigida)
+
+| Paso | Resultado |
+|---|---|
+| Reproducir aislado, 20 corridas del archivo completo filtrado a este test (cada corrida = 15 sub-iteraciones internas = 300 sub-iteraciones totales) | **20/20 limpias** |
+| Reproducir dentro de la suite completa, 5 corridas completas (cada corrida incluye las 15 sub-iteraciones de este test = 75 sub-iteraciones adicionales) | **5/5 limpias, 351/351 tests** cada vez |
+
+Total: **25 corridas, ~390 sub-iteraciones del bucle de concurrencia real, 0 reproducciones** de la falla original.
+
+### Aislar / identificar causa
+
+No se pudo re-observar la falla para capturar el error real, así que la causa no se pudo confirmar empíricamente. Se descartaron por evidencia, no por suposición, las siguientes categorías:
+
+| Categoría propuesta | Descartada por |
+|---|---|
+| Contaminación entre tests / datos compartidos | `limpiarBaseDeTest()` en `beforeEach` vacía la base entera antes de cada test — y la falla no correlaciona con "corrida dentro de la suite" vs. "corrida aislada" (0% de fallas en ambos contextos, ~390 intentos) — si fuera contaminación cruzada, se esperaría una tasa de fallo distinta entre ambos contextos |
+| Orden de ejecución | `fileParallelism: false` (vitest.config.ts) — los archivos corren secuenciales, nunca dos archivos tocan la DB al mismo tiempo; dentro del mismo archivo, los tests corren en el orden declarado, sin overlap |
+| Cleanup incompleto | Mismo argumento que contaminación — `limpiarBaseDeTest()` es incondicional y total, no selectivo |
+| Dependencia de Postgres / timing | Posible, no descartada — ver hipótesis abajo |
+| Problema real de concurrencia (C2) | Posible, no descartada — ver hipótesis abajo |
+
+**Lectura del código relevante** (`src/core/movimientos/con-reintento.ts`): una promesa solo puede llegar "rechazada" al `Promise.allSettled` del test si `esConflictoDeEscritura(e)` devuelve `false` para lo que sea que Postgres/el adapter haya lanzado en ese intento — la función reconoce únicamente `P2034` (Prisma) y `DriverAdapterError` con `cause.kind === "TransactionWriteConflict"` (adapter-pg), deliberadamente estrecho para no enmascarar un error real de infraestructura (ver el propio comentario del código). Dos hipótesis quedan abiertas, ninguna confirmada:
+
+1. **Ruido de infraestructura genuino**: un hipo transitorio de la instancia local de Postgres de este contenedor (única, compartida, no un servicio gestionado) durante la ventana exacta de una de las ~390+ carreras reales ejecutadas a lo largo de toda esta sesión — coherente con que NUNCA se haya podido reproducir a pedido pese a un esfuerzo extenso.
+2. **Un tipo de error de Postgres bajo contención real que `esConflictoDeEscritura` no reconoce** — ej. alguna variante de error que no mapea a `P2034` ni a `TransactionWriteConflict` pero que igual es, en el fondo, un conflicto de serialización genuino.
+
+### No se modificó código de producción
+
+Siguiendo la instrucción explícita ("si el problema está en producción o en C2, detenete y documentá el impacto antes de modificarlo"): **no se tocó `con-reintento.ts`**. Modificar `esConflictoDeEscritura` para ampliar qué se considera "reintentable" sin poder observar el error real que motivaría el cambio sería especulativo — el riesgo concreto es empezar a reintentar errores que en realidad SÍ son infraestructura real (conexión caída, timeout), exactamente lo que ese diseño evita a propósito.
+
+**No se aumentó el timeout, no se redujo la cantidad de iteraciones del test, no se agregó ningún retry al test** — el test queda exactamente como estaba.
+
+### Verificación de que no se degradó la cobertura de C2
+
+- Los 25 runs de reproducción (20 aislados + 5 de la suite completa) son, en sí mismos, la verificación: C2 sigue demostrando su garantía (0 rechazos crudos) de forma consistente.
+- Invariantes del Kardex: la suite completa (351/351, incluyendo todos los tests de saldo/atomicidad de `test/auditoria/`, `test/movimientos/`, `test/stock/`) sigue en verde — ningún invariante de saldo/signo se rompió.
+
+### Conclusión — clasificación
+
+**No se puede clasificar con certeza** entre "ruido de infraestructura de este contenedor" y "un tipo de error de Postgres no cubierto" — ninguna de las dos hipótesis se pudo confirmar ni descartar sin poder observar el error real. Lo que SÍ queda descartado con evidencia (no supuesto): no es contaminación entre tests, no es orden de ejecución, no es cleanup incompleto. La tasa de reproducción observada (0 en ~390 intentos, tras una única falla previa no capturada) es consistente con un evento extremadamente raro, no con un defecto sistemático de C2.
+
+**Esta deuda NO se declara cerrada** — queda documentada, no resuelta, tal como pidió el usuario ("yo no lo declararía cerrado hasta saber por qué ocurre"). Recomendación concreta para la próxima vez que ocurra: capturar el log completo de la corrida (no solo el resumen) antes de volver a correr nada, específicamente `rechazados[0].reason.constructor.name` y `.message` (el test ya los loggea si ocurre — ver línea 89 del archivo) — eso es lo que falta para pasar de "hipótesis" a "causa confirmada".
+
+---
+
+## Parte B — Inventario y limpieza de ESLint
+
+### Metodología
+
+Se comparó el estado actual del repo contra el commit `82556df` ("Marcar resuelta la Ficha técnica sin modo vista y cerrar el backlog completo") — el commit inmediato anterior al inicio de TODA la auditoría (Fase 0), usando un **worktree de git aislado** (`git worktree add`, no `git checkout -- .` en el árbol de trabajo) para evitar el problema ya señalado en esta misma auditoría: `checkout -- .` no borra archivos que no existían en el commit destino, así que una comparación anterior contra este mismo commit (documentada en §12 del documento madre, "5 errores, 24 warnings — idénticos... comparando contra 82556df") **quedó contaminada** por archivos de test nuevos que seguían presentes en el árbol de trabajo — confirmado con `git cat-file -e 82556df:<archivo>`, que muestra que esos archivos **no existen en 82556df**. Esa cifra anterior (24 warnings en baseline) es, por lo tanto, **incorrecta** — se corrige acá de forma transparente.
+
+### Inventario ANTES de esta tarea
+
+| | Baseline real (82556df, worktree aislado) | Estado previo a esta tarea (post-I3) |
+|---|---|---|
+| Errores | 5 | 5 |
+| Warnings | 6 | 22 |
+| Total | 11 | 27 |
+
+**Los 5 errores son idénticos en ambos puntos** (mismo archivo, línea, regla, mensaje) — ninguno fue introducido por N3/C2/R2/I3:
+
+| Archivo | Línea | Regla | Tipo |
+|---|---|---|---|
+| `scripts/seed-demo-pizzeria.ts` | 407:11 | `prefer-const` | error preexistente |
+| `src/app/(app)/movimientos/precio-local/precio-local-form.tsx` | 23:7 | `react-hooks/set-state-in-effect` | error preexistente |
+| `src/components/campo-numero.tsx` | 72:18 | `react-hooks/set-state-in-effect` | error preexistente |
+| `src/components/selector-producto.tsx` | 49:37 | `react-hooks/set-state-in-effect` | error preexistente |
+| `src/components/sidebar-nav.tsx` | 22:17 | `react-hooks/set-state-in-effect` | error preexistente |
+
+**Los 16 warnings nuevos** (22 actuales − 6 de baseline) se rastrearon con `git blame` hasta su commit de introducción — todos son de la **fase de investigación/evidencia de la auditoría** (commits "Fase 4", "Cerrar Pivotes 1/3/5/6", anteriores incluso a la implementación de N3), no de I3 específicamente:
+
+| Archivo | Línea | Regla | Tipo | Commit que lo introdujo |
+|---|---|---|---|---|
+| `test/auditoria/concurrencia-casos-2-3.test.ts` | 56,88,106,123 (×4) | `no-console` disable sin uso | warning | "Cerrar Pivotes 1, 3, 5 y 6 con evidencia técnica completa" |
+| `test/auditoria/concurrencia-idempotencia.test.ts` | 60,89,121 (×3) | `no-console` disable sin uso | warning | "Fase 4 (parcial): pruebas de concurrencia/idempotencia..." |
+| `test/auditoria/precision-produccion-sin-redondeo.test.ts` | 50,76 (×2) | `no-console` disable sin uso | warning | "Cerrar Pivote 4 (Precisión numérica) — CERRADO CON CAMBIO N3" |
+| `test/auditoria/precision-roundtrip-y-reparto.test.ts` | 25 | `@typescript-eslint/no-unused-vars` | warning | "Cerrar Pivote 4 (Precisión numérica) — CERRADO CON CAMBIO N3" |
+| `test/auditoria/precision-roundtrip-y-reparto.test.ts` | 64,105,128 (×3) | `no-console` disable sin uso | warning | ídem |
+| `test/auditoria/traspasos-en-transito.test.ts` | 152,159 (×2) | `no-console` disable sin uso | warning | "Fase 4/5: pruebas de traspasos en tránsito y precisión numérica" |
+| `test/auditoria/traspasos-en-transito.test.ts` | 217 | `@typescript-eslint/no-unused-vars` | warning | "Cerrar Pivotes 1, 3, 5 y 6 con evidencia técnica completa" |
+
+(La tabla usa los números de línea de antes de esta limpieza — ya no existen, ver diff.)
+
+**Los 6 warnings de baseline (preexistentes desde antes de toda la auditoría)**:
+
+| Archivo | Línea | Regla |
+|---|---|---|
+| `scripts/seed-demo-pizzeria.ts` | 407:11 | `@typescript-eslint/no-unused-vars` |
+| `src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx` | 79:22 | `@typescript-eslint/no-unused-vars` |
+| `src/components/campo-numero.tsx` | 73:5 | disable sin uso |
+| `src/components/selector-producto.tsx` | 47:3 | disable sin uso |
+| `src/components/selector-producto.tsx` | 107:9 | `jsx-a11y/role-has-required-aria-props` |
+| `test/reportes/resumen-consolidado.test.ts` | 7:10 | `@typescript-eslint/no-unused-vars` |
+
+### Clasificación
+
+| Hallazgo | Clasificación |
+|---|---|
+| 5 errores `react-hooks/set-state-in-effect` (4) + `prefer-const` (1) | Errores reales de código, no de configuración — la regla está bien puesta, el patrón que señala era real |
+| 16 warnings nuevos (`no-console` disable sin uso, `no-unused-vars`) | Deuda técnica — residuos mecánicos de refactors de tests durante la auditoría (un `console.log` que dejó de necesitar su disable, una variable que dejó de usarse) |
+| 6 warnings de baseline | Mixto: 2 destructuring-para-omitir-clave (patrón legítimo, no configuración mal puesta), 2 disable-sin-uso (deuda mecánica), 1 unused-var real, 1 a11y real |
+| Ningún warning requirió una decisión arquitectónica | — |
+
+### Corrección aplicada
+
+**Los 5 errores** — los 4 `react-hooks/set-state-in-effect` se resolvieron con el patrón que React mismo documenta para "ajustar estado cuando cambia un valor externo" (comparar contra un "valor anterior" guardado en estado y llamar a `setState` **durante el render**, no dentro de un efecto) — preserva el comportamiento exacto sin el round-trip extra de un efecto:
+
+| Archivo | Qué cambió |
+|---|---|
+| `precio-local-form.tsx` | El único uso sincrónico problemático (limpiar `precioGlobal` cuando no hay producto elegido) se removió del efecto — el efecto ahora solo hace el fetch async (su único uso legítimo); el guard se movió al punto de lectura (`productoId && precioGlobal !== null`) |
+| `campo-numero.tsx` | Se removió el `useEffect` que reformateaba `texto` cuando `valorReal` cambiaba desde afuera sin foco — reemplazado por el patrón de ajuste-durante-render, comparando contra `valorRealSincronizado` |
+| `selector-producto.tsx` | Mismo patrón para `limpiarSenal` (reemplaza el `useEffect` + su disable de `exhaustive-deps`, que también estaba en la lista de warnings de baseline — se resuelve el error y el warning adyacente juntos) |
+| `sidebar-nav.tsx` | Mismo patrón para `pathname` (comparando contra `pathnamePrevio`) |
+| `scripts/seed-demo-pizzeria.ts` | `contadorEntregaVerduleria` era una variable genuinamente muerta (nunca incrementada ni leída, a diferencia de sus dos hermanas `contadorEntregaHarinas`/`contadorEntregaLacteos`, que sí se usan) — se eliminó la declaración |
+
+**Los 16 warnings nuevos** — se removieron mecánicamente los 14 comentarios `// eslint-disable-next-line no-console` que ya no hacían falta (el `--fix` de ESLint los detecta automáticamente; se limpiaron a mano las líneas en blanco que dejó el autofix) y las 2 variables sin uso (`insumoId` en `precision-roundtrip-y-reparto.test.ts`, `admin` en `traspasos-en-transito.test.ts` — este último se resolvió quitando el binding pero **conservando el `await` del `findFirstOrThrow`**, porque la llamada cumple una función de precondición: lanza si la membresía no existe, más allá de su valor de retorno, que nunca se usaba).
+
+**Los 6 warnings de baseline**:
+- `conteo-fisico-grid.tsx:79` (`_omitida`, patrón de destructuring para omitir una clave) → se agregó un `eslint-disable-next-line` **puntual y justificado en un comentario** (no una excepción amplia ni una regla desactivada globalmente) — es la forma correcta de expresar "esta variable es intencionalmente descartada" sin cambiar la config global de `no-unused-vars` para todo el repo.
+- `selector-producto.tsx:47` (disable de `exhaustive-deps` sin uso) → se resolvió como parte del fix del error de esa misma línea (arriba).
+- `selector-producto.tsx:107` (a11y, combobox sin `aria-controls`) → se agregó `useId()` + `aria-controls`/`id` enlazando el input con el listbox — arreglo real, no cosmético (mejora el soporte de lectores de pantalla).
+- `seed-demo-pizzeria.ts:407` (unused-var) → resuelto junto con el error de la misma línea.
+- `resumen-consolidado.test.ts:7` (`registrarMovimiento` importado sin uso) → import eliminado.
+
+### Inventario DESPUÉS
+
+```text
+$ npx eslint .
+(sin salida)
+$ echo $?
+0
+```
+
+**0 errores, 0 warnings** en todo el repositorio.
+
+### Archivos modificados
+
+```text
+scripts/seed-demo-pizzeria.ts
+src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx
+src/app/(app)/movimientos/precio-local/precio-local-form.tsx
+src/components/campo-numero.tsx
+src/components/selector-producto.tsx
+src/components/sidebar-nav.tsx
+test/auditoria/concurrencia-casos-2-3.test.ts
+test/auditoria/concurrencia-idempotencia.test.ts
+test/auditoria/precision-produccion-sin-redondeo.test.ts
+test/auditoria/precision-roundtrip-y-reparto.test.ts
+test/auditoria/traspasos-en-transito.test.ts
+test/reportes/resumen-consolidado.test.ts
+```
+
+Ningún archivo de I3 (schema, migraciones, `src/core/movimientos/idempotencia.ts`, las 4 Server Actions de I3, los 4 formularios de frontend de I3) fue tocado — confirmado por `git status --short` antes de este commit.
+
+### Pruebas ejecutadas
+
+| Chequeo | Resultado |
+|---|---|
+| `eslint .` | 0 errores, 0 warnings (antes: 5 errores, 22 warnings) |
+| `tsc --noEmit` | Mismos 3 archivos con errores preexistentes de siempre (`scripts/auditoria-benchmark-reportes.ts`, `precision-costos-precios-reversiones.test.ts`, `traspasos-en-transito.test.ts` — este último por el patrón `envio.id!` ya documentado, no tocado por esta limpieza) — ninguno nuevo |
+| `next build` | Turbopack compila correctamente (`✓ Compiled successfully`) |
+| Suite completa (`vitest run`) | **57/57 archivos, 351/351 tests** — corrida como parte de la reproducción del flake (5 veces) y una vez más después de los fixes de ESLint, todas verdes |
+| Smoke test de rutas que usan los componentes tocados (`precio-local`, `/` [sidebar], `reclasificar`) | 307 hacia `/login` sin error de servidor — no hubo click-through interactivo autenticado (mismo límite ya documentado para I3: sin credenciales de OAuth en este entorno) |
+
+### Errores preexistentes restantes
+
+**Ninguno de ESLint.** De `tsc --noEmit`, siguen los 3 archivos ya documentados repetidamente a lo largo de esta auditoría (`scripts/auditoria-benchmark-reportes.ts`, `test/auditoria/precision-costos-precios-reversiones.test.ts`, `test/auditoria/traspasos-en-transito.test.ts`) — deliberadamente fuera de alcance de esta tarea (son errores de TypeScript, no de ESLint, y el pedido fue específicamente sobre la deuda de ESLint + el flake de C2).
+
+### Criterio para considerar la deuda cerrada
+
+- **Flake de C2**: NO cerrado. Se cierra solo cuando se capture el error real de una futura reproducción (o se confirme, con evidencia, que jamás vuelve a ocurrir tras un número mucho mayor de corridas en producción/CI real). Mientras tanto, permanece como riesgo conocido y documentado, sin código nuevo que lo enmascare.
+- **ESLint**: cerrado para esta tarea — 0 errores, 0 warnings, sin reglas desactivadas globalmente ni excepciones amplias (el único `eslint-disable` agregado es puntual, de una línea, con justificación en el comentario). Se reabre si una futura corrida vuelve a mostrar hallazgos nuevos — en ese caso, el mismo método de comparación contra el commit base (con un worktree aislado, no `checkout -- .`) es el que hay que repetir.

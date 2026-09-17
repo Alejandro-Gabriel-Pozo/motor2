@@ -19,10 +19,7 @@ export function PrecioLocalForm() {
   const [precioGlobal, setPrecioGlobal] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!productoId) {
-      setPrecioGlobal(null);
-      return;
-    }
+    if (!productoId) return;
     let cancelado = false;
     obtenerPrecioVentaProducto(productoId).then((p) => {
       if (!cancelado) setPrecioGlobal(p);
@@ -57,7 +54,7 @@ export function PrecioLocalForm() {
         <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloActivos: true }} limpiarSenal={resetCount} required />
       </label>
 
-      {precioGlobal !== null && <p className="text-xs text-neutral-500">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</p>}
+      {productoId && precioGlobal !== null && <p className="text-xs text-neutral-500">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</p>}
 
       <label className="flex flex-col gap-1 text-sm">
         Precio local

@@ -57,7 +57,6 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
       const exitosos = resultados.filter((r) => r.ok);
       const fallidos = resultados.filter((r) => !r.ok);
 
-      // eslint-disable-next-line no-console
       console.log("[auditoria] Escenario 1 resultados:", resultados.map((r) => ({ ok: r.ok, mensaje: r.mensaje })));
 
       expect(exitosos.length).toBe(1);
@@ -86,7 +85,6 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
 
         const rechazados = settled.filter((s): s is PromiseRejectedResult => s.status === "rejected");
         if (rechazados.length > 0) {
-          // eslint-disable-next-line no-console
           console.log(`[auditoria] Intento ${intento}: promesa rechazada —`, (rechazados[0]!.reason as Error)?.constructor?.name, String((rechazados[0]!.reason as Error)?.message).slice(0, 200));
         }
         expect(rechazados.length, `intento ${intento}: no debe haber ninguna promesa rechazada`).toBe(0);
@@ -118,7 +116,6 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
         where: { sucursalId, proceso: "COMPRA", proveedorId: proveedor.id, nroFactura: "A-0001" },
       });
 
-      // eslint-disable-next-line no-console
       console.log(
         "[auditoria] Escenario 2:",
         settled.map((s) => (s.status === "fulfilled" ? { ok: s.value.ok, mensaje: s.value.mensaje } : { rejected: true, message: String((s.reason as Error)?.message).slice(0, 200) })),

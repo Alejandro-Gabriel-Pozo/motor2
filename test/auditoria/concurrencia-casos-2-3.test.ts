@@ -53,7 +53,6 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
       ]);
 
-      // eslint-disable-next-line no-console
       console.log("[auditoria] Caso 2 (ventas concurrentes, misma receta):", resumen(settled as never));
 
       const exitosas = settled.filter((s) => s.status === "fulfilled" && s.value.ok);
@@ -85,7 +84,6 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
           registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
           registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
         ]);
-        // eslint-disable-next-line no-console
         if (settled.some((s) => s.status === "rejected")) console.log(`[auditoria] Intento ${intento} (venta):`, resumen(settled as never));
 
         expect(settled.every((s) => s.status === "fulfilled" && s.value.ok), `intento ${intento}: ambas ventas deben tener éxito`).toBe(true);
@@ -103,7 +101,6 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
         registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], motivo: "VENCIDO" }),
       ]);
-      // eslint-disable-next-line no-console
       console.log("[auditoria] Caso 3a (consumo+merma):", resumen(settled as never));
 
       const saldoFinal = await calcularSaldoTotal(mp.id, seccionId);
@@ -120,7 +117,6 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
         registrarMovimiento({ proceso: "TRANSFERENCIA", fecha: new Date(), seccionId, seccionDestinoId, items: [{ productoId: mp.id, cantidad: 6 }] }),
       ]);
-      // eslint-disable-next-line no-console
       console.log("[auditoria] Caso 3b (consumo+transferencia):", resumen(settled as never));
 
       const saldoOrigen = await calcularSaldoTotal(mp.id, seccionId);

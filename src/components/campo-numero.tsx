@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface Props {
   id?: string;
@@ -67,11 +67,17 @@ export function CampoNumero({ id, name, value, defaultValue, onChange, required,
 
   const [texto, setTexto] = useState(() => formatear(valorReal));
   const [enFoco, setEnFoco] = useState(false);
-
-  useEffect(() => {
-    if (!enFoco) setTexto(formatear(valorReal));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo re-formatea cuando el valor cambia desde AFUERA (ej. reset tras submit), no en cada tecla.
-  }, [valorReal, enFoco]);
+  // Reformatea cuando `valorReal` cambia desde AFUERA (ej. reset tras
+  // submit) mientras el campo no tiene foco — ajustar estado durante el
+  // render en vez de en un efecto (mismo criterio que onFocus/onBlur más
+  // abajo, que ya hacen lo mismo de forma directa): evita el round-trip
+  // extra de un efecto para lo que es, en los hechos, sincronizar con un
+  // prop externo, no con un sistema externo real.
+  const [valorRealSincronizado, setValorRealSincronizado] = useState(valorReal);
+  if (!enFoco && valorReal !== valorRealSincronizado) {
+    setValorRealSincronizado(valorReal);
+    setTexto(formatear(valorReal));
+  }
 
   return (
     <div className={`relative ${className ?? ""}`}>

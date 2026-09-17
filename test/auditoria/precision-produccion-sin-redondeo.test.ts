@@ -47,7 +47,6 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mpInsumo.id, proceso: "CONSUMO" } });
     const cantidadPersistida = Number(mov.cantidad);
 
-    // eslint-disable-next-line no-console
     console.log("[auditoria] Consumo persistido para un insumo de unidad SIN decimales:", cantidadPersistida);
 
     // Unidad.decimales=0 dice explícitamente que este insumo no admite
@@ -73,7 +72,6 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
 
     const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mpInsumo.id, proceso: "CONSUMO" } });
     const cantidadPersistida = Number(mov.cantidad);
-    // eslint-disable-next-line no-console
     console.log("[auditoria] Mismo caso vía VENTA:", cantidadPersistida);
     expect(Number.isInteger(cantidadPersistida)).toBe(true); // VENTA sí redondea — confirma que es un problema específico de PRODUCCIÓN
   });
