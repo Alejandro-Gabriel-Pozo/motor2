@@ -172,4 +172,55 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
       expect(entradas).toBe(1); // si terminó aceptado, exactamente una entrada, no dos
     }
   });
+
+  it("Caso 2 (Pivote 3): fallo a mitad de la escritura de un envío — atomicidad real, no queda un TraspasoSucursal ni un MovimientoStock huérfano", async () => {
+    // crearEnvioDirectoTransferencia escribe TraspasoSucursal + Operacion +
+    // MovimientoStock dentro de UNA sola conTransaccionSerializable — para
+    // simular "la conexión se cae después de registrar la salida" hay que
+    // forzar un fallo DENTRO de esa misma transacción, antes del commit.
+    // Replicamos el mismo patrón de escritura (mismo orden de creates) y
+    // forzamos un throw justo después de crear el TraspasoSucursal pero
+    // antes de escribir el MovimientoStock — si Postgres/Prisma son
+    // atómicos de verdad, ninguna de las dos filas debe sobrevivir.
+    const mp = await crearMP("Harina5");
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    const admin = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: usuarioAId } });
+
+    class FalloSimulado extends Error {}
+
+    await expect(
+      prisma.$transaction(
+        async (tx) => {
+          await tx.traspasoSucursal.create({
+            data: {
+              origenSucursalId: sucursalAId,
+              destinoSucursalId: sucursalBId,
+              productoId: mp.id,
+              cantidad: 4,
+              seccionOrigenId: seccionAId,
+              iniciadoPor: "ORIGEN",
+              estado: "ENVIADA",
+              creadoPorId: usuarioAId,
+              fechaDecisionOrigen: new Date(),
+              decididoPorOrigenId: usuarioAId,
+            },
+          });
+          // "la conexión se cae" justo acá, antes de escribir el
+          // MovimientoStock de salida y antes del COMMIT.
+          throw new FalloSimulado("Fallo simulado a mitad de transacción");
+        },
+        { isolationLevel: "Serializable" as never }
+      )
+    ).rejects.toThrow(FalloSimulado);
+
+    // Ni el TraspasoSucursal ni ningún MovimientoStock deben haber
+    // sobrevivido — la transacción completa se revierte, no queda un
+    // traspaso "ENVIADA" fantasma sin su movimiento de salida.
+    const traspasosHuerfanos = await prisma.traspasoSucursal.count({ where: { productoId: mp.id } });
+    const movimientosDeTraspaso = await prisma.movimientoStock.count({ where: { traspasoSucursalId: { not: null } } });
+    expect(traspasosHuerfanos).toBe(0);
+    expect(movimientosDeTraspaso).toBe(0);
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // intacto, como si el intento nunca hubiera ocurrido
+  });
 });

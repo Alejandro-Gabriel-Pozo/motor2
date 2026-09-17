@@ -146,3 +146,85 @@ Ningún pivote reveló un defecto crítico de integridad de stock (ninguna pérd
 - Pivote 4 — Precisión: umbral aceptable de diferencia numérica.
 - Pivote 5 — Escalabilidad: volumen de referencia (actual, esperado, y de crecimiento si es posible).
 - Pivote 6 — Auditoría: nivel de auditoría administrativa requerido para catálogo/precios/permisos (¿regulatorio o solo control interno?).
+
+---
+
+## 5. Cierre de pivotes técnicos (2026-09-17)
+
+Decisiones de negocio recibidas: idempotencia alcance **I3** (todas las operaciones manuales), precisión umbral **cero tolerancia** en stock/dinero, escalabilidad **escenario estándar chico-mediano**. Con esas decisiones y los pendientes puramente técnicos que quedaban, se completó lo siguiente.
+
+### Pivote 1 — Concurrencia, casos 2 y 3 (cierre)
+
+Pruebas nuevas en `test/auditoria/concurrencia-casos-2-3.test.ts` (4 escenarios, 6+ corridas cada uno):
+
+- **Caso 2** (dos VENTAS simultáneas, misma receta, mismo insumo): con stock exacto para una sola venta, nunca las dos tuvieron éxito, y el saldo nunca quedó negativo. Con stock de sobra, ambas ventas tuvieron éxito en la mayoría de las corridas — pero en 1 de 6 corridas se repitió el Hallazgo 1 (el conflicto de Postgres escapó como `DriverAdapterError` no reconocido, una venta legítima falló) — **confirma que el Hallazgo 1 no es específico de `registrarMovimiento`: afecta a todo lo que use `conTransaccionSerializable`**, incluido `registrarVenta`.
+- **Caso 3** (CONSUMO simultáneo con MERMA, y CONSUMO simultáneo con TRANSFERENCIA, mismo producto+sección): en ambas variantes, con stock exacto para una sola operación, nunca las dos tuvieron éxito, el saldo de origen nunca quedó negativo, y en el caso de transferencia el total del sistema (origen+destino) nunca superó lo comprado.
+
+**Estado formal**: **FALLO_CONFIRMADO** (mismo Hallazgo 1, alcance ampliado — no es exclusivo del motor genérico de movimientos) + **VERIFICADO_EN_CODIGO** (ninguna invariante de negocio violada: nunca saldo negativo, nunca doble efecto, nunca se superó el stock real).
+
+**Pivote 1: CERRADO.** Candidato confirmado: **C2 — Ajustar `con-reintento.ts`** para que reconozca también `DriverAdapterError({kind:"TransactionWriteConflict"})`, no solo `PrismaClientKnownRequestError` código `P2034`. No se encontró ningún caso que requiera C3 (rediseño). Queda como plan de implementación pendiente de autorización (ver §6).
+
+### Pivote 3 — Traspasos en tránsito, caso 2 (cierre)
+
+Prueba nueva en `test/auditoria/traspasos-en-transito.test.ts`: se replicó el mismo patrón de escritura de `crearEnvioDirectoTransferencia` (crear `TraspasoSucursal` + `MovimientoStock` dentro de una sola transacción) y se forzó un throw DESPUÉS de crear el `TraspasoSucursal` pero ANTES de escribir el `MovimientoStock` y antes del commit — simulando "la conexión se cae después de registrar la salida, antes de que se complete la escritura". Resultado: **cero filas sobrevivieron** (ni el `TraspasoSucursal` ni ningún `MovimientoStock`), el saldo quedó exactamente igual al original. La atomicidad de la transacción es real: o se escribe todo (traspaso ENVIADA + movimiento de salida juntos, recuperable desde ahí en adelante) o no se escribe nada — nunca un estado a medias.
+
+**Estado formal**: **VERIFICADO_EN_CODIGO**.
+
+**Pivote 3: CERRADO.** Candidato confirmado: **T1 — Mantener workflow**. La única pieza que queda es de negocio, no técnica: si además del rechazo formal el negocio quiere una acción de "cancelar" explícita sobre un traspaso `ENVIADA` (hoy no existe) — se deja registrada como pregunta abierta, no bloqueante.
+
+### Pivote 5 — Escalabilidad (benchmark ejecutado)
+
+Script `scripts/auditoria-benchmark-reportes.ts` (queda en el repo como herramienta reutilizable). Escenario generado: 500 movimientos/día × 3 años × 8 sucursales ≈ **551.880 `MovimientoStock` reales** (extremo bajo del rango acordado "500-1000 mov/día, 5-10 sucursales, 3-5 años", elegido para mantener el tiempo de generación manejable en esta sesión — límite de alcance explícito, no el volumen máximo del rango). Datos generados vía SQL bulk, medidos, y borrados al terminar (no quedan residuos en `motor2_test`).
+
+| Medición | Resultado |
+|---|---|
+| `calcularSaldoTotal` (1 producto+sección) | 3.6ms |
+| `calcularStockConsolidado` (toda la sucursal) | 128.8ms |
+| `calcularStockPorFamilia` | 99.7ms |
+| `calcularAlertasStock` | 105.5ms |
+| `obtenerHistorialProducto` (producto con pocos movimientos) | 35.2ms |
+| `obtenerHistorialProducto` (producto con ~2.000 movimientos, filtrando solo el último mes) | 27.6ms |
+| `obtenerReportePorPeriodo` (rango angosto, 7 días) | 151.9ms |
+| **`obtenerReportePorPeriodo` (rango amplio, 3 años)** | **2.243,7ms** |
+| Plan de la agregación base (`EXPLAIN ANALYZE SUM(cantidad)`) | 0.066ms — usa el índice compuesto perfectamente |
+| Memoria del proceso tras las mediciones | 333,7 MB heap / 522,4 MB RSS |
+
+**Hallazgos**:
+1. La agregación de saldo (la operación más frecuente, corre en cada validación de stock) es excelente incluso con más de medio millón de filas — el índice `[productoId, seccionId, loteVencimiento]` funciona exactamente como está documentado en el schema. **VERIFICADO_EN_CODIGO — sin problema**.
+2. `obtenerReportePorPeriodo` con un rango de 3 años tardó **~15× más** que con 7 días (2.244ms vs 152ms) — un usuario pidiendo "todo el historial" de una sucursal ve una demora de más de 2 segundos con este volumen, y ese tiempo crece con más años de historial o más sucursales/movimientos. **FALLO_CONFIRMADO (rendimiento)** — no es un error de datos, es una degradación medible.
+3. **Hallazgo adicional no anticipado en el plan original**: `obtenerHistorialProducto` (`src/core/reportes/historial-producto.ts:84-91`) carga el historial COMPLETO de un producto sin ningún filtro de fecha en la consulta a la base — el recorte por `desde`/`hasta` se aplica DESPUÉS, en memoria, sobre el array ya completo (comentario del propio código: "sin recortar por fecha todavía"). En este benchmark no se notó (el producto más movido solo tenía ~2.000 movimientos en 3 años), pero para un producto verdaderamente longevo (años de operación diaria) esta consulta crece sin límite, sin importar qué rango de fechas pida el usuario. **VERIFICADO_EN_CODIGO** como patrón de riesgo, mismo tipo de hallazgo que la ausencia de paginación en `tabla-reporte.tsx` ya señalada en el informe original.
+4. El uso de memoria (333MB de heap) para un solo proceso corriendo estas 8 mediciones es alto pero no alarmante para un servidor típico — no se cruzó ningún límite duro en esta corrida.
+
+**Pivote 5: CERRADO (con hallazgos).** Candidato: **R2 — Optimizar consultas** para `obtenerReportePorPeriodo` (filtrar más en la query, no traer todo a memoria) y `obtenerHistorialProducto` (aplicar `desde`/`hasta` en el `where`, no después). No se encontró evidencia que justifique R4/R5 (proyección de saldo o `StockBalance`) — la agregación base es rápida; el problema está en 2 reportes específicos, no en el modelo de datos.
+
+### Pivote 6 — Auditoría y trazabilidad, revisión campo-por-campo (cierre)
+
+Revisión de `src/server/actions/productos.ts`, `insumos.ts`, `unidades.ts`, `categorias-producto.ts`, `precio-local.ts`, `permisos.ts`, `capacidades-sucursal.ts`, `roles.ts` y los modelos Prisma correspondientes:
+
+| Sub-flujo | Actor registrado | Fecha de cambio | Valor anterior | Clasificación |
+|---|---|---|---|---|
+| Catálogo (`Producto`/`Insumo`/`Unidad`/`CategoriaProducto`/`Presentacion`) | No | No (`Producto` no tiene `updatedAt`) | No | **NO_ENCONTRADO** |
+| Recetas (`RecetaVersion`) | No | Sí (`creadoEn` por versión) | Sí (append-only real) | **VERIFICADO_EN_CODIGO (parcial, sin actor)** |
+| Precios (`Producto.precioVenta`/`precioConsignacion`, `PrecioLocalProducto`) | No | No | No | **NO_ENCONTRADO** |
+| Permisos (`PermisoRol`, `CapacidadSucursal`, `Rol`) | No | No | No | **NO_ENCONTRADO** |
+
+Ningún modelo de catálogo/precios/permisos tiene siquiera un `updatedAt` genérico — todas las funciones de edición (`actualizarProducto`, `setPrecioLocalProducto`, `actualizarPermiso`, `actualizarCapacidad`, etc.) sobreescriben el valor vigente directo vía `update`/`upsert`, y varias ni siquiera usan el `ctx.usuarioId` que `conPermiso` les entrega — se descarta sin registrar quién hizo el cambio. Contraste dentro del mismo código: `TraspasoSucursal.creadoPorId`/`decididoPorOrigenId`/`decididoPorDestinoId` sí registra actor por etapa — el patrón existe en el codebase, pero no se aplicó a catálogo/precios/permisos.
+
+**Pivote 6: CERRADO.** Candidato confirmado: **A1** para el Kardex (ya verificado en Fase 1, sin cambios). Para catálogo/precios/permisos, la evidencia apunta a **A3 — Agregar auditoría administrativa** (como mínimo `actor` + `fecha` + `valor anterior` en los cambios de precio y de permisos, que son los de mayor impacto de negocio/control interno) — pero la decisión final depende de la pregunta de negocio ya registrada (§4): ¿regulatorio o solo control interno? Sin esa respuesta no corresponde diseñar la solución (podría ser tan simple como agregar `actorId`+`updatedAt` a 3-4 modelos, o requerir un historial versionado tipo `RecetaVersion` si hay necesidad de reconstruir valores intermedios).
+
+---
+
+## 6. Estado consolidado final
+
+| Pivote | Estado | Cerrado | Candidato final |
+|---|---|---|---|
+| 1. Concurrencia | FALLO_CONFIRMADO | **Sí** | C2 — ampliar reconocimiento de conflicto en `con-reintento.ts` |
+| 2. Idempotencia | FALLO_CONFIRMADO + política definida (I3) | No — falta el plan de implementación | I3 para todas las operaciones manuales (decisión de negocio ya recibida) |
+| 3. Traspasos en tránsito | VERIFICADO_EN_CODIGO | **Sí** | T1 — Mantener workflow |
+| 4. Precisión numérica | VERIFICADO_EN_CODIGO (casos probados) + umbral definido (cero tolerancia) | No — faltan casos 5-7 y el inventario clasificado | N1 provisional, sujeto a completar los casos restantes bajo el umbral cero-tolerancia |
+| 5. Escalabilidad | FALLO_CONFIRMADO (rendimiento, 2 reportes) | **Sí** | R2 — Optimizar consultas puntuales, no `StockBalance` |
+| 6. Auditoría y trazabilidad | NO_ENCONTRADO (catálogo/precios/permisos) | **Sí** | A1 Kardex (sin cambios) + A3 candidato para administración, pendiente de precisar alcance regulatorio |
+
+Cuatro de seis pivotes (1, 3, 5, 6) quedan formalmente cerrados con un candidato técnico único y sin ambigüedad. Dos (2 y 4) tienen la decisión de negocio ya resuelta pero requieren completar trabajo técnico (planes de implementación / casos de prueba restantes) antes de poder considerarse cerrados.
+
+**Ningún código de producción fue modificado en esta etapa** — todo lo anterior es evidencia (pruebas nuevas en `test/auditoria/` + el script de benchmark en `scripts/`). Los cambios de código correspondientes a los candidatos C2 (Pivote 1) e I3 (Pivote 2) requieren un plan de implementación formal (seguí la Sección 13 de la instrucción) y autorización explícita antes de tocar `con-reintento.ts`, `movimientos.ts` o el schema.
