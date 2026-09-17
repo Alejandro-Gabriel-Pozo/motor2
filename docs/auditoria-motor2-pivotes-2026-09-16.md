@@ -509,12 +509,21 @@ Riesgos: ninguno evidente — alinea PRODUCCIÓN con el comportamiento que
 Criterio de cierre: cumplido para la VERIFICACIÓN (reproducido, causa
   identificada, fix mínimo propuesto). Pendiente de autorización
   explícita para aplicar el cambio de código.
+
+IMPLEMENTADO 2026-09-17 (commit `5c0fd96`, Plan 1 de §11): fix
+  aplicado exactamente como se describe arriba. Test de regresión
+  confirmado en rojo antes del cambio (-2.247) y en verde después
+  (-2). Suite completa 56/56 archivos, 334/334 tests. venta.ts sin
+  cambios. Un test preexistente (precision-numerica-y-saldo.test.ts,
+  de Fase 5) dependía implícitamente del valor sin redondear vía
+  `toBeCloseTo` — actualizado a la expectativa exacta. Sin cambios de
+  schema/migraciones/dependencias. `tsc`/`eslint` sin errores nuevos.
 ```
 
 ### Estado formal del Pivote 4
 
 ```text
-Pivote 4: CERRADO CON CAMBIO — N3
+Pivote 4: CERRADO CON CAMBIO — N3 (implementado, commit 5c0fd96)
 Casos del plan completados: costos acumulados, redondearMoneda,
   reversiones, clasificación de 147 conversiones (62 críticas / 85
   solo_lectura), más 2 casos adicionales de alto riesgo identificados
@@ -532,7 +541,7 @@ Cambio de arquitectura: no justificado (no se encontró evidencia para
 
 | Pivote | Estado de partida | Verificaciones nuevas | Evidencia final | Decisión | Cambio necesario | Pendiente |
 |---|---|---|---|---|---|---|
-| 4. Precisión numérica | VERIFICADO_EN_CODIGO (casos base) + umbral cero-tolerancia | Costos acumulados, redondearMoneda, reversiones, clasificación de 147 conversiones, round-trip de receta, reparto por familia, PRODUCCIÓN vs VENTA | 1 FALLO_CONFIRMADO (PRODUCCIÓN sin redondear) + VERIFICADO_EN_CODIGO en el resto | **CERRADO CON CAMBIO — N3** | Agregar `redondearACantidadDeUnidad` en `movimientos.ts` (consumosReceta de PRODUCCIÓN) — 1 línea | Autorización explícita para aplicar el fix (no implementado todavía) |
+| 4. Precisión numérica | VERIFICADO_EN_CODIGO (casos base) + umbral cero-tolerancia | Costos acumulados, redondearMoneda, reversiones, clasificación de 147 conversiones, round-trip de receta, reparto por familia, PRODUCCIÓN vs VENTA | 1 FALLO_CONFIRMADO (PRODUCCIÓN sin redondear) + VERIFICADO_EN_CODIGO en el resto | **CERRADO CON CAMBIO — N3** | Agregar `redondearACantidadDeUnidad` en `movimientos.ts` (consumosReceta de PRODUCCIÓN) — 1 línea | **IMPLEMENTADO** (commit `5c0fd96`, 2026-09-17) |
 
 ---
 
@@ -545,18 +554,19 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
 | 1. Concurrencia | ¿El aislamiento/reintentos garantiza resultado correcto ante operaciones simultáneas? | 5 escenarios, 25+ corridas (§5, §6) — `con-reintento.ts` no reconoce todos los conflictos reales del driver | FALLO_CONFIRMADO (parcial) | **C2** | Sí — modificar código + agregar prueba de regresión | 2 | Técnica (sin decisión de negocio pendiente) |
 | 2. Idempotencia | ¿Debe impedirse que un doble envío/timeout/reintento duplique una operación? | Ausencia confirmada en 6/7 procesos + 2 guardas racy — COMPRA y rechazo de traspaso (§7, §8) | FALLO_CONFIRMADO | **I3** | Sí — modificar código (8 Server Actions) + modificar schema/migración + agregar pruebas | 4 (último — único que toca el modelo de persistencia) | Negocio (política ya definida) + técnica para ejecutar |
 | 3. Traspasos en tránsito | ¿El estado "en tránsito" es válido, visible y recuperable? | 7 casos del plan, sin fallo salvo el hallazgo de rechazo (ya contabilizado en el paquete I3) (§6, §9) | VERIFICADO_EN_CODIGO | **T1** | No | — | Ninguno pendiente |
-| 4. Precisión numérica | ¿Las conversiones Decimal→number y los cálculos acumulados producen diferencias bajo cero tolerancia? | 147 conversiones clasificadas, 12 casos ejecutados, 1 fallo puntual reproducido (§9) | FALLO_CONFIRMADO (puntual) | **N3** | Sí — modificar código (1 línea) + agregar prueba de regresión | 1 (primero — cambio más chico y acotado) | Técnica |
+| 4. Precisión numérica | ¿Las conversiones Decimal→number y los cálculos acumulados producen diferencias bajo cero tolerancia? | 147 conversiones clasificadas, 12 casos ejecutados, 1 fallo puntual reproducido (§9) | FALLO_CONFIRMADO (puntual) | **N3** | Sí — modificar código (1 línea) + agregar prueba de regresión | 1 (primero — cambio más chico y acotado) — **IMPLEMENTADO** | Técnica |
 | 5. Escalabilidad | ¿Las agregaciones/reportes soportan el volumen esperado (500-1000 mov/día, 5-10 sucursales, 3-5 años)? | Benchmark real con 551.880 movimientos (§8) — 2 consultas degradadas | FALLO_CONFIRMADO (rendimiento) | **R2** | Sí — modificar código (2 queries) | 3 | Técnica |
 | 6. Auditoría y trazabilidad | ¿Los modelos registran suficiente información para reconstruir decisiones de negocio? | Revisión campo-por-campo (§8) — Kardex fuerte, catálogo/precios/permisos sin ningún rastro | NO_ENCONTRADO (parcial) | **A1** (Kardex) + **A3 candidato** (administración) | No obligatorio ahora — mejora futura condicionada a una decisión de negocio | — | Negocio (alcance regulatorio vs. control interno, todavía sin definir) |
 
 ### Los 4 paquetes de cambio, en el orden acordado
 
 ```text
-1. N3 — Precisión (más chico y acotado)
+1. N3 — Precisión (más chico y acotado) — IMPLEMENTADO (commit 5c0fd96, 2026-09-17)
    Archivo: src/server/actions/movimientos.ts
    Cambio: 1 línea (redondearACantidadDeUnidad en consumosReceta de PRODUCCIÓN)
-   Prueba de regresión: ya existe (precision-produccion-sin-redondeo.test.ts,
-     hoy documenta el fallo — se reescribe para exigir el comportamiento correcto)
+   Prueba de regresión: precision-produccion-sin-redondeo.test.ts, expectativas
+     invertidas (confirmado rojo antes / verde después). Suite completa
+     56/56 archivos, 334/334 tests. venta.ts sin cambios.
 
 2. C2 — Concurrencia
    Archivo: src/core/movimientos/con-reintento.ts
@@ -942,4 +952,6 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
     el constraint de factura.
 ```
 
-**Orden de implementación**: N3 → C2 → R2 → I3 (acordado). Cada paquete se implementa, prueba y commitea por separado — no se mezclan en un solo cambio. Ningún código de producción modificado todavía en esta entrega — es exclusivamente el plan, a la espera de autorización explícita para empezar por N3.
+**Orden de implementación**: N3 → C2 → R2 → I3 (acordado). Cada paquete se implementa, prueba y commitea por separado — no se mezclan en un solo cambio.
+
+**Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17) — ver detalle arriba y en §9. C2, R2, I3 siguen sin implementar, a la espera de autorización explícita paquete por paquete, en ese orden.
