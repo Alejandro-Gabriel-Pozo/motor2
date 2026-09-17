@@ -58,17 +58,23 @@ Ampliar `Operacion` (append-only, ya es la tabla que registra "esto pasó una ve
 |---|---|---|
 | `claveIdempotencia` | `String?` | El UUID que genera el cliente al abrir el formulario/modal (`crypto.randomUUID()`), reenviado tal cual en cualquier reintento de ESE intento de envío. |
 | `payloadHash` | `String?` | Hash (SHA-256, ya disponible vía `node:crypto`, sin dependencia nueva) del payload validado que efectivamente se procesó — permite decidir "mismo payload" sin comparar objetos JSON campo por campo ni guardar el payload completo. |
-| — | — | No hace falta una columna `resultado`/`mensaje` — ver §4 (decisión: reconstruir, no persistir). |
+| `resultadoMensaje` | `String?` | El `mensaje` exacto que se devolvió la primera vez (Opción B, §4.5) — se relee tal cual ante un duplicado, sin reprocesar nada. |
+
+*(Nota: en la primera versión de este documento, esta tabla decía "no hace falta una columna resultado/mensaje" apuntando a una decisión de reconstruir que todavía no estaba tomada en esa sección — quedó inconsistente con §4.5, que sí resuelve persistir. Corregido acá para que las tres columnas coincidan con el diseño final de §8.)*
 
 No es una tabla nueva (`ClaveIdempotencia` separada) por la misma razón que ya usa el proyecto para el resto de este esquema: `Operacion` YA es el registro de "esto se ejecutó" — una tabla aparte duplicaría esa responsabilidad y sería una segunda fuente de verdad sobre qué operaciones existen, exactamente el patrón que esta auditoría viene señalando como riesgoso (ver Merma sin signo, v2.1.0). La columna vive en la fila que de todos modos ya se crea.
 
-### 2.2 Índice de unicidad
+### 2.2 Índice de unicidad — CORREGIDO (revisión 2026-09-17, tras la evaluación del usuario)
 
 ```prisma
-@@unique([sucursalId, proceso, claveIdempotencia], name: "Operacion_idempotencia_key")
+@@unique([claveIdempotencia], name: "Operacion_idempotencia_key")
 ```
 
-`sucursalId + proceso` (no solo la clave sola) porque un UUID es único de por sí — el criterio compuesto no aporta seguridad extra sobre colisión, pero sí dos cosas: (a) dos sucursales nunca podrían competir por la misma fila aunque un cliente generara el mismo UUID por un bug (defensa en profundidad, costo cero); (b) permite que la búsqueda "¿ya existe esta clave para este proceso en esta sucursal?" use el mismo índice que la unicidad, sin un índice adicional. Un índice único con una columna nulleable en Postgres **no bloquea múltiples NULL** (NULL no se compara igual a NULL) — así que las operaciones que todavía no manden clave (ver §9.3, rollout) conviven sin conflicto con las que sí la mandan.
+**Corrección respecto a la versión anterior de este documento**: la primera versión proponía un índice compuesto `[sucursalId, proceso, claveIdempotencia]`, razonando que la clave sola "ya es única de por sí" y que el compuesto solo agregaba defensa en profundidad. El usuario señaló correctamente que la unicidad debe ser **global** — y es más que una preferencia de estilo: con el índice compuesto, la MISMA clave reenviada para un `proceso` distinto (por bug de cliente, por reutilizar un UUID viejo, etc.) no chocaría contra nada — el índice no la vería como duplicada porque `proceso` es distinto, y el mecanismo simplemente crearía una segunda `Operacion` con la misma clave sin ningún aviso. Eso es exactamente el hueco que la condición 9 del usuario pide cerrar ("confirmar que una misma clave no pueda reutilizarse entre procesos distintos") — y el índice compuesto no lo cerraba.
+
+Con el índice global (`claveIdempotencia` sola), reenviar la misma clave para un proceso distinto SÍ choca contra el índice — y como el `proceso` (y el resto de los campos específicos de cada Server Action) forma parte del payload que se hashea (§9.5, `payloadHash` incluye `proceso` explícitamente), el `payloadHash` de ese segundo intento necesariamente difiere del guardado → se resuelve como **conflicto de idempotencia** (§3), nunca como duplicado silencioso ni como una segunda operación libre. Es una garantía estructural, no una convención que dependa de que el frontend "se porte bien".
+
+Sigue siendo cierto que un índice único con una columna nulleable en Postgres **no bloquea múltiples NULL** (NULL no se compara igual a NULL) — las operaciones que todavía no manden clave (rollout gradual, §9.3) conviven sin conflicto con las que sí la mandan, exactamente igual que con el índice compuesto anterior.
 
 ### 2.3 Retención
 
@@ -81,17 +87,18 @@ Permanente — sin expiración, sin job de limpieza, sin TTL. Coincide con que `
 Regla ya cerrada en el documento madre (§8, "Reglas técnicas explícitas") — se repite acá porque es la base de todo el resto de este plan, sin cambios:
 
 ```text
-clave nueva (no existe ninguna Operacion con esa combinación
-  sucursalId+proceso+claveIdempotencia)
-  → ejecutar la operación una sola vez, guardar la clave y el hash
-    junto con la Operacion recién creada.
+clave nueva (no existe ninguna Operacion con esa claveIdempotencia,
+  búsqueda global — §2.2, corregido)
+  → ejecutar la operación una sola vez, guardar la clave, el hash y el
+    resultadoMensaje junto con la Operacion recién creada.
 
 misma clave + mismo payload (el payloadHash coincide con el guardado)
-  → NO se vuelve a ejecutar nada. Se reconstruye y se devuelve el
-    resultado de la primera ejecución, con ok:true — el cliente no
-    puede distinguir un duplicado silencioso de una ejecución nueva
-    exitosa (ese es el punto: un doble-submit no debe alarmar a quien
-    hizo el segundo click, ya salió bien la primera vez).
+  → NO se vuelve a ejecutar nada. Se relee el resultadoMensaje ya
+    persistido (Opción B, §4.5 — no se reconstruye nada) y se devuelve
+    con ok:true — el cliente no puede distinguir un duplicado
+    silencioso de una ejecución nueva exitosa (ese es el punto: un
+    doble-submit no debe alarmar a quien hizo el segundo click, ya
+    salió bien la primera vez).
 
 misma clave + payload distinto (el payloadHash NO coincide)
   → se rechaza con ok:false y un mensaje de conflicto de idempotencia
@@ -302,15 +309,16 @@ reintento de red del mismo intento de envío).
 1. Ambos entran a conTransaccionSerializable (aislamiento SERIALIZABLE
    ya usado en todo el proyecto para este tipo de escritura).
 2. Dentro de la transacción, cada uno primero busca si ya existe una
-   Operacion con (sucursalId, proceso, claveIdempotencia) = esa clave.
+   Operacion con claveIdempotencia = esa clave (búsqueda global, sin
+   filtrar por sucursalId/proceso — §2.2, corregido).
 3. Con aislamiento Serializable, Postgres garantiza que el resultado
    final es equivalente a que A y B hubieran corrido uno después del
    otro, nunca intercalados de una forma que produzca un resultado
    imposible en secuencial.
 4. Caso típico: A y B se serializan de hecho — el que efectivamente
    commitea primero crea la fila en Operacion con esa clave (protegida
-   además por el índice único @@unique([sucursalId, proceso,
-   claveIdempotencia]), que es el árbitro final incluso si dos
+   además por el índice único global @@unique([claveIdempotencia]),
+   que es el árbitro final incluso si dos
    transacciones lograran pasar el chequeo de "no existe" al mismo
    tiempo bajo una implementación menos estricta). El segundo, al
    intentar escribir, choca con el índice único (P2002) o con un
@@ -321,7 +329,7 @@ reintento de red del mismo intento de envío).
    intentos) ante un conflicto de escritura. En el reintento, el
    request que perdió la carrera vuelve a hacer el paso 2 — esta vez
    SÍ encuentra la Operacion que el otro ya creó — y devuelve el
-   resultado reconstruido/persistido de esa fila en vez de reintentar
+   resultadoMensaje ya persistido en esa fila en vez de reintentar
    el insert.
 6. Resultado: exactamente 1 Operacion nueva, exactamente 1
    MovimientoStock por línea, los DOS requests responden ok:true con
@@ -362,7 +370,9 @@ model Operacion {
   /// (crypto.randomUUID() al abrir el formulario), reenviada tal cual
   /// en reintentos del mismo intento de envío. Nulleable durante el
   /// rollout gradual (§9.3): una Operacion sin clave simplemente no
-  /// participa del mecanismo de deduplicación.
+  /// participa del mecanismo de deduplicación. Validada en la capa de
+  /// aplicación como UUID (§13.1) antes de llegar acá — nunca se
+  /// guarda un string que no pase esa validación.
   claveIdempotencia String?
 
   /// I3 — hash SHA-256 del payload validado que efectivamente se
@@ -378,7 +388,7 @@ model Operacion {
   /// consignación) en un segundo lugar del código.
   resultadoMensaje String?
 
-  @@unique([sucursalId, proceso, claveIdempotencia], name: "Operacion_idempotencia_key")
+  @@unique([claveIdempotencia], name: "Operacion_idempotencia_key")
 }
 ```
 
@@ -482,7 +492,139 @@ Y, específicos:
 
 ---
 
-## 11. Checklist de autorización — criterios pedidos por el usuario
+## 11. Precisiones contractuales previas a la implementación
+
+Resuelve, una por una, las 10 condiciones que el usuario pidió dejar explícitas antes de autorizar. Sigue siendo fase de planificación — nada de lo que sigue toca código, schema ni migraciones.
+
+### 11.1 Formato y longitud máxima de `claveIdempotencia`
+
+- Formato esperado: UUID (`crypto.randomUUID()` del lado del cliente, que genera v4 — pero la validación de servidor acepta cualquier UUID bien formado, sin atarse a la versión exacta, para no ser frágil si algún cliente futuro usa otra fuente).
+- Validación de servidor (capa de aplicación, mismo criterio que el resto de los inputs del proyecto — Zod): regex de UUID estándar (`/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i`) aplicada ANTES de que el valor llegue a la transacción. Un valor que no matchea se rechaza con un error de validación (mismo tipo de respuesta que cualquier otro campo inválido hoy) — nunca se guarda un string arbitrario.
+- Longitud de columna: sin `@db.VarChar` fijo (Prisma `String` sin anotación mapea a `TEXT`, sin límite duro) — el límite real lo impone la validación de formato (36 caracteres exactos para un UUID), no un límite de columna. No hace falta una cota de columna aparte porque nada que no sea un UUID válido llega a escribirse.
+
+### 11.2 Cómo se calcula `payloadHash`
+
+- Algoritmo: SHA-256 vía `node:crypto` (ya disponible, sin dependencia nueva).
+- Entrada al hash: el payload **ya validado** (la salida del parser de Zod, no el body crudo que mandó el cliente) — así que espacios sobrantes, orden de claves del JSON entrante o tipos coeccionados (`"10"` vs `10`) no cambian el hash, porque para ese momento ya pasaron por el mismo parser que determina el comportamiento real de la Server Action.
+- Normalización: las claves del objeto se serializan en orden alfabético recursivo (una función `canonicalizeJson` chica, sin librería nueva) antes de hashear, porque JavaScript no garantiza orden estable entre distintos clientes/versiones de payload.
+- Se incluye `ctx.sucursalId` en el objeto hasheado (además de los campos de negocio del payload) — así, si la misma clave llegara desde una sucursal distinta (por bug o por un usuario con más de una membresía), el hash no coincide y se resuelve como conflicto, no como duplicado legítimo.
+- Se incluye un identificador explícito del proceso/Server Action (ej. `datos.proceso` para `registrarMovimiento`, o un literal fijo como `"VENTA"`/`"RECLASIFICACION"`/`"ACEPTAR_TRASPASO"`/`"REINGRESO_TRASPASO"` para las que no tienen un campo `proceso` propio en el payload) — así la garantía de §11.8 (misma clave entre procesos distintos siempre da conflicto) es una regla explícita y deliberada del hash, no una coincidencia de que los payloads de cada Server Action tengan forma distinta.
+- NO se incluye `ctx.usuarioId` — la política define "mismo intento de request", no "mismo usuario"; dos personas con sesión en la misma sucursal reenviando el mismo formulario (ej. tras un refresh que preserva la clave) deben seguir tratándose como el mismo intento. Esto es una precisión de diseño nueva, no estaba en la política original — queda marcada para confirmación explícita del usuario junto con el resto de este punto.
+- Fechas: se hashea el valor ya parseado a `Date`/ISO string, no el string crudo del formulario.
+
+### 11.3 Clave existente con `payloadHash` nulo
+
+Bajo el diseño correcto, `claveIdempotencia` y `payloadHash` se escriben **siempre juntos**, en el mismo insert que crea la `Operacion` — nunca uno sin el otro. Dos casos posibles:
+
+```text
+Fila con claveIdempotencia = NULL (todas las Operacion anteriores a
+  I3, o posteriores mientras el frontend de ese formulario puntual
+  todavía no mande clave — rollout gradual, §9.3):
+  → no participa del mecanismo. El chequeo busca por claveIdempotencia
+    exacta; una fila con NULL nunca puede matchear una clave real que
+    manda un cliente (NULL no es igual a ningún valor).
+
+Fila con claveIdempotencia NO NULL pero payloadHash NULL:
+  → NO debería poder existir bajo el flujo normal (se escriben juntos).
+    Si se encontrara este estado (bug, migración de datos futura, etc.),
+    la regla es "fail closed": tratarla SIEMPRE como conflicto (nunca
+    como "mismo payload" por default inseguro), porque no hay forma de
+    verificar la igualdad. Además, es un estado que ameritaría alerta/
+    log, porque indica una inconsistencia que el código no debería
+    poder producir.
+```
+
+### 11.4 ¿Alcanza `resultadoMensaje` o hace falta una respuesta estructurada?
+
+Verificado contra el contrato real: `ResultadoAccion = { ok: true; mensaje: string } | { ok: false; mensaje: string }` (`src/server/actions/tipos.ts`) es el tipo de retorno de las 6 Server Actions de la política I3 (confirmado por lectura de código — ninguna de las 10 en alcance devuelve `ResultadoConId`; ese tipo solo lo usan `crearSolicitudTransferencia`/`crearEnvioDirectoTransferencia`, que NO forman parte de los 10 procesos de la política). Por lo tanto, **una sola columna de texto (`resultadoMensaje`) es contractualmente suficiente** para reconstruir `{ ok: true, mensaje: resultadoMensaje }` completo ante un duplicado, para el alcance actual de I3 — no hace falta una columna JSON ni una tabla de resultados estructurados.
+
+Nota de alcance, no una decisión pendiente hoy: si en el futuro se agrega a la política algún proceso que devuelva `ResultadoConId` (con `id`/`nombre`), el modelo necesitaría ampliarse en ese momento (columnas nuevas o una estructura JSON) — queda fuera del alcance de esta implementación de I3, documentado para no sorprender a quien lo retome.
+
+### 11.5 Matriz exacta — Server Action → procesos → clave → resultado
+
+| Server Action | Procesos que cubre (vía `datos.proceso`) | Dónde se lee/escribe la clave | Resultado persistido |
+|---|---|---|---|
+| `registrarMovimiento` | COMPRA, CONSUMO, MERMA, PRODUCCIÓN, DEVOLUCION_PROVEEDOR, DEVOLUCION_CONSIGNACION, DEVOLUCION_CLIENTE (7 procesos, 1 función) | Dentro de `conTransaccionSerializable`, antes de escribir las líneas de `MovimientoStock` | `Operacion.resultadoMensaje` = `` `Se guardaron ${filas.length} movimiento(s).${avisoConversion}` `` completo, ya resuelto |
+| `registrarVenta` | VENTA | Dentro de `conTransaccionSerializable`, antes de escribir las líneas de venta | `Operacion.resultadoMensaje` = `` `Se registraron ${ventas.length} venta(s) correctamente.` `` |
+| `reclasificarStock` | RECLASIFICACIÓN | Dentro de `conTransaccionSerializable`, antes de repartir el saldo disponible | `Operacion.resultadoMensaje` = mensaje completo, incluyendo el `disponible` calculado en ESE momento (§4.4 — valor que no sobrevive en el estado final, por eso debe persistirse, no recalcularse) |
+| `aceptarTransferencia` | Aceptación de traspaso | Dentro de `conTransaccionSerializable`, antes de escribir `TRANSFERENCIA_ENTRADA_SUCURSAL` | `Operacion.resultadoMensaje` = `` `Recibido de "${origen.nombre}".` `` |
+| `confirmarReingresoTransferencia` | Reingreso de traspaso | Dentro de `conTransaccionSerializable`, antes de escribir `REINGRESO_TRANSFERENCIA_SUCURSAL` | `Operacion.resultadoMensaje` = mensaje completo con `cantidad`/nombres ya resueltos |
+| `rechazarTransferencia` | Rechazo de traspaso | **No aplica** — no crea `Operacion` (§6.2). Se cubre con guarda de estado atómica dentro de `conTransaccionSerializable`, no con `claveIdempotencia`/`payloadHash`/`resultadoMensaje` | No aplica — el "resultado" ante una carrera es un error de estado explícito para el que pierde, no un duplicado silencioso (mismo comportamiento que ya tienen `aceptarTransferencia`/`confirmarReingresoTransferencia` hoy ante un estado inválido) |
+
+Esta tabla es la versión consolidada de §1 (qué Server Action cubre qué proceso) y §6.1 (qué mecanismo aplica a cada una) — evita que la implementación futura agregue el chequeo de idempotencia más de una vez dentro de `registrarMovimiento` (una sola vez alcanza para los 7 procesos que comparte, porque el chequeo va antes de la rama por `proceso`).
+
+### 11.6 Rollback y compatibilidad temporal
+
+Ya resueltos en §9.3 (compatibilidad — rollout en 4 fases, parámetro opcional, ningún caller existente se rompe) y §9.4 (rollback de código y de schema, ambos sin pérdida de datos por ser aditivos). Se confirma acá que ambos puntos están completos y no requieren contenido adicional — solo se referencian para que este checklist quede autocontenido.
+
+### 11.7 Prueba de la carrera de `rechazarTransferencia`
+
+Ya estaba listada como prueba pendiente #5 en §10.2. Se precisa acá el criterio de aceptación exacto, para que quede accionable al implementar:
+
+```text
+Dado: un traspaso en estado ENVIADA.
+Cuando: dos llamadas concurrentes a rechazarTransferencia(id, motivoA)
+  y rechazarTransferencia(id, motivoB) (Promise.allSettled, mismo
+  patrón que "rechazo simultáneo" ya existente).
+Entonces:
+  - Exactamente UNA de las dos responde ok:true.
+  - La otra responde ok:false con un mensaje de estado explícito
+    (ej. `Este traspaso está en estado "RECHAZADA_DESTINO" — no se
+    puede rechazar desde acá.` — el mismo mensaje que ya usa el guard
+    de estado para cualquier otra transición inválida).
+  - El traspaso queda con estado RECHAZADA_DESTINO y motivoRechazoDestino
+    = el motivo de la llamada que ganó — nunca se pisa entre las dos
+    (el defecto actual, confirmado 5/5 corridas).
+  - No se ejecuta ninguna escritura de Kardex (correcto en ambos casos
+    — rechazar nunca toca stock, §6.2).
+```
+
+### 11.8 Reutilización de la misma clave entre procesos distintos
+
+Resuelto en §2.2 (corrección aplicada tras la evaluación del usuario): el índice pasa a ser `@@unique([claveIdempotencia])`, global, no compuesto con `sucursalId`/`proceso`. Combinado con que `payloadHash` incluye un identificador explícito del proceso/Server Action (§11.2, agregado deliberadamente al objeto hasheado, no dejado como coincidencia de forma del payload), cualquier reutilización de la misma clave para un proceso distinto produce un `payloadHash` distinto → se resuelve siempre como conflicto de idempotencia, nunca como duplicado silencioso ni como una segunda `Operacion` libre. Es una garantía estructural del índice + hash, no una convención de frontend.
+
+### 11.9 Errores definitivos y transacciones interrumpidas
+
+```text
+Regla: claveIdempotencia + payloadHash + resultadoMensaje se escriben
+  ÚNICAMENTE junto con una Operacion que efectivamente se commitea. No
+  existe un estado intermedio "a medias" — Postgres garantiza que una
+  transacción se commitea completa o no se commitea nada (la misma
+  atomicidad de la que ya depende todo conTransaccionSerializable hoy).
+
+Caso 1 — rechazo de validación de negocio (ej. "no hay stock
+  suficiente"): ocurre ANTES de entrar a la transacción de escritura
+  (o dentro de ella, pero aborta sin llegar al insert) → responde
+  ok:false, NO se crea Operacion, NO se guarda ninguna clave. Un
+  reintento posterior con la MISMA clave no encuentra nada guardado —
+  corre de nuevo desde cero (nueva validación, mismo resultado si nada
+  cambió, o éxito si la condición que lo bloqueaba ya no aplica). Esto
+  es seguro: una validación fallida nunca tuvo un efecto que duplicar.
+
+Caso 2 — conflicto de escritura que agota los 5 reintentos de
+  conTransaccionSerializable (carga muy alta, caso extremo): termina
+  lanzando el error tal cual (comportamiento ya existente, sin cambios
+  de I3) — tampoco deja ninguna fila a medias, mismo razonamiento que
+  el Caso 1.
+
+Caso 3 — error de infraestructura (conexión caída a mitad de
+  transacción): Postgres hace rollback automático de toda la
+  transacción — de nuevo, no puede quedar una Operacion parcial con
+  clave pero sin el resto de sus filas de MovimientoStock, ni con
+  clave pero sin resultadoMensaje.
+
+Conclusión: bajo la política I3, NINGÚN resultado "fallido" se
+  persiste ni se cachea contra la clave — solo los éxitos committeados
+  quedan disponibles para deduplicar. Un reintento tras cualquier error
+  definitivo es indistinguible de un primer intento nuevo: usa la misma
+  clave, pero como no hay fila previa que la use, se ejecuta de cero.
+  No contradice la política ("mismo payload → mismo resultado"): un
+  resultado que nunca se persistió no tiene nada que reproducir.
+```
+
+---
+
+## 12. Checklist de autorización — criterios pedidos por el usuario
 
 | Criterio pedido | Estado |
 |---|---|
@@ -492,20 +634,31 @@ Y, específicos:
 | Migración segura | §9.1-9.2 |
 | Estrategia de rollback | §9.4 |
 | Estrategia de compatibilidad temporal | §9.3 |
-| Matriz de Server Actions afectadas | §1, §6.1 |
-| Pruebas de caracterización | §10 |
-| Decisión final sobre reconstrucción del resultado original | §4.5 — recomendación revisada a Opción B (persistir), pendiente de confirmación |
+| Matriz de Server Actions afectadas | §1, §6.1, §11.5 (versión consolidada) |
+| Pruebas de caracterización | §10, precisadas en §11.7 (rechazo de traspaso) |
+| Decisión final sobre reconstrucción del resultado original | §4.5 — recomendación revisada a Opción B (persistir), confirmada suficiente en §11.4; pendiente de aprobación formal del usuario |
+| Formato/longitud de `claveIdempotencia` | §11.1 |
+| Cálculo de `payloadHash` (normalización, orden de campos) | §11.2 |
+| Clave existente con `payloadHash` nulo | §11.3 |
+| Unicidad global entre procesos distintos | §2.2 (corregido), §11.8 |
+| Comportamiento ante errores definitivos / transacciones interrumpidas | §11.9 |
 
-**El único criterio no satisfecho por esta sesión es la ejecución real de la auditoría de facturas duplicadas** (§5.1) — no es una limitación del plan, es una limitación de acceso a datos de este entorno. Todo lo demás está resuelto en este documento.
+**El único criterio no satisfecho por esta sesión es la ejecución real de la auditoría de facturas duplicadas** (§5.1) — no es una limitación del plan, es una limitación de acceso a datos de este entorno: esta sesión solo tiene conectividad a la base de test local, vacía. Todo lo demás, incluidas las 10 condiciones planteadas en la revisión del usuario, está resuelto en este documento (§11).
+
+**Cómo destrabar el único punto pendiente** — dos caminos, a elección del usuario:
+1. Correr el query 1 de §5.2 directamente contra la base de producción/Neon (fuera de esta sesión) y compartir el resultado (cuántos grupos, si alguno).
+2. Si se prefiere que esta sesión lo haga: esta sesión tiene herramientas de Neon disponibles y, al listar proyectos accesibles, aparecen 3 (`DB-APP-PPMS`, `pdb-ppms`, `inventario-api`) — **ninguno confirmado como la base de producción de motor2** por nombre o por inspección; no se corrió ninguna consulta contra ellos. No se debe asumir cuál (si alguno) es el correcto solo por similitud de nombre — motor2 tiene su propio esquema (`Sucursal`, `Producto`, `Operacion`, `MovimientoStock`, `TraspasoSucursal`, etc.) y correr una auditoría contra la base equivocada no solo no serviría, sino que sería leer datos de un sistema ajeno sin autorización clara. Este punto queda bloqueado hasta que el usuario confirme explícitamente cuál proyecto (si alguno de los 3) es el correcto — recién ahí se correrían los 5 queries de §5.2 tal cual están documentados.
 
 **Hallazgos de diseño nuevos que el plan de implementación deberá incorporar** (no estaban en el borrador original):
 1. Son 6 Server Actions, no 8 (§1).
 2. `rechazarTransferencia` no puede cubrirse con la columna de `Operacion` — necesita su propio fix de atomicidad, separable de I3 (§6.4).
 3. La recomendación reconstruir-vs-persistir cambia a "persistir" tras verificar las 6 Server Actions reales (§4.5).
+4. El índice de unicidad pasa a ser global (`claveIdempotencia` sola), no compuesto con `sucursalId`/`proceso` — corrección aplicada tras la evaluación del usuario (§2.2, §11.8).
+5. `payloadHash` debe incluir un identificador explícito de proceso/Server Action, no solo los campos de negocio (§11.2) — necesario para que la garantía del punto 4 sea estructural.
 
 ---
 
-## 12. Estado
+## 13. Estado
 
 ```text
 Revisión general: CERRADA
