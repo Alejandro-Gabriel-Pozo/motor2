@@ -31,16 +31,16 @@ const ETIQUETA_CONFIANZA: Record<FilaRendimientoSimple["confianza"], string> = {
 
 function celdaDesvio(desviacionPorcentaje: number | null) {
   return (
-    <td className={desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-600" : ""}>
+    <td className={`px-2 py-2 ${desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-600" : ""}`}>
       {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
     </td>
   );
 }
 
 function celdaUsarValor(productoVentaId: string, insumoProductoId: string, cantidadEstimada: number | null) {
-  if (cantidadEstimada === null) return <td />;
+  if (cantidadEstimada === null) return <td className="px-2 py-2" />;
   return (
-    <td>
+    <td className="px-2 py-2">
       <Link href={`/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}`} className="text-sm underline">
         Usar este valor
       </Link>
@@ -120,42 +120,46 @@ export default async function RendimientoRecetasPage({
         {filasSimples.length === 0 ? (
           <p className="text-sm text-neutral-500">Nada para comparar todavía en este caso.</p>
         ) : (
-          <table className="w-full max-w-4xl text-sm">
+          <table className="w-full max-w-6xl text-sm">
             <thead>
               <tr className="border-b text-left text-neutral-500">
-                <th className="py-2">Plato</th>
-                <th>Insumo</th>
-                <th>Receta actual</th>
-                <th>
+                <th className="px-2 py-2 first:pl-0">Plato</th>
+                <th className="px-2">Insumo</th>
+                <th className="px-2">Receta actual</th>
+                <th className="px-2">
                   Rendimiento real
                   <AyudaIcono texto={AYUDA_RENDIMIENTO_REAL} />
                 </th>
-                <th>
+                <th className="px-2">
                   Desvío
                   <AyudaIcono texto={AYUDA_DESVIO} />
                 </th>
-                <th>Confianza</th>
-                <th />
+                <th className="px-2">Confianza</th>
+                <th className="px-2" />
               </tr>
             </thead>
             <tbody>
               {filasSimples.map((f) => (
                 <tr key={f.recetaIngredienteId} className="border-b">
-                  <td className="py-2">{f.productoVentaNombre}</td>
-                  <td>
+                  <td className="px-2 py-2 first:pl-0">{f.productoVentaNombre}</td>
+                  <td className="px-2 py-2">
                     {f.insumoONombre}
                     {f.esTrivial && (
-                      <span className="ml-1 text-xs text-neutral-400" title={AYUDA_TRIVIAL}>
+                      <span className="ml-1 text-xs text-neutral-400">
                         (venta directa)
+                        <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
+                        <Link href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
+                          Ver historial
+                        </Link>
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td className="px-2 py-2">
                     {f.cantidadActual} {f.unidadRecetaNombre}
                   </td>
-                  <td>{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
+                  <td className="px-2 py-2">{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
                   {celdaDesvio(f.desviacionPorcentaje)}
-                  <td>{ETIQUETA_CONFIANZA[f.confianza]}</td>
+                  <td className="px-2 py-2">{ETIQUETA_CONFIANZA[f.confianza]}</td>
                   {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
                 </tr>
               ))}
@@ -171,7 +175,7 @@ export default async function RendimientoRecetasPage({
         ) : (
           <div className="flex flex-col gap-6">
             {Array.from(poolsCompartidos.entries()).map(([poolClave, filas]) => (
-              <div key={poolClave} className="max-w-4xl">
+              <div key={poolClave} className="max-w-6xl">
                 <p className="mb-2 text-sm">
                   <strong>{filas[0].insumoONombre}</strong> — {filas[0].cantidadPlatosEnPool} platos, {filas[0].semanasConDatos} semanas con datos
                   {filas[0].resoluble && filas[0].r2 !== null && ` — ajuste R² ${filas[0].r2.toFixed(2)}`}
@@ -180,34 +184,38 @@ export default async function RendimientoRecetasPage({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-neutral-500">
-                      <th className="py-2">Plato</th>
-                      <th>Receta actual</th>
-                      <th>
+                      <th className="px-2 py-2 first:pl-0">Plato</th>
+                      <th className="px-2">Receta actual</th>
+                      <th className="px-2">
                         Rendimiento real
                         <AyudaIcono texto={AYUDA_RENDIMIENTO_REAL} />
                       </th>
-                      <th>
+                      <th className="px-2">
                         Desvío
                         <AyudaIcono texto={AYUDA_DESVIO} />
                       </th>
-                      <th />
+                      <th className="px-2" />
                     </tr>
                   </thead>
                   <tbody>
                     {filas.map((f) => (
                       <tr key={f.recetaIngredienteId} className="border-b">
-                        <td className="py-2">
+                        <td className="px-2 py-2 first:pl-0">
                           {f.productoVentaNombre}
                           {f.esTrivial && (
-                            <span className="ml-1 text-xs text-neutral-400" title={AYUDA_TRIVIAL}>
+                            <span className="ml-1 text-xs text-neutral-400">
                               (venta directa)
+                              <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
+                              <Link href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
+                                Ver historial
+                              </Link>
                             </span>
                           )}
                         </td>
-                        <td>
+                        <td className="px-2 py-2">
                           {f.cantidadActual} {f.unidadRecetaNombre}
                         </td>
-                        <td>{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
+                        <td className="px-2 py-2">{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
                         {celdaDesvio(f.desviacionPorcentaje)}
                         {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
                       </tr>

@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerResumenOperativo } from "@/core/reportes/resumen-operativo";
 import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-resumen";
+import { AyudaIcono } from "@/components/ayuda-campo";
 
 export default async function ReportesResumenPage() {
   const ctx = await obtenerContextoUsuario();
@@ -19,19 +21,43 @@ export default async function ReportesResumenPage() {
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Ventas del mes</p>
+          <p className="flex items-center text-xs text-neutral-500">
+            Ventas del mes
+            <AyudaIcono texto={r.financiero.avisoVentas} />
+          </p>
           <p className="text-lg font-semibold">${r.financiero.ventasTotal.toLocaleString("es-AR")}</p>
           {r.financiero.hayEstimados && <p className="text-xs text-amber-600">incluye estimados</p>}
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Margen del mes</p>
+          <p className="flex items-center text-xs text-neutral-500">
+            Margen del mes
+            <AyudaIcono texto={r.financiero.avisoMargen} />
+          </p>
           <p className="text-lg font-semibold">
             ${r.financiero.margenTotal.toLocaleString("es-AR")} {r.financiero.margenPct !== null && `(${r.financiero.margenPct}%)`}
           </p>
-          {r.financiero.hayCostoIncompleto && <p className="text-xs text-amber-600">costo incompleto en algún producto</p>}
+          {r.financiero.hayCostoIncompleto && (
+            <p className="text-xs text-amber-600">
+              Costo incompleto en algún producto —{" "}
+              <Link href="/reportes/costos" className="underline">
+                ver Costos y márgenes
+              </Link>
+            </p>
+          )}
+          <p className="mt-1 flex items-center text-xs text-neutral-500">
+            Real: {r.financiero.margenRealTotal !== null ? `$${r.financiero.margenRealTotal.toLocaleString("es-AR")} (${r.financiero.margenRealPct}%)` : "sin datos todavía"}
+            <AyudaIcono texto={r.financiero.avisoMargenReal} />
+          </p>
+          <p className="mt-1 flex items-center text-xs text-neutral-500">
+            Ajustado IPC: {r.financiero.margenIPCTotal !== null ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)` : "sin datos todavía"}
+            <AyudaIcono texto={r.financiero.avisoMargenIPC} />
+          </p>
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Gastado en compras</p>
+          <p className="flex items-center text-xs text-neutral-500">
+            Gastado en compras
+            <AyudaIcono texto={r.financiero.avisoCompras} />
+          </p>
           <p className="text-lg font-semibold">${r.financiero.gastadoTotal.toLocaleString("es-AR")}</p>
         </div>
         <div className="rounded border p-4">

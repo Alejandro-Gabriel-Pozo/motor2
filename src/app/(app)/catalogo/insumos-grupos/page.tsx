@@ -29,19 +29,19 @@ export default async function InsumosGruposPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-neutral-500">
-              <th className="py-2">Nombre</th>
-              <th>Grupo</th>
-              <th>Activo</th>
-              <th />
+              <th className="px-2 py-2 first:pl-0">Nombre</th>
+              <th className="px-2">Grupo</th>
+              <th className="px-2">Activo</th>
+              <th className="px-2" />
             </tr>
           </thead>
           <tbody>
             {insumos.map((i) => (
               <tr key={i.id} className="border-b align-top">
-                <td className="py-2">
+                <td className="px-2 py-2 first:pl-0">
                   <FormRenombrarInsumo insumoId={i.id} nombreActual={i.nombre} />
                 </td>
-                <td>
+                <td className="px-2 py-2">
                   <form
                     action={async (formData: FormData) => {
                       "use server";
@@ -63,8 +63,8 @@ export default async function InsumosGruposPage() {
                     </button>
                   </form>
                 </td>
-                <td>{i.activo ? "Sí" : "No"}</td>
-                <td>
+                <td className="px-2 py-2">{i.activo ? "Sí" : "No"}</td>
+                <td className="px-2 py-2">
                   <form
                     action={async () => {
                       "use server";
@@ -100,17 +100,17 @@ export default async function InsumosGruposPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-neutral-500">
-              <th className="py-2">Cadena</th>
-              <th>Activo</th>
-              <th />
+              <th className="px-2 py-2 first:pl-0">Cadena</th>
+              <th className="px-2">Activo</th>
+              <th className="px-2" />
             </tr>
           </thead>
           <tbody>
             {grupos.map((g, idx) => (
               <tr key={g.id} className="border-b">
-                <td className="py-2">{cadenas[idx]}</td>
-                <td>{g.activo ? "Sí" : "No"}</td>
-                <td>
+                <td className="px-2 py-2 first:pl-0">{cadenas[idx]}</td>
+                <td className="px-2 py-2">{g.activo ? "Sí" : "No"}</td>
+                <td className="px-2 py-2">
                   <form
                     action={async () => {
                       "use server";

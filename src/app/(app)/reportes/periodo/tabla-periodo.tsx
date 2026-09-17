@@ -22,13 +22,30 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
     etiqueta: "Margen",
     alinear: "derecha",
     valor: (v) => v.margen,
-    render: (v) => (v.margen === null ? <span className="text-amber-600">costo incompleto</span> : `$${v.margen.toLocaleString("es-AR")} (${v.margenPct}%)`),
+    render: (v) => {
+      if (v.margen !== null) return `$${v.margen.toLocaleString("es-AR")} (${v.margenPct}%)`;
+      if (v.accionFaltante) {
+        return (
+          <Link href={v.accionFaltante.href} className="text-amber-600 underline">
+            {v.accionFaltante.etiqueta}
+          </Link>
+        );
+      }
+      return <span className="text-amber-600">costo incompleto</span>;
+    },
   },
 ];
 
 const COLUMNAS_COMPRAS: ColumnaReporte<FilaCompraPorProveedor>[] = [
   { clave: "proveedor", etiqueta: "Proveedor", valor: (p) => p.proveedor, render: (p) => p.proveedor },
-  { clave: "lineas", etiqueta: "Líneas", alinear: "derecha", valor: (p) => p.lineas, render: (p) => p.lineas },
+  {
+    clave: "lineas",
+    etiqueta: "Líneas",
+    alinear: "derecha",
+    valor: (p) => p.lineas,
+    render: (p) => p.lineas,
+    ayuda: "Cantidad de renglones de compra (no de facturas ni de productos distintos) sumados de todas las compras a este proveedor en el rango de fechas elegido.",
+  },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `$${p.importe.toLocaleString("es-AR")}` },
 ];
 

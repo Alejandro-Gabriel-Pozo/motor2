@@ -48,6 +48,19 @@ describe("generarReporteHuecosCatalogo", () => {
     expect(rep.insumosConRecetaSinProveedor.map((p) => p.productoId)).toContain(mp.id);
   });
 
+  it("una MP 'Se produce' sin proveedor NO aparece — se fabrica con su propia receta, nunca se compra (§8.7)", async () => {
+    const mpProducida = await prisma.producto.create({
+      data: { codigo: "MP_2", nombre: "Prepizza masa", tipo: "MP", unidadStockId: unidadKgId, insumoId, seProduce: true },
+    });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_2", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    await prisma.recetaVersion.create({
+      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpProducida.id, cantidad: 1, unidadId: unidadKgId }] } },
+    });
+
+    const rep = await generarReporteHuecosCatalogo(sucursalId);
+    expect(rep.insumosConRecetaSinProveedor.map((p) => p.productoId)).not.toContain(mpProducida.id);
+  });
+
   it("unidad mezclada respeta el permiso 'insumos_mezclados' (operador no puede verla)", async () => {
     const otroKg = await prisma.unidad.create({ data: { nombre: "kg2", magnitud: "PESO", decimales: 2 } });
     await prisma.producto.create({ data: { codigo: "MP_A", nombre: "Producto A", tipo: "MP", unidadStockId: unidadKgId, insumoId } });

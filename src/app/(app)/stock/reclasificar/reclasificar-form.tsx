@@ -54,8 +54,20 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   const actualizarDestino = (idx: number, cambios: Partial<FilaDestino>) => {
     setDestinos((prev) => prev.map((d, i) => (i === idx ? { ...d, ...cambios } : d)));
   };
-  const agregarDestino = () => setDestinos((prev) => [...prev, { ...DESTINO_VACIO }]);
+  // Precarga con la fecha de origen — antes quedaba siempre vacío y había
+  // que retipear la misma fecha a mano en cada destino (§8.5 del audit doc:
+  // si el operario la dejaba vacía por olvido, esa porción del stock perdía
+  // el vencimiento en silencio). Sigue siendo editable por fila.
+  const agregarDestino = () => setDestinos((prev) => [...prev, { ...DESTINO_VACIO, loteVencimiento: loteOrigen }]);
   const quitarDestino = (idx: number) => setDestinos((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+
+  const cambiarLoteOrigen = (nuevoLoteOrigen: string) => {
+    setLoteOrigen(nuevoLoteOrigen);
+    // Sincroniza solo las filas que el operario todavía no tocó (vacías) —
+    // una fila donde ya eligió otra fecha a propósito (ej. repartir a un
+    // lote distinto) no se pisa.
+    setDestinos((prev) => prev.map((d) => (d.loteVencimiento === "" ? { ...d, loteVencimiento: nuevoLoteOrigen } : d)));
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +129,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         </label>
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Lote origen (opcional — vacío = total sin lote puntual)
-          <input type="date" value={loteOrigen} onChange={(e) => setLoteOrigen(e.target.value)} className="rounded border px-3 py-2" />
+          <input type="date" value={loteOrigen} onChange={(e) => cambiarLoteOrigen(e.target.value)} className="rounded border px-3 py-2" />
         </label>
       </div>
 

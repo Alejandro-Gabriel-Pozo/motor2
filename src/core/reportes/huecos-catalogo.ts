@@ -37,6 +37,12 @@ export interface ReporteHuecosCatalogo {
  * 2) MP vinculada a una receta (se puede vender) pero sin ningún proveedor
  *    en el Catálogo Central — se puede recibir por Compra igual, pero
  *    "Comparar precios"/Alta rápida no tienen de dónde sacar referencia.
+ *    Excluye las MP "Se produce" (`seProduce`) a propósito: esas se
+ *    fabrican con su propia receta, nunca se compran, así que no tener
+ *    proveedor no es un hueco — es lo esperado. Falso positivo real
+ *    encontrado probando la demo (docs/comparativa-ux-erpnext-
+ *    dolibarr.md §8.7): "Prepizza masa chica/grande" aparecían acá sin
+ *    corresponder.
  */
 export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db = prisma): Promise<ReporteHuecosCatalogo> {
   const productos = await construirMapaProductos(undefined, db);
@@ -59,7 +65,7 @@ export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db = 
     .sort((a, b) => a.producto.localeCompare(b.producto));
 
   const insumosConRecetaSinProveedor = Array.from(productos.values())
-    .filter((info) => info.tipo === "MP" && info.activo && mpsEnRecetas.has(info.id) && !conProveedor.has(info.id))
+    .filter((info) => info.tipo === "MP" && info.activo && !info.seProduce && mpsEnRecetas.has(info.id) && !conProveedor.has(info.id))
     .map((info) => ({ productoId: info.id, producto: info.nombre, codigo: info.codigo, insumoNombre: info.insumoNombre }))
     .sort((a, b) => a.producto.localeCompare(b.producto));
 

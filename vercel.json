@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sincronizar-ipc",
+      "schedule": "0 12 15 * *"
+    }
+  ]
+}

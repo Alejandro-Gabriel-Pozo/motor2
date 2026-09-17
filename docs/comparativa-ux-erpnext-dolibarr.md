@@ -532,10 +532,23 @@ formulario editable — la ficha técnica ya aparece como `<form>` con botón
 paso también. No existe un modo lectura por default; entrar a ver una
 receta ya te para en modo edición.
 
-**Estado: no resuelto — estructural.** Implica decidir el modo de edición
-(¿toda la receta junta, o por sección — ficha/ingredientes/pasos cada una
-con su propio "Editar"?) antes de tocar código; no es un fix chico de una
-sola pantalla.
+**Estado: parcialmente resuelto (2026-09-16, `2ed6ae6`)** — la Ficha
+técnica (cabecera) y cada fila existente de Ingredientes/Pasos ya tienen
+modo vista real (solo texto + "Editar", el form completo solo aparece
+para la fila puntual en edición). **Verificado en la demo real
+(2026-09-17) que la percepción de "sigue igual que antes" es correcta
+igual**, por una causa distinta a la ya resuelta: los formularios
+"Agregar ingrediente" (`page.tsx:296-332`) y "Agregar paso" (`:425-456`)
+—altas nuevas, no ediciones de algo existente— se renderizan siempre,
+sin ningún gate, intercalados en el medio del flujo de lectura (entre la
+tabla de Ingredientes y Método de preparación, y al cierre de los Pasos).
+Al ser formularios completos y no un link chico, ocupan tanto espacio
+visual como las partes editables de antes — rompen la lectura igual,
+aunque la causa ya no sea "todo es un `<form>`" sino "las altas están
+siempre abiertas". Pendiente: colapsar ambos detrás de un link tipo
+"+ Agregar ingrediente"/"+ Agregar paso", mismo patrón que ya usan
+"+ Agregar destino" (Reclasificar stock) y "+ Agregar producto" (Conteo
+físico, §1).
 
 ### 7.3 Reporte por período — tarjetas visualmente iguales para cifras no comparables
 
@@ -553,6 +566,25 @@ deprioritizado frente a la jerarquía visual de las 4 tarjetas iguales.
 **Estado: no resuelto** — fix acotado (mover el aviso pegado a cada
 tarjeta que lo necesita, ej. tooltip o subtítulo en "Margen" y "Compras"
 en vez de una nota genérica al final).
+
+**Ampliado (2026-09-17), probando la demo real**: por qué no se usó
+`AyudaIcono` (`components/ayuda-campo.tsx:21-31`, el mismo "?" que ya usa
+Rendimiento real de recetas) directo en la tarjeta — el `aviso` de cada
+métrica (`periodo.ts:298-300`) es una oración completa por tarjeta, más
+larga que lo que ese ícono está pensado para mostrar al lado de un label
+corto; en vez de acortarlo o resolverlo distinto, se mandó como párrafo
+suelto al final. Además, el problema NO está contenido solo acá: `/reportes`
+(Resumen operativo — la primera pantalla al entrar a Reportes) muestra las
+mismas 3 tarjetas (Ventas del mes / Margen del mes / Gastado en compras,
+`reportes/page.tsx:20-36`) con el mismo problema de fondo, pero sin
+ningún aviso — ni siquiera el párrafo deprioritizado que sí tiene
+Período. Cualquier fix tiene que cubrir los dos lugares, no solo Período.
+
+**Estado: parcialmente resuelto (2026-09-17)** — ver §9: los avisos ahora
+viven pegados a cada tarjeta (vía `AyudaIcono`) en los dos lugares
+(Período y Resumen operativo), y se agregó una segunda cifra ("Margen
+real") que no tiene el descalce temporal de fondo. La tarjeta "Margen"
+nominal se mantiene al lado — no se reemplazó, por las razones de §9.
 
 ---
 
@@ -573,3 +605,335 @@ en vez de una nota genérica al final).
 Fuentes primarias completas (con más citas de archivo:línea de las
 resumidas acá) quedan en el historial de esta sesión — este documento es el
 resumen curado para llevar al otro proyecto, no un volcado íntegro.
+
+---
+
+## 8. Hallazgos probando la demo real (deploy en Vercel) — 2026-09-17
+
+Sesión de prueba en vivo contra el deployment real (no local) de la demo,
+ya con datos de varias sucursales cargados. Cinco hallazgos, cada uno con
+causa raíz verificada en el código.
+
+### 8.1 "(venta directa)" en Rendimiento real de recetas — ayuda no persistente, sin drill-down
+
+**Pedido del usuario**: "no se entiende que se está diciendo" sobre el
+texto que explica el desvío en filas marcadas `esTrivial`.
+
+**Causa raíz**: `AYUDA_TRIVIAL` (`reportes/rendimiento-recetas/page.tsx:14-15`)
+se muestra como atributo `title=` nativo del navegador sobre el texto
+`(venta directa)` (`:148`, `:202`) — exactamente el antipatrón que
+§6.1 de este mismo documento ya señaló como inferior: desaparece, solo
+aparece al pasar el mouse (no funciona al tacto/mobile), no es
+descubrible. La MISMA página sí usa el mecanismo persistente y correcto
+(`<AyudaIcono texto={...} />`, ícono "?" clickeable) para las ayudas de
+los encabezados de columna dos líneas más arriba (`:131`, `:135`) — dos
+mecanismos de ayuda distintos conviviendo en la misma tabla, uno bueno y
+uno malo. Además, la fila no linkea a `/reportes/historial?productoId=...`
+(el drill-down que sí existe en los ~16 reportes de §2) para que el
+usuario pueda ir a ver el historial real de ese producto y decidir si el
+desvío es ruido de lote o señal real.
+
+**Estado: resuelto (2026-09-17)** — el texto ahora cuelga de
+`<AyudaIcono>` (mismo mecanismo que ya usaban los encabezados), y se
+agregó un link "Ver historial" a `/reportes/historial?productoId=` del
+INSUMO (no del plato — es el stock físico del insumo el que puede tener
+rotura/robo, no el del plato vendido).
+
+### 8.2 "Anular venta" — sin confirmación ni feedback de resultado
+
+**Pedido del usuario**: "aparece como algo accionable, pero no pasa nada,
+y ¿qué pasaría si se selecciona?"
+
+**Causa raíz**: `trazabilidad/page.tsx:61-71` es un `<form action={...}>`
+crudo que llama `anularVenta` (`server/actions/venta.ts:256-295`) y
+**descarta el `ResultadoAccion` devuelto** — ni el mensaje de éxito ("Se
+revirtieron N línea(s) de stock") ni un error (ej. "Esta venta ya está
+anulada") llegan a la pantalla. El fix ya existe en el propio repo y no
+se usó acá: `src/components/form-con-resultado.tsx`, construido
+explícitamente para este problema ("`<form>` crudo no tiene ningún lugar
+donde mostrar `ok:false`... un error queda invisible"). Tampoco hay
+`confirm()` ni modal antes de ejecutar, pese a que la acción SÍ es
+irreversible en el sentido de que genera movimientos de stock reales (un
+`Operacion` tipo `AJUSTE` que revierte cada línea) — mismo patrón de
+"pedir confirmación antes de una acción destructiva" que ya se aplicó en
+Stock Mínimo (`6deb789`) y Conteo Físico (`aa02bb1`), pero no acá.
+
+**Estado: resuelto (2026-09-17)** — `boton-anular-venta.tsx` nuevo,
+mismo patrón de confirmación INLINE que `BotonEliminarStockMinimo`
+(nunca `window.confirm`, es la convención real del proyecto): un paso
+intermedio "¿Anular esta venta?" con Sí/Volver, y el mensaje de
+`anularVenta` (éxito o error) ahora sí se muestra.
+
+### 8.3 Sidebar colapsable no libera espacio en tablas anchas
+
+**Pedido del usuario**: al ocultar el sidebar, "las columnas no se
+acomodan, sigue todo apretado".
+
+**Causa raíz**: la tabla de Rendimiento real de recetas tiene un
+`max-w-4xl` fijo (`rendimiento-recetas/page.tsx:123`, `:180`) — un techo
+de ancho absoluto (56rem/896px) que no reacciona al espacio real
+disponible. `SidebarColapsable` (`sidebar-colapsable.tsx:53-55`) sí libera
+~224px del viewport (`w-56` → `w-0`), pero como el ancho de la tabla nunca
+depende de eso, ese espacio extra simplemente queda vacío al lado — la
+tabla sigue envolviendo texto en 6-7 columnas dentro del mismo `896px` de
+siempre. El propio docstring de `SidebarColapsable` (`:14-15`) dice que el
+colapso se pensó justo para "tablas anchas como Costos o Rendimiento real
+de recetas" — la intención estaba, pero el ancho fijo de la tabla la
+neutraliza en este reporte puntual.
+
+**Estado: resuelto (2026-09-17)** — `max-w-4xl` → `max-w-6xl` en las dos
+tablas, y de paso se les agregó el `px-2` entre columnas que tampoco
+tenían (mismo bug de spacing de §5, nunca habían pasado por
+`TablaReporte`).
+
+### 8.4 "ROTO_O_CAIDO" en Pérdidas y consumo interno — motivo crudo, sin producto ni fecha
+
+**Pedido del usuario**: "no se entiende que se está diciendo, ¿hubo un
+conteo y no se registró algo, o qué? [...] roto o caído ¿qué? ¿cómo lo
+veo? ¿cuándo?"
+
+**Causa raíz, dos bugs distintos en la misma fila**:
+1. `generarReportePerdidas` (`core/reportes/perdidas.ts:82`) agrupa por
+   `m.operacion.motivo` — el valor crudo del enum de Prisma (`ROTO_O_CAIDO`)
+   — sin pasar por `MOTIVOS_MERMA` (`core/movimientos/ui-config.ts:6-13`),
+   que ya tiene la etiqueta humana ("Roto o caído") y se usa al cargar la
+   Merma, pero no al reportarla.
+2. `FilaPerdida.productos` (`perdidas.ts:15`, `:56-73`) YA calcula el
+   desglose por producto con su valor — el dato que responde "¿qué se
+   rompió?" existe en el objeto que devuelve el server — pero
+   `tabla-perdidas.tsx:6-19` nunca lo lee ni lo renderiza. Y como el
+   reporte es un acumulado sobre toda la ventana de "días atrás" (sin fila
+   por evento), no hay ninguna fecha que mostrar aunque se agregara el
+   producto — para el "¿cuándo?" haría falta un link a
+   `/reportes/trazabilidad` filtrado por ese producto y ventana de fechas.
+
+**Estado: parcialmente resuelto (2026-09-17)** — arreglados los dos bugs
+de la fila: `tabla-perdidas.tsx` ahora mapea el motivo por
+`MOTIVOS_MERMA`/`DESTINOS_CONSUMO` y renderiza `m.productos` (una
+columna nueva). El "¿cuándo?" sigue sin respuesta — requiere pasar de
+"acumulado del período" a "un evento por fila" (o un link a
+Trazabilidad), que es un cambio de forma del reporte, no un fix chico;
+queda pendiente a propósito.
+
+### 8.5 Reclasificar stock — fecha de lote por destino, sin arrastrar la del origen
+
+**Pedido del usuario**: al repartir el saldo entre varios destinos, "¿en
+ninguna tengo la fecha del stock que cargué? ¿el operario no sabe la
+fecha, tendrá que ir a mirar el artículo físico?"
+
+**Causa raíz**: `reclasificar-form.tsx` pide la fecha de lote de origen
+UNA vez (`loteOrigen`, campo "Lote origen", `:118-121`) para calcular el
+disponible, pero cada fila de destino tiene su PROPIO campo "Lote destino
+(opcional)" independiente (`:147-150`), vacío por default y sin ningún
+valor sugerido — no se precarga con `loteOrigen` ni se muestra ese valor
+como referencia junto a la fila. Confirmado en el server
+(`server/actions/reclasificacion.ts:135`): si el operario deja el campo
+vacío en una fila, esa porción del stock se graba con
+`loteVencimiento: null` — es decir, reclasificar un lote puntual sin
+retipear la fecha en cada destino **pierde el vencimiento de ese stock**,
+silenciosamente, no es solo un problema de comodidad. Si el operario no
+recuerda la fecha de memoria, hoy no tiene forma de consultarla desde este
+mismo formulario (no hay lookup ni eco del valor ya cargado como
+`loteOrigen`).
+
+**Estado: resuelto (2026-09-17)** — cada destino nuevo se precarga con
+`loteOrigen`, y cambiar `loteOrigen` sincroniza las filas que el
+operario todavía no tocó (las que ya tienen una fecha propia puesta a
+mano no se pisan).
+
+---
+
+## 9. Margen real — costo congelado al momento de la venta (2026-09-17)
+
+Origen: al preguntar por qué el margen de Período/Resumen operativo mezcla
+ingreso histórico con costo de reposición de HOY (§7.3/§8.6), se evaluaron
+los 3 métodos estándar de contabilidad de gestión para este descalce
+(ajuste por IPC, doble moneda/USD, costeo al momento de la venta). Se
+decidió una implementación en dos pasadas — esta sección cubre la primera.
+
+**Por qué "costeo al momento de la venta" (Método 3) y no IPC primero**:
+a diferencia del ajuste por IPC (aplicable retroactivo a cualquier venta
+vieja, porque el INDEC tiene el índice de cualquier mes pasado), este
+método necesita el costo de LA RECETA en el instante exacto de cada venta
+— un dato que nunca se guardó para ventas pasadas y no se puede
+reconstruir sin una serie histórica de costo por insumo. Por eso es
+**solo hacia adelante**: no corrige ni un reporte de datos ya cargados,
+pero no trae ninguna dependencia externa (sin API de gobierno, sin cron,
+sin tabla de índices que mantener) y es arquitectónicamente más simple.
+El ajuste por IPC (retroactivo, con dependencia externa) queda para una
+segunda pasada aparte, con su propia migración y su propio ok — no se
+tocó nada de eso acá.
+
+**Implementado**:
+- `prisma/schema.prisma`, `MovimientoStock.costoUnitarioVenta` (`Decimal?
+  @db.Decimal(14,4)`) — migración `20260917100000_agregar_costo_unitario_venta`,
+  aplicada directo contra Neon (no había Postgres local disponible en esta
+  sesión para generarla del modo habitual con `prisma migrate dev`).
+  Columna aditiva y nullable: no toca ninguna fila existente.
+- `server/actions/venta.ts` (`registrarVenta`) — antes de procesar las
+  líneas del lote, corre `calcularCostosYMargenes` UNA vez (no por línea)
+  para tener el costo de receta vigente en ese instante; cada
+  `VentaCalculada` guarda ese costo (`costoUnitarioAlVender`, `null` si el
+  costeo estaba incompleto ese día), y la fila `MovimientoStock` de
+  proceso VENTA lo persiste en `costoUnitarioVenta`.
+- `core/reportes/periodo.ts` (`calcularMargenDelPeriodo`) — adicionó
+  `margenRealTotal`/`margenRealPctTotal`/`ingresoConCostoReal`/
+  `ingresoSinCostoReal`/`avisoReal` a `MargenDelPeriodo`, calculados
+  línea por línea desde `ItemPeriodo.costoUnitarioVenta` (no por producto
+  agregado, a diferencia del margen nominal — dos ventas del mismo
+  producto en fechas distintas pueden tener costo congelado distinto si
+  la receta cambió entre medio). El margen nominal existente **no se
+  tocó ni se reemplazó** — sigue siendo el mismo cálculo de siempre, al
+  lado del nuevo.
+- `core/reportes/resumen-operativo.ts` — reexpone los mismos campos
+  (`margenRealTotal`, `margenRealPct`, más los 4 avisos ya existentes
+  como texto, `avisoVentas`/`avisoMargen`/`avisoMargenReal`/`avisoCompras`)
+  porque, como ya estaba documentado en §7.3, esta pantalla reusa
+  `obtenerReportePorPeriodo` por debajo — no hizo falta duplicar el
+  cálculo.
+- UI (`reportes/periodo/page.tsx`, `reportes/page.tsx`) — de paso,
+  arregla también §7.3/§8.6: los 4 avisos (Ventas/Margen/Compras +
+  "Margen real") ahora cuelgan de `<AyudaIcono>` pegado a cada tarjeta,
+  ya no como párrafos sueltos al pie. Resumen operativo pasó de tener
+  CERO explicación a tener las mismas 4 ayudas que Período.
+
+**Pendiente, a propósito, fuera de esta pasada**:
+- No hay forma de ver "margen real" desglosado por producto todavía
+  (`FilaMargenProducto` no tiene el equivalente) — solo el total del
+  período. Se dejó así para no ensanchar el scope; si hace falta, es un
+  agregado del mismo tipo sobre `items`, no un rediseño.
+- El Método 1 (ajuste IPC) — implementado el mismo día en una segunda
+  pasada aparte, con su propia migración/aprobación explícita. Ver §10.
+
+### 8.6 "Líneas" en Compras por proveedor — sin explicación, y el nombre confunde
+
+**Pedido del usuario**: "¿qué es 'Líneas'? [...] eso solo da información de
+dinero pero no del qué, por qué, cómo".
+
+**Causa raíz**: `tabla-periodo.tsx:31` no tiene `AyudaIcono` ni ningún
+otro texto de ayuda en esa columna. Y el conteo detrás (`periodo.ts:171`,
+`acc.lineas += 1` por cada `MovimientoStock` de proceso COMPRA) no es ni
+"cantidad de facturas" ni "cantidad de productos distintos" — es la
+cantidad de renglones de compra individuales acumulados en todo el rango
+de fechas para ese proveedor. Un número alto puede significar compras
+frecuentes en cantidades chicas (ej. verdulería) tanto como una sola
+compra grande con muchos productos — sin la aclaración, no se puede
+distinguir un caso del otro solo mirando la tarjeta.
+
+**Estado: resuelto (2026-09-17)** — `tabla-periodo.tsx` cuelga un
+`AyudaIcono` de la columna "Líneas" (mismo mecanismo que el resto del
+documento), con la aclaración de que es renglones de compra, no
+facturas ni productos distintos.
+
+### 8.7 Huecos de catálogo — MP "Se produce" marcada como "sin proveedor" (falso positivo)
+
+**Pedido del usuario**: notó que los insumos listados como "sin proveedor
+cargado" eran en realidad MP que "se producen" — insumos intermedios
+fabricados con su propia receta, que por diseño nunca se compran.
+
+**Causa raíz, confirmado en código**: `huecos-catalogo.ts:62` arma
+`insumosConRecetaSinProveedor` filtrando `tipo === "MP" && activo &&
+mpsEnRecetas.has(id) && !conProveedor.has(id)` — **sin ningún chequeo de
+`seProduce`**, campo que ni siquiera se selecciona en esta consulta (a
+diferencia de `costos.ts`/`valuacion.ts`, que sí lo usan para esta misma
+distinción). Una MP marcada "Se produce" (ej. "Prepizza masa grande/chica"
+— fabricadas con su propia receta, nunca recibidas por Compra) queda
+listada como si le faltara un dato de catálogo, cuando en realidad no
+corresponde que tenga proveedor. No es un problema de wording — es un
+falso positivo real que el usuario tiene que aprender a ignorar cada vez
+que mira este reporte.
+
+**Estado: resuelto (2026-09-17)** — `generarReporteHuecosCatalogo` ahora
+filtra `!info.seProduce` en `insumosConRecetaSinProveedor`, con test
+dedicado ("una MP 'Se produce' sin proveedor NO aparece").
+
+### 8.8 Insumos y grupos — layout de dos columnas apretado, sin el padding que sí tienen los reportes
+
+**Pedido del usuario**: "vista solapada o apretada" en `/catalogo/insumos-grupos`.
+
+**Causa raíz**: `insumos-grupos/page.tsx:26` divide la pantalla 50/50
+(`grid-cols-2` en desktop) entre "Insumos" y "Árbol de grupos", y cada
+mitad tiene su propia tabla con `<select>` + botones inline — mucho
+control para la mitad del ancho de pantalla. Esta página usa una
+`<table>` HTML propia, no el componente compartido `TablaReporte` (vive
+en `/catalogo`, no en `/reportes`) — por eso nunca recibió el fix de
+padding horizontal entre columnas que sí se aplicó a los ~18 reportes
+(§5 de este documento, "bug de spacing... corregido con `px-2` en
+`<th>`/`<td>`"). Sin ese padding y con la mitad del ancho disponible, el
+link "Guardar" del selector de grupo queda pegado contra el valor de la
+columna "Activo".
+
+**Estado: resuelto (2026-09-17)** — agregado el `px-2` entre columnas en
+las dos tablas (mismo fix de spacing que §5), sin migrar a `TablaReporte`
+(cambio de forma más grande, fuera de esta pasada).
+
+---
+
+## 10. Margen ajustado por IPC — Método 1, segunda pasada (2026-09-17)
+
+Segunda pasada del trabajo de §9 — ahí quedó explícitamente pospuesto
+"con su propia migración y su propio ok" antes de tocar la base
+compartida otra vez; esta sección es esa segunda pasada, autorizada en
+el momento.
+
+**Fuente verificada real** (no documentación genérica): la API de series
+de tiempo del Ministerio de Economía (`apis.datos.gob.ar`), serie
+`101.1_I2NG_2016_M_22` (IPC GBA Nivel General, base dic-2016) — sin API
+key, republica el IPC del INDEC. Confirmado con `curl` el 2026-09-17 antes
+de escribir código.
+
+**Bug real encontrado al usar la API**: sin el parámetro `limit`
+explícito, devuelve como máximo 100 filas en orden ASCENDENTE (las más
+VIEJAS primero) — con 125 meses de serie completa, eso corta justo antes
+de llegar a los meses recientes. El primer backfill de prueba trajo datos
+hasta 2024-07 en vez de 2026-08 por este motivo. Corregido agregando
+`&limit=5000` a la URL (`indices-economicos.ts`) — documentado en el
+propio código para que nadie lo saque "para simplificar" sin saber por
+qué está.
+
+**Implementado**:
+- `prisma/schema.prisma`, modelo `IndicePrecio` (`mes` único, `valor`) —
+  migración `20260917140000_agregar_indice_precio`, aditiva, aplicada
+  contra Neon (`demo-pizzeria-la-cuadra`) y contra Postgres local.
+- `core/reportes/indices-economicos.ts` — `cargarSerieIPC` (una consulta,
+  toda la serie a memoria), `resolverCoeficienteIPC` (puro, sin I/O:
+  último valor cargado ÷ valor del mes de la venta — `null` si falta
+  cualquiera de los dos, nunca inventa un intermedio), `sincronizarIPC`
+  (fetch + upsert idempotente, nunca reescribe un mes ya guardado).
+- `core/reportes/periodo.ts` (`calcularMargenDelPeriodo`) — agregó
+  `margenIPCTotal`/`margenIPCPctTotal`/`ingresoAjustadoIPCTotal`/
+  `ingresoConIPC`/`ingresoSinIPC`/`avisoIPC`, línea por línea sobre
+  `items` (mismo criterio que `margenReal` de §9: cada venta puede caer
+  en un mes con coeficiente distinto). A propósito usa el MISMO
+  `costoPorProducto` (costo de HOY) que ya usa el margen nominal — la
+  idea del Método 1 es dejar los dos lados de la resta en la misma
+  "moneda" (plata de hoy), no introducir un tercer costo. Ni el margen
+  nominal ni el margen real (§9) se tocaron.
+- `core/reportes/resumen-operativo.ts` y las tarjetas de
+  `reportes/periodo/page.tsx` y `reportes/page.tsx` — mismo patrón que
+  §9: una tercera línea ("Ajustado IPC: ...") al lado de "Real", con su
+  propio `AyudaIcono`, sin reemplazar nada.
+- Sincronización automática: `src/app/api/cron/sincronizar-ipc/route.ts`
+  + `vercel.json` (Vercel Cron, día 15 de cada mes — le da tiempo al
+  INDEC a publicar el mes anterior). Protegido con `CRON_SECRET` (env var
+  nueva en Production de Vercel) — un request sin el secreto correcto se
+  rechaza con 401 antes de tocar la DB.
+- Backfill manual único (2026-09-17): corridos los ~125 meses históricos
+  (2016-2026) tanto en Postgres local como en la rama demo de Neon, para
+  que la funcionalidad tenga datos reales desde ya en vez de esperar al
+  primer 15 del mes.
+
+**A diferencia del Método 3 (§9), este SÍ es retroactivo** — cualquier
+venta ya cargada, de cualquier fecha pasada, puede ajustarse en cuanto
+ese mes tenga IPC sincronizado. La limitación real es el rezago de
+publicación del INDEC (~1 mes) — una venta del mes en curso todavía no
+tiene IPC para llevarla a "hoy", así que cae en `ingresoSinIPC` hasta que
+el INDEC publique ese mes.
+
+**Pendiente, a propósito, fuera de esta pasada**: Método 2 (doble
+moneda/USD) no se implementó — la propia evaluación inicial (chat) ya
+lo descartó como de "esfuerzo alto, poco práctico acá salvo que el
+negocio ya cotice todo en USD", y nadie pidió eso. Si en algún momento
+hace falta, es una tabla `CotizacionDolar` + la misma API de series
+(serie `168.1_T_CAMBIOR_D_0_0_26`, tipo de cambio A3500 del BCRA, diaria)
+— mismo patrón que `IndicePrecio`, no un diseño nuevo.

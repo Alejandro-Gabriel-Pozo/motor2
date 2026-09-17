@@ -3,6 +3,7 @@ import { listarSeccionesActivas } from "@/server/actions/secciones";
 import { obtenerHistorialProducto } from "@/core/reportes/historial-producto";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
+import { GraficoSaldoCorriente } from "./grafico-saldo";
 
 export default async function HistorialProductoPage({
   searchParams,
@@ -48,6 +49,10 @@ export default async function HistorialProductoPage({
             {historial.totalMovimientos} movimiento(s), {historial.totalConteos} conteo(s) en total (el saldo corriente arranca del primer movimiento
             real, no del rango elegido).
           </p>
+          <div className="mb-4">
+            <h3 className="mb-2 text-sm font-medium">Evolución del saldo</h3>
+            <GraficoSaldoCorriente eventos={historial.eventos} unidadStockNombre={historial.unidadStockNombre} />
+          </div>
           <TablaHistorialEventos filas={historial.eventos} nombreExport={`historial-${historial.codigo}`} />
         </div>
       )}

@@ -5,6 +5,7 @@ import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
+import { calcularCostosYMargenes } from "@/core/reportes/costos";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
@@ -40,6 +41,8 @@ interface VentaCalculada {
   cantidadVendida: number;
   loteVencimiento: Date | null;
   precioVenta: number;
+  /** Costo de receta resuelto AL MOMENTO de esta venta (docstring en schema.prisma, MovimientoStock.costoUnitarioVenta) — null si el costeo estaba incompleto ese día. */
+  costoUnitarioAlVender: number | null;
   consumos: ConsumoCalculado[];
 }
 
@@ -54,7 +57,8 @@ async function armarVentaCalculada(
   seccionId: string,
   sucursalId: string,
   tx: Prisma.TransactionClient,
-  obtenerProducto: ReturnType<typeof crearCacheProducto>
+  obtenerProducto: ReturnType<typeof crearCacheProducto>,
+  costoUnitarioPorProducto: Map<string, number | null>
 ): Promise<{ ok: true; venta: VentaCalculada | null } | { ok: false; mensaje: string }> {
   const cantidad = Number(item.cantidadVendida || 0);
   if (!(cantidad > 0)) return { ok: true, venta: null };
@@ -88,10 +92,11 @@ async function armarVentaCalculada(
   }
 
   const precioVenta = await resolverPrecioVenta(sucursalId, producto.id, Number(producto.precioVenta), tx);
+  const costoUnitarioAlVender = costoUnitarioPorProducto.get(producto.id) ?? null;
 
   return {
     ok: true,
-    venta: { productoId: producto.id, cantidadVendida: cantidad, loteVencimiento, precioVenta, consumos },
+    venta: { productoId: producto.id, cantidadVendida: cantidad, loteVencimiento, precioVenta, costoUnitarioAlVender, consumos },
   };
 }
 
@@ -127,9 +132,14 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
       const obtenerProducto = crearCacheProducto(tx);
+      // Una sola resolución de costos para todo el lote (no por línea) —
+      // calcularCostosYMargenes ya recorre el catálogo entero, repetirla
+      // por ítem sería trabajo redundante dentro de la misma transacción.
+      const costosDeHoy = await calcularCostosYMargenes(ctx.sucursalId, tx);
+      const costoUnitarioPorProducto = new Map(costosDeHoy.map((c) => [c.productoId, c.costoIncompleto ? null : c.costo]));
       const ventas: VentaCalculada[] = [];
       for (const item of datos.ventas) {
-        const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, tx, obtenerProducto);
+        const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, tx, obtenerProducto, costoUnitarioPorProducto);
         if (!armado.ok) return error(armado.mensaje);
         if (armado.venta) ventas.push(armado.venta);
       }
@@ -207,6 +217,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
           operacionId: operacion.id, productoId: venta.productoId, seccionId: datos.seccionId, proceso: "VENTA",
           cantidad: -venta.cantidadVendida, loteVencimiento: venta.loteVencimiento,
           detalle: texto(datos.detalle) || "Venta", precioTotal: importeVenta, precioPorUnidadStock: redondearMoneda(venta.precioVenta),
+          costoUnitarioVenta: venta.costoUnitarioAlVender !== null ? redondearMoneda(venta.costoUnitarioAlVender) : null,
         });
       }
 

@@ -3,6 +3,8 @@ import type { Proceso } from "@prisma/client";
 import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
 import { construirMapaProductos, redondearCantidad, type Db } from "./comun";
 import { calcularCostosYMargenes } from "./costos";
+import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
+import { cargarSerieIPC, resolverCoeficienteIPC } from "./indices-economicos";
 
 export interface FiltrosPeriodo {
   proceso?: Proceso;
@@ -27,6 +29,8 @@ export interface ItemPeriodo {
   idOperacion: string;
   precioTotal: number;
   precioPorUnidadStock: number;
+  /** Solo proceso VENTA, desde 2026-09-17 — ver docstring en schema.prisma (MovimientoStock.costoUnitarioVenta). */
+  costoUnitarioVenta: number | null;
 }
 
 /**
@@ -89,6 +93,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
       operacionId: true,
       precioTotal: true,
       precioPorUnidadStock: true,
+      costoUnitarioVenta: true,
       producto: { select: { nombre: true, codigo: true } },
       seccion: { select: { nombre: true } },
       operacion: { select: { fecha: true, nroFactura: true, proveedor: { select: { nombre: true } } } },
@@ -118,6 +123,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
     idOperacion: m.operacionId,
     precioTotal: Number(m.precioTotal),
     precioPorUnidadStock: Number(m.precioPorUnidadStock),
+    costoUnitarioVenta: m.costoUnitarioVenta !== null ? Number(m.costoUnitarioVenta) : null,
   }));
 
   const resumen: Record<string, number> = {};
@@ -125,7 +131,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
 
   const ventas = await calcularVentasDelPeriodo(sucursalId, items, db);
   const compras = calcularComprasDelPeriodo(items);
-  const margen = await calcularMargenDelPeriodo(sucursalId, ventas, db);
+  const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
 
   return { total: items.length, items, resumen, desde, hasta, ventas, compras, margen };
 }
@@ -257,6 +263,8 @@ export interface FilaMargenProducto {
   costoUnitario: number | null;
   costo: number | null;
   costoIncompleto: boolean;
+  /** docs/comparativa-ux-erpnext-dolibarr.md §7.1 — mismo criterio causa→acción que ya usaba Costos, ahora compartido. `null` si no falta nada. */
+  accionFaltante: AccionFaltante | null;
   margen: number | null;
   margenPct: number | null;
 }
@@ -268,14 +276,51 @@ export interface MargenDelPeriodo {
   hayCostoIncompleto: boolean;
   porProducto: FilaMargenProducto[];
   aviso: string;
+  /**
+   * "Margen real" (docs/comparativa-ux-erpnext-dolibarr.md §9) — a
+   * diferencia de margenTotal (receta/costo de HOY aplicados a TODO lo
+   * vendido en el rango), esto suma, línea por línea, el costo que
+   * MovimientoStock.costoUnitarioVenta congeló en el momento exacto de esa
+   * venta. Solo cubre ventas registradas desde que existe ese campo
+   * (2026-09-17) — `ingresoSinCostoReal` es cuánto del ingreso del rango
+   * quedó afuera por no tener ese dato (ventas viejas, o costeo incompleto
+   * ese día). `null` si NINGUNA venta del rango tiene el dato todavía.
+   */
+  margenRealTotal: number | null;
+  margenRealPctTotal: number | null;
+  ingresoConCostoReal: number;
+  ingresoSinCostoReal: number;
+  avisoReal: string;
+  /**
+   * "Margen ajustado por IPC" (Método 1, docs/comparativa-ux-erpnext-
+   * dolibarr.md §10) — lleva el ingreso de cada venta a poder adquisitivo
+   * del último mes con IPC cargado (`indices-economicos.ts`) ANTES de
+   * restarle el costo de HOY (el mismo costoPorProducto que usa
+   * margenTotal, a propósito: acá los dos lados de la resta quedan en la
+   * misma "moneda" — plata de hoy — a diferencia de margenTotal, que
+   * mezcla ingreso histórico nominal con costo de hoy). A diferencia de
+   * margenRealTotal, SÍ es retroactivo — el INDEC tiene el índice de
+   * cualquier mes pasado — pero depende de que ese mes ya esté
+   * sincronizado (`sincronizarIPC`) y de que el producto tenga costo
+   * completo hoy. `ingresoSinIPC` es cuánto del ingreso del rango quedó
+   * afuera (mes sin IPC publicado/sincronizado, o costo incompleto).
+   */
+  margenIPCTotal: number | null;
+  margenIPCPctTotal: number | null;
+  ingresoAjustadoIPCTotal: number;
+  ingresoConIPC: number;
+  ingresoSinIPC: number;
+  avisoIPC: string;
 }
 
 /**
  * Port de calcularMargenDelPeriodo_ (Reportes.js:304-352). LIMITACIÓN a
  * propósito (igual que el original): el costo usa la receta y los precios
- * de insumos de HOY, no los que regían cuando se vendió cada unidad.
+ * de insumos de HOY, no los que regían cuando se vendió cada unidad. Ver
+ * `margenRealTotal` para la alternativa que no tiene este descalce
+ * temporal (a costo de solo cubrir ventas recientes).
  */
-async function calcularMargenDelPeriodo(sucursalId: string, ventasDelPeriodo: VentasDelPeriodo, db: Db): Promise<MargenDelPeriodo> {
+async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[], ventasDelPeriodo: VentasDelPeriodo, db: Db): Promise<MargenDelPeriodo> {
   const costos = await calcularCostosYMargenes(sucursalId, db);
   const costoPorProducto = new Map(costos.map((c) => [c.productoId, c]));
 
@@ -302,6 +347,7 @@ async function calcularMargenDelPeriodo(sucursalId: string, ventasDelPeriodo: Ve
         costoUnitario: costoUnitario === null ? null : redondearMoneda(costoUnitario),
         costo: costoLinea,
         costoIncompleto: costoLinea === null,
+        accionFaltante: infoCosto ? resolverAccionFaltante(infoCosto) : null,
         margen,
         margenPct: margen !== null && v.importe > 0 ? Math.round((margen / v.importe) * 1000) / 10 : null,
       };
@@ -310,6 +356,49 @@ async function calcularMargenDelPeriodo(sucursalId: string, ventasDelPeriodo: Ve
 
   const ingresoTotal = ventasDelPeriodo.totalFacturado;
   const margenTotal = redondearMoneda(ingresoTotal - costoTotal);
+
+  // Margen real: línea por línea (no por producto agregado, a diferencia de
+  // arriba) porque dos ventas del MISMO producto en fechas distintas pueden
+  // tener costoUnitarioVenta distinto si la receta cambió entre medio.
+  let ingresoConCostoReal = 0;
+  let costoRealTotal = 0;
+  let ingresoSinCostoReal = 0;
+  for (const it of items) {
+    if (it.proceso !== "VENTA") continue;
+    if (it.costoUnitarioVenta !== null) {
+      ingresoConCostoReal += it.precioTotal;
+      costoRealTotal += it.cantidad * it.costoUnitarioVenta;
+    } else {
+      ingresoSinCostoReal += it.precioTotal;
+    }
+  }
+  const hayCostoReal = ingresoConCostoReal > 0;
+  const margenRealTotal = hayCostoReal ? redondearMoneda(ingresoConCostoReal - costoRealTotal) : null;
+
+  // Margen ajustado por IPC: también línea por línea (cada venta puede
+  // caer en un mes distinto, con coeficiente distinto) — mismo
+  // costoPorProducto (costo de HOY) que usa el margen nominal arriba, a
+  // propósito: acá se ajusta el ingreso para que los dos lados de la
+  // resta queden en plata de hoy.
+  const serieIPC = await cargarSerieIPC(db);
+  let ingresoAjustadoIPCTotal = 0;
+  let costoIPCTotal = 0;
+  let ingresoConIPC = 0;
+  let ingresoSinIPC = 0;
+  for (const it of items) {
+    if (it.proceso !== "VENTA" || it.precioTotal <= 0) continue;
+    const infoCosto = costoPorProducto.get(it.productoId);
+    const costoUnitario = infoCosto && !infoCosto.costoIncompleto ? Number(infoCosto.costo ?? 0) : null;
+    const coeficiente = resolverCoeficienteIPC(it.fecha, serieIPC);
+    if (costoUnitario === null || coeficiente === null) {
+      ingresoSinIPC += it.precioTotal;
+      continue;
+    }
+    ingresoAjustadoIPCTotal += it.precioTotal * coeficiente;
+    costoIPCTotal += it.cantidad * costoUnitario;
+    ingresoConIPC += it.precioTotal;
+  }
+  const margenIPCTotal = ingresoConIPC > 0 ? redondearMoneda(ingresoAjustadoIPCTotal - costoIPCTotal) : null;
 
   return {
     ingresoTotal,
@@ -321,6 +410,21 @@ async function calcularMargenDelPeriodo(sucursalId: string, ventasDelPeriodo: Ve
     aviso:
       "Costo calculado con la receta y el costo de reposición VIGENTES hoy (mismo criterio que Costos y Márgenes), no con los que regían en el momento de cada venta."
       + (hayCostoIncompleto ? " Algunos productos vendidos no tienen costo completo y quedan afuera del costo/margen total." : ""),
+    margenRealTotal,
+    margenRealPctTotal: margenRealTotal !== null && ingresoConCostoReal > 0 ? Math.round((margenRealTotal / ingresoConCostoReal) * 1000) / 10 : null,
+    ingresoConCostoReal: redondearMoneda(ingresoConCostoReal),
+    ingresoSinCostoReal: redondearMoneda(ingresoSinCostoReal),
+    avisoReal: hayCostoReal
+      ? `Costo congelado al momento exacto de cada venta (sin el descalce temporal de "Margen" arriba).${ingresoSinCostoReal > 0 ? ` Cubre $${redondearMoneda(ingresoConCostoReal).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} vendidos — el resto es de antes de este cálculo.` : ""}`
+      : "Todavía no hay ventas con este dato — se empieza a registrar desde ahora.",
+    margenIPCTotal,
+    margenIPCPctTotal: margenIPCTotal !== null && ingresoAjustadoIPCTotal > 0 ? Math.round((margenIPCTotal / ingresoAjustadoIPCTotal) * 1000) / 10 : null,
+    ingresoAjustadoIPCTotal: redondearMoneda(ingresoAjustadoIPCTotal),
+    ingresoConIPC: redondearMoneda(ingresoConIPC),
+    ingresoSinIPC: redondearMoneda(ingresoSinIPC),
+    avisoIPC: ingresoConIPC > 0
+      ? `Ventas llevadas a poder adquisitivo de hoy (IPC INDEC) antes de restar el costo de reposición de HOY — los dos lados de la resta quedan en la misma plata, a diferencia de "Margen".${ingresoSinIPC > 0 ? ` Cubre $${redondearMoneda(ingresoConIPC).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} — el resto es de un mes sin IPC sincronizado, o de un producto con costo incompleto.` : ""}`
+      : "Todavía no hay índice de IPC sincronizado (o ninguna venta del rango cae en un mes ya sincronizado).",
   };
 }
 

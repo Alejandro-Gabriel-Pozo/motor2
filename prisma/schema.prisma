@@ -840,6 +840,18 @@ model MovimientoStock {
   /// ProveedorPorProducto.precioPorUnidadStock, porción Catálogo).
   precioPorUnidadStock Decimal @default(0) @db.Decimal(14, 4)
 
+  /// Solo proceso VENTA, desde 2026-09-17: costo de la receta del PV
+  /// (calcularCostosYMargenes, BOM recursivo) resuelto EN EL MOMENTO de
+  /// vender — no se recalcula después. Existe para que Reportes → Período
+  /// pueda comparar cada venta contra el costo que regía ESE día, en vez de
+  /// contra el costo de reposición de HOY (ver docs/comparativa-ux-erpnext-
+  /// dolibarr.md §7.3/§9, "margen nominal" vs "margen real"). `null` en dos
+  /// casos: ventas de antes de este campo (no hay forma de reconstruirlo
+  /// retroactivo sin una serie histórica de costos), o el costeo estaba
+  /// incompleto en el momento de vender (mismo criterio que costoIncompleto
+  /// en costos.ts — no se inventa un número parcial).
+  costoUnitarioVenta Decimal? @db.Decimal(14, 4)
+
   /// Solo si esta línea la generó un ajuste de Conteo Físico (incluida su
   /// eventual reversión al cancelar) — reemplaza la correlación por texto
   /// "idOperacion === idConteo" (Stock.js:2129, Kardex e HOJA_CONTEOS_FISICOS
@@ -1111,4 +1123,26 @@ model TraspasoSucursal {
 
   @@index([origenSucursalId, estado])
   @@index([destinoSucursalId, estado])
+}
+
+// ===================================================================
+// ÍNDICES ECONÓMICOS — Método 1 de ajuste de margen (docs/comparativa-
+// ux-erpnext-dolibarr.md §9/§10), retroactivo pero con dependencia
+// externa: a diferencia de MovimientoStock.costoUnitarioVenta (Método 3,
+// congela el costo al vender, solo hacia adelante), esto ajusta el
+// INGRESO histórico a poder adquisitivo de HOY vía el IPC del INDEC, así
+// que sí sirve para ventas ya cargadas.
+// ===================================================================
+
+/// Un valor de índice por mes calendario — se sincroniza desde la API de
+/// series de tiempo del Ministerio de Economía (apis.datos.gob.ar, serie
+/// 101.1_I2NG_2016_M_22, IPC GBA Nivel General base dic-2016), nunca a
+/// mano. Un mes ya guardado NUNCA se reescribe (el IPC de un mes cerrado
+/// no cambia) — sincronizarIPC (core/reportes/indices-economicos.ts) solo
+/// inserta los meses que todavía no están.
+model IndicePrecio {
+  id       String   @id @default(cuid())
+  mes      DateTime @unique @db.Date
+  valor    Decimal  @db.Decimal(12, 4)
+  creadoEn DateTime @default(now())
 }

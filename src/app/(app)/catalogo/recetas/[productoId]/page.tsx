@@ -16,6 +16,7 @@ import {
 import { listarUnidadesActivas } from "@/server/actions/unidades";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { AgregarColapsable } from "@/components/agregar-colapsable";
 
 export default async function RecetaEditorPage({
   params,
@@ -293,43 +294,45 @@ export default async function RecetaEditorPage({
         </div>
       )}
 
-      <FormConResultado
-        accion={async (formData: FormData) => {
-          "use server";
-          return agregarIngredienteAReceta(producto.id, {
-            insumoProductoId: String(formData.get("insumoProductoId") ?? ""),
-            cantidad: Number(formData.get("cantidad")),
-            unidadId: String(formData.get("unidadId") ?? ""),
-            mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
-          });
-        }}
-        className="flex max-w-lg flex-col gap-2"
-      >
-        <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
-        <select name="insumoProductoId" required className="rounded border px-3 py-2">
-          <option value="">Materia prima</option>
-          {mpActivas.map((mp) => (
-            <option key={mp.id} value={mp.id}>
-              {mp.nombre}
-            </option>
-          ))}
-        </select>
-        <div className="flex gap-2">
-          <CampoNumero name="cantidad" placeholder="Cantidad" required className="flex-1" />
-          <select name="unidadId" required className="flex-1 rounded border px-3 py-2">
-            <option value="">Unidad</option>
-            {unidades.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nombre}
+      <AgregarColapsable etiqueta="Agregar ingrediente">
+        <FormConResultado
+          accion={async (formData: FormData) => {
+            "use server";
+            return agregarIngredienteAReceta(producto.id, {
+              insumoProductoId: String(formData.get("insumoProductoId") ?? ""),
+              cantidad: Number(formData.get("cantidad")),
+              unidadId: String(formData.get("unidadId") ?? ""),
+              mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
+            });
+          }}
+          className="flex max-w-lg flex-col gap-2"
+        >
+          <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
+          <select name="insumoProductoId" required className="rounded border px-3 py-2">
+            <option value="">Materia prima</option>
+            {mpActivas.map((mp) => (
+              <option key={mp.id} value={mp.id}>
+                {mp.nombre}
               </option>
             ))}
           </select>
-          <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
-        </div>
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Agregar
-        </button>
-      </FormConResultado>
+          <div className="flex gap-2">
+            <CampoNumero name="cantidad" placeholder="Cantidad" required className="flex-1" />
+            <select name="unidadId" required className="flex-1 rounded border px-3 py-2">
+              <option value="">Unidad</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
+            </select>
+            <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
+          </div>
+          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+            Agregar
+          </button>
+        </FormConResultado>
+      </AgregarColapsable>
 
       {vigente && (
         <div className="flex flex-col gap-2">
@@ -422,38 +425,40 @@ export default async function RecetaEditorPage({
             </ol>
           )}
 
-          <FormConResultado
-            accion={async (formData: FormData) => {
-              "use server";
-              return agregarPasoAReceta(producto.id, {
-                orden: siguienteOrdenPaso,
-                nombre: String(formData.get("nombre") ?? ""),
-                instruccion: String(formData.get("instruccion") ?? ""),
-                minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
-                insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
-              });
-            }}
-            className="flex max-w-lg flex-col gap-2"
-          >
-            <h3 className="text-sm font-medium">Agregar paso (genera la próxima versión)</h3>
-            <input name="nombre" placeholder="Nombre corto (opcional)" className="rounded border px-3 py-2" />
-            <textarea name="instruccion" placeholder="Instrucción" required className="rounded border px-3 py-2" rows={2} />
-            <CampoNumero name="minutos" placeholder="Minutos (opcional)" className="w-32" />
-            {vigente.ingredientes.length > 0 && (
-              <fieldset className="flex flex-col gap-1">
-                <span className="text-xs text-neutral-500">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
-                {vigente.ingredientes.map((ing) => (
-                  <label key={ing.id} className="flex items-center gap-1 text-xs">
-                    <input type="checkbox" name="insumoProductoIds" value={ing.insumoProductoId} />
-                    {ing.insumoProducto.nombre}
-                  </label>
-                ))}
-              </fieldset>
-            )}
-            <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
-              Agregar paso
-            </button>
-          </FormConResultado>
+          <AgregarColapsable etiqueta="Agregar paso">
+            <FormConResultado
+              accion={async (formData: FormData) => {
+                "use server";
+                return agregarPasoAReceta(producto.id, {
+                  orden: siguienteOrdenPaso,
+                  nombre: String(formData.get("nombre") ?? ""),
+                  instruccion: String(formData.get("instruccion") ?? ""),
+                  minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
+                  insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
+                });
+              }}
+              className="flex max-w-lg flex-col gap-2"
+            >
+              <h3 className="text-sm font-medium">Agregar paso (genera la próxima versión)</h3>
+              <input name="nombre" placeholder="Nombre corto (opcional)" className="rounded border px-3 py-2" />
+              <textarea name="instruccion" placeholder="Instrucción" required className="rounded border px-3 py-2" rows={2} />
+              <CampoNumero name="minutos" placeholder="Minutos (opcional)" className="w-32" />
+              {vigente.ingredientes.length > 0 && (
+                <fieldset className="flex flex-col gap-1">
+                  <span className="text-xs text-neutral-500">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
+                  {vigente.ingredientes.map((ing) => (
+                    <label key={ing.id} className="flex items-center gap-1 text-xs">
+                      <input type="checkbox" name="insumoProductoIds" value={ing.insumoProductoId} />
+                      {ing.insumoProducto.nombre}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
+                Agregar paso
+              </button>
+            </FormConResultado>
+          </AgregarColapsable>
         </div>
       )}
     </div>

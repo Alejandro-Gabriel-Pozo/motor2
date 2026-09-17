@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/core/reportes/trazabilidad";
-import { anularVenta } from "@/server/actions/venta";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
+import { BotonAnularVenta } from "./boton-anular-venta";
 
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<{ producto?: string; idOperacion?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -58,17 +58,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
                 {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
               </p>
             ) : (
-              <form
-                action={async () => {
-                  "use server";
-                  await anularVenta(operacion.idOperacion);
-                }}
-                className="mb-2"
-              >
-                <button type="submit" className="text-sm text-red-600 underline">
-                  Anular venta
-                </button>
-              </form>
+              <BotonAnularVenta idOperacion={operacion.idOperacion} />
             ))}
           <TablaItemsOperacion filas={operacion.items} nombreExport={`operacion-${operacion.idOperacion}`} />
         </div>

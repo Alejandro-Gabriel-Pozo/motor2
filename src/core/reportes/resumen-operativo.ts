@@ -22,6 +22,17 @@ export interface ResumenFinancieroMes {
   gastadoTotal: number;
   hayComprasSinPrecio: boolean;
   topProveedores: { proveedor: string; importe: number }[];
+  /** Ver el docstring de MargenDelPeriodo.margenRealTotal en periodo.ts. */
+  margenRealTotal: number | null;
+  margenRealPct: number | null;
+  /** Ver el docstring de MargenDelPeriodo.margenIPCTotal en periodo.ts. */
+  margenIPCTotal: number | null;
+  margenIPCPct: number | null;
+  avisoVentas: string;
+  avisoMargen: string;
+  avisoMargenReal: string;
+  avisoMargenIPC: string;
+  avisoCompras: string;
 }
 
 /** Port de obtenerResumenFinancieroMesActual_ (Reportes.js:1507-1528). */
@@ -43,6 +54,15 @@ export async function obtenerResumenFinancieroMesActual(sucursalId: string, db: 
     gastadoTotal: rep.compras.totalGastado,
     hayComprasSinPrecio: rep.compras.hayComprasSinPrecio,
     topProveedores: rep.compras.porProveedor.slice(0, 5).map((p) => ({ proveedor: p.proveedor, importe: p.importe })),
+    margenRealTotal: rep.margen.margenRealTotal,
+    margenRealPct: rep.margen.margenRealPctTotal,
+    margenIPCTotal: rep.margen.margenIPCTotal,
+    margenIPCPct: rep.margen.margenIPCPctTotal,
+    avisoVentas: rep.ventas.aviso,
+    avisoMargen: rep.margen.aviso,
+    avisoMargenReal: rep.margen.avisoReal,
+    avisoMargenIPC: rep.margen.avisoIPC,
+    avisoCompras: rep.compras.aviso,
   };
 }
 
