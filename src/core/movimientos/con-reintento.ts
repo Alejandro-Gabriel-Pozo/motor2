@@ -15,6 +15,40 @@ import { prisma } from "@/lib/db";
  * que Postgres sea el árbitro final en vez de un lock de aplicación, que
  * solo protege dentro de un mismo proceso Node.
  */
+/**
+ * Hallazgo de auditoría (Pivote 1, docs/auditoria-motor2-pivotes-2026-09-16.md
+ * §11 Plan 2): no todos los conflictos de serialización reales de Postgres
+ * llegan como Prisma.PrismaClientKnownRequestError con code "P2034". Con
+ * @prisma/adapter-pg (Prisma 7), un conflicto detectado en un punto
+ * distinto de la transacción (confirmado empíricamente: en el COMMIT, no
+ * en una sentencia individual) se propaga como un DriverAdapterError
+ * crudo — una clase de @prisma/driver-adapter-utils, NO instancia de
+ * PrismaClientKnownRequestError — con `name === "DriverAdapterError"` y
+ * `cause.kind === "TransactionWriteConflict"` (confirmado leyendo
+ * node_modules/@prisma/adapter-pg/dist/index.mjs: ese `kind` es el único
+ * mapeo de los SQLSTATE 40001 "serialization_failure" y 40P01
+ * "deadlock_detected" — nunca de un error de conexión, timeout u otro
+ * problema real). Reproducido de forma intermitente en registrarMovimiento
+ * y registrarVenta (test/auditoria/concurrencia-idempotencia.test.ts,
+ * concurrencia-casos-2-3.test.ts).
+ *
+ * No se usa `isDriverAdapterError`/`DriverAdapterError` de
+ * @prisma/driver-adapter-utils (que expone exactamente este chequeo) para
+ * no agregar ese paquete como dependencia directa — hoy es transitivo de
+ * @prisma/adapter-pg. El chequeo por forma de abajo es equivalente: solo
+ * reconoce el `kind` puntual del conflicto de escritura, nunca cualquier
+ * DriverAdapterError (evita enmascarar un error real de infraestructura,
+ * ej. una conexión caída, reintentándolo como si fuera un conflicto).
+ */
+function esConflictoDeEscritura(e: unknown): boolean {
+  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return true;
+  if (e instanceof Error && e.name === "DriverAdapterError") {
+    const cause = (e as Error & { cause?: unknown }).cause;
+    if (cause && typeof cause === "object" && "kind" in cause && cause.kind === "TransactionWriteConflict") return true;
+  }
+  return false;
+}
+
 export async function conTransaccionSerializable<T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
   maxIntentos = 5
@@ -23,8 +57,7 @@ export async function conTransaccionSerializable<T>(
     try {
       return await prisma.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (e) {
-      const esConflicto = e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034";
-      if (esConflicto && intento < maxIntentos - 1) continue;
+      if (esConflictoDeEscritura(e) && intento < maxIntentos - 1) continue;
       throw e;
     }
   }

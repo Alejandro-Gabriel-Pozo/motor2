@@ -68,39 +68,32 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
       expect(saldoFinal).toBe(4); // 10 - 6, nunca 10-12=-2 ni 10-6-6 si ambos hubiesen "ganado" mal
     });
 
-    it("HALLAZGO: con dos operaciones concurrentes que SÍ deberían poder convivir (stock de sobra), conTransaccionSerializable no siempre reintenta — el conflicto de Postgres puede escapar como error crudo del driver en vez de P2034", async () => {
-      const mp = await crearMP("Harina2");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }] });
+    it("REGRESIÓN (Plan C2): con dos operaciones concurrentes que SÍ deberían poder convivir (stock de sobra), conTransaccionSerializable debe reintentar SIEMPRE — nunca un rechazo crudo del driver, 15/15 corridas", async () => {
+      // Antes de C2: esto fallaba de forma intermitente (~1-2 de cada 5-6
+      // corridas) con una promesa RECHAZADA (DriverAdapterError, no un
+      // ResultadoAccion {ok:false,...}) — ver el hallazgo original en
+      // docs/auditoria-motor2-fase0-fase1-2026-09-16.md §8. Correr en loop
+      // acá adentro (no manualmente desde la terminal) para que la
+      // regresión sea parte de la suite normal, no un chequeo manual.
+      for (let intento = 0; intento < 15; intento++) {
+        const mp = await crearMP(`HarinaC2_${intento}`);
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }] });
 
-      const settled = await Promise.allSettled([
-        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
-        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
-      ]);
+        const settled = await Promise.allSettled([
+          registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+          registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+        ]);
 
-      const rechazados = settled.filter((s): s is PromiseRejectedResult => s.status === "rejected");
-      const cumplidos = settled.filter((s): s is PromiseFulfilledResult<Awaited<ReturnType<typeof registrarMovimiento>>> => s.status === "fulfilled");
+        const rechazados = settled.filter((s): s is PromiseRejectedResult => s.status === "rejected");
+        if (rechazados.length > 0) {
+          // eslint-disable-next-line no-console
+          console.log(`[auditoria] Intento ${intento}: promesa rechazada —`, (rechazados[0]!.reason as Error)?.constructor?.name, String((rechazados[0]!.reason as Error)?.message).slice(0, 200));
+        }
+        expect(rechazados.length, `intento ${intento}: no debe haber ninguna promesa rechazada`).toBe(0);
 
-      // eslint-disable-next-line no-console
-      console.log(
-        "[auditoria] Escenario 1b — settled:",
-        settled.map((s) => (s.status === "fulfilled" ? { ok: s.value.ok, mensaje: s.value.mensaje } : { rejected: true, name: (s.reason as Error)?.constructor?.name, message: String((s.reason as Error)?.message).slice(0, 200) }))
-      );
-
-      if (rechazados.length > 0) {
-        // CONFIRMADO (reproducible): la promesa se RECHAZA (no devuelve un
-        // ResultadoAccion {ok:false,...}) — conPermiso no tiene try/catch,
-        // así que esto escaparía como error 500 no manejado en producción,
-        // no como un mensaje de negocio prolijo. Documentado como hallazgo
-        // en docs/auditoria-motor2-fase0-fase1-2026-09-16.md — NO se
-        // corrige acá (sin autorización de implementación todavía).
-        const razon = rechazados[0]!.reason as Error;
-        expect(razon.constructor.name).not.toBe("PrismaClientKnownRequestError"); // confirma que NO es un P2034 reconocido
-      } else {
-        // También es un resultado válido si Postgres no llegó a conflictuar
-        // en esta corrida puntual (depende de timing real) — ambos deben
-        // haber tenido éxito y el saldo debe cuadrar.
-        expect(cumplidos.every((c) => c.value.ok)).toBe(true);
-        expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(8); // 20 - 6 - 6
+        const cumplidos = settled as PromiseFulfilledResult<Awaited<ReturnType<typeof registrarMovimiento>>>[];
+        expect(cumplidos.every((c) => c.value.ok), `intento ${intento}: ambas operaciones deben tener éxito`).toBe(true);
+        expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(8); // 20 - 6 - 6, siempre
       }
     });
   });

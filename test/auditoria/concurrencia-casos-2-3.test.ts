@@ -64,32 +64,32 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
       if (exitosas.length === 1) expect(saldoFinal).toBe(0); // se vendió exactamente lo que había
     });
 
-    it("con stock suficiente para AMBAS ventas combinadas, el resultado final nunca deja el saldo negativo ni descuenta de más", async () => {
-      const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_HARINA2", nombre: "Harina2", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_PAN2", nombre: "Pan2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
-      await prisma.recetaVersion.create({
-        data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } },
-      });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
+    it("REGRESIÓN (Plan C2): con stock suficiente para AMBAS ventas combinadas, las dos deben tener éxito SIEMPRE — nunca un rechazo crudo del driver, 15/15 corridas", async () => {
+      // Antes de C2: el Hallazgo 1 se repetía también en registrarVenta
+      // (no solo en registrarMovimiento) — 1/6 corridas en la verificación
+      // original. Mismo criterio que concurrencia-idempotencia.test.ts:
+      // loop dentro del test, no una corrida manual repetida a mano.
+      for (let intento = 0; intento < 15; intento++) {
+        // Sin insumoId a propósito: si compartiera insumoId con otras
+        // iteraciones, resolverConsumoPorFamilia trataría los productos de
+        // iteraciones distintas como "hermanos" y podría repartir el
+        // consumo entre ellos, contaminando el aislamiento del loop.
+        const mpInsumo = await prisma.producto.create({ data: { codigo: `MP_HARINA2_${intento}`, nombre: `Harina2_${intento}`, tipo: "MP", unidadStockId: unidadKgId } });
+        const pv = await prisma.producto.create({ data: { codigo: `PV_PAN2_${intento}`, nombre: `Pan2_${intento}`, tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+        await prisma.recetaVersion.create({
+          data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } },
+        });
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
 
-      const settled = await Promise.allSettled([
-        registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
-        registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
-      ]);
-      // eslint-disable-next-line no-console
-      console.log("[auditoria] Caso 2b (ventas concurrentes, stock de sobra):", resumen(settled as never));
+        const settled = await Promise.allSettled([
+          registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
+          registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
+        ]);
+        // eslint-disable-next-line no-console
+        if (settled.some((s) => s.status === "rejected")) console.log(`[auditoria] Intento ${intento} (venta):`, resumen(settled as never));
 
-      const saldoFinal = await calcularSaldoTotal(mpInsumo.id, seccionId);
-      const exitosas = settled.filter((s) => s.status === "fulfilled" && s.value.ok).length;
-      // Si ambas tuvieron éxito: 20-6-6=8. Si el Hallazgo 1 se repitió y solo
-      // una tuvo éxito (rechazo crudo no reintentado): 20-6=14. Ninguna otra
-      // cifra es válida — eso sí sería un bug real de doble/triple descuento.
-      expect([8, 14]).toContain(saldoFinal);
-      if (saldoFinal === 14) {
-        console.log("[auditoria] Caso 2b: se repitió el Hallazgo 1 (conflicto no reintentado) también en registrarVenta.");
-        expect(exitosas).toBe(1);
-      } else {
-        expect(exitosas).toBe(2);
+        expect(settled.every((s) => s.status === "fulfilled" && s.value.ok), `intento ${intento}: ambas ventas deben tener éxito`).toBe(true);
+        expect(await calcularSaldoTotal(mpInsumo.id, seccionId)).toBe(8); // 20 - 6 - 6, siempre
       }
     });
   });
