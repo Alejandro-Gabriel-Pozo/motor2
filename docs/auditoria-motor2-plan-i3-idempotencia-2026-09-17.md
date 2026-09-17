@@ -155,21 +155,29 @@ Esta decisión queda **pendiente de confirmación del usuario** antes de impleme
 
 ## 5. Auditoría de datos reales — facturas duplicadas
 
-### 5.1 Limitación del entorno de esta sesión
+### 5.1 Acceso obtenido y ejecución real (actualizado 2026-09-17)
 
-Esta sesión **no tiene acceso a la base de datos de producción/Neon** — solo a la base de test local (`motor2_test`), que además se vacía por completo en cada corrida de test (`limpiarBaseDeTest()` en `beforeEach`). Se verificó el estado actual de esa base:
+La versión anterior de este documento marcaba este punto como bloqueado: la sesión solo tenía la base de test local (`motor2_test`, vaciada en cada corrida — `limpiarBaseDeTest()`), sin acceso a producción. Se le preguntó al usuario cuál de los proyectos Neon accesibles desde esta sesión (`DB-APP-PPMS`, `pdb-ppms`, `inventario-api`) correspondía a motor2 — confirmó **`inventario-api`** (`project_id: morning-field-10188884`).
+
+**Verificación antes de auditar** (este entorno de sesión hospeda varios proyectos no relacionados — `dolibarr`, `frappe`, `grocy`, `motor` — así que no alcanzaba con el nombre del proyecto Neon): se listaron las tablas de `inventario-api` y coinciden exactamente con el schema de motor2 (`Operacion`, `MovimientoStock`, `TraspasoSucursal`, `Sucursal`, `Proveedor`, `Producto`, `_prisma_migrations`, etc.) — confirmado que es la base correcta antes de correr ninguna consulta.
+
+**Hallazgo de las ramas del proyecto**: el proyecto tiene 3 branches — `main` (default/primary) está prácticamente vacía (1 `Sucursal`, 0 `Producto`, 2 `User`, 0 `Operacion` — una instancia sin uso real todavía); `demo-pizzeria-la-cuadra` (creada 2026-09-16, a partir de `main`) tiene **479 `Operacion`, 58 con `nroFactura`, 62 de proceso COMPRA** — es la única rama con datos operativos reales; y `respaldo-demo-pizzeria-la-cuadra-2026-09-16`, un backup de esa misma rama. La auditoría se corrió contra `demo-pizzeria-la-cuadra` (`branch_id: br-snowy-bar-afmlmxc7`), por ser la única con datos para auditar.
+
+**Nota de transparencia — no verificada por esta sesión**: el nombre de la rama (`demo-pizzeria-la-cuadra`) sugiere que podría ser un ambiente de demo/piloto para un cliente puntual ("La Cuadra", una pizzería) en vez de tráfico de producción real y continuo — o podría ser, igual de válidamente, el único despliegue real que existe hoy, nombrado así por el cliente que lo usa. Esta sesión no tiene forma de distinguir ambos casos solo con el nombre de la rama. Se reportan los resultados tal cual, pero la validez de "esto es una auditoría de datos reales" para efectos de negocio queda sujeta a que el usuario confirme qué es esa rama.
+
+Todas las consultas que siguen fueron **de solo lectura** (`SELECT`), sin ninguna escritura contra ninguna rama.
+
+Resultado de la consulta base:
 
 ```sql
 SELECT count(*) AS total_operaciones,
-       count(*) FILTER (WHERE "nroFactura" IS NOT NULL) AS con_factura
+       count(*) FILTER (WHERE "nroFactura" IS NOT NULL) AS con_factura,
+       count(*) FILTER (WHERE proceso = 'COMPRA') AS total_compras
 FROM "Operacion";
+-- 479 | 58 | 62 (rama demo-pizzeria-la-cuadra)
 ```
 
-Resultado: **3 filas totales, 0 con `nroFactura`** — restos de una corrida manual anterior de este mismo contenedor de sesión, no datos representativos de nada. No hay nada que auditar localmente.
-
-**Este punto del pedido no puede completarse en esta sesión** — lo que sigue es la metodología exacta para que alguien con acceso a producción la ejecute, más las categorías de clasificación pedidas.
-
-### 5.2 Query de auditoría (para ejecutar contra producción)
+### 5.2 Query de auditoría — EJECUTADA contra `demo-pizzeria-la-cuadra` (2026-09-17)
 
 ```sql
 -- 1. Duplicados exactos: misma sucursal + proveedor + número de factura,
@@ -225,18 +233,20 @@ WHERE o.id = ANY(:operacion_ids_de_un_grupo_del_query_1)
 ORDER BY o.id, m."productoId";
 ```
 
-### 5.3 Clasificación pedida — a completar por quien corra el query 1 en producción
+### 5.3 Resultado de la auditoría (ejecutada, 2026-09-17)
 
-| Categoría | Cómo se detecta (query) | Acción si aparece |
-|---|---|---|
-| Duplicados exactos | Query 1 | Antes de migrar: decidir con el negocio si se fusionan/anulan (nunca borrar filas de un Kardex append-only — se documenta y, si corresponde, se revierte con una `Operacion` de ajuste, mismo criterio que el resto del proyecto) |
-| Números vacíos | Query 2 | No bloquean el índice (`WHERE "nroFactura" IS NOT NULL`) — pero si hay strings vacíos en vez de NULL real, conviene normalizarlos a NULL antes de migrar para que el índice parcial los excluya de verdad |
-| Espacios/diferencias de formato | Query 3 | Requieren revisión humana — el índice no los va a detectar como duplicados porque son literalmente strings distintos; documentar aparte, no bloquean la migración |
-| Proveedores/sucursales distintos con mismo número | Query 4 | No son duplicados bajo el criterio `sucursalId+proveedorId+nroFactura` — solo confirmar con el negocio que ese es el criterio correcto |
-| Facturas con payload diferente | Query 5, aplicado a cada grupo de query 1 | Señal de que puede no ser un error de doble carga sino una reutilización real de número por el proveedor — afecta la decisión de qué hacer con cada grupo de (1), no bloquea el índice en sí |
-| Datos que impedirían el índice parcial | Cualquier fila de query 1 con `repeticiones > 1` | Es la única categoría que técnicamente hace fallar el `CREATE UNIQUE INDEX` — es un prerequisito duro, no opcional, antes de aplicar la migración del índice de factura (ver §9.2) |
+| Categoría | Query | Resultado real | Acción |
+|---|---|---|---|
+| Duplicados exactos | Query 1 | **0 filas** — ningún grupo `sucursalId+proveedorId+nroFactura` con más de 1 `Operacion` de COMPRA, sobre 58 compras con número de factura | Sin acción — nada que fusionar ni decidir con el negocio |
+| Números vacíos | Query 2 | **0 filas** — ningún `nroFactura` es string vacío o solo espacios | Sin acción — no hace falta normalizar nada antes de migrar |
+| Espacios/diferencias de formato | Query 3 | **0 filas** — ningún par de números distintos normaliza al mismo valor dentro de la misma sucursal+proveedor | Sin acción |
+| Proveedores/sucursales distintos con mismo número | Query 4 | **0 filas** — ningún `nroFactura` se repite entre proveedores o sucursales distintos | Sin acción — no hay ambigüedad que confirmar con el negocio |
+| Facturas con payload diferente | Query 5 | No aplica — depende de que Query 1 devuelva grupos, y no devolvió ninguno | No aplica |
+| Datos que impedirían el índice parcial | — | **Ninguno** | El `CREATE UNIQUE INDEX CONCURRENTLY` de §9.2 no encontraría ninguna violación sobre los datos actuales de esta rama |
 
-**No se puede cerrar este punto del pedido sin que alguien con acceso a producción corra el query 1** y reporte si devuelve filas. Mientras tanto, la migración del índice de factura queda marcada como bloqueada (§9.2).
+**Conclusión de la auditoría**: sobre los 479 `Operacion` / 62 COMPRA / 58 con número de factura de la rama `demo-pizzeria-la-cuadra`, **no se encontró ningún conflicto en ninguna de las 6 categorías pedidas**. El bloqueo que impedía aplicar la migración del índice de unicidad de factura (§9.2) queda **levantado para esta rama** — sujeto a la salvedad de §5.1 sobre qué representa exactamente esta rama (demo/piloto vs. producción real), que el usuario debe confirmar antes de tratar este resultado como definitivo para la migración real.
+
+Si en el futuro se crean más branches o el volumen de datos crece, este mismo query (§5.2) es el que hay que volver a correr antes de aplicar la migración — no es una verificación de una sola vez si la base sigue recibiendo COMPRAs entre ahora y el momento real del deploy.
 
 ---
 
@@ -402,7 +412,7 @@ Sin cambios en `TraspasoSucursal` (§6.4 — `rechazarTransferencia` se resuelve
 
 Aditiva y de bajo riesgo: 3 columnas nulleables + 1 índice único parcial-por-construcción (NULL no colisiona). No requiere backfill — todas las `Operacion` existentes quedan con las 3 columnas en NULL, lo cual es válido y no participa del mecanismo hasta que el frontend empiece a mandar la clave.
 
-### 9.2 Migración del índice de unicidad de factura — BLOQUEADA hasta la auditoría
+### 9.2 Migración del índice de unicidad de factura — desbloqueada para los datos auditados (§5.3)
 
 ```sql
 CREATE UNIQUE INDEX CONCURRENTLY "Operacion_factura_unica_key"
@@ -412,7 +422,7 @@ CREATE UNIQUE INDEX CONCURRENTLY "Operacion_factura_unica_key"
 
 (`CONCURRENTLY` para no tomar un lock exclusivo sobre `Operacion` en producción durante la construcción del índice — tabla potencialmatícamente grande y de escritura frecuente.)
 
-**No se puede aplicar esta migración sin antes correr el query 1 de §5.2 contra producción** — si devuelve filas, el `CREATE UNIQUE INDEX` falla directamente (Postgres no permite crear un índice único sobre datos que ya lo violan). Esto es una dependencia dura documentada, no una formalidad: el criterio de cierre de I3 (§11 más abajo) la incluye explícitamente.
+**Actualización 2026-09-17**: el query 1 de §5.2 ya se corrió (§5.3) contra la única rama con datos reales del proyecto Neon confirmado por el usuario (`inventario-api`, rama `demo-pizzeria-la-cuadra`) — 0 filas, ningún duplicado. Sobre esos datos, este `CREATE UNIQUE INDEX` no fallaría. Queda como condición para el deploy real, no ya como bloqueo de este plan: correr el mismo query 1 una vez más inmediatamente antes de aplicar la migración en el entorno real de destino (si son datos nuevos entre ahora y ese momento, o si la rama auditada no es la que finalmente se usa — ver la salvedad de §5.1 sobre qué es exactamente esa rama), para no asumir que un resultado de hoy sigue vigente sin volver a verificarlo.
 
 ### 9.3 Estrategia de compatibilidad temporal (rollout gradual)
 
@@ -629,7 +639,7 @@ Conclusión: bajo la política I3, NINGÚN resultado "fallido" se
 | Criterio pedido | Estado |
 |---|---|
 | Plan detallado | Este documento |
-| Resultado de la auditoría de duplicados | **Incompleto** — sin acceso a producción, ver §5.1. Metodología lista (§5.2), clasificación lista (§5.3), falta la ejecución real. |
+| Resultado de la auditoría de duplicados | **Ejecutada** (§5.1/§5.3) — 0 conflictos en las 6 categorías, sobre la rama `demo-pizzeria-la-cuadra` del proyecto Neon `inventario-api` (confirmado por el usuario como motor2). Salvedad: pendiente de que el usuario confirme si esa rama representa producción real o un ambiente demo/piloto (§5.1). |
 | Diseño de schema | §8 |
 | Migración segura | §9.1-9.2 |
 | Estrategia de rollback | §9.4 |
@@ -643,11 +653,9 @@ Conclusión: bajo la política I3, NINGÚN resultado "fallido" se
 | Unicidad global entre procesos distintos | §2.2 (corregido), §11.8 |
 | Comportamiento ante errores definitivos / transacciones interrumpidas | §11.9 |
 
-**El único criterio no satisfecho por esta sesión es la ejecución real de la auditoría de facturas duplicadas** (§5.1) — no es una limitación del plan, es una limitación de acceso a datos de este entorno: esta sesión solo tiene conectividad a la base de test local, vacía. Todo lo demás, incluidas las 10 condiciones planteadas en la revisión del usuario, está resuelto en este documento (§11).
+**Actualización 2026-09-17**: los 9 criterios están resueltos. El usuario confirmó que el proyecto Neon `inventario-api` es motor2; se verificó el schema antes de auditar (coincide exactamente); se encontró que la única rama con datos reales es `demo-pizzeria-la-cuadra` (`main` está vacía); se corrieron los 4 queries aplicables de §5.2 (de solo lectura) contra esa rama — **0 conflictos en las 6 categorías pedidas** (§5.3). El bloqueo de la migración del índice de factura (§9.2) queda levantado para esos datos.
 
-**Cómo destrabar el único punto pendiente** — dos caminos, a elección del usuario:
-1. Correr el query 1 de §5.2 directamente contra la base de producción/Neon (fuera de esta sesión) y compartir el resultado (cuántos grupos, si alguno).
-2. Si se prefiere que esta sesión lo haga: esta sesión tiene herramientas de Neon disponibles y, al listar proyectos accesibles, aparecen 3 (`DB-APP-PPMS`, `pdb-ppms`, `inventario-api`) — **ninguno confirmado como la base de producción de motor2** por nombre o por inspección; no se corrió ninguna consulta contra ellos. No se debe asumir cuál (si alguno) es el correcto solo por similitud de nombre — motor2 tiene su propio esquema (`Sucursal`, `Producto`, `Operacion`, `MovimientoStock`, `TraspasoSucursal`, etc.) y correr una auditoría contra la base equivocada no solo no serviría, sino que sería leer datos de un sistema ajeno sin autorización clara. Este punto queda bloqueado hasta que el usuario confirme explícitamente cuál proyecto (si alguno de los 3) es el correcto — recién ahí se correrían los 5 queries de §5.2 tal cual están documentados.
+**Único punto que sigue necesitando confirmación del usuario, no de esta sesión**: si `demo-pizzeria-la-cuadra` representa el ambiente de producción real o es un ambiente demo/piloto (§5.1) — la auditoría es válida sobre los datos que existen ahí, pero la sesión no puede determinar por sí sola el estatus de esa rama, y conviene volver a correr el query 1 inmediatamente antes del deploy real si la rama de destino termina siendo otra o si se cargan más compras entretanto.
 
 **Hallazgos de diseño nuevos que el plan de implementación deberá incorporar** (no estaban en el borrador original):
 1. Son 6 Server Actions, no 8 (§1).
@@ -655,6 +663,7 @@ Conclusión: bajo la política I3, NINGÚN resultado "fallido" se
 3. La recomendación reconstruir-vs-persistir cambia a "persistir" tras verificar las 6 Server Actions reales (§4.5).
 4. El índice de unicidad pasa a ser global (`claveIdempotencia` sola), no compuesto con `sucursalId`/`proceso` — corrección aplicada tras la evaluación del usuario (§2.2, §11.8).
 5. `payloadHash` debe incluir un identificador explícito de proceso/Server Action, no solo los campos de negocio (§11.2) — necesario para que la garantía del punto 4 sea estructural.
+6. La auditoría de facturas duplicadas (§5) ya se ejecutó contra datos reales — 0 conflictos — sujeta a la salvedad sobre qué es la rama `demo-pizzeria-la-cuadra` (§5.1).
 
 ---
 
@@ -666,7 +675,11 @@ N3: implementado
 C2: implementado
 R2: implementado
 I3: autorizado para planificación y auditoría de datos
-I3: planificación y auditoría de datos — COMPLETADA (este documento),
-    con la salvedad de §5.1 (sin acceso a datos de producción)
+I3: planificación — COMPLETADA (este documento, incluidas las 10
+    precisiones contractuales de la revisión del usuario, §11)
+I3: auditoría de facturas duplicadas — EJECUTADA (§5) contra datos
+    reales (rama demo-pizzeria-la-cuadra, proyecto Neon inventario-api,
+    confirmado por el usuario) — 0 conflictos en las 6 categorías;
+    salvedad pendiente: confirmar si esa rama es producción o demo/piloto
 I3: implementación todavía no autorizada
 ```

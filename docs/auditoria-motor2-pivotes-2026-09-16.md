@@ -1033,7 +1033,7 @@ R2 ✅ implementado — commit 9c52d6f
 I3 ⏳ pendiente de autorización
 ```
 
-*(Actualizado 2026-09-17: I3 fue autorizado para su fase previa de planificación y auditoría de datos — sin autorización de código ni migraciones. Esa fase está completa, salvo la ejecución real de la auditoría de facturas duplicadas, que requiere acceso a datos de producción que esta sesión no tiene. Ver `docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md` para el plan completo. La implementación de I3 sigue sin autorizar.)*
+*(Actualizado 2026-09-17: I3 fue autorizado para su fase previa de planificación y auditoría de datos — sin autorización de código ni migraciones. Esa fase está completa, incluida la ejecución real de la auditoría de facturas duplicadas (0 conflictos, ver `docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md` §5) contra la única rama con datos reales del proyecto Neon que el usuario confirmó como motor2 (`inventario-api`, rama `demo-pizzeria-la-cuadra`) — con la salvedad de confirmar si esa rama es producción real o un ambiente demo/piloto. Ver el documento completo para las 10 precisiones contractuales adicionales resueltas (§11). La implementación de I3 sigue sin autorizar.)*
 
 Verificación consolidada (sin repetir auditoría ni rehacer benchmarks):
 
