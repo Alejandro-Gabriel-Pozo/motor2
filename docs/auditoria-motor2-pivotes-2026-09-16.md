@@ -162,7 +162,7 @@ Pruebas nuevas en `test/auditoria/concurrencia-casos-2-3.test.ts` (4 escenarios,
 
 **Estado formal**: **FALLO_CONFIRMADO** (mismo Hallazgo 1, alcance ampliado — no es exclusivo del motor genérico de movimientos) + **VERIFICADO_EN_CODIGO** (ninguna invariante de negocio violada: nunca saldo negativo, nunca doble efecto, nunca se superó el stock real).
 
-**Pivote 1: CERRADO.** Candidato confirmado: **C2 — Ajustar `con-reintento.ts`** para que reconozca también `DriverAdapterError({kind:"TransactionWriteConflict"})`, no solo `PrismaClientKnownRequestError` código `P2034`. No se encontró ningún caso que requiera C3 (rediseño). Queda como plan de implementación pendiente de autorización (ver §6).
+**Pivote 1: CERRADO.** Candidato confirmado: **C2 — Ajustar `con-reintento.ts`** para que reconozca también `DriverAdapterError({kind:"TransactionWriteConflict"})`, no solo `PrismaClientKnownRequestError` código `P2034`. No se encontró ningún caso que requiera C3 (rediseño). **IMPLEMENTADO** 2026-09-17, commit `5ff3cff` — ver §11 Plan 2 para el detalle de la verificación posterior.
 
 ### Pivote 3 — Traspasos en tránsito, caso 2 (cierre)
 
@@ -551,7 +551,7 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
 
 | Pivote | Pregunta | Evidencia | Estado | Alternativa elegida | ¿Requiere cambios? | Prioridad de implementación | Responsable de decisión |
 |---|---|---|---|---|---|---|---|
-| 1. Concurrencia | ¿El aislamiento/reintentos garantiza resultado correcto ante operaciones simultáneas? | 5 escenarios, 25+ corridas (§5, §6) — `con-reintento.ts` no reconoce todos los conflictos reales del driver | FALLO_CONFIRMADO (parcial) | **C2** | Sí — modificar código + agregar prueba de regresión | 2 | Técnica (sin decisión de negocio pendiente) |
+| 1. Concurrencia | ¿El aislamiento/reintentos garantiza resultado correcto ante operaciones simultáneas? | 5 escenarios, 25+ corridas (§5, §6) — `con-reintento.ts` no reconoce todos los conflictos reales del driver | FALLO_CONFIRMADO (parcial) | **C2** | Sí — modificar código + agregar prueba de regresión — **IMPLEMENTADO** | 2 | Técnica (sin decisión de negocio pendiente) |
 | 2. Idempotencia | ¿Debe impedirse que un doble envío/timeout/reintento duplique una operación? | Ausencia confirmada en 6/7 procesos + 2 guardas racy — COMPRA y rechazo de traspaso (§7, §8) | FALLO_CONFIRMADO | **I3** | Sí — modificar código (8 Server Actions) + modificar schema/migración + agregar pruebas | 4 (último — único que toca el modelo de persistencia) | Negocio (política ya definida) + técnica para ejecutar |
 | 3. Traspasos en tránsito | ¿El estado "en tránsito" es válido, visible y recuperable? | 7 casos del plan, sin fallo salvo el hallazgo de rechazo (ya contabilizado en el paquete I3) (§6, §9) | VERIFICADO_EN_CODIGO | **T1** | No | — | Ninguno pendiente |
 | 4. Precisión numérica | ¿Las conversiones Decimal→number y los cálculos acumulados producen diferencias bajo cero tolerancia? | 147 conversiones clasificadas, 12 casos ejecutados, 1 fallo puntual reproducido (§9) | FALLO_CONFIRMADO (puntual) | **N3** | Sí — modificar código (1 línea) + agregar prueba de regresión | 1 (primero — cambio más chico y acotado) — **IMPLEMENTADO** | Técnica |
@@ -568,12 +568,13 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
      invertidas (confirmado rojo antes / verde después). Suite completa
      56/56 archivos, 334/334 tests. venta.ts sin cambios.
 
-2. C2 — Concurrencia
+2. C2 — Concurrencia — IMPLEMENTADO (commit 5ff3cff, 2026-09-17)
    Archivo: src/core/movimientos/con-reintento.ts
    Cambio: ampliar el reconocimiento de conflicto más allá de P2034
-   Prueba de regresión: ya existe (concurrencia-idempotencia.test.ts,
-     concurrencia-casos-2-3.test.ts — hoy toleran el fallo con
-     Promise.allSettled, se ajustan para exigir 0 rechazos)
+   Prueba de regresión: concurrencia-idempotencia.test.ts,
+     concurrencia-casos-2-3.test.ts — endurecidas a loop de 15
+     intentos exigiendo éxito siempre (confirmado rojo antes / verde
+     después, 60 intentos totales sin fallo tras el fix)
 
 3. R2 — Escalabilidad
    Archivos: src/core/reportes/periodo.ts (obtenerReportePorPeriodo),
@@ -744,6 +745,20 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
 11. Criterio de cierre:
     Los 2 escenarios de concurrencia corren 10/10 veces sin ningún
     rechazo espurio; suite completa en verde.
+
+IMPLEMENTADO 2026-09-17 (commit `5ff3cff`): fix aplicado como
+  `esConflictoDeEscritura(e)`, reconociendo P2034 y
+  DriverAdapterError({cause.kind:"TransactionWriteConflict"}). Pruebas
+  de concurrencia endurecidas a loop de 15 intentos (no 10) exigiendo
+  éxito siempre — confirmadas en ROJO contra el código sin corregir
+  (reprodujo el DriverAdapterError crudo en intento 8/15 y 2/15 según
+  el archivo), y en VERDE después del fix: 15/15 + 3 corridas
+  adicionales completas (60 intentos totales sin ningún rechazo).
+  Suite completa 56/56 archivos, 334/334 tests. `tsc`/`eslint` sin
+  errores nuevos (verificado contra la línea base con `git stash`).
+  Diff confirmado en alcance: solo `con-reintento.ts` + 2 archivos de
+  test — R2, I3, schema y `package.json` sin ningún cambio. No
+  apareció ningún conflicto de otro tipo durante la implementación.
 ```
 
 ### Plan 3 — R2 (Escalabilidad)
@@ -954,4 +969,4 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
 
 **Orden de implementación**: N3 → C2 → R2 → I3 (acordado). Cada paquete se implementa, prueba y commitea por separado — no se mezclan en un solo cambio.
 
-**Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17) — ver detalle arriba y en §9. C2, R2, I3 siguen sin implementar, a la espera de autorización explícita paquete por paquete, en ese orden.
+**Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17) — ver detalle arriba y en §9. C2 **implementado** (commit `5ff3cff`, 2026-09-17) — ver detalle en el Plan 2 arriba. R2, I3 siguen sin implementar, a la espera de autorización explícita paquete por paquete, en ese orden.
