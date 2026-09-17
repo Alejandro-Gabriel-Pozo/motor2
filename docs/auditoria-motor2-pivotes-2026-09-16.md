@@ -533,3 +533,54 @@ Cambio de arquitectura: no justificado (no se encontró evidencia para
 | Pivote | Estado de partida | Verificaciones nuevas | Evidencia final | Decisión | Cambio necesario | Pendiente |
 |---|---|---|---|---|---|---|
 | 4. Precisión numérica | VERIFICADO_EN_CODIGO (casos base) + umbral cero-tolerancia | Costos acumulados, redondearMoneda, reversiones, clasificación de 147 conversiones, round-trip de receta, reparto por familia, PRODUCCIÓN vs VENTA | 1 FALLO_CONFIRMADO (PRODUCCIÓN sin redondear) + VERIFICADO_EN_CODIGO en el resto | **CERRADO CON CAMBIO — N3** | Agregar `redondearACantidadDeUnidad` en `movimientos.ts` (consumosReceta de PRODUCCIÓN) — 1 línea | Autorización explícita para aplicar el fix (no implementado todavía) |
+
+---
+
+## 10. Matriz de decisión final (2026-09-17)
+
+Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir evidencia ya documentada en §5-9 (referenciada por sección).
+
+| Pivote | Pregunta | Evidencia | Estado | Alternativa elegida | ¿Requiere cambios? | Prioridad de implementación | Responsable de decisión |
+|---|---|---|---|---|---|---|---|
+| 1. Concurrencia | ¿El aislamiento/reintentos garantiza resultado correcto ante operaciones simultáneas? | 5 escenarios, 25+ corridas (§5, §6) — `con-reintento.ts` no reconoce todos los conflictos reales del driver | FALLO_CONFIRMADO (parcial) | **C2** | Sí — modificar código + agregar prueba de regresión | 2 | Técnica (sin decisión de negocio pendiente) |
+| 2. Idempotencia | ¿Debe impedirse que un doble envío/timeout/reintento duplique una operación? | Ausencia confirmada en 6/7 procesos + 2 guardas racy — COMPRA y rechazo de traspaso (§7, §8) | FALLO_CONFIRMADO | **I3** | Sí — modificar código (8 Server Actions) + modificar schema/migración + agregar pruebas | 4 (último — único que toca el modelo de persistencia) | Negocio (política ya definida) + técnica para ejecutar |
+| 3. Traspasos en tránsito | ¿El estado "en tránsito" es válido, visible y recuperable? | 7 casos del plan, sin fallo salvo el hallazgo de rechazo (ya contabilizado en el paquete I3) (§6, §9) | VERIFICADO_EN_CODIGO | **T1** | No | — | Ninguno pendiente |
+| 4. Precisión numérica | ¿Las conversiones Decimal→number y los cálculos acumulados producen diferencias bajo cero tolerancia? | 147 conversiones clasificadas, 12 casos ejecutados, 1 fallo puntual reproducido (§9) | FALLO_CONFIRMADO (puntual) | **N3** | Sí — modificar código (1 línea) + agregar prueba de regresión | 1 (primero — cambio más chico y acotado) | Técnica |
+| 5. Escalabilidad | ¿Las agregaciones/reportes soportan el volumen esperado (500-1000 mov/día, 5-10 sucursales, 3-5 años)? | Benchmark real con 551.880 movimientos (§8) — 2 consultas degradadas | FALLO_CONFIRMADO (rendimiento) | **R2** | Sí — modificar código (2 queries) | 3 | Técnica |
+| 6. Auditoría y trazabilidad | ¿Los modelos registran suficiente información para reconstruir decisiones de negocio? | Revisión campo-por-campo (§8) — Kardex fuerte, catálogo/precios/permisos sin ningún rastro | NO_ENCONTRADO (parcial) | **A1** (Kardex) + **A3 candidato** (administración) | No obligatorio ahora — mejora futura condicionada a una decisión de negocio | — | Negocio (alcance regulatorio vs. control interno, todavía sin definir) |
+
+### Los 4 paquetes de cambio, en el orden acordado
+
+```text
+1. N3 — Precisión (más chico y acotado)
+   Archivo: src/server/actions/movimientos.ts
+   Cambio: 1 línea (redondearACantidadDeUnidad en consumosReceta de PRODUCCIÓN)
+   Prueba de regresión: ya existe (precision-produccion-sin-redondeo.test.ts,
+     hoy documenta el fallo — se reescribe para exigir el comportamiento correcto)
+
+2. C2 — Concurrencia
+   Archivo: src/core/movimientos/con-reintento.ts
+   Cambio: ampliar el reconocimiento de conflicto más allá de P2034
+   Prueba de regresión: ya existe (concurrencia-idempotencia.test.ts,
+     concurrencia-casos-2-3.test.ts — hoy toleran el fallo con
+     Promise.allSettled, se ajustan para exigir 0 rechazos)
+
+3. R2 — Escalabilidad
+   Archivos: src/core/reportes/periodo.ts (obtenerReportePorPeriodo),
+     src/core/reportes/historial-producto.ts (obtenerHistorialProducto)
+   Cambio: filtrar por fecha en la query, no en memoria
+   Prueba de regresión: correr scripts/auditoria-benchmark-reportes.ts
+     de nuevo y confirmar la mejora de tiempo
+
+4. I3 — Idempotencia (el más grande, separado del resto)
+   Archivos: prisma/schema.prisma (migración), 8 Server Actions,
+     formularios cliente correspondientes
+   Cambio: columna + índice único en Operacion, clave generada en
+     cliente, chequeo dentro de cada transacción, ajuste de
+     rechazarTransferencia a transacción
+   Plan de implementación formal (Sección 13) todavía por escribir en
+     detalle antes de tocar código — es el único paquete que modifica
+     contratos de varias Server Actions y el schema a la vez
+```
+
+**Auditoría: cerrada. Decisiones: tomadas. Implementación: pendiente de autorización explícita**, paquete por paquete, en el orden de arriba. No se modificó ningún archivo de producción en toda esta etapa de verificación — solo pruebas en `test/auditoria/`, el script de benchmark, y esta documentación.
