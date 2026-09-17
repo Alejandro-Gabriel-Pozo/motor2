@@ -10,6 +10,7 @@ import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/mo
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { QuickCrearProducto } from "@/components/catalogo/quick-crear-producto";
 
 interface Opcion {
   id: string;
@@ -52,11 +53,14 @@ export function PanelMovimientoForm({
   config,
   secciones,
   proveedores,
+  unidades,
   productoInicial,
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
   proveedores: Opcion[];
+  /** Solo se usa (y solo se pasa desde la página) en Compra — alta rápida de producto inline, ver QuickCrearProducto. */
+  unidades?: Opcion[];
   /** Deep-link accionable (ej. "Costo incompleto" en Reportes → Costos, "falta precio de este insumo") — precarga la primera fila con este producto en vez de arrancar vacía. */
   productoInicial?: { id: string; etiqueta: string };
 }) {
@@ -116,6 +120,17 @@ export function PanelMovimientoForm({
       const activas = todas.filter((p) => p.activa);
       if (activas.length) setPresentacionesPorFila((prev) => ({ ...prev, [idx]: activas }));
     });
+  };
+
+  // Alta rápida de producto (QuickCrearProducto, solo Compra): a diferencia
+  // de cambiarProducto (el usuario eligió algo que YA existía, vía
+  // SelectorProducto, que mantiene su propio texto de búsqueda), acá hace
+  // falta también pisar `etiquetaInicial` + `versionItems` — mismo truco de
+  // remount que la precarga por proveedor de abajo, porque el producto
+  // recién creado nunca pasó por el buscador.
+  const productoCreadoEnFila = (idx: number, id: string, etiqueta: string) => {
+    setItems((prev) => prev.map((f, i) => (i === idx ? { ...f, productoId: id, etiquetaInicial: etiqueta, unidadCompraId: "" } : f)));
+    setVersionItems((n) => n + 1);
   };
 
   const agregarFila = () => setItems((prev) => [...prev, { ...FILA_VACIA }]);
@@ -312,6 +327,9 @@ export function PanelMovimientoForm({
                 required
               />
               {fila.ultimaCompraTexto && <span className="text-neutral-400">{fila.ultimaCompraTexto}</span>}
+              {config.proceso === "COMPRA" && unidades && (
+                <QuickCrearProducto unidades={unidades} onCreado={(item) => productoCreadoEnFila(idx, item.id, item.etiqueta)} />
+              )}
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
               <span>

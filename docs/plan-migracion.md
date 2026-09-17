@@ -456,10 +456,19 @@ para las 6 porciones funcionales del proyecto.
    operativo de todas las sucursales de quien lo mira, lado a lado —
    invisible para alguien con una sola sucursal (ese es todo el negocio
    hoy, por diseño: nadie ve una sucursal a la que no pertenece).
-4. UI de "wizard de Compra por proveedor" con alta rápida de producto
-   inline (`CompraPorProveedor.html`/`IncludeAltaRapidaProducto.html` de
-   Apps Script) — el panel genérico de Compra ya funciona (picker simple),
-   este es un refinamiento de UX, no un bloqueante funcional.
+4. ~~UI de "wizard de Compra por proveedor" con alta rápida de producto
+   inline~~ — **resuelto (2026-09-17)**. El panel de Compra ya traía la
+   parte de "wizard por proveedor" (precarga lo que ya se le compra a ese
+   proveedor + último precio, `panel-movimiento-form.tsx` vía
+   `listarProductosDeProveedor`) — lo que faltaba de verdad era la alta
+   rápida: `QuickCrearProducto` (`components/catalogo/quick-crear-
+   producto.tsx`), mismo patrón `<Modal>` que `QuickCrear`
+   (Insumo/Categoría/Proveedor), con `darDeAltaProductoRapido`
+   (`server/actions/catalogo/productos.ts`) — solo nombre + unidad de
+   stock, categoría/insumo/etc. se completan después en el catálogo si
+   hace falta. Aparece solo en Compra (no en Devolución a proveedor, que
+   también es `esCompraLike`: no tiene sentido devolver algo que nunca se
+   compró).
 5. `notificarAlertasStockPorMail` (Stock.js:2342-2387) no se portó — pedía
    un servicio de mail real (`MailApp` de Apps Script) que no tiene
    equivalente configurado en este proyecto todavía (Resend/SendGrid/
@@ -486,11 +495,11 @@ Ninguna — Core, Catálogo, Movimientos, Stock, Reportes y Traspasos entre
 sucursales (la última) quedaron completas (código, tests y UI, todo
 verificado contra Postgres real y en navegador). La migración de `motor`
 a `motor2` está funcionalmente completa, la infraestructura real (Neon de
-producción, Google OAuth) ya está conectada, y `server/actions/` ya está
-modularizado por dominio (punto 7) — lo que queda es exclusivamente
-refinamientos de UX no bloqueantes (wizard de Compra por proveedor con
-alta rápida de producto inline; alertas de stock por mail; exportación
-CSV del reporte por período).
+producción, Google OAuth) ya está conectada, `server/actions/` ya está
+modularizado por dominio (punto 7) y el wizard de Compra por proveedor ya
+tiene alta rápida de producto inline (punto 4) — lo que queda es
+exclusivamente alertas de stock por mail y exportación CSV del reporte
+por período, ninguno de los dos bloqueante.
 
 ## Convenciones a mantener en las próximas porciones
 

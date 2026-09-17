@@ -4,7 +4,14 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { darDeAltaProducto, actualizarProducto, obtenerInsumoDeProducto, asignarInsumoAProducto, buscarProductosSelector } from "../../src/server/actions/catalogo/productos";
+import {
+  darDeAltaProducto,
+  darDeAltaProductoRapido,
+  actualizarProducto,
+  obtenerInsumoDeProducto,
+  asignarInsumoAProducto,
+  buscarProductosSelector,
+} from "../../src/server/actions/catalogo/productos";
 
 describe("productos", () => {
   let unidadKgId: string;
@@ -41,6 +48,28 @@ describe("productos", () => {
     await darDeAltaProducto({ nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1 });
     const resultado = await darDeAltaProducto({ nombre: "AZÚCAR", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1 });
     expect(resultado.ok).toBe(false);
+  });
+
+  it("alta rápida (wizard de Compra, §4): crea una MP con código autogenerado solo con nombre + unidad", async () => {
+    const resultado = await darDeAltaProductoRapido("Levadura fresca", unidadKgId);
+    expect(resultado.ok).toBe(true);
+    if (!resultado.ok) return;
+    expect(resultado.id).toBeTruthy();
+
+    const creado = await prisma.producto.findUniqueOrThrow({ where: { id: resultado.id } });
+    expect(creado.codigo.startsWith("MP_")).toBe(true);
+    expect(creado.tipo).toBe("MP");
+    expect(creado.unidadStockId).toBe(unidadKgId);
+    expect(Number(creado.factorConversion)).toBe(1);
+  });
+
+  it("alta rápida rechaza nombre duplicado y unidad faltante, igual que el alta completa", async () => {
+    await darDeAltaProductoRapido("Manteca", unidadKgId);
+    const duplicado = await darDeAltaProductoRapido("MANTECA", unidadKgId);
+    expect(duplicado.ok).toBe(false);
+
+    const sinUnidad = await darDeAltaProductoRapido("Otro producto", "");
+    expect(sinUnidad.ok).toBe(false);
   });
 
   it("rechaza código manual duplicado", async () => {

@@ -6,7 +6,7 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 
 export interface ProductoOpcion {
   id: string;
@@ -199,6 +199,39 @@ function datosParaGuardar(datos: DatosProducto) {
     precioConsignacion: datos.precioConsignacion ?? 0,
     observaciones: datos.observaciones,
   };
+}
+
+/**
+ * Alta rápida inline de una MP nueva, sin salir del wizard de Compra por
+ * proveedor (docs/plan-migracion.md §4 — refinamiento de UX, "el panel
+ * genérico de Compra ya funciona, esto era lo que faltaba para no tener
+ * que ir a /catalogo/productos e ir y volver"). Solo nombre + unidad de
+ * stock — categoría/insumo/unidad de compra alternativa quedan para
+ * completar después en el catálogo si hace falta, no bloquean la compra
+ * de HOY. `factorConversion: 1` (compra y stock en la misma unidad),
+ * mismo default que usa el form completo cuando no se toca ese campo.
+ */
+export async function darDeAltaProductoRapido(nombre: string, unidadStockId: string): Promise<ResultadoConId> {
+  return conPermiso<ResultadoConId>("alta_producto", async () => {
+    const n = texto(nombre);
+    if (!n) return error("El nombre no puede estar vacío.");
+    const invalido = validarTextoCatalogo(n, "El nombre");
+    if (invalido) return error(invalido);
+    if (!unidadStockId) return error("La unidad de stock es obligatoria.");
+
+    const dup = await prisma.producto.findFirst({ where: { activo: true, nombre: { equals: n, mode: "insensitive" } } });
+    if (dup) return error(`Ya existe un producto activo llamado "${n}".`);
+
+    try {
+      const producto = await crearConCodigoAutogenerado("MP", undefined, (codigo) =>
+        prisma.producto.create({ data: { codigo, tipo: "MP", nombre: n, unidadStockId, factorConversion: 1 } })
+      );
+      return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
+    } catch (e) {
+      if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
+      throw e;
+    }
+  });
 }
 
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoAccion> {

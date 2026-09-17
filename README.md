@@ -54,9 +54,6 @@ Movimientos + Stock + Reportes + Traspasos).
 
 ## Pendiente
 
-- Wizard de Compra por proveedor con alta rápida de producto inline
-  (refinamiento de UX sobre `/movimientos/compra`, no bloqueante) — ver
-  `docs/plan-migracion.md`.
 - Exportación CSV del reporte por período (`exportarReportePeriodoCSV` de
   Apps Script no se portó — endpoint trivial de agregar sobre
   `obtenerReportePorPeriodo`, que ya existe, cuando haga falta).
