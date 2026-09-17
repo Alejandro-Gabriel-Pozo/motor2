@@ -414,3 +414,122 @@ Con la matriz de cobertura cerrada y las dos reglas técnicas resueltas, el plan
 5. Frontend: cada formulario de estos 10 puntos de entrada genera `crypto.randomUUID()` una vez (al montar/abrir el modal) y lo reenvía tal cual en cualquier reintento.
 
 No implementado — pendiente de autorización explícita para tocar código/schema.
+
+---
+
+## 9. Pivote 4 — Precisión numérica (cierre, 2026-09-17)
+
+Umbral recibido: **cero tolerancia** en stock y dinero. Se completaron los 4 puntos pendientes del plan (costos acumulados, `redondearMoneda`, reversiones, clasificación de conversiones), sin repetir los casos ya cerrados (4 decimales, factor de conversión, ruido de punto flotante ya probado, sumas repetidas, reconstrucción básica de saldo).
+
+### Clasificación de las conversiones `Number()`
+
+147 ocurrencias totales en `src/` (no 98 — el conteo original de la Fase 0/1 estaba subestimado por el patrón de búsqueda usado entonces). Clasificadas una por una por archivo:línea, con evidencia de si el resultado se persiste/cobra/afecta stock (`crítica`) o solo se muestra (`solo_lectura`):
+
+| | Cantidad |
+|---|---|
+| Críticas (participan en algo que se persiste/cobra/valida stock) | 62 |
+| Solo lectura (nunca se persisten) | 85 |
+
+Las 62 críticas se agrupan en 5 categorías: `cantidad_stock` (36), `costo` (10), `presentacion_o_conversion` (7), `precio` (5), `porcentaje` (4). Confirmado además que **todo `src/core/reportes/`** es de solo lectura (ningún reporte escribe nada — ninguna conversión ahí puede volverse un fallo de integridad, aunque sí podría mostrar un número mal calculado).
+
+### Casos ejecutados sobre las categorías críticas de mayor riesgo
+
+1. **Round-trip Decimal→Number→Decimal sin edición real** (señalado por la clasificación: `recetas.ts` re-lee y re-persiste TODOS los ingredientes/pasos en cada edición parcial de cabecera): 5 ediciones sucesivas de la cabecera de una receta, sin tocar el ingrediente, no lo hicieron derivar ni un centésimo (`cantidad=0.1357`, `mermaPorcentaje=4.38`, los valores de máxima precisión que el propio schema admite, exactos tras 5 round-trips). Mismo resultado agregando un ingrediente distinto. **VERIFICADO_EN_CODIGO — sin fallo.**
+2. **`resolverConsumoPorFamilia`** (reparto de consumo entre "hermanos" del mismo Insumo): la suma de las partes repartidas coincide exacta con la cantidad pedida, en 2 escenarios (3 hermanos con saldos que no dividen parejo, pidiendo el total; 5 hermanos con saldos de 4 decimales, pidiendo un monto parcial que corta a mitad de uno). **VERIFICADO_EN_CODIGO — sin fallo** en la función en sí (el residuo de punto flotante que puede aparecer en la suma intermedia, del orden de 1e-15, nunca es mayor a lo que el redondeo posterior a la unidad absorbe — salvo el hallazgo del punto 4).
+3. **Costos acumulados encadenados** (`calcularCostosYMargenes`, `calcularValuacionInventario`) y **`redondearMoneda`** (borde exacto de redondeo, acumulación de 8 ventas): sin diferencia contra el cálculo de referencia en centavos exactos. **VERIFICADO_EN_CODIGO — sin fallo** (ver commit `259fe9d`).
+4. **Reversiones** (`anularVenta`, incluso sobre una cantidad ya redondeada a una unidad sin decimales): el neto entre operación original y reversión es exactamente cero. **VERIFICADO_EN_CODIGO — sin fallo** (ver commit `259fe9d`).
+
+### HALLAZGO — FALLO_CONFIRMADO: PRODUCCIÓN persiste el consumo de receta sin redondear a la unidad del insumo
+
+```text
+Hallazgo: src/server/actions/movimientos.ts, la línea `cantidad: -c.cantidad`
+  (consumo de receta generado por PRODUCCIÓN) persiste el valor CRUDO de
+  resolverConsumoPorFamilia/calcularConsumosProduccion, sin pasar por
+  redondearACantidadDeUnidad — a diferencia de venta.ts, que para el
+  MISMO tipo de dato (consumo de receta) SÍ redondea
+  (`cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, ...)`)
+  antes de persistir.
+
+Pivote: 4 — Precisión numérica
+
+Evidencia previa reutilizada: ninguna — hallazgo nuevo, surgido de la
+  clasificación de conversiones (observación 3 del agente: "merma % en
+  cascada... probar mermas con muchos decimales").
+
+Verificación nueva: test/auditoria/precision-produccion-sin-redondeo.test.ts
+  (2 casos) — un insumo con Unidad.decimales=0 (cantidad entera
+  obligatoria), receta con mermaPorcentaje=7% y cantidad=0.3, produciendo
+  7 unidades del PV: cantidadSalida = 7×0.3×1.07 = 2.247 (no entero).
+
+Resultado: vía PRODUCCIÓN, el MovimientoStock.cantidad persistido es
+  EXACTAMENTE -2.247 (no -2) — un valor con decimales pese a que la
+  unidad del insumo los prohíbe explícitamente (decimales:0). El mismo
+  escenario armado vía VENTA (mismo insumo, misma receta, mismo cálculo
+  de consumo) persiste correctamente -2 — confirma que el defecto es
+  específico del camino de PRODUCCIÓN, no del cálculo de merma en sí.
+
+Estado de evidencia: FALLO_CONFIRMADO — reproducido, no es hipótesis.
+
+Impacto: para cualquier insumo cuya unidad tenga pocos decimales (una
+  "unidad" entera, o kg/litros con 1-2 decimales) consumido vía una
+  receta de un producto marcado "Se produce", el Kardex puede terminar
+  con una cantidad de más decimales de los que la propia unidad permite
+  — inconsistencia de datos persistidos, no solo de presentación. Bajo
+  cero tolerancia, es un fallo confirmado: la diferencia aparece en lo
+  que se persiste y afecta el saldo real del insumo (aunque la magnitud
+  del error por movimiento es pequeña, del orden de la fracción no
+  redondeada, se acumula con cada producción).
+
+Decisión: CERRADO CON CAMBIO — N3 (cálculo crítico puntual a corregir,
+  no un problema estructural de todo el sistema — el resto de los
+  procesos ya redondea correctamente).
+
+Alternativa elegida: agregar el mismo `redondearACantidadDeUnidad(c.cantidad, ...)`
+  que ya usa venta.ts, en el loop de `l.consumosReceta` de
+  registrarMovimiento (PRODUCCIÓN) antes de persistir — una línea,
+  mismo patrón ya probado en el resto del código, sin necesidad de
+  evaluar decimal.js ni ninguna herramienta nueva.
+
+¿Requiere código?: Sí — src/server/actions/movimientos.ts (una línea,
+  dentro del loop de consumosReceta).
+
+¿Requiere schema?: No.
+
+¿Requiere dependencia?: No.
+
+¿Requiere decisión de negocio?: No.
+
+Pruebas pendientes (posteriores a la corrección): re-correr
+  precision-produccion-sin-redondeo.test.ts y confirmar
+  Number.isInteger(cantidadPersistida) === true en el caso ya reproducido.
+
+Riesgos: ninguno evidente — alinea PRODUCCIÓN con el comportamiento que
+  ya tienen COMPRA/CONSUMO/VENTA/AJUSTE/DEVOLUCIÓN/TRANSFERENCIA.
+
+Criterio de cierre: cumplido para la VERIFICACIÓN (reproducido, causa
+  identificada, fix mínimo propuesto). Pendiente de autorización
+  explícita para aplicar el cambio de código.
+```
+
+### Estado formal del Pivote 4
+
+```text
+Pivote 4: CERRADO CON CAMBIO — N3
+Casos del plan completados: costos acumulados, redondearMoneda,
+  reversiones, clasificación de 147 conversiones (62 críticas / 85
+  solo_lectura), más 2 casos adicionales de alto riesgo identificados
+  por la propia clasificación (round-trip de receta, reparto por
+  familia) — sin fallo en ninguno de esos.
+Fallo confirmado: 1 (PRODUCCIÓN sin redondear consumo de receta a la
+  unidad del insumo) — puntual, con fix de una línea ya identificado.
+Cambio de arquitectura: no justificado (no se encontró evidencia para
+  N4/N5 — Decimal en aplicación o decimal.js; el patrón actual
+  "float en cálculo + redondeo explícito antes de persistir" funciona
+  en el resto del sistema, con un único punto donde falta aplicarlo).
+```
+
+**Tabla de cierre (Pivote 4):**
+
+| Pivote | Estado de partida | Verificaciones nuevas | Evidencia final | Decisión | Cambio necesario | Pendiente |
+|---|---|---|---|---|---|---|
+| 4. Precisión numérica | VERIFICADO_EN_CODIGO (casos base) + umbral cero-tolerancia | Costos acumulados, redondearMoneda, reversiones, clasificación de 147 conversiones, round-trip de receta, reparto por familia, PRODUCCIÓN vs VENTA | 1 FALLO_CONFIRMADO (PRODUCCIÓN sin redondear) + VERIFICADO_EN_CODIGO en el resto | **CERRADO CON CAMBIO — N3** | Agregar `redondearACantidadDeUnidad` en `movimientos.ts` (consumosReceta de PRODUCCIÓN) — 1 línea | Autorización explícita para aplicar el fix (no implementado todavía) |
