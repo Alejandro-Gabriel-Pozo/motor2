@@ -36,7 +36,7 @@ function centavosExactos(pesos: number): bigint {
   const negativo = pesos < 0;
   const abs = Math.abs(pesos).toFixed(2);
   const [entero, decimal] = abs.split(".");
-  const centavos = BigInt(entero) * 100n + BigInt(decimal);
+  const centavos = BigInt(entero) * BigInt(100) + BigInt(decimal);
   return negativo ? -centavos : centavos;
 }
 
@@ -159,7 +159,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.05, unidadId: unidadKgId }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
 
-      let sumaEsperadaCentavos = 0n;
+      let sumaEsperadaCentavos = BigInt(0);
       for (let i = 1; i <= 8; i++) {
         const cantidad = i; // 1..8 unidades
         const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: cantidad }] });
@@ -168,7 +168,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       }
 
       const filas = await prisma.movimientoStock.findMany({ where: { productoId: pv.id, proceso: "VENTA" }, select: { precioTotal: true } });
-      const sumaReal = filas.reduce((acc, f) => acc + centavosExactos(Number(f.precioTotal)), 0n);
+      const sumaReal = filas.reduce((acc, f) => acc + centavosExactos(Number(f.precioTotal)), BigInt(0));
 
       expect(sumaReal).toBe(sumaEsperadaCentavos);
     });
@@ -202,8 +202,8 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
         where: { OR: [{ operacionId: operacionVenta.id }, { operacion: { detalleLibre: { contains: operacionVenta.id } } }] },
         select: { precioTotal: true },
       });
-      const netoCentavos = todasLasLineas.reduce((acc, f) => acc + centavosExactos(Number(f.precioTotal)), 0n);
-      expect(netoCentavos).toBe(0n);
+      const netoCentavos = todasLasLineas.reduce((acc, f) => acc + centavosExactos(Number(f.precioTotal)), BigInt(0));
+      expect(netoCentavos).toBe(BigInt(0));
     });
 
     it("anularVenta sobre una cantidad de insumo que ya fue redondeada a los decimales de su unidad: la reversión no introduce un residuo distinto de cero", async () => {

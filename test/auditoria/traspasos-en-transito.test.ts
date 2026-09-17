@@ -70,13 +70,14 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
       destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId,
     });
     expect(envio.ok, envio.mensaje).toBe(true);
+    if (!envio.ok) throw new Error(envio.mensaje);
 
     const saldoA = await calcularSaldoTotal(mp.id, seccionAId);
     const saldoB = await calcularSaldoTotal(mp.id, seccionBId);
     expect(saldoA).toBe(6); // 10 - 4, ya descontado
     expect(saldoB).toBe(0); // todavía no llegó
 
-    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id! } });
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("ENVIADA");
 
     // El total contable (A+B) es 6 mientras está "en tránsito" — las 4
@@ -93,27 +94,28 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     await comoA();
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
+    if (!envio.ok) throw new Error(envio.mensaje);
 
     await comoB();
-    const rechazo = await rechazarTransferencia(envio.id!, "No lo necesitamos");
+    const rechazo = await rechazarTransferencia(envio.id, "No lo necesitamos");
     expect(rechazo.ok, rechazo.mensaje).toBe(true);
 
     // Tras el rechazo, ANTES del reingreso: sigue "perdido" del Kardex de
     // ambos lados — estado intermedio válido (RECHAZADA_DESTINO).
-    let traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id! } });
+    let traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("RECHAZADA_DESTINO");
     expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
 
     await comoA();
-    const reingreso = await confirmarReingresoTransferencia(envio.id!);
+    const reingreso = await confirmarReingresoTransferencia(envio.id);
     expect(reingreso.ok, reingreso.mensaje).toBe(true);
 
-    traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id! } });
+    traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("CERRADA");
     expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // exactamente el original, ni más ni menos
     expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(0);
 
-    const movimientosDelTraspaso = await prisma.movimientoStock.count({ where: { traspasoSucursalId: envio.id! } });
+    const movimientosDelTraspaso = await prisma.movimientoStock.count({ where: { traspasoSucursalId: envio.id } });
     expect(movimientosDelTraspaso).toBe(2); // salida + reingreso, nunca se tocó/borró la salida original
   });
 
@@ -122,12 +124,13 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     await comoA();
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
+    if (!envio.ok) throw new Error(envio.mensaje);
 
     await comoB();
-    const primeraAceptacion = await aceptarTransferencia(envio.id!, seccionBId);
+    const primeraAceptacion = await aceptarTransferencia(envio.id, seccionBId);
     expect(primeraAceptacion.ok, primeraAceptacion.mensaje).toBe(true);
 
-    const segundaAceptacion = await aceptarTransferencia(envio.id!, seccionBId);
+    const segundaAceptacion = await aceptarTransferencia(envio.id, seccionBId);
     expect(segundaAceptacion.ok).toBe(false);
     expect(segundaAceptacion.mensaje).toMatch(/no se puede aceptar/i);
 
@@ -139,6 +142,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     await comoA();
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
+    if (!envio.ok) throw new Error(envio.mensaje);
 
     await comoB();
     // aceptarTransferencia usa conTransaccionSerializable (lee+valida
@@ -147,14 +151,14 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     // transacción, sin releer el estado dentro de un lock. Corriendo
     // ambos "simultáneos" (mismo usuario B, no tiene sentido de negocio
     // real pero prueba la robustez del guard de estado ante la carrera).
-    const settled = await Promise.allSettled([aceptarTransferencia(envio.id!, seccionBId), rechazarTransferencia(envio.id!, "motivo")]);
+    const settled = await Promise.allSettled([aceptarTransferencia(envio.id, seccionBId), rechazarTransferencia(envio.id, "motivo")]);
 
     console.log(
       "[auditoria] Aceptar+Rechazar simultáneos:",
       settled.map((s) => (s.status === "fulfilled" ? { ok: s.value.ok, mensaje: s.value.mensaje } : { rejected: true, message: String((s.reason as Error)?.message).slice(0, 200) }))
     );
 
-    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id! } });
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     console.log("[auditoria] Estado final del traspaso:", traspaso.estado);
 
     // El resultado válido es UNO solo de los dos efectos, nunca ambos
@@ -162,7 +166,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     // generaría un movimiento de entrada sobre un traspaso ya rechazado).
     expect(["ACEPTADA", "RECHAZADA_DESTINO"]).toContain(traspaso.estado);
 
-    const entradas = await prisma.movimientoStock.count({ where: { traspasoSucursalId: envio.id!, proceso: "TRANSFERENCIA_ENTRADA_SUCURSAL" } });
+    const entradas = await prisma.movimientoStock.count({ where: { traspasoSucursalId: envio.id, proceso: "TRANSFERENCIA_ENTRADA_SUCURSAL" } });
     if (traspaso.estado === "RECHAZADA_DESTINO") {
       expect(entradas).toBe(0); // si terminó rechazado, no debe haber quedado una entrada de stock huérfana
     }
@@ -176,11 +180,12 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     await comoA();
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
+    if (!envio.ok) throw new Error(envio.mensaje);
 
     await comoB();
     const settled = await Promise.allSettled([
-      rechazarTransferencia(envio.id!, "Motivo A: no lo pedimos"),
-      rechazarTransferencia(envio.id!, "Motivo B: llegó mal"),
+      rechazarTransferencia(envio.id, "Motivo A: no lo pedimos"),
+      rechazarTransferencia(envio.id, "Motivo B: llegó mal"),
     ]);
 
     const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
@@ -193,7 +198,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     expect(fallidos.length).toBe(1);
     expect(fallidos[0].mensaje).toMatch(/no se puede rechazar desde acá/);
 
-    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id! } });
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("RECHAZADA_DESTINO");
     // El motivo persistido es el del que ganó — nunca queda pisado en
     // silencio por el que llegó después de que el estado ya cambió.

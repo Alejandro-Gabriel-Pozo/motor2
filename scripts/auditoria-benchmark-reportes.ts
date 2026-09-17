@@ -49,7 +49,7 @@ async function main() {
   const unidad = await prisma.unidad.create({ data: { nombre: "u_benchmark", magnitud: "PESO", decimales: 2 } });
   const insumo = await prisma.insumo.create({ data: { nombre: "insumo_benchmark" } });
 
-  const sucursales = [];
+  const sucursales: { id: string }[] = [];
   for (let i = 0; i < N_SUCURSALES; i++) sucursales.push(await prisma.sucursal.create({ data: { nombre: `Bench Sucursal ${i}` } }));
 
   const secciones: { id: string; sucursalId: string }[] = [];
