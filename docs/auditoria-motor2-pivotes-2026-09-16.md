@@ -584,3 +584,362 @@ Los 6 pivotes están cerrados. Esta matriz consolida el resultado, sin repetir e
 ```
 
 **Auditoría: cerrada. Decisiones: tomadas. Implementación: pendiente de autorización explícita**, paquete por paquete, en el orden de arriba. No se modificó ningún archivo de producción en toda esta etapa de verificación — solo pruebas en `test/auditoria/`, el script de benchmark, y esta documentación.
+
+---
+
+## 11. Planes de implementación detallados (Sección 13, 2026-09-17)
+
+**Corrección importante antes de detallar R2**: al leer `src/core/reportes/periodo.ts` línea por línea para escribir este plan, encontré que mi caracterización anterior (§9/§10, "obtenerReportePorPeriodo... no filtra por fecha") era **imprecisa**. La query SÍ filtra por fecha en el `WHERE` desde el principio (`operacion: { fecha: { gte: desde, lte: hasta } }`, `periodo.ts:66-71`) — no es el mismo defecto que `obtenerHistorialProducto`. La lentitud medida (2,24s con rango de 3 años) es proporcional a que ese rango, en el dataset del benchmark, ES literalmente todo el historial (~552.000 filas con 3 `include` anidados cada una) — un resultado grande pero correctamente filtrado, no una query rota. Lo dejo corregido acá porque la auditoría no debe sostener una caracterización menos precisa de la que el propio código sostiene, aunque ya estuviera commiteada.
+
+### Plan 1 — N3 (Precisión numérica)
+
+```text
+1. Problema confirmado:
+   PRODUCCIÓN persiste el consumo de receta (l.consumosReceta,
+   movimientos.ts) sin redondearACantidadDeUnidad — a diferencia de
+   VENTA, que para el mismo tipo de dato sí redondea. Reproducido:
+   unidad con decimales:0 queda con -2.247 en vez de -2.
+
+2. Comportamiento esperado:
+   Mismo patrón que venta.ts: redondear cada c.cantidad a los
+   decimales de la unidad de stock del insumo consumido ANTES de
+   persistir la fila de MovimientoStock.
+
+3. Archivos y tablas afectados:
+   src/server/actions/movimientos.ts — loop `for (const c of
+   l.consumosReceta)` (~línea 310-314). Ninguna tabla nueva; mismo
+   schema.
+
+4. Cambio mínimo:
+   a) Extender el include del `tx.producto.findUnique({ where: { id:
+      c.productoId } })` ya existente (usado para chequear
+      esConsignacion) para traer también `unidadStock`.
+   b) Calcular `const cantidadRedondeada =
+      redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock
+      .decimales ?? 2)` y usar `cantidadRedondeada` (no `c.cantidad`)
+      en el `cantidad: -cantidadRedondeada` de la fila CONSUMO.
+   c) La línea LIQUIDACION_CONSIGNACION (si esConsignacion) ya usa
+      `c.cantidad` solo para calcular `precioTotal` — cambiar también
+      ahí a `cantidadRedondeada` para que el importe financiero
+      coincida con la cantidad real que quedó en el Kardex.
+
+5. Comportamiento que podría cambiar:
+   El valor persistido de MovimientoStock.cantidad para consumos de
+   receta generados por PRODUCCIÓN, en recetas cuya cantidad×merma dé
+   un resultado no exacto para la unidad del insumo. Ningún otro
+   proceso se toca. Datos YA persistidos con el bug no se corrigen acá
+   (no se tocan datos históricos) — quedaría como una acción separada
+   si el negocio decide corregir el Kardex ya cargado vía un AJUSTE
+   compensatorio, fuera de este plan.
+
+6. Pruebas de caracterización previas:
+   test/auditoria/precision-produccion-sin-redondeo.test.ts ya existe
+   y documenta el comportamiento ACTUAL (falla) con
+   `expect(cantidadPersistida).toBe(-2.247)`.
+
+7. Pruebas posteriores:
+   Invertir las 2 expectativas del mismo archivo:
+   `expect(Number.isInteger(cantidadPersistida)).toBe(true)` y
+   `expect(cantidadPersistida).toBe(-2)`. Correr la suite completa
+   (56 archivos) para confirmar que ningún test existente asumía el
+   valor sin redondear.
+
+8. Migración y compatibilidad:
+   Ninguna.
+
+9. Riesgos:
+   Bajos — cambio de una función, mismo patrón ya probado en
+   venta.ts. Único riesgo real: que algún test o reporte dependa hoy
+   (sin saberlo) del valor sin redondear — se descarta con la suite
+   completa antes de commitear.
+
+10. Rollback:
+    Revertir el commit — no hay backfill de datos que deshacer (no se
+    tocan filas existentes).
+
+11. Criterio de cierre:
+    precision-produccion-sin-redondeo.test.ts pasa con las
+    expectativas invertidas; suite completa (56 archivos) en verde;
+    `tsc`/`eslint`/`next build` limpios.
+```
+
+### Plan 2 — C2 (Concurrencia)
+
+```text
+1. Problema confirmado:
+   conTransaccionSerializable (con-reintento.ts) solo reconoce
+   Prisma.PrismaClientKnownRequestError con code==="P2034" como
+   conflicto reintentable. Conflictos reales de Postgres (SQLSTATE
+   40001/40P01) a veces llegan como DriverAdapterError({kind:
+   "TransactionWriteConflict"}) — una clase distinta, no reconocida —
+   y se relanzan en el primer intento sin reintentar. Reproducido en
+   CONSUMO (registrarMovimiento) y VENTA (registrarVenta).
+
+2. Comportamiento esperado:
+   Cualquier conflicto de serialización/deadlock real de Postgres,
+   sea cual sea la forma en que Prisma 7 + @prisma/adapter-pg lo
+   expongan, se reintenta hasta maxIntentos — igual que ya pasa con
+   P2034 hoy.
+
+3. Archivos y tablas afectados:
+   src/core/movimientos/con-reintento.ts (única función). Ninguna
+   tabla.
+
+4. Cambio mínimo:
+   Ampliar la condición `esConflicto` para reconocer también un
+   DriverAdapterError con kind "TransactionWriteConflict", sin
+   agregar `@prisma/driver-adapter-utils` como dependencia directa
+   (hoy es transitiva de @prisma/adapter-pg) — usar un chequeo por
+   forma (duck-typing acotado): `e?.constructor?.name ===
+   "DriverAdapterError" && (e as any)?.cause?.kind ===
+   "TransactionWriteConflict"`, documentando en un comentario por qué
+   no se usa `instanceof` (evitar atar el código a una versión
+   específica del paquete transitivo) y citando el hallazgo que lo
+   motiva.
+
+5. Comportamiento que podría cambiar:
+   Operaciones que HOY fallan duro (error crudo, no un mensaje de
+   negocio) bajo conflicto real empiezan a reintentarse
+   silenciosamente — mejora de disponibilidad, no cambia el resultado
+   final de ningún caso ya cubierto por el reconocimiento de P2034.
+
+6. Pruebas de caracterización previas:
+   test/auditoria/concurrencia-idempotencia.test.ts (Escenario 1b) y
+   concurrencia-casos-2-3.test.ts (Caso 2) ya existen y usan
+   Promise.allSettled, TOLERANDO el rechazo actual (documentan el
+   fallo con un console.log "HALLAZGO").
+
+7. Pruebas posteriores:
+   Reescribir esos 2 escenarios para usar Promise.all (no allSettled)
+   y exigir que ambas operaciones legítimas concurrentes tengan éxito
+   SIEMPRE — correr cada escenario 10 veces en un loop dentro del
+   mismo test (no manualmente desde la terminal) para confirmar cierre
+   determinístico, no solo estadístico.
+
+8. Migración y compatibilidad:
+   Ninguna.
+
+9. Riesgos:
+   Medio — el riesgo real es reintentar un error que NO sea un
+   conflicto de escritura genuino (ej. un timeout de red real),
+   enmascarando un problema de infraestructura distinto. Mitigación:
+   acotar el chequeo exactamente al kind "TransactionWriteConflict"
+   (el único mapeo de 40001/40P01 en @prisma/adapter-pg, confirmado
+   por lectura de su código fuente en esta misma auditoría) — nunca
+   un catch-all de cualquier DriverAdapterError.
+
+10. Rollback:
+    Revertir con-reintento.ts a la condición original (solo P2034).
+
+11. Criterio de cierre:
+    Los 2 escenarios de concurrencia corren 10/10 veces sin ningún
+    rechazo espurio; suite completa en verde.
+```
+
+### Plan 3 — R2 (Escalabilidad)
+
+```text
+1. Problema confirmado:
+   obtenerHistorialProducto (historial-producto.ts:84-91) carga TODO
+   el historial de un producto (sin filtrar por fecha en la query) y
+   recién filtra por desde/hasta DESPUÉS de calcular el saldo
+   corriente sobre el array completo en memoria — crece sin límite
+   con productos longevos, sea cual sea el rango pedido.
+   obtenerReportePorPeriodo YA filtra correctamente por fecha en el
+   WHERE (corrección de mi caracterización anterior, ver nota arriba)
+   — su lentitud con rangos amplios es proporcional al volumen real
+   de filas dentro del rango pedido más el costo de 3 `include`
+   anidados por fila, no un filtro faltante.
+
+2. Comportamiento esperado:
+   obtenerHistorialProducto: el saldo de arranque para un rango
+   [desde,hasta] se calcula con UNA agregación SUM sobre los
+   movimientos ANTERIORES a `desde` (no cargando el detalle), y solo
+   se cargan/iteran en detalle los eventos DENTRO del rango pedido —
+   mismo resultado (saldoCorriente por evento, saldoActual final),
+   sin cargar el historial completo cuando se pide un rango acotado.
+   obtenerReportePorPeriodo: reducir el costo por fila (evaluar si los
+   3 include anidados son necesarios para todos los consumidores, o
+   si algunos pueden resolverse con una proyección de columnas más
+   chica) — cambio más acotado, ya que el filtro de fecha en sí ya es
+   correcto.
+
+3. Archivos y tablas afectados:
+   src/core/reportes/historial-producto.ts (cambio principal),
+   src/core/reportes/periodo.ts (cambio menor/opcional). Posible
+   índice nuevo: hoy Operacion tiene @@index([sucursalId, proceso,
+   fecha]) (schema.prisma:60) — no cubre el patrón de
+   historial-producto (filtra por MovimientoStock.productoId +
+   seccion.sucursalId, sin proceso) ni el de un SUM de "todo lo
+   anterior a una fecha para un producto+sección puntual". Evaluar
+   @@index([productoId, seccionId]) en MovimientoStock más un índice
+   de apoyo en Operacion.fecha si el EXPLAIN ANALYZE de la query
+   nueva lo justifica — no agregar índices por intuición (regla
+   explícita de la auditoría), decidir con evidencia de plan real.
+
+4. Cambio mínimo:
+   historial-producto.ts: separar en 2 queries — (a) `aggregate` de
+   MovimientoStock con SUM(cantidad) WHERE productoId+seccionId(opc)+
+   operacion.fecha < desde → saldoInicial; (b) findMany igual que hoy
+   pero con operacion.fecha >= desde (y <= hasta si aplica) en el
+   WHERE. Recalcular saldoCorriente arrancando desde saldoInicial en
+   vez de 0. Cuando no se pasa `desde` (caso actual sin filtro), el
+   comportamiento debe ser idéntico al de hoy (saldoInicial=0, se
+   carga todo) — no cambia el caso ya usado desde la UI sin filtro de
+   fecha, si es que existe.
+
+5. Comportamiento que podría cambiar:
+   Ninguno visible si se implementa bien — mismos saldoCorriente y
+   saldoActual para el mismo producto/rango. Riesgo real: un error en
+   la separación saldoInicial/detalle produciría un saldoCorriente
+   incorrecto — mitigado por las pruebas de caracterización (punto 6).
+
+6. Pruebas de caracterización previas:
+   test/reportes/historial-producto.test.ts y test/reportes/
+   periodo.test.ts ya existen y cubren el comportamiento funcional
+   actual (incluyendo el caso ya probado de saldo corriente + conteos
+   físicos mezclados en la misma línea de tiempo) — sirven de
+   caracterización sin escribir nada nuevo.
+
+7. Pruebas posteriores:
+   Los mismos tests existentes deben seguir en verde SIN cambiar
+   ninguna expectativa (mismo resultado funcional). Re-correr
+   scripts/auditoria-benchmark-reportes.ts con el mismo escenario
+   (552k movimientos) y confirmar mejora medible en el punto 5b
+   (historial de producto caliente, rango de 1 mes) — hoy 27,6ms
+   sobre datos ya baratos por el índice existente, pero el ahorro
+   debería ser mayor en un dataset con MUCHOS más años de historial
+   por producto (no representado a esta escala) — documentar la
+   limitación de que el benchmark actual no estresa este caso todo lo
+   posible, y considerar un producto sintético con más movimientos si
+   se quiere una medición más contundente antes de cerrar.
+
+8. Migración y compatibilidad:
+   Solo si el EXPLAIN ANALYZE del punto 3 confirma que hace falta un
+   índice nuevo — a decidir con evidencia real durante la
+   implementación, no de antemano.
+
+9. Riesgos:
+   Medio — el cálculo de saldo corriente es el punto más delicado de
+   todo el reporte (un error ahí es silencioso: números que se ven
+   razonables pero están mal). Mitigar con los tests existentes +
+   agregar un caso específico que compare el resultado CON filtro de
+   fecha contra el resultado SIN filtro (recortado manualmente) para
+   el mismo producto, confirmando que dan exactamente los mismos
+   saldoCorriente en el rango común.
+
+10. Rollback:
+    Revertir los 2 archivos a la versión anterior (queries de lectura,
+    sin migración que deshacer salvo que el punto 8 haya aplicado un
+    índice — down migration para eso).
+
+11. Criterio de cierre:
+    Tests existentes en verde sin cambios de expectativa + el caso
+    nuevo de "con filtro == sin filtro recortado" en verde; benchmark
+    re-corrido con mejora medible o, si no la hay a esta escala,
+    justificación explícita de por qué (dataset del benchmark no
+    estresa lo suficiente este caso puntual).
+```
+
+### Plan 4 — I3 (Idempotencia) — el más grande, deliberadamente aislado
+
+```text
+1. Problema confirmado:
+   6 de 7 procesos manuales (todos salvo Traspasos) no tienen NINGUNA
+   protección contra reenvío/duplicación (§7); COMPRA y rechazo de
+   Traspaso tienen guardas check-then-act NO atómicas, confirmadas
+   racy con reproducción real (Hallazgo 2, §8, y el hallazgo de
+   rechazo de traspaso, §8).
+
+2. Comportamiento esperado (política ya definida, §7):
+   Clave de idempotencia generada por el cliente; misma clave+mismo
+   payload → resultado original, silencioso; misma clave+payload
+   distinto → rechazo por conflicto; retención permanente atada a
+   Operacion; unicidad de factura de COMPRA por sucursal+proveedor+
+   número (índice único parcial, sin bloquear facturas sin número).
+
+3. Archivos y tablas afectados:
+   prisma/schema.prisma (Operacion: + claveIdempotencia String?, +
+   payloadHash String?, @@unique([sucursalId, proceso,
+   claveIdempotencia]); + índice único parcial para COMPRA — nueva
+   migración). src/server/actions/movimientos.ts, venta.ts,
+   reclasificacion.ts, traspasos.ts (las 8 Server Actions de la
+   matriz de cobertura, §8, más mover rechazarTransferencia a
+   conTransaccionSerializable). Formularios cliente de los 10 puntos
+   de entrada (generar crypto.randomUUID() al montar/abrir cada
+   modal).
+
+4. Cambio mínimo — DECISIÓN DE DISEÑO A RESOLVER ANTES DE ESCRIBIR
+   CÓDIGO (no trivial, señalada acá para que quede explícita antes de
+   implementar): "devolver el resultado original" requiere decidir
+   QUÉ se considera "el resultado" — hoy ningún ResultadoAccion se
+   persiste en ningún lado (el mensaje de éxito se genera en memoria
+   y se descarta). Dos caminos:
+     (a) reconstruir el mensaje de forma determinística a partir de
+         la Operacion ya existente (ej. "Se guardaron N movimiento(s)"
+         con N = count de MovimientoStock de esa Operacion) — no
+         requiere guardar nada nuevo más que la clave;
+     (b) persistir el mensaje textual también en la columna nueva —
+         más simple de implementar, algo más de storage (despreciable).
+   Recomendación técnica: (a), evita una columna extra y mantiene
+   `Operacion` como la única fuente de verdad — pero es una elección
+   a confirmar antes de tocar código, no algo que deba decidirse
+   implícitamente en el momento de escribir la Server Action.
+
+5. Comportamiento que podría cambiar:
+   Contrato de las 8 Server Actions gana un parámetro opcional
+   `claveIdempotencia` — no rompe callers existentes mientras sea
+   opcional (rollout gradual: primero backend acepta la clave si
+   viene, LUEGO se actualiza cada formulario para enviarla). El guard
+   de factura de COMPRA deja de ser un `findFirst` previo y pasa a
+   ser un constraint de DB (mensaje de error cambia de forma, mismo
+   contenido).
+
+6. Pruebas de caracterización previas:
+   test/auditoria/idempotencia-resto-de-procesos.test.ts,
+   concurrencia-idempotencia.test.ts (Escenario 2/3),
+   traspasos-en-transito.test.ts ("rechazo simultáneo") — documentan
+   el comportamiento actual (duplica / racy) para los 10 procesos.
+
+7. Pruebas posteriores (por proceso, los 10 de la matriz de §8):
+   doble-submit secuencial con misma clave → 1 sola Operacion, ambas
+   respuestas iguales; misma clave + payload distinto → error de
+   conflicto explícito; concurrencia con misma clave (2 requests
+   simultáneos) → exactamente 1 efecto, ambas respuestas coherentes;
+   reintento de factura de COMPRA sin clave (compatibilidad con el
+   comportamiento viejo mientras el frontend no mande la clave nueva
+   en todos los formularios).
+
+8. Migración y compatibilidad:
+   Migración aditiva (columnas nulleables) — bajo riesgo de romper
+   filas existentes. ADVERTENCIA que ya quedó documentada en el
+   hallazgo original: antes de aplicar el índice único parcial de
+   factura, correr una query de auditoría sobre datos reales
+   (`GROUP BY sucursalId, proveedorId, nroFactura HAVING count(*)>1
+   WHERE nroFactura IS NOT NULL`) — si existen duplicados históricos,
+   la migración fallaría al crear el constraint y hay que decidir con
+   el negocio cómo tratarlos (mismo criterio de la auditoría: no se
+   corrigen datos históricos borrando, se documentan aparte).
+
+9. Riesgos:
+   Alto (como ya señaló el usuario) — único paquete que toca schema Y
+   contrato de 8 Server Actions Y frontend a la vez. Mitigación:
+   rollout gradual (clave opcional primero), y el chequeo de
+   duplicados de factura ANTES de migrar (punto 8).
+
+10. Rollback:
+    Down migration (elimina columnas + índices, sin pérdida de datos
+    de negocio ya que son columnas nuevas); revertir Server Actions y
+    formularios en un commit separado si hace falta desactivar solo
+    el frontend sin tocar el schema.
+
+11. Criterio de cierre:
+    Los 10 procesos de la matriz de cobertura (§8) pasan de
+    "ninguna"/"guarda no atómica" a "idempotencia completa" verificada
+    por prueba (los 4 casos del punto 7, por proceso); ningún test
+    existente se rompe; auditoría de facturas duplicadas en datos
+    reales sin hallazgos (o resuelta con el negocio) antes de aplicar
+    el constraint de factura.
+```
+
+**Orden de implementación**: N3 → C2 → R2 → I3 (acordado). Cada paquete se implementa, prueba y commitea por separado — no se mezclan en un solo cambio. Ningún código de producción modificado todavía en esta entrega — es exclusivamente el plan, a la espera de autorización explícita para empezar por N3.
