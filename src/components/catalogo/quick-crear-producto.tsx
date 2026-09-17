@@ -23,28 +23,47 @@ export function QuickCrearProducto({ unidades, onCreado }: { unidades: Opcion[];
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  function crear(cerrar: () => void) {
+    if (!nombre || !unidadStockId || pending) return;
+    startTransition(async () => {
+      const resultado = await darDeAltaProductoRapido(nombre, unidadStockId);
+      setMensaje(resultado.mensaje);
+      if (resultado.ok) {
+        onCreado({ id: resultado.id, etiqueta: resultado.nombre });
+        setNombre("");
+        setUnidadStockId("");
+        cerrar();
+      }
+    });
+  }
+
   return (
     <Modal triggerLabel="+ Nuevo producto" title="Alta rápida de producto">
       {(cerrar) => (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            startTransition(async () => {
-              const resultado = await darDeAltaProductoRapido(nombre, unidadStockId);
-              setMensaje(resultado.mensaje);
-              if (resultado.ok) {
-                onCreado({ id: resultado.id, etiqueta: resultado.nombre });
-                setNombre("");
-                setUnidadStockId("");
-                cerrar();
-              }
-            });
-          }}
-          className="flex flex-col gap-2"
-        >
+        // A propósito NO es un <form>: este modal siempre se usa DENTRO de
+        // otro <form> (acá, la fila de Producto del wizard de Compra) — un
+        // <form> anidado es HTML inválido y React re-dispara el evento
+        // `submit` (que burbujea) hacia el <form> exterior también, que
+        // termina resolviendo su propio submit con el estado de ESE
+        // instante (nada cargado todavía) y pisa el formulario entero.
+        // Confirmado en navegador real: clickear "Crear" reseteaba
+        // proveedor + fila antes de este fix.
+        <div className="flex flex-col gap-2">
           <label className="text-sm">
             Nombre
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)} className="mt-1 w-full rounded border px-3 py-2" autoFocus required />
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  crear(cerrar);
+                }
+              }}
+              className="mt-1 w-full rounded border px-3 py-2"
+              autoFocus
+              required
+            />
           </label>
           <label className="text-sm">
             Unidad de stock
@@ -61,10 +80,10 @@ export function QuickCrearProducto({ unidades, onCreado }: { unidades: Opcion[];
             Categoría, insumo/familia y otros datos del catálogo se pueden completar después en Catálogo → Productos — esto no bloquea la compra de hoy.
           </p>
           {mensaje && <p className="text-sm text-red-600">{mensaje}</p>}
-          <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+          <button type="button" onClick={() => crear(cerrar)} disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
             {pending ? "Guardando..." : "Crear"}
           </button>
-        </form>
+        </div>
       )}
     </Modal>
   );
