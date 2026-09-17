@@ -509,13 +509,19 @@ fabricado quedaba SIEMPRE en `COSTO_INCOMPLETO`, sin importar qué tan
 completos estuvieran los datos (verificado: antes del fix, la mayoría del
 menú de la demo estaba en ese estado; después, cero).
 
-**Estado: parcialmente resuelto (PR #5)** — agregado `resolverCostoUnitario`
+**Estado: resuelto (2026-09-17)** — agregado `resolverCostoUnitario`
 (BOM recursivo con cache y corte de ciclos) + links accionables en
 Reportes → Costos (`SIN_RECETA` → cargar receta, `SIN_PRECIO_VENTA` →
 cargar precio, `COSTO_INCOMPLETO` → Compra del insumo faltante, o a SU
-receta si ese insumo es "Se produce"). **Pendiente**: propagar la misma
-distinción causa+acción a los otros 4 reportes que hoy solo muestran el
-booleano plano.
+receta si ese insumo es "Se produce"). Propagado a Período → Ventas por
+producto (`resolverAccionFaltante`) y a Devoluciones
+(`resolverAccionSinCostoReposicion`, mismo criterio "Se produce" pero
+sobre costo de reposición de insumo directo, no receta de PV — cada fila
+`sinPrecio` de clientes/proveedores linkea a Compra o a la receta según
+corresponda). Quedan afuera a propósito: Resumen operativo (solo
+totales, sin fila por producto a la que colgarle un link) y Pérdidas
+(cada fila ya linkea a la operación completa en Trazabilidad — ver §8.4
+— un segundo link a "cargar compra" ahí sería redundante).
 
 ### 7.2 Recetas — el editor no separa "ver" de "editar"
 
@@ -550,6 +556,11 @@ siempre abiertas". Pendiente: colapsar ambos detrás de un link tipo
 "+ Agregar destino" (Reclasificar stock) y "+ Agregar producto" (Conteo
 físico, §1).
 
+**Estado: resuelto (2026-09-17)** — `components/agregar-colapsable.tsx`
+nuevo (mismo patrón "+ Agregar..." que Reclasificar/Conteo físico),
+envolviendo los dos formularios de alta en
+`catalogo/recetas/[productoId]/page.tsx`.
+
 ### 7.3 Reporte por período — tarjetas visualmente iguales para cifras no comparables
 
 Ventas, Margen, Compras y Movimientos se muestran en la misma fila con el
@@ -580,11 +591,12 @@ mismas 3 tarjetas (Ventas del mes / Margen del mes / Gastado en compras,
 ningún aviso — ni siquiera el párrafo deprioritizado que sí tiene
 Período. Cualquier fix tiene que cubrir los dos lugares, no solo Período.
 
-**Estado: parcialmente resuelto (2026-09-17)** — ver §9: los avisos ahora
-viven pegados a cada tarjeta (vía `AyudaIcono`) en los dos lugares
-(Período y Resumen operativo), y se agregó una segunda cifra ("Margen
-real") que no tiene el descalce temporal de fondo. La tarjeta "Margen"
-nominal se mantiene al lado — no se reemplazó, por las razones de §9.
+**Estado: resuelto (2026-09-17)** — ver §9/§10: los avisos ahora viven
+pegados a cada tarjeta (vía `AyudaIcono`) en los dos lugares (Período y
+Resumen operativo) — ya no queda el párrafo suelto al pie —, y se
+agregaron dos cifras más ("Margen real", "Ajustado IPC") sin el descalce
+temporal de fondo. La tarjeta "Margen" nominal se mantiene al lado — no
+se reemplazó, por las razones de §9.
 
 ---
 
@@ -707,13 +719,16 @@ veo? ¿cuándo?"
    producto — para el "¿cuándo?" haría falta un link a
    `/reportes/trazabilidad` filtrado por ese producto y ventana de fechas.
 
-**Estado: parcialmente resuelto (2026-09-17)** — arreglados los dos bugs
-de la fila: `tabla-perdidas.tsx` ahora mapea el motivo por
-`MOTIVOS_MERMA`/`DESTINOS_CONSUMO` y renderiza `m.productos` (una
-columna nueva). El "¿cuándo?" sigue sin respuesta — requiere pasar de
-"acumulado del período" a "un evento por fila" (o un link a
-Trazabilidad), que es un cambio de forma del reporte, no un fix chico;
-queda pendiente a propósito.
+**Estado: resuelto (2026-09-17)** — arreglados los dos bugs de la fila
+(motivo mapeado por `MOTIVOS_MERMA`/`DESTINOS_CONSUMO`), y además se
+completó el cambio de forma que había quedado pendiente:
+`generarReportePerdidas` pasó de "acumulado por motivo" a una fila POR
+EVENTO (`FilaPerdida`: `fecha`, `producto`, `motivo`, `cantidad`,
+`valor`, `sinPrecio`, `idOperacion`) — cada línea de Merma/Consumo real,
+ordenada por fecha descendente en `TablaReporte`, con link "Ver
+operación" a `/reportes/trazabilidad?idOperacion=` para el resto del
+detalle (sección, factura si aplica) en vez de duplicarlo acá. Responde
+"¿qué se rompió? ¿cuándo?" directo en la fila, sin ir a mirar la base.
 
 ### 8.5 Reclasificar stock — fecha de lote por destino, sin arrastrar la del origen
 

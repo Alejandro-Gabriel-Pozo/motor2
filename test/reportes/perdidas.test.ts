@@ -26,31 +26,36 @@ describe("generarReportePerdidas", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("agrupa mermas por motivo (columna tipada, no texto libre) y valoriza con el costo de reposición", async () => {
+  it("una fila por evento (no agrupado), con fecha y producto, valorizada con el costo de reposición", async () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "VENCIDO", items: [{ productoId: mp.id, cantidad: 2 }] });
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "ROTO_O_CAIDO", items: [{ productoId: mp.id, cantidad: 1 }] });
 
     const rep = await generarReportePerdidas(sucursalId, 30);
-    expect(rep.mermas.find((m) => m.motivo === "VENCIDO")?.valor).toBe(20);
+    expect(rep.mermas).toHaveLength(2);
+    const vencido = rep.mermas.find((m) => m.motivo === "VENCIDO")!;
+    expect(vencido.valor).toBe(20);
+    expect(vencido.producto).toBe("Harina");
+    expect(vencido.fecha).toBeInstanceOf(Date);
+    expect(vencido.idOperacion).toBeTruthy();
     expect(rep.mermas.find((m) => m.motivo === "ROTO_O_CAIDO")?.valor).toBe(10);
     expect(rep.totalMerma).toBe(30);
   });
 
-  it("no inventa el costo cuando no hay compra registrada: marca costoIncompleto y no suma al total", async () => {
+  it("no inventa el costo cuando no hay compra registrada: marca sinPrecio y no suma al total", async () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Sin compra", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] }); // stock sin costo de compra
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "OTRO", items: [{ productoId: mp.id, cantidad: 2 }] });
 
     const rep = await generarReportePerdidas(sucursalId, 30);
     const fila = rep.mermas.find((m) => m.motivo === "OTRO")!;
-    expect(fila.costoIncompleto).toBe(true);
+    expect(fila.sinPrecio).toBe(true);
     expect(fila.valor).toBe(0);
     expect(rep.hayCostoIncompleto).toBe(true);
   });
 
-  it("consumo manual agrupa por destino tipado; el consumo automático por receta (Venta) cae en su propio grupo", async () => {
+  it("consumo manual queda con su destino tipado; el consumo automático por receta (Venta) cae en su propia fila, cada venta la suya", async () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });

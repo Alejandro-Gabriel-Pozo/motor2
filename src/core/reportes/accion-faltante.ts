@@ -36,3 +36,18 @@ export function resolverAccionFaltante(fila: { estado: EstadoCosto; productoId: 
   }
   return null;
 }
+
+/**
+ * Causa→acción para el otro origen de "falta un dato" del mismo §7.1:
+ * `obtenerCostoActualPorMP` (costo de reposición = última COMPRA
+ * registrada) no encontró ninguna, a diferencia de `resolverAccionFaltante`
+ * arriba (que es sobre el costeo de la RECETA de un PV). Pérdidas y
+ * Devoluciones valorizan movimientos de insumo directo, sin pasar por una
+ * receta — mismo criterio "Se produce" que el resto del archivo: no se
+ * compra, se resuelve completando su propia receta.
+ */
+export function resolverAccionSinCostoReposicion(productoId: string, seProduce: boolean): AccionFaltante {
+  return seProduce
+    ? { href: `/catalogo/recetas/${productoId}`, etiqueta: "Sin costo de reposición — revisar receta" }
+    : { href: `/movimientos/compra?productoId=${productoId}`, etiqueta: "Sin costo de reposición — cargar compra" };
+}

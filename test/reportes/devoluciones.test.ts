@@ -41,4 +41,23 @@ describe("generarReporteDevoluciones", () => {
     expect(filaProveedor.cantidad).toBe(3);
     expect(filaProveedor.valor).toBe(30);
   });
+
+  it("sin costo de reposición: sugiere cargar una compra, o revisar la receta si el insumo 'Se produce' (§7.1)", async () => {
+    const comprado = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Sin compra", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const producido = await prisma.producto.create({
+      data: { codigo: "MP_2", nombre: "Prepizza masa", tipo: "MP", unidadStockId: unidadKgId, insumoId, seProduce: true },
+    });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: comprado.id, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: producido.id, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: comprado.id, cantidad: 1 }] });
+    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: producido.id, cantidad: 1 }] });
+
+    const rep = await generarReporteDevoluciones(sucursalId, 30);
+    const filaComprado = rep.clientes.find((c) => c.productoId === comprado.id)!;
+    expect(filaComprado.sinPrecio).toBe(true);
+    expect(filaComprado.accionFaltante).toEqual({ href: `/movimientos/compra?productoId=${comprado.id}`, etiqueta: "Sin costo de reposición — cargar compra" });
+
+    const filaProducido = rep.clientes.find((c) => c.productoId === producido.id)!;
+    expect(filaProducido.accionFaltante).toEqual({ href: `/catalogo/recetas/${producido.id}`, etiqueta: "Sin costo de reposición — revisar receta" });
+  });
 });

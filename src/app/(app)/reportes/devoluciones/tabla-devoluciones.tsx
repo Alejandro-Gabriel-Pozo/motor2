@@ -1,21 +1,26 @@
 "use client";
 
+import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDevolucionProducto } from "@/core/reportes/devoluciones";
 
 const COLUMNAS: ColumnaReporte<FilaDevolucionProducto>[] = [
-  {
-    clave: "producto",
-    etiqueta: "Producto",
-    valor: (p) => p.producto,
-    render: (p) => (
-      <>
-        {p.producto} {p.sinPrecio && <span className="text-amber-600">(sin precio)</span>}
-      </>
-    ),
-  },
+  { clave: "producto", etiqueta: "Producto", valor: (p) => p.producto, render: (p) => p.producto },
   { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (p) => p.cantidad, render: (p) => p.cantidad },
-  { clave: "valor", etiqueta: "Valor", alinear: "derecha", valor: (p) => p.valor, render: (p) => `$${p.valor.toLocaleString("es-AR")}` },
+  {
+    clave: "valor",
+    etiqueta: "Valor",
+    alinear: "derecha",
+    valor: (p) => p.valor,
+    render: (p) =>
+      p.accionFaltante ? (
+        <Link href={p.accionFaltante.href} className="text-amber-600 underline">
+          {p.accionFaltante.etiqueta}
+        </Link>
+      ) : (
+        `$${p.valor.toLocaleString("es-AR")}`
+      ),
+  },
 ];
 
 export function TablaDevolucionesClientes({ filas }: { filas: FilaDevolucionProducto[] }) {
@@ -23,7 +28,7 @@ export function TablaDevolucionesClientes({ filas }: { filas: FilaDevolucionProd
     <TablaReporte
       columnas={COLUMNAS}
       filas={filas}
-      claveFila={(c, i) => `${c.producto}-${i}`}
+      claveFila={(c) => c.productoId}
       sinFilasTexto="Sin devoluciones de clientes en el período."
       nombreExport="devoluciones-clientes"
     />
@@ -31,5 +36,5 @@ export function TablaDevolucionesClientes({ filas }: { filas: FilaDevolucionProd
 }
 
 export function TablaDevolucionesProveedor({ filas, nombreExport }: { filas: FilaDevolucionProducto[]; nombreExport: string }) {
-  return <TablaReporte columnas={COLUMNAS} filas={filas} claveFila={(p, i) => `${p.producto}-${i}`} nombreExport={nombreExport} />;
+  return <TablaReporte columnas={COLUMNAS} filas={filas} claveFila={(p) => p.productoId} nombreExport={nombreExport} />;
 }
