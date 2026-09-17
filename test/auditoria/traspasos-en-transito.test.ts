@@ -173,6 +173,41 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     }
   });
 
+  it("Pivote 2 (Idempotencia) — rechazo simultáneo (dos requests \"casi a la vez\", motivos distintos): rechazarTransferencia es check-then-act SIN transacción, igual patrón que el Hallazgo 2 de COMPRA", async () => {
+    const mp = await crearMP("HarinaRechazo");
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
+
+    await comoB();
+    const settled = await Promise.allSettled([
+      rechazarTransferencia(envio.id!, "Motivo A: no lo pedimos"),
+      rechazarTransferencia(envio.id!, "Motivo B: llegó mal"),
+    ]);
+
+    // eslint-disable-next-line no-console
+    console.log(
+      "[auditoria] Rechazo simultáneo, dos motivos distintos:",
+      settled.map((s) => (s.status === "fulfilled" ? { ok: s.value.ok, mensaje: s.value.mensaje } : { rejected: true }))
+    );
+
+    const ambosOk = settled.every((s) => s.status === "fulfilled" && s.value.ok);
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id! } });
+    // eslint-disable-next-line no-console
+    console.log("[auditoria] motivoRechazoDestino final:", traspaso.motivoRechazoDestino);
+
+    expect(traspaso.estado).toBe("RECHAZADA_DESTINO"); // el estado final siempre es correcto
+    if (ambosOk) {
+      // HALLAZGO: ambos requests reciben {ok:true} (no hay guard atómico
+      // como en aceptarTransferencia) — el motivo que sobrevive es el de
+      // quien escribió último, y el otro caller nunca se entera de que
+      // su motivo fue descartado. No corrompe stock (rechazar no toca
+      // Kardex), pero sí pierde información silenciosamente.
+      console.log("[auditoria] CONFIRMADO: ambos rechazos devolvieron ok:true — el segundo pisó el motivo del primero sin avisar a nadie.");
+      expect(["Motivo A: no lo pedimos", "Motivo B: llegó mal"]).toContain(traspaso.motivoRechazoDestino);
+    }
+  });
+
   it("Caso 2 (Pivote 3): fallo a mitad de la escritura de un envío — atomicidad real, no queda un TraspasoSucursal ni un MovimientoStock huérfano", async () => {
     // crearEnvioDirectoTransferencia escribe TraspasoSucursal + Operacion +
     // MovimientoStock dentro de UNA sola conTransaccionSerializable — para

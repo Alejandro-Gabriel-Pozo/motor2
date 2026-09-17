@@ -338,3 +338,79 @@ Criterio de cierre: cumplido para la VERIFICACIÓN — política completa,
 | Pivote | Estado de partida | Verificaciones nuevas | Evidencia final | Decisión | Cambio necesario | Pendiente |
 |---|---|---|---|---|---|---|
 | 2. Idempotencia | FALLO_CONFIRMADO + política pendiente | 5 procesos adicionales (MERMA/PRODUCCIÓN/DEVOLUCIÓN/RECLASIFICACIÓN/VENTA) | FALLO_CONFIRMADO en 6 de 7 procesos de la política (Traspasos ya protegido) | **CERRADO CON CAMBIO — I3** | Columna + índice único en `Operacion`, clave generada en cliente, chequeo dentro de la transacción en 3 Server Actions | Plan de implementación formal + pruebas posteriores (no autorizado todavía) |
+
+*(Nota de corrección, 2026-09-17: el cierre de arriba fue prematuro — faltaba la matriz de cobertura completa por proceso, incluyendo aceptación/rechazo/reingreso de traspaso por separado. Corregido en §8.)*
+
+---
+
+## 8. Pivote 2 — Matriz de cobertura completa y reglas técnicas (2026-09-17)
+
+### Matriz de cobertura por proceso
+
+| Proceso | Protección hoy | Clasificación | Evidencia |
+|---|---|---|---|
+| COMPRA | `findFirst` antes de la transacción, sin atomicidad con la escritura | **Guarda de aplicación no atómica** | Hallazgo 2, §8 arriba — 1/5 corridas produjo una factura duplicada real |
+| CONSUMO | Ninguna | **Ninguna** | Escenario 3, `concurrencia-idempotencia.test.ts` |
+| VENTA | Ninguna | **Ninguna** | `idempotencia-resto-de-procesos.test.ts` |
+| MERMA | Ninguna | **Ninguna** | ídem |
+| PRODUCCIÓN | Ninguna | **Ninguna** | ídem |
+| DEVOLUCIÓN (proveedor/consignación/cliente) | Ninguna — probado directamente para `DEVOLUCION_PROVEEDOR`; `DEVOLUCION_CONSIGNACION`/`DEVOLUCION_CLIENTE` comparten exactamente el mismo camino de código (`registrarMovimiento`, sin ningún chequeo específico de proceso más allá de COMPRA) | **Ninguna** (extendido por lectura de código a las 3 variantes) | `idempotencia-resto-de-procesos.test.ts` (directo, `DEVOLUCION_PROVEEDOR`) + `movimientos.ts:220` (único chequeo de duplicado existente, condicionado a `proceso === "COMPRA"`) |
+| RECLASIFICACIÓN | Ninguna — lo único que detiene un tercer reenvío es agotar el stock disponible, no una protección deliberada | **Ninguna** | ídem |
+| Aceptación de traspaso | Guard de estado (`estado !== "ENVIADA"`) DENTRO de `conTransaccionSerializable` — atómico, pero responde con un ERROR explícito, no con el resultado original en silencio | **Guarda de aplicación atómica** (no es idempotencia-por-clave; es guard-de-estado, semántica distinta a la política nueva) | `traspasos-en-transito.test.ts`, "Aceptación duplicada" |
+| Rechazo de traspaso | Guard de estado check-then-act, **SIN transacción** — confirmado racy: dos rechazos simultáneos con motivo distinto, los DOS responden `ok:true`, y el segundo pisa el `motivoRechazoDestino` del primero sin que nadie se entere | **Guarda de aplicación no atómica** — mismo patrón que el Hallazgo 2 de COMPRA | `traspasos-en-transito.test.ts`, "rechazo simultáneo" (nuevo, 5/5 corridas con el mismo resultado) |
+| Reingreso de traspaso | Guard de estado (`estado !== "RECHAZADA_DESTINO"`) DENTRO de `conTransaccionSerializable` — misma estructura de código que Aceptación | **Guarda de aplicación atómica** (por lectura de código; no se corrió una prueba de concurrencia directa para este paso puntual — estructuralmente idéntico a Aceptación, que sí se probó) | `traspasos.ts:339-367` (código); sin prueba de concurrencia directa — gap menor, mismo patrón ya verificado |
+
+**Ningún proceso usa hoy una constraint de base de datos** para nada de esto — ni siquiera COMPRA, cuyo guard es 100% de aplicación. Y ningún proceso implementa la semántica exacta de la política nueva (silenciar y devolver el resultado original) — los guards de estado de Traspasos responden con error, no con éxito silencioso; eso significa que incluso Aceptación/Reingreso, aunque atómicos, necesitan ajustarse para cumplir la política si se quiere un comportamiento uniforme en los 10 procesos.
+
+**Hallazgo nuevo**: el Rechazo de traspaso tiene el mismo defecto estructural que COMPRA (check-then-act sin transacción) — no estaba identificado como tal hasta esta verificación. Impacto acotado (no toca Kardex/stock, solo pierde un `motivo` de texto), pero es el mismo patrón de riesgo.
+
+### Reglas técnicas explícitas
+
+**1. Misma clave con payload diferente:**
+
+```text
+misma clave + mismo payload → devolver el resultado original (política ya definida)
+misma clave + payload diferente → rechazar por conflicto de idempotencia
+```
+
+Es la semántica estándar (mismo criterio que Stripe/idempotency-key REST): la clave identifica "un intento", no "cualquier request de ese usuario". Si el payload no coincide, no es un reintento — es un uso incorrecto de la clave (el cliente la reutilizó sin cambiarla). Se compara el payload completo (o un hash del mismo) contra el guardado en la primera escritura.
+
+**2. Facturas sin número — resuelto sin necesitar una decisión de negocio nueva** (es la formalización de un comportamiento ya existente e intencional, no un cambio):
+
+```text
+factura sin número / número vacío → la constraint de unicidad de factura
+  NO aplica (índice único PARCIAL: WHERE "nroFactura" IS NOT NULL) —
+  mismo comportamiento que hoy ("una factura sin número no se puede
+  comparar, no bloquea", movimientos.ts:220). La clave de idempotencia
+  general (Regla 1) sigue protegiendo esta compra igual, aunque no
+  tenga número de factura.
+
+proveedor inexistente → ya validado hoy por FK real (Producto/Proveedor),
+  no es un caso de idempotencia — un proveedorId inválido falla antes de
+  llegar a este chequeo.
+
+proveedor cambiado en un reintento → cae en la Regla 1 (mismo payload
+  esperado; un proveedorId distinto es un payload distinto → conflicto de
+  idempotencia, no un reintento válido).
+
+misma factura con payload diferente (otro producto/cantidad) → la
+  constraint de unicidad de factura NO compara payload — cualquier
+  segunda COMPRA con el mismo sucursal+proveedor+número se rechaza
+  directo, sin importar el resto del payload (ya es el comportamiento
+  actual, solo se vuelve atómico). Es una regla de negocio distinta de
+  la idempotencia por clave: "esta factura ya se cargó" vs. "este mismo
+  intento de request ya se procesó" son dos preguntas diferentes,
+  conviven como dos constraints separadas.
+```
+
+### Pivote 2: CERRADO CON CAMBIO — I3 (matriz completa)
+
+Con la matriz de cobertura cerrada y las dos reglas técnicas resueltas, el plan de implementación queda completo:
+
+1. `claveIdempotencia String?` + `payloadHash String?` en `Operacion`, `@@unique([sucursalId, proceso, claveIdempotencia])` (nulleable, migración aditiva).
+2. Índice único parcial adicional para COMPRA: `@@unique([sucursalId, proveedorId, nroFactura])` con condición `WHERE "nroFactura" IS NOT NULL` (reemplaza el `findFirst` actual, que se puede dejar como mensaje de error amigable ANTES de intentar el insert, con la constraint como árbitro final atómico — mismo patrón que `crearConCodigoAutogenerado` ante P2002).
+3. Todas las Server Actions de la política (COMPRA, CONSUMO, VENTA, MERMA, PRODUCCIÓN, 3× DEVOLUCIÓN, RECLASIFICACIÓN) reciben la clave del cliente y, dentro de `conTransaccionSerializable`, chequean existencia antes de escribir.
+4. Traspasos: además de agregar la clave general, ajustar `aceptarTransferencia`/`confirmarReingresoTransferencia` para devolver el resultado original en vez de error cuando el duplicado es un reintento genuino (mismo actor, mismo traspaso, dentro de una ventana razonable) — y mover `rechazarTransferencia` a `conTransaccionSerializable` para cerrar el hallazgo nuevo (check-then-act sin transacción).
+5. Frontend: cada formulario de estos 10 puntos de entrada genera `crypto.randomUUID()` una vez (al montar/abrir el modal) y lo reenvía tal cual en cualquier reintento.
+
+No implementado — pendiente de autorización explícita para tocar código/schema.
