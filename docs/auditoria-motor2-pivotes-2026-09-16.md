@@ -228,3 +228,113 @@ Ningún modelo de catálogo/precios/permisos tiene siquiera un `updatedAt` gené
 Cuatro de seis pivotes (1, 3, 5, 6) quedan formalmente cerrados con un candidato técnico único y sin ambigüedad. Dos (2 y 4) tienen la decisión de negocio ya resuelta pero requieren completar trabajo técnico (planes de implementación / casos de prueba restantes) antes de poder considerarse cerrados.
 
 **Ningún código de producción fue modificado en esta etapa** — todo lo anterior es evidencia (pruebas nuevas en `test/auditoria/` + el script de benchmark en `scripts/`). Los cambios de código correspondientes a los candidatos C2 (Pivote 1) e I3 (Pivote 2) requieren un plan de implementación formal (seguí la Sección 13 de la instrucción) y autorización explícita antes de tocar `con-reintento.ts`, `movimientos.ts` o el schema.
+
+---
+
+## 7. Pivote 2 — Idempotencia (cierre, 2026-09-17)
+
+### Política de negocio recibida (completa)
+
+| Decisión | Resolución |
+|---|---|
+| Alcance | **I3** — todas las operaciones manuales: COMPRA, CONSUMO, VENTA, MERMA, PRODUCCIÓN, DEVOLUCIONES, RECLASIFICACIÓN, aceptar/rechazar TRASPASO |
+| Identidad de "misma operación" | Clave de idempotencia generada por el cliente (un UUID por intento de envío, estilo Stripe) — no depende de un campo de negocio distinto por proceso |
+| Comportamiento ante duplicado | Devolver el resultado original, silenciosamente (no error, no efecto nuevo) |
+| Retención de la clave | Para siempre, como columna en `Operacion` (ya append-only) — sin expiración ni job de limpieza |
+| Unicidad de factura en COMPRA | `sucursalId + proveedorId + nroFactura` (confirma el alcance que el guard actual ya intenta lograr, sin atomicidad) |
+
+### Verificación nueva: repetición secuencial en el resto de los procesos de la política
+
+Prueba nueva en `test/auditoria/idempotencia-resto-de-procesos.test.ts` (5 escenarios) — confirma, con evidencia reproducible y SIN modificar código, que **ningún proceso de la política I3 tiene hoy protección contra un reenvío secuencial del mismo payload**, más allá de lo ya conocido de COMPRA (racy) y CONSUMO (sin protección):
+
+| Proceso | Resultado del reenvío secuencial |
+|---|---|
+| MERMA | 2 Operaciones, descuenta el doble |
+| PRODUCCIÓN | 2 Operaciones, consume el insumo el doble |
+| DEVOLUCION_PROVEEDOR | 2 Operaciones — ni siquiera tiene el guard racy que COMPRA al menos intenta |
+| RECLASIFICACIÓN | Se ejecuta dos veces sin ningún guard de identidad — lo único que impediría un tercer reenvío sería agotar el stock disponible, no una protección deliberada |
+| VENTA | 2 Operaciones, mismo patrón que CONSUMO |
+| Aceptar/rechazar TRASPASO | **Excepción**: ya probado en `traspasos-en-transito.test.ts` — el guard de estado de la máquina de estados SÍ impide una segunda aceptación (rechazada con mensaje de negocio claro, sin duplicar el movimiento). No necesita el mecanismo de clave de idempotencia para este caso puntual. |
+
+**Casos del plan que NO pueden probarse todavía**: "reintento con la misma referencia" y "concurrencia de dos requests con la misma clave" requieren que el mecanismo de clave de idempotencia exista en el código — hoy no existe ningún campo `claveIdempotencia` en `Operacion` ni en ningún modelo. Verificarlos exige la migración correspondiente, que es justamente el cambio pendiente de autorización — quedan como **pruebas posteriores** del plan de implementación, no como verificación de línea base.
+
+### Cierre
+
+```text
+Hallazgo: ningún proceso de la política I3 (excepto la máquina de
+  estados de Traspasos, que ya protege aceptar/rechazar por otra vía)
+  tiene protección alguna contra un reenvío secuencial del mismo
+  payload — no solo COMPRA/CONSUMO (ya confirmado), sino también
+  VENTA, MERMA, PRODUCCIÓN, DEVOLUCIONES y RECLASIFICACIÓN.
+
+Pivote: 2 — Idempotencia
+
+Evidencia previa reutilizada: docs/auditoria-motor2-fase0-fase1-2026-09-16.md
+  §8 (Hallazgo 2: COMPRA racy bajo concurrencia real) y Escenario 3 de
+  concurrencia-idempotencia.test.ts (CONSUMO sin protección secuencial).
+
+Verificación nueva: test/auditoria/idempotencia-resto-de-procesos.test.ts
+  (MERMA, PRODUCCIÓN, DEVOLUCION_PROVEEDOR, RECLASIFICACIÓN, VENTA).
+
+Resultado: en los 5 procesos probados, el reenvío secuencial del mismo
+  payload se procesó dos veces sin ningún aviso ni bloqueo. Traspasos
+  (aceptar/rechazar) es la única excepción — ya protegido por su propia
+  máquina de estados.
+
+Estado de evidencia: FALLO_CONFIRMADO (ausencia de protección, en los 7
+  procesos de la política salvo Traspasos) — no es una hipótesis, es
+  reproducible en cada corrida.
+
+Impacto: doble carga de stock/costo/venta ante doble-submit de UI o
+  reintento de red, en cualquiera de estos procesos.
+
+Decisión: CERRADO CON CAMBIO — I3
+
+Alternativa elegida: I3, según la política ya definida por el negocio
+  (ver tabla arriba). Requiere: (a) columna `claveIdempotencia String?`
+  en `Operacion` con `@@unique([sucursalId, proceso, claveIdempotencia])`
+  (nulleable para no romper flujos que todavía no la envíen durante una
+  migración gradual); (b) que cada Server Action de la política reciba
+  la clave del cliente y, antes de escribir, busque si ya existe una
+  Operacion con esa combinación — si existe, devuelve el resultado
+  original en vez de reprocesar; (c) que el chequeo de "ya existe" y la
+  escritura ocurran DENTRO de la misma `conTransaccionSerializable`
+  (corrige también la raíz del Hallazgo 2 — el guard de factura de
+  COMPRA pasa a ser un caso particular de este mecanismo general, no uno
+  aparte); (d) generar la clave en el cliente (un `crypto.randomUUID()`
+  al montar cada formulario/abrir cada modal de confirmación, reenviado
+  tal cual en reintentos).
+
+¿Requiere código?: Sí — todas las Server Actions de la política I3
+  (`movimientos.ts`, `venta.ts`, `reclasificacion.ts`) y sus formularios
+  cliente correspondientes.
+
+¿Requiere schema?: Sí — nueva columna + índice único en `Operacion`
+  (migración).
+
+¿Requiere dependencia?: No.
+
+¿Requiere decisión de negocio?: No — completa, ver tabla arriba.
+
+Pruebas pendientes (posteriores a la implementación, no de esta etapa):
+  timeout posterior a confirmación; reintento con la misma clave;
+  concurrencia de dos requests con la misma clave; reintento con la
+  misma clave pero payload distinto (debe fallar o ignorarse, a definir
+  en el plan de implementación formal).
+
+Riesgos: migración aditiva (columna nulleable), bajo riesgo de romper
+  flujos existentes durante el rollout; el mayor riesgo es de UX/alcance
+  del frontend (cada formulario de los 7 procesos necesita generar y
+  reenviar la clave).
+
+Criterio de cierre: cumplido para la VERIFICACIÓN — política completa,
+  evidencia de ausencia confirmada en los 7 procesos. El cierre de la
+  IMPLEMENTACIÓN queda pendiente de un plan formal (Sección 13) y
+  autorización explícita para tocar código/schema.
+```
+
+**Tabla de cierre (Pivote 2):**
+
+| Pivote | Estado de partida | Verificaciones nuevas | Evidencia final | Decisión | Cambio necesario | Pendiente |
+|---|---|---|---|---|---|---|
+| 2. Idempotencia | FALLO_CONFIRMADO + política pendiente | 5 procesos adicionales (MERMA/PRODUCCIÓN/DEVOLUCIÓN/RECLASIFICACIÓN/VENTA) | FALLO_CONFIRMADO en 6 de 7 procesos de la política (Traspasos ya protegido) | **CERRADO CON CAMBIO — I3** | Columna + índice único en `Operacion`, clave generada en cliente, chequeo dentro de la transacción en 3 Server Actions | Plan de implementación formal + pruebas posteriores (no autorizado todavía) |
