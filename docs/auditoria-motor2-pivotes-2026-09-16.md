@@ -1085,20 +1085,71 @@ Siguiendo exactamente el diseño del plan (schema §8, mecanismo §2-§3/§7, ma
 | `next build` | Turbopack compila correctamente; el paso de typecheck del build falla por los mismos errores preexistentes de `scripts/`/`test/` de siempre (no relacionado con I3) |
 | Diff en alcance | `git status --short`: schema, migración, 4 Server Actions, 1 módulo nuevo, 4 componentes de frontend, 2 archivos de test — nada fuera de lo previsto en el plan |
 | `package.json`/dependencias | Sin cambios |
-| Migración aplicada | Solo contra `motor2_test` (local) — nunca contra Neon/`inventario-api` |
+| Migración aplicada (al momento de este commit) | Solo contra `motor2_test` (local) — nunca contra Neon/`inventario-api`. Ver §14 para la migración posterior, ya autorizada y ejecutada, contra la rama demo. |
 | Verificación de UI | Build + smoke test del server (`next dev`, las 4 rutas de los formularios responden 307 hacia `/login` sin error de servidor) — **no se hizo un click-through interactivo autenticado en navegador** (el entorno no tiene credenciales de OAuth configuradas); la cobertura funcional real de los 4 puntos de entrada queda en las Server Actions, probadas exhaustivamente contra Postgres real |
 
 ### Nota — flake preexistente detectado, no causado por esta implementación
 
 Una corrida aislada de `test/auditoria/` mostró una falla intermitente en `concurrencia-idempotencia.test.ts` (assertion de "ninguna promesa debe rechazarse" bajo carrera real) — no reprodujo en 5 corridas aisladas posteriores del mismo archivo, y el archivo no fue tocado por I3 (confirmado por `git diff`, es del commit de C2). Es un test ya existente de este mismo estilo probabilístico (reintentos de `conTransaccionSerializable` bajo contención real) — se documenta por transparencia, no se investiga más a fondo por estar fuera del alcance de I3.
 
-### Estado
+### Estado (al momento de este commit)
 
 ```text
 N3 ✅ implementado — commit 5c0fd96
 C2 ✅ implementado — commit 5ff3cff
 R2 ✅ implementado — commit 9c52d6f
-I3 ✅ implementado (2026-09-17) — schema+migración (solo local), mecanismo
-   común, 6 Server Actions, rechazarTransferencia, frontend, 14 pruebas
-   nuevas — migración NO aplicada contra ningún dato real (Neon)
+I3 ✅ implementado en código (2026-09-17) — migración solo aplicada local
+```
+
+---
+
+## 14. I3 — migración aplicada en la rama demo de Neon (2026-09-17)
+
+Autorización explícita del usuario para: (a) aplicar la migración de I3 contra `demo-pizzeria-la-cuadra` (proyecto Neon `inventario-api`) y correr ahí pruebas de humo con datos sintéticos; luego, al encontrar un bloqueo (ver abajo), autorización explícita adicional para poner al día esa rama con las migraciones previas pendientes.
+
+### Hallazgo antes de migrar: la rama estaba 3 migraciones atrás
+
+Al revisar el schema real de `demo-pizzeria-la-cuadra` (`information_schema.columns` + `_prisma_migrations`), la rama estaba parada en el commit del seed inicial (`8386eff`, "Agregar seed de demo... pizzería La Cuadra") — nunca se le habían aplicado las 3 migraciones posteriores ya presentes en este repo: `20260916185129_anular_venta`, `20260916194321_pago_consignante`, `20260916195006_traspaso_cancelada`. Aplicar solo I3 encima de ese schema desactualizado habría dejado la rama con `anularVenta`/`PagoConsignante`/traspaso `CANCELADA` rotos (código que asume columnas/tablas/valor de enum que no existían ahí) — un problema previo a I3, no causado por I3, pero que I3 hubiera dejado sin resolver si no se señalaba.
+
+El usuario confirmó: **"Poner al día las 4 (recomendado)"**.
+
+### Cómo se aplicó
+
+El entorno de esta sesión **no tiene conectividad de red directa hacia Neon** (ni TCP plano para `prisma migrate deploy`/`DIRECT_URL`, ni WebSocket para el adapter `@prisma/adapter-neon` que usa el runtime — los dos intentos fallaron con error de red/handshake) — solo la herramienta MCP de Neon puede alcanzarlo. Por eso no se pudo correr `prisma migrate deploy` real ni la suite de Vitest apuntando a Neon; en su lugar:
+
+1. Se creó una rama temporal (`i3-smoke-test-tmp`, hija de `demo-pizzeria-la-cuadra`) para probar sin riesgo.
+2. Se aplicaron las 4 migraciones ahí (SQL de cada `migration.sql` del repo, vía la herramienta de transacciones SQL de Neon) + se insertó manualmente la fila correspondiente en `_prisma_migrations` por cada una, con el **checksum SHA-256 real del archivo** (`sha256sum prisma/migrations/<nombre>/migration.sql`, verificado primero contra una migración ya aplicada para confirmar que el método de cálculo coincide con el de Prisma) — así el historial de migraciones queda coherente para un futuro `prisma migrate deploy` real contra esa rama, no solo el schema.
+3. Se corrieron 4 pruebas de humo a nivel SQL contra la rama temporal (detalle abajo) — todas OK.
+4. Recién con eso verificado, se aplicaron las mismas 4 migraciones (mismo procedimiento) contra la rama REAL `demo-pizzeria-la-cuadra`.
+5. Se confirmó que los datos reales de esa rama quedaron intactos (479 `Operacion` antes y después — la migración es puramente aditiva, ninguna fila se tocó).
+6. Se borró la rama temporal.
+
+### Pruebas de humo — 4 de las 5 verificadas, 1 fuera de alcance de esta sesión
+
+| # | Prueba pedida | Resultado | Cómo se verificó |
+|---|---|---|---|
+| 1 | Creación de una operación nueva | ✅ OK | INSERT con `claveIdempotencia`+`payloadHash` nuevos — se escribió sin error |
+| 2 | Reintento con la misma clave | ✅ OK | `SELECT ... WHERE claveIdempotencia = X` encuentra la fila, `payloadHash` coincide → exactamente la comparación que hace `chequearIdempotencia` para devolver el resultado original |
+| 3 | Conflicto con payload diferente | ✅ OK | Mismo `SELECT`, hash NO coincide → detectado como distinto; además, un INSERT que intentara reusar la misma clave para una fila nueva (simulando un bug de aplicación) chocó con el índice único (`duplicate key value violates unique constraint "Operacion_claveIdempotencia_key"`) — confirma la red de seguridad a nivel DB, no solo a nivel aplicación |
+| 4 | Venta con varias líneas | ✅ OK | 2 `Operacion` insertadas (1 lote de venta simulado), clave solo en la primera, `NULL` en la segunda — ambas conviven sin choque, y la búsqueda por esa clave encuentra exactamente 1 fila |
+| 5 | Rechazo concurrente de transferencia | ⚠️ **NO verificable desde esta sesión** | Ver nota abajo |
+
+**Por qué la prueba 5 (y, en general, cualquier prueba de concurrencia real contra Neon) queda pendiente**: las pruebas 1-4 son verificaciones de schema/constraint — se pueden hacer con SQL secuencial vía la herramienta de Neon. La prueba 5 (y la garantía más amplia de C2 — si `@prisma/adapter-neon` produce el mismo `DriverAdapterError`/`cause.kind === "TransactionWriteConflict"` que `@prisma/adapter-pg`, que es lo que `esConflictoDeEscritura` sabe reconocer) requiere ejecutar el código real de la aplicación (Node + Prisma Client) contra Neon — y esta sesión confirmó que **no tiene salida de red hacia Neon** (ni el puerto de Postgres plano ni el WebSocket que usa el adapter — se probaron ambos y los dos fallaron por red, no por credenciales). Solo la herramienta MCP, que corre en otra infraestructura, puede alcanzar Neon.
+
+**Lo que esto significa en la práctica**: el schema y el índice único de I3 están correctamente aplicados y verificados en la rama demo — la garantía de "duplicado silencioso / conflicto explícito" funciona a nivel de datos. Lo que NO quedó confirmado desde esta sesión es si el mecanismo de reintento ante una carrera real (`conTransaccionSerializable` + `esConflictoDeEscritura`) se comporta igual contra Neon que contra Postgres local — es el mismo código, y Neon es Postgres real, así que no hay una razón concreta para esperar una diferencia, pero es una suposición, no una verificación. Para cerrar esta brecha hace falta correr la Server Action real (o el archivo de test `idempotencia-i3-mecanismo.test.ts`) desde un entorno con conectividad real a Neon — el propio usuario, u otra sesión con esa conectividad.
+
+### Estado final
+
+```text
+I3 — schema en código: implementado
+I3 — migración en motor2_test (local): aplicada
+I3 — migración en demo-pizzeria-la-cuadra (Neon): aplicada, junto con
+     las 3 migraciones previas que la rama tenía pendientes
+I3 — datos reales de la rama demo: intactos (479 Operacion, sin cambios)
+I3 — pruebas de humo 1-4 (schema/constraint): verificadas, OK
+I3 — prueba de humo 5 (concurrencia real contra Neon): NO verificable
+     desde esta sesión (sin conectividad de red a Neon) — pendiente de
+     alguien con esa conectividad
+I3 — migración en producción real: NO TOCADA, no forma parte de este
+     proyecto Neon ni de esta autorización
 ```

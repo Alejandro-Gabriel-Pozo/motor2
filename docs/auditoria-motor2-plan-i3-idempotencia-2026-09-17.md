@@ -685,6 +685,11 @@ I3: implementación — AUTORIZADA ("autorizo implementar I3 en el código
     sin aplicar datos reales") e IMPLEMENTADA (2026-09-17) — ver el
     documento madre §13 para el detalle completo (schema, mecanismo
     común, 6 Server Actions, rechazarTransferencia, frontend, 14
-    pruebas nuevas). Migración aplicada SOLO contra la base de test
-    local — nunca contra Neon/inventario-api.
+    pruebas nuevas).
+I3: migración en demo Neon — AUTORIZADA ("Sí, aplicar y probar en demo
+    Neon", luego "Poner al día las 4" al encontrar 3 migraciones previas
+    pendientes) y APLICADA (2026-09-17) contra demo-pizzeria-la-cuadra —
+    ver el documento madre §14. 4/5 pruebas de humo verificadas a nivel
+    SQL; la de concurrencia real queda pendiente por falta de
+    conectividad de red a Neon desde esta sesión.
 ```
