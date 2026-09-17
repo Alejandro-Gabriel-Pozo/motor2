@@ -1020,6 +1020,8 @@ IMPLEMENTADO 2026-09-17 (commit `9c52d6f`): corrección de diagnóstico
 
 **Estado de ejecución**: N3 **implementado** (commit `5c0fd96`, 2026-09-17). C2 **implementado** (commit `5ff3cff`, 2026-09-17). R2 **implementado** (commit `9c52d6f`, 2026-09-17) — ver detalle en el Plan 3 arriba. Solo **I3** sigue sin implementar, a la espera de autorización explícita — es el único paquete que toca schema y varios contratos de Server Actions a la vez.
 
+*(Nota de corrección, 2026-09-17 — fase de planificación de I3: el punto 4 de este borrador contaba "8 Server Actions" y recomendaba tentativamente reconstruir el resultado desde `Operacion`, ambos condicionados a verificarse antes de implementar. Esa verificación ya se hizo — ver `docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md`, el plan formal de la fase de planificación y auditoría de datos autorizada — y corrige ambos puntos: son 6 Server Actions, no 8 (`registrarMovimiento` cubre 7 de los 10 procesos por sí sola), y la recomendación pasa a persistir el resultado (Opción B), no reconstruirlo, porque 2 de los 6 mensajes de éxito tienen lógica condicional de negocio (`avisoConversion` en `registrarMovimiento`, la cláusula de liquidación de consignación en `anularVenta`) que reconstruir implicaría duplicar esa lógica en un segundo lugar. Ese documento también identifica que `rechazarTransferencia` no crea ninguna `Operacion` y por lo tanto no puede cubrirse con la columna de idempotencia general — necesita su propio fix de atomicidad. Este borrador queda como el punto de partida original; el documento nuevo es la versión verificada y vigente.)*
+
 ---
 
 ## 12. Revisión general antes de I3 (2026-09-17)
@@ -1030,6 +1032,8 @@ C2 ✅ implementado — commit 5ff3cff
 R2 ✅ implementado — commit 9c52d6f
 I3 ⏳ pendiente de autorización
 ```
+
+*(Actualizado 2026-09-17: I3 fue autorizado para su fase previa de planificación y auditoría de datos — sin autorización de código ni migraciones. Esa fase está completa, salvo la ejecución real de la auditoría de facturas duplicadas, que requiere acceso a datos de producción que esta sesión no tiene. Ver `docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md` para el plan completo. La implementación de I3 sigue sin autorizar.)*
 
 Verificación consolidada (sin repetir auditoría ni rehacer benchmarks):
 
