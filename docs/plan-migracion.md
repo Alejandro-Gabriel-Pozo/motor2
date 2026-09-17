@@ -468,6 +468,15 @@ para las 6 porciones funcionales del proyecto.
    acá (volcaba a una hoja de la misma planilla porque Apps Script no tenía
    otra forma de "exportar" sin tocar Drive — con una base de datos real
    alcanza con mirar la propia página de Trazabilidad).
+7. `src/server/actions/` está organizado por capa técnica (24 archivos
+   planos), no por módulo de dominio, a diferencia de `src/core/` (que sí
+   está por módulo). No bloqueante hoy, pero marcado como importante por
+   el dueño ("el orden es fundamental") de cara a que un módulo (ej.
+   `stock/`) pueda desprenderse más adelante sin arrastrar el resto — ver
+   `docs/arquitectura-modularidad-server-actions-2026-09-17.md` para el
+   plan completo (mismo método ya verificado en `app`, el otro proyecto
+   del dueño: mover por módulo con `git mv`, verificar `tsc`/lint/tests
+   después de cada uno).
 
 ## Próximas porciones
 
