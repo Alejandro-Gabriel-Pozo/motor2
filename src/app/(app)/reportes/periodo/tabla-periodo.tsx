@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaMargenProducto, FilaCompraPorProveedor, FilaGastoPorInsumo, FilaPrecioInsumo } from "@/core/reportes/periodo";
+import type { FilaImpactoRecetaPorPeriodo } from "@/core/reportes/costos";
 
 const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   {
@@ -188,6 +189,55 @@ export function TablaPrecioPorInsumo({ filas }: { filas: FilaPrecioInsumo[] }) {
       claveFila={(f) => f.insumo}
       sinFilasTexto="Sin compras en el período."
       nombreExport="precio-por-insumo"
+    />
+  );
+}
+
+const COLUMNAS_IMPACTO_RECETA: ColumnaReporte<FilaImpactoRecetaPorPeriodo>[] = [
+  {
+    clave: "producto",
+    etiqueta: "Plato",
+    valor: (f) => f.productoNombre,
+    render: (f) => (
+      <Link href={`/catalogo/recetas/${f.productoId}`} className="underline">
+        {f.productoNombre}
+      </Link>
+    ),
+  },
+  { clave: "costoAntes", etiqueta: "Costo antes", alinear: "derecha", valor: (f) => f.costoAntes, render: (f) => `$${f.costoAntes.toLocaleString("es-AR")}` },
+  { clave: "costoActual", etiqueta: "Costo ahora", alinear: "derecha", valor: (f) => f.costoActual, render: (f) => `$${f.costoActual.toLocaleString("es-AR")}` },
+  {
+    clave: "delta",
+    etiqueta: "Δ costo",
+    alinear: "derecha",
+    valor: (f) => f.deltaCosto,
+    render: (f) => <span className={claseDelta(f.deltaCosto)}>{f.deltaCosto > 0 ? "+" : ""}${f.deltaCosto.toLocaleString("es-AR")}</span>,
+    ayuda: "Cuánto le pega a este plato el cambio de precio de sus insumos (directo o a través de un intermedio 'se produce', ej. una masa premezclada) — reusa el mismo costeo recursivo que Costos y márgenes, no un cálculo aparte.",
+  },
+  {
+    clave: "foodCost",
+    etiqueta: "Food cost %",
+    alinear: "derecha",
+    valor: (f) => f.foodCostPctActual,
+    render: (f) =>
+      f.foodCostPctAntes !== null && f.foodCostPctActual !== null ? (
+        <span>
+          {f.foodCostPctAntes}% <span className={claseDelta(f.foodCostPctActual - f.foodCostPctAntes)}>→ {f.foodCostPctActual}%</span>
+        </span>
+      ) : (
+        <span className="text-neutral-400">sin precio de venta</span>
+      ),
+  },
+];
+
+export function TablaImpactoRecetas({ filas }: { filas: FilaImpactoRecetaPorPeriodo[] }) {
+  return (
+    <TablaReporte
+      columnas={COLUMNAS_IMPACTO_RECETA}
+      filas={filas}
+      claveFila={(f) => f.productoId}
+      sinFilasTexto="Ningún plato cambió de costo por variación de precio de insumos en este período."
+      nombreExport="impacto-en-recetas"
     />
   );
 }

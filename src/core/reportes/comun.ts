@@ -130,10 +130,21 @@ export interface CostoMP {
  * las 5 hosterías), acá no hay bug posible: `MovimientoStock` es LOCAL por
  * construcción (llega a través de `Seccion.sucursalId`), nunca hace falta
  * acordarse de filtrar — es la única fuente que se puede leer.
+ *
+ * `antesDe` opcional (docs/grounding-reportes-compras-2026-09-18.md, paso
+ * 4 — impacto de un cambio de precio en el costo de las recetas): con
+ * fecha, la "más reciente" es la más reciente ANTES de esa fecha, no la
+ * más reciente en absoluto — para poder recalcular el costo de una receta
+ * "como era antes de este período" y compararlo contra el costo de hoy.
  */
-export async function obtenerCostoActualPorMP(sucursalId: string, db: Db = prisma): Promise<Map<string, CostoMP>> {
+export async function obtenerCostoActualPorMP(sucursalId: string, db: Db = prisma, antesDe?: Date): Promise<Map<string, CostoMP>> {
   const compras = await db.movimientoStock.findMany({
-    where: { proceso: "COMPRA", seccion: { sucursalId }, precioPorUnidadStock: { gt: 0 } },
+    where: {
+      proceso: "COMPRA",
+      seccion: { sucursalId },
+      precioPorUnidadStock: { gt: 0 },
+      ...(antesDe ? { operacion: { fecha: { lt: antesDe } } } : {}),
+    },
     orderBy: { operacion: { fecha: "desc" } },
     select: { productoId: true, precioPorUnidadStock: true, operacion: { select: { fecha: true, proveedor: { select: { nombre: true } } } } },
   });

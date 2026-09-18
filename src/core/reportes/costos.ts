@@ -256,3 +256,89 @@ export async function calcularImpactoInsumos(sucursalId: string, db: Db = prisma
     }))
     .sort((a, b) => b.costoAcumulado - a.costoAcumulado);
 }
+
+/** Costo completo de la receta de UN plato — misma recursión que `calcularCostosYMargenes`, pero solo el total (sin armar `componentes`) y con un cache propio por llamada: `costosCompra` cambia entre "antes" y "ahora", así que el cache de una corrida no puede reusarse en la otra. */
+function resolverCostoRecetaCompleta(
+  productoId: string,
+  productos: Map<string, InfoProductoReporte>,
+  recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,
+  costosCompra: Map<string, CostoMP>
+): number | null {
+  const items = recetaPorProducto.get(productoId) ?? [];
+  if (!items.length) return null;
+
+  const cache = new Map<string, CostoResuelto | null>();
+  let total = 0;
+  for (const it of items) {
+    const c = resolverCostoUnitario(it.insumoProductoId, productos, recetaPorProducto, costosCompra, cache, new Set());
+    if (!c) return null;
+    total += it.cantidad * (1 + it.mermaPorcentaje / 100) * c.costoUnitario;
+  }
+  return total;
+}
+
+export interface FilaImpactoRecetaPorPeriodo {
+  productoId: string;
+  productoNombre: string;
+  precioVenta: number;
+  costoAntes: number;
+  costoActual: number;
+  deltaCosto: number;
+  foodCostPctAntes: number | null;
+  foodCostPctActual: number | null;
+}
+
+/**
+ * "¿A qué platos les pega el cambio de precio de este período, y cuánto?"
+ * — paso 4 del grounding (segunda pasada, docs/grounding-reportes-
+ * compras-2026-09-18.md §5): la diferencia real entre software de
+ * gastronomía y un ERP genérico es vincular compra -> receta -> plato,
+ * algo que ninguna de las referencias de la primera pasada (ERPNext/
+ * Dolibarr/Grocy) puede sugerir porque ninguna modela recetas.
+ *
+ * Recalcula el costo de CADA receta dos veces — con el costo de reposición
+ * de HOY (`obtenerCostoActualPorMP`, el mismo "más reciente" que ya usa
+ * `calcularCostosYMargenes` en todos lados) y con el que regía justo antes
+ * de `desde` (mismo método, `antesDe`) — y se queda solo con los platos
+ * donde el resultado cambió de verdad. Al reusar `resolverCostoUnitario`
+ * (recursivo) para las dos corridas, un aumento en un intermedio "se
+ * produce" (ej. la prepizza) se propaga solo, sin necesitar mapear a mano
+ * qué plato usa qué intermedio.
+ *
+ * Un producto sin ninguna compra ANTES de `desde` (primera vez que se
+ * compra) no tiene con qué comparar — `costosParaAntes` cae al costo
+ * ACTUAL para ese producto puntual (no introduce una diferencia donde no
+ * hay dato, mismo criterio que el delta `null` de `calcularTendenciaPreciosDelPeriodo`).
+ */
+export async function calcularImpactoRecetasPorPeriodo(sucursalId: string, desde: Date, db: Db = prisma): Promise<FilaImpactoRecetaPorPeriodo[]> {
+  const productos = await construirMapaProductos(sucursalId, db);
+  const { recetaPorProducto } = await construirIndiceRecetas(db);
+  const costosActuales = await obtenerCostoActualPorMP(sucursalId, db);
+  const costosAntesDelPeriodo = await obtenerCostoActualPorMP(sucursalId, db, desde);
+
+  const costosParaAntes = new Map(costosActuales);
+  for (const [productoId, c] of costosAntesDelPeriodo) costosParaAntes.set(productoId, c);
+
+  const filas: FilaImpactoRecetaPorPeriodo[] = [];
+  for (const info of productos.values()) {
+    if (info.tipo !== "PV") continue;
+
+    const costoActual = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosActuales);
+    const costoAntes = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosParaAntes);
+    if (costoActual === null || costoAntes === null) continue; // costo incompleto en alguna de las dos corridas — no se puede comparar
+    if (Math.abs(costoActual - costoAntes) < 0.005) continue; // sin cambio real
+
+    filas.push({
+      productoId: info.id,
+      productoNombre: info.nombre,
+      precioVenta: info.precioVenta,
+      costoAntes: redondearMoneda(costoAntes),
+      costoActual: redondearMoneda(costoActual),
+      deltaCosto: redondearMoneda(costoActual - costoAntes),
+      foodCostPctAntes: info.precioVenta > 0 ? Math.round((costoAntes / info.precioVenta) * 1000) / 10 : null,
+      foodCostPctActual: info.precioVenta > 0 ? Math.round((costoActual / info.precioVenta) * 1000) / 10 : null,
+    });
+  }
+
+  return filas.sort((a, b) => Math.abs(b.deltaCosto) - Math.abs(a.deltaCosto));
+}

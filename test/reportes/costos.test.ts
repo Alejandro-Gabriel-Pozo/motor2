@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { calcularCostosYMargenes, calcularImpactoInsumos } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes, calcularImpactoInsumos, calcularImpactoRecetasPorPeriodo } from "../../src/core/reportes/costos";
 
 describe("calcularCostosYMargenes", () => {
   let sucursalId: string;
@@ -110,5 +110,102 @@ describe("calcularImpactoInsumos", () => {
     const fila = impacto.find((i) => i.insumoProductoId === mp.id)!;
     expect(fila.cantidadPlatos).toBe(2);
     expect(fila.costoAcumulado).toBeCloseTo(1 * 10 + 2 * 10);
+  });
+});
+
+describe("calcularImpactoRecetasPorPeriodo", () => {
+  let sucursalId: string;
+  let seccionId: string;
+  let unidadKgId: string;
+  let insumoId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    sucursalId = base.sucursal.id;
+    const catalogo = await sembrarCatalogoBase();
+    unidadKgId = catalogo.kg.id;
+    insumoId = catalogo.insumo.id;
+    seccionId = (await sembrarSeccion(sucursalId)).id;
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+  });
+
+  it("detecta el plato afectado por un ingrediente DIRECTO que subió de precio, con el food cost % de antes y de ahora", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] }); // $10/kg, antes del período
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }] }); // $20/kg, dentro del período
+
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+
+    const fila = filas.find((f) => f.productoId === pv.id)!;
+    expect(fila).toBeDefined();
+    expect(fila.costoAntes).toBe(10);
+    expect(fila.costoActual).toBe(20);
+    expect(fila.deltaCosto).toBe(10);
+    expect(fila.foodCostPctAntes).toBe(10);
+    expect(fila.foodCostPctActual).toBe(20);
+  });
+
+  it("propaga el aumento a través de un intermedio 'se produce' (ej. una masa premezclada), sin mapear el plato a mano", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const masa = await prisma.producto.create({ data: { codigo: "MP_MASA", nombre: "Masa premezclada", tipo: "MP", unidadStockId: unidadKgId, seProduce: true } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 500 } });
+    // La masa se fabrica con 2kg de harina; la pizza usa 1kg de masa — el aumento de la harina le pega a la pizza SIN que la receta de la pizza mencione harina en absoluto.
+    await prisma.recetaVersion.create({ data: { productoId: masa.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 2, unidadId: unidadKgId }] } } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: masa.id, cantidad: 1, unidadId: unidadKgId }] } } });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] }); // $10/kg, antes
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 15 }] }); // $15/kg, dentro del período
+
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+
+    const fila = filas.find((f) => f.productoId === pv.id)!;
+    expect(fila).toBeDefined();
+    expect(fila.costoAntes).toBe(2 * 10); // 1kg de masa = 2kg de harina
+    expect(fila.costoActual).toBe(2 * 15);
+    expect(fila.deltaCosto).toBe(10);
+  });
+
+  it("no incluye un plato cuyo costo no cambió", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] }); // mismo precio
+
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    expect(filas.find((f) => f.productoId === pv.id)).toBeUndefined();
+  });
+
+  it("no marca como 'cambio' la primera compra de un insumo sin historial previo (no hay con qué comparar)", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+
+    // Única compra, DENTRO del período elegido — no hay ninguna compra anterior a `desde`.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
+
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    expect(filas.find((f) => f.productoId === pv.id)).toBeUndefined();
+  });
+
+  it("excluye un plato con costo incompleto (falta el precio de algún insumo)", async () => {
+    const mp1 = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp2 = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Levadura", tipo: "MP", unidadStockId: unidadKgId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    await prisma.recetaVersion.create({
+      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp1.id, cantidad: 1, unidadId: unidadKgId }, { insumoProductoId: mp2.id, cantidad: 1, unidadId: unidadKgId }] } },
+    });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 20 }] });
+    // mp2 nunca se compró: costo incompleto en las dos corridas.
+
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    expect(filas.find((f) => f.productoId === pv.id)).toBeUndefined();
   });
 });

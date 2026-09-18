@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
-import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo } from "./tabla-periodo";
+import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { AyudaIcono } from "@/components/ayuda-campo";
 
@@ -115,6 +115,14 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
           <AyudaIcono texto="Compara el precio pagado en este período contra el precio de la última compra anterior de cada insumo, ordenado por cuánto costó (o ahorró) ese cambio a la cantidad que realmente compraste — no por el % de variación, que puede engañar entre insumos baratos y caros." />
         </h2>
         <TablaPrecioPorInsumo filas={rep.tendenciaPrecios} />
+      </div>
+
+      <div>
+        <h2 className="mb-1 flex items-center text-sm font-medium">
+          ¿A qué platos les pega? Impacto en recetas
+          <AyudaIcono texto="Recalcula el costo de cada receta con el precio de sus insumos de antes del período y con el de ahora — solo aparecen los platos donde el resultado cambió de verdad, incluyendo cuando el aumento viene de un intermedio 'se produce' (ej. una masa premezclada), no solo de un ingrediente comprado directo." />
+        </h2>
+        <TablaImpactoRecetas filas={rep.impactoRecetas} />
       </div>
     </div>
   );

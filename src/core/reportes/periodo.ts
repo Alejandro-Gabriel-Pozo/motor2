@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import type { Proceso } from "@prisma/client";
 import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
 import { construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
-import { calcularCostosYMargenes } from "./costos";
+import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "./costos";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
 import { cargarSerieIPC, resolverCoeficienteIPC } from "./indices-economicos";
 
@@ -134,9 +134,10 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   const gastoPorInsumo = await calcularGastoPorInsumoDelPeriodo(sucursalId, items, db);
   const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, ventas.totalFacturado, db);
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, db);
+  const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
 
-  return { total: items.length, items, resumen, desde, hasta, ventas, compras, gastoPorInsumo, ratioGastoVentas, tendenciaPrecios, margen };
+  return { total: items.length, items, resumen, desde, hasta, ventas, compras, gastoPorInsumo, ratioGastoVentas, tendenciaPrecios, impactoRecetas, margen };
 }
 
 export interface RatioGastoVentas {
