@@ -90,6 +90,26 @@ Para distinguir esos dos casos hacía falta `.code` — no se guardó en la corr
 
 Sigue sin cerrarse. El logging ampliado queda commiteado y en la rama de forma permanente (no es instrumentación descartable: es exactamente el dato que falta) — la próxima corrida de CI o de auditoría que lo reproduzca ya va a traer la respuesta en el log.
 
+### Actualización 2026-09-18 (misma sesión, más tarde) — causa confirmada: rama `P2034`, no la del código no cubierto
+
+Se corrieron 400 tandas más (551 a 950), mismo test aislado, mismo Postgres local, con el logging ampliado ya activo. **2 reproducciones nuevas** (runs 595 y 820 — intentos 12 y 11 del loop interno respectivamente), ambas con el mismo diagnóstico exacto:
+
+```
+code= P2034
+meta= {"modelName":"Operacion","driverAdapterError":{"name":"DriverAdapterError","cause":{"originalCode":"40001","originalMessage":"could not serialize access due to read/write dependencies among transactions","kind":"TransactionWriteConflict"}}}
+```
+
+Esto responde la pregunta que quedaba abierta: **es la rama `P2034`, no la del código no cubierto.** `esConflictoDeEscritura()` funciona exactamente como está documentado — reconoce el conflicto en cada uno de los intentos — pero en estas dos corridas **las dos operaciones concurrentes chocaron en los 5 de 5 intentos** de `conTransaccionSerializable` (sin backoff/jitter entre reintentos: el `catch` hace `continue` inmediato), así que en el último (`intento === maxIntentos - 1`) ya no reintenta y deja escapar la promesa rechazada — comportamiento esperado del código tal como está escrito, no un bug de reconocimiento.
+
+**Total acumulado de la sesión**: 950 corridas aisladas + 30 del directorio completo, **3 reproducciones** (~0.3%). Tasa baja pero ya no es "ruido no clasificable" — es agotamiento de reintentos bajo colisión repetida, reproducible con evidencia consistente dos veces seguidas.
+
+**Esto ya se puede clasificar y cerrar la investigación** (queda pendiente decidir si se actúa sobre el hallazgo, ver más abajo):
+- ~~Ruido de infraestructura genuino~~ — descartado: el `.code`/`.meta` es un conflicto de serialización real de Postgres (`40001`), no un error de conexión/timeout.
+- ~~Un tipo de error no cubierto por `esConflictoDeEscritura`~~ — descartado: es exactamente el caso que la función reconoce.
+- **Confirmado**: `maxIntentos = 5` sin backoff ocasionalmente no alcanza cuando dos transacciones `SERIALIZABLE` sobre la misma fila reintentan en un timing lo bastante parecido como para volver a chocar varias veces seguidas — más probable cuanto más rápido y sincrónico es el reintento (sin jitter, las dos transacciones tienden a reintentar casi al mismo tiempo).
+
+**No se modificó `con-reintento.ts` en esta sesión tampoco** — la causa recién quedó confirmada, y subir `maxIntentos` y/o agregar backoff con jitter es un cambio de comportamiento real de producción (afecta latencia/reintentos de toda escritura del sistema, no solo del test) que corresponde decidir con el usuario, no aplicar unilateralmente en la misma pasada que la investigación.
+
 ---
 
 ## Parte B — Inventario y limpieza de ESLint
@@ -219,5 +239,5 @@ Ningún archivo de I3 (schema, migraciones, `src/core/movimientos/idempotencia.t
 
 ### Criterio para considerar la deuda cerrada
 
-- **Flake de C2**: NO cerrado. Se cierra solo cuando se capture el error real de una futura reproducción (o se confirme, con evidencia, que jamás vuelve a ocurrir tras un número mucho mayor de corridas en producción/CI real). Mientras tanto, permanece como riesgo conocido y documentado, sin código nuevo que lo enmascare.
+- **Flake de C2**: causa CONFIRMADA (2026-09-18, ver actualización arriba) — agotamiento de los 5 intentos de `conTransaccionSerializable` sin backoff, no un hueco de `esConflictoDeEscritura` ni ruido de infraestructura. La investigación en sí queda cerrada; si corresponde ACTUAR sobre el hallazgo (subir `maxIntentos`, agregar backoff/jitter) es una decisión de producción pendiente de que el usuario la autorice — no se aplicó en esta sesión.
 - **ESLint**: cerrado para esta tarea — 0 errores, 0 warnings, sin reglas desactivadas globalmente ni excepciones amplias (el único `eslint-disable` agregado es puntual, de una línea, con justificación en el comentario). Se reabre si una futura corrida vuelve a mostrar hallazgos nuevos — en ese caso, el mismo método de comparación contra el commit base (con un worktree aislado, no `checkout -- .`) es el que hay que repetir.
