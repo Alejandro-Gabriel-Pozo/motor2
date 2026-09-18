@@ -237,6 +237,20 @@ Ningún archivo de I3 (schema, migraciones, `src/core/movimientos/idempotencia.t
 
 **Actualización 2026-09-17 (más tarde, mismo día) — resuelto en commit `f13f6fc`**: los 3 errores de TypeScript de arriba bloqueaban `next build` (que corre su propio typecheck sobre todo lo que entra en `tsconfig.json`, incluyendo `scripts/` y `test/`) en cada deploy de Vercel desde que se agregó `prisma migrate deploy` al build — se arreglaron ese mismo día, ya fuera de esta tarea puntual pero antes de que este documento se cerrara. Verificado de nuevo el 2026-09-18: `tsc --noEmit` sobre todo el repo da **0 errores**.
 
+### Actualización 2026-09-18 (misma sesión) — instrumentación de observación en producción (investigación, no fix)
+
+A pedido del usuario, y explícitamente como investigación (no como cambio de comportamiento): se agregó logging en `con-reintento.ts` para medir en producción real qué tan seguido pasa esto — la única evidencia hasta ahora es un test que fuerza concurrencia perfecta en loop (`Promise.allSettled` de dos llamadas simultáneas), no representativo de cómo chocan dos personas reales.
+
+**Alcance del choque, aclarado antes de instrumentar** (no hace falta medir esto, sale del schema): la ventana de conflicto es siempre `productoId + seccionId` exacto, y `Seccion.sucursalId` es obligatorio (una sección pertenece a una sola sucursal) — así que el choque **nunca cruza sucursales**, y dentro de una sucursal solo afecta a quien toque el mismo producto en la misma sección al mismo instante (dos cajeros, dos pestañas del mismo usuario, doble-click, etc.).
+
+**Qué se agregó** (sin cambiar ningún `if`/reintento/threshold existente):
+- `console.log("[con-reintento][investigacion] conflicto de escritura resuelto por reintento", {...})` cuando algún intento > 0 tuvo éxito — nivel `log` a propósito, no `warn`: un solo reintento resuelto es el camino sano y esperable de SERIALIZABLE ante dos escrituras genuinamente simultáneas (confirmado con un smoke test: en el loop de 15 iteraciones del test de C2, esto dispara en la enorme mayoría de las corridas — no es indicio de problema, así que no debe generar alertas).
+- `console.error("[con-reintento][investigacion] conflicto de escritura agotó los reintentos", { maxIntentos, code })` solo cuando se agotan los `maxIntentos` y la promesa se rechaza de verdad — este sí es el incidente real (equivalente al fallo que sufre un usuario), y el que hay que contar para decidir si vale la pena actuar.
+
+Verificado después de agregarlo: `tsc --noEmit` limpio, `eslint .` 0/0, suite completa 57/57 archivos y 355/355 tests en verde (sin cambios de comportamiento).
+
+**Próximo paso** (fuera de esta sesión): dejarlo unas semanas en producción y buscar `[con-reintento][investigacion] conflicto de escritura agotó los reintentos` en los logs de Vercel — si nunca aparece, la corrección de `maxIntentos`/backoff queda como optimización prematura; si aparece, recién ahí decidir el fix con datos reales de frecuencia (no solo el test sintético).
+
 ### Criterio para considerar la deuda cerrada
 
 - **Flake de C2**: causa CONFIRMADA (2026-09-18, ver actualización arriba) — agotamiento de los 5 intentos de `conTransaccionSerializable` sin backoff, no un hueco de `esConflictoDeEscritura` ni ruido de infraestructura. La investigación en sí queda cerrada; si corresponde ACTUAR sobre el hallazgo (subir `maxIntentos`, agregar backoff/jitter) es una decisión de producción pendiente de que el usuario la autorice — no se aplicó en esta sesión.
