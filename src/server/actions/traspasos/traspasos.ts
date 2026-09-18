@@ -3,6 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
+import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoTotal, obtenerSeccionPropia, validarStockSuficiente } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -98,6 +99,7 @@ export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso)
     if (!origenSucursalId) return error("Elegí de qué sucursal lo pedís.");
     if (origenSucursalId === ctx.sucursalId) return error("No podés pedirte una transferencia a vos mismo.");
     if (!(datos.cantidad > 0)) return error("La cantidad debe ser mayor a 0.");
+    if (!esNumeroFinito(datos.cantidad)) return error("La cantidad no es un número válido.");
 
     const origen = await prisma.sucursal.findUnique({ where: { id: origenSucursalId } });
     if (!origen || !origen.activo) return error("Esa sucursal no existe o no está activa.");
@@ -147,6 +149,7 @@ export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTra
     if (!destinoSucursalId) return error("Elegí a qué sucursal se lo mandás.");
     if (destinoSucursalId === ctx.sucursalId) return error("No podés mandarte una transferencia a vos mismo.");
     if (!(datos.cantidad > 0)) return error("La cantidad debe ser mayor a 0.");
+    if (!esNumeroFinito(datos.cantidad)) return error("La cantidad no es un número válido.");
 
     const destino = await prisma.sucursal.findUnique({ where: { id: destinoSucursalId } });
     if (!destino || !destino.activo) return error("Esa sucursal no existe o no está activa.");

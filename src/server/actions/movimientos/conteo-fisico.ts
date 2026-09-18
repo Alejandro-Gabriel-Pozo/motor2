@@ -3,6 +3,7 @@
 import type { AccionConteo, EstadoConteo } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
+import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -45,6 +46,7 @@ export async function registrarConteoFisico(datos: DatosConteoFisico): Promise<R
   return conPermiso("proceso_control", async (ctx) => {
     if (!texto(datos.seccionId)) return error("Elegí una sección — no se puede dejar en blanco.");
     if (!(datos.conteoReal >= 0)) return error("El conteo real debe ser un número mayor o igual a 0.");
+    if (!esNumeroFinito(datos.conteoReal)) return error("El conteo real no es un número válido.");
     // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
     // registrarMovimiento — conPermiso no valida que la sección sea de
     // ESTA sucursal, solo el permiso de quien llama.

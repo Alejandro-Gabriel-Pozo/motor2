@@ -2,6 +2,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
+import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
@@ -62,6 +63,7 @@ async function armarVentaCalculada(
 ): Promise<{ ok: true; venta: VentaCalculada | null } | { ok: false; mensaje: string }> {
   const cantidad = Number(item.cantidadVendida || 0);
   if (!(cantidad > 0)) return { ok: true, venta: null };
+  if (!esNumeroFinito(cantidad)) return { ok: false, mensaje: "La cantidad vendida no es un número válido." };
 
   const producto = await obtenerProducto(item.productoId);
   if (!producto || !producto.activo) return { ok: false, mensaje: `El producto no existe o no está activo.` };

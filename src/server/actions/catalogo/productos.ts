@@ -3,6 +3,7 @@
 import type { TipoProducto } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
+import { esNumeroFinito } from "@/core/numero";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
@@ -168,9 +169,12 @@ async function validarComun(datos: DatosProducto, productoIdExcluir?: string): P
   if (invalido) return invalido;
   if (!datos.unidadStockId) return "La unidad de stock es obligatoria.";
   if (!(Number(datos.factorConversion) > 0)) return "El factor de conversión tiene que ser mayor a 0.";
+  if (!esNumeroFinito(datos.factorConversion)) return "El factor de conversión no es un número válido.";
+  if (datos.precioVenta !== undefined && !esNumeroFinito(datos.precioVenta)) return "El precio de venta no es un número válido.";
   if (datos.esConsignacion) {
     if (!datos.proveedorConsignacionId) return "Falta el proveedor de consignación.";
     if (!(Number(datos.precioConsignacion) > 0)) return "El precio de consignación tiene que ser mayor a 0.";
+    if (!esNumeroFinito(datos.precioConsignacion)) return "El precio de consignación no es un número válido.";
   }
 
   const dup = await prisma.producto.findFirst({
@@ -343,6 +347,7 @@ export async function agregarPresentacionAlternativa(
       return error("Esa ya es la unidad de compra por defecto de este producto.");
     }
     if (!(Number(factorConversion) > 0)) return error("El factor de conversión tiene que ser mayor a 0.");
+    if (!esNumeroFinito(factorConversion)) return error("El factor de conversión no es un número válido.");
 
     await prisma.presentacion.upsert({
       where: { productoId_unidadCompraId: { productoId, unidadCompraId } },

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { esNumeroFinito } from "@/core/numero";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -22,6 +23,7 @@ export async function listarPreciosLocales(sucursalId: string) {
 export async function setPrecioLocalProducto(productoId: string, precio: number, habilitado: boolean): Promise<ResultadoAccion> {
   return conPermiso("precio_local", async (ctx) => {
     if (!(precio >= 0)) return error("El precio no puede ser negativo.");
+    if (!esNumeroFinito(precio)) return error("El precio no es un número válido.");
 
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");

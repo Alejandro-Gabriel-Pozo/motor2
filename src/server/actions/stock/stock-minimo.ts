@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { esNumeroFinito } from "@/core/numero";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -21,6 +22,7 @@ export async function listarStockMinimo(sucursalId: string) {
 export async function setStockMinimoProducto(productoId: string, minimo: number, seccionId?: string | null): Promise<ResultadoAccion> {
   return conPermiso("stock_minimo", async (ctx) => {
     if (!(minimo >= 0)) return error("El mínimo no puede ser negativo.");
+    if (!esNumeroFinito(minimo)) return error("El mínimo no es un número válido.");
 
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");

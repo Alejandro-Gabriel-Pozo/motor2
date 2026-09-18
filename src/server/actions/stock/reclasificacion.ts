@@ -2,6 +2,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
+import { esNumeroFinito } from "@/core/numero";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -71,6 +72,7 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
     for (const d of datos.destinos) {
       if (!texto(d.seccionId)) return error("Cada destino necesita una sección — no se puede dejar en blanco.");
       if (!(d.cantidad > 0)) return error("Cada destino necesita una cantidad mayor a 0.");
+      if (!esNumeroFinito(d.cantidad)) return error("Cada destino necesita una cantidad válida.");
     }
 
     // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en

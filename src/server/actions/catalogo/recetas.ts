@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
+import { esNumeroFinito } from "@/core/numero";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -120,7 +121,9 @@ async function validarIngredientes(items: IngredienteInput[]) {
   if (!items.length) return "La receta necesita al menos un ingrediente.";
   for (const item of items) {
     if (!(Number(item.cantidad) > 0)) return "Cada ingrediente necesita una cantidad mayor a 0.";
+    if (!esNumeroFinito(item.cantidad)) return "Cada ingrediente necesita una cantidad válida.";
     if (Number(item.mermaPorcentaje ?? 0) < 0) return "La merma no puede ser negativa.";
+    if (!esNumeroFinito(item.mermaPorcentaje ?? 0)) return "La merma no es un número válido.";
     const mp = await prisma.producto.findUnique({ where: { id: item.insumoProductoId } });
     if (!mp || mp.tipo !== "MP" || !mp.activo) {
       return `Cada ingrediente tiene que ser una materia prima (MP) activa (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
@@ -138,6 +141,7 @@ function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): string | n
     if (ordenesVistos.has(p.orden)) return `Hay dos pasos con el mismo orden (${p.orden}).`;
     ordenesVistos.add(p.orden);
     if (p.minutos !== undefined && Number(p.minutos) < 0) return "Los minutos de un paso no pueden ser negativos.";
+    if (p.minutos !== undefined && !esNumeroFinito(p.minutos)) return "Los minutos de un paso no son un número válido.";
     for (const insumoProductoId of p.insumoProductoIds ?? []) {
       if (!insumoIdsValidos.has(insumoProductoId)) return "Un paso no puede marcar un ingrediente que no está en esta misma receta.";
     }
