@@ -85,7 +85,9 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
 
         const rechazados = settled.filter((s): s is PromiseRejectedResult => s.status === "rejected");
         if (rechazados.length > 0) {
-          console.log(`[auditoria] Intento ${intento}: promesa rechazada —`, (rechazados[0]!.reason as Error)?.constructor?.name, String((rechazados[0]!.reason as Error)?.message).slice(0, 200));
+          const reason = rechazados[0]!.reason as Error & { code?: string; meta?: unknown; cause?: unknown };
+          console.log(`[auditoria] Intento ${intento}: promesa rechazada —`, reason?.constructor?.name, String(reason?.message).slice(0, 200));
+          console.log("[auditoria][DIAGNOSTICO] code=", reason?.code, "meta=", JSON.stringify(reason?.meta), "cause=", reason?.cause, "mensajeCompleto=", reason?.message);
         }
         expect(rechazados.length, `intento ${intento}: no debe haber ninguna promesa rechazada`).toBe(0);
 
