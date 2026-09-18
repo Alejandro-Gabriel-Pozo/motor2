@@ -37,6 +37,7 @@ model User {
   traspasosDecididosDestino TraspasoSucursal[] @relation("TraspasoDecididoDestino")
   traspasosCerrados         TraspasoSucursal[] @relation("TraspasoCerradoPor")
   pagosConsignante          PagoConsignante[]
+  registrosAuditoria        RegistroAuditoria[]
 }
 
 model Account {
@@ -110,6 +111,7 @@ model Sucursal {
   traspasosComoOrigen  TraspasoSucursal[]    @relation("TraspasoOrigen")
   traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
   pagosConsignante     PagoConsignante[]
+  registrosAuditoria   RegistroAuditoria[]
 }
 
 model Rol {
@@ -186,6 +188,46 @@ model CapacidadSucursal {
   habilitado  Boolean
 
   @@unique([accionClave, sucursalId])
+}
+
+/// Auditoría administrativa (A3, Pivote 6 — docs/auditoria-motor2-pivotes-
+/// 2026-09-16.md "Pivote 6", docs/auditoria-motor2-fase6-seguridad-
+/// 2026-09-18.md): catálogo/precios/permisos no pasan por el Kardex y no
+/// tenían NINGÚN rastro de quién cambió qué y cuándo — ni siquiera un
+/// `updatedAt` genérico. Registro append-only GENÉRICO (nunca se edita ni
+/// se borra una fila) — no una tabla de historial por modelo tipo
+/// `RecetaVersion`: cada fila es UN cambio de UN campo escalar puntual
+/// (un precio, un booleano de permiso), no una estructura compuesta, así
+/// que alcanza para reconstruir el valor vigente en cualquier momento
+/// pasado ordenando por `creadoEn`, sin necesidad de versionar la fila
+/// entera. `entidadId` es una referencia liviana (sin FK real — apunta a
+/// modelos distintos según `entidad`, y el registro tiene que sobrevivir
+/// aunque la fila referenciada se borre en el futuro) — `descripcion` ya
+/// viene armada y legible al momento de escribir, para no depender de un
+/// JOIN futuro contra una fila que podría ya no existir.
+model RegistroAuditoria {
+  id            String    @id @default(cuid())
+  /// "Producto" | "PrecioLocalProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol"
+  entidad       String
+  entidadId     String
+  /// Legible de entrada, ej. `Producto "Pan Francés": precio de venta`.
+  descripcion   String
+  /// Nombre técnico del campo cambiado, ej. "precioVenta" — para filtrar/agrupar.
+  campo         String
+  valorAnterior String?
+  valorNuevo    String?
+  actorId       String
+  actor         User      @relation(fields: [actorId], references: [id])
+  /// Sucursal relevante si el cambio es específico de una (ej. Precio
+  /// Local, Capacidad por sucursal) — null si es global (ej. Producto,
+  /// Rol, Permisos, que son Catálogo Central sin alcance por sucursal).
+  sucursalId    String?
+  sucursal      Sucursal? @relation(fields: [sucursalId], references: [id])
+  creadoEn      DateTime  @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([actorId])
+  @@index([creadoEn])
 }
 
 // ===================================================================

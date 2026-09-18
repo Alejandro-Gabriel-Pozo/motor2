@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -34,7 +35,7 @@ export async function crearRol(nombre: string): Promise<ResultadoAccion> {
  *     reasignarlas antes.
  */
 export async function actualizarActivoRol(rolId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("gestion_permisos", async () => {
+  return conPermiso("gestion_permisos", async (ctx) => {
     const rol = await prisma.rol.findUnique({ where: { id: rolId } });
     if (!rol) return error("No se encontró ese rol.");
 
@@ -50,6 +51,14 @@ export async function actualizarActivoRol(rolId: string, activo: boolean): Promi
     }
 
     await prisma.rol.update({ where: { id: rolId }, data: { activo } });
+
+    // Auditoría administrativa (A3, Pivote 6).
+    await registrarCambioAuditado(prisma, {
+      entidad: "Rol", entidadId: rolId, campo: "activo",
+      descripcion: `Rol "${rol.nombre}": activo`,
+      valorAnterior: rol.activo, valorNuevo: activo, actorId: ctx.usuarioId,
+    });
+
     return ok(`Rol "${rol.nombre}" ${activo ? "activado" : "desactivado"}.`);
   });
 }

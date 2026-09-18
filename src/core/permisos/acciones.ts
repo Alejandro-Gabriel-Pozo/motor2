@@ -72,6 +72,7 @@ export const ACCIONES: readonly AccionSemilla[] = [
   // admin en la misma transacción (nunca queda una sucursal sin admin).
   { clave: "alta_sucursal", descripcion: "Dar de alta una sucursal nueva y asignar su primer admin", rolesEditarSemilla: ["admin"] },
   { clave: "pagar_consignante", descripcion: "Registrar un pago a un proveedor de consignación", rolesEditarSemilla: ["admin"] },
+  { clave: "ver_auditoria", descripcion: "Ver el registro de auditoría administrativa (precios y permisos)", rolesEditarSemilla: ["admin"] },
 ] as const;
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];

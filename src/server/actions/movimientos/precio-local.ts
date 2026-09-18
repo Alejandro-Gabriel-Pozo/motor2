@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -25,11 +26,25 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
 
-    await prisma.precioLocalProducto.upsert({
+    const existente = await prisma.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } } });
+    const fila = await prisma.precioLocalProducto.upsert({
       where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
       update: { precio, habilitado },
       create: { sucursalId: ctx.sucursalId, productoId, precio, habilitado },
     });
+
+    // Auditoría administrativa (A3, Pivote 6).
+    await registrarCambioAuditado(prisma, {
+      entidad: "PrecioLocalProducto", entidadId: fila.id, campo: "precio",
+      descripcion: `Precio local de "${producto.nombre}"`,
+      valorAnterior: existente ? Number(existente.precio) : null, valorNuevo: Number(precio), actorId: ctx.usuarioId, sucursalId: ctx.sucursalId,
+    });
+    await registrarCambioAuditado(prisma, {
+      entidad: "PrecioLocalProducto", entidadId: fila.id, campo: "habilitado",
+      descripcion: `Precio local de "${producto.nombre}": habilitado`,
+      valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId: ctx.sucursalId,
+    });
+
     return ok(`Precio local de "${producto.nombre}" ${habilitado ? `fijado en ${precio}` : "cargado (deshabilitado, se usa el precio global)"}.`);
   });
 }

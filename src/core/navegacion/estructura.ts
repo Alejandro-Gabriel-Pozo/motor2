@@ -29,6 +29,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/administracion/permisos", label: "Permisos" },
       { href: "/administracion/capacidades-sucursal", label: "Capacidades por sucursal" },
       { href: "/administracion/sucursales", label: "Sucursales" },
+      { href: "/administracion/auditoria", label: "Auditoría" },
     ],
   },
   {

@@ -212,6 +212,8 @@ Ningún modelo de catálogo/precios/permisos tiene siquiera un `updatedAt` gené
 
 **Pivote 6: CERRADO.** Candidato confirmado: **A1** para el Kardex (ya verificado en Fase 1, sin cambios). Para catálogo/precios/permisos, la evidencia apunta a **A3 — Agregar auditoría administrativa** (como mínimo `actor` + `fecha` + `valor anterior` en los cambios de precio y de permisos, que son los de mayor impacto de negocio/control interno) — pero la decisión final depende de la pregunta de negocio ya registrada (§4): ¿regulatorio o solo control interno? Sin esa respuesta no corresponde diseñar la solución (podría ser tan simple como agregar `actorId`+`updatedAt` a 3-4 modelos, o requerir un historial versionado tipo `RecetaVersion` si hay necesidad de reconstruir valores intermedios).
 
+**Actualización 2026-09-18 — A3 IMPLEMENTADO**: el usuario respondió la pregunta de negocio con "ambos son necesarios" (control interno Y reconstrucción histórica). Se implementó un registro genérico por campo (`RegistroAuditoria` — no versionado de fila completa, ver el razonamiento en el documento nuevo) que cubre los dos alcances con el mismo diseño, sobre los 5 campos de mayor impacto ya identificados (`Producto.precioVenta`/`precioConsignacion`, `PrecioLocalProducto.precio`/`habilitado`, `PermisoRol.puedeEditar`/`puedeVer`, `CapacidadSucursal.habilitado`, `Rol.activo`) + página `/administracion/auditoria` para verlo. Detalle completo, verificación y el paso de deploy pendiente (re-sembrar `Accion`/`PermisoRol`) en `docs/auditoria-motor2-pivote6-auditoria-administrativa-2026-09-18.md`. **Pivote 6 cerrado end-to-end.**
+
 ---
 
 ## 6. Estado consolidado final
@@ -223,7 +225,7 @@ Ningún modelo de catálogo/precios/permisos tiene siquiera un `updatedAt` gené
 | 3. Traspasos en tránsito | VERIFICADO_EN_CODIGO | **Sí** | T1 — Mantener workflow |
 | 4. Precisión numérica | VERIFICADO_EN_CODIGO (casos probados) + umbral definido (cero tolerancia) | No — faltan casos 5-7 y el inventario clasificado | N1 provisional, sujeto a completar los casos restantes bajo el umbral cero-tolerancia |
 | 5. Escalabilidad | FALLO_CONFIRMADO (rendimiento, 2 reportes) | **Sí** | R2 — Optimizar consultas puntuales, no `StockBalance` |
-| 6. Auditoría y trazabilidad | NO_ENCONTRADO (catálogo/precios/permisos) | **Sí** | A1 Kardex (sin cambios) + A3 candidato para administración, pendiente de precisar alcance regulatorio |
+| 6. Auditoría y trazabilidad | NO_ENCONTRADO (catálogo/precios/permisos) | **Sí** | A1 Kardex (sin cambios) + A3 para administración — **IMPLEMENTADO 2026-09-18** (ver `docs/auditoria-motor2-pivote6-auditoria-administrativa-2026-09-18.md`) |
 
 Cuatro de seis pivotes (1, 3, 5, 6) quedan formalmente cerrados con un candidato técnico único y sin ambigüedad. Dos (2 y 4) tienen la decisión de negocio ya resuelta pero requieren completar trabajo técnico (planes de implementación / casos de prueba restantes) antes de poder considerarse cerrados.
 

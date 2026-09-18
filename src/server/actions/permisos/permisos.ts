@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, type AccionClave } from "@/core/permisos/acciones";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -31,7 +32,7 @@ export async function actualizarPermiso(
   puedeEditar: boolean,
   puedeVerInput: boolean
 ): Promise<ResultadoAccion> {
-  return conPermiso("gestion_permisos", async () => {
+  return conPermiso("gestion_permisos", async (ctx) => {
     const [rol, accion] = await Promise.all([
       prisma.rol.findUnique({ where: { id: rolId } }),
       prisma.accion.findUnique({ where: { clave: accionClave } }),
@@ -45,10 +46,23 @@ export async function actualizarPermiso(
     }
     const ver = puedeVerInput || editar; // Ver ⊇ Editar, siempre.
 
-    await prisma.permisoRol.upsert({
+    const existente = await prisma.permisoRol.findUnique({ where: { rolId_accionClave: { rolId, accionClave } } });
+    const fila = await prisma.permisoRol.upsert({
       where: { rolId_accionClave: { rolId, accionClave } },
       update: { puedeEditar: editar, puedeVer: ver },
       create: { rolId, accionClave, puedeEditar: editar, puedeVer: ver },
+    });
+
+    // Auditoría administrativa (A3, Pivote 6).
+    await registrarCambioAuditado(prisma, {
+      entidad: "PermisoRol", entidadId: fila.id, campo: "puedeEditar",
+      descripcion: `Permiso "${accionClave}" del rol "${rol.nombre}": editar`,
+      valorAnterior: existente?.puedeEditar ?? null, valorNuevo: editar, actorId: ctx.usuarioId,
+    });
+    await registrarCambioAuditado(prisma, {
+      entidad: "PermisoRol", entidadId: fila.id, campo: "puedeVer",
+      descripcion: `Permiso "${accionClave}" del rol "${rol.nombre}": ver`,
+      valorAnterior: existente?.puedeVer ?? null, valorNuevo: ver, actorId: ctx.usuarioId,
     });
 
     return ok(`Permisos de "${accionClave}" actualizados para "${rol.nombre}".`);

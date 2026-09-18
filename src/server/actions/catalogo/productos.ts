@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 
@@ -258,7 +259,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * nombre — no hace falta reescribir nada más al renombrar.
  */
 export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async () => {
+  return conPermiso("editar_producto", async (ctx) => {
     const existente = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
@@ -273,8 +274,25 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     const invalido = await validarComun(datos, productoId);
     if (invalido) return error(invalido);
 
-    await prisma.producto.update({ where: { id: productoId }, data: datosParaGuardar(datos) });
-    return ok(`Producto "${texto(datos.nombre)}" actualizado.`);
+    const nuevos = datosParaGuardar(datos);
+    await prisma.producto.update({ where: { id: productoId }, data: nuevos });
+
+    // Auditoría administrativa (A3, Pivote 6) — solo los precios, que son
+    // los campos de mayor impacto de negocio/control interno (ver
+    // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md).
+    const nombreActual = texto(datos.nombre);
+    await registrarCambioAuditado(prisma, {
+      entidad: "Producto", entidadId: productoId, campo: "precioVenta",
+      descripcion: `Producto "${nombreActual}": precio de venta`,
+      valorAnterior: Number(existente.precioVenta), valorNuevo: Number(nuevos.precioVenta), actorId: ctx.usuarioId,
+    });
+    await registrarCambioAuditado(prisma, {
+      entidad: "Producto", entidadId: productoId, campo: "precioConsignacion",
+      descripcion: `Producto "${nombreActual}": precio de consignación`,
+      valorAnterior: Number(existente.precioConsignacion), valorNuevo: Number(nuevos.precioConsignacion), actorId: ctx.usuarioId,
+    });
+
+    return ok(`Producto "${nombreActual}" actualizado.`);
   });
 }
 

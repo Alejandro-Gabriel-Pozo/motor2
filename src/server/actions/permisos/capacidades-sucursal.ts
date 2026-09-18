@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import type { AccionClave } from "@/core/permisos/acciones";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -25,7 +26,7 @@ export async function actualizarCapacidad(
   sucursalId: string | null,
   habilitado: boolean
 ): Promise<ResultadoAccion> {
-  return conPermiso("capacidades_sucursal", async () => {
+  return conPermiso("capacidades_sucursal", async (ctx) => {
     if (accionClave === "capacidades_sucursal") {
       return error("Esta acción no se puede gobernar a sí misma.");
     }
@@ -39,11 +40,19 @@ export async function actualizarCapacidad(
     // (ver schema.prisma, comentario en CapacidadSucursal) — Postgres no
     // la garantiza sola sobre una columna nullable dentro de un @@unique.
     const existente = await prisma.capacidadSucursal.findFirst({ where: { accionClave, sucursalId } });
+    let fila;
     if (existente) {
-      await prisma.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } });
+      fila = await prisma.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } });
     } else {
-      await prisma.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
+      fila = await prisma.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
     }
+
+    // Auditoría administrativa (A3, Pivote 6).
+    await registrarCambioAuditado(prisma, {
+      entidad: "CapacidadSucursal", entidadId: fila.id, campo: "habilitado",
+      descripcion: `Capacidad "${accionClave}"${sucursalId ? "" : " (default)"}`,
+      valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId,
+    });
 
     return ok(`Capacidad de "${accionClave}" actualizada.`);
   });
