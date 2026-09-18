@@ -163,7 +163,7 @@ La versión anterior de este documento marcaba este punto como bloqueado: la ses
 
 **Hallazgo de las ramas del proyecto**: el proyecto tiene 3 branches — `main` (default/primary) está prácticamente vacía (1 `Sucursal`, 0 `Producto`, 2 `User`, 0 `Operacion` — una instancia sin uso real todavía); `demo-pizzeria-la-cuadra` (creada 2026-09-16, a partir de `main`) tiene **479 `Operacion`, 58 con `nroFactura`, 62 de proceso COMPRA** — es la única rama con datos operativos reales; y `respaldo-demo-pizzeria-la-cuadra-2026-09-16`, un backup de esa misma rama. La auditoría se corrió contra `demo-pizzeria-la-cuadra` (`branch_id: br-snowy-bar-afmlmxc7`), por ser la única con datos para auditar.
 
-**Nota de transparencia — no verificada por esta sesión**: el nombre de la rama (`demo-pizzeria-la-cuadra`) sugiere que podría ser un ambiente de demo/piloto para un cliente puntual ("La Cuadra", una pizzería) en vez de tráfico de producción real y continuo — o podría ser, igual de válidamente, el único despliegue real que existe hoy, nombrado así por el cliente que lo usa. Esta sesión no tiene forma de distinguir ambos casos solo con el nombre de la rama. Se reportan los resultados tal cual, pero la validez de "esto es una auditoría de datos reales" para efectos de negocio queda sujeta a que el usuario confirme qué es esa rama.
+**Nota de transparencia — confirmado por el usuario (2026-09-18)**: ~~el nombre de la rama (`demo-pizzeria-la-cuadra`) sugiere que podría ser un ambiente de demo/piloto... o podría ser el único despliegue real que existe hoy~~. Es demo/piloto: un cliente real haciendo de tester a propósito, sabiéndolo — `main` es la que va a usar ese mismo cliente cuando el producto esté terminado. Los 479 `Operacion` de esta auditoría son datos de piloto consentido, no de producción definitiva.
 
 Todas las consultas que siguen fueron **de solo lectura** (`SELECT`), sin ninguna escritura contra ninguna rama.
 
@@ -244,7 +244,7 @@ ORDER BY o.id, m."productoId";
 | Facturas con payload diferente | Query 5 | No aplica — depende de que Query 1 devuelva grupos, y no devolvió ninguno | No aplica |
 | Datos que impedirían el índice parcial | — | **Ninguno** | El `CREATE UNIQUE INDEX CONCURRENTLY` de §9.2 no encontraría ninguna violación sobre los datos actuales de esta rama |
 
-**Conclusión de la auditoría**: sobre los 479 `Operacion` / 62 COMPRA / 58 con número de factura de la rama `demo-pizzeria-la-cuadra`, **no se encontró ningún conflicto en ninguna de las 6 categorías pedidas**. El bloqueo que impedía aplicar la migración del índice de unicidad de factura (§9.2) queda **levantado para esta rama** — sujeto a la salvedad de §5.1 sobre qué representa exactamente esta rama (demo/piloto vs. producción real), que el usuario debe confirmar antes de tratar este resultado como definitivo para la migración real.
+**Conclusión de la auditoría**: sobre los 479 `Operacion` / 62 COMPRA / 58 con número de factura de la rama `demo-pizzeria-la-cuadra`, **no se encontró ningún conflicto en ninguna de las 6 categorías pedidas**. El bloqueo que impedía aplicar la migración del índice de unicidad de factura (§9.2) queda **levantado para esta rama** — es demo/piloto (confirmado por el usuario, §5.1), así que este resultado es válido para el piloto pero no reemplaza correr el mismo query contra `main` cuando esa sea el destino real del deploy.
 
 Si en el futuro se crean más branches o el volumen de datos crece, este mismo query (§5.2) es el que hay que volver a correr antes de aplicar la migración — no es una verificación de una sola vez si la base sigue recibiendo COMPRAs entre ahora y el momento real del deploy.
 
@@ -639,7 +639,7 @@ Conclusión: bajo la política I3, NINGÚN resultado "fallido" se
 | Criterio pedido | Estado |
 |---|---|
 | Plan detallado | Este documento |
-| Resultado de la auditoría de duplicados | **Ejecutada** (§5.1/§5.3) — 0 conflictos en las 6 categorías, sobre la rama `demo-pizzeria-la-cuadra` del proyecto Neon `inventario-api` (confirmado por el usuario como motor2). Salvedad: pendiente de que el usuario confirme si esa rama representa producción real o un ambiente demo/piloto (§5.1). |
+| Resultado de la auditoría de duplicados | **Ejecutada** (§5.1/§5.3) — 0 conflictos en las 6 categorías, sobre la rama `demo-pizzeria-la-cuadra` del proyecto Neon `inventario-api` (confirmado por el usuario como motor2). Esa rama es demo/piloto — confirmado por el usuario (§5.1) — no producción definitiva; `main` es la que se usará cuando el producto esté terminado, con el mismo cliente. |
 | Diseño de schema | §8 |
 | Migración segura | §9.1-9.2 |
 | Estrategia de rollback | §9.4 |
@@ -655,7 +655,7 @@ Conclusión: bajo la política I3, NINGÚN resultado "fallido" se
 
 **Actualización 2026-09-17**: los 9 criterios están resueltos. El usuario confirmó que el proyecto Neon `inventario-api` es motor2; se verificó el schema antes de auditar (coincide exactamente); se encontró que la única rama con datos reales es `demo-pizzeria-la-cuadra` (`main` está vacía); se corrieron los 4 queries aplicables de §5.2 (de solo lectura) contra esa rama — **0 conflictos en las 6 categorías pedidas** (§5.3). El bloqueo de la migración del índice de factura (§9.2) queda levantado para esos datos.
 
-**Único punto que sigue necesitando confirmación del usuario, no de esta sesión**: si `demo-pizzeria-la-cuadra` representa el ambiente de producción real o es un ambiente demo/piloto (§5.1) — la auditoría es válida sobre los datos que existen ahí, pero la sesión no puede determinar por sí sola el estatus de esa rama, y conviene volver a correr el query 1 inmediatamente antes del deploy real si la rama de destino termina siendo otra o si se cargan más compras entretanto.
+**Único punto que sigue necesitando confirmación del usuario, no de esta sesión**: ~~si `demo-pizzeria-la-cuadra` representa el ambiente de producción real o es un ambiente demo/piloto (§5.1)~~ — **confirmado por el usuario (2026-09-18)**: es demo/piloto, con un cliente real (el mismo que va a usar `main` cuando el producto esté terminado) haciendo de tester a propósito, sabiéndolo. `main` queda reservada para cuando el producto esté finalizado, con el mismo cliente. Con esto, la auditoría de §5 es válida como lo que es (datos reales de un piloto consentido, no de producción definitiva) — sigue valiendo la recomendación de volver a correr el query 1 inmediatamente antes de aplicar la migración contra `main` el día que ese sea el destino real, por si se cargaron más compras en el piloto entretanto.
 
 **Hallazgos de diseño nuevos que el plan de implementación deberá incorporar** (no estaban en el borrador original):
 1. Son 6 Server Actions, no 8 (§1).
@@ -663,7 +663,7 @@ Conclusión: bajo la política I3, NINGÚN resultado "fallido" se
 3. La recomendación reconstruir-vs-persistir cambia a "persistir" tras verificar las 6 Server Actions reales (§4.5).
 4. El índice de unicidad pasa a ser global (`claveIdempotencia` sola), no compuesto con `sucursalId`/`proceso` — corrección aplicada tras la evaluación del usuario (§2.2, §11.8).
 5. `payloadHash` debe incluir un identificador explícito de proceso/Server Action, no solo los campos de negocio (§11.2) — necesario para que la garantía del punto 4 sea estructural.
-6. La auditoría de facturas duplicadas (§5) ya se ejecutó contra datos reales — 0 conflictos — sujeta a la salvedad sobre qué es la rama `demo-pizzeria-la-cuadra` (§5.1).
+6. La auditoría de facturas duplicadas (§5) ya se ejecutó contra datos reales — 0 conflictos — sobre `demo-pizzeria-la-cuadra`, confirmado demo/piloto (§5.1), no producción definitiva.
 
 ---
 
