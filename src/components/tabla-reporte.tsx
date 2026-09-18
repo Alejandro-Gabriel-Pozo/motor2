@@ -36,6 +36,8 @@ interface Props<T> {
 export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "Sin datos.", nombreExport, ordenInicial, direccionInicial = "asc" }: Props<T>) {
   const [ordenPor, setOrdenPor] = useState<string | null>(ordenInicial ?? null);
   const [direccion, setDireccion] = useState<"asc" | "desc">(direccionInicial);
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
 
   const filasOrdenadas = useMemo(() => {
     if (!ordenPor) return filas;
@@ -65,30 +67,53 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
   }
 
   async function exportarExcel() {
-    const exportables = columnas.filter((c) => c.valor);
-    // La librería se carga recién al exportar: no pesa en la carga de la página.
-    const { generarExcel } = await import("@/core/excel");
-    const blob = await generarExcel(
-      nombreExport ?? "Reporte",
-      exportables.map((c) => c.etiqueta),
-      filasOrdenadas.map((f) => exportables.map((c) => c.valor!(f)))
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${nombreExport}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    if (exportando) return;
+    setExportando(true);
+    setErrorExport(null);
+    try {
+      const exportables = columnas.filter((c) => c.valor);
+      // La librería se carga recién al exportar: no pesa en la carga de la página.
+      const { generarExcel, nombreDeArchivo } = await import("@/core/excel");
+      const blob = await generarExcel(
+        nombreExport ?? "Reporte",
+        exportables.map((c) => c.etiqueta),
+        filasOrdenadas.map((f) => exportables.map((c) => c.valor!(f)))
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${nombreDeArchivo(nombreExport ?? "reporte")}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      // Caso típico: falla la carga diferida de la librería (red caída, o un deploy nuevo cambió el chunk con la página abierta).
+      console.error("[tabla-reporte] no se pudo exportar a Excel", e);
+      setErrorExport("No se pudo generar el archivo. Recargá la página e intentá de nuevo.");
+    } finally {
+      setExportando(false);
+    }
   }
 
   return (
     <div className="flex flex-col gap-1">
       {nombreExport && (
-        <button type="button" onClick={exportarExcel} className="self-end text-xs text-neutral-500 underline hover:text-neutral-900">
-          Exportar Excel
-        </button>
+        <div className="flex flex-col items-end gap-0.5 self-end">
+          <button
+            type="button"
+            onClick={exportarExcel}
+            disabled={exportando}
+            className="text-xs text-neutral-500 underline hover:text-neutral-900 disabled:cursor-wait disabled:opacity-60"
+          >
+            {exportando ? "Exportando…" : "Exportar Excel"}
+          </button>
+          {errorExport && (
+            <p role="alert" className="text-xs text-red-600">
+              {errorExport}
+            </p>
+          )}
+        </div>
       )}
       <table className="w-full text-sm">
         <thead>
