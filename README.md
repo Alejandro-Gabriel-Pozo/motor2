@@ -52,6 +52,25 @@ limpia con el schema migrado (local o un branch de Neon) antes de correr.
 Verificado: 141/141 tests verdes contra Postgres 16 local (Core + Catálogo +
 Movimientos + Stock + Reportes + Traspasos).
 
+## Tests E2E (navegador real)
+
+`npm run test:e2e` corre Playwright contra `next dev` + Postgres real, con
+sesión de Auth.js real (una fila en `Session`, sin pasar por Google OAuth —
+ver `test/e2e/fixtures/auth.ts`). Complementa, no reemplaza, la suite de
+Vitest: esos tests nunca renderizan el DOM (`environment: "node"`), así que
+hay una clase de bugs — HTML inválido, eventos del navegador, hidratación
+de React — invisible para `tsc`/`eslint`/Vitest. Encontrado así, no por la
+suite existente: un `<form>` anidado dentro de otro `<form>` en los modales
+de alta rápida (`QuickCrearProducto`/`QuickCrear`) que reseteaba el
+formulario exterior entero al crear un producto/categoría inline —
+`npx playwright test --ui` para verlo correr paso a paso.
+
+Levanta `next dev` solo si no está corriendo (`webServer` en
+`playwright.config.ts`). `workers: 1` a propósito — los specs comparten la
+misma base Postgres, sin mocks (mismo criterio que `fileParallelism: false`
+de Vitest); cada spec usa nombres únicos (`Date.now()`) para no chocar
+entre corridas.
+
 ## Pendiente
 
 - Exportación CSV del reporte por período (`exportarReportePeriodoCSV` de

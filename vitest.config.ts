@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
@@ -26,5 +26,10 @@ export default defineConfig({
     // Catálogo Central de prueba real, ver plan). Se corren secuenciales
     // por default para evitar carreras entre tests que comparten tablas.
     fileParallelism: false,
+    // test/e2e/*.spec.ts son specs de Playwright (navegador real, otro
+    // test runner) — matchean el include por defecto de Vitest
+    // (**/*.spec.ts) pero no corren acá; ver playwright.config.ts / `npm
+    // run test:e2e`.
+    exclude: [...configDefaults.exclude, "test/e2e/**"],
   },
 });
