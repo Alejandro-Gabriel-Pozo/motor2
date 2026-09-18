@@ -215,6 +215,8 @@ Ningún archivo de I3 (schema, migraciones, `src/core/movimientos/idempotencia.t
 
 **Ninguno de ESLint.** De `tsc --noEmit`, siguen los 3 archivos ya documentados repetidamente a lo largo de esta auditoría (`scripts/auditoria-benchmark-reportes.ts`, `test/auditoria/precision-costos-precios-reversiones.test.ts`, `test/auditoria/traspasos-en-transito.test.ts`) — deliberadamente fuera de alcance de esta tarea (son errores de TypeScript, no de ESLint, y el pedido fue específicamente sobre la deuda de ESLint + el flake de C2).
 
+**Actualización 2026-09-17 (más tarde, mismo día) — resuelto en commit `f13f6fc`**: los 3 errores de TypeScript de arriba bloqueaban `next build` (que corre su propio typecheck sobre todo lo que entra en `tsconfig.json`, incluyendo `scripts/` y `test/`) en cada deploy de Vercel desde que se agregó `prisma migrate deploy` al build — se arreglaron ese mismo día, ya fuera de esta tarea puntual pero antes de que este documento se cerrara. Verificado de nuevo el 2026-09-18: `tsc --noEmit` sobre todo el repo da **0 errores**.
+
 ### Criterio para considerar la deuda cerrada
 
 - **Flake de C2**: NO cerrado. Se cierra solo cuando se capture el error real de una futura reproducción (o se confirme, con evidencia, que jamás vuelve a ocurrir tras un número mucho mayor de corridas en producción/CI real). Mientras tanto, permanece como riesgo conocido y documentado, sin código nuevo que lo enmascare.
