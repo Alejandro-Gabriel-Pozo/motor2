@@ -20,16 +20,33 @@ export const TIPO_MIME_XLSX = "application/vnd.openxmlformats-officedocument.spr
 const ANCHO_MINIMO = 8;
 const ANCHO_MAXIMO = 60;
 
-/** Excel no admite `[ ] : * ? / \` en el nombre de una hoja, ni más de 31 caracteres. */
+/** Máximo de caracteres por celda de Excel. La librería no lo valida: una celda más larga genera un archivo que Excel rechaza o "repara". */
+const LIMITE_CELDA = 32767;
+
+/**
+ * Excel no admite `[ ] : * ? / \` en el nombre de una hoja, ni más de 31 caracteres,
+ * ni un apóstrofo al principio o al final (y `'` está permitido en los nombres de catálogo).
+ */
 export function nombreDeHoja(nombre: string): string {
-  const limpio = nombre.replace(/[[\]:*?/\\]/g, " ").trim().slice(0, 31);
+  const limpio = nombre
+    .replace(/[[\]:*?/\\]/g, " ")
+    .trim()
+    .slice(0, 31)
+    .replace(/^'+|'+$/g, "")
+    .trim();
   return limpio || "Reporte";
+}
+
+/** Nombre de archivo seguro: sin los caracteres que Windows no admite (`\ / : * ? " < > |`). Los `nombreExport` incluyen datos de usuario (categoría, proveedor). */
+export function nombreDeArchivo(nombre: string): string {
+  const limpio = nombre.replace(/[\\/:*?"<>|]/g, "-").trim().slice(0, 120);
+  return limpio || "reporte";
 }
 
 function celda(valor: CeldaExcel) {
   if (valor === null || valor === undefined || valor === "") return null;
   if (typeof valor === "number") return Number.isFinite(valor) ? { value: valor, type: Number } : null;
-  return { value: valor, type: String };
+  return { value: valor.length > LIMITE_CELDA ? `${valor.slice(0, LIMITE_CELDA - 1)}…` : valor, type: String };
 }
 
 function largo(valor: CeldaExcel): number {
