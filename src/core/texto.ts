@@ -38,5 +38,9 @@ export function validarTextoCatalogo(valor: unknown, etiquetaCampo: string): str
   if (!RE_TEXTO_CATALOGO.test(v)) {
     return `${etiquetaCampo} tiene caracteres no permitidos. Se admiten letras, números, espacios y - . , ( ) % & / '`;
   }
+  // El "-" es el único disparador de fórmula de planilla (= + - @) que el charset de arriba deja pasar: un nombre
+  // como "-A1" o "-SUM(1,2)" se evaluaría si se pega o se importa en una planilla. El export a Excel (src/core/excel.ts)
+  // ya guarda los textos como texto: esto es defensa en profundidad.
+  if (v.startsWith("-")) return `${etiquetaCampo} no puede empezar con "-".`;
   return null;
 }
