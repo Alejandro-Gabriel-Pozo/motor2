@@ -4,7 +4,7 @@ import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { EventoHistorialProducto } from "@/core/reportes/historial-producto";
 
 const COLUMNAS: ColumnaReporte<EventoHistorialProducto>[] = [
-  { clave: "fecha", etiqueta: "Fecha", valor: (ev) => ev.fecha.toISOString().slice(0, 10), render: (ev) => ev.fecha.toISOString().slice(0, 10) },
+  { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (ev) => ev.fecha.toISOString().slice(0, 10), render: (ev) => ev.fecha.toISOString().slice(0, 10) },
   { clave: "tipo", etiqueta: "Tipo", valor: (ev) => (ev.tipo === "movimiento" ? (ev.proceso ?? "") : "Conteo"), render: (ev) => (ev.tipo === "movimiento" ? ev.proceso : "Conteo") },
   { clave: "detalle", etiqueta: "Detalle", valor: (ev) => ev.detalle, render: (ev) => ev.detalle },
   { clave: "seccion", etiqueta: "Sección", valor: (ev) => ev.seccionNombre, render: (ev) => ev.seccionNombre },

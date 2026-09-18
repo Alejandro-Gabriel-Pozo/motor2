@@ -5,7 +5,7 @@ import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { OperacionEncontrada, ItemOperacion } from "@/core/reportes/trazabilidad";
 
 const COLUMNAS_ENCONTRADAS: ColumnaReporte<OperacionEncontrada>[] = [
-  { clave: "fecha", etiqueta: "Fecha", valor: (e) => e.fecha.toISOString().slice(0, 10), render: (e) => e.fecha.toISOString().slice(0, 10) },
+  { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (e) => e.fecha.toISOString().slice(0, 10), render: (e) => e.fecha.toISOString().slice(0, 10) },
   { clave: "proceso", etiqueta: "Proceso", valor: (e) => e.proceso, render: (e) => e.proceso },
   { clave: "seccion", etiqueta: "Sección", valor: (e) => e.seccionNombre, render: (e) => e.seccionNombre },
   {

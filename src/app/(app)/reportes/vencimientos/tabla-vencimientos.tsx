@@ -22,7 +22,7 @@ const COLUMNAS_LOTES: ColumnaReporte<FilaLote>[] = [
     ),
   },
   { clave: "seccion", etiqueta: "Sección", valor: (l) => l.seccionNombre, render: (l) => l.seccionNombre },
-  { clave: "vence", etiqueta: "Vence", valor: (l) => l.loteVencimiento.toISOString().slice(0, 10), render: (l) => l.loteVencimiento.toISOString().slice(0, 10) },
+  { clave: "vence", etiqueta: "Vence", tipoFecha: "dia", valor: (l) => l.loteVencimiento.toISOString().slice(0, 10), render: (l) => l.loteVencimiento.toISOString().slice(0, 10) },
   {
     clave: "dias",
     etiqueta: "Días",
@@ -36,7 +36,7 @@ const COLUMNAS_LOTES: ColumnaReporte<FilaLote>[] = [
 const COLUMNAS_CONCILIACION: ColumnaReporte<FilaConciliacion>[] = [
   { clave: "producto", etiqueta: "Producto", valor: (c) => c.productoNombre, render: (c) => c.productoNombre },
   { clave: "seccion", etiqueta: "Sección", valor: (c) => c.seccionNombre, render: (c) => c.seccionNombre },
-  { clave: "lote", etiqueta: "Lote", valor: (c) => c.loteVencimiento.toISOString().slice(0, 10), render: (c) => c.loteVencimiento.toISOString().slice(0, 10) },
+  { clave: "lote", etiqueta: "Lote", tipoFecha: "dia", valor: (c) => c.loteVencimiento.toISOString().slice(0, 10), render: (c) => c.loteVencimiento.toISOString().slice(0, 10) },
   { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (c) => c.cantidadDesaparecida, render: (c) => c.cantidadDesaparecida },
   {
     clave: "periodo",

@@ -11,7 +11,7 @@ const ETIQUETA_DESTINO_CONSUMO = new Map<string, string>(DESTINOS_CONSUMO.map((d
 
 function columnas(etiquetaMotivo: Map<string, string>): ColumnaReporte<FilaPerdida>[] {
   return [
-    { clave: "fecha", etiqueta: "Fecha", valor: (f) => f.fecha.toISOString().slice(0, 10), render: (f) => f.fecha.toISOString().slice(0, 10) },
+    { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (f) => f.fecha.toISOString().slice(0, 10), render: (f) => f.fecha.toISOString().slice(0, 10) },
     {
       clave: "motivo",
       etiqueta: "Motivo",

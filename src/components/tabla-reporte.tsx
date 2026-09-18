@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { AyudaIcono } from "@/components/ayuda-campo";
+// Solo el tipo (se borra al compilar): importar el módulo de verdad traería la librería de Excel a la carga inicial.
+import type { TipoFecha } from "@/core/excel";
 
 export interface ColumnaReporte<T> {
   clave: string;
@@ -9,6 +11,8 @@ export interface ColumnaReporte<T> {
   render: (fila: T) => React.ReactNode;
   /** Si se da, la columna ordena Y este valor entra al Excel exportado. Si no, la columna queda fija (ej. una columna de link/acción). */
   valor?: (fila: T) => string | number | null;
+  /** Si se da, el `valor` (texto ISO) se exporta a Excel como una fecha real y no como texto. El orden sigue usando el texto ISO. Ver `TipoFecha`. */
+  tipoFecha?: TipoFecha;
   alinear?: "derecha";
   /** Icono "?" junto al header, para explicar un criterio no obvio (ej. cómo se calcula un estado) sin ocupar espacio permanente. */
   ayuda?: string;
@@ -77,7 +81,8 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
       const blob = await generarExcel(
         nombreExport ?? "Reporte",
         exportables.map((c) => c.etiqueta),
-        filasOrdenadas.map((f) => exportables.map((c) => c.valor!(f)))
+        filasOrdenadas.map((f) => exportables.map((c) => c.valor!(f))),
+        exportables.map((c) => c.tipoFecha)
       );
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

@@ -25,6 +25,7 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
   {
     clave: "ultimoAjuste",
     etiqueta: "Último ajuste",
+    tipoFecha: "dia",
     valor: (f) => (f.ultimaFechaAjuste ? f.ultimaFechaAjuste.toISOString().slice(0, 10) : ""),
     render: (f) => (f.ultimaFechaAjuste ? f.ultimaFechaAjuste.toISOString().slice(0, 10) : "—"),
   },
@@ -32,6 +33,7 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
   {
     clave: "ultimoConteo",
     etiqueta: "Último conteo",
+    tipoFecha: "dia",
     valor: (f) => (f.ultimaFechaConteo ? f.ultimaFechaConteo.toISOString().slice(0, 10) : ""),
     render: (f) => (f.ultimaFechaConteo ? f.ultimaFechaConteo.toISOString().slice(0, 10) : "—"),
   },

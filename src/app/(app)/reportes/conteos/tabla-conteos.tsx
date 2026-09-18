@@ -18,7 +18,7 @@ export interface FilaConteo {
 }
 
 const COLUMNAS: ColumnaReporte<FilaConteo>[] = [
-  { clave: "fecha", etiqueta: "Fecha", valor: (c) => c.fecha.toISOString().slice(0, 10), render: (c) => c.fecha.toISOString().slice(0, 10) },
+  { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (c) => c.fecha.toISOString().slice(0, 10), render: (c) => c.fecha.toISOString().slice(0, 10) },
   {
     clave: "producto",
     etiqueta: "Producto",

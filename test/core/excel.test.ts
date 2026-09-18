@@ -10,8 +10,13 @@ async function abrir(blob: Blob) {
     hoja: strFromU8(zip["xl/worksheets/sheet1.xml"]),
     textos: strFromU8(zip["xl/sharedStrings.xml"]),
     libro: strFromU8(zip["xl/workbook.xml"]),
+    estilos: strFromU8(zip["xl/styles.xml"]),
   };
 }
+
+/** Número de serie de Excel de un instante (1970-01-01 = 25569), leyendo el reloj en UTC. */
+const serie = (ms: number) => ms / 86_400_000 + 25_569;
+const valorDe = (hoja: string, celda: string) => Number(hoja.match(new RegExp(`<c r="${celda}"[^>]*><v>([^<]+)</v>`))?.[1]);
 
 const ETIQUETAS = ["Producto", "Precio venta", "Costo", "Estado"];
 
@@ -80,6 +85,58 @@ describe("generarExcel", () => {
   it("la hoja lleva el nombre pedido, saneado", async () => {
     const { libro } = await abrir(await generarExcel("costos: y/márgenes [x]", ["a"], [["b"]]));
     expect(libro).toContain('name="costos  y márgenes  x"');
+  });
+});
+
+describe("generarExcel — columnas de fecha", () => {
+  it("un 'dia' (YYYY-MM-DD) se guarda como fecha real: número de serie entero, formato dd/mm/yyyy, no como texto", async () => {
+    const { hoja, estilos } = await abrir(await generarExcel("X", ["Fecha"], [["2026-09-18"]], ["dia"]));
+    expect(valorDe(hoja, "A2")).toBe(serie(Date.UTC(2026, 8, 18)));
+    expect(Number.isInteger(valorDe(hoja, "A2"))).toBe(true);
+    expect(hoja).not.toMatch(/<c r="A2"[^>]*t="s"/);
+    expect(estilos).toContain('formatCode="dd/mm/yyyy"');
+  });
+
+  it("un 'fechaHora' se guarda con la hora LOCAL (la que muestra la pantalla), sin importar el huso horario de la máquina", async () => {
+    const local = new Date(2026, 8, 18, 15, 30); // 18/09/2026 15:30 en el huso de esta máquina
+    const { hoja, estilos } = await abrir(await generarExcel("X", ["Fecha"], [[local.toISOString()]], ["fechaHora"]));
+    expect(valorDe(hoja, "A2")).toBeCloseTo(serie(Date.UTC(2026, 8, 18, 15, 30)), 6);
+    expect(estilos).toContain('formatCode="dd/mm/yyyy hh:mm"');
+  });
+
+  it.each([
+    ["dia", "2026-13-45"],
+    ["dia", "18/09/2026"],
+    ["dia", "2026-09-18T10:00:00.000Z"],
+    ["fechaHora", "no-es-una-fecha"],
+  ] as const)("una columna %s con un texto que no es una fecha válida (%s) se exporta como texto, sin romper", async (tipo, texto) => {
+    const { hoja, textos } = await abrir(await generarExcel("X", ["Fecha"], [[texto]], [tipo]));
+    expect(hoja).toMatch(/<c r="A2"[^>]*t="s"/);
+    expect(textos).toContain(`<t>${texto}</t>`);
+  });
+
+  it("una fecha vacía ('' o null) no genera celda", async () => {
+    const { hoja } = await abrir(await generarExcel("X", ["a", "b"], [["", null]], ["dia", "fechaHora"]));
+    expect(hoja).not.toContain('r="A2"');
+    expect(hoja).not.toContain('r="B2"');
+  });
+
+  it("sin `tiposFecha` un texto ISO se queda como texto (la conversión es explícita, no una heurística)", async () => {
+    const { hoja, textos } = await abrir(await generarExcel("X", ["Fecha"], [["2026-09-18"]]));
+    expect(hoja).toMatch(/<c r="A2"[^>]*t="s"/);
+    expect(textos).toContain("<t>2026-09-18</t>");
+  });
+
+  it("un number en una columna marcada como fecha queda como número", async () => {
+    const { hoja } = await abrir(await generarExcel("X", ["a"], [[42]], ["dia"]));
+    expect(hoja).toContain('<c r="A2"><v>42</v></c>');
+  });
+
+  it("solo se convierten las columnas marcadas: las demás de la misma fila no se tocan", async () => {
+    const { hoja, textos } = await abrir(await generarExcel("X", ["Producto", "Vence", "Cantidad"], [["Leche", "2026-09-18", 3]], [undefined, "dia", undefined]));
+    expect(textos).toContain("<t>Leche</t>");
+    expect(valorDe(hoja, "B2")).toBe(serie(Date.UTC(2026, 8, 18)));
+    expect(hoja).toContain('<c r="C2"><v>3</v></c>');
   });
 });
 
