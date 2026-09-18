@@ -234,6 +234,42 @@ describe("obtenerReportePorPeriodo", () => {
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
     expect(rep.tendenciaPrecios).toEqual([]);
   });
+
+  it("digest queda vacío sin ninguna señal (sin compras/ventas en el período)", async () => {
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+    expect(rep.digest).toEqual([]);
+  });
+
+  it("digest prioriza el dato sospechoso primero, y nombra el insumo", async () => {
+    const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
+    const mpSal = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg antes
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — sospechoso
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+
+    expect(rep.digest.length).toBeGreaterThan(0);
+    expect(rep.digest[0]!.severidad).toBe("alta");
+    expect(rep.digest[0]!.texto).toContain("Sal");
+  });
+
+  it("digest nombra el plato más golpeado cuando un cambio de precio le pega a una receta", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"));
+
+    expect(rep.digest.some((a) => a.texto.includes("Pan Especial"))).toBe(true);
+  });
+
+  it("digest nunca tiene más de 5 alertas", async () => {
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+    expect(rep.digest.length).toBeLessThanOrEqual(5);
+  });
 });
 
 describe("generarReporteVentasPorCategoria", () => {

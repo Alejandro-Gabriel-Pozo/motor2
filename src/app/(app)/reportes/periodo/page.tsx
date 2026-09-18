@@ -2,6 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
 import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
+import { DigestAlertas } from "./digest-alertas";
 import { AyudaIcono } from "@/components/ayuda-campo";
 
 function primerDiaDelMesISO() {
@@ -39,6 +40,8 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
           </button>
         </form>
       </div>
+
+      <DigestAlertas alertas={rep.digest} />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">
