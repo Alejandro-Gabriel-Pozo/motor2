@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaMargenProducto, FilaCompraPorProveedor, FilaGastoPorInsumo } from "@/core/reportes/periodo";
+import type { FilaMargenProducto, FilaCompraPorProveedor, FilaGastoPorInsumo, FilaPrecioInsumo } from "@/core/reportes/periodo";
 
 const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   {
@@ -112,6 +112,82 @@ export function TablaGastoPorInsumo({ filas }: { filas: FilaGastoPorInsumo[] }) 
       nombreExport="gasto-por-insumo"
       ordenInicial="importe"
       direccionInicial="desc"
+    />
+  );
+}
+
+function claseDelta(delta: number | null): string {
+  if (delta === null) return "text-neutral-400";
+  if (delta > 0) return "text-red-600";
+  if (delta < 0) return "text-green-700";
+  return "";
+}
+
+const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
+  {
+    clave: "insumo",
+    etiqueta: "Insumo",
+    valor: (f) => f.insumo,
+    render: (f) => (
+      <span className="flex items-center gap-1">
+        {f.insumo}
+        {f.sospechoso && (
+          <span title="Variación poco creíble para una suba real de precio — probable error de carga (unidad/presentación mal tipeada). Revisá esta compra antes de asumir que es un aumento real." className="text-amber-600">
+            ⚠
+          </span>
+        )}
+      </span>
+    ),
+  },
+  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-neutral-400">Sin categoría</span> },
+  {
+    clave: "precioActual",
+    etiqueta: "$/unidad este período",
+    alinear: "derecha",
+    valor: (f) => f.precioUnitarioPromedio,
+    render: (f) => `$${f.precioUnitarioPromedio.toLocaleString("es-AR")}`,
+    ayuda: "Promedio ponderado por cantidad de todas las compras de este insumo en el período elegido.",
+  },
+  {
+    clave: "precioAnterior",
+    etiqueta: "$/unidad antes",
+    alinear: "derecha",
+    valor: (f) => f.precioUnitarioAnterior,
+    render: (f) => (f.precioUnitarioAnterior !== null ? `$${f.precioUnitarioAnterior.toLocaleString("es-AR")}` : <span className="text-neutral-400">primera compra</span>),
+    ayuda: "Precio de la última compra de este insumo ANTES de que empezara el período elegido — el punto de comparación.",
+  },
+  {
+    clave: "deltaPct",
+    etiqueta: "Δ%",
+    alinear: "derecha",
+    valor: (f) => f.deltaPct,
+    render: (f) => (f.deltaPct !== null ? <span className={claseDelta(f.deltaPct)}>{f.deltaPct > 0 ? "+" : ""}{f.deltaPct}%</span> : <span className="text-neutral-400">—</span>),
+  },
+  {
+    clave: "impacto",
+    etiqueta: "Impacto del cambio",
+    alinear: "derecha",
+    valor: (f) => f.deltaImpacto,
+    render: (f) =>
+      f.deltaImpacto !== null ? (
+        <span className={claseDelta(f.deltaImpacto)}>
+          {f.deltaImpacto > 0 ? "+" : ""}${f.deltaImpacto.toLocaleString("es-AR")}
+        </span>
+      ) : (
+        <span className="text-neutral-400">—</span>
+      ),
+    ayuda: "(precio de este período − precio anterior) × cantidad comprada — lo que ese cambio de precio realmente costó (o ahorró) a la cantidad que compraste. Ordena la tabla por esto, no por %: un insumo barato que sube mucho puede pesar menos que uno caro con una suba moderada.",
+  },
+];
+
+export function TablaPrecioPorInsumo({ filas }: { filas: FilaPrecioInsumo[] }) {
+  return (
+    <TablaReporte
+      columnas={COLUMNAS_PRECIO_INSUMO}
+      filas={filas}
+      claveFila={(f) => f.insumo}
+      sinFilasTexto="Sin compras en el período."
+      nombreExport="precio-por-insumo"
     />
   );
 }

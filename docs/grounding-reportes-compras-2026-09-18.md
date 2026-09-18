@@ -95,7 +95,7 @@ Software específico de gastronomía (xtraCHEF/Toast, Restaurant365, MarketMan, 
 |---|---|---|---|
 | 0 | Ratio gasto insumos/ventas del período, vs. período anterior, con el caveat "compras ≠ costo" | Muy bajo | **Pendiente — subió de prioridad, es más barato que el 1 y ya implementado** |
 | 1 | Gasto por insumo/grupo (agregar corte Pareto 80/20 + % sobre el total a lo ya construido) | Bajo | **Implementado (2026-09-18)**, falta el corte Pareto |
-| 2 | Precio por unidad + Δ% vs. compra anterior + **Δ$ de impacto (ponderado por volumen)**, ordenado por impacto — con guardarraíl de anomalías (mínimo de observaciones, no solo excluir $0) | Medio | Pendiente — reemplaza al paso 2 original, ahora con la ponderación |
+| 2 | Precio por unidad + Δ% vs. compra anterior + **Δ$ de impacto (ponderado por volumen)**, ordenado por impacto — con guardarraíl de anomalías (mínimo de observaciones, no solo excluir $0) | Medio | **Implementado (2026-09-18)** — `calcularTendenciaPreciosDelPeriodo`, tabla "Precio y tendencia por insumo" en `/reportes/periodo`. Guardarraíl: variación >200% se marca `sospechoso` (probable error de carga) en vez de mostrarse como un hecho. Excluye a propósito el bucket "Sin insumo asignado" (no tiene sentido promediar precios de productos sin relación). |
 | 3 | Digest de 3-5 alertas fijas arriba del reporte (sin configuración) | Bajo, si el 2 existe | Pendiente |
 | 4 | Impacto en recetas/platos (qué platos usa el insumo que subió, cuánto les sube el costo/food cost %) | Medio-alto | Pendiente — nuevo, no estaba en la v1 |
 | 5 | Comparación contra el índice de carta propio (primario) + IPC Alimentos (secundario, en vez de IPC general) | Medio | Pendiente — reemplaza al paso 3 original |

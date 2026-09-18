@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { Proceso } from "@prisma/client";
 import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
-import { construirMapaProductos, redondearCantidad, type Db } from "./comun";
+import { construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
 import { calcularCostosYMargenes } from "./costos";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
 import { cargarSerieIPC, resolverCoeficienteIPC } from "./indices-economicos";
@@ -133,9 +133,10 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   const compras = calcularComprasDelPeriodo(items);
   const gastoPorInsumo = await calcularGastoPorInsumoDelPeriodo(sucursalId, items, db);
   const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, ventas.totalFacturado, db);
+  const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, db);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
 
-  return { total: items.length, items, resumen, desde, hasta, ventas, compras, gastoPorInsumo, ratioGastoVentas, margen };
+  return { total: items.length, items, resumen, desde, hasta, ventas, compras, gastoPorInsumo, ratioGastoVentas, tendenciaPrecios, margen };
 }
 
 export interface RatioGastoVentas {
@@ -322,6 +323,117 @@ async function calcularGastoPorInsumoDelPeriodo(sucursalId: string, items: ItemP
     .sort((a, b) => b.importe - a.importe);
 
   return { porInsumo: porInsumoLista, porGrupo: porGrupoLista };
+}
+
+export interface FilaPrecioInsumo {
+  insumo: string;
+  grupo: string | null;
+  /** $ por unidad de stock, promedio ponderado por cantidad de las compras del período. */
+  precioUnitarioPromedio: number;
+  cantidadComprada: number;
+  /** Precio unitario de la última Compra de este insumo ANTES de que empezara el período — null si nunca se compró antes (primera vez) o esa compra no tenía precio real. */
+  precioUnitarioAnterior: number | null;
+  deltaPct: number | null;
+  /** (precioUnitarioPromedio - precioUnitarioAnterior) × cantidadComprada — lo que realmente costó (o ahorró) el cambio de precio, a la cantidad que efectivamente se compró. Esto es lo que ordena la lista, no el %. */
+  deltaImpacto: number | null;
+  /** |deltaPct| pasa un umbral poco creíble para una suba real de precio — más probable un error de carga (unidad/presentación mal tipeada) que una suba genuina. Se muestra igual, marcado, en vez de ocultarlo o de tratarlo como un hecho. */
+  sospechoso: boolean;
+}
+
+const UMBRAL_VARIACION_SOSPECHOSA_PCT = 200;
+
+/**
+ * Precio anterior a `desde` de cada insumo — el más reciente de TODAS sus
+ * Compras previas (cualquier producto de ese Insumo), sin importar cuánto
+ * tiempo pasó. Una sola consulta ordenada por fecha desc + quedarse con la
+ * primera aparición de cada insumo en JS (evita 1 query por insumo).
+ */
+async function obtenerPrecioAnteriorPorInsumo(
+  sucursalId: string,
+  desde: Date,
+  productos: Map<string, InfoProductoReporte>,
+  insumosDelPeriodo: Set<string>,
+  db: Db
+): Promise<Map<string, number>> {
+  const productoIdsRelevantes = Array.from(productos.entries())
+    .filter(([, info]) => info.insumoNombre && insumosDelPeriodo.has(info.insumoNombre))
+    .map(([id]) => id);
+  if (!productoIdsRelevantes.length) return new Map();
+
+  const previas = await db.movimientoStock.findMany({
+    where: { productoId: { in: productoIdsRelevantes }, proceso: "COMPRA", seccion: { sucursalId }, operacion: { fecha: { lt: desde } } },
+    select: { productoId: true, precioTotal: true, cantidad: true },
+    orderBy: { operacion: { fecha: "desc" } },
+  });
+
+  const precioAnteriorPorInsumo = new Map<string, number>();
+  for (const m of previas) {
+    const insumo = productos.get(m.productoId)?.insumoNombre;
+    if (!insumo || precioAnteriorPorInsumo.has(insumo)) continue; // ya se guardó la más reciente de ese insumo (viene ordenado desc)
+    const cantidad = Number(m.cantidad);
+    const precioTotal = Number(m.precioTotal);
+    if (cantidad > 0 && precioTotal > 0) precioAnteriorPorInsumo.set(insumo, precioTotal / cantidad);
+  }
+  return precioAnteriorPorInsumo;
+}
+
+/**
+ * "¿Estoy pagando más que antes?" — paso 2 del grounding (segunda pasada,
+ * docs/grounding-reportes-compras-2026-09-18.md §5): a diferencia de una
+ * primera versión que hubiera ordenado por % de variación, esto ordena
+ * por IMPACTO EN $ (Δprecio × cantidad comprada) — un insumo barato que
+ * sube 60% puede pesar menos que uno caro que sube 7%, y el % solo
+ * confunde esa comparación. Excluye "Sin insumo asignado" a propósito:
+ * promediar el precio de productos sin relación entre sí no tiene
+ * sentido (a diferencia de `calcularGastoPorInsumoDelPeriodo`, que sí
+ * necesita un bucket para eso porque ahí solo suma $, no compara precios).
+ */
+async function calcularTendenciaPreciosDelPeriodo(sucursalId: string, desde: Date, items: ItemPeriodo[], db: Db): Promise<FilaPrecioInsumo[]> {
+  const productos = await construirMapaProductos(sucursalId, db);
+  const porInsumo = new Map<string, { grupo: string | null; sumaPrecioTotal: number; sumaCantidad: number }>();
+
+  for (const r of items) {
+    if (r.proceso !== "COMPRA") continue;
+    if (!(r.cantidad > 0) || r.precioTotal <= 0) continue; // sin cantidad o sin precio no aporta un precio unitario real
+    const info = productos.get(r.productoId);
+    const insumo = info?.insumoNombre;
+    if (!insumo) continue;
+
+    if (!porInsumo.has(insumo)) porInsumo.set(insumo, { grupo: info.grupoNombre, sumaPrecioTotal: 0, sumaCantidad: 0 });
+    const acc = porInsumo.get(insumo)!;
+    acc.sumaPrecioTotal += r.precioTotal;
+    acc.sumaCantidad += r.cantidad;
+  }
+
+  const preciosAnteriores = await obtenerPrecioAnteriorPorInsumo(sucursalId, desde, productos, new Set(porInsumo.keys()), db);
+
+  const filas: FilaPrecioInsumo[] = Array.from(porInsumo.entries()).map(([insumo, v]) => {
+    const precioUnitarioPromedio = redondearMoneda(v.sumaPrecioTotal / v.sumaCantidad);
+    const precioUnitarioAnterior = preciosAnteriores.get(insumo) ?? null;
+
+    let deltaPct: number | null = null;
+    let deltaImpacto: number | null = null;
+    let sospechoso = false;
+    if (precioUnitarioAnterior !== null && precioUnitarioAnterior > 0) {
+      deltaPct = Math.round(((precioUnitarioPromedio - precioUnitarioAnterior) / precioUnitarioAnterior) * 1000) / 10;
+      deltaImpacto = redondearMoneda((precioUnitarioPromedio - precioUnitarioAnterior) * v.sumaCantidad);
+      sospechoso = Math.abs(deltaPct) > UMBRAL_VARIACION_SOSPECHOSA_PCT;
+    }
+
+    return {
+      insumo,
+      grupo: v.grupo,
+      precioUnitarioPromedio,
+      cantidadComprada: redondearCantidad(v.sumaCantidad),
+      precioUnitarioAnterior: precioUnitarioAnterior !== null ? redondearMoneda(precioUnitarioAnterior) : null,
+      deltaPct,
+      deltaImpacto,
+      sospechoso,
+    };
+  });
+
+  filas.sort((a, b) => Math.abs(b.deltaImpacto ?? 0) - Math.abs(a.deltaImpacto ?? 0));
+  return filas;
 }
 
 export interface FilaVentaProducto {

@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
-import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo } from "./tabla-periodo";
+import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { AyudaIcono } from "@/components/ayuda-campo";
 
@@ -107,6 +107,14 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
         <div className="mt-3">
           <TablaGastoPorInsumo filas={rep.gastoPorInsumo.porInsumo} />
         </div>
+      </div>
+
+      <div>
+        <h2 className="mb-1 flex items-center text-sm font-medium">
+          ¿Estoy pagando más que antes? Precio y tendencia por insumo
+          <AyudaIcono texto="Compara el precio pagado en este período contra el precio de la última compra anterior de cada insumo, ordenado por cuánto costó (o ahorró) ese cambio a la cantidad que realmente compraste — no por el % de variación, que puede engañar entre insumos baratos y caros." />
+        </h2>
+        <TablaPrecioPorInsumo filas={rep.tendenciaPrecios} />
       </div>
     </div>
   );

@@ -176,6 +176,64 @@ describe("obtenerReportePorPeriodo", () => {
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
     expect(rep.ratioGastoVentas.porcentaje).toBeNull();
   });
+
+  it("tendenciaPrecios ordena por impacto en $, no por %: un insumo caro con suba moderada pesa más que uno barato con suba grande", async () => {
+    const barato = await prisma.insumo.create({ data: { nombre: "Orégano" } });
+    const mpBarato = await prisma.producto.create({ data: { codigo: "MP_OREGANO", nombre: "Orégano", tipo: "MP", unidadStockId: unidadKgId, insumoId: barato.id } });
+    const caro = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
+    const mpCaro = await prisma.producto.create({ data: { codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id } });
+
+    // Orégano: $10/kg -> $20/kg dentro del período (+100%, pero solo 1kg -> impacto $10).
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpBarato.id, cantidad: 1, precioTotal: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpBarato.id, cantidad: 1, precioTotal: 20 }] });
+
+    // Muzzarella: $1000/kg -> $1100/kg dentro del período (+10%, pero 50kg -> impacto $5000).
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"));
+
+    expect(rep.tendenciaPrecios.map((f) => f.insumo)).toEqual(["Muzzarella", "Orégano"]); // el impacto en $ manda, no el %
+    const muzza = rep.tendenciaPrecios[0]!;
+    expect(muzza.precioUnitarioAnterior).toBe(1000);
+    expect(muzza.precioUnitarioPromedio).toBe(1100);
+    expect(muzza.deltaPct).toBe(10);
+    expect(muzza.deltaImpacto).toBe(5000);
+
+    const oregano = rep.tendenciaPrecios[1]!;
+    expect(oregano.deltaPct).toBe(100);
+    expect(oregano.deltaImpacto).toBe(10);
+  });
+
+  it("tendenciaPrecios: primera compra de un insumo da delta null (no hay con qué comparar); una variación poco creíble se marca sospechosa", async () => {
+    const insumoNuevo = await prisma.insumo.create({ data: { nombre: "Insumo nuevo" } });
+    const mpNuevo = await prisma.producto.create({ data: { codigo: "MP_NUEVO", nombre: "Insumo nuevo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoNuevo.id } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpNuevo.id, cantidad: 1, precioTotal: 100 }] });
+
+    const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
+    const mpSal = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg, antes del período
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — +4900%, probable error de carga
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+
+    const nuevo = rep.tendenciaPrecios.find((f) => f.insumo === "Insumo nuevo")!;
+    expect(nuevo.precioUnitarioAnterior).toBeNull();
+    expect(nuevo.deltaPct).toBeNull();
+    expect(nuevo.deltaImpacto).toBeNull();
+    expect(nuevo.sospechoso).toBe(false);
+
+    const sal = rep.tendenciaPrecios.find((f) => f.insumo === "Sal")!;
+    expect(sal.sospechoso).toBe(true);
+  });
+
+  it("tendenciaPrecios excluye productos sin Insumo asignado (mezclar precios sin relación no tiene sentido)", async () => {
+    const mpSuelto = await prisma.producto.create({ data: { codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSuelto.id, cantidad: 1, precioTotal: 50 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+    expect(rep.tendenciaPrecios).toEqual([]);
+  });
 });
 
 describe("generarReporteVentasPorCategoria", () => {
