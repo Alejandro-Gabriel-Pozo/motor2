@@ -131,9 +131,60 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
 
   const ventas = await calcularVentasDelPeriodo(sucursalId, items, db);
   const compras = calcularComprasDelPeriodo(items);
+  const gastoPorInsumo = await calcularGastoPorInsumoDelPeriodo(sucursalId, items, db);
+  const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, ventas.totalFacturado, db);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
 
-  return { total: items.length, items, resumen, desde, hasta, ventas, compras, margen };
+  return { total: items.length, items, resumen, desde, hasta, ventas, compras, gastoPorInsumo, ratioGastoVentas, margen };
+}
+
+export interface RatioGastoVentas {
+  porcentaje: number | null;
+  porcentajePeriodoAnterior: number | null;
+  aviso: string;
+}
+
+/**
+ * "Food cost %" del período (Compras / Ventas), comparado contra el mismo
+ * cálculo del período INMEDIATO ANTERIOR de igual duración — paso 0 del
+ * grounding (docs/grounding-reportes-compras-2026-09-18.md §5, sugerido en
+ * la segunda pasada como más barato y más prioritario que el paso 1 ya
+ * implementado: los dos totales ya están calculados en esta misma
+ * función, solo falta la comparación).
+ *
+ * Deliberadamente NO es "food cost" real (consumo/ventas) — es
+ * DESEMBOLSO/ventas: una compra grande de stockeo sube este número sin
+ * que haya más consumo real ese mismo período. El aviso lo dice explícito
+ * (mismo criterio de honestidad que `hayComprasSinPrecio`) en vez de
+ * nombrarlo "food cost" y dejar que se lea como un dato que no es.
+ */
+async function calcularRatioGastoVentas(
+  sucursalId: string,
+  desde: Date,
+  hasta: Date,
+  totalGastado: number,
+  totalFacturado: number,
+  db: Db
+): Promise<RatioGastoVentas> {
+  const duracionMs = hasta.getTime() - desde.getTime();
+  const hastaAnterior = new Date(desde.getTime() - 1);
+  const desdeAnterior = new Date(hastaAnterior.getTime() - duracionMs);
+
+  const filas = await db.movimientoStock.groupBy({
+    by: ["proceso"],
+    where: { seccion: { sucursalId }, operacion: { fecha: { gte: desdeAnterior, lte: hastaAnterior } }, proceso: { in: ["COMPRA", "VENTA"] } },
+    _sum: { precioTotal: true },
+  });
+  const comprasAnterior = Number(filas.find((f) => f.proceso === "COMPRA")?._sum.precioTotal ?? 0);
+  const ventasAnterior = Number(filas.find((f) => f.proceso === "VENTA")?._sum.precioTotal ?? 0);
+
+  const calcular = (gastado: number, facturado: number) => (facturado > 0 ? Math.round((gastado / facturado) * 1000) / 10 : null);
+
+  return {
+    porcentaje: calcular(totalGastado, totalFacturado),
+    porcentajePeriodoAnterior: calcular(comprasAnterior, ventasAnterior),
+    aviso: "Compras ÷ Ventas del período — mide desembolso, no consumo real: una compra grande para stockear sube este número sin que se haya consumido más. Sirve para ver la tendencia, no como food cost exacto.",
+  };
 }
 
 export interface FilaCompraPorProveedorProducto {
@@ -197,6 +248,80 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[]): ComprasDelPeriodo {
       ? "Incluye compras cargadas sin Precio Total (el campo es opcional): esas suman $0 al total gastado."
       : "Importe real de cada compra (Precio Total cargado al registrarla).",
   };
+}
+
+export interface FilaGastoPorInsumo {
+  insumo: string;
+  grupo: string | null;
+  importe: number;
+  /** % de este insumo sobre el total gastado en Compras del período. */
+  porcentaje: number;
+  /** % acumulado hasta esta fila (la lista ya viene ordenada de mayor a menor importe) — para el corte 80/20: dónde el acumulado cruza 80% son los insumos que de verdad importan (segunda pasada del grounding, docs/grounding-reportes-compras-2026-09-18.md §5). */
+  porcentajeAcumulado: number;
+  /** Cantidad de líneas de compra de este insumo (frecuencia de reposición — a diferencia de "líneas" por proveedor, acá sí es una señal útil: reponer seguido un mismo insumo a varios proveedores distintos sugiere consolidar). */
+  cantidadCompras: number;
+  proveedores: string[];
+}
+export interface FilaGastoPorGrupo {
+  grupo: string;
+  importe: number;
+}
+export interface GastoPorInsumoDelPeriodo {
+  porInsumo: FilaGastoPorInsumo[];
+  porGrupo: FilaGastoPorGrupo[];
+}
+
+/**
+ * "¿En qué se me va la plata?" — agrupa el mismo gasto de Compras por
+ * INSUMO (y por Grupo/familia), no por proveedor. Hallazgo de grounding
+ * (docs/grounding-reportes-compras-2026-09-18.md, paso 1, inspirado en el
+ * reporte "Spendings" de Grocy): agrupar solo por proveedor responde una
+ * pregunta contable ("cuánto le debo a X"), no la pregunta de gestión
+ * real. Reusa `construirMapaProductos` (ya resuelve Insumo/Grupo por
+ * producto) en vez de duplicar esa resolución acá.
+ */
+async function calcularGastoPorInsumoDelPeriodo(sucursalId: string, items: ItemPeriodo[], db: Db): Promise<GastoPorInsumoDelPeriodo> {
+  const productos = await construirMapaProductos(sucursalId, db);
+  const porInsumo = new Map<string, { grupo: string | null; importe: number; cantidadCompras: number; proveedores: Set<string> }>();
+  const porGrupo = new Map<string, number>();
+
+  for (const r of items) {
+    if (r.proceso !== "COMPRA") continue;
+    const info = productos.get(r.productoId);
+    const insumo = info?.insumoNombre ?? "Sin insumo asignado";
+    const grupo = info?.grupoNombre ?? null;
+    const importe = r.precioTotal;
+
+    if (!porInsumo.has(insumo)) porInsumo.set(insumo, { grupo, importe: 0, cantidadCompras: 0, proveedores: new Set() });
+    const acc = porInsumo.get(insumo)!;
+    acc.importe += importe;
+    acc.cantidadCompras += 1;
+    if (r.proveedorNombre) acc.proveedores.add(r.proveedorNombre);
+
+    const claveGrupo = grupo ?? "Sin categoría";
+    porGrupo.set(claveGrupo, (porGrupo.get(claveGrupo) ?? 0) + importe);
+  }
+
+  const totalGastadoInsumos = Array.from(porInsumo.values()).reduce((acc, v) => acc + v.importe, 0);
+  let acumulado = 0;
+  const porInsumoLista = Array.from(porInsumo.entries())
+    .map(([insumo, v]) => ({ insumo, grupo: v.grupo, importe: v.importe, cantidadCompras: v.cantidadCompras, proveedores: Array.from(v.proveedores).sort() }))
+    .sort((a, b) => b.importe - a.importe)
+    .map((f) => {
+      acumulado += f.importe;
+      return {
+        ...f,
+        importe: redondearMoneda(f.importe),
+        porcentaje: totalGastadoInsumos > 0 ? Math.round((f.importe / totalGastadoInsumos) * 1000) / 10 : 0,
+        porcentajeAcumulado: totalGastadoInsumos > 0 ? Math.round((acumulado / totalGastadoInsumos) * 1000) / 10 : 0,
+      };
+    });
+
+  const porGrupoLista = Array.from(porGrupo.entries())
+    .map(([grupo, importe]) => ({ grupo, importe: redondearMoneda(importe) }))
+    .sort((a, b) => b.importe - a.importe);
+
+  return { porInsumo: porInsumoLista, porGrupo: porGrupoLista };
 }
 
 export interface FilaVentaProducto {

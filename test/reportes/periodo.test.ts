@@ -80,6 +80,63 @@ describe("obtenerReportePorPeriodo", () => {
     expect(rep.compras.porProveedor[0].lineas).toBe(2);
   });
 
+  it("gastoPorInsumo agrupa por Insumo/Grupo en vez de por proveedor, distinto de compras.porProveedor", async () => {
+    const grupo = await prisma.grupo.create({ data: { nombre: "Secos" } });
+    await prisma.insumo.update({ where: { id: insumoId }, data: { grupoId: grupo.id } });
+    const mp1 = await prisma.producto.create({ data: { codigo: "MP_H1", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp2 = await prisma.producto.create({ data: { codigo: "MP_H2", nombre: "Harina 0000", tipo: "MP", unidadStockId: unidadKgId, insumoId } }); // mismo Insumo "Harina", producto distinto
+    const proveedorA = await prisma.proveedor.create({ data: { codigo: "PRV_A", nombre: "Molino A" } });
+    const proveedorB = await prisma.proveedor.create({ data: { codigo: "PRV_B", nombre: "Molino B" } });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedorA.id, items: [{ productoId: mp1.id, cantidad: 10, precioTotal: 300 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedorB.id, items: [{ productoId: mp2.id, cantidad: 5, precioTotal: 200 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+
+    // Los dos productos son el MISMO insumo ("Harina") — se juntan en una sola fila, a diferencia de compras.porProveedor (2 filas, una por proveedor).
+    expect(rep.gastoPorInsumo.porInsumo).toHaveLength(1);
+    const fila = rep.gastoPorInsumo.porInsumo[0]!;
+    expect(fila.insumo).toBe("Harina");
+    expect(fila.grupo).toBe("Secos");
+    expect(fila.importe).toBe(500);
+    expect(fila.porcentaje).toBe(100); // único insumo del período
+    expect(fila.porcentajeAcumulado).toBe(100);
+    expect(fila.cantidadCompras).toBe(2);
+    expect(fila.proveedores.sort()).toEqual(["Molino A", "Molino B"]);
+
+    expect(rep.gastoPorInsumo.porGrupo).toEqual([{ grupo: "Secos", importe: 500 }]);
+    expect(rep.compras.porProveedor).toHaveLength(2); // confirma que sigue siendo una vista distinta
+  });
+
+  it("gastoPorInsumo calcula % y % acumulado (regla 80/20) sobre 2+ insumos, ordenado de mayor a menor gasto", async () => {
+    const mp1 = await prisma.producto.create({ data: { codigo: "MP_H1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const insumo2 = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
+    const mp2 = await prisma.producto.create({ data: { codigo: "MP_M1", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumo2.id } });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp2.id, cantidad: 1, precioTotal: 750 }] }); // 75% del gasto
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 250 }] }); // 25% del gasto
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+
+    expect(rep.gastoPorInsumo.porInsumo.map((f) => f.insumo)).toEqual(["Muzzarella", "Harina"]); // mayor gasto primero
+    expect(rep.gastoPorInsumo.porInsumo[0]!.porcentaje).toBe(75);
+    expect(rep.gastoPorInsumo.porInsumo[0]!.porcentajeAcumulado).toBe(75);
+    expect(rep.gastoPorInsumo.porInsumo[1]!.porcentaje).toBe(25);
+    expect(rep.gastoPorInsumo.porInsumo[1]!.porcentajeAcumulado).toBe(100);
+  });
+
+  it("gastoPorInsumo separa 'Sin insumo asignado' de 'Sin categoría' cuando el producto no tiene Insumo", async () => {
+    const mpSinInsumo = await prisma.producto.create({ data: { codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSinInsumo.id, cantidad: 1, precioTotal: 50 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+
+    expect(rep.gastoPorInsumo.porInsumo).toEqual([
+      expect.objectContaining({ insumo: "Sin insumo asignado", grupo: null, importe: 50 }),
+    ]);
+    expect(rep.gastoPorInsumo.porGrupo).toEqual([{ grupo: "Sin categoría", importe: 50 }]);
+  });
+
   it("margen del período cruza ventas contra el costo actual de la receta, marcando costoIncompleto cuando falta un precio de insumo", async () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
@@ -92,6 +149,32 @@ describe("obtenerReportePorPeriodo", () => {
     expect(rep.margen.hayCostoIncompleto).toBe(true);
     expect(rep.margen.porProducto[0].costoIncompleto).toBe(true);
     expect(rep.margen.porProducto[0].margen).toBeNull();
+  });
+
+  it("ratioGastoVentas compara Compras/Ventas del período contra el período inmediato anterior de igual duración", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+
+    // Período anterior (9 de agosto, un día antes del rango elegido): compró 80, facturó 100 -> 80%.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-09T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 80 }] });
+    await registrarVenta({ fecha: new Date("2026-08-09T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+
+    // Período elegido (10 de agosto): compró 100, facturó 200 -> 50%.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100 }] });
+    await registrarVenta({ fecha: new Date("2026-08-10T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-10"));
+
+    expect(rep.ratioGastoVentas.porcentaje).toBe(50);
+    expect(rep.ratioGastoVentas.porcentajePeriodoAnterior).toBe(80);
+  });
+
+  it("ratioGastoVentas da null (no divide por cero) si no hubo ventas facturadas", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+    expect(rep.ratioGastoVentas.porcentaje).toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaMargenProducto, FilaCompraPorProveedor } from "@/core/reportes/periodo";
+import type { FilaMargenProducto, FilaCompraPorProveedor, FilaGastoPorInsumo } from "@/core/reportes/periodo";
 
 const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   {
@@ -63,6 +63,55 @@ export function TablaComprasPorProveedor({ filas }: { filas: FilaCompraPorProvee
       claveFila={(p) => p.proveedor}
       sinFilasTexto="Sin compras en el período."
       nombreExport="compras-por-proveedor"
+    />
+  );
+}
+
+const COLUMNAS_GASTO_INSUMO: ColumnaReporte<FilaGastoPorInsumo>[] = [
+  { clave: "insumo", etiqueta: "Insumo", valor: (f) => f.insumo, render: (f) => f.insumo },
+  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-neutral-400">Sin categoría</span> },
+  { clave: "importe", etiqueta: "Gastado", alinear: "derecha", valor: (f) => f.importe, render: (f) => `$${f.importe.toLocaleString("es-AR")}` },
+  {
+    clave: "porcentaje",
+    etiqueta: "% del gasto",
+    alinear: "derecha",
+    valor: (f) => f.porcentaje,
+    render: (f) => `${f.porcentaje}%`,
+  },
+  {
+    clave: "acumulado",
+    etiqueta: "% acumulado",
+    alinear: "derecha",
+    valor: (f) => f.porcentajeAcumulado,
+    render: (f) => `${f.porcentajeAcumulado}%`,
+    ayuda: "Ordenado de mayor a menor gasto: dónde este acumulado cruza 80% están los insumos que de verdad concentran el gasto (regla 80/20) — lo que sigue después suele ser ruido, no hace falta prestarle la misma atención.",
+  },
+  {
+    clave: "veces",
+    etiqueta: "Veces comprado",
+    alinear: "derecha",
+    valor: (f) => f.cantidadCompras,
+    render: (f) => f.cantidadCompras,
+    ayuda: "Cantidad de compras registradas de este insumo en el rango — varias compras a proveedores distintos puede ser señal de consolidar.",
+  },
+  {
+    clave: "proveedores",
+    etiqueta: "Proveedores",
+    valor: (f) => f.proveedores.join(", "),
+    render: (f) => (f.proveedores.length ? f.proveedores.join(", ") : <span className="text-neutral-400">—</span>),
+  },
+];
+
+export function TablaGastoPorInsumo({ filas }: { filas: FilaGastoPorInsumo[] }) {
+  return (
+    <TablaReporte
+      columnas={COLUMNAS_GASTO_INSUMO}
+      filas={filas}
+      claveFila={(f) => f.insumo}
+      sinFilasTexto="Sin compras en el período."
+      nombreExport="gasto-por-insumo"
+      ordenInicial="importe"
+      direccionInicial="desc"
     />
   );
 }

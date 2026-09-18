@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
-import { TablaVentasPorProducto, TablaComprasPorProveedor } from "./tabla-periodo";
+import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo } from "./tabla-periodo";
+import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { AyudaIcono } from "@/components/ayuda-campo";
 
 function primerDiaDelMesISO() {
@@ -70,6 +71,16 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <AyudaIcono texto={rep.compras.aviso} />
           </p>
           <p className="text-lg font-semibold">${rep.compras.totalGastado.toLocaleString("es-AR")}</p>
+          <p className="mt-1 flex items-center text-xs text-neutral-500">
+            {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido` : "sin ventas en el período"}
+            {rep.ratioGastoVentas.porcentaje !== null && rep.ratioGastoVentas.porcentajePeriodoAnterior !== null && (
+              <span className="ml-1">
+                (período anterior: {rep.ratioGastoVentas.porcentajePeriodoAnterior}%
+                {rep.ratioGastoVentas.porcentaje > rep.ratioGastoVentas.porcentajePeriodoAnterior ? " ↑" : rep.ratioGastoVentas.porcentaje < rep.ratioGastoVentas.porcentajePeriodoAnterior ? " ↓" : ""})
+              </span>
+            )}
+            <AyudaIcono texto={rep.ratioGastoVentas.aviso} />
+          </p>
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-neutral-500">Movimientos</p>
@@ -85,6 +96,17 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
       <div>
         <h2 className="mb-2 text-sm font-medium">Compras por proveedor</h2>
         <TablaComprasPorProveedor filas={rep.compras.porProveedor} />
+      </div>
+
+      <div>
+        <h2 className="mb-1 flex items-center text-sm font-medium">
+          ¿En qué se va la plata? Compras por insumo/categoría
+          <AyudaIcono texto="Agrupa el mismo gasto en Compras, pero por insumo y por categoría en vez de por proveedor — para eso sirve saber cuánto le compraste a un proveedor, para saber en qué se te va la plata hace falta esta vista." />
+        </h2>
+        <GraficoGastoPorGrupo filas={rep.gastoPorInsumo.porGrupo} />
+        <div className="mt-3">
+          <TablaGastoPorInsumo filas={rep.gastoPorInsumo.porInsumo} />
+        </div>
       </div>
     </div>
   );

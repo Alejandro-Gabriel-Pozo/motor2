@@ -15,6 +15,11 @@ export interface InfoProductoReporte {
   /// Nombre interno histórico "Familia" en Apps Script (Catalogo.js:180-197)
   /// — es el Insumo, no el árbol de Grupo (ver docstring del modelo Insumo).
   insumoNombre: string | null;
+  /// Grupo (familia) del Insumo — sí es el árbol de Grupo, un nivel más
+  /// arriba que insumoNombre. Null si el producto no tiene Insumo o el
+  /// Insumo no está agrupado. Agregado para reportes de gasto por
+  /// categoría (docs/grounding-reportes-compras-2026-09-18.md).
+  grupoNombre: string | null;
   unidadStockNombre: string;
   esConsignacion: boolean;
   proveedorConsignacionNombre: string | null;
@@ -41,7 +46,7 @@ export interface InfoProductoReporte {
  */
 export async function construirMapaProductos(sucursalId?: string, db: Db = prisma): Promise<Map<string, InfoProductoReporte>> {
   const [productos, preciosLocales] = await Promise.all([
-    db.producto.findMany({ include: { categoria: true, insumo: true, unidadStock: true, proveedorConsignacion: true } }),
+    db.producto.findMany({ include: { categoria: true, insumo: { include: { grupo: true } }, unidadStock: true, proveedorConsignacion: true } }),
     sucursalId ? db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true } }) : Promise.resolve([]),
   ]);
   const precioLocalPorProducto = new Map(preciosLocales.map((pl) => [pl.productoId, Number(pl.precio)]));
@@ -59,6 +64,7 @@ export async function construirMapaProductos(sucursalId?: string, db: Db = prism
         precioVenta: precioLocalPorProducto.get(p.id) ?? Number(p.precioVenta),
         categoriaNombre: p.categoria?.nombre ?? null,
         insumoNombre: p.insumo?.nombre ?? null,
+        grupoNombre: p.insumo?.grupo?.nombre ?? null,
         unidadStockNombre: p.unidadStock.nombre,
         esConsignacion: p.esConsignacion,
         proveedorConsignacionNombre: p.proveedorConsignacion?.nombre ?? null,
