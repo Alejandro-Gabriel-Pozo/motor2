@@ -197,8 +197,21 @@ export async function resolverConsumoPorFamilia(
       return 0;
     });
 
-  const disponibleInsumo = candidatos.reduce((acc, c) => acc + c.saldo, 0);
-  if (disponibleInsumo < cantidadNecesaria) return sinReparto(); // ni el Insumo entero alcanza
+  // Redondeado a 4 decimales (precisión real de MovimientoStock.cantidad,
+  // Decimal(14,4)) ANTES de comparar — investigado como flake intermitente
+  // de test/auditoria/precision-roundtrip-y-reparto.test.ts ("3 hermanos"):
+  // `candidatos.reduce(...)` suma en el orden que Postgres devuelve el
+  // GROUP BY (sin ORDER BY, no garantizado), y la suma de punto flotante no
+  // es asociativa — sumar 3.37+2.19+1.81 en un orden distinto al que usa
+  // `cantidadNecesaria` (calculado aparte por quien llama) puede aterrizar
+  // en un float de IEEE754 apenas distinto (`7.3700000000000001066` vs.
+  // `7.3700000000000009948`, mismo valor decimal real). Sin este redondeo,
+  // ese ruido de los últimos bits hacía fallar `disponibleInsumo <
+  // cantidadNecesaria` para un pedido que en realidad calzaba justo —
+  // reproducido de forma determinística instrumentando el código real
+  // (no en un script aislado, donde el orden del GROUP BY no variaba).
+  const disponibleInsumo = redondearACantidadDeUnidad(candidatos.reduce((acc, c) => acc + c.saldo, 0), 4);
+  if (disponibleInsumo < redondearACantidadDeUnidad(cantidadNecesaria, 4)) return sinReparto(); // ni el Insumo entero alcanza
 
   const partes: ParteConsumo[] = [];
   let restante = cantidadNecesaria;
