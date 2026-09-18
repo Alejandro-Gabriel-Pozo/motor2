@@ -57,6 +57,39 @@ Siguiendo la instrucción explícita ("si el problema está en producción o en 
 
 **Esta deuda NO se declara cerrada** — queda documentada, no resuelta, tal como pidió el usuario ("yo no lo declararía cerrado hasta saber por qué ocurre"). Recomendación concreta para la próxima vez que ocurra: capturar el log completo de la corrida (no solo el resumen) antes de volver a correr nada, específicamente `rechazados[0].reason.constructor.name` y `.message` (el test ya los loggea si ocurre — ver línea 89 del archivo) — eso es lo que falta para pasar de "hipótesis" a "causa confirmada".
 
+### Actualización 2026-09-18 — primera reproducción real capturada
+
+Nueva sesión, mismo test, ahora contra un Postgres 16 local (paquete `postgresql-16` del contenedor, no Neon ni `docker compose` — no había daemon de Docker disponible; se migró `motor2_test` local con `prisma migrate deploy` para poder correr la suite).
+
+**Se reprodujo la falla** (algo que las 25 corridas de la sesión anterior no habían logrado):
+
+| Tanda | Corridas | Reproducciones |
+|---|---|---|
+| Aislado (`-t "REGRESIÓN"`), sin diagnóstico extra | 40 | **1** (run 3, intento 9 del loop interno) |
+| Aislado, con logging de `.code`/`.meta`/`.cause` agregado (commit `97c1d40`) | 300 | 0 |
+| `test/auditoria/` completo (9 archivos, contexto más parecido al de la observación original) | 30 | 0 |
+| **Total** | **370** (+ las 5 corridas de suite completa de la sesión anterior no vueltas a contar acá) | **1** |
+
+Tasa observada: ~0.27% (1/370) — sigue siendo un evento raro, no un defecto sistemático (consistente con la clasificación de la sesión anterior).
+
+**Lo que sí se pudo capturar de la única reproducción** (log completo, no solo el resumen):
+
+```
+[auditoria] Intento 9: promesa rechazada — PrismaClientKnownRequestError
+Invalid `tx.operacion.create()` invocation in
+/home/user/motor2/src/server/actions/movimientos/movimientos.ts:290:44
+```
+
+Esto **confirma la hipótesis 2** del análisis anterior, no la 1: no es un `DriverAdapterError` crudo (ruido de infraestructura/conexión) — es un `PrismaClientKnownRequestError` real, lanzado desde el propio `tx.operacion.create()` (línea 290), un tipo que `esConflictoDeEscritura()` sí sabe reconocer **cuando el código es `P2034`** — pero el mensaje capturado es el prefijo genérico que Prisma arma para *cualquier* `*KnownRequestError` en un `.create()` (incluye siempre la misma cita del código fuente alrededor de la línea de la invocación), así que **no alcanza para saber si el `.code` era `P2034`** (y por lo tanto `esConflictoDeEscritura` sí lo reconoció pero igual escaló porque ya era el último de los 5 intentos de `conTransaccionSerializable`) **o si era un código distinto que la función no cubre** (ej. algún otro error de Postgres bajo contención real, mapeado a un `PrismaClientKnownRequestError` en vez de al `DriverAdapterError` esperado).
+
+Para distinguir esos dos casos hacía falta `.code` — no se guardó en la corrida anterior porque el logging de entonces solo capturaba `constructor.name` y los primeros 200 caracteres del `.message`. Se amplió el log del test (commit `97c1d40`, sin tocar `con-reintento.ts` ni ningún código de producción) para capturar `.code`/`.meta`/`.cause`/mensaje completo la próxima vez — las 300 corridas posteriores a ese cambio no volvieron a reproducir la falla, así que **sigue sin confirmarse cuál de las dos ramas es**.
+
+**Nueva hipótesis, ahora más acotada, para cuando vuelva a ocurrir**:
+- Si el `.code` resulta ser `P2034`: el bug no está en qué se reconoce como conflicto, sino en que **5 intentos no alcanzan** bajo la contención real de este escenario — subiría `maxIntentos` (o backoff) a discutir, no ampliar `esConflictoDeEscritura`.
+- Si el `.code` es distinto de `P2034` (o no hay `.code`, ej. un error de validación real): ahí sí habría un tipo de conflicto de escritura genuino que `esConflictoDeEscritura` no cubre, y correspondería ampliarla — pero solo con el código real en mano, no antes.
+
+Sigue sin cerrarse. El logging ampliado queda commiteado y en la rama de forma permanente (no es instrumentación descartable: es exactamente el dato que falta) — la próxima corrida de CI o de auditoría que lo reproduzca ya va a traer la respuesta en el log.
+
 ---
 
 ## Parte B — Inventario y limpieza de ESLint
