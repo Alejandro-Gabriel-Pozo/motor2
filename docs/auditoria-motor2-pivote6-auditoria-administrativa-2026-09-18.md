@@ -32,7 +32,7 @@ Ninguna otra lógica de estas funciones cambió — el registro se agrega despu�
 ### Nueva Accion + página
 
 - `ver_auditoria` (nueva `AccionClave`, admin-only en la semilla) — mismo patrón que `comparar_precios` (gate de "ver" a nivel página, no de mutación).
-- `/administracion/auditoria` — página de solo lectura, filtrable por entidad, con `TablaReporte` (orden + export CSV, igual que el resto de `/reportes/*`). Link agregado al sidebar.
+- `/administracion/auditoria` — página de solo lectura, filtrable por entidad, con `TablaReporte` (orden + export, igual que el resto de `/reportes/*`; era CSV cuando se implementó y pasó a Excel `.xlsx` el 2026-09-18). Link agregado al sidebar.
 
 ## ⚠️ Paso de deploy pendiente (no es código, es operación)
 

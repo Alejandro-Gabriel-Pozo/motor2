@@ -608,7 +608,7 @@ se reemplazó, por las razones de §9.
 | Hallazgo | Estado en motor2 | Aplica a Apps Script |
 |---|---|---|
 | Conteo físico "un producto a la vez" vs. grilla precargada | **Resuelto en motor2** (grilla por sección, precarga, diferencia en vivo, "+ Agregar producto") | Sí — mismo patrón "un producto por vez" en `PanelConteoFisico.html` |
-| Reportes sin orden/export/drill-down | **Resuelto en motor2** (orden, CSV, drill-down) | Sí — los reportes de Apps Script (`Reportes.js`) tienen la misma limitación de base, aunque ahí el export a Sheets es más directo que un CSV |
+| Reportes sin orden/export/drill-down | **Resuelto en motor2** (orden, export a Excel `.xlsx` — CSV hasta 2026-09-18 —, drill-down) | Sí — los reportes de Apps Script (`Reportes.js`) tienen la misma limitación de base, aunque ahí el export a Sheets es más directo que un CSV |
 | Número de factura sin validar formato | **No es brecha** — ambos ERPs de referencia hacen lo mismo | No aplica un fix — si Apps Script ya valida algo ahí, no hace falta tocarlo |
 | `<input type="number">` nativo en plata/cantidad | **Resuelto en motor2** | Sí — los HTML de Apps Script (`PanelOperacion.html`, etc.) probablemente tienen el mismo `type="number"` nativo |
 | Sin shell de navegación persistente (6 headers duplicados, sin sidebar) | **Resuelto en motor2** (sidebar único, 6 grupos, `src/core/navegacion/estructura.ts`) | Parcial — `Nav.html` en Apps Script ya es un include único (no duplicado), pero vale revisar si agrupa por módulo o es una lista plana como era acá |
