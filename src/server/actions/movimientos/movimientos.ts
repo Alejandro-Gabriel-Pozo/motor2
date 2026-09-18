@@ -11,7 +11,7 @@ import {
   redondearACantidadDeUnidad,
   redondearMoneda,
 } from "@/core/movimientos/transiciones";
-import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
+import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
@@ -221,6 +221,15 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
       if (datos.seccionDestinoId === datos.seccionId) {
         return error("La sección destino no puede ser la misma que el origen: no habría nada que mover.");
       }
+    }
+
+    // Fase 6 (auditoría de seguridad/contratos): conPermiso ya validó el
+    // permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó
+    // el cliente sea realmente de esa sucursal — sin esto, cualquier
+    // seccionId ajeno (de otra sucursal) se aceptaba igual.
+    if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
+    if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, ctx.sucursalId))) {
+      return error("No se encontró la sección destino.");
     }
 
     // Chequeo de factura duplicada (Movimientos.js:402-416): mismo

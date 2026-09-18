@@ -148,4 +148,39 @@ describe("reclasificarStock", () => {
       expect(resultado.ok, resultado.mensaje).toBe(true);
     });
   });
+
+  describe("Fase 6 (auditoría de seguridad/contratos): las secciones tienen que ser de la sucursal de quien llama", () => {
+    it("rechaza un seccionOrigenId de OTRA sucursal", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+      const seccionAjena = await sembrarSeccion(otraSucursal.id);
+
+      const resultado = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: seccionAjena.id,
+        destinos: [{ seccionId: destinoAId, cantidad: 10 }], fecha: new Date(),
+      });
+
+      expect(resultado.ok).toBe(false);
+    });
+
+    it("rechaza un destino de OTRA sucursal", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+      const seccionAjena = await sembrarSeccion(otraSucursal.id);
+
+      const resultado = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: origenId,
+        destinos: [{ seccionId: seccionAjena.id, cantidad: 10 }], fecha: new Date(),
+      });
+
+      expect(resultado.ok).toBe(false);
+      expect(await calcularSaldoTotal(mpId, origenId)).toBe(10); // nada se movió
+    });
+
+    it("obtenerSaldoDisponibleParaReclasificar devuelve null para una sección de OTRA sucursal", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+      const seccionAjena = await sembrarSeccion(otraSucursal.id);
+
+      const saldo = await obtenerSaldoDisponibleParaReclasificar(mpId, seccionAjena.id, null);
+      expect(saldo).toBeNull();
+    });
+  });
 });

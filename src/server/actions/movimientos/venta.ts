@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
-import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
+import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/core/reportes/costos";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -116,6 +116,10 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
     if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
       return error("Clave de reintento inválida.");
     }
+    // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
+    // registrarMovimiento — conPermiso no valida que la sección sea de
+    // ESTA sucursal, solo el permiso de quien llama.
+    if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
 
     const resultado = await conTransaccionSerializable(async (tx) => {
       // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.

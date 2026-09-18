@@ -61,6 +61,28 @@ export async function seccionesConStock(productoId: string, sucursalId: string, 
 }
 
 /**
+ * Sección propia de la sucursal indicada, o `null` si no existe o
+ * pertenece a otra — chequeo obligatorio antes de usar cualquier
+ * `seccionId` que llegue del cliente en una mutación de stock.
+ *
+ * Hallazgo de auditoría (Fase 6, seguridad/contratos):
+ * `conPermiso(accionClave, ...)` valida que el usuario tenga el permiso
+ * en SU sucursal, nunca que la sección que mandó el cliente sea
+ * realmente de esa sucursal — sin este chequeo, un usuario con permiso
+ * legítimo en su propia sucursal podía mandar el `seccionId` de OTRA
+ * sucursal y el sistema escribía el movimiento ahí igual, corrompiendo
+ * el Kardex de un local al que no pertenece. Mismo criterio que ya
+ * usaban `stock-minimo.ts`/`secciones.ts` (chequeo inline) y
+ * `traspasos.ts` (copia local de esta misma función) — centralizado acá
+ * para no repetirlo divergente una cuarta vez.
+ */
+export async function obtenerSeccionPropia(seccionId: string, sucursalId: string, db: Db = prisma) {
+  const seccion = await db.seccion.findUnique({ where: { id: seccionId } });
+  if (!seccion || seccion.sucursalId !== sucursalId) return null;
+  return seccion;
+}
+
+/**
  * FEFO simplificado (Stock.js:403-425, IDEA-conteo-fisico-por-lote.md): el
  * lote (Fecha VTO) con saldo positivo que vence antes, para cuando una
  * salida no especifica de qué lote sale. A propósito NO reparte entre

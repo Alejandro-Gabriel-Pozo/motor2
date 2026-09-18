@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
-import { calcularSaldoTotal, validarStockSuficiente } from "@/core/movimientos/stock";
+import { calcularSaldoTotal, obtenerSeccionPropia, validarStockSuficiente } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import type { ContextoUsuario } from "@/core/auth/contexto";
@@ -43,12 +43,6 @@ async function obtenerProductoTransferible(productoId: string, tx: Prisma.Transa
     return { ok: false as const, mensaje: `"${producto.nombre}" no tiene stock real — no se puede transferir.` };
   }
   return { ok: true as const, producto };
-}
-
-async function obtenerSeccionPropia(seccionId: string, sucursalId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
-  const seccion = await tx.seccion.findUnique({ where: { id: seccionId } });
-  if (!seccion || seccion.sucursalId !== sucursalId) return null;
-  return seccion;
 }
 
 async function escribirMovimientoTraspaso(

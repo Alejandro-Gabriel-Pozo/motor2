@@ -4,7 +4,7 @@ import type { AccionConteo, EstadoConteo } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
-import { calcularSaldoPorLote, calcularSaldoTotal } from "@/core/movimientos/stock";
+import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -45,6 +45,10 @@ export async function registrarConteoFisico(datos: DatosConteoFisico): Promise<R
   return conPermiso("proceso_control", async (ctx) => {
     if (!texto(datos.seccionId)) return error("Elegí una sección — no se puede dejar en blanco.");
     if (!(datos.conteoReal >= 0)) return error("El conteo real debe ser un número mayor o igual a 0.");
+    // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
+    // registrarMovimiento — conPermiso no valida que la sección sea de
+    // ESTA sucursal, solo el permiso de quien llama.
+    if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
 
     return conTransaccionSerializable(async (tx) => {
       const producto = await tx.producto.findUnique({ where: { id: datos.productoId }, include: { unidadStock: true } });

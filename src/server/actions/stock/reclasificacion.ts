@@ -2,7 +2,8 @@
 
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
-import { calcularSaldoPorLote } from "@/core/movimientos/stock";
+import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { conPermiso } from "../con-permiso";
@@ -13,6 +14,13 @@ import { error, ok, type ResultadoAccion } from "../tipos";
  * origen ANTES de enviar el form, a diferencia de antes (que solo lo
  * informaba el servidor recién al fallar el submit si la suma no cerraba,
  * a diferencia de su hermano Conteo Físico, que sí lo muestra de entrada).
+ *
+ * Fase 6 (auditoría de seguridad/contratos): sin `conPermiso` a propósito
+ * (es de solo lectura, mismo criterio que el resto de las consultas de
+ * este módulo), pero SÍ necesita su propio chequeo de sesión + sección
+ * propia acá — a diferencia de las demás consultas "abiertas" del
+ * proyecto, esta expone un saldo de stock de una sección puntual elegida
+ * por el cliente, no un catálogo compartido.
  */
 export async function obtenerSaldoDisponibleParaReclasificar(
   productoId: string,
@@ -20,6 +28,8 @@ export async function obtenerSaldoDisponibleParaReclasificar(
   loteVencimiento: Date | null
 ): Promise<number | null> {
   if (!productoId || !seccionId) return null;
+  const ctx = await obtenerContextoUsuario();
+  if (!ctx || !(await obtenerSeccionPropia(seccionId, ctx.sucursalId))) return null;
   return calcularSaldoPorLote(productoId, seccionId, loteVencimiento);
 }
 
@@ -61,6 +71,14 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
     for (const d of datos.destinos) {
       if (!texto(d.seccionId)) return error("Cada destino necesita una sección — no se puede dejar en blanco.");
       if (!(d.cantidad > 0)) return error("Cada destino necesita una cantidad mayor a 0.");
+    }
+
+    // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
+    // registrarMovimiento — conPermiso no valida que las secciones sean
+    // de ESTA sucursal, solo el permiso de quien llama.
+    if (!(await obtenerSeccionPropia(datos.seccionOrigenId, ctx.sucursalId))) return error("No se encontró la sección de origen.");
+    for (const d of datos.destinos) {
+      if (!(await obtenerSeccionPropia(d.seccionId, ctx.sucursalId))) return error("No se encontró una de las secciones de destino.");
     }
 
     // Con un único destino idéntico al origen (misma sección+lote), la

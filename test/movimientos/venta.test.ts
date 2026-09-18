@@ -224,4 +224,15 @@ describe("anularVenta", () => {
     const sigueVigente = await prisma.operacion.findUniqueOrThrow({ where: { id: operacionOtraSucursal.id } });
     expect(sigueVigente.anuladaEn).toBeNull();
   });
+
+  it("Fase 6 (auditoría de seguridad/contratos): rechaza un seccionId de OTRA sucursal aunque el usuario tenga permiso en la suya", async () => {
+    const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+    const seccionAjena = await sembrarSeccion(otraSucursal.id);
+    const pv = await prisma.producto.create({ data: { codigo: "PV_AJENO", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+
+    const resultado = await registrarVenta({ fecha: new Date(), seccionId: seccionAjena.id, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+
+    expect(resultado.ok).toBe(false);
+    expect(await prisma.operacion.count({ where: { sucursalId: otraSucursal.id } })).toBe(0);
+  });
 });

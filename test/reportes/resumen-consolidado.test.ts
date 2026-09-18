@@ -4,12 +4,14 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerResumenConsolidado } from "../../src/core/reportes/resumen-consolidado";
 
 describe("obtenerResumenConsolidado", () => {
   beforeEach(async () => {
     await limpiarBaseDeTest();
+    __setCookieDeTestParaSucursal(undefined);
   });
 
   it("junta una fila por sucursal, cada una con su propio financiero — sin mezclar entre ellas", async () => {
@@ -24,7 +26,14 @@ describe("obtenerResumenConsolidado", () => {
 
     const pv1 = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan Central", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 } });
     const pv2 = await prisma.producto.create({ data: { codigo: "PV_2", nombre: "Pan Norte", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 } });
+    // El admin tiene membresía en las dos sucursales — cada venta se
+    // registra con esa sucursal como "activa" (mismo mecanismo que
+    // cambiarSucursalActiva en producción real), no solo pasando el
+    // seccionId: registrarVenta valida que la sección sea de la sucursal
+    // activa de quien llama (Fase 6, auditoría de seguridad/contratos).
+    __setCookieDeTestParaSucursal(base.sucursal.id);
     await registrarVenta({ fecha: new Date(), seccionId: seccion1.id, ventas: [{ productoId: pv1.id, cantidadVendida: 2 }] });
+    __setCookieDeTestParaSucursal(sucursal2.id);
     await registrarVenta({ fecha: new Date(), seccionId: seccion2.id, ventas: [{ productoId: pv2.id, cantidadVendida: 3 }] });
 
     const filas = await obtenerResumenConsolidado([

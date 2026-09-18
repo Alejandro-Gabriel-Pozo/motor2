@@ -278,4 +278,35 @@ describe("registrarMovimiento", () => {
     expect(Number(liquidacion!.cantidad)).toBe(0); // financiera pura, no vuelve a mover stock
     expect(Number(liquidacion!.precioTotal)).toBeCloseTo(2 * 50);
   });
+
+  describe("Fase 6 (auditoría de seguridad/contratos): la sección tiene que ser de la sucursal de quien llama", () => {
+    it("rechaza un seccionId de OTRA sucursal aunque el usuario tenga el permiso en la suya", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+      const seccionAjena = await sembrarSeccion(otraSucursal.id, "Depósito ajeno");
+      const mp = await crearMP("Harina ajena");
+
+      const resultado = await registrarMovimiento({
+        proceso: "COMPRA", fecha: new Date(), seccionId: seccionAjena.id,
+        items: [{ productoId: mp.id, cantidad: 10 }],
+      });
+
+      expect(resultado.ok).toBe(false);
+      expect(await calcularSaldoTotal(mp.id, seccionAjena.id)).toBe(0);
+    });
+
+    it("rechaza una sección destino de TRANSFERENCIA que sea de otra sucursal", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+      const seccionAjena = await sembrarSeccion(otraSucursal.id, "Depósito ajeno");
+      const mp = await crearMP("Harina para transferir");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+      const resultado = await registrarMovimiento({
+        proceso: "TRANSFERENCIA", fecha: new Date(), seccionId: seccionAId, seccionDestinoId: seccionAjena.id,
+        items: [{ productoId: mp.id, cantidad: 5 }],
+      });
+
+      expect(resultado.ok).toBe(false);
+      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // nada se movió
+    });
+  });
 });

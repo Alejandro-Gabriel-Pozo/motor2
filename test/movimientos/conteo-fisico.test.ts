@@ -185,4 +185,14 @@ describe("Conteo Físico", () => {
     expect(porFecha.items).toHaveLength(1);
     expect(porFecha.items[0].productoId).toBe(otroMp.id);
   });
+
+  it("Fase 6 (auditoría de seguridad/contratos): rechaza un seccionId de OTRA sucursal aunque el usuario tenga permiso en la suya", async () => {
+    const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+    const seccionAjena = await sembrarSeccion(otraSucursal.id);
+
+    const resultado = await registrarConteoFisico({ productoId: mpId, seccionId: seccionAjena.id, conteoReal: 5, fechaConteo: new Date(), accion: "AJUSTAR" });
+
+    expect(resultado.ok).toBe(false);
+    expect(await prisma.conteoFisico.count({ where: { sucursalId: otraSucursal.id } })).toBe(0);
+  });
 });
