@@ -13,6 +13,7 @@ describe("obtenerReportePorPeriodo", () => {
   let seccionId: string;
   let unidadKgId: string;
   let insumoId: string;
+  let adminId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -24,6 +25,7 @@ describe("obtenerReportePorPeriodo", () => {
     seccionId = (await sembrarSeccion(sucursalId)).id;
 
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
@@ -233,6 +235,87 @@ describe("obtenerReportePorPeriodo", () => {
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
     expect(rep.tendenciaPrecios).toEqual([]);
+  });
+
+  it("comparativaPrecios: variacionInsumosPct es el agregado ponderado por $ de tendenciaPrecios, excluyendo sospechosos", async () => {
+    const caro = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
+    const mpCaro = await prisma.producto.create({ data: { codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id } });
+    // $1000/kg -> $1100/kg dentro del período (+10%, 50kg): base=50000, delta=5000.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000 }] });
+
+    const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
+    const mpSal = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — sospechoso, se excluye del agregado
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"));
+
+    expect(rep.comparativaPrecios.variacionInsumosPct).toBe(10); // solo Muzzarella entra: 5000/50000 = 10%
+  });
+
+  it("comparativaPrecios: variacionCartaPropiaPct sale de RegistroAuditoria (Producto.precioVenta), ponderado por lo facturado del período", async () => {
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pizza Muzzarella", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1100 } });
+    await registrarVenta({ fecha: new Date("2026-08-12T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+
+    await prisma.registroAuditoria.create({
+      data: {
+        entidad: "Producto",
+        entidadId: pv.id,
+        descripcion: `Producto "${pv.nombre}": precio de venta`,
+        campo: "precioVenta",
+        valorAnterior: "1000",
+        valorNuevo: "1100",
+        actorId: adminId,
+        creadoEn: new Date("2026-08-11T12:00:00.000Z"),
+      },
+    });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"));
+
+    expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(10); // (1100-1000)/1000
+    expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
+  });
+
+  it("comparativaPrecios: sin cambios de precio de venta registrados en el período, variacionCartaPropiaPct es null", async () => {
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+    expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBeNull();
+    expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(0);
+  });
+
+  it("comparativaPrecios: un cambio de precio registrado de un producto NO vendido en el período cuenta pero no pondera", async () => {
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 220 } });
+    await prisma.registroAuditoria.create({
+      data: {
+        entidad: "Producto",
+        entidadId: pv.id,
+        descripcion: `Producto "${pv.nombre}": precio de venta`,
+        campo: "precioVenta",
+        valorAnterior: "200",
+        valorNuevo: "220",
+        actorId: adminId,
+        creadoEn: new Date("2026-08-11T12:00:00.000Z"),
+      },
+    });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"));
+
+    expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
+    expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBeNull(); // no se vendió en el período, no hay con qué ponderar
+  });
+
+  it("comparativaPrecios: variacionIPCPct compara el IPC del mes de desde contra el de hasta", async () => {
+    await prisma.indicePrecio.create({ data: { mes: new Date("2026-07-01"), valor: 100 } });
+    await prisma.indicePrecio.create({ data: { mes: new Date("2026-08-01"), valor: 105 } });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-10"), new Date("2026-08-10"));
+
+    expect(rep.comparativaPrecios.variacionIPCPct).toBe(5);
+  });
+
+  it("comparativaPrecios: variacionIPCPct es null si falta el IPC de algún mes del rango", async () => {
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+    expect(rep.comparativaPrecios.variacionIPCPct).toBeNull();
   });
 
   it("digest queda vacío sin ninguna señal (sin compras/ventas en el período)", async () => {

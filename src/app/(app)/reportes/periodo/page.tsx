@@ -3,6 +3,7 @@ import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
 import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { DigestAlertas } from "./digest-alertas";
+import { ComparativaPrecios } from "./comparativa-precios";
 import { AyudaIcono } from "@/components/ayuda-campo";
 
 function primerDiaDelMesISO() {
@@ -118,6 +119,14 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
           <AyudaIcono texto="Compara el precio pagado en este período contra el precio de la última compra anterior de cada insumo, ordenado por cuánto costó (o ahorró) ese cambio a la cantidad que realmente compraste — no por el % de variación, que puede engañar entre insumos baratos y caros." />
         </h2>
         <TablaPrecioPorInsumo filas={rep.tendenciaPrecios} />
+      </div>
+
+      <div>
+        <h2 className="mb-1 flex items-center text-sm font-medium">
+          ¿Tu carta acompaña estos cambios?
+          <AyudaIcono texto={rep.comparativaPrecios.aviso} />
+        </h2>
+        <ComparativaPrecios datos={rep.comparativaPrecios} />
       </div>
 
       <div>

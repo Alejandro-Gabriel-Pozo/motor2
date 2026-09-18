@@ -55,6 +55,34 @@ export function resolverCoeficienteIPC(fecha: Date, serie: SerieIPC): number | n
   return serie.ultimoValor / valorMes;
 }
 
+/**
+ * Variación % del índice entre el mes de `desde` y el de `hasta` — a
+ * diferencia de `resolverCoeficienteIPC` (que lleva una fecha al ÚLTIMO mes
+ * cargado, pensado para ajustar una venta a poder adquisitivo de hoy), esto
+ * compara dos puntos cualquiera de la serie: "cuánto subió la inflación
+ * general en este mismo rango que estoy mirando" (paso 5 del grounding,
+ * docs/grounding-reportes-compras-2026-09-18.md §5, comparativa de precios
+ * del período contra IPC). `null` si falta el dato de cualquiera de los dos
+ * meses.
+ *
+ * Sigue usando `SERIE_IPC_GBA_NIVEL_GENERAL` (arriba) — el roadmap del
+ * grounding sugiere una serie de "IPC Alimentos y bebidas" en vez de Nivel
+ * General para este comparador puntual, pero cambiar la serie sin verificar
+ * antes un id real (mismo criterio que ya exige este archivo, ver
+ * docstring de la constante) no es seguro: el acceso a
+ * apis.datos.gob.ar/datos.gob.ar está bloqueado por la política de egreso
+ * de la sesión en la que se implementó este paso. La función queda
+ * parametrizada por `SerieIPC` a propósito — el día que se verifique un id
+ * real de Alimentos y bebidas, cambiar la constante y resincronizar alcanza,
+ * sin tocar esta función.
+ */
+export function resolverVariacionPeriodoIPC(desde: Date, hasta: Date, serie: SerieIPC): number | null {
+  const valorDesde = serie.porMes.get(claveMes(desde));
+  const valorHasta = serie.porMes.get(claveMes(hasta));
+  if (valorDesde === undefined || valorHasta === undefined || valorDesde <= 0) return null;
+  return Math.round((valorHasta / valorDesde - 1) * 1000) / 10;
+}
+
 export interface ResultadoSincronizacionIPC {
   mesesNuevos: number;
   ultimoMesDisponible: string | null;

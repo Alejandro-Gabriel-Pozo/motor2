@@ -23,6 +23,7 @@ export async function limpiarBaseDeTest() {
   await prisma.permisoRol.deleteMany();
   await prisma.capacidadSucursal.deleteMany();
   await prisma.registroAuditoria.deleteMany();
+  await prisma.indicePrecio.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
   await prisma.user.deleteMany();

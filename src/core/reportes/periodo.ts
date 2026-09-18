@@ -4,7 +4,7 @@ import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
 import { construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo, type FilaImpactoRecetaPorPeriodo } from "./costos";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
-import { cargarSerieIPC, resolverCoeficienteIPC } from "./indices-economicos";
+import { cargarSerieIPC, resolverCoeficienteIPC, resolverVariacionPeriodoIPC } from "./indices-economicos";
 
 export interface FiltrosPeriodo {
   proceso?: Proceso;
@@ -136,9 +136,25 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
+  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(desde, hasta, tendenciaPrecios, ventas.porProducto, db);
   const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas);
 
-  return { total: items.length, items, resumen, desde, hasta, ventas, compras, gastoPorInsumo, ratioGastoVentas, tendenciaPrecios, impactoRecetas, digest, margen };
+  return {
+    total: items.length,
+    items,
+    resumen,
+    desde,
+    hasta,
+    ventas,
+    compras,
+    gastoPorInsumo,
+    ratioGastoVentas,
+    tendenciaPrecios,
+    impactoRecetas,
+    comparativaPrecios,
+    digest,
+    margen,
+  };
 }
 
 export interface FilaAlertaDigest {
@@ -517,6 +533,102 @@ async function calcularTendenciaPreciosDelPeriodo(sucursalId: string, desde: Dat
 
   filas.sort((a, b) => Math.abs(b.deltaImpacto ?? 0) - Math.abs(a.deltaImpacto ?? 0));
   return filas;
+}
+
+export interface ComparativaPreciosDelPeriodo {
+  /** Variación agregada ponderada por $ comprado de `tendenciaPrecios` (excluye insumos `sospechoso`: distorsionarían el agregado con lo que probablemente es un error de carga). */
+  variacionInsumosPct: number | null;
+  /** Variación de `Producto.precioVenta` registrada en RegistroAuditoria durante el período, ponderada por lo facturado en el período de esos mismos productos. */
+  variacionCartaPropiaPct: number | null;
+  cantidadProductosConCambioCarta: number;
+  /** IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro. */
+  variacionIPCPct: number | null;
+  aviso: string;
+  avisoCarta: string;
+  avisoIPC: string;
+}
+
+/**
+ * "¿Tu carta acompaña estos cambios?" — paso 5 del grounding (segunda
+ * pasada, docs/grounding-reportes-compras-2026-09-18.md §5): compara la
+ * suba de insumos (ya calculada arriba, ponderada por $) contra dos
+ * referencias — la PRIMARIA es el propio historial de precios de venta del
+ * negocio (índice de carta propio, vía RegistroAuditoria — Pivote 6), la
+ * SECUNDARIA/contextual es el IPC general del mismo período. La primaria
+ * importa más: compararte contra vos mismo (¿ajustaste la carta al ritmo
+ * de tus costos?) es una pregunta más accionable que compararte contra un
+ * promedio nacional que no sabe qué vendés.
+ */
+async function calcularComparativaPreciosDelPeriodo(
+  desde: Date,
+  hasta: Date,
+  tendenciaPrecios: FilaPrecioInsumo[],
+  ventasPorProducto: FilaVentaProducto[],
+  db: Db
+): Promise<ComparativaPreciosDelPeriodo> {
+  let sumaDeltaInsumos = 0;
+  let sumaBaseInsumos = 0;
+  for (const f of tendenciaPrecios) {
+    if (f.precioUnitarioAnterior === null || f.precioUnitarioAnterior <= 0 || f.sospechoso) continue;
+    sumaDeltaInsumos += (f.precioUnitarioPromedio - f.precioUnitarioAnterior) * f.cantidadComprada;
+    sumaBaseInsumos += f.precioUnitarioAnterior * f.cantidadComprada;
+  }
+  const variacionInsumosPct = sumaBaseInsumos > 0 ? Math.round((sumaDeltaInsumos / sumaBaseInsumos) * 1000) / 10 : null;
+
+  const cambiosCarta = await db.registroAuditoria.findMany({
+    where: { entidad: "Producto", campo: "precioVenta", creadoEn: { gte: desde, lte: hasta } },
+    orderBy: { creadoEn: "asc" },
+    select: { entidadId: true, valorAnterior: true, valorNuevo: true },
+  });
+  // Una sola fila por producto: el primer `valorAnterior` y el último
+  // `valorNuevo` del período (vienen ordenados asc) — así 2+ cambios del
+  // mismo producto en el período no se cuentan por separado, se ve el
+  // cambio NETO del período.
+  const porProductoCarta = new Map<string, { primero: number | null; ultimo: number }>();
+  for (const c of cambiosCarta) {
+    const nuevo = c.valorNuevo !== null ? Number(c.valorNuevo) : NaN;
+    if (Number.isNaN(nuevo)) continue;
+    const anterior = c.valorAnterior !== null ? Number(c.valorAnterior) : NaN;
+    const existente = porProductoCarta.get(c.entidadId);
+    if (!existente) porProductoCarta.set(c.entidadId, { primero: Number.isNaN(anterior) ? null : anterior, ultimo: nuevo });
+    else existente.ultimo = nuevo;
+  }
+
+  const importePorProducto = new Map(ventasPorProducto.map((v) => [v.productoId, v.importe]));
+  let sumaPonderadaCarta = 0;
+  let sumaPesoCarta = 0;
+  let cantidadProductosConCambioCarta = 0;
+  for (const [productoId, { primero, ultimo }] of porProductoCarta) {
+    if (primero === null || primero <= 0) continue;
+    cantidadProductosConCambioCarta++;
+    const peso = importePorProducto.get(productoId) ?? 0;
+    if (peso > 0) {
+      sumaPonderadaCarta += ((ultimo - primero) / primero) * 100 * peso;
+      sumaPesoCarta += peso;
+    }
+  }
+  const variacionCartaPropiaPct = sumaPesoCarta > 0 ? Math.round((sumaPonderadaCarta / sumaPesoCarta) * 10) / 10 : null;
+
+  const serieIPC = await cargarSerieIPC(db);
+  const variacionIPCPct = resolverVariacionPeriodoIPC(desde, hasta, serieIPC);
+
+  return {
+    variacionInsumosPct,
+    variacionCartaPropiaPct,
+    cantidadProductosConCambioCarta,
+    variacionIPCPct,
+    aviso: "Compara cuánto subieron tus insumos (ponderado por lo que realmente compraste) contra cuánto ajustaste tu propia carta y contra la inflación general — para ver si la carta está acompañando el costo, no solo si subió.",
+    avisoCarta:
+      variacionCartaPropiaPct !== null
+        ? "Ponderado por lo facturado en el período de los productos con cambio de precio de venta registrado (RegistroAuditoria)."
+        : cantidadProductosConCambioCarta > 0
+          ? "Hubo cambios de precio de venta registrados en el período, pero ninguno de esos productos se vendió en este mismo período — no hay base para ponderar."
+          : "Todavía no hay cambios de precio de venta registrados en este período (el registro de auditoría arrancó el 2026-09-18) — este comparador mejora con el uso.",
+    avisoIPC:
+      variacionIPCPct !== null
+        ? "IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico."
+        : "Sin IPC sincronizado para alguno de los dos meses del período.",
+  };
 }
 
 export interface FilaVentaProducto {
