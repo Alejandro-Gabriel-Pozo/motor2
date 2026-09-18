@@ -7,7 +7,7 @@ export interface ColumnaReporte<T> {
   clave: string;
   etiqueta: string;
   render: (fila: T) => React.ReactNode;
-  /** Si se da, la columna ordena Y este valor entra al CSV exportado. Si no, la columna queda fija (ej. una columna de link/acción). */
+  /** Si se da, la columna ordena Y este valor entra al Excel exportado. Si no, la columna queda fija (ej. una columna de link/acción). */
   valor?: (fila: T) => string | number | null;
   alinear?: "derecha";
   /** Icono "?" junto al header, para explicar un criterio no obvio (ej. cómo se calcula un estado) sin ocupar espacio permanente. */
@@ -19,7 +19,7 @@ interface Props<T> {
   filas: T[];
   claveFila: (fila: T, indice: number) => string;
   sinFilasTexto?: string;
-  /** Si se da, muestra el botón "Exportar CSV" y ese es el nombre del archivo (sin extensión). */
+  /** Si se da, muestra el botón "Exportar Excel" y ese es el nombre del archivo (sin extensión). */
   nombreExport?: string;
   ordenInicial?: string;
   direccionInicial?: "asc" | "desc";
@@ -29,8 +29,9 @@ interface Props<T> {
  * Tabla compartida para /reportes/* — hallazgo de la diligencia de motor2
  * vs. ERPNext/Dolibarr: encabezados sin orden, sin exportar, sin filtros
  * reales. Acá resuelve orden (client-side, sobre los datos ya traídos —
- * no hace falta re-consultar el server) y export a CSV (abrible directo en
- * Google Sheets vía Archivo → Importar, sin necesitar la API de Sheets).
+ * no hace falta re-consultar el server) y export a Excel (.xlsx, ver
+ * `core/excel.ts`: los números viajan como números, así que abre bien con
+ * cualquier configuración regional, cosa que un CSV no garantiza).
  */
 export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "Sin datos.", nombreExport, ordenInicial, direccionInicial = "asc" }: Props<T>) {
   const [ordenPor, setOrdenPor] = useState<string | null>(ordenInicial ?? null);
@@ -63,16 +64,19 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
     }
   }
 
-  function exportarCsv() {
+  async function exportarExcel() {
     const exportables = columnas.filter((c) => c.valor);
-    const filaCsv = (valores: (string | number | null)[]) =>
-      valores.map((v) => `"${(v === null || v === undefined ? "" : String(v)).replace(/"/g, '""')}"`).join(",");
-    const csv = [filaCsv(exportables.map((c) => c.etiqueta)), ...filasOrdenadas.map((f) => filaCsv(exportables.map((c) => c.valor!(f))))].join("\r\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    // La librería se carga recién al exportar: no pesa en la carga de la página.
+    const { generarExcel } = await import("@/core/excel");
+    const blob = await generarExcel(
+      nombreExport ?? "Reporte",
+      exportables.map((c) => c.etiqueta),
+      filasOrdenadas.map((f) => exportables.map((c) => c.valor!(f)))
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${nombreExport}.csv`;
+    a.download = `${nombreExport}.xlsx`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -82,8 +86,8 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
   return (
     <div className="flex flex-col gap-1">
       {nombreExport && (
-        <button type="button" onClick={exportarCsv} className="self-end text-xs text-neutral-500 underline hover:text-neutral-900">
-          Exportar CSV
+        <button type="button" onClick={exportarExcel} className="self-end text-xs text-neutral-500 underline hover:text-neutral-900">
+          Exportar Excel
         </button>
       )}
       <table className="w-full text-sm">

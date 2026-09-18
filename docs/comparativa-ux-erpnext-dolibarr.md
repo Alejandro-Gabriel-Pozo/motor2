@@ -189,8 +189,11 @@ demasiado para el tamaño de este negocio.
 ### Estado: 1-3 implementados (2026-09-15)
 
 `src/components/tabla-reporte.tsx` — tabla genérica client-side con orden
-por columna (clic en encabezado, flecha ▲/▼) y export a CSV (BOM UTF-8,
-separador `,`, valores entre comillas). Se usa en los ~16 reportes bajo
+por columna (clic en encabezado, flecha ▲/▼) y export a Excel (.xlsx: los
+números viajan como números y los textos como texto, así que abre bien con
+cualquier configuración regional y no evalúa fórmulas; ver `src/core/excel.ts`
+y `docs/grounding-pendientes-2026-09-18.md` §7.4; hasta 2026-09-18 exportaba CSV
+con separador `,`). Se usa en los ~16 reportes bajo
 `/reportes/*`, con links de drill-down hacia `/reportes/historial
 ?productoId=...` donde el reporte tiene un producto identificable.
 

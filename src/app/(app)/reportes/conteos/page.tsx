@@ -52,7 +52,7 @@ export default async function ConteosPage({
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Historial de conteos físicos</h1>
-        <p className="text-sm text-neutral-500">Más recientes primero. El orden y el export CSV son de esta página — para exportar todo, avanzá página por página.</p>
+        <p className="text-sm text-neutral-500">Más recientes primero. El orden y el export a Excel son de esta página — para exportar todo, avanzá página por página.</p>
       </div>
       <FiltrosConteos
         secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
