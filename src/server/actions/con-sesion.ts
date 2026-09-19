@@ -32,7 +32,7 @@ export async function requerirSesionEnSucursal(sucursalId: string): Promise<Cont
  * pantalla (los usuarios, los precios locales, el stock mínimo, la matriz de permisos…): la página ya pide ese permiso para
  * mostrarse, pero la lectura es un endpoint que se puede invocar directo, y con solo `requerirSesion` cualquier usuario logueado
  * la podía llamar aunque su rol no pudiera abrir la pantalla. La clave tiene que ser la MISMA que pide la página
- * (test/arquitectura/lecturas-con-permiso-de-ver.test.ts lo comprueba).
+ * (test/permisos/lecturas-con-permiso-de-ver.test.ts lo comprueba).
  *
  * No va en las lecturas de catálogo compartido (secciones, unidades, proveedores, buscador de productos…): se usan como
  * selectores en muchas pantallas con claves distintas y no tienen una pantalla dueña.

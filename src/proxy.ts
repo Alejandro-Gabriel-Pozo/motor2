@@ -15,11 +15,17 @@ import { ENCABEZADO_RUTA_PEDIDA } from "@/core/navegacion/volver";
  * Nombres de la cookie de Auth.js: `authjs.session-token` (http) y `__Secure-authjs.session-token` (https).
  */
 export function proxy(request: NextRequest) {
-  const headers = new Headers(request.headers);
-  const url = request.nextUrl.clone();
-  url.searchParams.delete("_rsc"); // parámetro interno de las navegaciones del cliente: no es parte de la pantalla
-  headers.set(ENCABEZADO_RUTA_PEDIDA, url.pathname + url.search);
-  return NextResponse.next({ request: { headers } });
+  try {
+    const headers = new Headers(request.headers);
+    const url = request.nextUrl.clone();
+    url.searchParams.delete("_rsc"); // parámetro interno de las navegaciones del cliente: no es parte de la pantalla
+    headers.set(ENCABEZADO_RUTA_PEDIDA, url.pathname + url.search);
+    return NextResponse.next({ request: { headers } });
+  } catch {
+    // Recordar la pantalla es una comodidad: si por algún valor raro no se puede armar el encabezado, el pedido sigue igual (el login
+    // queda sin «volver»). Lo que no puede pasar es que un fallo acá tire abajo todas las cargas directas sin sesión.
+    return NextResponse.next();
+  }
 }
 
 export const config = {
