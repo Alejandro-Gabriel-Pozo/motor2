@@ -73,6 +73,14 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "alta_sucursal", descripcion: "Dar de alta una sucursal nueva y asignar su primer admin", rolesEditarSemilla: ["admin"] },
   { clave: "pagar_consignante", descripcion: "Registrar un pago a un proveedor de consignación", rolesEditarSemilla: ["admin"] },
   { clave: "ver_auditoria", descripcion: "Ver el registro de auditoría administrativa (precios y permisos)", rolesEditarSemilla: ["admin"] },
+  // Reportes, agrupados por sensibilidad (decisión del usuario, 2026-09-19: ~5 claves y no una por reporte, y el rol
+  // «operador» arranca SIN asignar). Antes, 18 de las 19 páginas de /reportes no tenían ningún permiso. Los reportes que ya
+  // tienen una acción propia se protegen con esa (`promociones_config`, `pagar_consignante`, `proceso_control`,
+  // `insumos_mezclados`); estas cuatro cubren el resto. Son claves de «Ver»: no hay nada que editar.
+  { clave: "ver_reportes_dinero", descripcion: "Ver los reportes de dinero: resumen, consolidado, período, por categoría, costos y márgenes, valuación y rendimiento de recetas", rolesEditarSemilla: ["admin"] },
+  { clave: "ver_reportes_control", descripcion: "Ver los reportes de control: pérdidas y consumo interno, devoluciones y diferencias de ajuste", rolesEditarSemilla: ["admin"] },
+  { clave: "ver_reportes_operativos", descripcion: "Ver los reportes operativos: vencimientos, salud por producto, historial de un producto y trazabilidad", rolesEditarSemilla: ["admin"] },
+  { clave: "ver_reportes_catalogo", descripcion: "Ver los reportes de calidad del catálogo: insumos sin receta y ventas sin receta", rolesEditarSemilla: ["admin"] },
 ] as const;
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];
