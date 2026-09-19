@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { BotonActivarDesactivar } from "@/components/boton-activar-desactivar";
 import { crearRol, actualizarActivoRol } from "@/server/actions/permisos/roles";
 
 interface Rol {
@@ -50,14 +51,12 @@ export function RolesTabla({ rolesIniciales }: { rolesIniciales: Rol[] }) {
               <td className="py-2">{r.nombre}</td>
               <td>{r.activo ? "Sí" : "No"}</td>
               <td>
-                <button
-                  type="button"
-                  disabled={pending && pendingId === r.id}
-                  onClick={() => toggleActivo(r)}
-                  className="text-sm underline disabled:opacity-50"
-                >
-                  {pending && pendingId === r.id ? "..." : r.activo ? "Desactivar" : "Activar"}
-                </button>
+                <BotonActivarDesactivar
+                  activo={r.activo}
+                  ocupado={pending && pendingId === r.id}
+                  aviso={`¿Desactivar el rol "${r.nombre}"?`}
+                  onCambiar={() => toggleActivo(r)}
+                />
               </td>
             </tr>
           ))}

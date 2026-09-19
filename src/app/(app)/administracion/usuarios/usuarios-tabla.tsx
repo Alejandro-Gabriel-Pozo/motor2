@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { BotonActivarDesactivar } from "@/components/boton-activar-desactivar";
 import { agregarOActualizarUsuario, actualizarActivoMembresia } from "@/server/actions/auth/usuarios";
 
 interface Rol {
@@ -75,14 +76,12 @@ export function UsuariosTabla({
               <td>{m.rol.nombre}</td>
               <td>{m.activo ? "Sí" : "No"}</td>
               <td>
-                <button
-                  type="button"
-                  disabled={pending && pendingId === m.id}
-                  onClick={() => toggleActivo(m)}
-                  className="text-sm underline disabled:opacity-50"
-                >
-                  {pending && pendingId === m.id ? "..." : m.activo ? "Desactivar" : "Activar"}
-                </button>
+                <BotonActivarDesactivar
+                  activo={m.activo}
+                  ocupado={pending && pendingId === m.id}
+                  aviso={`¿Desactivar a ${m.usuario.email}? Pierde el acceso a esta sucursal.`}
+                  onCambiar={() => toggleActivo(m)}
+                />
               </td>
             </tr>
           ))}
