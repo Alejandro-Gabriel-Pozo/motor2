@@ -64,7 +64,7 @@ Pendiente ya documentado en recetas: los formularios «Agregar ingrediente» y �
 
 | Fase | Contenido | Esfuerzo |
 |---|---|---|
-| F0 | `key` en el formulario | **Hecha** (`a3c512f`), sin publicar |
+| F0 | `key` en el formulario | **Hecha y publicada** en `main` el 2026-09-19 (`a3c512f`); los dos deploys de Production en `success`. Sin verificar todavía en el navegador |
 | F1 | Rutas separadas `nuevo` y `editar`, con el formulario existente; la lista deja de compartir página con el formulario | Bajo |
 | F2 | Ficha de solo lectura con «Datos» y enlaces a los reportes que ya existen (historial, costos, receta) | Bajo a medio |
 | F3 | Ficha con stock, proveedores y precios, y cambios de precio | Medio |
@@ -123,15 +123,19 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 | Cambio de sucursal | No afectado: `cambiarSucursalActiva` termina en `redirect("/")` (`sucursal-activa.ts:33`). Es una navegación suave, no una recarga: se sostiene porque `/` no muestra esos formularios |
 | Filtros de reportes (`?desde=`, `?dias=`) | No afectado: formularios GET comunes; el orden elegido en una tabla se conserva a propósito |
 
-## 7. Decisiones para el usuario
+## 7. Decisiones (tomadas por el usuario el 2026-09-19)
 
-1. ¿Productos primero, con ficha y rutas separadas, y proveedores después?
-2. ¿Qué secciones de la ficha van primero: datos, stock, precios y proveedores, receta, movimientos, auditoría?
-3. ¿Al guardar se vuelve a la ficha (propuesta) o se sigue en la edición (como TastyIgniter)?
-4. ¿Categorías, unidades e insumos-grupos quedan con lista y formulario inline?
-5. ¿Se cierra ya el caso borde de proveedores con un `key`?
-6. Matriz de permisos (§5): ¿modo edición con «Guardar» (opción 1), clic instantáneo con redes de seguridad (opción 2), o solo confirmar las desactivaciones (opción 3)?
-7. ¿Las desactivaciones de roles y usuarios piden confirmación, sea cual sea la respuesta a la 6?
+| # | Decisión | Respuesta |
+|---|---|---|
+| 1 | ¿Productos primero, con ficha y rutas separadas, y proveedores después? | **Sí.** Productos primero, proveedores después |
+| 2 | ¿Qué secciones de la ficha van primero? | **Datos y enlaces a los reportes que ya existen (F2).** Stock, precios, proveedores, receta, movimientos y auditoría quedan para F3 |
+| 3 | ¿Al guardar se vuelve a la ficha o se sigue en la edición? | **A la ficha.** Resuelve también el cartel de confirmación que hoy se pierde al volver a la lista (hallazgo M1 del gobernador, sin verificar en el navegador) |
+| 4 | ¿Categorías, unidades e insumos-grupos quedan inline? | **Sí**, con lista y formulario inline, sin ficha |
+| 5 | ¿Se cierra el caso borde de proveedores con un `key`? | **Sí, en un cambio aparte**, no mezclado con otros |
+| 6 | Matriz de permisos (§5) | **Opción 1: modo edición con «Guardar»**: solo lectura al abrir, cambios pendientes marcados, resumen y guardado todo o nada. Es criterio propio, no lo que hacen los referentes |
+| 7 | ¿Desactivar un rol o un usuario pide confirmación? | **Sí.** Solo desactivar pide confirmación; activar sigue directo |
+
+Nada de esto está implementado todavía. Antes de cada fase hace falta su matriz de impacto y pasar por el gobernador.
 
 ## 8. Limitaciones
 
