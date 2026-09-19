@@ -16,7 +16,7 @@ import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorF
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
-import { upsertProveedorPorProducto } from "../catalogo/proveedor-por-producto";
+import { upsertProveedorPorProducto } from "../catalogo/upsert-proveedor-por-producto";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 

@@ -5,8 +5,10 @@ import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, type AccionClave } from "@/core/p
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 export async function listarMatrizPermisos() {
+  await requerirSesion();
   const [acciones, roles, permisos] = await Promise.all([
     prisma.accion.findMany({ orderBy: { clave: "asc" } }),
     prisma.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),

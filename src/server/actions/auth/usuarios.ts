@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { requerirSesionEnSucursal } from "../con-sesion";
 
 async function contarAdminsActivosExcluyendo(idExcluido?: string): Promise<number> {
   return prisma.usuarioSucursal.count({
@@ -16,6 +17,7 @@ async function contarAdminsActivosExcluyendo(idExcluido?: string): Promise<numbe
 }
 
 export async function listarUsuariosDeSucursal(sucursalId: string) {
+  await requerirSesionEnSucursal(sucursalId);
   return prisma.usuarioSucursal.findMany({
     where: { sucursalId },
     include: { usuario: true, rol: true },

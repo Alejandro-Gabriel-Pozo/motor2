@@ -14,6 +14,7 @@ describe("Conteo Físico", () => {
   let unidadKgId: string;
   let insumoId: string;
   let mpId: string;
+  let adminOriginal: { id: string; email: string; nombre: null };
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -25,7 +26,8 @@ describe("Conteo Físico", () => {
     seccionId = (await sembrarSeccion(sucursalId)).id;
 
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
-    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+    adminOriginal = { id: admin.id, email: admin.email, nombre: null };
+    await mockearUsuarioActual(adminOriginal);
 
     const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     mpId = mp.id;
@@ -146,10 +148,13 @@ describe("Conteo Físico", () => {
     await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
     await registrarConteoFisico({ productoId: otroMp.id, seccionId: otraSeccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
 
+    // El historial de una sucursal solo lo puede leer alguien de esa sucursal: cada lectura, con el admin que le corresponde.
+    await mockearUsuarioActual(adminOriginal);
     const historialSucursalOriginal = await obtenerHistorialConteosFisicos(sucursalId);
     expect(historialSucursalOriginal.items).toHaveLength(1);
     expect(historialSucursalOriginal.items[0].productoId).toBe(mpId);
 
+    await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
     const historialOtraSucursal = await obtenerHistorialConteosFisicos(otraSucursal.id);
     expect(historialOtraSucursal.items).toHaveLength(1);
     expect(historialOtraSucursal.items[0].productoId).toBe(otroMp.id);

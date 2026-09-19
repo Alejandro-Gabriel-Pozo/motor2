@@ -9,6 +9,7 @@ import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 export interface ProductoOpcion {
   id: string;
@@ -38,6 +39,7 @@ export interface FiltroSelectorProducto {
 }
 
 export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
+  await requerirSesion();
   const t = texto(termino);
   const condiciones = [
     ...(filtro?.tipo ? [{ tipo: filtro.tipo }] : []),
@@ -57,6 +59,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
 
 /** Un producto puntual por id, en la misma forma que el combobox — para mostrar su etiqueta después de elegirlo (ej. Conteo Físico, al agregar una fila manual). */
 export async function obtenerProductoOpcion(productoId: string): Promise<ProductoOpcion | null> {
+  await requerirSesion();
   return prisma.producto.findUnique({ where: { id: productoId }, select: { id: true, codigo: true, nombre: true } });
 }
 
@@ -77,6 +80,7 @@ export interface InsumoDeProducto {
  * nuevo y asignárselo retroactivamente.
  */
 export async function obtenerInsumoDeProducto(productoId: string): Promise<InsumoDeProducto | null> {
+  await requerirSesion();
   const p = await prisma.producto.findUnique({
     where: { id: productoId },
     include: { insumo: true, unidadStock: true },
@@ -118,6 +122,7 @@ export async function asignarInsumoAProducto(productoId: string, insumoId: strin
 
 /** Precio de venta global de un producto puntual — usado por Precio Local para mostrar "precio global actual" sin traer el catálogo entero. */
 export async function obtenerPrecioVentaProducto(productoId: string): Promise<number | null> {
+  await requerirSesion();
   const p = await prisma.producto.findUnique({ where: { id: productoId }, select: { precioVenta: true } });
   return p ? Number(p.precioVenta) : null;
 }
@@ -131,6 +136,7 @@ const TAMANO_PAGINA_CATALOGO = 50;
 
 /** Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda opcional. */
 export async function listarProductosPagina(cursor?: string, termino?: string): Promise<PaginaProductos> {
+  await requerirSesion();
   const t = texto(termino ?? "");
   const items = await prisma.producto.findMany({
     where: t ? { OR: [{ nombre: { contains: t, mode: "insensitive" } }, { codigo: { contains: t, mode: "insensitive" } }] } : {},
@@ -321,6 +327,7 @@ export interface PresentacionOpcion {
  * Compra (filtra a `.activa` — ver PanelMovimientoForm).
  */
 export async function listarPresentaciones(productoId: string): Promise<PresentacionOpcion[]> {
+  await requerirSesion();
   const filas = await prisma.presentacion.findMany({
     where: { productoId },
     include: { unidadCompra: true },

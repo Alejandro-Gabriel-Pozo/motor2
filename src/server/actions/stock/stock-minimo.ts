@@ -4,9 +4,11 @@ import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { requerirSesionEnSucursal } from "../con-sesion";
 
 /** Todas las filas (global + por sección) de Stock Mínimo de esta sucursal — para el panel de administración. */
 export async function listarStockMinimo(sucursalId: string) {
+  await requerirSesionEnSucursal(sucursalId);
   return prisma.stockMinimoProducto.findMany({
     where: { sucursalId },
     include: { producto: true, seccion: true },

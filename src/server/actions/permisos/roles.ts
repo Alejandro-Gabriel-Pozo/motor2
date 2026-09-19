@@ -5,8 +5,10 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 export async function listarRoles() {
+  await requerirSesion();
   return prisma.rol.findMany({ orderBy: { nombre: "asc" } });
 }
 

@@ -7,6 +7,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
   CANTIDAD: 0,
@@ -15,10 +16,12 @@ const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
 };
 
 export async function listarUnidadesParaPanel() {
+  await requerirSesion();
   return prisma.unidad.findMany({ orderBy: { nombre: "asc" } });
 }
 
 export async function listarUnidadesActivas() {
+  await requerirSesion();
   return prisma.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } });
 }
 

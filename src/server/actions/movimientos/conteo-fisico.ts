@@ -9,6 +9,7 @@ import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { requerirSesionEnSucursal } from "../con-sesion";
 
 /**
  * Port de ACCIONES_CONTEO_FISICO (Stock.js:1066-1088): qué hacer con la
@@ -266,6 +267,7 @@ export interface FiltroHistorialConteos {
 }
 
 export async function obtenerHistorialConteosFisicos(sucursalId: string, filtro: FiltroHistorialConteos = {}) {
+  await requerirSesionEnSucursal(sucursalId);
   const { seccionId, productoId, desde, hasta, cursor } = filtro;
   const items = await prisma.conteoFisico.findMany({
     where: {

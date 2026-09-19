@@ -5,9 +5,11 @@ import { texto } from "@/core/texto";
 import { construirIndiceRecetas } from "@/core/reportes/comun";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { requerirSesionEnSucursal } from "../con-sesion";
 
 /** Port de obtenerPromocionesHabilitadas (Catalogo.js:2211-2213) — lectura simple, sin gate propio (mismo criterio que Consultar). */
 export async function obtenerPromocionesHabilitadas(sucursalId: string): Promise<boolean> {
+  await requerirSesionEnSucursal(sucursalId);
   const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
   return sucursal?.promocionesHabilitadas ?? false;
 }
@@ -44,6 +46,7 @@ export interface CandidatoPromocion {
 
 /** Port de buscarProductoParaPromocion (Catalogo.js:2281-2292) — PV con receta (candidatos a Promoción/Combo). */
 export async function buscarProductoParaPromocion(sucursalId: string, termino: string): Promise<CandidatoPromocion[]> {
+  await requerirSesionEnSucursal(sucursalId);
   const q = texto(termino).toLowerCase();
   const { recetaPorProducto } = await construirIndiceRecetas(prisma);
   const [productos, marcados] = await Promise.all([

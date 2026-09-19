@@ -182,10 +182,12 @@ describe("Traspasos entre sucursales", () => {
     const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
     if (!sol.ok) throw new Error("esperaba ok");
 
+    await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaA = await obtenerBandejaTransferencias(sucursalAId);
     expect(bandejaA.paraAprobar.map((t) => t.id)).toContain(sol.id);
     expect(bandejaA.historial.map((t) => t.id)).not.toContain(sol.id);
 
+    await comoB(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaB = await obtenerBandejaTransferencias(sucursalBId);
     expect(bandejaB.paraAprobar.map((t) => t.id)).not.toContain(sol.id); // B no es Origen acá
     expect(bandejaB.paraAceptar.map((t) => t.id)).not.toContain(sol.id); // todavía SOLICITADA, no ENVIADA
@@ -196,9 +198,11 @@ describe("Traspasos entre sucursales", () => {
     await comoA();
     await aprobarYEnviarTransferencia(sol.id, seccionAId);
 
+    await comoB(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaBTrasAprobar = await obtenerBandejaTransferencias(sucursalBId);
     expect(bandejaBTrasAprobar.paraAceptar.map((t) => t.id)).toContain(sol.id);
     expect(bandejaBTrasAprobar.esperando.map((t) => t.id)).not.toContain(sol.id); // ya no es "esperando": ahora B tiene algo para accionar (paraAceptar)
+    await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaATrasAprobar = await obtenerBandejaTransferencias(sucursalAId);
     expect(bandejaATrasAprobar.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
     expect(bandejaATrasAprobar.historial.map((t) => t.id)).toContain(sol.id);
@@ -215,6 +219,7 @@ describe("Traspasos entre sucursales", () => {
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 3, seccionOrigenId: seccionAId });
     if (!envio.ok) throw new Error("esperaba ok");
 
+    await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaA = await obtenerBandejaTransferencias(sucursalAId);
     expect(bandejaA.esperando.map((t) => t.id)).toContain(envio.id);
     expect(bandejaA.historial.map((t) => t.id)).not.toContain(envio.id);
@@ -222,6 +227,7 @@ describe("Traspasos entre sucursales", () => {
     await comoB();
     await aceptarTransferencia(envio.id, seccionBId);
 
+    await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaATrasAceptar = await obtenerBandejaTransferencias(sucursalAId);
     expect(bandejaATrasAceptar.esperando.map((t) => t.id)).not.toContain(envio.id);
     expect(bandejaATrasAceptar.historial.map((t) => t.id)).toContain(envio.id);
@@ -242,6 +248,7 @@ describe("Traspasos entre sucursales", () => {
       expect(traspaso.estado).toBe("CANCELADA");
       expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // nunca se tocó
 
+      await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
       const bandejaA = await obtenerBandejaTransferencias(sucursalAId);
       expect(bandejaA.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
       expect(bandejaA.historial.map((t) => t.id)).toContain(sol.id);
@@ -298,6 +305,7 @@ describe("Traspasos entre sucursales", () => {
     const enCurso = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 1, seccionDestinoId: seccionBId });
     if (!enCurso.ok) throw new Error("esperaba ok");
 
+    await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const pagina1 = await obtenerBandejaTransferencias(sucursalAId, undefined);
     expect(pagina1.paraAprobar.map((t) => t.id)).toEqual([enCurso.id]);
     expect(pagina1.historial.map((t) => t.id)).not.toContain(enCurso.id);
@@ -307,6 +315,7 @@ describe("Traspasos entre sucursales", () => {
 
     // El cursor de una fila puntual arranca la página siguiente justo después de esa fila, sin repetirla.
     const cursor = pagina1.historial[2].id;
+    await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const pagina2 = await obtenerBandejaTransferencias(sucursalAId, cursor);
     expect(pagina2.historial.map((t) => t.id)).not.toContain(cursor);
     expect(pagina2.historial.length).toBe(2); // las 2 filas que quedaban después del cursor

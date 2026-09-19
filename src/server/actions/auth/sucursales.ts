@@ -4,8 +4,10 @@ import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 export async function listarSucursales() {
+  await requerirSesion();
   return prisma.sucursal.findMany({ orderBy: { nombre: "asc" } });
 }
 

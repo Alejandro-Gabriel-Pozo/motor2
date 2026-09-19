@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { requerirSesionEnSucursal } from "../con-sesion";
 
 /**
  * Port de HOJA_SECCIONES (Stock.js:1316-1415) — antes una hoja POR
@@ -14,11 +15,13 @@ import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from ".
  * `obtenerSeccionesParaCarga` en Apps Script.
  */
 export async function listarSeccionesActivas(sucursalId: string) {
+  await requerirSesionEnSucursal(sucursalId);
   return prisma.seccion.findMany({ where: { sucursalId, activa: true }, orderBy: { nombre: "asc" } });
 }
 
 /** Todas (activas e inactivas) — para el panel de administración. */
 export async function listarSeccionesParaPanel(sucursalId: string) {
+  await requerirSesionEnSucursal(sucursalId);
   return prisma.seccion.findMany({ where: { sucursalId }, orderBy: { nombre: "asc" } });
 }
 

@@ -6,12 +6,15 @@ import { creariaCiclo } from "@/core/catalogo/grupo";
 import { validarFusionInsumos } from "@/core/catalogo/producto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 export async function listarInsumos() {
+  await requerirSesion();
   return prisma.insumo.findMany({ include: { grupo: true }, orderBy: { nombre: "asc" } });
 }
 
 export async function listarGrupos() {
+  await requerirSesion();
   return prisma.grupo.findMany({ orderBy: { nombre: "asc" } });
 }
 
@@ -53,6 +56,7 @@ export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string 
  * de una sin que el usuario se entere de qué está pasando.
  */
 export async function previsualizarFusionInsumo(insumoId: string, nombreNuevo: string): Promise<string | null> {
+  await requerirSesion();
   const nuevo = texto(nombreNuevo);
   if (!nuevo) return null;
   const existente = await prisma.insumo.findFirst({

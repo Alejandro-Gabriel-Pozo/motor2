@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarCatalogoBase, prisma } from "../setup/test-db";
-import { upsertProveedorPorProducto, obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
+import { upsertProveedorPorProducto } from "../../src/server/actions/catalogo/upsert-proveedor-por-producto";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
   let productoId: string;
@@ -10,6 +15,10 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
+    // Las lecturas (obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor) exigen una sesión; el upsert es un ayudante interno.
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     const catalogo = await sembrarCatalogoBase();
     unidadCompraId = catalogo.kg.id;
 

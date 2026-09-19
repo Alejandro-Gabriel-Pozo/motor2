@@ -4,8 +4,10 @@ import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 export async function listarCategoriasProducto() {
+  await requerirSesion();
   return prisma.categoriaProducto.findMany({ orderBy: { nombre: "asc" } });
 }
 

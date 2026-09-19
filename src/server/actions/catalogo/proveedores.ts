@@ -5,8 +5,10 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { requerirSesion } from "../con-sesion";
 
 export async function listarProveedores(soloActivos = false) {
+  await requerirSesion();
   return prisma.proveedor.findMany({
     where: soloActivos ? { activo: true } : undefined,
     orderBy: { nombre: "asc" },
