@@ -28,6 +28,15 @@ describe("actualizarActivoSucursal / renombrarSucursal", () => {
     void base;
   });
 
+  it("rechaza desactivar la sucursal en la que está el usuario: se quedaría sin acceso y no podría volver a activarla", async () => {
+    const base = await armarAdmin();
+
+    const resultado = await actualizarActivoSucursal(base.sucursal.id, false);
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toContain("la sucursal en la que estás ahora");
+    expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: base.sucursal.id } })).activo).toBe(true);
+  });
+
   it("reactiva una sucursal desactivada", async () => {
     await armarAdmin();
     const otra = await prisma.sucursal.create({ data: { nombre: "Otra sucursal", activo: false } });

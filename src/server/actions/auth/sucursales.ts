@@ -66,9 +66,17 @@ export async function crearSucursalConAdmin(input: {
  * no había ningún botón para ponerlo en false.
  */
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("alta_sucursal", async () => {
+  return conPermiso("alta_sucursal", async (ctx) => {
     const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
     if (!sucursal) return error("No se encontró esa sucursal.");
+
+    // `obtenerContextoUsuario` solo cuenta las membresías de sucursales activas: quien desactiva la suya (y no tiene otra)
+    // queda sin contexto en toda la aplicación y ya no puede volver a activarla, solo desde la base de datos.
+    if (!activo && sucursalId === ctx.sucursalId) {
+      return error(
+        `No podés desactivar la sucursal en la que estás ahora ("${sucursal.nombre}"): te quedarías sin acceso a la aplicación. Hacelo desde otra sucursal, o pedile a otro admin.`
+      );
+    }
 
     await prisma.sucursal.update({ where: { id: sucursalId }, data: { activo } });
     return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
