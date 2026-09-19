@@ -5,7 +5,7 @@ import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { esNumeroFinito } from "@/core/numero";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirSesionEnSucursal } from "../con-sesion";
+import { requerirVerEnSucursal } from "../con-sesion";
 
 /**
  * Port de HOJA_PRECIO_LOCAL/"Precio Local" (Catalogo.js:2043-2077) — hueco
@@ -14,12 +14,12 @@ import { requerirSesionEnSucursal } from "../con-sesion";
  * (src/core/movimientos/precio-venta.ts) es quien lee esto — acá solo el CRUD.
  */
 export async function obtenerPrecioLocalProducto(sucursalId: string, productoId: string) {
-  await requerirSesionEnSucursal(sucursalId);
+  await requerirVerEnSucursal(sucursalId, "precio_local");
   return prisma.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } });
 }
 
 export async function listarPreciosLocales(sucursalId: string) {
-  await requerirSesionEnSucursal(sucursalId);
+  await requerirVerEnSucursal(sucursalId, "precio_local");
   return prisma.precioLocalProducto.findMany({ where: { sucursalId }, include: { producto: true }, orderBy: { producto: { nombre: "asc" } } });
 }
 

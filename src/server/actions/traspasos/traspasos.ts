@@ -11,7 +11,7 @@ import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, M
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesionEnSucursal } from "../con-sesion";
+import { requerirVerEnSucursal } from "../con-sesion";
 
 /**
  * ===================================================================
@@ -458,7 +458,7 @@ function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInp
  * hallazgo de la diligencia de motor2: "bandeja de traspasos sin límite").
  */
 export async function obtenerBandejaTransferencias(sucursalId: string, cursorHistorial?: string) {
-  await requerirSesionEnSucursal(sucursalId);
+  await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
   const [enCurso, historialMasUno] = await Promise.all([
     prisma.traspasoSucursal.findMany({
       where: { OR: condicionesEnCurso(sucursalId) },
@@ -501,6 +501,6 @@ export async function obtenerBandejaTransferencias(sucursalId: string, cursorHis
 
 /** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. */
 export async function listarSucursalesDisponibles(sucursalId: string) {
-  await requerirSesionEnSucursal(sucursalId);
+  await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
   return prisma.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
 }

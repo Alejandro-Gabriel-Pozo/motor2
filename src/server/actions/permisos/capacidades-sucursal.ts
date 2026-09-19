@@ -5,10 +5,10 @@ import type { AccionClave } from "@/core/permisos/acciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVer } from "../con-sesion";
 
 export async function listarCapacidades() {
-  await requerirSesion();
+  await requerirVer("capacidades_sucursal");
   const [acciones, sucursales, capacidades] = await Promise.all([
     prisma.accion.findMany({ where: { clave: { not: "capacidades_sucursal" } }, orderBy: { clave: "asc" } }),
     prisma.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),

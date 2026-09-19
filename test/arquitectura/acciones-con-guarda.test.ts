@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
  *
  * - `conPermiso(...)`: mutaciones, con permiso de Editar (ver con-permiso.ts).
  * - `requerirSesion()` / `requerirSesionEnSucursal(id)`: lecturas, con sesión y membresía (ver con-sesion.ts).
+ * - `requerirVer(clave)` / `requerirVerEnSucursal(id, clave)`: lecturas de los datos propios de una pantalla: además, su permiso de Ver.
  * - `getUsuarioActual()` / `obtenerContextoUsuario()` / `requierePermiso*(...)` puestos a mano: casos puntuales.
  *
  * Es una comprobación por texto (no ejecuta nada): atrapa el olvido, no una guarda mal usada. Una función que de
@@ -17,7 +18,7 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src/server/actions");
 // `guardarReceta(` cuenta como guarda: las acciones de la ficha de receta (agregar/quitar ingrediente o paso, cabecera) no
 // llevan `conPermiso` propio, delegan en `guardarReceta`, que abre con `conPermiso("guardar_receta")`.
-const GUARDAS = /conPermiso\w*\s*(<[^>(]*>)?\(|requerirSesion(EnSucursal)?\(|obtenerContextoUsuario\(|getUsuarioActual\(|requierePermiso(Ver)?\(|guardarReceta\(/;
+const GUARDAS = /conPermiso\w*\s*(<[^>(]*>)?\(|requerirSesion(EnSucursal)?\(|requerirVer(EnSucursal)?\(|obtenerContextoUsuario\(|getUsuarioActual\(|requierePermiso(Ver)?\(|guardarReceta\(/;
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {

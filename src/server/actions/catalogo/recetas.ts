@@ -6,7 +6,7 @@ import { esNumeroFinito } from "@/core/numero";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVer } from "../con-sesion";
 
 export interface IngredienteInput {
   insumoProductoId: string;
@@ -55,7 +55,7 @@ const INCLUDE_RECETA_COMPLETA = {
 
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
-  await requerirSesion();
+  await requerirVer("guardar_receta");
   return prisma.recetaVersion.findFirst({
     where: { productoId },
     orderBy: { version: "desc" },
@@ -70,7 +70,7 @@ export async function obtenerRecetaVigente(productoId: string) {
  * guardado pero invisible en la UI (que solo mostraba la vigente).
  */
 export async function listarVersionesDeReceta(productoId: string) {
-  await requerirSesion();
+  await requerirVer("guardar_receta");
   return prisma.recetaVersion.findMany({
     where: { productoId },
     orderBy: { version: "desc" },
