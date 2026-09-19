@@ -43,6 +43,9 @@ interface EstadoFila {
   detalle: string;
 }
 
+/** Filas por llamada al servidor. Una grilla normal cabe en una sola; la de más filas se manda en tandas (el servidor rechaza más de 60 por llamada). */
+const LOTE = 50;
+
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -60,6 +63,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
   const [resumen, setResumen] = useState<{ ok: boolean; texto: string; errores: string[] } | null>(null);
   const leer = useLeerServidor();
   const [pending, startTransition] = useTransition();
+  const [progreso, setProgreso] = useState<string | null>(null);
   const [limpiarSelector, setLimpiarSelector] = useState(0);
 
   function estadoDe(key: string): EstadoFila {
@@ -112,43 +116,64 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
     }
 
     startTransition(async () => {
-      // Toda la grilla en UNA llamada: la sesión y el permiso se comprueban una vez, al principio, así que no puede vencer a
-      // mitad del recorrido (antes era una llamada por fila y las ya escritas quedaban sin que se avisara el parcial).
-      const respuesta = await registrarConteosFisicos(
-        aEnviar.map(({ f, estado }) => ({
-          productoId: f.productoId,
-          seccionId,
-          loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
-          conteoReal: Number(estado.conteoReal),
-          fechaConteo: new Date(fechaConteo),
-          accion: estado.accion,
-          detalle: estado.detalle || undefined,
-        }))
-      );
-      if (!respuesta.ok) {
-        setResumen({ ok: false, texto: respuesta.mensaje, errores: [] });
+      // La grilla se manda al servidor en una llamada (registrarConteosFisicos): la sesión y el permiso se comprueban una vez,
+      // al principio, así que no pueden vencer a mitad del recorrido (antes era una llamada por fila y las ya escritas quedaban
+      // sin que se avisara el parcial). Una grilla de más de LOTE filas se manda en tandas: una sola llamada larguísima toparía
+      // con el tiempo máximo de la función (ver `maxDuration` en page.tsx). Lo habitual es UNA tanda.
+      const errores: string[] = [];
+      let procesados = 0;
+      try {
+        for (let desde = 0; desde < aEnviar.length; desde += LOTE) {
+          const tanda = aEnviar.slice(desde, desde + LOTE);
+          if (aEnviar.length > LOTE) setProgreso(`Guardando… ${desde} de ${aEnviar.length}`);
+
+          const respuesta = await registrarConteosFisicos(
+            tanda.map(({ f, estado }) => ({
+              productoId: f.productoId,
+              seccionId,
+              loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
+              conteoReal: Number(estado.conteoReal),
+              fechaConteo: new Date(fechaConteo),
+              accion: estado.accion,
+              detalle: estado.detalle || undefined,
+            }))
+          );
+          if (!respuesta.ok) {
+            errores.push(respuesta.mensaje);
+            break;
+          }
+
+          const clavesOk: string[] = [];
+          respuesta.resultados.forEach((resultado, i) => {
+            const { f } = tanda[i];
+            if (resultado.ok) {
+              procesados++;
+              clavesOk.push(f.key);
+            } else {
+              errores.push(`${f.etiqueta}: ${resultado.mensaje}`);
+            }
+          });
+          // Se limpian las filas que ya se guardaron en cada tanda, así que si una tanda posterior falla no se vuelven a mandar.
+          setEstados((prev) => {
+            const copia = { ...prev };
+            for (const k of clavesOk) delete copia[k];
+            return copia;
+          });
+          setFilasManuales((prev) => prev.filter((f) => !clavesOk.includes(f.key)));
+        }
+      } catch {
+        // La llamada no devolvió respuesta (se cortó la conexión, tardó demasiado o el servidor la cortó): no se sabe cuántos conteos
+        // de la tanda en curso se guardaron. Se avisa, en vez de dejar que el error rompa la pantalla y se pierda la grilla.
+        setResumen({
+          ok: false,
+          texto: `No se pudo confirmar cuántos conteos se registraron${procesados ? ` (hasta el corte, ${procesados} ya estaban guardados)` : ""}. Puede que se hayan guardado algunos: recargá la página y revisá el Historial reciente antes de volver a contar.`,
+          errores,
+        });
+        setProgreso(null);
         return;
       }
 
-      const errores: string[] = [];
-      let procesados = 0;
-      const clavesOk: string[] = [];
-      respuesta.resultados.forEach((resultado, i) => {
-        const { f } = aEnviar[i];
-        if (resultado.ok) {
-          procesados++;
-          clavesOk.push(f.key);
-        } else {
-          errores.push(`${f.etiqueta}: ${resultado.mensaje}`);
-        }
-      });
-
-      setEstados((prev) => {
-        const copia = { ...prev };
-        for (const k of clavesOk) delete copia[k];
-        return copia;
-      });
-      setFilasManuales((prev) => prev.filter((f) => !clavesOk.includes(f.key)));
+      setProgreso(null);
       setResumen({
         ok: errores.length === 0,
         texto: `${procesados} conteo(s) registrado(s).${errores.length ? ` ${errores.length} con error.` : ""}`,
@@ -292,7 +317,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
         disabled={pending}
         className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50"
       >
-        {pending ? "Guardando..." : "Registrar conteo"}
+        {pending ? (progreso ?? "Guardando...") : "Registrar conteo"}
       </button>
     </div>
   );

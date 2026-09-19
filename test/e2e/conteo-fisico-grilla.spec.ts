@@ -37,7 +37,7 @@ test("registrar el conteo de varias filas es UNA llamada al servidor, y se regis
   });
 
   await page.getByRole("button", { name: "Registrar conteo", exact: true }).click();
-  await expect(page.getByText("3 conteo(s) registrado(s).")).toBeVisible();
+  await expect(page.getByText(/^3 conteo\(s\) registrado\(s\)\./)).toBeVisible();
 
   // Una sola llamada para las tres filas (antes eran tres).
   expect(llamadas).toHaveLength(1);
@@ -48,4 +48,38 @@ test("registrar el conteo de varias filas es UNA llamada al servidor, y se regis
     [10, 0],
     [12, 2],
   ]);
+});
+
+test("una grilla de más de 50 filas se manda en tandas (2 llamadas), y se registran todas", async ({ paginaAutenticada: page, seccionId }) => {
+  const ahora = Date.now();
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+
+  const TOTAL = 55;
+  const productos = [];
+  for (let i = 0; i < TOTAL; i++) {
+    const codigo = `E2E-CG-${String(i).padStart(2, "0")}-${ahora}`;
+    const producto = await prisma.producto.create({ data: { codigo, nombre: `E2E Grande ${codigo}`, tipo: "MP", unidadStockId: kg.id } });
+    const operacion = await prisma.operacion.create({ data: { sucursalId: seccion.sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
+    await prisma.movimientoStock.create({
+      data: { operacionId: operacion.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Stock inicial del test", precioTotal: 0, precioPorUnidadStock: 0 },
+    });
+    productos.push(producto);
+  }
+
+  await page.goto(`/movimientos/conteo-fisico?seccionId=${seccionId}`);
+  // Todas se cuentan igual que el sistema (10): sin diferencia, el conteo no toca el stock.
+  for (const p of productos) await page.getByRole("row", { name: new RegExp(p.codigo) }).locator("input").first().fill("10");
+
+  const llamadas: string[] = [];
+  page.on("request", (peticion) => {
+    if (peticion.method() === "POST" && peticion.url().includes("/movimientos/conteo-fisico")) llamadas.push(peticion.url());
+  });
+
+  await page.getByRole("button", { name: /^(Registrar conteo|Guardando)/ }).click();
+  await expect(page.getByText(new RegExp("^" + TOTAL + " conteo\\(s\\) registrado\\(s\\)\\."))).toBeVisible({ timeout: 30_000 });
+
+  expect(llamadas).toHaveLength(2); // 50 + 5
+  expect(await prisma.conteoFisico.count({ where: { productoId: { in: productos.map((p) => p.id) } } })).toBe(TOTAL);
 });

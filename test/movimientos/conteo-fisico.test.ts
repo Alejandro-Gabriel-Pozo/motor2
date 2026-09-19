@@ -272,11 +272,26 @@ describe("Conteo Físico", () => {
     it("una lista vacía y una lista demasiado larga se rechazan sin escribir nada", async () => {
       expect((await registrarConteosFisicos([])).ok).toBe(false);
 
-      const demasiadas = Array.from({ length: 501 }, () => fila(mpId, 7));
+      const demasiadas = Array.from({ length: 61 }, () => fila(mpId, 7));
       const r = await registrarConteosFisicos(demasiadas);
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("demasiados");
       expect(await prisma.conteoFisico.count()).toBe(0);
+    });
+
+    it("una excepción inesperada en una fila (no un rechazo de negocio) queda como el resultado de ESA fila y no tira la llamada: las demás se escriben", async () => {
+      const espia = vi.spyOn(console, "error").mockImplementation(() => {});
+      const b = await crearMpConStock("MP_B", 8);
+
+      // Una fecha inválida hace lanzar a Prisma dentro de la transacción (no es un `return error(...)`).
+      const r = await registrarConteosFisicos([fila(mpId, 7), { ...fila(b.id, 5), fechaConteo: new Date("no-es-una-fecha") }, fila(b.id, 6)]);
+      espia.mockRestore();
+
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.resultados.map((x) => x.ok)).toEqual([true, false, true]);
+      expect(r.resultados[1].mensaje).toContain("error inesperado");
+      expect(await prisma.conteoFisico.count()).toBe(2);
     });
 
     it("un producto de otra sección o sucursal sigue rechazándose por fila (el chequeo de sección no se perdió al agrupar)", async () => {
