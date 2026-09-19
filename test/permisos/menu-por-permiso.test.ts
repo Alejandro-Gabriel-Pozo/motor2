@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { accionesQueElUsuarioPuedeVer } from "../../src/core/permisos/gate";
-import { GRUPOS_NAV, accionesDelMenu, filtrarMenuPorPermiso } from "../../src/core/navegacion/estructura";
+import { GRUPOS_NAV, RUTA_SIN_PANTALLAS, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso } from "../../src/core/navegacion/estructura";
+import { pantallaDeInicio } from "../../src/core/navegacion/inicio";
 import type { AccionClave } from "../../src/core/permisos/acciones";
 
 const CLAVES_REPORTES: AccionClave[] = ["ver_reportes_dinero", "ver_reportes_control", "ver_reportes_operativos", "ver_reportes_catalogo"];
@@ -68,11 +69,11 @@ describe("filtrarMenuPorPermiso", () => {
       "/reportes/trazabilidad",
       "/reportes/vencimientos",
     ]);
-    // Los demás grupos no llevan `accion`: no se tocan.
-    expect(grupos.find((g) => g.id === "catalogo")?.items.length).toBe(GRUPOS_NAV.find((g) => g.id === "catalogo")?.items.length);
+    // Todo el menú lleva `accion`: los grupos sin ningún ítem visible desaparecen, no solo Reportes.
+    expect(grupos.map((g) => g.id)).toEqual(["reportes"]);
 
     const sinNada = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>());
-    expect(sinNada.find((g) => g.id === "reportes")).toBeUndefined();
+    expect(sinNada).toEqual([]);
   });
 
   it("accionesDelMenu trae cada acción una sola vez", () => {
@@ -80,5 +81,49 @@ describe("filtrarMenuPorPermiso", () => {
     expect(new Set(acciones).size).toBe(acciones.length);
     expect(acciones).toContain("ver_reportes_dinero");
     expect(acciones).toContain("proceso_control");
+    expect(acciones).toContain("gestion_usuarios");
+  });
+});
+
+describe("a dónde se manda al entrar", () => {
+  it("a /reportes si puede verlo (como siempre), aunque haya otros ítems antes en el menú", () => {
+    const menu = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["alta_producto", "ver_reportes_dinero"]));
+    expect(elegirPantallaDeInicio(menu)).toBe("/reportes");
+  });
+
+  it("si no, a la primera pantalla del menú que puede abrir", () => {
+    const menu = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["ver_stock", "proceso_venta"]));
+    expect(elegirPantallaDeInicio(menu)).toBe("/movimientos/venta");
+  });
+
+  it("y si no tiene ninguna, a la pantalla que lo explica (no a un mensaje de «no tenés permiso» de una página)", () => {
+    expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>()))).toBe(RUTA_SIN_PANTALLAS);
+  });
+});
+
+describe("pantallaDeInicio (con la base)", () => {
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+  });
+
+  it("un admin va a /reportes; un operador, a una pantalla que sí puede abrir", async () => {
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [] });
+
+    expect(await pantallaDeInicio(ctxDe(admin))).toBe("/reportes");
+
+    const destino = await pantallaDeInicio(ctxDe(operador));
+    expect(destino).not.toBe("/reportes");
+    expect(destino).not.toBe(RUTA_SIN_PANTALLAS); // el operador de fábrica tiene varias pantallas
+  });
+
+  it("un rol sin ningún permiso va a la pantalla que lo explica", async () => {
+    const base = await sembrarBase();
+    const vacio = await prisma.rol.create({ data: { nombre: "sin-permisos" } });
+    const usuario = await crearUsuarioConMembresia({ email: "vacio@test.com", sucursalId: base.sucursal.id, rolId: vacio.id });
+    const destino = await pantallaDeInicio({ usuarioId: usuario.id, email: usuario.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [] });
+    expect(destino).toBe(RUTA_SIN_PANTALLAS);
   });
 });

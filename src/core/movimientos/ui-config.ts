@@ -1,5 +1,6 @@
 import type { DestinoConsumo, MotivoMerma, Proceso } from "@prisma/client";
 import { TRANSICIONES } from "./transiciones";
+import type { AccionClave } from "@/core/permisos/acciones";
 import type { FiltroSelectorProducto } from "@/server/actions/catalogo/productos";
 
 /** Etiquetas de MOTIVOS_MERMA (Movimientos.js:56) — import type-only de @prisma/client, no arrastra el cliente de Prisma al bundle del navegador. */
@@ -93,21 +94,24 @@ export function obtenerConfigProceso(slug: string): ProcesoUiConfig | null {
   return Object.prototype.hasOwnProperty.call(PROCESOS_UI, slug) ? PROCESOS_UI[slug] : null;
 }
 
-/** Para el nav (`/movimientos/layout.tsx`) — incluye Venta/Conteo Físico, que tienen ruta propia. */
-export const NAV_MOVIMIENTOS: { href: string; label: string }[] = [
-  { href: "/movimientos/compra", label: "Compra" },
-  { href: "/movimientos/produccion", label: "Producción" },
-  { href: "/movimientos/venta", label: "Venta" },
-  { href: "/movimientos/consumo", label: "Consumo" },
-  { href: "/movimientos/merma", label: "Merma" },
-  { href: "/movimientos/ajuste", label: "Ajuste" },
-  { href: "/movimientos/transferencia", label: "Transferencia" },
-  { href: "/movimientos/devolucion-consignacion", label: "Dev. consignación" },
-  { href: "/movimientos/devolucion-cliente", label: "Dev. cliente" },
-  { href: "/movimientos/devolucion-proveedor", label: "Dev. proveedor" },
-  { href: "/movimientos/conteo-fisico", label: "Conteo físico" },
-  { href: "/movimientos/secciones", label: "Secciones" },
-  { href: "/movimientos/precio-local", label: "Precio local" },
+/**
+ * Fuente del grupo Movimientos del menú lateral (`estructura.ts` la filtra) — incluye Venta/Conteo Físico, que tienen ruta propia.
+ * `accion` es la acción de «Ver» que protege la página: el menú solo muestra el ítem a quien puede verla.
+ */
+export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClave }[] = [
+  { href: "/movimientos/compra", label: "Compra", accion: "proceso_compra" },
+  { href: "/movimientos/produccion", label: "Producción", accion: "proceso_produccion" },
+  { href: "/movimientos/venta", label: "Venta", accion: "proceso_venta" },
+  { href: "/movimientos/consumo", label: "Consumo", accion: "proceso_consumo" },
+  { href: "/movimientos/merma", label: "Merma", accion: "proceso_merma" },
+  { href: "/movimientos/ajuste", label: "Ajuste", accion: "proceso_ajuste" },
+  { href: "/movimientos/transferencia", label: "Transferencia", accion: "proceso_transferencia" },
+  { href: "/movimientos/devolucion-consignacion", label: "Dev. consignación", accion: "proceso_devolucion_consignacion" },
+  { href: "/movimientos/devolucion-cliente", label: "Dev. cliente", accion: "proceso_devolucion_cliente" },
+  { href: "/movimientos/devolucion-proveedor", label: "Dev. proveedor", accion: "proceso_devolucion_proveedor" },
+  { href: "/movimientos/conteo-fisico", label: "Conteo físico", accion: "proceso_control" },
+  { href: "/movimientos/secciones", label: "Secciones", accion: "secciones" },
+  { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local" },
   { href: "/stock/consolidado", label: "Stock →" },
   { href: "/reportes", label: "Reportes →" },
 ];

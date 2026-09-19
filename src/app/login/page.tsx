@@ -8,7 +8,7 @@ export default async function LoginPage() {
 
   if (usuario) {
     const ctx = await obtenerContextoUsuario();
-    if (ctx) redirect("/reportes");
+    if (ctx) redirect("/"); // la raíz decide a qué pantalla mandarlo, según lo que su rol puede abrir
 
     // Sesión válida pero sin ninguna sucursal asignada todavía. NO
     // redirigir de vuelta a /login desde acá — el layout de administración

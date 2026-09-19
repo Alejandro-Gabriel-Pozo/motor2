@@ -44,7 +44,9 @@ async function asegurarBaseSeed() {
       const puedeEditar = accion.rolesEditarSemilla.includes(nombreRol);
       await prisma.permisoRol.upsert({
         where: { rolId_accionClave: { rolId: rolesPorNombre[nombreRol].id, accionClave: accion.clave } },
-        update: {},
+        // El admin de las pruebas tiene que poder abrir todo, pase lo que pase con una base que traiga restos de otros tests
+        // (por ejemplo, uno de Vitest que deja un permiso de admin en falso). Los demás roles conservan lo que tengan.
+        update: nombreRol === "admin" ? { puedeVer: true, puedeEditar: true } : {},
         create: { rolId: rolesPorNombre[nombreRol].id, accionClave: accion.clave, puedeEditar, puedeVer: puedeEditar },
       });
     }

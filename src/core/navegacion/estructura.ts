@@ -4,7 +4,7 @@ import type { AccionClave } from "@/core/permisos/acciones";
 export interface ItemNav {
   href: string;
   label: string;
-  /** Si está, el ítem solo se muestra a quien puede VER esa acción (la misma que protege la página). Sin `accion`, siempre se muestra. */
+  /** El ítem solo se muestra a quien puede VER esa acción (la misma que protege la página; un test lo comprueba para todos los ítems). */
   accion?: AccionClave;
 }
 
@@ -27,24 +27,24 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "administracion",
     label: "Administración",
     items: [
-      { href: "/administracion/usuarios", label: "Usuarios" },
-      { href: "/administracion/roles", label: "Roles" },
-      { href: "/administracion/permisos", label: "Permisos" },
-      { href: "/administracion/capacidades-sucursal", label: "Capacidades por sucursal" },
-      { href: "/administracion/sucursales", label: "Sucursales" },
-      { href: "/administracion/auditoria", label: "Auditoría" },
+      { href: "/administracion/usuarios", label: "Usuarios", accion: "gestion_usuarios" },
+      { href: "/administracion/roles", label: "Roles", accion: "gestion_permisos" },
+      { href: "/administracion/permisos", label: "Permisos", accion: "gestion_permisos" },
+      { href: "/administracion/capacidades-sucursal", label: "Capacidades por sucursal", accion: "capacidades_sucursal" },
+      { href: "/administracion/sucursales", label: "Sucursales", accion: "alta_sucursal" },
+      { href: "/administracion/auditoria", label: "Auditoría", accion: "ver_auditoria" },
     ],
   },
   {
     id: "catalogo",
     label: "Catálogo",
     items: [
-      { href: "/catalogo/productos", label: "Productos" },
-      { href: "/catalogo/proveedores", label: "Proveedores" },
-      { href: "/catalogo/recetas", label: "Recetas" },
-      { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos" },
-      { href: "/catalogo/categorias", label: "Categorías" },
-      { href: "/catalogo/unidades", label: "Unidades" },
+      { href: "/catalogo/productos", label: "Productos", accion: "alta_producto" },
+      { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores" },
+      { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta" },
+      { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia" },
+      { href: "/catalogo/categorias", label: "Categorías", accion: "categorias" },
+      { href: "/catalogo/unidades", label: "Unidades", accion: "unidades" },
     ],
   },
   {
@@ -58,11 +58,11 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "stock",
     label: "Stock",
     items: [
-      { href: "/stock/consolidado", label: "Consolidado" },
-      { href: "/stock/por-familia", label: "Por familia" },
-      { href: "/stock/alertas", label: "Alertas" },
-      { href: "/stock/minimo", label: "Stock mínimo" },
-      { href: "/stock/reclasificar", label: "Reclasificar" },
+      { href: "/stock/consolidado", label: "Consolidado", accion: "ver_stock" },
+      { href: "/stock/por-familia", label: "Por familia", accion: "ver_stock" },
+      { href: "/stock/alertas", label: "Alertas", accion: "ver_stock" },
+      { href: "/stock/minimo", label: "Stock mínimo", accion: "stock_minimo" },
+      { href: "/stock/reclasificar", label: "Reclasificar", accion: "proceso_control" },
     ],
   },
   {
@@ -98,9 +98,9 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "traspasos",
     label: "Traspasos",
     items: [
-      { href: "/traspasos", label: "Bandeja" },
-      { href: "/traspasos/solicitar", label: "Solicitar (a otra sucursal)" },
-      { href: "/traspasos/enviar", label: "Enviar directo" },
+      { href: "/traspasos", label: "Bandeja", accion: "proceso_transferencia_sucursal" },
+      { href: "/traspasos/solicitar", label: "Solicitar (a otra sucursal)", accion: "proceso_transferencia_sucursal" },
+      { href: "/traspasos/enviar", label: "Enviar directo", accion: "proceso_transferencia_sucursal" },
     ],
   },
 ];
@@ -115,4 +115,17 @@ export function filtrarMenuPorPermiso(grupos: GrupoNav[], puedeVer: ReadonlySet<
   return grupos
     .map((g) => ({ ...g, items: g.items.filter((i) => !i.accion || puedeVer.has(i.accion)) }))
     .filter((g) => g.items.length > 0);
+}
+
+/** Pantalla que se abre al entrar cuando el usuario no tiene ninguna habilitada en el menú (ver `elegirPantallaDeInicio`). */
+export const RUTA_SIN_PANTALLAS = "/inicio";
+
+/**
+ * A dónde mandar a alguien al entrar (o al cambiar de sucursal): `/reportes` si puede verlo (lo de siempre), y si no la primera
+ * pantalla del menú que sí puede abrir. Antes se mandaba siempre a `/reportes`, que ahora exige un permiso: quien no lo tiene
+ * habría aterrizado en un mensaje de «no tenés permiso». `menuVisible` es el menú ya filtrado (`filtrarMenuPorPermiso`).
+ */
+export function elegirPantallaDeInicio(menuVisible: GrupoNav[]): string {
+  const items = menuVisible.flatMap((g) => g.items);
+  return items.find((i) => i.href === "/reportes")?.href ?? items[0]?.href ?? RUTA_SIN_PANTALLAS;
 }

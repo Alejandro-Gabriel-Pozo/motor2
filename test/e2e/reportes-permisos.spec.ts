@@ -62,3 +62,27 @@ test("un operador no ve los reportes nuevos: ni en el menú ni abriendo la direc
   }
   await page.context().close();
 });
+
+test("al entrar, un admin va a /reportes y un operador a una pantalla que sí puede abrir (no a un mensaje de «no tenés permiso»)", async ({ paginaAutenticada: pagina, browser, baseURL, sucursalId }) => {
+  await pagina.goto("/");
+  await pagina.waitForURL(/\/reportes$/);
+
+  const operador = await paginaComoOperador(browser, baseURL, sucursalId);
+  await operador.goto("/");
+  await operador.waitForLoadState("networkidle");
+  expect(new URL(operador.url()).pathname).not.toBe("/reportes");
+  await expect(operador.getByText(/No tenés permiso para ver esta sección/)).toHaveCount(0);
+  await operador.context().close();
+});
+
+test("un operador no ve en el menú las pantallas de administración que no puede abrir", async ({ browser, baseURL, sucursalId }) => {
+  const operador = await paginaComoOperador(browser, baseURL, sucursalId);
+  await operador.goto("/catalogo/productos");
+  await expect(operador.locator('a[href="/catalogo/productos"]')).toHaveCount(1);
+  // Administración no se despliega en esta página; se comprueba que el enlace a Usuarios no aparece en ningún lado del menú.
+  await expect(operador.locator('a[href="/administracion/usuarios"]')).toHaveCount(0);
+  await operador.goto("/administracion/usuarios");
+  await expect(operador.getByText(/No tenés permiso para ver esta sección/)).toBeVisible();
+  await expect(operador.locator('a[href="/administracion/usuarios"]')).toHaveCount(0);
+  await operador.context().close();
+});
