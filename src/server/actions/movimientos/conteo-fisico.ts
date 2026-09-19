@@ -127,8 +127,13 @@ async function registrarConteoConContexto(ctx: ContextoUsuario, datos: DatosCont
 /** Resultado de la grilla: uno por conteo, en el mismo orden en que se mandaron. */
 export type ResultadoConteos = { ok: true; mensaje: string; resultados: ResultadoAccion[] } | { ok: false; mensaje: string };
 
-/** Tope de conteos por llamada: una grilla real tiene decenas; esto solo frena un pedido absurdo. */
-const MAX_CONTEOS_POR_LLAMADA = 500;
+/**
+ * Tope de conteos por llamada. Cada conteo son 6 a 8 viajes a la base (dentro de una transacción serializable); con la función y
+ * la base en regiones distintas de la nube (~70 ms por viaje) una fila puede tardar del orden de medio segundo, y la llamada tiene
+ * un techo de 60 s (`maxDuration` de la página de Conteo Físico). 60 filas dejan margen aun a 1 s por fila. La pantalla manda
+ * las grillas más grandes en tandas de 50.
+ */
+const MAX_CONTEOS_POR_LLAMADA = 60;
 
 /**
  * Toda la grilla de Conteo Físico en UNA llamada. Antes la pantalla llamaba a `registrarConteoFisico` una vez por fila: si la
