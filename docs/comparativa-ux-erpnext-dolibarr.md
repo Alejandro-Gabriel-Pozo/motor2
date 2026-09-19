@@ -955,3 +955,5 @@ negocio ya cotice todo en USD", y nadie pidió eso. Si en algún momento
 hace falta, es una tabla `CotizacionDolar` + la misma API de series
 (serie `168.1_T_CAMBIOR_D_0_0_26`, tipo de cambio A3500 del BCRA, diaria)
 — mismo patrón que `IndicePrecio`, no un diseño nuevo.
+
+**Actualización 2026-09-19:** la serie `168.1_T_CAMBIOR_D_0_0_26` de este párrafo es el **dólar futuro (Rofex)**, no el tipo de cambio oficial; no usarla. El dólar oficial (Banco Nación) se implementó ese día (`CotizacionDolar`, ver `grounding-pendientes-2026-09-18.md` §6); lo que sigue sin existir es la doble moneda en los registros de compra y venta.
