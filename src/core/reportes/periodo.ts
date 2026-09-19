@@ -4,7 +4,7 @@ import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
 import { construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo, type FilaImpactoRecetaPorPeriodo } from "./costos";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
-import { cargarSerieIPC, resolverCoeficienteIPC, resolverVariacionPeriodoIPC } from "./indices-economicos";
+import { cargarSerieIPC, esMesSinPublicar, resolverCoeficienteIPC, resolverVariacionPeriodoIPC } from "./indices-economicos";
 
 export interface FiltrosPeriodo {
   proceso?: Proceso;
@@ -626,7 +626,7 @@ async function calcularComparativaPreciosDelPeriodo(
           : "Todavía no hay cambios de precio de venta registrados en este período (el registro de auditoría arrancó el 2026-09-18) — este comparador mejora con el uso.",
     avisoIPC:
       variacionIPCPct !== null
-        ? "IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico."
+        ? `IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico.${esMesSinPublicar(hasta, serieIPC) || esMesSinPublicar(desde, serieIPC) ? ` PROVISORIO: el INDEC todavía no publicó el mes del período; se usó ${serieIPC.ultimoMes}, el último disponible.` : ""}`
         : "Sin IPC sincronizado para alguno de los dos meses del período.",
   };
 }
@@ -742,6 +742,8 @@ export interface MargenDelPeriodo {
   ingresoAjustadoIPCTotal: number;
   ingresoConIPC: number;
   ingresoSinIPC: number;
+  /** Cuánto del ingreso con IPC es de un mes que el INDEC todavía no publicó (coeficiente provisorio). */
+  ingresoProvisorioIPC: number;
   avisoIPC: string;
 }
 
@@ -817,6 +819,7 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
   let costoIPCTotal = 0;
   let ingresoConIPC = 0;
   let ingresoSinIPC = 0;
+  let ingresoProvisorioIPC = 0; // ingreso de meses que el INDEC todavía no publicó (coeficiente provisorio, ver resolverCoeficienteIPC)
   for (const it of items) {
     if (it.proceso !== "VENTA" || it.precioTotal <= 0) continue;
     const infoCosto = costoPorProducto.get(it.productoId);
@@ -829,6 +832,7 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
     ingresoAjustadoIPCTotal += it.precioTotal * coeficiente;
     costoIPCTotal += it.cantidad * costoUnitario;
     ingresoConIPC += it.precioTotal;
+    if (esMesSinPublicar(it.fecha, serieIPC)) ingresoProvisorioIPC += it.precioTotal;
   }
   const margenIPCTotal = ingresoConIPC > 0 ? redondearMoneda(ingresoAjustadoIPCTotal - costoIPCTotal) : null;
 
@@ -854,8 +858,9 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
     ingresoAjustadoIPCTotal: redondearMoneda(ingresoAjustadoIPCTotal),
     ingresoConIPC: redondearMoneda(ingresoConIPC),
     ingresoSinIPC: redondearMoneda(ingresoSinIPC),
+    ingresoProvisorioIPC: redondearMoneda(ingresoProvisorioIPC),
     avisoIPC: ingresoConIPC > 0
-      ? `Ventas llevadas a poder adquisitivo de hoy (IPC INDEC) antes de restar el costo de reposición de HOY — los dos lados de la resta quedan en la misma plata, a diferencia de "Margen".${ingresoSinIPC > 0 ? ` Cubre $${redondearMoneda(ingresoConIPC).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} — el resto es de un mes sin IPC sincronizado, o de un producto con costo incompleto.` : ""}`
+      ? `Ventas llevadas a poder adquisitivo de hoy (IPC INDEC) antes de restar el costo de reposición de HOY — los dos lados de la resta quedan en la misma plata, a diferencia de "Margen".${ingresoSinIPC > 0 ? ` Cubre $${redondearMoneda(ingresoConIPC).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} — el resto es de un producto con costo incompleto o de un mes que falta en la serie del IPC.` : ""}${ingresoProvisorioIPC > 0 ? ` PROVISORIO: $${redondearMoneda(ingresoProvisorioIPC).toLocaleString("es-AR")} son de un mes que el INDEC todavía no publicó; se los trata como hechos en ${serieIPC.ultimoMes} (el último publicado), sin inflación entre medio. Se corrige solo cuando se publique.` : ""}`
       : "Todavía no hay índice de IPC sincronizado (o ninguna venta del rango cae en un mes ya sincronizado).",
   };
 }

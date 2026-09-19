@@ -28,6 +28,8 @@ export interface SerieIPC {
   /** clave "YYYY-MM" -> valor del índice ese mes. */
   porMes: Map<string, number>;
   ultimoValor: number | null;
+  /** Clave "YYYY-MM" del último mes publicado (el más reciente de la serie), o `null` si no hay ninguno. */
+  ultimoMes: string | null;
 }
 
 function claveMes(fecha: Date): string {
@@ -39,17 +41,31 @@ export async function cargarSerieIPC(db: Db = prisma): Promise<SerieIPC> {
   const filas = await db.indicePrecio.findMany({ orderBy: { mes: "desc" } });
   const porMes = new Map<string, number>();
   for (const f of filas) porMes.set(claveMes(f.mes), Number(f.valor));
-  return { porMes, ultimoValor: filas[0] ? Number(filas[0].valor) : null };
+  return { porMes, ultimoValor: filas[0] ? Number(filas[0].valor) : null, ultimoMes: filas[0] ? claveMes(filas[0].mes) : null };
+}
+
+/**
+ * `true` si el mes de `fecha` es POSTERIOR al último mes publicado: el INDEC publica con ~1 mes de rezago, así que el mes en curso
+ * (y a veces el anterior) todavía no tiene índice.
+ */
+export function esMesSinPublicar(fecha: Date, serie: SerieIPC): boolean {
+  return serie.ultimoMes !== null && claveMes(fecha) > serie.ultimoMes;
 }
 
 /**
  * Coeficiente para llevar una venta de `fecha` a poder adquisitivo del
  * ÚLTIMO mes con IPC cargado (no necesariamente "hoy" — el INDEC publica
- * con rezago, ver docstring del módulo). `null` si falta el dato de
- * cualquiera de los dos meses — no se inventa un valor intermedio.
+ * con rezago, ver docstring del módulo).
+ *
+ * Un mes POSTERIOR al último publicado (el mes en curso, todavía sin índice) no deja la venta afuera: se la trata como
+ * hecha en el último mes publicado (coeficiente 1, sin inflación entre medio). Es PROVISORIO: subestima el ajuste en lo que
+ * subió el índice desde entonces, y como el reporte se recalcula en cada lectura, se corrige solo cuando el INDEC publica el
+ * mes (ver `esMesSinPublicar` para avisarlo en pantalla). `null` solo si no hay ningún índice cargado o el mes es anterior al
+ * último y falta en la serie (un hueco real: no se inventa un valor intermedio).
  */
 export function resolverCoeficienteIPC(fecha: Date, serie: SerieIPC): number | null {
   if (serie.ultimoValor === null) return null;
+  if (esMesSinPublicar(fecha, serie)) return 1;
   const valorMes = serie.porMes.get(claveMes(fecha));
   if (valorMes === undefined || valorMes <= 0) return null;
   return serie.ultimoValor / valorMes;
@@ -77,8 +93,10 @@ export function resolverCoeficienteIPC(fecha: Date, serie: SerieIPC): number | n
  * sin tocar esta función.
  */
 export function resolverVariacionPeriodoIPC(desde: Date, hasta: Date, serie: SerieIPC): number | null {
-  const valorDesde = serie.porMes.get(claveMes(desde));
-  const valorHasta = serie.porMes.get(claveMes(hasta));
+  // Un mes posterior al último publicado se toma como el último publicado (provisorio, ver `resolverCoeficienteIPC`).
+  const enSerie = (fecha: Date) => (esMesSinPublicar(fecha, serie) ? serie.ultimoMes! : claveMes(fecha));
+  const valorDesde = serie.porMes.get(enSerie(desde));
+  const valorHasta = serie.porMes.get(enSerie(hasta));
   if (valorDesde === undefined || valorHasta === undefined || valorDesde <= 0) return null;
   return Math.round((valorHasta / valorDesde - 1) * 1000) / 10;
 }

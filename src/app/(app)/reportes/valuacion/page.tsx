@@ -1,6 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularValuacionInventario } from "@/core/reportes/valuacion";
+import { EnDolares } from "@/components/en-dolares";
+import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacion";
 
 export default async function ValuacionPage() {
@@ -10,7 +12,7 @@ export default async function ValuacionPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const rep = await calcularValuacionInventario(ctx.sucursalId);
+  const [rep, cotizacion] = await Promise.all([calcularValuacionInventario(ctx.sucursalId), obtenerUltimaCotizacion().catch(() => null)]);
   const sinCosto = rep.filas.filter((f) => f.sinCosto);
   const conCosto = rep.filas.filter((f) => !f.sinCosto);
 
@@ -27,6 +29,7 @@ export default async function ValuacionPage() {
       <div className="rounded border px-4 py-3">
         <div className="text-xs uppercase text-neutral-500">Total valorizado</div>
         <div className="text-2xl font-semibold">${rep.totalValorizado.toLocaleString("es-AR")}</div>
+        <EnDolares pesos={rep.totalValorizado} cotizacion={cotizacion} className="text-sm text-neutral-500" />
         {rep.cantidadSinCosto > 0 && (
           <div className="mt-1 text-xs text-amber-600">
             {rep.cantidadSinCosto} producto{rep.cantidadSinCosto === 1 ? "" : "s"} con stock pero sin ninguna compra registrada — no incluido

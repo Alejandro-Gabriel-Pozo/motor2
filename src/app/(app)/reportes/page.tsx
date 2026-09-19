@@ -4,6 +4,8 @@ import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerResumenOperativo } from "@/core/reportes/resumen-operativo";
 import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-resumen";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { EnDolares } from "@/components/en-dolares";
+import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 
 export default async function ReportesResumenPage() {
   const ctx = await obtenerContextoUsuario();
@@ -12,7 +14,7 @@ export default async function ReportesResumenPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const r = await obtenerResumenOperativo(ctx.sucursalId);
+  const [r, cotizacion] = await Promise.all([obtenerResumenOperativo(ctx.sucursalId), obtenerUltimaCotizacion().catch(() => null)]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,6 +32,7 @@ export default async function ReportesResumenPage() {
             <AyudaIcono texto={r.financiero.avisoVentas} />
           </p>
           <p className="text-lg font-semibold">${r.financiero.ventasTotal.toLocaleString("es-AR")}</p>
+          <EnDolares pesos={r.financiero.ventasTotal} cotizacion={cotizacion} />
           {r.financiero.hayEstimados && <p className="text-xs text-amber-600">incluye estimados</p>}
         </div>
         <div className="rounded border p-4">
@@ -53,7 +56,7 @@ export default async function ReportesResumenPage() {
             <AyudaIcono texto={r.financiero.avisoMargenReal} />
           </p>
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Ajustado IPC: {r.financiero.margenIPCTotal !== null ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)` : "sin datos todavía"}
+            Ajustado IPC: {r.financiero.margenIPCTotal !== null ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)${r.financiero.margenIPCProvisorio ? " · provisorio" : ""}` : "sin datos todavía"}
             <AyudaIcono texto={r.financiero.avisoMargenIPC} />
           </p>
         </div>
@@ -63,6 +66,7 @@ export default async function ReportesResumenPage() {
             <AyudaIcono texto={r.financiero.avisoCompras} />
           </p>
           <p className="text-lg font-semibold">${r.financiero.gastadoTotal.toLocaleString("es-AR")}</p>
+          <EnDolares pesos={r.financiero.gastadoTotal} cotizacion={cotizacion} />
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-neutral-500">Alertas de stock</p>

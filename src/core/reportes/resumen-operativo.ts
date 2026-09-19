@@ -28,6 +28,8 @@ export interface ResumenFinancieroMes {
   /** Ver el docstring de MargenDelPeriodo.margenIPCTotal en periodo.ts. */
   margenIPCTotal: number | null;
   margenIPCPct: number | null;
+  /** El ajuste por IPC incluye ventas de un mes que el INDEC todavía no publicó (provisorio). */
+  margenIPCProvisorio: boolean;
   avisoVentas: string;
   avisoMargen: string;
   avisoMargenReal: string;
@@ -58,6 +60,7 @@ export async function obtenerResumenFinancieroMesActual(sucursalId: string, db: 
     margenRealPct: rep.margen.margenRealPctTotal,
     margenIPCTotal: rep.margen.margenIPCTotal,
     margenIPCPct: rep.margen.margenIPCPctTotal,
+    margenIPCProvisorio: rep.margen.ingresoProvisorioIPC > 0,
     avisoVentas: rep.ventas.aviso,
     avisoMargen: rep.margen.aviso,
     avisoMargenReal: rep.margen.avisoReal,

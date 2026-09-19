@@ -2,6 +2,8 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso } from "@/core/navegacion/estructura";
 import { accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
 import { SidebarColapsable } from "./sidebar-colapsable";
 import { SelectorSucursal } from "./selector-sucursal";
@@ -20,12 +22,15 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   // permiso»). Lo mismo vale para los enlaces entre pantallas (`EnlaceInterno`), que reciben este conjunto por contexto.
   const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDeNavegacion());
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
+  // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
+  const cotizacion = await obtenerUltimaCotizacion().catch(() => null);
 
   return (
     <div className="flex flex-1">
       <SidebarColapsable grupos={grupos} />
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-end gap-4 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
+        <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
+          <CotizacionEncabezado cotizacion={cotizacion} />
           <span className="flex items-center gap-1">
             {ctx.email} ·{" "}
             {ctx.membresias.length > 1 ? (

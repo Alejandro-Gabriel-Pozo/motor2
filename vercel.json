@@ -1,9 +1,7 @@
 {
   "regions": ["pdx1"],
   "crons": [
-    {
-      "path": "/api/cron/sincronizar-ipc",
-      "schedule": "0 12 15 * *"
-    }
+    { "path": "/api/cron/sincronizar-ipc", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/sincronizar-dolar", "schedule": "30 21 * * *" }
   ]
 }

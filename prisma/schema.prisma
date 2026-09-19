@@ -1188,3 +1188,17 @@ model IndicePrecio {
   valor    Decimal  @db.Decimal(12, 4)
   creadoEn DateTime @default(now())
 }
+
+/// Cotización diaria del dólar oficial (Banco Nación) — para ver precios y valores también en dólares. Una fila por día y fuente:
+/// el día de hoy se ACTUALIZA durante el día (la última del día queda), a diferencia de IndicePrecio, que no se reescribe.
+/// `fuente`: "BNA" (dolarapi.com / argentinadatos.com, oficial del Banco Nación) o "BCRA" (respaldo: solo trae un valor, va en `venta`).
+model CotizacionDolar {
+  id       String   @id @default(cuid())
+  fecha    DateTime @db.Date
+  fuente   String
+  compra   Decimal? @db.Decimal(12, 4)
+  venta    Decimal  @db.Decimal(12, 4)
+  creadoEn DateTime @default(now())
+
+  @@unique([fecha, fuente])
+}

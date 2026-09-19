@@ -6,6 +6,8 @@ import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { DigestAlertas } from "./digest-alertas";
 import { ComparativaPrecios } from "./comparativa-precios";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { EnDolares } from "@/components/en-dolares";
+import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 
 function primerDiaDelMesISO() {
   const hoy = new Date();
@@ -25,7 +27,10 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const desdeStr = sp.desde || primerDiaDelMesISO();
   const hastaStr = sp.hasta || hoyISO();
-  const rep = await obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr));
+  const [rep, cotizacion] = await Promise.all([
+    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr)),
+    obtenerUltimaCotizacion().catch(() => null),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,6 +60,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <AyudaIcono texto={rep.ventas.aviso} />
           </p>
           <p className="text-lg font-semibold">${rep.ventas.totalFacturado.toLocaleString("es-AR")}</p>
+          <EnDolares pesos={rep.ventas.totalFacturado} cotizacion={cotizacion} />
         </div>
         <div className="rounded border p-4">
           <p className="flex items-center text-xs text-neutral-500">
@@ -69,7 +75,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <AyudaIcono texto={rep.margen.avisoReal} />
           </p>
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Ajustado IPC: {rep.margen.margenIPCTotal !== null ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)` : "sin datos todavía"}
+            Ajustado IPC: {rep.margen.margenIPCTotal !== null ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)${rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}` : "sin datos todavía"}
             <AyudaIcono texto={rep.margen.avisoIPC} />
           </p>
         </div>
@@ -79,6 +85,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <AyudaIcono texto={rep.compras.aviso} />
           </p>
           <p className="text-lg font-semibold">${rep.compras.totalGastado.toLocaleString("es-AR")}</p>
+          <EnDolares pesos={rep.compras.totalGastado} cotizacion={cotizacion} />
           <p className="mt-1 flex items-center text-xs text-neutral-500">
             {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido` : "sin ventas en el período"}
             {rep.ratioGastoVentas.porcentaje !== null && rep.ratioGastoVentas.porcentajePeriodoAnterior !== null && (

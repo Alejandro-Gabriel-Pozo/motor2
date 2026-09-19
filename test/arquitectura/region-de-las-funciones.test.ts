@@ -17,7 +17,10 @@ describe("vercel.json", () => {
     expect(vercel.regions).toEqual(["pdx1"]);
   });
 
-  it("conserva el cron mensual que sincroniza el IPC", () => {
-    expect(vercel.crons).toEqual([{ path: "/api/cron/sincronizar-ipc", schedule: "0 12 15 * *" }]);
+  it("sincroniza el IPC y el dólar todos los días: el INDEC publica el IPC a mitad de mes en una fecha variable, y las dos cargas son seguras de repetir", () => {
+    expect(vercel.crons).toEqual([
+      { path: "/api/cron/sincronizar-ipc", schedule: "0 12 * * *" },
+      { path: "/api/cron/sincronizar-dolar", schedule: "30 21 * * *" },
+    ]);
   });
 });

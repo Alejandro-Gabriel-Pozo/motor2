@@ -24,6 +24,7 @@ export async function limpiarBaseDeTest() {
   await prisma.capacidadSucursal.deleteMany();
   await prisma.registroAuditoria.deleteMany();
   await prisma.indicePrecio.deleteMany();
+  await prisma.cotizacionDolar.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
   await prisma.user.deleteMany();
