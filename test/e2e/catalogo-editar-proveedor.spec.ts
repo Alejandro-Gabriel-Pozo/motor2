@@ -4,8 +4,8 @@ import { prisma } from "../../src/lib/db";
 /**
  * Circuito Catálogo — tocar «Editar» en la lista de proveedores.
  *
- * Caso borde encontrado al relevar la misma clase de bug que «Editar producto»
- * (docs/grounding-lista-ver-editar-2026-09-18.md §6): la lista y el formulario
+ * Caso borde de la misma clase que el bug de «Editar producto»
+ * (ver test/e2e/catalogo-editar-producto.spec.ts): la lista y el formulario
  * viven en la misma página, así que al pasar de «Editar A» a «Editar B» Next hace
  * una navegación suave y React REUTILIZA el formulario montado. Los campos son
  * inputs con `defaultValue`: si se tipeó algo sin guardar, ese texto sobrevive al
