@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { AccionConteo } from "@prisma/client";
 import { registrarConteoFisico } from "@/server/actions/movimientos/conteo-fisico";
 import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
@@ -57,6 +58,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
   const [filasManuales, setFilasManuales] = useState<FilaManual[]>([]);
   const [nuevoProductoId, setNuevoProductoId] = useState("");
   const [resumen, setResumen] = useState<{ ok: boolean; texto: string; errores: string[] } | null>(null);
+  const leer = useLeerServidor();
   const [pending, startTransition] = useTransition();
   const [limpiarSelector, setLimpiarSelector] = useState(0);
 
@@ -250,7 +252,10 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
           type="button"
           onClick={async () => {
             if (!nuevoProductoId) return;
-            const producto = await obtenerProductoOpcion(nuevoProductoId);
+            const producto = await leer(
+              () => obtenerProductoOpcion(nuevoProductoId),
+              () => setResumen({ ok: false, texto: "No se pudo agregar la fila. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.", errores: [] })
+            );
             if (producto) agregarProducto(producto.id, `${producto.codigo} — ${producto.nombre}`);
           }}
           className="rounded border px-3 py-2 text-sm"

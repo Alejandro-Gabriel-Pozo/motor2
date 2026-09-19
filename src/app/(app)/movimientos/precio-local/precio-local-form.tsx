@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { setPrecioLocalProducto } from "@/server/actions/movimientos/precio-local";
 import { obtenerPrecioVentaProducto } from "@/server/actions/catalogo/productos";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 
@@ -17,17 +18,25 @@ export function PrecioLocalForm() {
   const [pending, startTransition] = useTransition();
   const [resetCount, setResetCount] = useState(0);
   const [precioGlobal, setPrecioGlobal] = useState<number | null>(null);
+  const leer = useLeerServidor();
 
   useEffect(() => {
     if (!productoId) return;
     let cancelado = false;
-    obtenerPrecioVentaProducto(productoId).then((p) => {
-      if (!cancelado) setPrecioGlobal(p);
+    leer(
+      () => obtenerPrecioVentaProducto(productoId),
+      () => {
+        if (cancelado) return;
+        setMensaje("No se pudo leer el precio de venta actual. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.");
+        setOk(false);
+      }
+    ).then((p) => {
+      if (!cancelado && p !== undefined) setPrecioGlobal(p);
     });
     return () => {
       cancelado = true;
     };
-  }, [productoId]);
+  }, [productoId, leer]);
 
   return (
     <form

@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from "react";
 import type { DestinoConsumo, MotivoMerma } from "@prisma/client";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { SelectorProducto } from "@/components/selector-producto";
@@ -85,6 +86,7 @@ export function PanelMovimientoForm({
   const [presentacionesPorFila, setPresentacionesPorFila] = useState<Record<number, PresentacionOpcion[]>>({});
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  const leer = useLeerServidor();
   const [pending, startTransition] = useTransition();
   const [cargandoProveedor, setCargandoProveedor] = useState(false);
   const [infoProveedor, setInfoProveedor] = useState("");
@@ -121,7 +123,14 @@ export function PanelMovimientoForm({
       return resto;
     });
     if (!config.esCompraLike || !productoId) return;
-    listarPresentaciones(productoId).then((todas) => {
+    leer(
+      () => listarPresentaciones(productoId),
+      () => {
+        setMensaje("No se pudieron cargar las presentaciones de compra de ese producto. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.");
+        setOk(false);
+      }
+    ).then((todas) => {
+      if (!todas) return;
       const activas = todas.filter((p) => p.activa);
       if (activas.length) setPresentacionesPorFila((prev) => ({ ...prev, [idx]: activas }));
     });

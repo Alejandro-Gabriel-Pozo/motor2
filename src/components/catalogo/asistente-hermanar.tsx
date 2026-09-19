@@ -5,6 +5,7 @@ import { Modal } from "@/components/modal";
 import { SelectorProducto } from "@/components/selector-producto";
 import { obtenerInsumoDeProducto, asignarInsumoAProducto, type InsumoDeProducto } from "@/server/actions/catalogo/productos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 
 /**
  * Asistente guiado para "hermanar" una MP nueva con una que ya existe
@@ -29,6 +30,7 @@ export function AsistenteHermanar({
   const [info, setInfo] = useState<InsumoDeProducto | null>(null);
   const [nombreGrupo, setNombreGrupo] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const leer = useLeerServidor();
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -43,7 +45,11 @@ export function AsistenteHermanar({
     setSiblingId(id);
     if (!id) return;
     startTransition(async () => {
-      const datos = await obtenerInsumoDeProducto(id);
+      const datos = await leer(
+        () => obtenerInsumoDeProducto(id),
+        () => setMensaje("No se pudo consultar ese producto. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.")
+      );
+      if (datos === undefined) return;
       setInfo(datos);
       if (datos?.insumoId) {
         setPaso("confirmar");

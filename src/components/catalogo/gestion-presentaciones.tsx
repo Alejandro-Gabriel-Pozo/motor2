@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 import {
   agregarPresentacionAlternativa,
   actualizarActivaPresentacion,
@@ -37,6 +38,16 @@ export function GestionPresentaciones({
   const [factorConversion, setFactorConversion] = useState("");
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const leer = useLeerServidor();
+
+  /** Vuelve a leer la lista después de una escritura; si la lectura falla la escritura igual quedó hecha, y se avisa. */
+  async function recargarLista() {
+    const lista = await leer(
+      () => listarPresentaciones(productoId),
+      () => setResultado({ ok: false, texto: "Se guardó, pero no se pudo actualizar la lista. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página." })
+    );
+    if (lista) setPresentaciones(lista);
+  }
 
   function agregar() {
     if (!unidadCompraId || !factorConversion) return;
@@ -46,7 +57,7 @@ export function GestionPresentaciones({
       if (r.ok) {
         setUnidadCompraId("");
         setFactorConversion("");
-        setPresentaciones(await listarPresentaciones(productoId));
+        await recargarLista();
       }
     });
   }
@@ -55,7 +66,7 @@ export function GestionPresentaciones({
     startTransition(async () => {
       const r = await actualizarActivaPresentacion(p.id, !p.activa);
       setResultado({ ok: r.ok, texto: r.mensaje });
-      if (r.ok) setPresentaciones(await listarPresentaciones(productoId));
+      if (r.ok) await recargarLista();
     });
   }
 

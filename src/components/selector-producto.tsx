@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { buscarProductosSelector, type FiltroSelectorProducto, type ProductoOpcion } from "@/server/actions/catalogo/productos";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 
 interface Props {
   id?: string;
@@ -32,6 +33,8 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
   const [opciones, setOpciones] = useState<ProductoOpcion[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
+  const [errorBusqueda, setErrorBusqueda] = useState(false);
+  const leer = useLeerServidor();
   const [resaltado, setResaltado] = useState(0);
   const contenedorRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -59,8 +62,9 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setCargando(true);
-      const res = await buscarProductosSelector(termino, filtro);
-      setOpciones(res);
+      setErrorBusqueda(false);
+      const res = await leer(() => buscarProductosSelector(termino, filtro), () => setErrorBusqueda(true));
+      setOpciones(res ?? []);
       setResaltado(0);
       setCargando(false);
     }, 250);
@@ -119,7 +123,10 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
       {abierto && (
         <ul id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
           {cargando && <li className="px-2 py-1.5 text-neutral-500">Buscando…</li>}
-          {!cargando && !opciones.length && <li className="px-2 py-1.5 text-neutral-500">Sin resultados.</li>}
+          {!cargando && errorBusqueda && (
+            <li className="px-2 py-1.5 text-red-600">No se pudo buscar. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.</li>
+          )}
+          {!cargando && !errorBusqueda && !opciones.length && <li className="px-2 py-1.5 text-neutral-500">Sin resultados.</li>}
           {!cargando &&
             opciones.map((op, i) => (
               <li

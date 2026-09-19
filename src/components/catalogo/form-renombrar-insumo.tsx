@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { previsualizarFusionInsumo, renombrarOFusionarInsumo } from "@/server/actions/catalogo/insumos";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 
 /**
  * Reemplaza el <form action={server action}> crudo que había en
@@ -15,11 +16,16 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
   const [fusionaCon, setFusionaCon] = useState<string | null>(null);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const leer = useLeerServidor();
 
   function intentarGuardar() {
     setResultado(null);
     startTransition(async () => {
-      const destino = await previsualizarFusionInsumo(insumoId, nombre);
+      const destino = await leer(
+        () => previsualizarFusionInsumo(insumoId, nombre),
+        () => setResultado({ ok: false, texto: "No se pudo comprobar si ya existe un insumo con ese nombre. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página." })
+      );
+      if (destino === undefined) return;
       if (destino) {
         setFusionaCon(destino);
         return;
