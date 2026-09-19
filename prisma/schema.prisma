@@ -888,10 +888,10 @@ model MovimientoStock {
   /// pueda comparar cada venta contra el costo que regía ESE día, en vez de
   /// contra el costo de reposición de HOY (ver docs/comparativa-ux-erpnext-
   /// dolibarr.md §7.3/§9, "margen nominal" vs "margen real"). `null` en dos
-  /// casos: ventas de antes de este campo (no hay forma de reconstruirlo
-  /// retroactivo sin una serie histórica de costos), o el costeo estaba
+  /// casos: ventas cargadas sin este dato (anteriores al campo, o cargadas por fuera de la aplicación), o el costeo estaba
   /// incompleto en el momento de vender (mismo criterio que costoIncompleto
-  /// en costos.ts — no se inventa un número parcial).
+  /// en costos.ts — no se inventa un número parcial). La COLUMNA se queda en null: el reporte de Período reconstruye ese costo
+  /// aparte, con el historial de compras (ver src/core/reportes/costo-historico.ts), y lo rotula «reconstruido».
   costoUnitarioVenta Decimal? @db.Decimal(14, 4)
 
   /// Solo si esta línea la generó un ajuste de Conteo Físico (incluida su

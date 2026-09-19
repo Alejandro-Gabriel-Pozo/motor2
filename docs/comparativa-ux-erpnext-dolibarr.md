@@ -776,6 +776,8 @@ método necesita el costo de LA RECETA en el instante exacto de cada venta
 — un dato que nunca se guardó para ventas pasadas y no se puede
 reconstruir sin una serie histórica de costo por insumo. Por eso es
 **solo hacia adelante**: no corrige ni un reporte de datos ya cargados,
+(**SUPERADO el 2026-09-19**: sí hay una serie histórica de costo por insumo, el propio historial de compras; ver la
+«Segunda pasada» al final de esta sección)
 pero no trae ninguna dependencia externa (sin API de gobierno, sin cron,
 sin tabla de índices que mantener) y es arquitectónicamente más simple.
 El ajuste por IPC (retroactivo, con dependencia externa) queda para una
@@ -822,6 +824,27 @@ tocó nada de eso acá.
   agregado del mismo tipo sobre `items`, no un rediseño.
 - El Método 1 (ajuste IPC) — implementado el mismo día en una segunda
   pasada aparte, con su propia migración/aprobación explícita. Ver §10.
+
+### Segunda pasada (2026-09-19): reconstrucción retroactiva con el historial de compras
+
+**Lo que dice arriba («solo hacia adelante», «no se puede reconstruir») quedó superado.** Motivo: en la demo las 387 líneas de venta se
+cargaron sin `costoUnitarioVenta`, así que «Real» decía siempre «sin datos todavía» aunque el rango tuviera ventas y compras. Como cada
+compra guarda su fecha y su precio por unidad de stock, sí hay una serie histórica de costo por insumo.
+
+**Criterio** (`src/core/reportes/costo-historico.ts`): para una venta sin costo congelado, costo del plato = receta VIGENTE hoy × precio por
+unidad de la compra más reciente de cada insumo HASTA ese día (inclusive; mismo criterio de `obtenerCostoActualPorMP`, pero «hasta esa
+fecha» en lugar de «hasta hoy»), explotando también los intermedios «se produce». Un costo congelado real siempre manda sobre el reconstruido.
+
+**Limitaciones (se rotulan «· reconstruido» en Resumen y Período):**
+- Usa la receta de hoy, no la que regía ese día.
+- El día es UTC, igual que el resto de los reportes: una venta nocturna en horario argentino cae en el día UTC siguiente, y una compra
+  del mismo día cuenta aunque sea posterior a la venta.
+- Si algún insumo no tiene ninguna compra hasta ese día, el plato no se puede costear y la venta queda afuera (no se inventa un valor).
+- Ante dos compras del mismo insumo con el mismo instante, el orden lo decide la base (igual que en `obtenerCostoActualPorMP`).
+
+**Pendientes anotados por la revisión** (no implementados): partir la frase de cabecera del aviso cuando todo está congelado;
+acotar la consulta de compras al rango (hoy recorre toda la historia y se repite por sucursal en el Consolidado); no reconstruir en
+los llamadores que no usan `margen` (`promociones.ts`, ventas por categoría).
 
 ### 8.6 "Líneas" en Compras por proveedor — sin explicación, y el nombre confunde
 

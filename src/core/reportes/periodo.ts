@@ -712,14 +712,13 @@ export interface MargenDelPeriodo {
   porProducto: FilaMargenProducto[];
   aviso: string;
   /**
-   * "Margen real" (docs/comparativa-ux-erpnext-dolibarr.md §9) — a
-   * diferencia de margenTotal (receta/costo de HOY aplicados a TODO lo
-   * vendido en el rango), esto suma, línea por línea, el costo que
-   * MovimientoStock.costoUnitarioVenta congeló en el momento exacto de esa
-   * venta. Solo cubre ventas registradas desde que existe ese campo
-   * (2026-09-17) — `ingresoSinCostoReal` es cuánto del ingreso del rango
-   * quedó afuera por no tener ese dato (ventas viejas, o costeo incompleto
-   * ese día). `null` si NINGUNA venta del rango tiene el dato todavía.
+   * "Margen real" (docs/comparativa-ux-erpnext-dolibarr.md §9 y su «Segunda pasada») — a diferencia de margenTotal (receta/costo de
+   * HOY aplicados a TODO lo vendido en el rango), esto suma, línea por línea, el costo de cada venta al día de la venta:
+   * - si la venta guardó su costo (MovimientoStock.costoUnitarioVenta, ventas cargadas desde la aplicación), ese costo congelado manda;
+   * - si no lo guardó, se RECONSTRUYE con el historial de compras (costo-historico.ts: receta de hoy × precio de la compra más
+   *   reciente de cada insumo hasta ese día). `ingresoRealReconstruido` es cuánto del ingreso se costeó así (aproximación).
+   * `ingresoSinCostoReal` es cuánto quedó afuera por no poderse costear (algún insumo sin compras hasta ese día, o el plato sin
+   * receta). `null` si NINGUNA venta del rango se pudo costear.
    */
   margenRealTotal: number | null;
   margenRealPctTotal: number | null;
