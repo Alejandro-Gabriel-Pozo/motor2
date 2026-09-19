@@ -43,7 +43,7 @@ describe("Margen real: el costo congelado al vender", () => {
     expect(Number(linea.costoUnitarioVenta)).toBe(10);
   });
 
-  it("el reporte por período la cuenta en «Real»; las ventas sin costo congelado quedan aparte", async () => {
+  it("el reporte por período la cuenta en «Real»; una venta que no guardó el costo se reconstruye con el historial de compras", async () => {
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pvId, cantidadVendida: 3 }] });
     // Una venta «cargada sin el dato» (como las de la demo): se le borra el costo congelado a una segunda venta.
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pvId, cantidadVendida: 1 }] });
@@ -53,8 +53,11 @@ describe("Margen real: el costo congelado al vender", () => {
     const hoy = new Date();
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(hoy.getTime() - 86_400_000), new Date(hoy.getTime() + 86_400_000));
 
-    expect(rep.margen.margenRealTotal).toBe(300 - 30); // 3 panes a $100 con costo $10
-    expect(rep.margen.ingresoConCostoReal).toBe(300);
-    expect(rep.margen.ingresoSinCostoReal).toBe(100);
+    // 3 panes con costo guardado ($10) + 1 pan reconstruido con la compra de hoy ($5/kg x 2 kg = $10).
+    expect(rep.margen.margenRealTotal).toBe(400 - 40);
+    expect(rep.margen.ingresoConCostoReal).toBe(400);
+    expect(rep.margen.ingresoRealReconstruido).toBe(100);
+    expect(rep.margen.ingresoSinCostoReal).toBe(0);
+    expect(rep.margen.avisoReal).toContain("RECONSTRUIDO");
   });
 });

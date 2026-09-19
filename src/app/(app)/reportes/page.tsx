@@ -52,7 +52,7 @@ export default async function ReportesResumenPage() {
             </p>
           )}
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Real: {r.financiero.margenRealTotal !== null ? `$${r.financiero.margenRealTotal.toLocaleString("es-AR")} (${r.financiero.margenRealPct}%)` : "sin datos todavía"}
+            Real: {r.financiero.margenRealTotal !== null ? `$${r.financiero.margenRealTotal.toLocaleString("es-AR")} (${r.financiero.margenRealPct}%)${r.financiero.margenRealReconstruido ? " · reconstruido" : ""}` : "sin datos todavía"}
             <AyudaIcono texto={r.financiero.avisoMargenReal} />
           </p>
           <p className="mt-1 flex items-center text-xs text-neutral-500">

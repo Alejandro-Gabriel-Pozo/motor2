@@ -258,7 +258,7 @@ export async function calcularImpactoInsumos(sucursalId: string, db: Db = prisma
 }
 
 /** Costo completo de la receta de UN plato — misma recursión que `calcularCostosYMargenes`, pero solo el total (sin armar `componentes`) y con un cache propio por llamada: `costosCompra` cambia entre "antes" y "ahora", así que el cache de una corrida no puede reusarse en la otra. */
-function resolverCostoRecetaCompleta(
+export function resolverCostoRecetaCompleta(
   productoId: string,
   productos: Map<string, InfoProductoReporte>,
   recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,

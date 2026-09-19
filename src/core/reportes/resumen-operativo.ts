@@ -25,6 +25,8 @@ export interface ResumenFinancieroMes {
   /** Ver el docstring de MargenDelPeriodo.margenRealTotal en periodo.ts. */
   margenRealTotal: number | null;
   margenRealPct: number | null;
+  /** «Real» incluye ventas cuyo costo se reconstruyó con el historial de compras (no se guardó al venderse). */
+  margenRealReconstruido: boolean;
   /** Ver el docstring de MargenDelPeriodo.margenIPCTotal en periodo.ts. */
   margenIPCTotal: number | null;
   margenIPCPct: number | null;
@@ -58,6 +60,7 @@ export async function obtenerResumenFinancieroMesActual(sucursalId: string, db: 
     topProveedores: rep.compras.porProveedor.slice(0, 5).map((p) => ({ proveedor: p.proveedor, importe: p.importe })),
     margenRealTotal: rep.margen.margenRealTotal,
     margenRealPct: rep.margen.margenRealPctTotal,
+    margenRealReconstruido: rep.margen.ingresoRealReconstruido > 0,
     margenIPCTotal: rep.margen.margenIPCTotal,
     margenIPCPct: rep.margen.margenIPCPctTotal,
     margenIPCProvisorio: rep.margen.ingresoProvisorioIPC > 0,

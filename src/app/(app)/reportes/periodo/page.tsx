@@ -71,7 +71,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             ${rep.margen.margenTotal.toLocaleString("es-AR")} {rep.margen.margenPctTotal !== null && `(${rep.margen.margenPctTotal}%)`}
           </p>
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Real: {rep.margen.margenRealTotal !== null ? `$${rep.margen.margenRealTotal.toLocaleString("es-AR")} (${rep.margen.margenRealPctTotal}%)` : "sin datos todavía"}
+            Real: {rep.margen.margenRealTotal !== null ? `$${rep.margen.margenRealTotal.toLocaleString("es-AR")} (${rep.margen.margenRealPctTotal}%)${rep.margen.ingresoRealReconstruido > 0 ? " · reconstruido" : ""}` : "sin datos todavía"}
             <AyudaIcono texto={rep.margen.avisoReal} />
           </p>
           <p className="mt-1 flex items-center text-xs text-neutral-500">

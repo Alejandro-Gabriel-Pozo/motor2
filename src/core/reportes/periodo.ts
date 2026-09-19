@@ -3,6 +3,7 @@ import type { Proceso } from "@prisma/client";
 import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
 import { construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo, type FilaImpactoRecetaPorPeriodo } from "./costos";
+import { claveCostoHistorico, diaUtc, reconstruirCostosDeVenta } from "./costo-historico";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
 import { cargarSerieIPC, esMesSinPublicar, resolverCoeficienteIPC, resolverVariacionPeriodoIPC } from "./indices-economicos";
 
@@ -724,6 +725,8 @@ export interface MargenDelPeriodo {
   margenRealPctTotal: number | null;
   ingresoConCostoReal: number;
   ingresoSinCostoReal: number;
+  /** Parte de `ingresoConCostoReal` cuyo costo se RECONSTRUYÓ con el historial de compras (la venta no lo guardó al venderse). */
+  ingresoRealReconstruido: number;
   avisoReal: string;
   /**
    * "Margen ajustado por IPC" (Método 1, docs/comparativa-ux-erpnext-
@@ -799,11 +802,23 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
   let ingresoConCostoReal = 0;
   let costoRealTotal = 0;
   let ingresoSinCostoReal = 0;
+  let ingresoRealReconstruido = 0;
+  // Las ventas que no guardaron su costo al venderse (cargadas sin ese dato) se intentan costear al día de la venta con el historial
+  // de compras (ver costo-historico.ts); las que no se pueden costear quedan en `ingresoSinCostoReal`.
+  const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && it.costoUnitarioVenta === null);
+  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db);
   for (const it of items) {
     if (it.proceso !== "VENTA") continue;
     if (it.costoUnitarioVenta !== null) {
       ingresoConCostoReal += it.precioTotal;
       costoRealTotal += it.cantidad * it.costoUnitarioVenta;
+      continue;
+    }
+    const reconstruido = costosReconstruidos.get(claveCostoHistorico(it.productoId, diaUtc(it.fecha))) ?? null;
+    if (reconstruido !== null) {
+      ingresoConCostoReal += it.precioTotal;
+      ingresoRealReconstruido += it.precioTotal;
+      costoRealTotal += it.cantidad * reconstruido;
     } else {
       ingresoSinCostoReal += it.precioTotal;
     }
@@ -852,9 +867,14 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
     margenRealPctTotal: margenRealTotal !== null && ingresoConCostoReal > 0 ? Math.round((margenRealTotal / ingresoConCostoReal) * 1000) / 10 : null,
     ingresoConCostoReal: redondearMoneda(ingresoConCostoReal),
     ingresoSinCostoReal: redondearMoneda(ingresoSinCostoReal),
+    ingresoRealReconstruido: redondearMoneda(ingresoRealReconstruido),
     avisoReal: hayCostoReal
-      ? `Costo congelado al momento exacto de cada venta (sin el descalce temporal de "Margen" arriba).${ingresoSinCostoReal > 0 ? ` Cubre $${redondearMoneda(ingresoConCostoReal).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} vendidos — el resto es de antes de este cálculo.` : ""}`
-      : "Todavía no hay ventas con este dato — se empieza a registrar desde ahora.",
+      ? `Costo de la receta al día de cada venta (sin el descalce temporal de "Margen" arriba).${
+          ingresoRealReconstruido > 0
+            ? ` RECONSTRUIDO: $${redondearMoneda(ingresoRealReconstruido).toLocaleString("es-AR")} de lo vendido no guardó su costo al venderse y se lo calculó con el historial de compras (el precio de la compra más reciente de cada insumo hasta ese día) y la receta de hoy: es una aproximación.`
+            : ""
+        }${ingresoSinCostoReal > 0 ? ` No se pudo costear $${redondearMoneda(ingresoSinCostoReal).toLocaleString("es-AR")} (algún insumo sin compras hasta ese día, o el plato sin receta).` : ""}`
+      : "No hay ventas que se puedan costear al día de la venta (ninguna guardó su costo y falta el historial de compras de algún insumo).",
     margenIPCTotal,
     margenIPCPctTotal: margenIPCTotal !== null && ingresoAjustadoIPCTotal > 0 ? Math.round((margenIPCTotal / ingresoAjustadoIPCTotal) * 1000) / 10 : null,
     ingresoAjustadoIPCTotal: redondearMoneda(ingresoAjustadoIPCTotal),
