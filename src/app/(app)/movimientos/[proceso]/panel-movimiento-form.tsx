@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { DestinoConsumo, MotivoMerma } from "@prisma/client";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
@@ -100,6 +100,11 @@ export function PanelMovimientoForm({
   // (useState perezoso): sin esto, precargar los productos del proveedor
   // dejaría el buscador vacío a la vista aunque `productoId` ya esté puesto.
   const [versionItems, setVersionItems] = useState(0);
+  // Número del último pedido de productos del proveedor. Cuando un pedido termina, si ya se eligió otro proveedor se
+  // descarta: sobre todo un FALLO tardío, que ahora vacía las filas y deselecciona el proveedor y, sin esto, borraría
+  // la elección nueva. (Next ejecuta las server actions de a una, así que un pedido no adelanta a otro: el fallo del
+  // anterior llega cuando el siguiente todavía no respondió.) Ver `elegirProveedor`.
+  const pedidoProveedor = useRef(0);
 
   const precargaPorProveedor = config.proceso === "COMPRA";
 
@@ -140,7 +145,10 @@ export function PanelMovimientoForm({
     setProveedorId(id);
     if (!precargaPorProveedor) return;
 
+    const pedido = ++pedidoProveedor.current;
+
     if (!id) {
+      setCargandoProveedor(false); // un pedido anterior que quedó en vuelo ya no va a apagar esta bandera (se descarta)
       setItems([{ ...FILA_VACIA }]);
       setPresentacionesPorFila({});
       setVersionItems((n) => n + 1);
@@ -151,6 +159,7 @@ export function PanelMovimientoForm({
     setCargandoProveedor(true);
     setInfoProveedor("Buscando lo que le comprás a este proveedor...");
     listarProductosDeProveedor(id).then((productos) => {
+      if (pedido !== pedidoProveedor.current) return; // se eligió otro proveedor mientras tanto
       setCargandoProveedor(false);
       if (!productos.length) {
         setItems([{ ...FILA_VACIA }]);
@@ -176,10 +185,18 @@ export function PanelMovimientoForm({
       setPresentacionesPorFila({});
       setVersionItems((n) => n + 1);
     }, () => {
+      if (pedido !== pedidoProveedor.current) return; // se eligió otro proveedor mientras tanto
       // Si la carga falla (red caída, sesión vencida, error del servidor) `cargandoProveedor` quedaba en `true` para siempre
       // y «+ Agregar producto» / «+ Nuevo producto» seguían deshabilitados hasta recargar la página.
+      // Además las filas que había eran de OTRO proveedor: se vacían (igual que cuando la carga sale bien y se reemplazan)
+      // y el selector vuelve a «Sin proveedor», así se puede elegir el mismo proveedor de nuevo para reintentar
+      // (elegir la opción que ya está seleccionada no dispara ningún cambio).
       setCargandoProveedor(false);
-      setInfoProveedor("No se pudo cargar lo que le comprás a este proveedor. Agregá los productos a mano con \"+ Agregar producto\", o volvé a elegir el proveedor para reintentar.");
+      setProveedorId("");
+      setItems([{ ...FILA_VACIA }]);
+      setPresentacionesPorFila({});
+      setVersionItems((n) => n + 1);
+      setInfoProveedor("No se pudo cargar lo que le comprás a este proveedor. Volvé a elegirlo para reintentar.");
     });
   };
 
