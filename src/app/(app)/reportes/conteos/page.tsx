@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/conteo-fisico";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
@@ -13,6 +14,9 @@ export default async function ConteosPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
   const [secciones, productoElegido] = await Promise.all([

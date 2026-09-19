@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteConsignacion } from "@/core/reportes/consignacion";
 import { TablaDebidoConsignante, TablaStockSinVenderConsignacion } from "./tabla-consignacion";
 
 export default async function ConsignacionPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pagar_consignante");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { desde, hasta } = await searchParams;
   // Sin filtro por defecto: "Debido por consignante" es un saldo acumulado

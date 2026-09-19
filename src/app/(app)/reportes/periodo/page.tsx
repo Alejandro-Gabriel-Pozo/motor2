@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
 import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
@@ -17,6 +18,9 @@ function hoyISO() {
 export default async function PeriodoPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
   const desdeStr = sp.desde || primerDiaDelMesISO();

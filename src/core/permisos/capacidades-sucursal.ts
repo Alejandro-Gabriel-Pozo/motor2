@@ -27,12 +27,40 @@ export async function sucursalTieneCapacidad(
   // (ver gate.ts), así que sin esto un admin podía lograr acá exactamente
   // lo que esa otra protección ya existe para evitar — dejar a todo el
   // mundo, en todas las sucursales, sin forma de entrar a Usuarios/Permisos.
-  if (accionClave === "capacidades_sucursal" || (ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE as readonly string[]).includes(accionClave)) return true;
+  if (esCapacidadSiempreHabilitada(accionClave)) return true;
 
   const candidatas = await db.capacidadSucursal.findMany({
     where: { accionClave, OR: [{ sucursalId }, { sucursalId: null }] },
   });
 
+  return resolverCapacidad(candidatas, sucursalId);
+}
+
+/**
+ * Qué acciones (de una lista) tiene habilitadas una sucursal, con UNA consulta en vez de una por acción — para armar el menú.
+ * Misma regla que `sucursalTieneCapacidad` (que la comparte vía `resolverCapacidad`).
+ */
+export async function capacidadesDeSucursal(
+  sucursalId: string,
+  claves: readonly string[],
+  db: PrismaClient = prisma
+): Promise<Set<string>> {
+  const candidatas = await db.capacidadSucursal.findMany({
+    where: { accionClave: { in: [...claves] }, OR: [{ sucursalId }, { sucursalId: null }] },
+  });
+  const habilitadas = new Set<string>();
+  for (const clave of claves) {
+    if (esCapacidadSiempreHabilitada(clave) || resolverCapacidad(candidatas.filter((c) => c.accionClave === clave), sucursalId)) habilitadas.add(clave);
+  }
+  return habilitadas;
+}
+
+function esCapacidadSiempreHabilitada(accionClave: string): boolean {
+  return accionClave === "capacidades_sucursal" || (ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE as readonly string[]).includes(accionClave);
+}
+
+/** Regla de una acción, dadas sus filas candidatas (la de la sucursal y/o la «default»). */
+function resolverCapacidad(candidatas: Array<{ sucursalId: string | null; habilitado: boolean }>, sucursalId: string): boolean {
   const especifica = candidatas.find((c) => c.sucursalId === sucursalId);
   if (especifica) return especifica.habilitado;
 

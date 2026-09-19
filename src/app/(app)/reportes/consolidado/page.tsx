@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerResumenConsolidado } from "@/core/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
 
 export default async function ConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   if (ctx.membresias.length < 2) {
     return (

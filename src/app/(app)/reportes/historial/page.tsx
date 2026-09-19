@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialProducto } from "@/core/reportes/historial-producto";
 import { HistorialFiltros } from "./historial-filtros";
@@ -12,6 +13,9 @@ export default async function HistorialProductoPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_operativos");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
   const secciones = await listarSeccionesActivas(ctx.sucursalId);

@@ -6,9 +6,11 @@ export default async function HuecosCatalogoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "insumos_mezclados");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+
   const rep = await generarReporteHuecosCatalogo(ctx.sucursalId);
-  const gateUnidadMezclada = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "insumos_mezclados");
-  const problemasUnidadMezclada = gateUnidadMezclada.ok ? await obtenerProblemasUnidadMezclada() : [];
+  const problemasUnidadMezclada = await obtenerProblemasUnidadMezclada();
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,18 +41,14 @@ export default async function HuecosCatalogoPage() {
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Insumos con unidad de stock mezclada</h2>
-        {!gateUnidadMezclada.ok ? (
-          <p className="text-sm text-red-600">{gateUnidadMezclada.mensaje}</p>
-        ) : (
-          <ul className="list-disc pl-5 text-sm">
-            {problemasUnidadMezclada.map((p) => (
-              <li key={p.insumoId}>
-                {p.insumo}: {p.unidades.join(", ")} — {p.productos.map((prod) => `${prod.nombre} (${prod.unidad})`).join(", ")}
-              </li>
-            ))}
-            {!problemasUnidadMezclada.length && <li className="list-none text-neutral-500">Sin insumos con unidad mezclada.</li>}
-          </ul>
-        )}
+        <ul className="list-disc pl-5 text-sm">
+          {problemasUnidadMezclada.map((p) => (
+            <li key={p.insumoId}>
+              {p.insumo}: {p.unidades.join(", ")} — {p.productos.map((prod) => `${prod.nombre} (${prod.unidad})`).join(", ")}
+            </li>
+          ))}
+          {!problemasUnidadMezclada.length && <li className="list-none text-neutral-500">Sin insumos con unidad mezclada.</li>}
+        </ul>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
-import { GRUPOS_NAV } from "@/core/navegacion/estructura";
+import { GRUPOS_NAV, accionesDelMenu, filtrarMenuPorPermiso } from "@/core/navegacion/estructura";
+import { accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { SidebarColapsable } from "./sidebar-colapsable";
 import { SelectorSucursal } from "./selector-sucursal";
 
@@ -13,10 +14,14 @@ import { SelectorSucursal } from "./selector-sucursal";
  * es colapsable (SidebarColapsable) — antes no tenía ningún mecanismo de
  * achicarse, ni en desktop ni en mobile.
  */
-export function AppShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
+export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
+  // El menú solo muestra los reportes que el rol puede ver (la página igual se protege por su cuenta: esto evita enlaces a «no tenés permiso»).
+  const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDelMenu());
+  const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
+
   return (
     <div className="flex flex-1">
-      <SidebarColapsable grupos={GRUPOS_NAV} />
+      <SidebarColapsable grupos={grupos} />
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-end gap-4 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
           <span className="flex items-center gap-1">

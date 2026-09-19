@@ -1,10 +1,14 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularValuacionInventario } from "@/core/reportes/valuacion";
 import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacion";
 
 export default async function ValuacionPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const rep = await calcularValuacionInventario(ctx.sucursalId);
   const sinCosto = rep.filas.filter((f) => f.sinCosto);

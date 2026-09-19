@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { sucursalTieneCapacidad } from "./capacidades-sucursal";
+import { capacidadesDeSucursal, sucursalTieneCapacidad } from "./capacidades-sucursal";
 import type { AccionClave } from "./acciones";
 
 export type ResultadoGate = { ok: true } | { ok: false; mensaje: string };
@@ -114,4 +114,30 @@ export async function obtenerMiNivelPermiso(
   if (!resultado) return { ver: false, editar: false };
 
   return { ver: resultado.permiso?.puedeVer ?? false, editar: resultado.permiso?.puedeEditar ?? false };
+}
+
+/**
+ * De una lista de acciones, cuáles puede VER el usuario en esa sucursal (capacidad de la sucursal + «Ver» de su rol). Es lo
+ * mismo que `requierePermisoVer` por cada una, pero en 2 consultas para toda la lista: sirve para armar el menú sin una
+ * consulta por ítem. Sin membresía activa, el resultado es vacío.
+ */
+export async function accionesQueElUsuarioPuedeVer(
+  usuarioId: string,
+  sucursalId: string,
+  claves: readonly AccionClave[],
+  db: PrismaClient = prisma
+): Promise<Set<AccionClave>> {
+  const unicas = [...new Set(claves)];
+  if (!unicas.length) return new Set();
+
+  const [membresia, habilitadas] = await Promise.all([
+    db.usuarioSucursal.findUnique({
+      where: { usuarioId_sucursalId: { usuarioId, sucursalId } },
+      include: { rol: { include: { permisos: { where: { accionClave: { in: unicas }, puedeVer: true } } } } },
+    }),
+    capacidadesDeSucursal(sucursalId, unicas, db),
+  ]);
+  if (!membresia || !membresia.activo || !membresia.rol.activo) return new Set();
+
+  return new Set(membresia.rol.permisos.map((p) => p.accionClave as AccionClave).filter((clave) => habilitadas.has(clave)));
 }

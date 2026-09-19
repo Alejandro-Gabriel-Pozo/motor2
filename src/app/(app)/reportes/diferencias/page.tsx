@@ -1,10 +1,14 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteDiferenciasAjustes } from "@/core/reportes/diferencias-ajustes";
 import { TablaDiferenciasAjuste } from "./tabla-diferencias";
 
 export default async function DiferenciasPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_control");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const filas = await generarReporteDiferenciasAjustes(ctx.sucursalId);
 

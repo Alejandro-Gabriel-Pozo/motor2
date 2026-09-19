@@ -1,8 +1,11 @@
 import { NAV_MOVIMIENTOS } from "@/core/movimientos/ui-config";
+import type { AccionClave } from "@/core/permisos/acciones";
 
 export interface ItemNav {
   href: string;
   label: string;
+  /** Si está, el ítem solo se muestra a quien puede VER esa acción (la misma que protege la página). Sin `accion`, siempre se muestra. */
+  accion?: AccionClave;
 }
 
 export interface GrupoNav {
@@ -66,26 +69,29 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "reportes",
     label: "Reportes",
     items: [
-      { href: "/reportes", label: "Resumen" },
-      { href: "/reportes/consolidado", label: "Consolidado (mis sucursales)" },
-      { href: "/reportes/periodo", label: "Período" },
-      { href: "/reportes/categorias", label: "Por categoría" },
-      { href: "/reportes/costos", label: "Costos y márgenes" },
-      { href: "/reportes/rendimiento-recetas", label: "Rendimiento real de recetas" },
-      { href: "/reportes/valuacion", label: "Valuación de inventario" },
-      { href: "/reportes/promociones", label: "Promociones" },
-      { href: "/reportes/perdidas", label: "Pérdidas" },
-      { href: "/reportes/devoluciones", label: "Devoluciones" },
-      { href: "/reportes/vencimientos", label: "Vencimientos" },
-      { href: "/reportes/diferencias", label: "Diferencias de ajuste" },
-      { href: "/reportes/sin-receta", label: "Ventas sin receta" },
-      { href: "/reportes/insumos-sin-receta", label: "Insumos sin receta" },
-      { href: "/reportes/consignacion", label: "Consignación" },
-      { href: "/reportes/salud", label: "Salud por producto" },
-      { href: "/reportes/huecos-catalogo", label: "Huecos de catálogo" },
-      { href: "/reportes/conteos", label: "Conteos físicos" },
-      { href: "/reportes/historial", label: "Historial de un producto" },
-      { href: "/reportes/trazabilidad", label: "Trazabilidad por ID" },
+      // Cada reporte se protege con la acción de «Ver» que lleva `accion` (la página usa la misma clave; un test lo comprueba).
+      // Grupos: dinero (ventas, costos, márgenes, valuación), control (pérdidas, devoluciones, diferencias), operativos,
+      // catálogo; y los que ya tenían acción propia (promociones, consignación, conteos, huecos de catálogo).
+      { href: "/reportes", label: "Resumen", accion: "ver_reportes_dinero" },
+      { href: "/reportes/consolidado", label: "Consolidado (mis sucursales)", accion: "ver_reportes_dinero" },
+      { href: "/reportes/periodo", label: "Período", accion: "ver_reportes_dinero" },
+      { href: "/reportes/categorias", label: "Por categoría", accion: "ver_reportes_dinero" },
+      { href: "/reportes/costos", label: "Costos y márgenes", accion: "ver_reportes_dinero" },
+      { href: "/reportes/rendimiento-recetas", label: "Rendimiento real de recetas", accion: "ver_reportes_dinero" },
+      { href: "/reportes/valuacion", label: "Valuación de inventario", accion: "ver_reportes_dinero" },
+      { href: "/reportes/promociones", label: "Promociones", accion: "promociones_config" },
+      { href: "/reportes/perdidas", label: "Pérdidas", accion: "ver_reportes_control" },
+      { href: "/reportes/devoluciones", label: "Devoluciones", accion: "ver_reportes_control" },
+      { href: "/reportes/vencimientos", label: "Vencimientos", accion: "ver_reportes_operativos" },
+      { href: "/reportes/diferencias", label: "Diferencias de ajuste", accion: "ver_reportes_control" },
+      { href: "/reportes/sin-receta", label: "Ventas sin receta", accion: "ver_reportes_catalogo" },
+      { href: "/reportes/insumos-sin-receta", label: "Insumos sin receta", accion: "ver_reportes_catalogo" },
+      { href: "/reportes/consignacion", label: "Consignación", accion: "pagar_consignante" },
+      { href: "/reportes/salud", label: "Salud por producto", accion: "ver_reportes_operativos" },
+      { href: "/reportes/huecos-catalogo", label: "Huecos de catálogo", accion: "insumos_mezclados" },
+      { href: "/reportes/conteos", label: "Conteos físicos", accion: "proceso_control" },
+      { href: "/reportes/historial", label: "Historial de un producto", accion: "ver_reportes_operativos" },
+      { href: "/reportes/trazabilidad", label: "Trazabilidad por ID", accion: "ver_reportes_operativos" },
     ],
   },
   {
@@ -98,3 +104,15 @@ export const GRUPOS_NAV: GrupoNav[] = [
     ],
   },
 ];
+
+/** Todas las acciones que aparecen en algún ítem del menú: lo que hay que consultar para saber qué se muestra. */
+export function accionesDelMenu(grupos: GrupoNav[] = GRUPOS_NAV): AccionClave[] {
+  return [...new Set(grupos.flatMap((g) => g.items.flatMap((i) => (i.accion ? [i.accion] : []))))];
+}
+
+/** Deja solo los ítems que el usuario puede ver; un grupo que se queda sin ítems desaparece. */
+export function filtrarMenuPorPermiso(grupos: GrupoNav[], puedeVer: ReadonlySet<AccionClave>): GrupoNav[] {
+  return grupos
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.accion || puedeVer.has(i.accion)) }))
+    .filter((g) => g.items.length > 0);
+}

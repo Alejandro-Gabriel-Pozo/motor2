@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerReportePromociones } from "@/core/reportes/promociones";
 import { obtenerPromocionesHabilitadas, buscarProductoParaPromocion } from "@/server/actions/reportes/promociones";
 import { PromocionForm } from "./promocion-form";
@@ -15,6 +16,9 @@ function hoyISO() {
 export default async function PromocionesPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "promociones_config");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
   const desdeStr = sp.desde || primerDiaDelMesISO();
