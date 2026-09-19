@@ -28,6 +28,8 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev",
+    // Las pruebas no deben pedir el dólar a internet ni depender de él (ver actualizarDolarSiHaceFalta).
+    env: { MOTOR2_SIN_DOLAR_AUTOMATICO: "1" },
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

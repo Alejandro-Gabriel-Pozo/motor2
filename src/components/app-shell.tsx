@@ -2,7 +2,8 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso } from "@/core/navegacion/estructura";
 import { accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
-import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { after } from "next/server";
+import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
 import { SidebarColapsable } from "./sidebar-colapsable";
@@ -24,6 +25,8 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
   const cotizacion = await obtenerUltimaCotizacion().catch(() => null);
+  // Si falta la cotización de hoy (el cron diario puede no haber corrido), la aplicación se pone al día sola DESPUÉS de responder.
+  if (cotizacionVencida(cotizacion)) after(() => actualizarDolarSiHaceFalta());
 
   return (
     <div className="flex flex-1">

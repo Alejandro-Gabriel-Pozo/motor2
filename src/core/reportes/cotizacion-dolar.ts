@@ -151,3 +151,38 @@ export async function obtenerUltimaCotizacion(db: Db = prisma): Promise<UltimaCo
 export function pesosADolares(pesos: number, cotizacionVenta: number): number {
   return Math.round((pesos / cotizacionVenta) * 100) / 100;
 }
+
+/**
+ * ¿Falta la cotización de HOY? (horario argentino). Es la señal para que la aplicación se ponga al día sola cuando el cron no llegó a
+ * correr (los crons del plan Hobby de Vercel corren en cualquier momento de la hora programada y no dan garantías). Un fin de semana
+ * o un feriado la API devuelve el último valor hábil: se vuelve a pedir, y como el guardado es un `upsert` por día no ensucia nada.
+ */
+export function cotizacionVencida(ultima: { fecha: Date } | null, ahora: Date = new Date()): boolean {
+  if (!ultima) return true;
+  return ultima.fecha.toISOString().slice(0, 10) < fechaArgentina(ahora);
+}
+
+const MINUTOS_ENTRE_INTENTOS = 15;
+let ultimoIntentoMs = 0;
+
+/** Solo para las pruebas: vuelve a habilitar el intento inmediato. */
+export function reiniciarLimitadorDolar(): void {
+  ultimoIntentoMs = 0;
+}
+
+/**
+ * Se pone al día sin esperar al cron: intenta `sincronizarDolar` a lo sumo una vez cada 15 minutos por instancia del servidor (varias
+ * pantallas abiertas a la vez no disparan varias sincronizaciones) y NUNCA lanza: un fallo de las APIs de terceros no puede romper la
+ * pantalla desde la que se pidió. Devuelve `true` si intentó sincronizar.
+ */
+export async function actualizarDolarSiHaceFalta(db: Db = prisma, ahora: Date = new Date()): Promise<boolean> {
+  if (process.env.MOTOR2_SIN_DOLAR_AUTOMATICO === "1") return false; // las pruebas de navegador no salen a internet
+  if (ahora.getTime() - ultimoIntentoMs < MINUTOS_ENTRE_INTENTOS * 60_000) return false;
+  ultimoIntentoMs = ahora.getTime();
+  try {
+    await sincronizarDolar(db, ahora);
+  } catch (e) {
+    console.error("[dolar] no se pudo actualizar la cotización:", e instanceof Error ? e.message : e);
+  }
+  return true;
+}

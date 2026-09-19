@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import {
+  actualizarDolarSiHaceFalta,
+  cotizacionVencida,
   fechaArgentina,
   leerBcra,
   leerDolarApi,
   leerHistorial,
   obtenerUltimaCotizacion,
   pesosADolares,
+  reiniciarLimitadorDolar,
   sincronizarDolar,
 } from "../../src/core/reportes/cotizacion-dolar";
 
@@ -120,5 +123,59 @@ describe("sincronizarDolar", () => {
 
   it("sin ninguna cotización guardada, obtenerUltimaCotizacion da null", async () => {
     expect(await obtenerUltimaCotizacion(prisma)).toBeNull();
+  });
+});
+
+describe("cotizacionVencida: ¿falta la de hoy?", () => {
+  const ahora = new Date("2026-09-19T15:00:00Z"); // 12:00 del 19/09 en Argentina
+
+  it("sin ninguna guardada, o con la última de un día anterior, está vencida", () => {
+    expect(cotizacionVencida(null, ahora)).toBe(true);
+    expect(cotizacionVencida({ fecha: new Date("2026-09-18") }, ahora)).toBe(true);
+  });
+
+  it("con la de hoy (horario argentino) no lo está; a las 22:00 del 18/09 en Argentina todavía «hoy» es el 18", () => {
+    expect(cotizacionVencida({ fecha: new Date("2026-09-19") }, ahora)).toBe(false);
+    expect(cotizacionVencida({ fecha: new Date("2026-09-18") }, new Date("2026-09-19T01:00:00Z"))).toBe(false);
+  });
+});
+
+describe("actualizarDolarSiHaceFalta: se pone al día sola, sin tirar abajo la pantalla", () => {
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    reiniciarLimitadorDolar();
+    delete process.env.MOTOR2_SIN_DOLAR_AUTOMATICO;
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("sincroniza y guarda la cotización de hoy", async () => {
+    simularRed({ "api.argentinadatos.com": HISTORIAL, "dolarapi.com": RESPUESTA_DOLARAPI });
+    expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:00:00Z"))).toBe(true);
+    expect(await obtenerUltimaCotizacion(prisma)).toMatchObject({ venta: 1535, fuente: "BNA" });
+  });
+
+  it("a lo sumo una vez cada 15 minutos por instancia; pasado ese tiempo vuelve a intentar", async () => {
+    simularRed({ "api.argentinadatos.com": HISTORIAL, "dolarapi.com": RESPUESTA_DOLARAPI });
+    expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:00:00Z"))).toBe(true);
+    expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:05:00Z"))).toBe(false);
+    expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:16:00Z"))).toBe(true);
+  });
+
+  it("un fallo de las APIs no lanza (no puede romper la pantalla desde la que se pidió) y también cuenta como intento", async () => {
+    simularRed({ "api.argentinadatos.com": new Error("caído"), "dolarapi.com": new Error("caído"), "api.bcra.gob.ar": new Error("caído") });
+    const registrar = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:00:00Z"))).resolves.toBe(true);
+    expect(registrar).toHaveBeenCalled();
+    registrar.mockRestore();
+    expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:01:00Z"))).toBe(false);
+  });
+
+  it("con MOTOR2_SIN_DOLAR_AUTOMATICO=1 (pruebas de navegador) no sale a internet", async () => {
+    process.env.MOTOR2_SIN_DOLAR_AUTOMATICO = "1";
+    const red = vi.fn();
+    vi.stubGlobal("fetch", red);
+    expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:00:00Z"))).toBe(false);
+    expect(red).not.toHaveBeenCalled();
+    delete process.env.MOTOR2_SIN_DOLAR_AUTOMATICO;
   });
 });
