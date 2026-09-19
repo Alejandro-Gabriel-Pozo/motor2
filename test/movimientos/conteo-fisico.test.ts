@@ -253,7 +253,7 @@ describe("Conteo Físico", () => {
       vi.mocked(getUsuarioActual).mockResolvedValue(null);
 
       await expect(registrarConteosFisicos([fila(mpId, 7), fila(mpId, 6)])).rejects.toMatchObject({
-        digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login;/),
+        digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login[;?]/),
       });
       expect(await prisma.conteoFisico.count()).toBe(0);
     });

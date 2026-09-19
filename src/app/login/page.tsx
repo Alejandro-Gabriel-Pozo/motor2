@@ -2,13 +2,16 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
 import { getUsuarioActual } from "@/core/auth/session";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { rutaInternaSegura } from "@/core/navegacion/volver";
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ volver?: string }> }) {
+  // Adónde volver después de entrar (la pantalla en la que estaba cuando venció la sesión). Viene de la URL: solo se acepta una ruta interna.
+  const volver = rutaInternaSegura((await searchParams).volver);
   const usuario = await getUsuarioActual();
 
   if (usuario) {
     const ctx = await obtenerContextoUsuario();
-    if (ctx) redirect("/"); // la raíz decide a qué pantalla mandarlo, según lo que su rol puede abrir
+    if (ctx) redirect(volver ?? "/"); // sin adónde volver, la raíz decide a qué pantalla mandarlo, según lo que su rol puede abrir
 
     // Sesión válida pero sin ninguna sucursal asignada todavía. NO
     // redirigir de vuelta a /login desde acá — el layout de administración
@@ -44,7 +47,7 @@ export default async function LoginPage() {
         <form
           action={async () => {
             "use server";
-            await signIn("google");
+            await signIn("google", { redirectTo: volver ?? "/" });
           }}
         >
           <button

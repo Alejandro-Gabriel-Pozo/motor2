@@ -49,7 +49,7 @@ describe("conPermiso — sin sesión", () => {
   });
 
   // `redirect()` de Next lanza un error con `digest: "NEXT_REDIRECT;<tipo>;<url>;<código>;"`: es lo que el router del cliente interpreta.
-  const haciaElLogin = { digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login;/) };
+  const haciaElLogin = { digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login[;?]/) };
 
   it("sin sesión lleva al login y no ejecuta la acción (antes devolvía «No autenticado» y el formulario seguía abierto)", async () => {
     vi.mocked(getUsuarioActual).mockResolvedValue(null);

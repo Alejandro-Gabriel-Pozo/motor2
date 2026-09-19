@@ -16,3 +16,14 @@ export async function cookies() {
     set: () => {},
   };
 }
+
+// `headers()` de Next: por defecto, sin encabezados. `__setHeadersDeTest` deja simular, por ejemplo, un `Referer` (ver test/auth/ir-al-login.test.ts).
+let headersDeTest: Record<string, string> = {};
+
+export function __setHeadersDeTest(valores: Record<string, string>) {
+  headersDeTest = valores;
+}
+
+export async function headers() {
+  return new Headers(headersDeTest);
+}

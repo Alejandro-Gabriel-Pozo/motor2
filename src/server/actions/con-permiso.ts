@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermiso } from "@/core/permisos/gate";
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
 import type { AccionClave } from "@/core/permisos/acciones";
@@ -22,8 +22,9 @@ export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
   // de un permiso denegado, que se le explica al usuario, acá no hay nada que corregir en la pantalla. Antes se devolvía
   // «No autenticado…» como un error más y el formulario seguía abierto; quien solo envía formularios nunca llegaba al
   // login. Ahora se lo lleva a /login, igual que hace el layout de (app) en cualquier navegación; esa pantalla ya explica
-  // el caso «iniciaste sesión pero no tenés acceso a ninguna sucursal». `redirect` lanza, por eso va antes de todo.
-  if (!ctx) redirect("/login");
+  // el caso «iniciaste sesión pero no tenés acceso a ninguna sucursal». Se recuerda la pantalla en la que estaba para volver a
+  // ella al entrar (`irAlLogin`). La redirección lanza, por eso va antes de todo.
+  if (!ctx) return irAlLogin();
 
   if (limitadorMutaciones.excedeLimite(ctx.usuarioId)) {
     return error("Demasiadas acciones seguidas — esperá un minuto e intentá de nuevo.") as T;
