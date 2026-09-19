@@ -1,10 +1,31 @@
 # Grounding: listado, ver hacia adentro y editar — tres niveles para el catálogo (2026-09-18)
 
-**Motivo**: tras el bug de «Editar producto» (el formulario no cargaba categoría, unidad, precio ni factor; arreglado en `a3c512f`, rama `fix/editar-producto-key`), el usuario señaló que el problema de fondo es de diseño: *"una cosa es el listado, otra cosa es ver hacia dentro del producto y otra cosa es querer editarlo"*, y que con recetas ya se había hecho. Este documento contrasta ese patrón de tres niveles con sistemas de referencia (leyendo su código), lo compara con lo que motor2 tiene hoy y propone cómo seguir. **No implementa nada**: cada paso pide decisión del usuario (§5).
+**Motivo**: tras el bug de «Editar producto» (el formulario no cargaba categoría, unidad, precio ni factor; arreglado en `a3c512f`, rama `fix/editar-producto-key`), el usuario señaló que el problema de fondo es de diseño: *"una cosa es el listado, otra cosa es ver hacia dentro del producto y otra cosa es querer editarlo"*, y que con recetas ya se había hecho. Este documento contrasta ese patrón de tres niveles con sistemas de referencia (leyendo su código), lo compara con lo que motor2 tiene hoy y propone cómo seguir. **No implementa nada**: cada paso pide decisión del usuario (§6).
 
 **Antecedente en el propio repo**: `docs/comparativa-ux-erpnext-dolibarr.md` §6.6 ya separó, para **recetas**, la lista del editor (grounded en Dolibarr `bom_list.php` → `bom_card.php`), y la sección siguiente ("ver es distinto de querer editar") pidió un modo lectura dentro del editor (parcialmente resuelto en `2ed6ae6`). Productos quedó atrás.
 
-## 1. Qué tiene motor2 hoy (verificado en el código)
+## 1. El patrón general: tres niveles, y qué hacen los referentes en conjunto
+
+Ver una lista, mirar hacia adentro de un registro y editarlo son tres momentos distintos. La mayoría de los referentes los separa; los que no, lo compensan de otra forma. Lo que se repite:
+
+1. **Cuatro de seis separan «ver» de «editar»** (Dolibarr, Grocy, TastyIgniter con `preview`, Tandoor). ERPNext no, pero compensa con el panel de lectura dentro del formulario. NexoPOS es el único que solo tiene lista y edición.
+2. **La vista de lectura es donde viven las relaciones**: stock, precios, historial, proveedores, documentos vinculados. Dolibarr lo hace con pestañas (`product_prepare_head`: precios de venta y de compra, stock, recursos, contactos, eventos); Grocy con stock, valor, último precio y promedio, vida útil, historial de precios y diario de stock; ERPNext con conexiones y botones a reportes con el filtro puesto (Stock Balance, Stock Ledger, Stock Projected Qty, `item.js:186-213`).
+3. **«Editar» es una acción explícita y con permiso**: en Dolibarr solo aparece si `$usercancreate` (`:3173`); en Grocy es un botón en la fila y en la tarjeta.
+4. **Crear tiene su propia pantalla** en los cuatro sistemas que la separan.
+5. **El borrado se condiciona al uso**: Dolibarr solo ofrece «Delete» si `!isObjectUsed` (`:3189-3192`). Motor2 ya desactiva en vez de borrar (`activo`).
+
+## 2. Detalle por sistema (código real)
+
+| Sistema | Lista | Ver hacia adentro (solo lectura) | Editar | Crear |
+|---|---|---|---|---|
+| **Dolibarr** (`htdocs/product/card.php`) | `product/list.php` | **Es el modo por defecto**: ficha con pestañas y barra de acciones (`:2603-2607`, `:3164-3200`) | «Modify» → `?action=edit` (`:2037`, botón `:3175`) | `?action=create` (`:1403`, `:1454`) |
+| **Grocy** (`views/products.blade.php`, `components/productcard.blade.php`) | Tabla con botón «Edit this item» por fila (`:143`) | **Tarjeta «Product overview»** en modal, al hacer clic en el nombre (`productcard-trigger`, `:178`); trae un botón «Edit product» (`productcard:27`) | `/product/{id}` (`:143`) | `/product/new` (`:29`) |
+| **TastyIgniter** (`Menus.php`, `formConfig` `:33-56`) | `menus` | Modo **`preview`** del formulario, con `back => 'menus'` | `edit`; al guardar vuelve a `menus/edit/{id}`, o a la lista con «guardar y cerrar» | `create` |
+| **ERPNext / Frappe** (`item.js`, `form.js`) | List View | **No hay modo solo lectura**: un único formulario editable (solo lectura por workflow, `form.js:438`). En su lugar, un **panel de lectura dentro del formulario**: «dashboard» (`form.js:247-275`) con niveles de stock (`item.js:841-858`, solo si el ítem ya existe y maneja stock) y **conexiones** por tipo de documento (`item_dashboard.py:17-36`: Groups, Pricing, Sell, Buy, Manufacture, Traceability, Stock Movement…) | El mismo formulario | Formulario nuevo |
+| **NexoPOS** (`ProductCrud.php:876-878`) | `dashboard/products` | **No**: solo `list`, `create` y `edit` | `products/edit/{id}` | `products/create` |
+| **Tandoor** (según `grounding-ficha-tecnica-tandoor.md`) | Lista de recetas | Vistas de lectura aparte (`vue3/src/components/display/RecipeView.vue`, `StepView.vue`) | Pantallas de edición separadas | Aparte |
+
+## 3. Qué tiene motor2 hoy (verificado en el código)
 
 | Pantalla | Lista | Ver hacia adentro (solo lectura) | Editar | Crear |
 |---|---|---|---|---|
@@ -16,39 +37,6 @@
 Pendiente ya documentado en recetas: los formularios «Agregar ingrediente» y «Agregar paso» siguen siempre abiertos entre las secciones de lectura (`comparativa` §"ver es distinto de querer editar").
 
 **Consecuencia observada**: al mezclar lista y formulario en una página, «Editar» es una navegación suave y React reutiliza el formulario montado en modo alta; los campos con estado interno quedan con los valores del alta. Es el bug de `a3c512f`. Que exista una pantalla intermedia (ficha) y rutas separadas para crear/editar elimina esa clase de bug de raíz, porque cada pantalla monta su propio formulario.
-
-## 2. Cómo lo resuelven los referentes (código real)
-
-| Sistema | Lista | Ver hacia adentro (solo lectura) | Editar | Crear |
-|---|---|---|---|---|
-| **Dolibarr** (`htdocs/product/card.php`) | `product/list.php` | **Es el modo por defecto**: ficha con pestañas y barra de acciones (`:2603-2607`, `:3164-3200`) | «Modify» → `?action=edit` (`:2037`, botón `:3175`) | `?action=create` (`:1403`, `:1454`) |
-| **Grocy** (`views/products.blade.php`, `components/productcard.blade.php`) | Tabla con botón «Edit this item» por fila (`:143`) | **Tarjeta «Product overview»** en modal, al hacer clic en el nombre (`productcard-trigger`, `:178`); trae un botón «Edit product» (`productcard:27`) | `/product/{id}` (`:143`) | `/product/new` (`:29`) |
-| **TastyIgniter** (`Menus.php`, `formConfig` `:33-56`) | `menus` | Modo **`preview`** del formulario, con `back => 'menus'` | `edit`; al guardar vuelve a `menus/edit/{id}`, o a la lista con «guardar y cerrar» | `create` |
-| **ERPNext / Frappe** (`item.js`, `form.js`) | List View | **No hay modo solo lectura**: un único formulario editable (solo lectura por workflow, `form.js:438`). En su lugar, un **panel de lectura dentro del formulario**: «dashboard» (`form.js:247-275`) con niveles de stock (`item.js:841-858`, solo si el ítem ya existe y maneja stock) y **conexiones** por tipo de documento (`item_dashboard.py:17-36`: Groups, Pricing, Sell, Buy, Manufacture, Traceability, Stock Movement…) | El mismo formulario | Formulario nuevo |
-| **NexoPOS** (`ProductCrud.php:876-878`) | `dashboard/products` | **No**: solo `list`, `create` y `edit` | `products/edit/{id}` | `products/create` |
-| **Tandoor** (según `grounding-ficha-tecnica-tandoor.md`) | Lista de recetas | Vistas de lectura aparte (`vue3/src/components/display/RecipeView.vue`, `StepView.vue`) | Pantallas de edición separadas | Aparte |
-
-### Patrones que se repiten
-
-1. **Cuatro de seis separan «ver» de «editar»** (Dolibarr, Grocy, TastyIgniter con `preview`, Tandoor). ERPNext no, pero compensa con el panel de lectura dentro del formulario. NexoPOS es el único que solo tiene lista y edición.
-2. **La vista de lectura es donde viven las relaciones**: stock, precios, historial, proveedores, documentos vinculados. Dolibarr lo hace con pestañas (`product_prepare_head`: precios de venta y de compra, stock, recursos, contactos, eventos); Grocy con stock, valor, último precio y promedio, vida útil, historial de precios y diario de stock; ERPNext con conexiones y botones a reportes con el filtro puesto (Stock Balance, Stock Ledger, Stock Projected Qty, `item.js:186-213`).
-3. **«Editar» es una acción explícita y con permiso**: en Dolibarr solo aparece si `$usercancreate` (`:3173`); en Grocy es un botón en la fila y en la tarjeta.
-4. **Crear tiene su propia pantalla** en los cuatro sistemas que la separan.
-5. **El borrado se condiciona al uso**: Dolibarr solo ofrece «Delete» si `!isObjectUsed` (`:3189-3192`). Motor2 ya desactiva en vez de borrar (`activo`).
-
-## 3. Relevamiento de la misma clase de bug en el resto del proyecto
-
-Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y tiene un formulario con estado interno. **Solo `productos` se reprodujo en un navegador; el resto es lectura de código.**
-
-| Pantalla | Estado |
-|---|---|
-| Productos (`?id=`) | **Bug real, arreglado** en `a3c512f` (`key` en `<ProductoForm>`), con test e2e que falla sin el arreglo y pasa con él |
-| Stock mínimo (`?editar=`) | Ya tenía `key={filaEnEdicion?.id ?? "nuevo"}` (`stock/minimo/page.tsx:58`) |
-| Proveedores (`?editar=`) | Inputs comunes con `defaultValue`: siguen a las props. **Caso borde**: si se tipea en la edición de un proveedor y sin guardar se toca «Editar» en otro, los campos modificados conservan lo tipeado y se guardarían en el segundo. Se cierra con un `key`; **no se aplicó** |
-| Conteo físico (`?seccionId=`) | No afectado: la sección se elige con un `<form>` común que recarga la página entera, y el grid se monta de cero |
-| Recetas (`?editar=`, `?editarPaso=`, `?editarFicha=`) | No afectado: cada edición es render condicional y las filas llevan `key` |
-| Cambio de sucursal | No afectado: `cambiarSucursalActiva` termina en `redirect("/")` |
-| Filtros de reportes (`?desde=`, `?dias=`) | No afectado: formularios GET comunes; el orden elegido en una tabla se conserva a propósito |
 
 ## 4. Propuesta para motor2 (productos primero)
 
@@ -88,7 +76,21 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 - **Multi-sucursal**: stock, precio local y mínimo dependen de la sucursal activa.
 - **Alcance**: la ficha completa es grande; por eso las fases.
 
-## 5. Decisiones para el usuario
+## 5. Relevamiento de la misma clase de bug en el resto del proyecto
+
+Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y tiene un formulario con estado interno. **Solo `productos` se reprodujo en un navegador; el resto es lectura de código.**
+
+| Pantalla | Estado |
+|---|---|
+| Productos (`?id=`) | **Bug real, arreglado** en `a3c512f` (`key` en `<ProductoForm>`), con test e2e que falla sin el arreglo y pasa con él |
+| Stock mínimo (`?editar=`) | Ya tenía `key={filaEnEdicion?.id ?? "nuevo"}` (`stock/minimo/page.tsx:58`) |
+| Proveedores (`?editar=`) | Inputs comunes con `defaultValue`: siguen a las props. **Caso borde**: si se tipea en la edición de un proveedor y sin guardar se toca «Editar» en otro, los campos modificados conservan lo tipeado y se guardarían en el segundo. Se cierra con un `key`; **no se aplicó** |
+| Conteo físico (`?seccionId=`) | No afectado: la sección se elige con un `<form>` común que recarga la página entera, y el grid se monta de cero |
+| Recetas (`?editar=`, `?editarPaso=`, `?editarFicha=`) | No afectado: cada edición es render condicional y las filas llevan `key` |
+| Cambio de sucursal | No afectado: `cambiarSucursalActiva` termina en `redirect("/")` |
+| Filtros de reportes (`?desde=`, `?dias=`) | No afectado: formularios GET comunes; el orden elegido en una tabla se conserva a propósito |
+
+## 6. Decisiones para el usuario
 
 1. ¿Productos primero, con ficha y rutas separadas, y proveedores después?
 2. ¿Qué secciones de la ficha van primero: datos, stock, precios y proveedores, receta, movimientos, auditoría?
@@ -96,11 +98,11 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 4. ¿Categorías, unidades e insumos-grupos quedan con lista y formulario inline?
 5. ¿Se cierra ya el caso borde de proveedores con un `key`?
 
-## 6. Limitaciones
+## 7. Limitaciones
 
 - Los referentes se leyeron como archivos sueltos por la API de GitHub (Dolibarr `card.php` y `product.lib.php`, Grocy `products`, `productcard` y `productform`, Frappe `form.js`, TastyIgniter `Menus.php`, NexoPOS `ProductCrud.php`) o en clones locales (ERPNext `item.js` y `item_dashboard.py`). **No se ejecutó ninguno**: la descripción de cómo se ve cada pantalla sale del código, no de usarla.
 - **No se verificó** qué hace Dolibarr al guardar (si vuelve a la ficha), ni Odoo, que no se miró. La descripción de Tandoor viene del documento previo, no se releyó su código.
-- El relevamiento de §3 es por lectura del código, salvo productos, que se reprodujo en Chrome con un test e2e.
+- El relevamiento de §5 es por lectura del código, salvo productos, que se reprodujo en Chrome con un test e2e.
 
 ## Fuentes
 
