@@ -117,7 +117,9 @@ export default async function ProductosPage({
             ← Cancelar edición / nuevo producto
           </Link>
         )}
+        {/* `key`: la lista y el formulario viven en la misma página, así que tocar «Editar» es una navegación suave y React reutilizaría el formulario ya montado. Sus categoría, unidad, precio y factor son estado interno que solo se inicializa al montarse: sin `key` quedaban con los valores del alta. */}
         <ProductoForm
+          key={productoExistente?.id ?? "nuevo"}
           unidades={unidades}
           insumosIniciales={insumos}
           categoriasIniciales={categorias}
