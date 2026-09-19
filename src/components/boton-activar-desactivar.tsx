@@ -11,8 +11,9 @@ import { useEffect, useId, useRef, useState } from "react";
  *
  * Teclado y lector de pantalla: al abrir la confirmación el foco va a «Cancelar»
  * (lo seguro por defecto en una acción destructiva), el aviso se anuncia
- * (`role="alert"`), «Sí, desactivar» lo lee como descripción, Escape cancela y al
- * cancelar el foco vuelve a «Desactivar».
+ * (`role="alert"`) y ambos botones lo leen como descripción (el foco cae en «Cancelar»,
+ * y algunos lectores no anuncian una alerta que aparece ya con texto), Escape cancela
+ * y al cancelar el foco vuelve a «Desactivar».
  */
 export function BotonActivarDesactivar({
   activo,
@@ -96,7 +97,7 @@ export function BotonActivarDesactivar({
       >
         Sí, desactivar
       </button>
-      <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
+      <button ref={botonCancelar} type="button" aria-describedby={idAviso} onClick={cancelar} className="text-sm underline">
         Cancelar
       </button>
     </span>
