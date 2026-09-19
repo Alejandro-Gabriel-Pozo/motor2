@@ -7,6 +7,7 @@ import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirSesionEnSucursal } from "../con-sesion";
@@ -44,75 +45,119 @@ export interface DatosConteoFisico {
  * bitácora (ConteoFisico) además del Kardex.
  */
 export async function registrarConteoFisico(datos: DatosConteoFisico): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
-    if (!texto(datos.seccionId)) return error("Elegí una sección — no se puede dejar en blanco.");
-    if (!(datos.conteoReal >= 0)) return error("El conteo real debe ser un número mayor o igual a 0.");
-    if (!esNumeroFinito(datos.conteoReal)) return error("El conteo real no es un número válido.");
-    // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
-    // registrarMovimiento — conPermiso no valida que la sección sea de
-    // ESTA sucursal, solo el permiso de quien llama.
-    if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
+  return conPermiso("proceso_control", (ctx) => registrarConteoConContexto(ctx, datos));
+}
 
-    return conTransaccionSerializable(async (tx) => {
-      const producto = await tx.producto.findUnique({ where: { id: datos.productoId }, include: { unidadStock: true } });
-      if (!producto || !producto.activo) return error("El producto no existe o no está activo.");
-      if (!tieneStockReal(producto.tipo, producto.seProduce)) {
-        return error(`El conteo físico es sobre materias primas (MP) o productos "Se produce", no sobre PV comunes.`);
-      }
+/**
+ * Un conteo, con el contexto ya resuelto (la sesión y el permiso los comprobó quien llama, una sola vez). Es lo que comparten
+ * `registrarConteoFisico` (uno) y `registrarConteosFisicos` (toda la grilla). Cada conteo va en su propia transacción
+ * serializable: el resultado de uno no depende de los demás.
+ */
+async function registrarConteoConContexto(ctx: ContextoUsuario, datos: DatosConteoFisico): Promise<ResultadoAccion> {
+  if (!texto(datos.seccionId)) return error("Elegí una sección — no se puede dejar en blanco.");
+  if (!(datos.conteoReal >= 0)) return error("El conteo real debe ser un número mayor o igual a 0.");
+  if (!esNumeroFinito(datos.conteoReal)) return error("El conteo real no es un número válido.");
+  // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
+  // registrarMovimiento — conPermiso no valida que la sección sea de
+  // ESTA sucursal, solo el permiso de quien llama.
+  if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
 
-      const conteoReal = redondearACantidadDeUnidad(datos.conteoReal, producto.unidadStock.decimales);
-      const loteVencimiento = datos.loteVencimiento ?? null;
-      const saldoSistema = loteVencimiento
-        ? await calcularSaldoPorLote(producto.id, datos.seccionId, loteVencimiento, tx)
-        : await calcularSaldoTotal(producto.id, datos.seccionId, tx);
-      const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, producto.unidadStock.decimales);
+  return conTransaccionSerializable(async (tx) => {
+    const producto = await tx.producto.findUnique({ where: { id: datos.productoId }, include: { unidadStock: true } });
+    if (!producto || !producto.activo) return error("El producto no existe o no está activo.");
+    if (!tieneStockReal(producto.tipo, producto.seProduce)) {
+      return error(`El conteo físico es sobre materias primas (MP) o productos "Se produce", no sobre PV comunes.`);
+    }
 
-      const accionInfo = ACCIONES_CONTEO[datos.accion];
-      const estado: EstadoConteo = diferencia === 0 ? "RESUELTO" : accionInfo.estado;
+    const conteoReal = redondearACantidadDeUnidad(datos.conteoReal, producto.unidadStock.decimales);
+    const loteVencimiento = datos.loteVencimiento ?? null;
+    const saldoSistema = loteVencimiento
+      ? await calcularSaldoPorLote(producto.id, datos.seccionId, loteVencimiento, tx)
+      : await calcularSaldoTotal(producto.id, datos.seccionId, tx);
+    const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, producto.unidadStock.decimales);
 
-      const conteo = await tx.conteoFisico.create({
+    const accionInfo = ACCIONES_CONTEO[datos.accion];
+    const estado: EstadoConteo = diferencia === 0 ? "RESUELTO" : accionInfo.estado;
+
+    const conteo = await tx.conteoFisico.create({
+      data: {
+        sucursalId: ctx.sucursalId,
+        fecha: datos.fechaConteo,
+        productoId: producto.id,
+        seccionId: datos.seccionId,
+        loteVencimiento,
+        saldoSistema,
+        conteoReal,
+        diferencia,
+        accion: datos.accion,
+        estado,
+        detalle: texto(datos.detalle) || null,
+        usuarioId: ctx.usuarioId,
+      },
+    });
+
+    if (diferencia !== 0 && accionInfo.ajusta) {
+      const operacion = await tx.operacion.create({
+        data: { sucursalId: ctx.sucursalId, proceso: "CONTROL", fecha: datos.fechaConteo, usuarioId: ctx.usuarioId },
+      });
+      await tx.movimientoStock.create({
         data: {
-          sucursalId: ctx.sucursalId,
-          fecha: datos.fechaConteo,
+          operacionId: operacion.id,
           productoId: producto.id,
           seccionId: datos.seccionId,
+          proceso: "CONTROL",
+          cantidad: diferencia,
           loteVencimiento,
-          saldoSistema,
-          conteoReal,
-          diferencia,
-          accion: datos.accion,
-          estado,
-          detalle: texto(datos.detalle) || null,
-          usuarioId: ctx.usuarioId,
+          detalle: `Conteo físico: contado ${conteoReal}, sistema calculaba ${saldoSistema}, diferencia ${diferencia > 0 ? "+" : ""}${diferencia}.`,
+          precioTotal: 0,
+          precioPorUnidadStock: 0,
+          conteoFisicoId: conteo.id,
         },
       });
+    }
 
-      if (diferencia !== 0 && accionInfo.ajusta) {
-        const operacion = await tx.operacion.create({
-          data: { sucursalId: ctx.sucursalId, proceso: "CONTROL", fecha: datos.fechaConteo, usuarioId: ctx.usuarioId },
-        });
-        await tx.movimientoStock.create({
-          data: {
-            operacionId: operacion.id,
-            productoId: producto.id,
-            seccionId: datos.seccionId,
-            proceso: "CONTROL",
-            cantidad: diferencia,
-            loteVencimiento,
-            detalle: `Conteo físico: contado ${conteoReal}, sistema calculaba ${saldoSistema}, diferencia ${diferencia > 0 ? "+" : ""}${diferencia}.`,
-            precioTotal: 0,
-            precioPorUnidadStock: 0,
-            conteoFisicoId: conteo.id,
-          },
-        });
+    const mensaje =
+      diferencia === 0
+        ? "Conteo registrado. El stock ya coincidía."
+        : `Conteo registrado. Diferencia: ${diferencia > 0 ? "+" : ""}${diferencia}${accionInfo.ajusta ? " (ajustada)" : ""}.`;
+    return ok(mensaje);
+  });
+}
+
+/** Resultado de la grilla: uno por conteo, en el mismo orden en que se mandaron. */
+export type ResultadoConteos = { ok: true; mensaje: string; resultados: ResultadoAccion[] } | { ok: false; mensaje: string };
+
+/** Tope de conteos por llamada: una grilla real tiene decenas; esto solo frena un pedido absurdo. */
+const MAX_CONTEOS_POR_LLAMADA = 500;
+
+/**
+ * Toda la grilla de Conteo Físico en UNA llamada. Antes la pantalla llamaba a `registrarConteoFisico` una vez por fila: si la
+ * sesión vencía a mitad del recorrido, las filas ya escritas quedaban escritas y la persona no recibía el parcial (la
+ * siguiente llamada la mandaba al login). Ahora la sesión y el permiso se comprueban UNA vez, al principio, y el recorrido
+ * corre completo en el servidor. Se conserva la semántica por fila: cada conteo tiene su propia transacción y su propio
+ * resultado (ok o el motivo del error), así que uno que falla no frena a los demás.
+ */
+export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promise<ResultadoConteos> {
+  return conPermiso<ResultadoConteos>("proceso_control", async (ctx) => {
+    if (!filas.length) return error("No hay conteos para registrar.");
+    if (filas.length > MAX_CONTEOS_POR_LLAMADA) {
+      return error(`Son demasiados conteos de una vez (${filas.length}, el máximo es ${MAX_CONTEOS_POR_LLAMADA}). Registralos en partes.`);
+    }
+
+    const resultados: ResultadoAccion[] = [];
+    for (const fila of filas) {
+      try {
+        resultados.push(await registrarConteoConContexto(ctx, fila));
+      } catch (e) {
+        // Un error inesperado de una fila (base de datos, etc.) no tira abajo la llamada entera: las filas anteriores ya están
+        // escritas y hay que devolver el parcial.
+        console.error("registrarConteosFisicos: falló un conteo", e);
+        resultados.push(error("No se pudo registrar este conteo (error inesperado). Probá de nuevo."));
       }
+    }
 
-      const mensaje =
-        diferencia === 0
-          ? "Conteo registrado. El stock ya coincidía."
-          : `Conteo registrado. Diferencia: ${diferencia > 0 ? "+" : ""}${diferencia}${accionInfo.ajusta ? " (ajustada)" : ""}.`;
-      return ok(mensaje);
-    });
+    const registrados = resultados.filter((r) => r.ok).length;
+    return { ok: true, mensaje: `${registrados} de ${filas.length} conteo(s) registrado(s).`, resultados };
   });
 }
 
