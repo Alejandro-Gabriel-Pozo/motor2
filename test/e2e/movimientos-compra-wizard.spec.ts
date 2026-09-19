@@ -68,21 +68,47 @@ test("«+ Nuevo producto» queda deshabilitado mientras se cargan los productos 
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_${Date.now()}`, nombre: `E2E Proveedor Carga ${Date.now()}` } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
 
+  // Ojo: esto retrasa TODOS los POST a esta ruta (cualquier server action de la página: precarga, alta rápida,
+  // confirmar). Este test solo dispara la precarga; si se le agrega un paso, cada acción suma 1,5 s.
   await page.route(/\/movimientos\/compra(\?.*)?$/, async (route) => {
     if (route.request().method() === "POST") await new Promise((resolver) => setTimeout(resolver, 1500));
     await route.continue();
   });
 
   await page.goto("/movimientos/compra");
-  const nuevoProducto = page.getByRole("button", { name: "+ Nuevo producto", exact: true });
+  const nuevoProducto = page.getByRole("button", { name: "+ Nuevo producto", exact: true }).first();
   await expect(nuevoProducto).toBeEnabled();
 
-  await elegirSelectPorOpcion(page, proveedor.nombre);
+  // La sección va ANTES que el proveedor: elegir el proveedor arranca el retraso de 1,5 s, y lo que se haga
+  // entre ese momento y la aserción de «deshabilitado» se come el margen.
   await elegirSelectPorOpcion(page, seccion.nombre);
+  await elegirSelectPorOpcion(page, proveedor.nombre);
 
   // Mientras la carga está en curso el botón no se puede usar...
   await expect(nuevoProducto).toBeDisabled();
   // ...y cuando responde, el botón ya está en la fila nueva y habilitado.
   await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
   await expect(nuevoProducto).toBeEnabled();
+});
+
+/**
+ * Si la carga de productos del proveedor falla, los botones no se quedan deshabilitados para siempre:
+ * se avisa y se pueden agregar productos a mano. Se simula la falla abortando el pedido al servidor.
+ */
+test("si falla la carga de productos del proveedor, se avisa y los botones vuelven a estar habilitados", async ({ paginaAutenticada: page, seccionId }) => {
+  const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_${Date.now()}`, nombre: `E2E Proveedor Falla ${Date.now()}` } });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+
+  await page.route(/\/movimientos\/compra(\?.*)?$/, async (route) => {
+    if (route.request().method() === "POST") await route.abort();
+    else await route.continue();
+  });
+
+  await page.goto("/movimientos/compra");
+  await elegirSelectPorOpcion(page, seccion.nombre);
+  await elegirSelectPorOpcion(page, proveedor.nombre);
+
+  await expect(page.getByText(/No se pudo cargar lo que le comprás a este proveedor/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "+ Nuevo producto", exact: true }).first()).toBeEnabled();
+  await expect(page.getByRole("button", { name: /\+ Agregar producto/ })).toBeEnabled();
 });

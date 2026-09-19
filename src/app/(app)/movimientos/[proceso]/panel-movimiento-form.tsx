@@ -175,6 +175,11 @@ export function PanelMovimientoForm({
       );
       setPresentacionesPorFila({});
       setVersionItems((n) => n + 1);
+    }, () => {
+      // Si la carga falla (red caída, sesión vencida, error del servidor) `cargandoProveedor` quedaba en `true` para siempre
+      // y «+ Agregar producto» / «+ Nuevo producto» seguían deshabilitados hasta recargar la página.
+      setCargandoProveedor(false);
+      setInfoProveedor("No se pudo cargar lo que le comprás a este proveedor. Agregá los productos a mano con \"+ Agregar producto\", o volvé a elegir el proveedor para reintentar.");
     });
   };
 
