@@ -17,7 +17,16 @@ interface Opcion {
  * (obligatoria en `Producto`), que ningún otro alta rápida del proyecto
  * necesita pedir.
  */
-export function QuickCrearProducto({ unidades, onCreado }: { unidades: Opcion[]; onCreado: (item: { id: string; etiqueta: string }) => void }) {
+export function QuickCrearProducto({
+  unidades,
+  onCreado,
+  deshabilitado = false,
+}: {
+  unidades: Opcion[];
+  onCreado: (item: { id: string; etiqueta: string }) => void;
+  /** Deshabilita el botón «+ Nuevo producto» (ver el uso en el wizard de Compra). */
+  deshabilitado?: boolean;
+}) {
   const [nombre, setNombre] = useState("");
   const [unidadStockId, setUnidadStockId] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -38,7 +47,7 @@ export function QuickCrearProducto({ unidades, onCreado }: { unidades: Opcion[];
   }
 
   return (
-    <Modal triggerLabel="+ Nuevo producto" title="Alta rápida de producto">
+    <Modal triggerLabel="+ Nuevo producto" title="Alta rápida de producto" deshabilitado={deshabilitado}>
       {(cerrar) => (
         // A propósito NO es un <form>: este modal siempre se usa DENTRO de
         // otro <form> (acá, la fila de Producto del wizard de Compra) — un

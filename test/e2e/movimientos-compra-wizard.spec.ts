@@ -57,3 +57,32 @@ test("crear producto inline durante una Compra no pisa el proveedor ni la fila, 
   expect(Number(movimiento.cantidad)).toBe(10);
   expect(Number(movimiento.precioTotal)).toBe(1000);
 });
+
+/**
+ * Bug real que destapó la falla intermitente del test de arriba (en frío, con el servidor lento): si se elige el
+ * proveedor y enseguida se abre «+ Nuevo producto», al responder la carga de productos del proveedor la fila se
+ * vuelve a montar (cambia su `key`) y el modal abierto desaparece solo, con lo tipeado. Ahora el botón queda
+ * deshabilitado mientras esa carga está en curso. Se retrasa la respuesta del servidor para que la ventana sea larga.
+ */
+test("«+ Nuevo producto» queda deshabilitado mientras se cargan los productos del proveedor", async ({ paginaAutenticada: page, seccionId }) => {
+  const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_${Date.now()}`, nombre: `E2E Proveedor Carga ${Date.now()}` } });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+
+  await page.route(/\/movimientos\/compra(\?.*)?$/, async (route) => {
+    if (route.request().method() === "POST") await new Promise((resolver) => setTimeout(resolver, 1500));
+    await route.continue();
+  });
+
+  await page.goto("/movimientos/compra");
+  const nuevoProducto = page.getByRole("button", { name: "+ Nuevo producto", exact: true });
+  await expect(nuevoProducto).toBeEnabled();
+
+  await elegirSelectPorOpcion(page, proveedor.nombre);
+  await elegirSelectPorOpcion(page, seccion.nombre);
+
+  // Mientras la carga está en curso el botón no se puede usar...
+  await expect(nuevoProducto).toBeDisabled();
+  // ...y cuando responde, el botón ya está en la fila nueva y habilitado.
+  await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
+  await expect(nuevoProducto).toBeEnabled();
+});

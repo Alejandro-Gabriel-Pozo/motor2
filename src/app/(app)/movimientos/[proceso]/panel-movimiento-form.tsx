@@ -328,7 +328,14 @@ export function PanelMovimientoForm({
               />
               {fila.ultimaCompraTexto && <span className="text-neutral-400">{fila.ultimaCompraTexto}</span>}
               {config.proceso === "COMPRA" && unidades && (
-                <QuickCrearProducto unidades={unidades} onCreado={(item) => productoCreadoEnFila(idx, item.id, item.etiqueta)} />
+                // Deshabilitado mientras se cargan los productos del proveedor: cuando esa carga responde
+                // cambia `versionItems`, y con él la `key` de la fila, que se remonta y se lleva puesto un
+                // modal que ya estuviera abierto (con lo tipeado). Ver `cargandoProveedor` en `elegirProveedor`.
+                <QuickCrearProducto
+                  unidades={unidades}
+                  deshabilitado={cargandoProveedor}
+                  onCreado={(item) => productoCreadoEnFila(idx, item.id, item.etiqueta)}
+                />
               )}
             </label>
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">

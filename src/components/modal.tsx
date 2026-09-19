@@ -12,10 +12,13 @@ import { useState, type ReactNode } from "react";
 export function Modal({
   triggerLabel,
   title,
+  deshabilitado = false,
   children,
 }: {
   triggerLabel: string;
   title: string;
+  /** Deshabilita el botón que abre el modal (no cierra uno ya abierto). */
+  deshabilitado?: boolean;
   children: (cerrar: () => void) => ReactNode;
 }) {
   const [abierto, setAbierto] = useState(false);
@@ -25,7 +28,8 @@ export function Modal({
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="text-sm text-neutral-500 underline hover:text-neutral-900 dark:hover:text-neutral-100"
+        disabled={deshabilitado}
+        className="text-sm text-neutral-500 underline hover:text-neutral-900 disabled:opacity-50 dark:hover:text-neutral-100"
       >
         {triggerLabel}
       </button>
