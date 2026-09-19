@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDevolucionProducto } from "@/core/reportes/devoluciones";
 
@@ -14,9 +14,9 @@ const COLUMNAS: ColumnaReporte<FilaDevolucionProducto>[] = [
     valor: (p) => p.valor,
     render: (p) =>
       p.accionFaltante ? (
-        <Link href={p.accionFaltante.href} className="text-amber-600 underline">
+        <EnlaceInterno href={p.accionFaltante.href} className="text-amber-600 underline">
           {p.accionFaltante.etiqueta}
-        </Link>
+        </EnlaceInterno>
       ) : (
         `$${p.valor.toLocaleString("es-AR")}`
       ),

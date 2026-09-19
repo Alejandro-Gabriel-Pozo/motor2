@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
@@ -85,9 +86,9 @@ export default async function RecetaEditorPage({
             <Link href={`${volver}/historial`} className="text-sm text-neutral-500 underline">
               Ver historial de versiones ({vigente.version})
             </Link>
-            <Link href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline">
+            <EnlaceInterno href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline">
               Ver rendimiento real
-            </Link>
+            </EnlaceInterno>
           </div>
         )}
       </div>

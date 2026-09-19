@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaInsumoSinReceta } from "@/core/reportes/insumos-sin-receta";
 
@@ -10,9 +10,9 @@ const COLUMNAS: ColumnaReporte<FilaInsumoSinReceta>[] = [
     etiqueta: "Producto",
     valor: (f) => `${f.codigo} — ${f.producto}`,
     render: (f) => (
-      <Link href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
         {f.codigo} — {f.producto}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "insumo", etiqueta: "Insumo", valor: (f) => f.insumoNombre ?? "", render: (f) => f.insumoNombre ?? "—" },

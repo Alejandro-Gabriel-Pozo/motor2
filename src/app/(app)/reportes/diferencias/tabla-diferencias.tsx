@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDiferenciaAjuste } from "@/core/reportes/diferencias-ajustes";
 
@@ -15,9 +15,9 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
     etiqueta: "Producto",
     valor: (f) => `${f.codigo} — ${f.producto}`,
     render: (f) => (
-      <Link href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
         {f.codigo} — {f.producto}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "grupo", etiqueta: "Grupo", valor: (f) => f.grupoTexto, render: (f) => f.grupoTexto },
@@ -52,9 +52,9 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
       f.recetasQueLoUsan.length > 0 ? (
         <div className="flex flex-col gap-0.5">
           {f.recetasQueLoUsan.map((r) => (
-            <Link key={r.productoVentaId} href={`/catalogo/recetas/${r.productoVentaId}?editar=${f.productoId}`} className="underline">
+            <EnlaceInterno key={r.productoVentaId} href={`/catalogo/recetas/${r.productoVentaId}?editar=${f.productoId}`} className="underline">
               {r.productoVentaNombre} (merma {r.mermaPorcentajeActual}%)
-            </Link>
+            </EnlaceInterno>
           ))}
           {f.sugerenciaMerma && (
             <span className={f.sugerenciaMerma === "aumentar" ? "text-xs font-medium text-red-600" : "text-xs font-medium text-amber-600"}>

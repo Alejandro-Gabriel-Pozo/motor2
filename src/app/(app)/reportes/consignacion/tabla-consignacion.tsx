@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { RegistrarPagoConsignante } from "./registrar-pago-consignante";
 import type { FilaDebidoConsignante, FilaStockSinVenderConsignacion } from "@/core/reportes/consignacion";
@@ -24,9 +24,9 @@ const COLUMNAS_STOCK: ColumnaReporte<FilaStockSinVenderConsignacion>[] = [
     etiqueta: "Producto",
     valor: (s) => `${s.codigo} — ${s.producto}`,
     render: (s) => (
-      <Link href={`/reportes/historial?productoId=${s.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${s.productoId}`} className="underline">
         {s.codigo} — {s.producto}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "consignante", etiqueta: "Consignante", valor: (s) => s.proveedorConsignacionNombre ?? "", render: (s) => s.proveedorConsignacionNombre ?? "—" },

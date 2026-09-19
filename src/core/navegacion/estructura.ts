@@ -105,6 +105,30 @@ export const GRUPOS_NAV: GrupoNav[] = [
   },
 ];
 
+/**
+ * Pantallas a las que se llega con un enlace desde otra pantalla pero que no tienen ítem en el menú, con la acción de «Ver» que las
+ * protege (la misma que pide su página; un test lo comprueba). Las rutas hijas de un ítem del menú (`/catalogo/recetas/[id]`,
+ * `/catalogo/recetas/[id]/historial`, `/movimientos/compra?…`) no van acá: `accionDeRuta` las resuelve por el ítem del que cuelgan.
+ */
+export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [{ href: "/catalogo/proveedores/comparativa", label: "Comparativa de precios", accion: "comparar_precios" }];
+
+/**
+ * La acción de «Ver» que protege la pantalla a la que apunta un enlace interno, o `null` si no se conoce (la raíz, una ruta
+ * desconocida). Se resuelve por el ítem del menú (o de `RUTAS_FUERA_DEL_MENU`) cuya ruta es la más larga que es prefijo de la del
+ * enlace: la consulta (`?…`) y el ancla (`#…`) se ignoran. Es lo que permite mostrar un enlace solo a quien puede abrir su destino.
+ */
+export function accionDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV): AccionClave | null {
+  const ruta = href.split(/[?#]/)[0].replace(/\/+$/, "");
+  const candidatos = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU].filter((i) => i.accion && (ruta === i.href || ruta.startsWith(`${i.href}/`)));
+  candidatos.sort((a, b) => b.href.length - a.href.length);
+  return candidatos[0]?.accion ?? null;
+}
+
+/** Las acciones del menú más las de las pantallas fuera del menú: todo lo que hay que consultar para decidir qué enlaces mostrar. */
+export function accionesDeNavegacion(grupos: GrupoNav[] = GRUPOS_NAV): AccionClave[] {
+  return [...new Set([...accionesDelMenu(grupos), ...RUTAS_FUERA_DEL_MENU.flatMap((i) => (i.accion ? [i.accion] : []))])];
+}
+
 /** Todas las acciones que aparecen en algún ítem del menú: lo que hay que consultar para saber qué se muestra. */
 export function accionesDelMenu(grupos: GrupoNav[] = GRUPOS_NAV): AccionClave[] {
   return [...new Set(grupos.flatMap((g) => g.items.flatMap((i) => (i.accion ? [i.accion] : []))))];

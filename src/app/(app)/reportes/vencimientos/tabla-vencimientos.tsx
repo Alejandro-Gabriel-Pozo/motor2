@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { obtenerReporteVencimientosDatos } from "@/core/reportes/vencimientos";
 
@@ -16,9 +16,9 @@ const COLUMNAS_LOTES: ColumnaReporte<FilaLote>[] = [
     etiqueta: "Producto",
     valor: (l) => `${l.productoCodigo} — ${l.productoNombre}`,
     render: (l) => (
-      <Link href={`/reportes/historial?productoId=${l.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${l.productoId}`} className="underline">
         {l.productoCodigo} — {l.productoNombre}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "seccion", etiqueta: "Sección", valor: (l) => l.seccionNombre, render: (l) => l.seccionNombre },

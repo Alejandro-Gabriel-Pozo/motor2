@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaCostoProducto, FilaImpactoInsumo } from "@/core/reportes/costos";
 import { resolverAccionFaltante } from "@/core/reportes/accion-faltante";
@@ -25,9 +25,9 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
     etiqueta: "Producto",
     valor: (p) => `${p.productoCodigo} — ${p.productoNombre}`,
     render: (p) => (
-      <Link href={`/reportes/historial?productoId=${p.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${p.productoId}`} className="underline">
         {p.productoCodigo} — {p.productoNombre}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "precioVenta", etiqueta: "Precio venta", alinear: "derecha", valor: (p) => p.precioVenta, render: (p) => `$${p.precioVenta.toLocaleString("es-AR")}` },
@@ -57,9 +57,9 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
       const accion = resolverAccionFaltante(p);
       if (accion) {
         return (
-          <Link href={accion.href} className="text-amber-600 underline">
+          <EnlaceInterno href={accion.href} className="text-amber-600 underline">
             {accion.etiqueta}
-          </Link>
+          </EnlaceInterno>
         );
       }
       return <span className={p.estado === "OK" ? "" : "text-amber-600"}>{LABEL_ESTADO[p.estado]}</span>;

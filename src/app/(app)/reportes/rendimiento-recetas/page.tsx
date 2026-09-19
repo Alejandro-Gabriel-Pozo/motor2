@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import {
@@ -42,9 +43,9 @@ function celdaUsarValor(productoVentaId: string, insumoProductoId: string, canti
   if (cantidadEstimada === null) return <td className="px-2 py-2" />;
   return (
     <td className="px-2 py-2">
-      <Link href={`/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}`} className="text-sm underline">
+      <EnlaceInterno href={`/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}`} className="text-sm underline">
         Usar este valor
-      </Link>
+      </EnlaceInterno>
     </td>
   );
 }
@@ -152,9 +153,9 @@ export default async function RendimientoRecetasPage({
                       <span className="ml-1 text-xs text-neutral-400">
                         (venta directa)
                         <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
-                        <Link href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
+                        <EnlaceInterno href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
                           Ver historial
-                        </Link>
+                        </EnlaceInterno>
                       </span>
                     )}
                   </td>
@@ -210,9 +211,9 @@ export default async function RendimientoRecetasPage({
                             <span className="ml-1 text-xs text-neutral-400">
                               (venta directa)
                               <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
-                              <Link href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
+                              <EnlaceInterno href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
                                 Ver historial
-                              </Link>
+                              </EnlaceInterno>
                             </span>
                           )}
                         </td>

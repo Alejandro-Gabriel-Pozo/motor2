@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { altaProveedor, actualizarActivaProveedor, actualizarProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
@@ -19,9 +20,9 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Proveedores</h1>
-        <Link href="/catalogo/proveedores/comparativa" className="text-sm underline">
+        <EnlaceInterno href="/catalogo/proveedores/comparativa" className="text-sm underline">
           Comparativa de precios →
-        </Link>
+        </EnlaceInterno>
       </div>
 
       <table className="w-full text-sm">

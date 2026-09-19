@@ -1,7 +1,8 @@
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
-import { GRUPOS_NAV, accionesDelMenu, filtrarMenuPorPermiso } from "@/core/navegacion/estructura";
+import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso } from "@/core/navegacion/estructura";
 import { accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { AccionesVisiblesProvider } from "./enlace-interno";
 import { SidebarColapsable } from "./sidebar-colapsable";
 import { SelectorSucursal } from "./selector-sucursal";
 
@@ -15,8 +16,9 @@ import { SelectorSucursal } from "./selector-sucursal";
  * achicarse, ni en desktop ni en mobile.
  */
 export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
-  // El menú solo muestra los reportes que el rol puede ver (la página igual se protege por su cuenta: esto evita enlaces a «no tenés permiso»).
-  const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDelMenu());
+  // El menú solo muestra las pantallas que el rol puede ver (la página igual se protege por su cuenta: esto evita enlaces a «no tenés
+  // permiso»). Lo mismo vale para los enlaces entre pantallas (`EnlaceInterno`), que reciben este conjunto por contexto.
+  const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDeNavegacion());
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
 
   return (
@@ -44,7 +46,9 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
             </button>
           </form>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6">
+          <AccionesVisiblesProvider acciones={[...puedeVer]}>{children}</AccionesVisiblesProvider>
+        </main>
       </div>
     </div>
   );

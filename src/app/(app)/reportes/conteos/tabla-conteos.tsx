@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 
 export interface FilaConteo {
@@ -24,9 +24,9 @@ const COLUMNAS: ColumnaReporte<FilaConteo>[] = [
     etiqueta: "Producto",
     valor: (c) => `${c.productoCodigo} — ${c.productoNombre}`,
     render: (c) => (
-      <Link href={`/reportes/historial?productoId=${c.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${c.productoId}`} className="underline">
         {c.productoCodigo} — {c.productoNombre}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "seccion", etiqueta: "Sección", valor: (c) => c.seccionNombre, render: (c) => c.seccionNombre },

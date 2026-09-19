@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaMargenProducto, FilaCompraPorProveedor, FilaGastoPorInsumo, FilaPrecioInsumo } from "@/core/reportes/periodo";
 import type { FilaImpactoRecetaPorPeriodo } from "@/core/reportes/costos";
@@ -11,9 +11,9 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
     etiqueta: "Producto",
     valor: (v) => v.producto,
     render: (v) => (
-      <Link href={`/reportes/historial?productoId=${v.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${v.productoId}`} className="underline">
         {v.producto} {v.ingresoEstimado && <span className="text-amber-600">(estimado)</span>}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (v) => v.cantidad, render: (v) => v.cantidad },
@@ -27,9 +27,9 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
       if (v.margen !== null) return `$${v.margen.toLocaleString("es-AR")} (${v.margenPct}%)`;
       if (v.accionFaltante) {
         return (
-          <Link href={v.accionFaltante.href} className="text-amber-600 underline">
+          <EnlaceInterno href={v.accionFaltante.href} className="text-amber-600 underline">
             {v.accionFaltante.etiqueta}
-          </Link>
+          </EnlaceInterno>
         );
       }
       return <span className="text-amber-600">costo incompleto</span>;
@@ -199,9 +199,9 @@ const COLUMNAS_IMPACTO_RECETA: ColumnaReporte<FilaImpactoRecetaPorPeriodo>[] = [
     etiqueta: "Plato",
     valor: (f) => f.productoNombre,
     render: (f) => (
-      <Link href={`/catalogo/recetas/${f.productoId}`} className="underline">
+      <EnlaceInterno href={`/catalogo/recetas/${f.productoId}`} className="underline">
         {f.productoNombre}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "costoAntes", etiqueta: "Costo antes", alinear: "derecha", valor: (f) => f.costoAntes, render: (f) => `$${f.costoAntes.toLocaleString("es-AR")}` },

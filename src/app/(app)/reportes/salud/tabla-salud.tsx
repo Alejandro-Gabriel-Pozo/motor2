@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaSaludProducto } from "@/core/reportes/salud-por-producto";
 import { ESTADO_STOCK_CONSOLIDADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR } from "@/core/stock/estado-consolidado-ui";
@@ -11,9 +11,9 @@ const COLUMNAS: ColumnaReporte<FilaSaludProducto>[] = [
     etiqueta: "Producto",
     valor: (f) => `${f.codigo} — ${f.producto}`,
     render: (f) => (
-      <Link href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
+      <EnlaceInterno href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
         {f.codigo} — {f.producto}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   { clave: "seccion", etiqueta: "Sección", valor: (f) => f.seccionNombre, render: (f) => f.seccionNombre },

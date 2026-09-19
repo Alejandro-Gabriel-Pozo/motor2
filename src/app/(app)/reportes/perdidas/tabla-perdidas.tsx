@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaPerdida } from "@/core/reportes/perdidas";
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO } from "@/core/movimientos/ui-config";
@@ -31,9 +31,9 @@ function columnas(etiquetaMotivo: Map<string, string>): ColumnaReporte<FilaPerdi
       clave: "trazabilidad",
       etiqueta: "",
       render: (f) => (
-        <Link href={`/reportes/trazabilidad?idOperacion=${f.idOperacion}`} className="text-sm underline">
+        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${f.idOperacion}`} className="text-sm underline">
           Ver operación
-        </Link>
+        </EnlaceInterno>
       ),
     },
   ];
