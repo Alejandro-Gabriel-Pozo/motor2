@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
@@ -17,11 +18,12 @@ export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
   fn: (ctx: ContextoUsuario) => Promise<T>
 ): Promise<T> {
   const ctx = await obtenerContextoUsuario();
-  // El cast es seguro: por convención, todo ResultadoAccion (y sus
-  // variantes con datos extra, ej. ResultadoConId) comparte exactamente
-  // la misma rama `{ ok: false; mensaje: string }` — T solo agrega campos
-  // a la rama `ok: true`, nunca a la de error.
-  if (!ctx) return error("No autenticado, o tu usuario no tiene ninguna sucursal asignada.") as T;
+  // Sin sesión (venció, o un admin desactivó al usuario con la pestaña abierta) o sin ninguna sucursal activa: a diferencia
+  // de un permiso denegado, que se le explica al usuario, acá no hay nada que corregir en la pantalla. Antes se devolvía
+  // «No autenticado…» como un error más y el formulario seguía abierto; quien solo envía formularios nunca llegaba al
+  // login. Ahora se lo lleva a /login, igual que hace el layout de (app) en cualquier navegación; esa pantalla ya explica
+  // el caso «iniciaste sesión pero no tenés acceso a ninguna sucursal». `redirect` lanza, por eso va antes de todo.
+  if (!ctx) redirect("/login");
 
   if (limitadorMutaciones.excedeLimite(ctx.usuarioId)) {
     return error("Demasiadas acciones seguidas — esperá un minuto e intentá de nuevo.") as T;
