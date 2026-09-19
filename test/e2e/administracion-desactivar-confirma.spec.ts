@@ -15,13 +15,24 @@ test("roles: «Desactivar» pide confirmación, «Cancelar» no cambia nada y «
   await page.goto("/administracion/roles");
   await fila().getByRole("button", { name: "Desactivar" }).click();
 
-  // El primer clic solo muestra la confirmación: el rol sigue activo.
-  await expect(fila().getByText(`¿Desactivar el rol "${rol.nombre}"?`)).toBeVisible();
+  // El primer clic solo muestra la confirmación (anunciada como alerta, con la consecuencia): el rol sigue activo.
+  await expect(fila().getByRole("alert")).toHaveText(`¿Desactivar el rol "${rol.nombre}"? Deja de poder asignarse a usuarios nuevos.`);
   expect((await prisma.rol.findUniqueOrThrow({ where: { id: rol.id } })).activo).toBe(true);
 
-  // «Cancelar» vuelve al botón original, sin cambios.
+  // El foco arranca en «Cancelar» (lo seguro por defecto) y «Sí, desactivar» lee el aviso como descripción.
+  await expect(fila().getByRole("button", { name: "Cancelar" })).toBeFocused();
+  await expect(fila().getByRole("button", { name: "Sí, desactivar" })).toHaveAccessibleDescription(/Deja de poder asignarse/);
+
+  // «Cancelar» vuelve al botón original, con el foco, sin cambios.
   await fila().getByRole("button", { name: "Cancelar" }).click();
-  await expect(fila().getByRole("button", { name: "Desactivar" })).toBeVisible();
+  await expect(fila().getByRole("button", { name: "Desactivar" })).toBeFocused();
+  expect((await prisma.rol.findUniqueOrThrow({ where: { id: rol.id } })).activo).toBe(true);
+
+  // Escape también cancela, con el foco de vuelta en «Desactivar».
+  await fila().getByRole("button", { name: "Desactivar" }).click();
+  await expect(fila().getByRole("button", { name: "Cancelar" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(fila().getByRole("button", { name: "Desactivar" })).toBeFocused();
   expect((await prisma.rol.findUniqueOrThrow({ where: { id: rol.id } })).activo).toBe(true);
 
   // «Sí, desactivar» aplica el cambio.
@@ -46,7 +57,7 @@ test("usuarios: «Desactivar» pide confirmación, «Cancelar» no cambia nada y
   await page.goto("/administracion/usuarios");
   await fila().getByRole("button", { name: "Desactivar" }).click();
 
-  await expect(fila().getByText(`¿Desactivar a ${email}? Pierde el acceso a esta sucursal.`)).toBeVisible();
+  await expect(fila().getByRole("alert")).toHaveText(`¿Desactivar a ${email}? Pierde el acceso a esta sucursal.`);
   expect((await prisma.usuarioSucursal.findUniqueOrThrow({ where: { id: membresia.id } })).activo).toBe(true);
 
   await fila().getByRole("button", { name: "Cancelar" }).click();

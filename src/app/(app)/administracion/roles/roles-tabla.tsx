@@ -54,7 +54,7 @@ export function RolesTabla({ rolesIniciales }: { rolesIniciales: Rol[] }) {
                 <BotonActivarDesactivar
                   activo={r.activo}
                   ocupado={pending && pendingId === r.id}
-                  aviso={`¿Desactivar el rol "${r.nombre}"?`}
+                  aviso={`¿Desactivar el rol "${r.nombre}"? Deja de poder asignarse a usuarios nuevos.`}
                   onCambiar={() => toggleActivo(r)}
                 />
               </td>

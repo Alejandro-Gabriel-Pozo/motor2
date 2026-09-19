@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 /**
  * «Activar» / «Desactivar» de una fila de administración (roles, usuarios).
@@ -8,6 +8,11 @@ import { useState } from "react";
  * en la misma fila: primero «Desactivar», después «Sí, desactivar» / «Cancelar».
  * Sin diálogo del navegador (`window.confirm`): así se ve dentro de la página,
  * se puede probar con Playwright sin manejar diálogos y no lo bloquea el navegador.
+ *
+ * Teclado y lector de pantalla: al abrir la confirmación el foco va a «Cancelar»
+ * (lo seguro por defecto en una acción destructiva), el aviso se anuncia
+ * (`role="alert"`), «Sí, desactivar» lo lee como descripción, Escape cancela y al
+ * cancelar el foco vuelve a «Desactivar».
  */
 export function BotonActivarDesactivar({
   activo,
@@ -23,6 +28,34 @@ export function BotonActivarDesactivar({
   onCambiar: () => void;
 }) {
   const [confirmando, setConfirmando] = useState(false);
+  const [activoPrevio, setActivoPrevio] = useState(activo);
+  const idAviso = useId();
+  const botonDesactivar = useRef<HTMLButtonElement>(null);
+  const botonCancelar = useRef<HTMLButtonElement>(null);
+  const volverAlBoton = useRef(false);
+
+  // Si el estado de la fila cambia desde afuera (otra pestaña, otro usuario), la confirmación
+  // abierta ya no aplica: sin esto reaparecería sola cuando la fila vuelva a estar activa.
+  if (activo !== activoPrevio) {
+    setActivoPrevio(activo);
+    setConfirmando(false);
+  }
+
+  const mostrarConfirmacion = activo && confirmando;
+
+  useEffect(() => {
+    if (mostrarConfirmacion) {
+      botonCancelar.current?.focus();
+    } else if (volverAlBoton.current) {
+      volverAlBoton.current = false;
+      botonDesactivar.current?.focus();
+    }
+  }, [mostrarConfirmacion]);
+
+  function cancelar() {
+    volverAlBoton.current = true;
+    setConfirmando(false);
+  }
 
   if (ocupado) return <span className="text-sm text-neutral-500">...</span>;
 
@@ -34,19 +67,27 @@ export function BotonActivarDesactivar({
     );
   }
 
-  if (!confirmando) {
+  if (!mostrarConfirmacion) {
     return (
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline">
+      <button ref={botonDesactivar} type="button" onClick={() => setConfirmando(true)} className="text-sm underline">
         Desactivar
       </button>
     );
   }
 
   return (
-    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="text-sm text-red-600">{aviso}</span>
+    <span
+      className="flex flex-wrap items-center gap-x-3 gap-y-1"
+      onKeyDown={(evento) => {
+        if (evento.key === "Escape") cancelar();
+      }}
+    >
+      <span id={idAviso} role="alert" className="text-sm text-red-600">
+        {aviso}
+      </span>
       <button
         type="button"
+        aria-describedby={idAviso}
         onClick={() => {
           setConfirmando(false);
           onCambiar();
@@ -55,7 +96,7 @@ export function BotonActivarDesactivar({
       >
         Sí, desactivar
       </button>
-      <button type="button" onClick={() => setConfirmando(false)} className="text-sm underline">
+      <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
         Cancelar
       </button>
     </span>
