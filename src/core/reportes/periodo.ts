@@ -627,7 +627,9 @@ async function calcularComparativaPreciosDelPeriodo(
     avisoIPC:
       variacionIPCPct !== null
         ? `IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico.${esMesSinPublicar(hasta, serieIPC) || esMesSinPublicar(desde, serieIPC) ? ` PROVISORIO: el INDEC todavía no publicó el mes del período; se usó ${serieIPC.ultimoMes}, el último disponible.` : ""}`
-        : "Sin IPC sincronizado para alguno de los dos meses del período.",
+        : esMesSinPublicar(desde, serieIPC)
+          ? "El INDEC todavía no publicó el IPC de este período (lo publica a mitad del mes siguiente): la inflación se va a poder medir cuando salga."
+          : "Sin IPC sincronizado para alguno de los dos meses del período.",
   };
 }
 

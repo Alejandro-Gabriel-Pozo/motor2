@@ -93,7 +93,10 @@ export function resolverCoeficienteIPC(fecha: Date, serie: SerieIPC): number | n
  * sin tocar esta función.
  */
 export function resolverVariacionPeriodoIPC(desde: Date, hasta: Date, serie: SerieIPC): number | null {
-  // Un mes posterior al último publicado se toma como el último publicado (provisorio, ver `resolverCoeficienteIPC`).
+  // Si el mes de INICIO todavía no se publicó, el período entero está en meses sin índice: no hay nada que medir. Tomar los dos
+  // extremos como «el último publicado» daría 0 %, que no es «sin inflación» sino «sin dato» (el mes en curso es el que sale por defecto).
+  if (esMesSinPublicar(desde, serie)) return null;
+  // Un mes FINAL posterior al último publicado se toma como el último publicado (provisorio: mide hasta ahí, ver `resolverCoeficienteIPC`).
   const enSerie = (fecha: Date) => (esMesSinPublicar(fecha, serie) ? serie.ultimoMes! : claveMes(fecha));
   const valorDesde = serie.porMes.get(enSerie(desde));
   const valorHasta = serie.porMes.get(enSerie(hasta));

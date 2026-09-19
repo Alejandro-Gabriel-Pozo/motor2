@@ -54,9 +54,12 @@ describe("resolverVariacionPeriodoIPC", () => {
     expect(resolverVariacionPeriodoIPC(d("2026-06-01"), d("2026-08-31"), serie)).toBe(21);
   });
 
-  it("un mes final sin publicar se toma como el último publicado (provisorio)", () => {
+  it("un mes final sin publicar mide hasta el último publicado (provisorio)", () => {
     expect(resolverVariacionPeriodoIPC(d("2026-06-01"), d("2026-09-19"), serie)).toBe(21);
-    expect(resolverVariacionPeriodoIPC(d("2026-09-01"), d("2026-09-19"), serie)).toBe(0);
+  });
+
+  it("si el período entero está en meses sin publicar (el mes en curso, la vista por defecto), es «sin dato», no 0 %", () => {
+    expect(resolverVariacionPeriodoIPC(d("2026-09-01"), d("2026-09-19"), serie)).toBeNull();
   });
 
   it("sin dato en un mes anterior al último da null", () => {

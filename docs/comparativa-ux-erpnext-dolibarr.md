@@ -932,8 +932,8 @@ qué está.
   §9: una tercera línea ("Ajustado IPC: ...") al lado de "Real", con su
   propio `AyudaIcono`, sin reemplazar nada.
 - Sincronización automática: `src/app/api/cron/sincronizar-ipc/route.ts`
-  + `vercel.json` (Vercel Cron, día 15 de cada mes — le da tiempo al
-  INDEC a publicar el mes anterior). Protegido con `CRON_SECRET` (env var
+  + `vercel.json` (Vercel Cron; originalmente el día 15 de cada mes, desde 2026-09-19
+  todos los días: el INDEC publica en una fecha variable y la carga es idempotente). Protegido con `CRON_SECRET` (env var
   nueva en Production de Vercel) — un request sin el secreto correcto se
   rechaza con 401 antes de tocar la DB.
 - Backfill manual único (2026-09-17): corridos los ~125 meses históricos
