@@ -3,7 +3,8 @@
  * `/login?volver=<ruta>` y, al entrar con Google, se la devuelve a esa ruta. Como `volver` viene de la URL (o del encabezado
  * Referer), es entrada del usuario: SOLO se acepta una ruta interna de la propia aplicación. Cualquier otra cosa (otro sitio,
  * `//sitio`, `/\sitio`, `javascript:`, caracteres de control) se descarta, y de lo contrario sería una redirección abierta
- * (alguien manda un enlace `…/login?volver=https://sitio-falso` y, tras el login de verdad, se lo lleva a un sitio ajeno).
+ * (alguien manda un enlace `…/login?volver=https://sitio-falso` y, tras el login de verdad, se lo lleva a un sitio ajeno). Las rutas
+ * legítimas nunca traen caracteres fuera de ASCII: el `Referer` y `urlDeLogin` ya vienen con todo codificado en %XX.
  */
 
 const LARGO_MAXIMO = 500;
@@ -13,8 +14,9 @@ export function rutaInternaSegura(valor: string | null | undefined): string | nu
   if (!valor || valor.length > LARGO_MAXIMO) return null;
   // Tiene que ser una ruta absoluta de este sitio: empieza con una sola «/» (no «//sitio» ni «/\sitio», que el navegador lee como otro host).
   if (!valor.startsWith("/") || valor.startsWith("//") || valor.startsWith("/\\")) return null;
-  // Sin caracteres de control ni barras invertidas en ninguna parte.
-  if (/[\x00-\x1f\x7f\\]/.test(valor)) return null;
+  // Solo ASCII imprimible (sin espacios ni caracteres de control) y sin barras invertidas, en ninguna parte. Un carácter fuera de
+  // ASCII no saca del sitio, pero un `Location` con un code point mayor a 255 hace lanzar a Node y `/login` respondía 500.
+  if (/[^\x21-\x7e]|\\/.test(valor)) return null;
 
   // Debe seguir siendo una ruta del mismo origen una vez interpretada.
   let url: URL;

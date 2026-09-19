@@ -24,8 +24,8 @@ test("el login con la sesión válida respeta `volver` (una ruta interna)", asyn
   await expect(page.getByRole("heading", { name: "Costos y márgenes" })).toBeVisible();
 });
 
-test("`volver` nunca lleva a otro sitio ni a un lugar inválido: se ignora y se entra por la pantalla de inicio", async ({ paginaAutenticada: page, baseURL }) => {
-  for (const malicioso of ["//sitio-falso.example.com/reportes", "https://sitio-falso.example.com", "/\\sitio-falso.example.com", "javascript:alert(1)", "/login", "/api/auth/signout"]) {
+test("`volver` nunca lleva a otro sitio ni a un lugar inválido (ni da error con letras fuera de ASCII): se ignora y se entra por la pantalla de inicio", async ({ paginaAutenticada: page, baseURL }) => {
+  for (const malicioso of ["//sitio-falso.example.com/reportes", "https://sitio-falso.example.com", "/\\sitio-falso.example.com", "javascript:alert(1)", "/login", "/api/auth/signout", "/р", "/x😀"]) {
     await page.goto(`/login?volver=${encodeURIComponent(malicioso)}`);
     await page.waitForURL(/\/reportes$/); // el admin de pruebas entra por /reportes
     expect(new URL(page.url()).host).toBe(new URL(baseURL ?? "http://localhost:3000").host); // sigue en este sitio

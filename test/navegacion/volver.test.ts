@@ -8,6 +8,8 @@ describe("rutaInternaSegura: solo rutas internas de la aplicación", () => {
     "/movimientos/conteo-fisico?seccionId=cmu454mlu0002lt42yzz0a5ow",
     "/stock/minimo#fila-3",
     "/catalogo/recetas/cmu1/historial",
+    "/reportes/%C3%A1rea", // lo no ASCII, ya codificado en %XX, sí se acepta
+    "/%2F%2Fsitio-falso.example.com", // %2F no es una barra para el navegador: queda dentro del sitio
   ])("acepta %s", (ruta) => {
     expect(rutaInternaSegura(ruta)).toBe(ruta);
   });
@@ -22,6 +24,10 @@ describe("rutaInternaSegura: solo rutas internas de la aplicación", () => {
     ["salto de línea (inyección de encabezado)", "/reportes\r\nSet-Cookie: a=b"],
     ["tabulación", "/reportes\t/costos"],
     ["carácter nulo", "/reportes" + String.fromCharCode(0)],
+    ["letras fuera de ASCII (cirílico)", "/р"],
+    ["emoji", "/x😀"],
+    ["separador de línea Unicode", "/reportes"+String.fromCharCode(0x2028)+"x"],
+    ["espacio", "/reportes costos"],
     ["vacío", ""],
     ["demasiado largo", "/" + "a".repeat(600)],
   ])("rechaza %s", (_motivo, ruta) => {
