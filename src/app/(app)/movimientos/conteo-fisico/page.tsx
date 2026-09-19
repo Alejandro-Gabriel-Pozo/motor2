@@ -13,6 +13,10 @@ const ESTADO_COLOR: Record<string, string> = {
   CANCELADO: "text-neutral-500",
 };
 
+// El botón «Registrar conteo» manda toda la grilla en una sola llamada al servidor (registrarConteosFisicos), que recorre las
+// filas una por una; una grilla grande tarda más que el límite por defecto de una función. Se aplica a todas las Server Actions de la página.
+export const maxDuration = 60;
+
 export default async function ConteoFisicoPage({ searchParams }: { searchParams: Promise<{ seccionId?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;

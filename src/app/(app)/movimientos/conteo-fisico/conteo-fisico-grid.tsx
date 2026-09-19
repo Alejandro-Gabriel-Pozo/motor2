@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { AccionConteo } from "@prisma/client";
-import { registrarConteoFisico } from "@/server/actions/movimientos/conteo-fisico";
+import { registrarConteosFisicos } from "@/server/actions/movimientos/conteo-fisico";
 import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { SelectorProducto } from "@/components/selector-producto";
@@ -112,12 +112,10 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
     }
 
     startTransition(async () => {
-      const errores: string[] = [];
-      let procesados = 0;
-      const clavesOk: string[] = [];
-
-      for (const { f, estado } of aEnviar) {
-        const resultado = await registrarConteoFisico({
+      // Toda la grilla en UNA llamada: la sesión y el permiso se comprueban una vez, al principio, así que no puede vencer a
+      // mitad del recorrido (antes era una llamada por fila y las ya escritas quedaban sin que se avisara el parcial).
+      const respuesta = await registrarConteosFisicos(
+        aEnviar.map(({ f, estado }) => ({
           productoId: f.productoId,
           seccionId,
           loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
@@ -125,14 +123,25 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
           fechaConteo: new Date(fechaConteo),
           accion: estado.accion,
           detalle: estado.detalle || undefined,
-        });
+        }))
+      );
+      if (!respuesta.ok) {
+        setResumen({ ok: false, texto: respuesta.mensaje, errores: [] });
+        return;
+      }
+
+      const errores: string[] = [];
+      let procesados = 0;
+      const clavesOk: string[] = [];
+      respuesta.resultados.forEach((resultado, i) => {
+        const { f } = aEnviar[i];
         if (resultado.ok) {
           procesados++;
           clavesOk.push(f.key);
         } else {
           errores.push(`${f.etiqueta}: ${resultado.mensaje}`);
         }
-      }
+      });
 
       setEstados((prev) => {
         const copia = { ...prev };

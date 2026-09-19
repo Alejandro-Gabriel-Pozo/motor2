@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico, resolverConteoPendiente, cancelarConteoFisico, obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente, cancelarConteoFisico, obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
+import { getUsuarioActual } from "../../src/core/auth/session";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 describe("Conteo Físico", () => {
@@ -199,5 +200,95 @@ describe("Conteo Físico", () => {
 
     expect(resultado.ok).toBe(false);
     expect(await prisma.conteoFisico.count({ where: { sucursalId: otraSucursal.id } })).toBe(0);
+  });
+  describe("registrarConteosFisicos (toda la grilla en una llamada)", () => {
+    async function crearMpConStock(codigo: string, cantidad: number) {
+      const mp = await prisma.producto.create({ data: { codigo, nombre: `Producto ${codigo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad }] });
+      return mp;
+    }
+    const fila = (productoId: string, conteoReal: number, accion: "AJUSTAR" | "FALTA_MOVIMIENTO" | "DESCARTAR" = "AJUSTAR") => ({
+      productoId,
+      seccionId,
+      conteoReal,
+      fechaConteo: new Date(),
+      accion,
+    });
+
+    it("registra todas las filas, con un resultado por fila en el mismo orden, y ajusta el stock de las que corresponde", async () => {
+      const b = await crearMpConStock("MP_B", 8);
+      const c = await crearMpConStock("MP_C", 4);
+
+      const r = await registrarConteosFisicos([fila(mpId, 7), fila(b.id, 8), fila(c.id, 6, "FALTA_MOVIMIENTO")]);
+
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.resultados).toHaveLength(3);
+      expect(r.resultados.every((x) => x.ok)).toBe(true);
+      expect(r.resultados[0].mensaje).toContain("Diferencia: -3 (ajustada)"); // mpId tenía 10, se contaron 7
+      expect(r.resultados[1].mensaje).toContain("El stock ya coincidía"); // b: 8 = 8
+      expect(r.resultados[2].mensaje).toContain("Diferencia: +2"); // c: 4 → 6, queda pendiente, no se ajusta
+      expect(r.mensaje).toBe("3 de 3 conteo(s) registrado(s).");
+
+      expect(await prisma.conteoFisico.count()).toBe(3);
+      expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7); // ajustado
+      expect(await calcularSaldoTotal(c.id, seccionId)).toBe(4); // FALTA_MOVIMIENTO no toca el stock
+    });
+
+    it("una fila con error no frena a las demás: cada una devuelve su propio resultado", async () => {
+      const b = await crearMpConStock("MP_B", 8);
+
+      const r = await registrarConteosFisicos([fila(mpId, 7), fila(b.id, -1), fila("no-existe", 1), fila(b.id, 5)]);
+
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.resultados.map((x) => x.ok)).toEqual([true, false, false, true]);
+      expect(r.resultados[1].mensaje).toContain("mayor o igual a 0");
+      expect(r.resultados[2].mensaje).toContain("no existe");
+      expect(r.mensaje).toBe("2 de 4 conteo(s) registrado(s).");
+      expect(await prisma.conteoFisico.count()).toBe(2);
+    });
+
+    it("la sesión se comprueba una vez, al principio: sin sesión no se escribe NINGUNA fila (lleva al login)", async () => {
+      vi.mocked(getUsuarioActual).mockResolvedValue(null);
+
+      await expect(registrarConteosFisicos([fila(mpId, 7), fila(mpId, 6)])).rejects.toMatchObject({
+        digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login;/),
+      });
+      expect(await prisma.conteoFisico.count()).toBe(0);
+    });
+
+    it("sin el permiso de Control no se escribe nada y se avisa (un mensaje, no un redirect)", async () => {
+      const base = await prisma.rol.findUniqueOrThrow({ where: { nombre: "operador" } });
+      await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: base.id, accionClave: "proceso_control" } }, data: { puedeEditar: false } });
+      const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.id });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+
+      const r = await registrarConteosFisicos([fila(mpId, 7)]);
+      expect(r.ok).toBe(false);
+      expect(await prisma.conteoFisico.count()).toBe(0);
+    });
+
+    it("una lista vacía y una lista demasiado larga se rechazan sin escribir nada", async () => {
+      expect((await registrarConteosFisicos([])).ok).toBe(false);
+
+      const demasiadas = Array.from({ length: 501 }, () => fila(mpId, 7));
+      const r = await registrarConteosFisicos(demasiadas);
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toContain("demasiados");
+      expect(await prisma.conteoFisico.count()).toBe(0);
+    });
+
+    it("un producto de otra sección o sucursal sigue rechazándose por fila (el chequeo de sección no se perdió al agrupar)", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
+      const seccionAjena = await sembrarSeccion(otraSucursal.id);
+
+      const r = await registrarConteosFisicos([fila(mpId, 7), { ...fila(mpId, 5), seccionId: seccionAjena.id }]);
+
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.resultados.map((x) => x.ok)).toEqual([true, false]);
+      expect(await prisma.conteoFisico.count({ where: { sucursalId: otraSucursal.id } })).toBe(0);
+    });
   });
 });
