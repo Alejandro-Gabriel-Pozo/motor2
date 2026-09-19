@@ -59,7 +59,7 @@ describe("irAlLogin", () => {
     expect(await destinoDelRedirect(irAlLogin)).toBe("/login?volver=%2Fcatalogo%2Fproveedores");
   });
 
-  it.each(["https://sitio-falso.example.com", "//sitio-falso.example.com", "/login", "/api/auth/signout", "/р", "javascript:alert(1)"])(
+  it.each(["https://sitio-falso.example.com", "//sitio-falso.example.com", "/login", "/api/auth/signout", "/reportes costos", "javascript:alert(1)"])(
     "una ruta pedida que no es una ruta interna segura (%s) se descarta y se usa el Referer o, si no hay, el login a secas",
     async (hostil) => {
       __setHeadersDeTest({ host: "motor2-demo.vercel.app", [ENCABEZADO_RUTA_PEDIDA]: hostil });
