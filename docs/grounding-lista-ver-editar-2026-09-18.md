@@ -117,7 +117,7 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 |---|---|
 | Productos (`?id=`) | **Bug real, arreglado** en `a3c512f` (`key` en `<ProductoForm>`), con test e2e que falla sin el arreglo y pasa con él |
 | Stock mínimo (`?editar=`) | Ya tenía `key={filaEnEdicion?.id ?? "nuevo"}` (`stock/minimo/page.tsx:58`) |
-| Proveedores (`?editar=`) | Inputs comunes con `defaultValue`: siguen a las props. **Caso borde**: si se tipea en la edición de un proveedor y sin guardar se toca «Editar» en otro, los campos modificados conservan lo tipeado y se guardarían en el segundo. Se cierra con un `key`; **no se aplicó** |
+| Proveedores (`?editar=`) | Inputs comunes con `defaultValue`: siguen a las props. **Caso borde**: si se tipea en la edición de un proveedor y sin guardar se toca «Editar» en otro, los campos modificados conservan lo tipeado y se guardarían en el segundo. Se cierra con un `key`; **ya se aplicó** (`catalogo/proveedores/page.tsx`: `key={enEdicion.id}` y `key="nuevo"`) |
 | Conteo físico (`?seccionId=`) | No afectado: la sección se elige con un `<form>` común que recarga la página entera, y el grid se monta de cero |
 | Recetas (`?editar=`, `?editarPaso=`, `?editarFicha=`) | No afectado: cada edición es render condicional y las filas llevan `key` |
 | Cambio de sucursal | No afectado: `cambiarSucursalActiva` termina en `redirect("/")` (`sucursal-activa.ts:33`). Es una navegación suave, no una recarga: se sostiene porque `/` no muestra esos formularios |
@@ -135,7 +135,7 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 | 6 | Matriz de permisos (§5) | **Opción 1: modo edición con «Guardar»**: solo lectura al abrir, cambios pendientes marcados, resumen y guardado todo o nada. Es criterio propio, no lo que hacen los referentes |
 | 7 | ¿Desactivar un rol o un usuario pide confirmación? | **Sí.** Solo desactivar pide confirmación; activar sigue directo |
 
-Nada de esto está implementado todavía. Antes de cada fase hace falta su matriz de impacto y pasar por el gobernador.
+**Implementadas al 2026-09-19:** la decisión 5 (el `key` de proveedores) y la 7 (desactivar un rol, un usuario o una sucursal pide confirmación; commits `06fc718`, `676c8f6`, `b9ea18b`, `732703e`). **El resto sigue sin implementar:** la ficha de productos con rutas separadas (decisiones 1 a 4, fases F1 a F4) y la matriz de permisos en modo edición con «Guardar» (decisión 6). Antes de cada fase hace falta su matriz de impacto y pasar por el gobernador.
 
 ## 8. Limitaciones
 
