@@ -6,7 +6,7 @@ Estado: **grounding y propuesta. No hay nada implementado.** Los esfuerzos marca
 
 ## 1. Conclusión
 
-1. **Los dos referentes resuelven esto igual, en dos pasos**: (a) la factura cargada no se edita en silencio; se **anula** (o se cancela y se rehace) y (b) lo que la compensa es un **documento nuevo vinculado a la factura original** (nota de crédito / nota de débito de compra), con **líneas negativas**, que **solo mueve stock si hubo devolución física** y que **resta lo que se le debe al proveedor** sin borrar la factura original.
+1. **Los dos referentes lo resuelven de forma parecida, en dos pasos**: (a) la factura cargada no se edita en silencio; se **anula** (o se cancela y se rehace) y (b) lo que la compensa es un **documento nuevo vinculado a la factura original** (nota de crédito / nota de débito de compra) que **mueve stock solo si así se configura** y que **resta lo que se le debe al proveedor** sin borrar la factura original. Solo en ERPNext se leyó que el documento lleva **cantidades en negativo** y **tope por línea**.
 2. **Un descuento sin devolver mercadería es un caso aparte y de primera clase** en ERPNext (una página de manual propia): se carga la cantidad original en negativo y, como precio, solo la diferencia; no se toca el stock.
 3. **Motor2 no tiene ninguna de las dos piezas para las compras.** Solo existe `anularVenta`. La «Devolución a proveedor» descuenta stock, pero no se vincula a la compra, no resta del gasto y se valúa con el costo de reposición de hoy, no con lo que el proveedor efectivamente acreditó.
 4. **Propuesta**: cuatro fases chicas y reversibles (§5): ver las compras (sin migración), corregir sus datos con auditoría, anularlas, y notas de crédito vinculadas con gasto neto. La última necesita migración.
@@ -51,10 +51,10 @@ Compra a un proveedor: factura N.º X con 5 líneas, entre ellas 10 kg de carne.
 |---|---|---|---|
 | La factura confirmada no se edita en silencio | Se cancela y se enmienda (`amended_from`) | Vuelve a borrador o se cancela con motivo | Sí: anular + recargar, o corrección auditada de datos que no tocan el Kardex |
 | La compensación es un documento nuevo vinculado | `is_return` + `return_against` | Tipo nota de crédito + `fk_facture_source` | Sí |
-| Cantidades en negativo | Sí | Sí (líneas negativas) | Sí, o un documento aparte con importes |
+| Cantidades en negativo | Sí (`qty = -1 * source.qty`) | No verificado en esta clase | Sí, o un documento aparte con importes |
 | Tope por línea (lo devuelto ≤ lo comprado) | **Sí**, con acumulado de devoluciones previas | No en esta clase | Sí, es lo que evita devolver dos veces |
 | Solo mueve stock si hubo devolución física | Tilde «Update Stock» | Opción global `STOCK_CALCULATE_ON_SUPPLIER_BILL` | Sí: la bonificación de precio no toca stock |
-| Descuento sin devolver | Caso documentado (rate = diferencia) | Nota de crédito sin stock | Sí, es el caso que el usuario no puede cargar hoy |
+| Descuento sin devolver | Caso documentado (rate = diferencia, sin stock) | Nota de crédito; el stock solo se mueve con la opción prendida | Sí, es el caso que el usuario no puede cargar hoy |
 | Crédito a favor si ya se pagó | Sí | Sí (descuento absoluto) | Solo si se agregan pagos a proveedores (hoy no existen; ver §6) |
 
 ## 4. Qué tiene motor2 hoy (verificado en el código de `main`)
