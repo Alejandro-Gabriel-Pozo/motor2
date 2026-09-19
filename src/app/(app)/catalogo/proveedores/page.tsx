@@ -61,8 +61,12 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
         </tbody>
       </table>
 
+      {/* `key`: los dos ramos son el mismo componente en la misma posición, y sus campos usan `defaultValue`;
+          sin `key` React reutiliza el formulario al pasar de un proveedor a otro (o al alta) y arrastra lo tipeado
+          sin guardar. Mismo patrón que `stock/minimo` y `catalogo/productos`. */}
       {enEdicion ? (
         <FormConResultado
+          key={enEdicion.id}
           accion={async (formData: FormData) => {
             "use server";
             return actualizarProveedor(enEdicion.id, {
@@ -99,6 +103,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
         </FormConResultado>
       ) : (
         <FormConResultado
+          key="nuevo"
           accion={async (formData: FormData) => {
             "use server";
             return altaProveedor({
