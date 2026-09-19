@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar, type DestinoReclasificacion } from "@/server/actions/stock/reclasificacion";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { useLeerServidor } from "@/lib/use-leer-servidor";
 
 interface FilaDestino {
   seccionId: string;
@@ -20,6 +21,7 @@ function hoyISO() {
 
 export function ReclasificarForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
   const router = useRouter();
+  const leerServidor = useLeerServidor();
   const [fecha, setFecha] = useState(hoyISO());
   const [productoId, setProductoId] = useState("");
   const [seccionOrigenId, setSeccionOrigenId] = useState("");
@@ -30,6 +32,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
   const [disponible, setDisponible] = useState<number | null>(null);
+  const [saldoNoDisponible, setSaldoNoDisponible] = useState(false);
   // I3 — un UUID por intento de envío (docs/auditoria-motor2-plan-i3-
   // idempotencia-2026-09-17.md §9.3), reenviado tal cual en reintentos;
   // se renueva recién después de un éxito, cuando arranca un intento nuevo.
@@ -42,14 +45,24 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   // origen/lote origen.
   useEffect(() => {
     let cancelado = false;
-    // Sin producto/sección origen todavía, la propia acción devuelve null.
-    obtenerSaldoDisponibleParaReclasificar(productoId, seccionOrigenId, loteOrigen ? new Date(loteOrigen) : null).then((d) => {
-      if (!cancelado) setDisponible(d);
+    // Sin producto/sección origen todavía, la propia acción devuelve null. Si la lectura FALLA (sesión vencida, sin conexión),
+    // `leerServidor` devuelve `undefined` (un saldo nunca lo es): se avisa, y si fue por la sesión el refresco manda al login.
+    leerServidor(
+      () => obtenerSaldoDisponibleParaReclasificar(productoId, seccionOrigenId, loteOrigen ? new Date(loteOrigen) : null),
+      () => {
+        if (cancelado) return;
+        setDisponible(null);
+        setSaldoNoDisponible(true);
+      }
+    ).then((d) => {
+      if (cancelado || d === undefined) return;
+      setDisponible(d);
+      setSaldoNoDisponible(false);
     });
     return () => {
       cancelado = true;
     };
-  }, [productoId, seccionOrigenId, loteOrigen]);
+  }, [leerServidor, productoId, seccionOrigenId, loteOrigen]);
 
   const actualizarDestino = (idx: number, cambios: Partial<FilaDestino>) => {
     setDestinos((prev) => prev.map((d, i) => (i === idx ? { ...d, ...cambios } : d)));
@@ -136,6 +149,11 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
       {productoId && seccionOrigenId && (
         <p className="text-sm text-neutral-500">
           Disponible en origen: <span className="font-medium text-neutral-900 dark:text-neutral-100">{disponible ?? "—"}</span>
+          {saldoNoDisponible && (
+            <span role="alert" className="ml-2 text-red-600">
+              No se pudo consultar el disponible. Volvé a elegir el origen para reintentar.
+            </span>
+          )}
         </p>
       )}
 

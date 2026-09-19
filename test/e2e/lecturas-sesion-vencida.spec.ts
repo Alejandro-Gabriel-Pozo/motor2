@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
@@ -9,6 +10,15 @@ import { prisma } from "../../src/lib/db";
  */
 const EMAIL_ADMIN_E2E = "e2e-admin@local.test";
 const rutaCompra = /\/movimientos\/compra(\?.*)?$/;
+async function elegirSelectPorOpcion(page: Page, textoOpcion: string) {
+  for (const select of await page.locator("select").all()) {
+    if ((await select.locator("option").allTextContents()).includes(textoOpcion)) {
+      await select.selectOption({ label: textoOpcion });
+      return;
+    }
+  }
+  throw new Error(`Ningún <select> tiene una opción "${textoOpcion}"`);
+}
 const buscador = 'input[placeholder="Código o nombre…"]';
 
 test("el buscador de productos avisa si falla la lectura, en vez de quedarse en «Buscando…»", async ({ paginaAutenticada: page }) => {
@@ -73,4 +83,38 @@ test("sin conexión de ningún tipo (ni siquiera el refresco de la página), el 
   // No apareció la pantalla de error por defecto de Next.
   await expect(page.getByText(/Application error|Unhandled Runtime Error|This page couldn.t load/i)).toHaveCount(0);
   await expect(page).toHaveURL(/\/movimientos\/compra/);
+});
+
+test("con la sesión vencida, elegir un proveedor en Compra lleva al login (antes solo avisaba y había que adivinar que era la sesión)", async ({ paginaAutenticada: page }) => {
+  const ahora = Date.now();
+  const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_SV_${ahora}`, nombre: `E2E Proveedor Sesion ${ahora}` } });
+  await page.goto("/movimientos/compra");
+  await expect(page.locator(buscador).first()).toBeVisible();
+
+  await prisma.session.deleteMany({ where: { user: { email: EMAIL_ADMIN_E2E } } });
+  await elegirSelectPorOpcion(page, proveedor.nombre);
+
+  await page.waitForURL(/\/login/);
+});
+
+test("con la sesión vencida, el disponible de Reclasificar lleva al login; con la sesión vigente lo muestra", async ({ paginaAutenticada: page, seccionId }) => {
+  const ahora = Date.now();
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({
+    data: { codigo: `E2E-RC-${ahora}`, nombre: `E2E Producto Reclasif ${ahora}`, tipo: "MP", unidadStockId: unidad.id, unidadCompraId: unidad.id },
+  });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  await page.goto("/stock/reclasificar");
+
+  // Vigente: elegir producto y sección origen muestra «Disponible en origen» (sin stock, es 0).
+  await page.locator(buscador).first().fill(producto.codigo);
+  await page.getByRole("option", { name: new RegExp(producto.codigo) }).click();
+  await elegirSelectPorOpcion(page, seccion.nombre);
+  await expect(page.getByText(/Disponible en origen/)).toBeVisible();
+  await expect(page.getByText(/No se pudo consultar el disponible/)).toHaveCount(0);
+
+  // Vencida: cambiar el lote origen repite la consulta, que se rechaza y el refresco lleva al login.
+  await prisma.session.deleteMany({ where: { user: { email: EMAIL_ADMIN_E2E } } });
+  await page.locator('input[type="date"]').nth(1).fill("2030-01-01");
+  await page.waitForURL(/\/login/);
 });

@@ -167,7 +167,26 @@ export function PanelMovimientoForm({
 
     setCargandoProveedor(true);
     setInfoProveedor("Buscando lo que le comprás a este proveedor...");
-    listarProductosDeProveedor(id).then((productos) => {
+    // `leer` maneja el fallo: corre el bloque de abajo (avisar y dejar todo listo para reintentar) y, si el servidor respondió con un
+    // error (sesión vencida), refresca la pantalla para que el layout mande al login. Devuelve `undefined` si falló.
+    leer(
+      () => listarProductosDeProveedor(id),
+      () => {
+        if (pedido !== pedidoProveedor.current) return; // se eligió otro proveedor mientras tanto
+        // Si la carga falla (red caída, sesión vencida, error del servidor) `cargandoProveedor` quedaba en `true` para siempre
+        // y «+ Agregar producto» / «+ Nuevo producto» seguían deshabilitados hasta recargar la página.
+        // Además las filas que había eran de OTRO proveedor: se vacían (igual que cuando la carga sale bien y se reemplazan)
+        // y el selector vuelve a «Sin proveedor», así se puede elegir el mismo proveedor de nuevo para reintentar
+        // (elegir la opción que ya está seleccionada no dispara ningún cambio).
+        setCargandoProveedor(false);
+        setProveedorId("");
+        setItems([{ ...FILA_VACIA }]);
+        setPresentacionesPorFila({});
+        setVersionItems((n) => n + 1);
+        setInfoProveedor("No se pudo cargar lo que le comprás a este proveedor. Volvé a elegirlo para reintentar.");
+      }
+    ).then((productos) => {
+      if (productos === undefined) return; // falló: ya se avisó arriba
       if (pedido !== pedidoProveedor.current) return; // se eligió otro proveedor mientras tanto
       setCargandoProveedor(false);
       if (!productos.length) {
@@ -193,19 +212,6 @@ export function PanelMovimientoForm({
       );
       setPresentacionesPorFila({});
       setVersionItems((n) => n + 1);
-    }, () => {
-      if (pedido !== pedidoProveedor.current) return; // se eligió otro proveedor mientras tanto
-      // Si la carga falla (red caída, sesión vencida, error del servidor) `cargandoProveedor` quedaba en `true` para siempre
-      // y «+ Agregar producto» / «+ Nuevo producto» seguían deshabilitados hasta recargar la página.
-      // Además las filas que había eran de OTRO proveedor: se vacían (igual que cuando la carga sale bien y se reemplazan)
-      // y el selector vuelve a «Sin proveedor», así se puede elegir el mismo proveedor de nuevo para reintentar
-      // (elegir la opción que ya está seleccionada no dispara ningún cambio).
-      setCargandoProveedor(false);
-      setProveedorId("");
-      setItems([{ ...FILA_VACIA }]);
-      setPresentacionesPorFila({});
-      setVersionItems((n) => n + 1);
-      setInfoProveedor("No se pudo cargar lo que le comprás a este proveedor. Volvé a elegirlo para reintentar.");
     });
   };
 

@@ -28,6 +28,7 @@ import { listarCapacidades } from "../../src/server/actions/permisos/capacidades
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
 import { buscarProductoParaPromocion, obtenerPromocionesHabilitadas } from "../../src/server/actions/reportes/promociones";
+import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/reclasificacion";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
 import { listarSucursalesDisponibles, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/traspasos";
 
@@ -70,6 +71,7 @@ const LECTURAS: Array<[string, () => Promise<unknown>]> = [
   ["buscarProductoParaPromocion", () => buscarProductoParaPromocion("x", "y")],
   ["obtenerPromocionesHabilitadas", () => obtenerPromocionesHabilitadas("x")],
   ["listarStockMinimo", () => listarStockMinimo("x")],
+  ["obtenerSaldoDisponibleParaReclasificar", () => obtenerSaldoDisponibleParaReclasificar("x", "y", null)],
   ["listarSucursalesDisponibles", () => listarSucursalesDisponibles("x")],
   ["obtenerBandejaTransferencias", () => obtenerBandejaTransferencias("x")],
 ];

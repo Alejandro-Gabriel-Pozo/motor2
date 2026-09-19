@@ -3,11 +3,11 @@
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { conPermiso } from "../con-permiso";
+import { requerirSesion } from "../con-sesion";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
 /**
@@ -28,9 +28,11 @@ export async function obtenerSaldoDisponibleParaReclasificar(
   seccionId: string,
   loteVencimiento: Date | null
 ): Promise<number | null> {
+  // Sin sesión LANZA (como el resto de las lecturas, ver con-sesion.ts), en vez de devolver `null`: `null` significa «no hay saldo
+  // para mostrar» y el cliente no podía distinguir un producto sin datos de una sesión vencida.
+  const ctx = await requerirSesion();
   if (!productoId || !seccionId) return null;
-  const ctx = await obtenerContextoUsuario();
-  if (!ctx || !(await obtenerSeccionPropia(seccionId, ctx.sucursalId))) return null;
+  if (!(await obtenerSeccionPropia(seccionId, ctx.sucursalId))) return null;
   return calcularSaldoPorLote(productoId, seccionId, loteVencimiento);
 }
 
