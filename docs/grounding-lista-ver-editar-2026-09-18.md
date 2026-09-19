@@ -1,6 +1,6 @@
 # Grounding: listado, ver hacia adentro y editar — tres niveles para el catálogo (2026-09-18)
 
-**Motivo**: tras el bug de «Editar producto» (el formulario no cargaba categoría, unidad, precio ni factor; arreglado en `a3c512f`, rama `fix/editar-producto-key`), el usuario señaló que el problema de fondo es de diseño: *"una cosa es el listado, otra cosa es ver hacia dentro del producto y otra cosa es querer editarlo"*, y que con recetas ya se había hecho. Este documento contrasta ese patrón de tres niveles con sistemas de referencia (leyendo su código), lo compara con lo que motor2 tiene hoy y propone cómo seguir. **No implementa nada**: cada paso pide decisión del usuario (§6).
+**Motivo**: tras el bug de «Editar producto» (el formulario no cargaba categoría, unidad, precio ni factor; arreglado en `a3c512f`, rama `fix/editar-producto-key`), el usuario señaló que el problema de fondo es de diseño: *"una cosa es el listado, otra cosa es ver hacia dentro del producto y otra cosa es querer editarlo"*, y que con recetas ya se había hecho. Este documento contrasta ese patrón de tres niveles con sistemas de referencia (leyendo su código), lo compara con lo que motor2 tiene hoy y propone cómo seguir. **No implementa nada**: cada paso pide decisión del usuario (§7). Después, el usuario señaló que la **matriz de permisos** tiene el mismo problema de fondo (cada clic cambia el acceso al instante, sin paso de edición); se contrastó con Frappe y Dolibarr en la §5.
 
 **Antecedente en el propio repo**: `docs/comparativa-ux-erpnext-dolibarr.md` §6.6 ya separó, para **recetas**, la lista del editor (grounded en Dolibarr `bom_list.php` → `bom_card.php`), y la sección siguiente ("ver es distinto de querer editar") pidió un modo lectura dentro del editor (parcialmente resuelto en `2ed6ae6`). Productos quedó atrás.
 
@@ -13,6 +13,7 @@ Ver una lista, mirar hacia adentro de un registro y editarlo son tres momentos d
 3. **«Editar» es una acción explícita y con permiso**: en Dolibarr solo aparece si `$usercancreate` (`:3173`); en Grocy es un botón en la fila y en la tarjeta.
 4. **Crear tiene su propia pantalla** en los cuatro sistemas que la separan.
 5. **El borrado se condiciona al uso**: Dolibarr solo ofrece «Delete» si `!isObjectUsed` (`:3189-3192`). Motor2 ya desactiva en vez de borrar (`activo`).
+6. **Las matrices de permisos son la excepción: aplican al instante.** Frappe y Dolibarr guardan cada casilla en cuanto se toca, sin modo edición ni «Guardar» (§5). No lo resuelven separando ver de editar, sino con otras redes: bloquear la pantalla mientras guarda y revertir si falla (Frappe), o permitir el cambio solo a quien tiene permiso para administrar (Dolibarr).
 
 ## 2. Detalle por sistema (código real)
 
@@ -76,7 +77,39 @@ Pendiente ya documentado en recetas: los formularios «Agregar ingrediente» y �
 - **Multi-sucursal**: stock, precio local y mínimo dependen de la sucursal activa.
 - **Alcance**: la ficha completa es grande; por eso las fases.
 
-## 5. Relevamiento de la misma clase de bug en el resto del proyecto
+## 5. Caso aparte: matrices de permisos y activaciones (cada clic aplica al instante)
+
+**En una línea**: en motor2, tocar una casilla de la matriz de roles cambia el acceso de todos los usuarios de ese rol en ese mismo clic; los dos referentes que se leyeron hacen lo mismo, así que aquí el grounding **no respalda** un modo edición como estándar, y elegirlo sería una decisión propia por lo que está en juego (acceso), no una copia.
+
+**Qué hacen los referentes** (código real):
+
+| Sistema | Cómo se aplica un cambio de permiso | Redes de seguridad |
+|---|---|---|
+| **Frappe** (`permission_manager.js`) | **Al instante**: el clic en cualquier casilla llama al servidor (`method: "update"`, `:454-481`) | Congela la pantalla mientras guarda (`frappe.dom.freeze()`, `:462`) y **revierte la casilla si el servidor falla** (`:481`); botón secundario «Restore Original Permissions» (`:566`) que pide confirmación (`reset_std_permissions`, `:119-121`). Quitar una regla («x», `:436`) **no** pide confirmación |
+| **Dolibarr** (`user/perms.php`) | **Al instante**: cada casilla es un enlace `?action=addrights` / `delrights` con `confirm=yes` (`:749`, `:775`, `:793`); el servidor lo ejecuta y redirige (`:114-163`) | Solo si `$caneditperms` (admin o `user->write`, `:69`). Sin confirmación ni «Guardar». Los enlaces «All / None» por módulo y global (`:511-513`, `:671-673`) cambian **todos** los permisos de un clic, también sin confirmar |
+
+Lo que tienen en común: la matriz es una **herramienta de administración**, no un registro que se mira y se edita. Ninguno le pone modo edición.
+
+**Qué tiene motor2 hoy** (verificado leyendo el código; no se probó en el navegador):
+
+| Control | Comportamiento | Dónde |
+|---|---|---|
+| Matriz de permisos (`/administracion/permisos`) | Cada casilla es un botón que llama a `actualizarPermiso` y hace `router.refresh()`; sin modo edición, confirmación, «Guardar» ni deshacer. Feedback: «…» en la casilla y una línea de mensaje | `permisos-matriz.tsx:31-38`, `:82`, `:92` |
+| Roles: «Activar/Desactivar» | Al instante, sin confirmación | `roles-tabla.tsx:19`, `:56` |
+| Usuarios: «Activar/Desactivar» | Al instante, sin confirmación; desactivar corta el acceso de esa persona | `usuarios-tabla.tsx:38`, `:81` |
+| Capacidades por sucursal | Un formulario por fila que aplica al enviarlo | `capacidades-sucursal/page.tsx:50` |
+
+**Protecciones que motor2 ya tiene** (del lado del servidor, `permisos.ts`): exige el permiso `gestion_permisos` (`:35`); el admin no puede perder `gestion_permisos` ni `gestion_usuarios` (`:44`, lista `ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE`); «Ver» siempre incluye «Editar» (`:47`); cada cambio de «Ver» y de «Editar» queda en `RegistroAuditoria` (`:57`, `:62`, visible en `/administracion/auditoria`). Es decir: nadie puede quedar afuera por un clic y todo cambio se puede reconstruir, pero **antes** del cambio no hay ninguna pausa y **después** no hay deshacer (hay que volver a tocar).
+
+**Opciones** (la 2 es la más cercana a los referentes; la 1 es criterio propio):
+
+1. **Modo edición en la matriz.** Se abre en solo lectura con «Editar permisos»; los toques se acumulan como cambios pendientes marcados; un resumen («3 cambios: Cajero pierde Anular venta…») pide «Guardar» o «Descartar» y escribe todo junto. Es la separación ver/editar de las §1 a §4 aplicada a esta pantalla. Costo: medio (estado de cambios pendientes y una acción que aplique varios a la vez; hoy `actualizarPermiso` cambia uno por llamada, y el guardado debería ser todo o nada).
+2. **Mantener el clic instantáneo, con las redes de Frappe.** Revertir la casilla si el servidor falla (hoy solo se muestra el mensaje), bloquear las casillas mientras guarda (hoy solo la casilla tocada), confirmar solo los cambios que **quitan** acceso, y un aviso «Deshacer» de unos segundos. Costo: bajo.
+3. **Solo las desactivaciones** (roles y usuarios): pedir confirmación, porque son las acciones que cortan el acceso. Costo: bajo. Se puede combinar con 1 o con 2.
+
+**Riesgos**: con la opción 1, dos administradores editando a la vez: gana el último que guarda salvo que se compare contra lo que se vio al abrir. Con la opción 2, un deshacer con ventana de tiempo puede pisar un cambio hecho por otra persona en el medio.
+
+## 6. Relevamiento de la misma clase de bug en el resto del proyecto
 
 Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y tiene un formulario con estado interno. **Solo `productos` se reprodujo en un navegador; el resto es lectura de código.**
 
@@ -87,22 +120,25 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 | Proveedores (`?editar=`) | Inputs comunes con `defaultValue`: siguen a las props. **Caso borde**: si se tipea en la edición de un proveedor y sin guardar se toca «Editar» en otro, los campos modificados conservan lo tipeado y se guardarían en el segundo. Se cierra con un `key`; **no se aplicó** |
 | Conteo físico (`?seccionId=`) | No afectado: la sección se elige con un `<form>` común que recarga la página entera, y el grid se monta de cero |
 | Recetas (`?editar=`, `?editarPaso=`, `?editarFicha=`) | No afectado: cada edición es render condicional y las filas llevan `key` |
-| Cambio de sucursal | No afectado: `cambiarSucursalActiva` termina en `redirect("/")` |
+| Cambio de sucursal | No afectado: `cambiarSucursalActiva` termina en `redirect("/")` (`sucursal-activa.ts:33`). Es una navegación suave, no una recarga: se sostiene porque `/` no muestra esos formularios |
 | Filtros de reportes (`?desde=`, `?dias=`) | No afectado: formularios GET comunes; el orden elegido en una tabla se conserva a propósito |
 
-## 6. Decisiones para el usuario
+## 7. Decisiones para el usuario
 
 1. ¿Productos primero, con ficha y rutas separadas, y proveedores después?
 2. ¿Qué secciones de la ficha van primero: datos, stock, precios y proveedores, receta, movimientos, auditoría?
 3. ¿Al guardar se vuelve a la ficha (propuesta) o se sigue en la edición (como TastyIgniter)?
 4. ¿Categorías, unidades e insumos-grupos quedan con lista y formulario inline?
 5. ¿Se cierra ya el caso borde de proveedores con un `key`?
+6. Matriz de permisos (§5): ¿modo edición con «Guardar» (opción 1), clic instantáneo con redes de seguridad (opción 2), o solo confirmar las desactivaciones (opción 3)?
+7. ¿Las desactivaciones de roles y usuarios piden confirmación, sea cual sea la respuesta a la 6?
 
-## 7. Limitaciones
+## 8. Limitaciones
 
 - Los referentes se leyeron como archivos sueltos por la API de GitHub (Dolibarr `card.php` y `product.lib.php`, Grocy `products`, `productcard` y `productform`, Frappe `form.js`, TastyIgniter `Menus.php`, NexoPOS `ProductCrud.php`) o en clones locales (ERPNext `item.js` y `item_dashboard.py`). **No se ejecutó ninguno**: la descripción de cómo se ve cada pantalla sale del código, no de usarla.
+- Los dos referentes de la §5 se leyeron como archivos sueltos (`permission_manager.js`, `perms.php`); no se ejecutaron. Los números de línea de Dolibarr corresponden a la rama `develop` en la fecha indicada en Fuentes y se mueven entre versiones. No se miró qué hace ERPNext cuando dos administradores editan la misma matriz a la vez, ni Odoo.
 - **No se verificó** qué hace Dolibarr al guardar (si vuelve a la ficha), ni Odoo, que no se miró. La descripción de Tandoor viene del documento previo, no se releyó su código.
-- El relevamiento de §5 es por lectura del código, salvo productos, que se reprodujo en Chrome con un test e2e.
+- El relevamiento de §6 es por lectura del código, salvo productos, que se reprodujo en Chrome con un test e2e.
 
 ## Fuentes
 
@@ -110,6 +146,8 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 - Grocy `41206cb` (2026-09-16): `views/products.blade.php` (`:29`, `:143`, `:178`), `views/components/productcard.blade.php` (`:15-45`).
 - TastyIgniter `ti-ext-cart` `16c224c` (2026-09-13): `src/Http/Controllers/Menus.php` (`:33-56`).
 - Frappe `03927f6` (2026-09-18): `frappe/public/js/frappe/form/form.js` (`:247-275`, `:438`).
+- Frappe `c9e0056` (2026-07-11): `frappe/core/page/permission_manager/permission_manager.js` (`:119-121`, `:436`, `:454-481`, `:566`).
+- Dolibarr `42a4f53` (2026-09-07): `htdocs/user/perms.php` (`:69`, `:114-163`, `:511-513`, `:671-673`, `:749`, `:775`, `:793`).
 - ERPNext `a2481e9` (clon local): `erpnext/stock/doctype/item/item.js` (`:186-213`, `:312-317`, `:841-858`), `item_dashboard.py` (`:17-36`).
 - NexoPOS `6061a93` (2026-08-25): `app/Crud/ProductCrud.php` (`:876-878`).
-- Motor2: `src/app/(app)/catalogo/**/page.tsx`, `docs/comparativa-ux-erpnext-dolibarr.md` §6.6 y "ver es distinto de querer editar", `docs/grounding-ficha-tecnica-tandoor.md`, commit `a3c512f` y `test/e2e/catalogo-editar-producto.spec.ts`.
+- Motor2: `src/app/(app)/administracion/{permisos,roles,usuarios,capacidades-sucursal}`, `src/server/actions/permisos/permisos.ts`, `src/app/(app)/catalogo/**/page.tsx`, `docs/comparativa-ux-erpnext-dolibarr.md` §6.6 y "ver es distinto de querer editar", `docs/grounding-ficha-tecnica-tandoor.md`, commit `a3c512f` y `test/e2e/catalogo-editar-producto.spec.ts`.
