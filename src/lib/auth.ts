@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { intentarBootstrapAdmin } from "@/core/auth/bootstrap";
 import { emailPuedeIniciarSesion } from "@/core/auth/acceso";
+import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -23,7 +24,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // con que acá SÍ hay tabla de sesión real, a diferencia de Apps Script
   // (ver plan: "no hay tabla de sesiones, tokens ni JWT" era la limitación
   // que motivó reemplazar el modelo de auth entero).
-  session: { strategy: "database" },
+  // Vence a las 12 horas sin actividad (ver duracion-sesion.ts); por defecto Auth.js la dejaba 30 días.
+  session: { strategy: "database", maxAge: DURACION_SESION_S, updateAge: ACTUALIZAR_CADA_S },
   callbacks: {
     // Gate de acceso: rechaza el login ANTES de que el adapter cree
     // User/Account, para que una cuenta de Google fuera de la empresa (y
