@@ -254,7 +254,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
             if (!nuevoProductoId) return;
             const producto = await leer(
               () => obtenerProductoOpcion(nuevoProductoId),
-              () => setResumen({ ok: false, texto: "No se pudo agregar la fila. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.", errores: [] })
+              () => setResumen({ ok: false, texto: "No se pudo agregar la fila. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.", errores: [] })
             );
             if (producto) agregarProducto(producto.id, `${producto.codigo} — ${producto.nombre}`);
           }}

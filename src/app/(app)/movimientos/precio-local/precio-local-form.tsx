@@ -27,7 +27,7 @@ export function PrecioLocalForm() {
       () => obtenerPrecioVentaProducto(productoId),
       () => {
         if (cancelado) return;
-        setMensaje("No se pudo leer el precio de venta actual. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.");
+        setMensaje("No se pudo leer el precio de venta actual. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.");
         setOk(false);
       }
     ).then((p) => {

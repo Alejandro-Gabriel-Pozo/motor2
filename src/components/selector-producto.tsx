@@ -124,7 +124,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
         <ul id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
           {cargando && <li className="px-2 py-1.5 text-neutral-500">Buscando…</li>}
           {!cargando && errorBusqueda && (
-            <li className="px-2 py-1.5 text-red-600">No se pudo buscar. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.</li>
+            <li className="px-2 py-1.5 text-red-600">No se pudo buscar. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.</li>
           )}
           {!cargando && !errorBusqueda && !opciones.length && <li className="px-2 py-1.5 text-neutral-500">Sin resultados.</li>}
           {!cargando &&

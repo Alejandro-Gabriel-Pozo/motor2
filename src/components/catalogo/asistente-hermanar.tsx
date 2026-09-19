@@ -47,7 +47,7 @@ export function AsistenteHermanar({
     startTransition(async () => {
       const datos = await leer(
         () => obtenerInsumoDeProducto(id),
-        () => setMensaje("No se pudo consultar ese producto. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.")
+        () => setMensaje("No se pudo consultar ese producto. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.")
       );
       if (datos === undefined) return;
       setInfo(datos);

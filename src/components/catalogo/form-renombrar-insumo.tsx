@@ -23,7 +23,7 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
     startTransition(async () => {
       const destino = await leer(
         () => previsualizarFusionInsumo(insumoId, nombre),
-        () => setResultado({ ok: false, texto: "No se pudo comprobar si ya existe un insumo con ese nombre. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página." })
+        () => setResultado({ ok: false, texto: "No se pudo comprobar si ya existe un insumo con ese nombre. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página." })
       );
       if (destino === undefined) return;
       if (destino) {

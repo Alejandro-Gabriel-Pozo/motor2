@@ -126,7 +126,7 @@ export function PanelMovimientoForm({
     leer(
       () => listarPresentaciones(productoId),
       () => {
-        setMensaje("No se pudieron cargar las presentaciones de compra de ese producto. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.");
+        setMensaje("No se pudieron cargar las presentaciones de compra de ese producto. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.");
         setOk(false);
       }
     ).then((todas) => {

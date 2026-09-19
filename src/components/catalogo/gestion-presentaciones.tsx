@@ -44,7 +44,7 @@ export function GestionPresentaciones({
   async function recargarLista() {
     const lista = await leer(
       () => listarPresentaciones(productoId),
-      () => setResultado({ ok: false, texto: "Se guardó, pero no se pudo actualizar la lista. Si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página." })
+      () => setResultado({ ok: false, texto: "Se guardó, pero no se pudo actualizar la lista. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página." })
     );
     if (lista) setPresentaciones(lista);
   }

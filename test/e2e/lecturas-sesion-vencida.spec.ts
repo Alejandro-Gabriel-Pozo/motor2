@@ -55,3 +55,22 @@ test("renombrar un insumo avisa si falla la comprobación previa, sin romper la 
   // El insumo no cambió de nombre: nada se escribió.
   expect((await prisma.insumo.findUniqueOrThrow({ where: { id: insumo.id } })).nombre).toBe(insumo.nombre);
 });
+
+test("sin conexión de ningún tipo (ni siquiera el refresco de la página), el aviso aparece y el formulario a medio llenar no se pierde", async ({ paginaAutenticada: page }) => {
+  await page.goto("/movimientos/compra");
+  await expect(page.locator(buscador).first()).toBeVisible();
+  const detalle = page.getByLabel("Detalle (opcional)");
+  await detalle.fill("Detalle escrito antes de que se corte la conexión");
+
+  // Se corta TODO el tráfico: el pedido de la búsqueda falla y el `router.refresh()` que pide el hook también.
+  await page.context().setOffline(true);
+  await page.locator(buscador).first().fill("a");
+
+  await expect(page.getByText(/No se pudo buscar/)).toBeVisible();
+  await page.waitForTimeout(1500); // margen para que un refresco fallido llegue a romper la página, si fuera a hacerlo
+  await expect(page.getByText(/No se pudo buscar/)).toBeVisible();
+  await expect(detalle).toHaveValue("Detalle escrito antes de que se corte la conexión");
+  // No apareció la pantalla de error por defecto de Next.
+  await expect(page.getByText(/Application error|Unhandled Runtime Error|This page couldn.t load/i)).toHaveCount(0);
+  await expect(page).toHaveURL(/\/movimientos\/compra/);
+});
