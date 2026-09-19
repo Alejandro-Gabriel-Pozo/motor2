@@ -9,6 +9,9 @@
 
 const LARGO_MAXIMO = 500;
 
+/** Encabezado con el que `src/proxy.ts` le dice a la aplicación qué ruta (con su consulta) se pidió. Ver `irAlLogin`. */
+export const ENCABEZADO_RUTA_PEDIDA = "x-motor2-ruta-pedida";
+
 /** La ruta (con su consulta) si es una ruta interna segura para volver a ella; si no, `null`. */
 export function rutaInternaSegura(valor: string | null | undefined): string | null {
   if (!valor || valor.length > LARGO_MAXIMO) return null;

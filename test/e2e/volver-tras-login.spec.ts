@@ -40,3 +40,37 @@ test("sin sesión, el login muestra el botón de Google también cuando trae `vo
   await expect(pagina.getByRole("button", { name: "Ingresar con Google" })).toBeVisible();
   await contexto.close();
 });
+
+/**
+ * Carga directa (F5, un favorito, la URL tipeada) sin sesión: el navegador no manda `Referer`, así que la pantalla la recuerda
+ * `src/proxy.ts` (solo corre en los pedidos sin cookie de sesión). Se prueba con un navegador sin ninguna cookie.
+ */
+test("una carga directa sin sesión va a /login recordando la pantalla y su consulta", async ({ browser, baseURL }) => {
+  const contexto = await browser.newContext();
+  const pagina = await contexto.newPage();
+
+  await pagina.goto(`${baseURL}/reportes/costos?desde=2026-09-01`);
+  await pagina.waitForURL(/\/login\?volver=/);
+  expect(new URL(pagina.url()).searchParams.get("volver")).toBe("/reportes/costos?desde=2026-09-01");
+  await expect(pagina.getByRole("button", { name: "Ingresar con Google" })).toBeVisible();
+
+  // Otra pantalla, con una ruta dinámica: se recuerda la que se pidió, no la anterior.
+  await pagina.goto(`${baseURL}/catalogo/recetas/abc123`);
+  await pagina.waitForURL(/\/login\?volver=/);
+  expect(new URL(pagina.url()).searchParams.get("volver")).toBe("/catalogo/recetas/abc123");
+
+  // El login mismo no se recuerda (sería un bucle): entrar directo a /login queda en /login.
+  await pagina.goto(`${baseURL}/login`);
+  expect(new URL(pagina.url()).search).toBe("");
+  await contexto.close();
+});
+
+test("`_rsc` (el parámetro interno de las navegaciones del cliente) no se cuela en la ruta recordada", async ({ browser, baseURL }) => {
+  const contexto = await browser.newContext();
+  const pagina = await contexto.newPage();
+
+  await pagina.goto(`${baseURL}/reportes/costos?_rsc=abc12&desde=2026-09-01`);
+  await pagina.waitForURL(/\/login\?volver=/);
+  expect(new URL(pagina.url()).searchParams.get("volver")).toBe("/reportes/costos?desde=2026-09-01");
+  await contexto.close();
+});

@@ -5,6 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest } from "../setup/test-db";
 import { getUsuarioActual } from "../../src/core/auth/session";
 import { irAlLogin } from "../../src/core/auth/ir-al-login";
+import { ENCABEZADO_RUTA_PEDIDA } from "../../src/core/navegacion/volver";
 import { conPermiso } from "../../src/server/actions/con-permiso";
 import { ok } from "../../src/server/actions/tipos";
 // El alias de vitest.config.ts reemplaza `next/headers` por este stub; se importa directo para simular encabezados.
@@ -43,6 +44,30 @@ describe("irAlLogin", () => {
     __setHeadersDeTest({ host: "interno:3000", "x-forwarded-host": "motor2-demo.vercel.app", referer: "https://motor2-demo.vercel.app/stock/minimo" });
     expect(await destinoDelRedirect(irAlLogin)).toBe("/login?volver=%2Fstock%2Fminimo");
   });
+
+  it("con la ruta pedida (la pone src/proxy.ts en los pedidos sin cookie de sesión), vuelve a ella aunque no haya Referer: una carga directa", async () => {
+    __setHeadersDeTest({ host: "motor2-demo.vercel.app", [ENCABEZADO_RUTA_PEDIDA]: "/reportes/costos?desde=2026-09-01" });
+    expect(await destinoDelRedirect(irAlLogin)).toBe("/login?volver=%2Freportes%2Fcostos%3Fdesde%3D2026-09-01");
+  });
+
+  it("la ruta pedida manda sobre el Referer (con un enlace, el Referer es la pantalla de origen y no la que se quería abrir)", async () => {
+    __setHeadersDeTest({
+      host: "motor2-demo.vercel.app",
+      referer: "https://motor2-demo.vercel.app/reportes",
+      [ENCABEZADO_RUTA_PEDIDA]: "/catalogo/proveedores",
+    });
+    expect(await destinoDelRedirect(irAlLogin)).toBe("/login?volver=%2Fcatalogo%2Fproveedores");
+  });
+
+  it.each(["https://sitio-falso.example.com", "//sitio-falso.example.com", "/login", "/api/auth/signout", "/р", "javascript:alert(1)"])(
+    "una ruta pedida que no es una ruta interna segura (%s) se descarta y se usa el Referer o, si no hay, el login a secas",
+    async (hostil) => {
+      __setHeadersDeTest({ host: "motor2-demo.vercel.app", [ENCABEZADO_RUTA_PEDIDA]: hostil });
+      expect(await destinoDelRedirect(irAlLogin)).toBe("/login");
+      __setHeadersDeTest({ host: "motor2-demo.vercel.app", [ENCABEZADO_RUTA_PEDIDA]: hostil, referer: "https://motor2-demo.vercel.app/stock/minimo" });
+      expect(await destinoDelRedirect(irAlLogin)).toBe("/login?volver=%2Fstock%2Fminimo");
+    }
+  );
 
   it.each([
     ["sin Referer (una carga directa)", {}],
