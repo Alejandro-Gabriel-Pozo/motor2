@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { crearSucursalConAdmin, actualizarActivoSucursal, renombrarSucursal, listarSucursales } from "@/server/actions/auth/sucursales";
+import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function SucursalesPage() {
@@ -43,16 +44,14 @@ export default async function SucursalesPage() {
               </td>
               <td>{s.activo ? "Sí" : "No"}</td>
               <td>
-                <FormConResultado
+                <ActivarDesactivarFila
+                  activo={s.activo}
+                  aviso={`¿Desactivar la sucursal "${s.nombre}"? Sus usuarios dejan de poder entrar a ella.`}
                   accion={async () => {
                     "use server";
                     return actualizarActivoSucursal(s.id, !s.activo);
                   }}
-                >
-                  <button type="submit" className="text-sm underline">
-                    {s.activo ? "Desactivar" : "Activar"}
-                  </button>
-                </FormConResultado>
+                />
               </td>
             </tr>
           ))}
