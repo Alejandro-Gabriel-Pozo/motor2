@@ -22,6 +22,8 @@ export interface ItemPeriodo {
   cantidad: number;
   loteVencimiento: Date | null;
   proveedorNombre: string | null;
+  /** Id del proveedor de la operación (null = sin proveedor): para enlazar al listado de compras. */
+  proveedorId: string | null;
   nroFactura: string | null;
   proceso: Proceso;
   seccionId: string;
@@ -97,7 +99,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
       costoUnitarioVenta: true,
       producto: { select: { nombre: true, codigo: true } },
       seccion: { select: { nombre: true } },
-      operacion: { select: { fecha: true, nroFactura: true, proveedor: { select: { nombre: true } } } },
+      operacion: { select: { fecha: true, nroFactura: true, proveedorId: true, proveedor: { select: { nombre: true } } } },
     },
     orderBy: { operacion: { fecha: "asc" } },
   });
@@ -116,6 +118,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
     cantidad: esSignoFijo(m.proceso) ? Math.abs(Number(m.cantidad)) : Number(m.cantidad),
     loteVencimiento: m.loteVencimiento,
     proveedorNombre: m.operacion.proveedor?.nombre ?? null,
+    proveedorId: m.operacion.proveedorId,
     nroFactura: m.operacion.nroFactura,
     proceso: m.proceso,
     seccionId: m.seccionId,
@@ -293,6 +296,8 @@ export interface FilaCompraPorProveedorProducto {
   importe: number;
 }
 export interface FilaCompraPorProveedor {
+  /** Id del proveedor; null = las compras cargadas sin proveedor. */
+  proveedorId: string | null;
   proveedor: string;
   importe: number;
   lineas: number;
@@ -312,7 +317,7 @@ export interface ComprasDelPeriodo {
  * cargó sin precio — campo opcional).
  */
 function calcularComprasDelPeriodo(items: ItemPeriodo[]): ComprasDelPeriodo {
-  const porProveedor = new Map<string, { importe: number; lineas: number; productos: Map<string, number> }>();
+  const porProveedor = new Map<string, { proveedorId: string | null; importe: number; lineas: number; productos: Map<string, number> }>();
   let totalGastado = 0;
   let hayComprasSinPrecio = false;
 
@@ -323,7 +328,7 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[]): ComprasDelPeriodo {
     if (importe <= 0) hayComprasSinPrecio = true;
     totalGastado += importe;
 
-    if (!porProveedor.has(proveedor)) porProveedor.set(proveedor, { importe: 0, lineas: 0, productos: new Map() });
+    if (!porProveedor.has(proveedor)) porProveedor.set(proveedor, { proveedorId: r.proveedorId, importe: 0, lineas: 0, productos: new Map() });
     const acc = porProveedor.get(proveedor)!;
     acc.importe += importe;
     acc.lineas += 1;
@@ -332,6 +337,7 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[]): ComprasDelPeriodo {
 
   const porProveedorLista = Array.from(porProveedor.entries())
     .map(([proveedor, v]) => ({
+      proveedorId: v.proveedorId,
       proveedor,
       importe: redondearMoneda(v.importe),
       lineas: v.lineas,

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { SIN_PROVEEDOR } from "@/core/reportes/compras-filtros";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaMargenProducto, FilaCompraPorProveedor, FilaGastoPorInsumo, FilaPrecioInsumo } from "@/core/reportes/periodo";
 import type { FilaImpactoRecetaPorPeriodo } from "@/core/reportes/costos";
@@ -37,8 +39,19 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   },
 ];
 
-const COLUMNAS_COMPRAS: ColumnaReporte<FilaCompraPorProveedor>[] = [
-  { clave: "proveedor", etiqueta: "Proveedor", valor: (p) => p.proveedor, render: (p) => p.proveedor },
+function columnasCompras(desde?: string, hasta?: string): ColumnaReporte<FilaCompraPorProveedor>[] {
+  return [
+  {
+    clave: "proveedor",
+    etiqueta: "Proveedor",
+    valor: (p) => p.proveedor,
+    // El nombre lleva al listado de compras de ese proveedor en el mismo período (ver qué se compró, con qué factura y cuándo).
+    render: (p) => (
+      <Link href={`/reportes/compras?proveedorId=${p.proveedorId ?? SIN_PROVEEDOR}${desde ? `&desde=${desde}` : ""}${hasta ? `&hasta=${hasta}` : ""}`} className="underline">
+        {p.proveedor}
+      </Link>
+    ),
+  },
   {
     clave: "lineas",
     etiqueta: "Líneas",
@@ -48,7 +61,8 @@ const COLUMNAS_COMPRAS: ColumnaReporte<FilaCompraPorProveedor>[] = [
     ayuda: "Cantidad de renglones de compra (no de facturas ni de productos distintos) sumados de todas las compras a este proveedor en el rango de fechas elegido.",
   },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `$${p.importe.toLocaleString("es-AR")}` },
-];
+  ];
+}
 
 export function TablaVentasPorProducto({ filas }: { filas: FilaMargenProducto[] }) {
   return (
@@ -56,10 +70,10 @@ export function TablaVentasPorProducto({ filas }: { filas: FilaMargenProducto[] 
   );
 }
 
-export function TablaComprasPorProveedor({ filas }: { filas: FilaCompraPorProveedor[] }) {
+export function TablaComprasPorProveedor({ filas, desde, hasta }: { filas: FilaCompraPorProveedor[]; desde?: string; hasta?: string }) {
   return (
     <TablaReporte
-      columnas={COLUMNAS_COMPRAS}
+      columnas={columnasCompras(desde, hasta)}
       filas={filas}
       claveFila={(p) => p.proveedor}
       sinFilasTexto="Sin compras en el período."

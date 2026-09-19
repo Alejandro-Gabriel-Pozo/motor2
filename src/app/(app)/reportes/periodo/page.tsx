@@ -110,7 +110,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Compras por proveedor</h2>
-        <TablaComprasPorProveedor filas={rep.compras.porProveedor} />
+        <TablaComprasPorProveedor filas={rep.compras.porProveedor} desde={desdeStr} hasta={hastaStr} />
       </div>
 
       <div>
