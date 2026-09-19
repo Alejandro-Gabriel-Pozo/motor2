@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { requierePermisoVer } from "@/core/permisos/gate";
 import { requerirSesion } from "../con-sesion";
 
 export interface ProductoDeProveedor {
@@ -105,8 +104,4 @@ export async function obtenerComparativaPreciosPorInsumo(): Promise<FilaComparat
 
   resultado.sort((a, b) => (a.grupo ?? "").localeCompare(b.grupo ?? "") || a.insumo.localeCompare(b.insumo));
   return resultado;
-}
-
-export async function requerirVerComparativaPrecios(usuarioId: string, sucursalId: string) {
-  return requierePermisoVer(usuarioId, sucursalId, "comparar_precios");
 }
