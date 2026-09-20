@@ -6,6 +6,7 @@ import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/g
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
+import { refrescarVistaSiHaceFalta } from "../refrescar";
 
 export async function listarProveedores(soloActivos = false) {
   await requerirSesion();
@@ -67,6 +68,10 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
 export async function actualizarActivaProveedor(proveedorId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("proveedores", async () => {
     await prisma.proveedor.update({ where: { id: proveedorId }, data: { activo } });
+    // Se llama desde la lista sin redirigir después — sin esto la columna
+    // "Activo" no cambiaría en un navegador real hasta recargar a mano
+    // (ver src/server/actions/refrescar.ts).
+    refrescarVistaSiHaceFalta();
     return ok(`Proveedor ${activo ? "activado" : "desactivado"}.`);
   });
 }

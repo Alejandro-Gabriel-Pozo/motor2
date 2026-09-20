@@ -2,55 +2,39 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
 /**
- * Circuito Catálogo — tocar «Editar» en la lista de proveedores.
+ * Desde que la edición de un proveedor tiene ruta propia (`/[id]/editar`,
+ * F4), la clase de bug que probaba este archivo (la lista y el formulario
+ * compartían pantalla, y React reutilizaba el form al pasar de "Editar A" a
+ * "Editar B", arrastrando lo tipeado sin guardar) no puede ocurrir más: cada
+ * edición monta su propio formulario en su propia navegación. Ver
+ * test/e2e/catalogo-editar-producto.spec.ts, mismo criterio para Productos.
  *
- * Caso borde de la misma clase que el bug de «Editar producto»
- * (ver test/e2e/catalogo-editar-producto.spec.ts): la lista y el formulario
- * viven en la misma página, así que al pasar de «Editar A» a «Editar B» Next hace
- * una navegación suave y React REUTILIZA el formulario montado. Los campos son
- * inputs con `defaultValue`: si se tipeó algo sin guardar, ese texto sobrevive al
- * cambio de proveedor y se guardaría en B. Ni tsc, ni eslint, ni vitest lo ven.
+ * Lo que queda por probar es que la pantalla de edición carga TODOS los
+ * datos del proveedor, y que el nombre se muestra pero no es editable.
  */
-test("al pasar de «Editar» un proveedor a «Editar» otro, lo tipeado sin guardar no se arrastra", async ({ paginaAutenticada: page }) => {
-  const sufijo = Date.now();
-  const a = await prisma.proveedor.create({
-    data: { codigo: `E2E-A-${sufijo}`, nombre: `E2E Proveedor A ${sufijo}`, contacto: "Contacto A", notas: "Notas A" },
-  });
-  const b = await prisma.proveedor.create({
-    data: { codigo: `E2E-B-${sufijo}`, nombre: `E2E Proveedor B ${sufijo}`, contacto: "Contacto B", notas: "Notas B" },
-  });
-
-  await page.goto("/catalogo/proveedores");
-  await page.getByRole("row", { name: new RegExp(a.codigo) }).getByRole("link", { name: "Editar" }).click();
-  await expect(page.getByText(`Editar "${a.nombre}"`)).toBeVisible();
-  await expect(page.locator('input[name="contacto"]')).toHaveValue("Contacto A");
-
-  // Se tipea sobre A y NO se guarda...
-  await page.locator('input[name="contacto"]').fill("Tipeado sin guardar");
-  await page.locator('textarea[name="notas"]').fill("Notas tipeadas sin guardar");
-
-  // ...y se toca «Editar» en B (navegación suave: el formulario NO se vuelve a montar por sí solo).
-  await page.getByRole("row", { name: new RegExp(b.codigo) }).getByRole("link", { name: "Editar" }).click();
-  await expect(page.getByText(`Editar "${b.nombre}"`)).toBeVisible();
-
-  // El formulario tiene que mostrar a B, no lo que se tipeó sobre A.
-  await expect(page.locator('input[name="contacto"]')).toHaveValue("Contacto B");
-  await expect(page.locator('textarea[name="notas"]')).toHaveValue("Notas B");
-});
-
-test("al cancelar una edición, el formulario de alta queda vacío y no hereda lo tipeado ni los datos del proveedor", async ({ paginaAutenticada: page }) => {
+test("la edición carga todos los datos del proveedor, y el nombre se muestra sin ser editable", async ({ paginaAutenticada: page }) => {
   const sufijo = Date.now();
   const proveedor = await prisma.proveedor.create({
-    data: { codigo: `E2E-C-${sufijo}`, nombre: `E2E Proveedor C ${sufijo}`, contacto: "Contacto C" },
+    data: {
+      codigo: `E2E-EDIT-${sufijo}`,
+      nombre: `E2E Proveedor Editar ${sufijo}`,
+      contacto: "Contacto X",
+      telefono: "11-1234-5678",
+      email: "proveedor@ejemplo.com",
+      cuit: "20-12345678-9",
+      condicionesPago: "Contado",
+      notas: "Notas del proveedor",
+    },
   });
 
-  await page.goto("/catalogo/proveedores");
-  await page.getByRole("row", { name: new RegExp(proveedor.codigo) }).getByRole("link", { name: "Editar" }).click();
-  await expect(page.getByText(`Editar "${proveedor.nombre}"`)).toBeVisible();
-  await page.locator('input[name="contacto"]').fill("Tipeado sin guardar");
+  await page.goto(`/catalogo/proveedores/${proveedor.id}/editar`);
 
-  await page.getByRole("link", { name: "Cancelar" }).click();
-  await expect(page.getByText("Nuevo proveedor")).toBeVisible();
-  await expect(page.locator('input[name="nombre"]')).toHaveValue("");
-  await expect(page.locator('input[name="contacto"]')).toHaveValue("");
+  await expect(page.locator('input[name="nombre"]')).toHaveCount(0);
+  await expect(page.getByText(proveedor.nombre, { exact: true })).toBeVisible();
+  await expect(page.locator('input[name="contacto"]')).toHaveValue("Contacto X");
+  await expect(page.locator('input[name="telefono"]')).toHaveValue("11-1234-5678");
+  await expect(page.locator('input[name="email"]')).toHaveValue("proveedor@ejemplo.com");
+  await expect(page.locator('input[name="cuit"]')).toHaveValue("20-12345678-9");
+  await expect(page.locator('input[name="condicionesPago"]')).toHaveValue("Contado");
+  await expect(page.locator('textarea[name="notas"]')).toHaveValue("Notas del proveedor");
 });

@@ -7,15 +7,15 @@ import { prisma } from "../../src/lib/db";
  * que se recuerde la pantalla, que el login con sesión válida respete `volver`, y que `volver` NUNCA lleve a otro sitio.
  */
 test("enviar un formulario con la sesión vencida lleva a /login recordando la pantalla", async ({ paginaAutenticada: page }) => {
-  await page.goto("/catalogo/proveedores");
+  await page.goto("/catalogo/proveedores/nuevo");
   await expect(page.getByText("Nuevo proveedor")).toBeVisible();
   await page.locator('input[name="nombre"]').fill(`E2E Proveedor Volver ${Date.now()}`);
 
   await prisma.session.deleteMany({ where: { user: { email: "e2e-admin@local.test" } } });
-  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear proveedor", exact: true }).click();
 
   await page.waitForURL(/\/login\?volver=/);
-  expect(new URL(page.url()).searchParams.get("volver")).toBe("/catalogo/proveedores");
+  expect(new URL(page.url()).searchParams.get("volver")).toBe("/catalogo/proveedores/nuevo");
 });
 
 test("el login con la sesión válida respeta `volver` (una ruta interna)", async ({ paginaAutenticada: page }) => {
