@@ -10,6 +10,7 @@
 - **F3 de Productos**: mostrar "Editar" solo con el permiso `editar_producto` (hoy lo ve cualquiera con Ver de `alta_producto`) y agregar "Desactivar".
 - **Paso 7**: selector de pivot (dimensión + período) para el contador.
 - **E3/E4/E5**: sugerencia de Insumo/Familia al tipear un producto nuevo, memoria por usuario de los últimos valores del alta, búsqueda en Conteo Físico que resuelva la MP a contar vía receta.
+- **E2E sin limpieza de datos entre specs** (`test/e2e/`, `playwright.config.ts`): no hay `globalSetup`/`globalTeardown` ni ningún `deleteMany`/reset entre corridas — la única estrategia de aislamiento es que 14 de los 19 specs generan nombres únicos con `Date.now()` (ej. `` `E2E Producto ${Date.now()}` ``). Los datos que cada corrida crea quedan para siempre en la base contra la que corre `next dev`; no es solo teórico, el relevamiento de pantallas de la demo ya encontró 25 conteos de prueba residuales acumulados. Verificado el 2026-09-20 (confirmado también: `webServer.command` es `npm run dev`, no `next build && next start` — sin justificar esa elección específica en el repo más allá de la razón de "navegador real vs. Vitest", que es un argumento distinto).
 
 Una vez resueltas las decisiones de la sección 2, el código de K1b/K1c, 6b, D2, 5b, E1, C1–C4 y G1/G2 también se puede escribir directamente.
 
