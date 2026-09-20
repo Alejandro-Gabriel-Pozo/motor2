@@ -31,7 +31,7 @@ Ver una lista, mirar hacia adentro de un registro y editarlo son tres momentos d
 | Pantalla | Lista | Ver hacia adentro (solo lectura) | Editar | Crear |
 |---|---|---|---|---|
 | **Recetas** (`/catalogo/recetas`, `/[productoId]`) | Sí, solo productos con receta | Sí: la ficha técnica, cada ingrediente y cada paso se ven como texto, con «Editar» por sección (`?editarFicha=1`, `?editar=<insumo>`, `?editarPaso=<n>`) | Inline, por sección | Buscador «+ Nueva receta» |
-| **Productos** (`/catalogo/productos`) | Sí | **No** | Formulario en la **misma página** que la lista (`grid lg:grid-cols-[1fr_420px]`), «Editar» = `?id=` | El mismo formulario |
+| **Productos** (`/catalogo/productos`) | Sí | **Sí desde 2026-09-19** (F2): la ficha `/catalogo/productos/[id]`. Hasta entonces, no | **Hasta 2026-09-19** el formulario vivía en la misma página que la lista (`grid lg:grid-cols-[1fr_420px]`), «Editar» = `?id=`. **Hoy** tiene su propia ruta, `/catalogo/productos/[id]/editar` | `/catalogo/productos/nuevo` |
 | **Proveedores** | Sí | No | Formulario debajo de la tabla (contacto, teléfono, email, CUIT, condiciones de pago y notas; el nombre no se edita) | Formulario inline |
 | **Categorías, Unidades, Insumos y grupos** | Sí | No | Formularios inline | Formularios inline |
 
@@ -43,7 +43,7 @@ Pendiente ya documentado en recetas: los formularios «Agregar ingrediente» y �
 
 **Rutas** (cada pantalla monta su propio formulario, sin depender de `key`):
 - `/catalogo/productos` — lista con buscador y «Nuevo producto»; el nombre enlaza a la ficha.
-- `/catalogo/productos/[id]` — **ficha, solo lectura**, con «Editar» (permiso `editar_producto`) y «Desactivar».
+- `/catalogo/productos/[id]` — **ficha, solo lectura**, con «Editar». **Como quedó implementado (2026-09-19):** las cuatro pantallas piden Ver de `alta_producto` (la acción del ítem de menú) y el botón «Editar» se muestra a todos ellos; quien no tenga `editar_producto` recibe el mensaje de permiso al guardar (el comportamiento de antes). **Pendiente para F3:** mostrar «Editar» solo con `editar_producto` y agregar «Desactivar», que todavía no está.
 - `/catalogo/productos/[id]/editar` — el `ProductoForm` actual; al guardar vuelve a la ficha.
 - `/catalogo/productos/nuevo` — alta.
 
