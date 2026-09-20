@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { reportarError } from "@/lib/reportar-error";
 import type { Db } from "./comun";
 
 /**
@@ -183,6 +184,7 @@ export async function actualizarDolarSiHaceFalta(db: Db = prisma, ahora: Date = 
     await sincronizarDolar(db, ahora);
   } catch (e) {
     console.error("[dolar] no se pudo actualizar la cotización:", e instanceof Error ? e.message : e);
+    await reportarError(e, "dolar-autoactualizacion");
   }
   return true;
 }

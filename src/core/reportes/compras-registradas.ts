@@ -55,6 +55,18 @@ export interface PaginaCompras {
   nextCursor: string | null;
 }
 
+/** Rango inclusivo de días en UTC (00:00:00.000 del primer día a 23:59:59.999 del último), igual que el resto de los reportes (`rangoUtc` de periodo.ts). */
+function inicioDelDiaUtc(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+function finDelDiaUtc(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setUTCHours(23, 59, 59, 999);
+  return d;
+}
+
 export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db = prisma): Promise<PaginaCompras> {
   const { desde, hasta, proveedorId, factura, cursor } = filtro;
 
@@ -62,7 +74,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
     where: {
       sucursalId,
       proceso: "COMPRA",
-      ...(desde || hasta ? { fecha: { ...(desde ? { gte: desde } : {}), ...(hasta ? { lte: hasta } : {}) } } : {}),
+      ...(desde || hasta ? { fecha: { ...(desde ? { gte: inicioDelDiaUtc(desde) } : {}), ...(hasta ? { lte: finDelDiaUtc(hasta) } : {}) } } : {}),
       ...(proveedorId === SIN_PROVEEDOR ? { proveedorId: null } : proveedorId ? { proveedorId } : {}),
       ...(factura?.trim() ? { nroFactura: { contains: factura.trim(), mode: "insensitive" as const } } : {}),
     },

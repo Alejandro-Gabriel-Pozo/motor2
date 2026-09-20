@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+import * as Sentry from "@sentry/nextjs";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import {
   actualizarDolarSiHaceFalta,
@@ -167,6 +170,8 @@ describe("actualizarDolarSiHaceFalta: se pone al día sola, sin tirar abajo la p
     await expect(actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:00:00Z"))).resolves.toBe(true);
     expect(registrar).toHaveBeenCalled();
     registrar.mockRestore();
+    // y el fallo se manda a Sentry con su etiqueta (antes quedaba solo en console.error, y los registros de Vercel Hobby duran 30 minutos)
+    expect(Sentry.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { area: "dolar-autoactualizacion" } });
     expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:01:00Z"))).toBe(false);
   });
 

@@ -98,6 +98,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
     expect(rep.margen.ingresoConCostoReal).toBe(100);
     expect(rep.margen.margenRealTotal).toBe(100 - 16);
     expect(rep.margen.avisoReal).not.toContain("RECONSTRUIDO");
+    expect(rep.margen.avisoReal).toContain("Costo congelado al momento exacto"); // todo congelado: el aviso no lo degrada a «al día de cada venta»
   });
 
   it("sin ninguna venta costeable, «Real» sigue sin datos", async () => {

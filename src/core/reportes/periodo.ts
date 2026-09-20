@@ -874,7 +874,11 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
     ingresoSinCostoReal: redondearMoneda(ingresoSinCostoReal),
     ingresoRealReconstruido: redondearMoneda(ingresoRealReconstruido),
     avisoReal: hayCostoReal
-      ? `Costo de la receta al día de cada venta (sin el descalce temporal de "Margen" arriba).${
+      ? `${
+          ingresoRealReconstruido > 0
+            ? 'Costo de la receta al día de cada venta (sin el descalce temporal de "Margen" arriba).'
+            : 'Costo congelado al momento exacto de cada venta (sin el descalce temporal de "Margen" arriba).'
+        }${
           ingresoRealReconstruido > 0
             ? ` RECONSTRUIDO: $${redondearMoneda(ingresoRealReconstruido).toLocaleString("es-AR")} de lo vendido no guardó su costo al venderse y se lo calculó con el historial de compras (el precio de la compra más reciente de cada insumo hasta ese día) y la receta de hoy: es una aproximación.`
             : ""

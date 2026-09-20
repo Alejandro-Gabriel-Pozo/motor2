@@ -77,6 +77,16 @@ describe("listarComprasRegistradas", () => {
     expect(await facturas({ proveedorId: provAId, factura: "B-" })).toEqual([]);
   });
 
+  it("los límites de fecha son días completos: una compra a las 12:00 UTC entra con `hasta` = ese mismo día (que llega a las 00:00 UTC)", async () => {
+    await comprar("2026-08-09", provAId, "A-0001", [{ productoId: harinaId, cantidad: 1, precioTotal: 5 }]); // se guarda a las 12:00Z
+    const facturas = async (f: Parameters<typeof listarComprasRegistradas>[1]) => (await listarComprasRegistradas(sucursalId, f)).items.map((c) => c.nroFactura);
+
+    expect(await facturas({ hasta: new Date("2026-08-09") })).toEqual(["A-0001"]);
+    expect(await facturas({ desde: new Date("2026-08-09"), hasta: new Date("2026-08-09") })).toEqual(["A-0001"]);
+    expect(await facturas({ hasta: new Date("2026-08-08") })).toEqual([]);
+    expect(await facturas({ desde: new Date("2026-08-10") })).toEqual([]);
+  });
+
   it("una compra sin precio en alguna línea lo avisa y no cuenta como si tuviera importe", async () => {
     await comprar("2026-08-01", provAId, "A-0001", [
       { productoId: harinaId, cantidad: 10, precioTotal: 50 },
