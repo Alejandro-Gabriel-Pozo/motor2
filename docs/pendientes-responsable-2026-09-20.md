@@ -27,6 +27,20 @@ Una vez resueltas las decisiones de la sección 2, el código de K1b/K1c, 6b, D2
 
 - **5b**: agregar columna de serie a `IndicePrecio` (prerrequisito de la serie IPC "Alimentos y bebidas" y del Método 2 USD).
 - **C3**: tabla nueva `Comprobante` (solo la referencia a Drive).
+- **Plan 4 (2026-09-20): índice único de factura de compra, listo en el repo, falta aplicarlo en Neon.** El código (`src/core/movimientos/factura-unica.ts`, el `.catch` en `registrarMovimiento`) y el test de regresión ya están commiteados y verificados contra `motor2_dev` local — ver `docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md` (actualización 2026-09-20) para el detalle completo. Bloqueo real: esta sesión no tiene salida de red hacia `neon.tech` (403 de la política de egress del sandbox, confirmado con dos protocolos distintos) — no es que falte autorización, es que no hay forma de conectarse desde acá. Runbook para correr a mano contra la base real (proyecto `inventario-api`, confirmar primero qué rama es el destino real — ver §5.1 del documento de grounding):
+  ```sql
+  -- 1) Re-auditar duplicados PRIMERO — si esto devuelve alguna fila, NO seguir: decidir con el negocio qué hacer con esos casos antes de tocar el schema.
+  SELECT "sucursalId", "proveedorId", "nroFactura", count(*) AS repeticiones, array_agg(id ORDER BY fecha) AS operacion_ids
+  FROM "Operacion"
+  WHERE proceso = 'COMPRA' AND "nroFactura" IS NOT NULL
+  GROUP BY "sucursalId", "proveedorId", "nroFactura"
+  HAVING count(*) > 1;
+  ```
+  Si da 0 filas, aplicar la migración ya escrita en el repo (`prisma/migrations/20260920220000_factura_unica_compra/`):
+  ```
+  DATABASE_URL="<la de Neon>" DIRECT_URL="<la de Neon>" npx prisma migrate deploy
+  ```
+  Verificar que quedó válido: `SELECT indisvalid FROM pg_index WHERE indexrelid::regclass::text = '"Operacion_factura_unica_key"'` → debe dar `t`. El código que lo usa (`esChoqueDeFacturaUnica`) ya está desplegado en cuanto se mergee esta rama — no hace falta ningún otro paso de código, solo la migración.
 
 ## 4. Necesitan una cuenta o credencial externa que no se puede crear desde acá
 

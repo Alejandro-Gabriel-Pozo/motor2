@@ -16,6 +16,7 @@ import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorF
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
+import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/factura-unica";
 import { upsertProveedorPorProducto } from "../catalogo/upsert-proveedor-por-producto";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
@@ -244,13 +245,20 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
     // Chequeo de factura duplicada (Movimientos.js:402-416): mismo
     // proveedor + mismo número de factura ya cargados como Compra en esta
     // sucursal — una factura sin número no se puede comparar, no bloquea.
+    // Camino RÁPIDO para el caso secuencial (el 99,99%): rechaza antes de
+    // abrir la transacción, con un mensaje inmediato. Bajo concurrencia
+    // real (dos requests simultáneos con la misma factura) este `findFirst`
+    // no alcanza — ninguno de los dos ve todavía la Operacion del otro
+    // (TOCTOU clásico). El árbitro real es el índice único parcial
+    // `Operacion_factura_unica_key` (docs/auditoria-motor2-plan-i3-
+    // idempotencia-2026-09-17.md §9.2): su violación se atrapa más abajo,
+    // fuera de la transacción (ya hizo rollback para cuando el `.catch`
+    // la recibe).
     if (datos.proceso === "COMPRA" && datos.proveedorId && texto(datos.nroFactura)) {
       const yaExiste = await prisma.operacion.findFirst({
         where: { sucursalId: ctx.sucursalId, proceso: "COMPRA", proveedorId: datos.proveedorId, nroFactura: texto(datos.nroFactura) },
       });
-      if (yaExiste) {
-        return error(`Ya hay una compra registrada con esa factura para este proveedor. Si es una corrección, usá Ajuste en vez de volver a cargarla.`);
-      }
+      if (yaExiste) return error(MENSAJE_FACTURA_DUPLICADA);
     }
 
     const resultado = await conTransaccionSerializable(async (tx) => {
@@ -405,6 +413,13 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
           referenciaProveedor: l.referenciaProveedor,
         })),
       };
+    }).catch((e) => {
+      // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
+      // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
+      // chequeo previo más arriba): mismo mensaje de negocio, no un error 500. Cualquier otro P2002 (ej. la
+      // clave de idempotencia en carrera) NO lo reconoce esChoqueDeFacturaUnica — sigue de largo como error real.
+      if (esChoqueDeFacturaUnica(e)) return error(MENSAJE_FACTURA_DUPLICADA);
+      throw e;
     });
 
     // Compra: engancha upsertProveedorPorProducto (Catálogo, sin usar
