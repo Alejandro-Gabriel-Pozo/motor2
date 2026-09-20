@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarCambioAuditado, listarRegistrosAuditoria } from "../../src/core/permisos/auditoria";
 import { actualizarProducto } from "../../src/server/actions/catalogo/productos";
 import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
-import { actualizarPermiso } from "../../src/server/actions/permisos/permisos";
+import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
 import { actualizarCapacidad } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { crearRol, actualizarActivoRol } from "../../src/server/actions/permisos/roles";
 
@@ -103,8 +103,12 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
     expect(precio.sucursalId).toBe(sucursalId);
   });
 
-  it("actualizarPermiso registra el cambio de puedeEditar/puedeVer para el rol", async () => {
-    await actualizarPermiso(adminRolId, "proceso_venta", false, true);
+  it("guardarPermisos registra el cambio de puedeEditar/puedeVer para el rol", async () => {
+    // admin arranca con proceso_venta habilitado (seed): se le deja solo «Ver».
+    const r = await guardarPermisos([
+      { rolId: adminRolId, accionClave: "proceso_venta", anterior: { puedeVer: true, puedeEditar: true }, nuevo: { puedeVer: true, puedeEditar: false } },
+    ]);
+    expect(r.ok, r.mensaje).toBe(true);
 
     const { items } = await listarRegistrosAuditoria({ entidad: "PermisoRol" });
     const editar = items.find((r) => r.campo === "puedeEditar")!;
