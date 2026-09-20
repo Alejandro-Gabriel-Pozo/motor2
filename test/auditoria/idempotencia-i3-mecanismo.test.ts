@@ -247,7 +247,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       await mockearUsuarioActual({ id: usuarioBId, email: "b@test.com", nombre: null });
     }
 
-    it("aceptarTransferencia: misma clave + mismo payload → 1 sola aceptación, mismo mensaje; concurrencia → exactamente 1 efecto", async () => {
+    it("aceptarTransferencia: misma clave + mismo payload (secuencial) → 1 sola aceptación, mismo mensaje", async () => {
       const mp = await crearMP("HarinaT1");
       await comoA();
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
@@ -282,7 +282,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       expect(r2.mensaje).toMatch(/ya se había enviado con datos distintos|no se puede aceptar/);
     });
 
-    it("confirmarReingresoTransferencia: misma clave + mismo payload → 1 sola confirmación, mismo mensaje", async () => {
+    it("confirmarReingresoTransferencia: misma clave + mismo payload (secuencial) → 1 sola confirmación, mismo mensaje", async () => {
       const mp = await crearMP("HarinaT3");
       await comoA();
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
@@ -300,6 +300,66 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
 
       const movimientos = await prisma.movimientoStock.count({ where: { productoId: mp.id, proceso: "REINGRESO_TRANSFERENCIA_SUCURSAL" } });
       expect(movimientos).toBe(1);
+    });
+
+    // Los dos tests de arriba llaman r1 y r2 en secuencia (`await` uno, después el otro) — no ejercitan una carrera
+    // real. Estos dos sí: Promise.allSettled con la MISMA clave, en un loop (el timing de qué transacción llega
+    // primero al INSERT no es determinístico) — el 4º caso que el Plan I3 (§10.2/§11.7) había dejado pendiente
+    // para las dos funciones de traspaso. Ninguna de las dos llamadas debe rechazar (si una lo hace, el
+    // conflicto de escritura escapó del reintento de conTransaccionSerializable en vez de resolverse como
+    // idempotencia) y nunca debe quedar más de un efecto real.
+    it("aceptarTransferencia: misma clave, CONCURRENTE de verdad (Promise.allSettled) → nunca dos efectos, ninguna llamada rechaza", async () => {
+      for (let i = 0; i < 12; i++) {
+        const mp = await crearMP(`HarinaConc${i}`);
+        await comoA();
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+        const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
+        expect(envio.ok, envio.mensaje).toBe(true);
+
+        await comoB();
+        const clave = crypto.randomUUID();
+        const settled = await Promise.allSettled([aceptarTransferencia(idDe(envio), seccionBId, clave), aceptarTransferencia(idDe(envio), seccionBId, clave)]);
+
+        expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+        const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+        expect(resultados.every((r) => r.ok), `iteración ${i}: las dos deben terminar ok (semántica de idempotencia): ${JSON.stringify(resultados)}`).toBe(true);
+        expect(resultados[0].mensaje).toBe(resultados[1].mensaje);
+
+        const movimientos = await prisma.movimientoStock.count({ where: { productoId: mp.id, proceso: "TRANSFERENCIA_ENTRADA_SUCURSAL" } });
+        expect(movimientos, `iteración ${i}: nunca dos entradas de stock`).toBe(1);
+
+        const operacionesConEsaClave = await prisma.operacion.count({ where: { claveIdempotencia: clave } });
+        expect(operacionesConEsaClave, `iteración ${i}: la clave de idempotencia identifica una sola Operacion`).toBe(1);
+      }
+    });
+
+    it("confirmarReingresoTransferencia: misma clave, CONCURRENTE de verdad (Promise.allSettled) → nunca dos efectos, ninguna llamada rechaza", async () => {
+      for (let i = 0; i < 12; i++) {
+        const mp = await crearMP(`HarinaConcReingreso${i}`);
+        await comoA();
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+        const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
+        expect(envio.ok, envio.mensaje).toBe(true);
+
+        await comoB();
+        const rechazo = await rechazarTransferencia(idDe(envio), "no lo pedimos");
+        expect(rechazo.ok, rechazo.mensaje).toBe(true);
+
+        await comoA();
+        const clave = crypto.randomUUID();
+        const settled = await Promise.allSettled([confirmarReingresoTransferencia(idDe(envio), clave), confirmarReingresoTransferencia(idDe(envio), clave)]);
+
+        expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+        const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+        expect(resultados.every((r) => r.ok), `iteración ${i}: las dos deben terminar ok (semántica de idempotencia): ${JSON.stringify(resultados)}`).toBe(true);
+        expect(resultados[0].mensaje).toBe(resultados[1].mensaje);
+
+        const movimientos = await prisma.movimientoStock.count({ where: { productoId: mp.id, proceso: "REINGRESO_TRANSFERENCIA_SUCURSAL" } });
+        expect(movimientos, `iteración ${i}: nunca dos reingresos`).toBe(1);
+
+        const operacionesConEsaClave = await prisma.operacion.count({ where: { claveIdempotencia: clave } });
+        expect(operacionesConEsaClave, `iteración ${i}: la clave de idempotencia identifica una sola Operacion`).toBe(1);
+      }
     });
   });
 });

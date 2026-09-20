@@ -15,6 +15,24 @@ const COLUMNAS: ColumnaReporte<FilaPromocion>[] = [
     render: (p) => (p.valorALaCartaUnitario === null ? <span className="text-amber-600">incompleto</span> : `$${p.valorALaCartaUnitario.toLocaleString("es-AR")}`),
   },
   { clave: "descuento", etiqueta: "Descuento", alinear: "derecha", valor: (p) => p.descuentoPct, render: (p) => (p.descuentoPct === null ? "—" : `${p.descuentoPct}%`) },
+  {
+    clave: "margenReal",
+    etiqueta: "Margen Real",
+    alinear: "derecha",
+    valor: (p) => p.margenReal,
+    ayuda:
+      "Mismo cálculo que el Margen Real de Período: costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó. \"parcial\" si alguna venta de este producto no se pudo costear así.",
+    render: (p) =>
+      p.margenReal === null ? (
+        <span className="text-neutral-400">—</span>
+      ) : (
+        <>
+          ${p.margenReal.toLocaleString("es-AR")}
+          {p.margenRealReconstruido ? " · reconstruido" : ""}
+          {!p.margenRealCompleto && <span className="text-amber-700"> · parcial</span>}
+        </>
+      ),
+  },
 ];
 
 export function TablaPromociones({ filas }: { filas: FilaPromocion[] }) {

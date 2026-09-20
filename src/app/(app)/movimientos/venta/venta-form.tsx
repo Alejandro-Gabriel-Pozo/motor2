@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { registrarVenta, type ItemVentaInput } from "@/server/actions/movimientos/venta";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 
 interface FilaVenta {
   productoId: string;
@@ -101,7 +102,7 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
         </label>
         <label className="flex flex-1 flex-col gap-1 text-sm">
           N° de factura (opcional)
-          <input value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} className="rounded border px-3 py-2" />
+          <input value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} className="rounded border px-3 py-2" />
         </label>
       </div>
 

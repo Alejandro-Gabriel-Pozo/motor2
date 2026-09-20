@@ -10,11 +10,14 @@ import {
   actualizarIngredienteDeReceta,
   quitarIngredienteDeReceta,
   agregarPasoAReceta,
+  reordenarPasosDeReceta,
+  insertarPasoEnReceta,
   actualizarPasoDeReceta,
   quitarPasoDeReceta,
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
+import { secuenciaMoviendo } from "@/core/catalogo/pasos-receta";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
@@ -342,8 +345,9 @@ export default async function RecetaEditorPage({
             <p className="text-sm text-neutral-500">Todavía no hay ningún paso cargado.</p>
           ) : (
             <ol className="flex flex-col gap-2">
-              {vigente.pasos.map((paso) => {
+              {vigente.pasos.map((paso, indice) => {
                 const enEdicion = ordenEnEdicion === paso.orden;
+                const ordenesVigentes = vigente.pasos.map((p) => p.orden);
                 return (
                   <li key={paso.id} className="rounded border p-3 text-sm">
                     {enEdicion ? (
@@ -417,6 +421,30 @@ export default async function RecetaEditorPage({
                               Quitar
                             </button>
                           </FormConResultado>
+                          {indice > 0 && (
+                            <FormConResultado
+                              accion={async () => {
+                                "use server";
+                                return reordenarPasosDeReceta(producto.id, secuenciaMoviendo(ordenesVigentes, paso.orden, "arriba"));
+                              }}
+                            >
+                              <button type="submit" className="text-xs underline">
+                                Subir
+                              </button>
+                            </FormConResultado>
+                          )}
+                          {indice < vigente.pasos.length - 1 && (
+                            <FormConResultado
+                              accion={async () => {
+                                "use server";
+                                return reordenarPasosDeReceta(producto.id, secuenciaMoviendo(ordenesVigentes, paso.orden, "abajo"));
+                              }}
+                            >
+                              <button type="submit" className="text-xs underline">
+                                Bajar
+                              </button>
+                            </FormConResultado>
+                          )}
                         </div>
                       </div>
                     )}
@@ -430,17 +458,32 @@ export default async function RecetaEditorPage({
             <FormConResultado
               accion={async (formData: FormData) => {
                 "use server";
-                return agregarPasoAReceta(producto.id, {
-                  orden: siguienteOrdenPaso,
+                const datos = {
                   nombre: String(formData.get("nombre") ?? ""),
                   instruccion: String(formData.get("instruccion") ?? ""),
                   minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
                   insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
-                });
+                };
+                const posicion = String(formData.get("posicion") ?? "final");
+                if (posicion === "final") return agregarPasoAReceta(producto.id, { orden: siguienteOrdenPaso, ...datos });
+                return insertarPasoEnReceta(producto.id, Number(posicion), datos);
               }}
               className="flex max-w-lg flex-col gap-2"
             >
               <h3 className="text-sm font-medium">Agregar paso (genera la próxima versión)</h3>
+              {vigente.pasos.length > 0 && (
+                <label className="flex flex-col gap-1 text-xs text-neutral-500">
+                  Posición
+                  <select name="posicion" defaultValue="final" className="rounded border px-2 py-1.5 text-sm text-neutral-900">
+                    <option value="final">Al final</option>
+                    {vigente.pasos.map((_, indice) => (
+                      <option key={indice} value={indice + 1}>
+                        Antes del paso {indice + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <input name="nombre" placeholder="Nombre corto (opcional)" className="rounded border px-3 py-2" />
               <textarea name="instruccion" placeholder="Instrucción" required className="rounded border px-3 py-2" rows={2} />
               <CampoNumero name="minutos" placeholder="Minutos (opcional)" className="w-32" />

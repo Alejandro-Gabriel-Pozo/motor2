@@ -21,6 +21,19 @@ describe("Proveedores", () => {
     expect(resultado.id).toBeTruthy();
   });
 
+  it("el alta persiste condicionesPago y notas (F4: el form nuevo los manda, el inline viejo no)", async () => {
+    const resultado = await altaProveedor({
+      nombre: "Distribuidora Sur",
+      condicionesPago: "30 días",
+      notas: "Entrega los martes",
+    });
+    expect(resultado.ok, resultado.mensaje).toBe(true);
+    if (!resultado.ok) return;
+    const proveedor = await prisma.proveedor.findUniqueOrThrow({ where: { id: resultado.id } });
+    expect(proveedor.condicionesPago).toBe("30 días");
+    expect(proveedor.notas).toBe("Entrega los martes");
+  });
+
   describe("actualizarProveedor (hallazgo: solo se podía dar de alta y Activar/Desactivar, nunca corregir los datos de contacto)", () => {
     it("actualiza contacto/teléfono/email/CUIT/condiciones de pago de un proveedor existente", async () => {
       const creado = await altaProveedor({ nombre: "Distribuidora Sur", contacto: "Juan" });

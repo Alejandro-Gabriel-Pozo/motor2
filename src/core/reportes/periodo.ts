@@ -133,12 +133,14 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   const resumen: Record<string, number> = {};
   for (const it of items) resumen[it.proceso] = (resumen[it.proceso] ?? 0) + 1;
 
+  // Una sola carga del catálogo para todo el reporte — antes cada función de abajo hacía la suya (4 veces la misma
+  // consulta, y el Consolidado la repite una vez por sucursal encima).
   const productos = await construirMapaProductos(sucursalId, db);
-  const ventas = await calcularVentasDelPeriodo(sucursalId, items, db);
+  const ventas = calcularVentasDelPeriodo(items, productos);
   const compras = calcularComprasDelPeriodo(items, productos);
-  const gastoPorInsumo = await calcularGastoPorInsumoDelPeriodo(sucursalId, items, db);
+  const gastoPorInsumo = calcularGastoPorInsumoDelPeriodo(items, productos);
   const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, compras.totalNoComestibles, ventas.totalFacturado, productos, db);
-  const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, db);
+  const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
   const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(desde, hasta, tendenciaPrecios, ventas.porProducto, db);
@@ -417,8 +419,7 @@ export interface GastoPorInsumoDelPeriodo {
  * real. Reusa `construirMapaProductos` (ya resuelve Insumo/Grupo por
  * producto) en vez de duplicar esa resolución acá.
  */
-async function calcularGastoPorInsumoDelPeriodo(sucursalId: string, items: ItemPeriodo[], db: Db): Promise<GastoPorInsumoDelPeriodo> {
-  const productos = await construirMapaProductos(sucursalId, db);
+function calcularGastoPorInsumoDelPeriodo(items: ItemPeriodo[], productos: Map<string, InfoProductoReporte>): GastoPorInsumoDelPeriodo {
   const porInsumo = new Map<string, { grupo: string | null; importe: number; cantidadCompras: number; proveedores: Set<string> }>();
   const porGrupo = new Map<string, number>();
 
@@ -528,8 +529,13 @@ async function obtenerPrecioAnteriorPorInsumo(
  * sentido (a diferencia de `calcularGastoPorInsumoDelPeriodo`, que sí
  * necesita un bucket para eso porque ahí solo suma $, no compara precios).
  */
-async function calcularTendenciaPreciosDelPeriodo(sucursalId: string, desde: Date, items: ItemPeriodo[], db: Db): Promise<FilaPrecioInsumo[]> {
-  const productos = await construirMapaProductos(sucursalId, db);
+async function calcularTendenciaPreciosDelPeriodo(
+  sucursalId: string,
+  desde: Date,
+  items: ItemPeriodo[],
+  productos: Map<string, InfoProductoReporte>,
+  db: Db
+): Promise<FilaPrecioInsumo[]> {
   const porInsumo = new Map<string, { grupo: string | null; sumaPrecioTotal: number; sumaCantidad: number }>();
 
   for (const r of items) {
@@ -695,8 +701,7 @@ export interface VentasDelPeriodo {
  * venta VIGENTE (ya resuelto con Precio Local — ver construirMapaProductos)
  * — marcada `estimado` para que la UI no la confunda con un importe real.
  */
-async function calcularVentasDelPeriodo(sucursalId: string, items: ItemPeriodo[], db: Db): Promise<VentasDelPeriodo> {
-  const productos = await construirMapaProductos(sucursalId, db);
+function calcularVentasDelPeriodo(items: ItemPeriodo[], productos: Map<string, InfoProductoReporte>): VentasDelPeriodo {
   const porProducto = new Map<string, { producto: string; cantidad: number; importe: number; precioUnitario: number; estimado: boolean }>();
   let totalFacturado = 0;
 
@@ -742,6 +747,20 @@ export interface FilaMargenProducto {
   accionFaltante: AccionFaltante | null;
   margen: number | null;
   margenPct: number | null;
+  /**
+   * Margen "Real" de ESTE producto (mismo criterio línea a línea que
+   * `margenRealTotal` del reporte: costo congelado al vender, o
+   * reconstruido con el historial de compras) — fuente única para
+   * cualquier consumidor (Período, Promociones), en vez de que cada uno
+   * recalcule el suyo. `null` si ninguna venta de este producto en el
+   * rango se pudo costear.
+   */
+  margenReal: number | null;
+  margenRealPct: number | null;
+  /** Parte de `ingreso` de este producto cuyo costo se reconstruyó (no se guardó al vender) — 0 si ninguna o si `margenReal` es `null`. */
+  ingresoRealReconstruido: number;
+  /** `false` si alguna venta de este producto quedó afuera de `margenReal` por no poderse costear — la cobertura no es total. */
+  margenRealCompleto: boolean;
 }
 export interface MargenDelPeriodo {
   ingresoTotal: number;
@@ -805,7 +824,7 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
   let costoTotal = 0;
   let hayCostoIncompleto = false;
 
-  const porProducto: FilaMargenProducto[] = ventasDelPeriodo.porProducto
+  const porProductoNominal = ventasDelPeriodo.porProducto
     .map((v) => {
       const infoCosto = costoPorProducto.get(v.productoId);
       const costoUnitario = infoCosto && !infoCosto.costoIncompleto ? Number(infoCosto.costo ?? 0) : null;
@@ -846,11 +865,19 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
   // de compras (ver costo-historico.ts); las que no se pueden costear quedan en `ingresoSinCostoReal`.
   const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && it.costoUnitarioVenta === null);
   const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db);
+  // Mismo bucle línea a línea de arriba, acumulado ADEMÁS por producto — fuente única del margen Real por fila,
+  // para que Período y cualquier otro consumidor (Promociones) lean el mismo número (docs/pendientes-*.md, hallazgo
+  // "el mismo dato calculado distinto").
+  const realPorProducto = new Map<string, { ingresoConCostoReal: number; costoRealTotal: number; ingresoRealReconstruido: number }>();
   for (const it of items) {
     if (it.proceso !== "VENTA") continue;
+    const acc = realPorProducto.get(it.productoId) ?? { ingresoConCostoReal: 0, costoRealTotal: 0, ingresoRealReconstruido: 0 };
+    realPorProducto.set(it.productoId, acc);
     if (it.costoUnitarioVenta !== null) {
       ingresoConCostoReal += it.precioTotal;
       costoRealTotal += it.cantidad * it.costoUnitarioVenta;
+      acc.ingresoConCostoReal += it.precioTotal;
+      acc.costoRealTotal += it.cantidad * it.costoUnitarioVenta;
       continue;
     }
     const reconstruido = costosReconstruidos.get(claveCostoHistorico(it.productoId, diaUtc(it.fecha))) ?? null;
@@ -858,12 +885,32 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
       ingresoConCostoReal += it.precioTotal;
       ingresoRealReconstruido += it.precioTotal;
       costoRealTotal += it.cantidad * reconstruido;
+      acc.ingresoConCostoReal += it.precioTotal;
+      acc.ingresoRealReconstruido += it.precioTotal;
+      acc.costoRealTotal += it.cantidad * reconstruido;
     } else {
       ingresoSinCostoReal += it.precioTotal;
     }
   }
   const hayCostoReal = ingresoConCostoReal > 0;
   const margenRealTotal = hayCostoReal ? redondearMoneda(ingresoConCostoReal - costoRealTotal) : null;
+
+  const porProducto: FilaMargenProducto[] = porProductoNominal.map((f) => {
+    const real = realPorProducto.get(f.productoId);
+    if (!real || real.ingresoConCostoReal <= 0) {
+      return { ...f, margenReal: null, margenRealPct: null, ingresoRealReconstruido: 0, margenRealCompleto: false };
+    }
+    const margenReal = redondearMoneda(real.ingresoConCostoReal - real.costoRealTotal);
+    return {
+      ...f,
+      margenReal,
+      margenRealPct: Math.round((margenReal / real.ingresoConCostoReal) * 1000) / 10,
+      ingresoRealReconstruido: redondearMoneda(real.ingresoRealReconstruido),
+      // `f.ingreso` es el total facturado de este producto en el rango (todas sus VENTA) — si coincide con lo
+      // costeado en Real, cubrió el 100%; si no, alguna línea de este producto quedó sin costear.
+      margenRealCompleto: redondearMoneda(real.ingresoConCostoReal) >= f.ingreso,
+    };
+  });
 
   // Margen ajustado por IPC: también línea por línea (cada venta puede
   // caer en un mes distinto, con coeficiente distinto) — mismo

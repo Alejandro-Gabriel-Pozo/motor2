@@ -1,7 +1,7 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
-import { texto } from "@/core/texto";
+import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
@@ -122,6 +122,8 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
     // registrarMovimiento — conPermiso no valida que la sección sea de
     // ESTA sucursal, solo el permiso de quien llama.
     if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
+    const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
+    if (errorLargoFactura) return error(errorLargoFactura);
 
     const resultado = await conTransaccionSerializable(async (tx) => {
       // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.

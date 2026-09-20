@@ -205,6 +205,40 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     expect(["Motivo A: no lo pedimos", "Motivo B: llegó mal"]).toContain(traspaso.motivoRechazoDestino);
   });
 
+  it("Reingreso simultáneo (sin clave de idempotencia): dos confirmarReingresoTransferencia en paralelo sobre el mismo traspaso RECHAZADA_DESTINO — exactamente uno tiene efecto, el otro recibe el error de estado, nunca se duplica el reingreso", async () => {
+    const mp = await crearMP("HarinaReingreso");
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
+    if (!envio.ok) throw new Error(envio.mensaje);
+
+    await comoB();
+    const rechazo = await rechazarTransferencia(envio.id, "no lo pedimos");
+    expect(rechazo.ok, rechazo.mensaje).toBe(true);
+
+    await comoA();
+    // Mismo usuario (A = origen) en las dos llamadas: es el caso real (doble clic, o dos pestañas del mismo operador).
+    // getUsuarioActual está mockeado a nivel de módulo (global al proceso), así que no tiene sentido simular A y B acá.
+    const settled = await Promise.allSettled([confirmarReingresoTransferencia(envio.id), confirmarReingresoTransferencia(envio.id)]);
+
+    expect(settled.every((s) => s.status === "fulfilled"), `ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+    const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+    const exitosos = resultados.filter((r) => r.ok);
+    const fallidos = resultados.filter((r) => !r.ok);
+
+    expect(exitosos.length).toBe(1);
+    expect(fallidos.length).toBe(1);
+    expect(fallidos[0].mensaje).toMatch(/no hay ningún reingreso pendiente/);
+
+    const movimientosDeReingreso = await prisma.movimientoStock.count({ where: { traspasoSucursalId: envio.id, proceso: "REINGRESO_TRANSFERENCIA_SUCURSAL" } });
+    expect(movimientosDeReingreso).toBe(1); // nunca 2
+
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // exactamente el original, ni 14 ni 6
+
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
+    expect(traspaso.estado).toBe("CERRADA");
+  });
+
   it("Caso 2 (Pivote 3): fallo a mitad de la escritura de un envío — atomicidad real, no queda un TraspasoSucursal ni un MovimientoStock huérfano", async () => {
     // crearEnvioDirectoTransferencia escribe TraspasoSucursal + Operacion +
     // MovimientoStock dentro de UNA sola conTransaccionSerializable — para

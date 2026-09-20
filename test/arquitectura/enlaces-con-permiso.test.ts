@@ -58,6 +58,10 @@ describe("accionDeRuta", () => {
 
   it("la comparativa de precios (fuera del menú) tiene su propia acción, distinta de la de Proveedores", () => {
     expect(accionDeRuta("/catalogo/proveedores")).toBe("proveedores");
+    expect(accionDeRuta("/catalogo/proveedores?editar=p1")).toBe("proveedores");
+    expect(accionDeRuta("/catalogo/proveedores/nuevo")).toBe("proveedores");
+    expect(accionDeRuta("/catalogo/proveedores/p1")).toBe("proveedores");
+    expect(accionDeRuta("/catalogo/proveedores/p1/editar")).toBe("proveedores");
     expect(accionDeRuta("/catalogo/proveedores/comparativa")).toBe("comparar_precios");
   });
 

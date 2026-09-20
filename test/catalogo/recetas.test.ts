@@ -13,6 +13,8 @@ import {
   agregarPasoAReceta,
   actualizarPasoDeReceta,
   quitarPasoDeReceta,
+  reordenarPasosDeReceta,
+  insertarPasoEnReceta,
   actualizarCabeceraDeReceta,
   obtenerRecetaVigente,
   listarVersionesDeReceta,
@@ -234,6 +236,120 @@ describe("recetas", () => {
       expect(vigente?.ingredientes).toHaveLength(1);
       expect(vigente?.pasos).toHaveLength(1);
       expect(vigente?.pasos[0].orden).toBe(2);
+    });
+
+    it("reordenarPasosDeReceta reordena y renumera; la versión anterior conserva el orden original", async () => {
+      await guardarReceta(
+        pvId,
+        [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }],
+        [
+          { orden: 1, instruccion: "Paso A" },
+          { orden: 2, instruccion: "Paso B" },
+          { orden: 3, instruccion: "Paso C" },
+        ]
+      );
+
+      const resultado = await reordenarPasosDeReceta(pvId, [3, 1, 2]);
+      expect(resultado.ok).toBe(true);
+
+      const versiones = await listarVersionesDeReceta(pvId);
+      expect(versiones.map((v) => v.version).sort()).toEqual([1, 2]);
+      const v1 = versiones.find((v) => v.version === 1)!;
+      expect(v1.pasos.map((p) => p.instruccion)).toEqual(["Paso A", "Paso B", "Paso C"]);
+
+      const vigente = await obtenerRecetaVigente(pvId);
+      expect(vigente?.ingredientes).toHaveLength(1);
+      expect(vigente?.pasos.map((p) => ({ orden: p.orden, instruccion: p.instruccion }))).toEqual([
+        { orden: 1, instruccion: "Paso C" },
+        { orden: 2, instruccion: "Paso A" },
+        { orden: 3, instruccion: "Paso B" },
+      ]);
+    });
+
+    it("reordenarPasosDeReceta preserva la relación paso↔ingrediente en el paso correcto", async () => {
+      await guardarReceta(
+        pvId,
+        [
+          { insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId },
+          { insumoProductoId: mp2Id, cantidad: 0.2, unidadId: unidadKgId },
+        ],
+        [
+          { orden: 1, instruccion: "Con harina", insumoProductoIds: [mp1Id] },
+          { orden: 2, instruccion: "Con muzza", insumoProductoIds: [mp2Id] },
+        ]
+      );
+
+      const resultado = await reordenarPasosDeReceta(pvId, [2, 1]);
+      expect(resultado.ok).toBe(true);
+
+      const vigente = await obtenerRecetaVigente(pvId);
+      const primero = vigente!.pasos.find((p) => p.orden === 1)!;
+      const segundo = vigente!.pasos.find((p) => p.orden === 2)!;
+      expect(primero.instruccion).toBe("Con muzza");
+      expect(primero.ingredientes.map((i) => i.recetaIngrediente.insumoProductoId)).toEqual([mp2Id]);
+      expect(segundo.instruccion).toBe("Con harina");
+      expect(segundo.ingredientes.map((i) => i.recetaIngrediente.insumoProductoId)).toEqual([mp1Id]);
+    });
+
+    it("reordenarPasosDeReceta con una secuencia inválida no guarda ninguna versión nueva", async () => {
+      await guardarReceta(
+        pvId,
+        [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }],
+        [
+          { orden: 1, instruccion: "Paso A" },
+          { orden: 2, instruccion: "Paso B" },
+        ]
+      );
+
+      const repetida = await reordenarPasosDeReceta(pvId, [1, 1]);
+      expect(repetida.ok).toBe(false);
+      const incompleta = await reordenarPasosDeReceta(pvId, [1]);
+      expect(incompleta.ok).toBe(false);
+
+      const versiones = await prisma.recetaVersion.findMany({ where: { productoId: pvId } });
+      expect(versiones.map((v) => v.version)).toEqual([1]);
+    });
+
+    it("reordenarPasosDeReceta sin cambios reales no crea una versión nueva", async () => {
+      await guardarReceta(
+        pvId,
+        [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }],
+        [
+          { orden: 1, instruccion: "Paso A" },
+          { orden: 2, instruccion: "Paso B" },
+        ]
+      );
+
+      const resultado = await reordenarPasosDeReceta(pvId, [1, 2]);
+      expect(resultado.ok).toBe(true);
+
+      const versiones = await prisma.recetaVersion.findMany({ where: { productoId: pvId } });
+      expect(versiones.map((v) => v.version)).toEqual([1]);
+    });
+
+    it("insertarPasoEnReceta inserta en el medio, corriendo los siguientes y conservando su instrucción e ingredientes", async () => {
+      await guardarReceta(
+        pvId,
+        [
+          { insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId },
+          { insumoProductoId: mp2Id, cantidad: 0.2, unidadId: unidadKgId },
+        ],
+        [
+          { orden: 1, instruccion: "Paso A", insumoProductoIds: [mp1Id] },
+          { orden: 2, instruccion: "Paso B", insumoProductoIds: [mp2Id] },
+        ]
+      );
+
+      const resultado = await insertarPasoEnReceta(pvId, 2, { instruccion: "Paso nuevo" });
+      expect(resultado.ok).toBe(true);
+
+      const vigente = await obtenerRecetaVigente(pvId);
+      expect(vigente?.ingredientes).toHaveLength(2);
+      expect(vigente?.pasos.map((p) => p.instruccion)).toEqual(["Paso A", "Paso nuevo", "Paso B"]);
+      const pasoA = vigente!.pasos.find((p) => p.instruccion === "Paso A")!;
+      const pasoB = vigente!.pasos.find((p) => p.instruccion === "Paso B")!;
+      expect(pasoA.ingredientes.map((i) => i.recetaIngrediente.insumoProductoId)).toEqual([mp1Id]);
+      expect(pasoB.ingredientes.map((i) => i.recetaIngrediente.insumoProductoId)).toEqual([mp2Id]);
     });
 
     it("quitarIngredienteDeReceta también lo saca de cualquier paso que lo mencionara", async () => {

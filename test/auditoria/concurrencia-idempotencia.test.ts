@@ -98,8 +98,8 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
     });
   });
 
-  describe("Escenario 2: dos COMPRA simultáneas con la MISMA factura+proveedor (hipótesis del informe: el chequeo anti-duplicado corre FUERA de la transacción serializable)", () => {
-    it("documenta si el guard de factura duplicada previene o no la duplicación bajo concurrencia real", async () => {
+  describe("Escenario 2: dos COMPRA simultáneas con la MISMA factura+proveedor (hipótesis del informe: el chequeo anti-duplicado corre FUERA de la transacción serializable) — RESUELTO", () => {
+    it("el índice único parcial Operacion_factura_unica_key ya arbitra esta carrera (regresión completa en test/auditoria/factura-unica-concurrencia.test.ts)", async () => {
       const mp = await crearMP("HarinaFactura");
       const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_TEST01", nombre: "Proveedor Test" } });
 
@@ -124,10 +124,14 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
         { operacionesConEsaFactura }
       );
 
-      // No se afirma un resultado esperado a priori — esto es evidencia,
-      // no una aserción de "debe pasar". Se deja constancia del hallazgo
-      // real en el comentario de abajo tras ejecutar la prueba.
-      expect(operacionesConEsaFactura).toBeGreaterThanOrEqual(1);
+      // Hasta 2026-09-20 esto NO afirmaba un resultado esperado a priori
+      // (era evidencia de una carrera real sin arbitrar, `>= 1`). Con el
+      // índice único parcial Operacion_factura_unica_key ya aplicado
+      // (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.2) y
+      // el catch de esChoqueDeFacturaUnica en registrarMovimiento, pasa a
+      // ser una regresión real: nunca más de una Operacion con esa factura.
+      expect(operacionesConEsaFactura).toBe(1);
+      expect(settled.every((s) => s.status === "fulfilled")).toBe(true);
     });
   });
 

@@ -737,6 +737,12 @@ model Operacion {
   /// nullable en vez de forzar un Proveedor "Mostrador" ficticio).
   proveedorId String?
   proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
+  /// Índice único parcial "Operacion_factura_unica_key" (sucursalId, proveedorId, nroFactura) WHERE nroFactura
+  /// IS NOT NULL AND proceso = 'COMPRA' — definido FUERA de este schema (Prisma no declara índices parciales,
+  /// ver prisma/migrations/20260920220000_factura_unica_compra/ y el precedente 20260915034450_indices_manuales/).
+  /// Arbitra la condición de carrera de factura de compra duplicada bajo concurrencia real — el chequeo de
+  /// aplicación (registrarMovimiento) es solo el camino rápido para el caso secuencial. NO cubre: compras sin
+  /// proveedor, diferencias de formato/mayúsculas en el número, ni anulación de compra (K1b/K1c, sin decidir).
   nroFactura  String?
 
   /// Solo Transferencia (Movimientos.js:425-431, TRANSICIONES.TRANSFERENCIA
