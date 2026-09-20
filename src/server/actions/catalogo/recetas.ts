@@ -3,7 +3,9 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
+import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
+import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/pasos-receta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
@@ -247,6 +249,11 @@ export async function guardarReceta(
             }
           }
         }, { maxWait: 5_000, timeout: 15_000 });
+        // Sin esto la página no refleja el cambio en un navegador real hasta
+        // recargar a mano (ver src/server/actions/refrescar.ts) — detectado
+        // con Playwright, no con Vitest ni con los closures que ya hacían
+        // `redirect(volver)` tras un `ok` (una navegación real ya refresca sola).
+        refrescarVistaSiHaceFalta();
         return ok(`Receta de "${producto.nombre}" guardada como versión ${version}.`);
       } catch (e) {
         if (esErrorDeUnicidad(e) && intento < maxIntentos - 1) continue;
@@ -355,6 +362,44 @@ export async function actualizarPasoDeReceta(
 export async function quitarPasoDeReceta(productoId: string, orden: number): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const pasos = mapPasosAInput(vigente).filter((p) => p.orden !== orden);
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
+}
+
+/**
+ * Reordena los pasos de la receta vigente según `secuencia` (los `orden`
+ * vigentes, en el orden nuevo deseado — no dos updates sueltos: `validarPasos`
+ * rechaza dos pasos con el mismo `orden` en el mismo payload, así que un
+ * reordenamiento tiene que mandar la permutación completa de una vez). Si la
+ * secuencia resultante es idéntica a la vigente no se guarda nada (no
+ * ensucia el historial con una versión sin cambios).
+ */
+export async function reordenarPasosDeReceta(productoId: string, secuencia: number[]): Promise<ResultadoAccion> {
+  const vigente = await obtenerRecetaVigente(productoId);
+  const pasosExistentes = mapPasosAInput(vigente);
+  const ordenesVigentes = pasosExistentes.map((p) => p.orden);
+
+  if (!esPermutacionExacta(secuencia, ordenesVigentes)) {
+    return error("La secuencia de pasos no es válida (faltan, sobran o se repiten pasos).");
+  }
+  if (secuencia.every((orden, i) => orden === ordenesVigentes[i])) {
+    return ok("No hubo cambios en el orden.");
+  }
+
+  const pasos = aplicarSecuencia(pasosExistentes, secuencia);
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
+}
+
+/**
+ * Inserta un paso nuevo en una posición 1-indexada de la receta vigente
+ * (corrida a [1, N+1]), corriendo los siguientes y renumerando — a
+ * diferencia de `agregarPasoAReceta`, que solo agrega al final y rechaza un
+ * `orden` duplicado (esa función queda intacta, es el camino "Al final").
+ */
+export async function insertarPasoEnReceta(productoId: string, posicion: number, paso: Omit<PasoInput, "orden">): Promise<ResultadoAccion> {
+  const vigente = await obtenerRecetaVigente(productoId);
+  const pasosExistentes = mapPasosAInput(vigente);
+
+  const pasos = insertarEnPosicion(pasosExistentes, posicion, { ...paso, orden: -1 });
   return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
 }
 

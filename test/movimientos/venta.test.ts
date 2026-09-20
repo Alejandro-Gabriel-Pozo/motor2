@@ -34,6 +34,16 @@ describe("registrarVenta", () => {
     expect(resultado.ok).toBe(false);
   });
 
+  it("rechaza un número de factura de más de 60 caracteres, y no crea la Operacion", async () => {
+    const pv = await prisma.producto.create({ data: { codigo: "PV_SIN_RECETA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const resultado = await registrarVenta({
+      fecha: new Date(), seccionId, nroFactura: "A".repeat(61),
+      ventas: [{ productoId: pv.id, cantidadVendida: 1 }],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
+  });
+
   it("vender un PV con receta consume la MP correspondiente, sin descontar stock del propio PV", async () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });

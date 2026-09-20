@@ -25,6 +25,29 @@ export const RE_TEXTO_CATALOGO = /^[\p{L}\p{N} \-.,()%&/'_]+$/u;
 export const LARGO_MAXIMO_TEXTO_CATALOGO = 80;
 
 /**
+ * null si `valor` (ya no vacío) no supera `maximo` caracteres, o el mensaje
+ * de error listo para mostrar. Vacío no es asunto de este validador (mismo
+ * criterio que validarTextoCatalogo/Core.js:685) — lo obligatorio se valida
+ * aparte.
+ */
+export function validarLargoTexto(valor: unknown, etiquetaCampo: string, maximo: number): string | null {
+  const v = texto(valor);
+  if (!v) return null;
+  if (v.length > maximo) return `${etiquetaCampo} no puede superar los ${maximo} caracteres.`;
+  return null;
+}
+
+/**
+ * Número de factura del proveedor: texto libre (lo pone el proveedor en su
+ * papel), sin charset propio — a diferencia de un nombre de catálogo, acá
+ * `#`, `:`, `*` o un `-` inicial son perfectamente válidos. Solo se acota el
+ * largo, para blindar contra un pegado accidental; 60 cubre con holgura
+ * cualquier formato real (AFIP punto de venta + correlativo, o el de
+ * cualquier proveedor) sin acercarse al límite de ningún referente.
+ */
+export const LARGO_MAXIMO_NRO_FACTURA = 60;
+
+/**
  * null si `valor` es válido como nombre de catálogo, o el mensaje de error
  * listo para mostrar. No reemplaza el chequeo de "obligatorio" — un valor
  * vacío no es asunto de este validador (mismo criterio que Core.js:685).
@@ -32,9 +55,8 @@ export const LARGO_MAXIMO_TEXTO_CATALOGO = 80;
 export function validarTextoCatalogo(valor: unknown, etiquetaCampo: string): string | null {
   const v = texto(valor);
   if (!v) return null;
-  if (v.length > LARGO_MAXIMO_TEXTO_CATALOGO) {
-    return `${etiquetaCampo} no puede superar los ${LARGO_MAXIMO_TEXTO_CATALOGO} caracteres.`;
-  }
+  const errorLargo = validarLargoTexto(v, etiquetaCampo, LARGO_MAXIMO_TEXTO_CATALOGO);
+  if (errorLargo) return errorLargo;
   if (!RE_TEXTO_CATALOGO.test(v)) {
     return `${etiquetaCampo} tiene caracteres no permitidos. Se admiten letras, números, espacios y - . , ( ) % & / '`;
   }

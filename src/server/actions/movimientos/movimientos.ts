@@ -2,7 +2,7 @@
 
 import type { DestinoConsumo, MotivoMerma, Prisma, Proceso } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { texto } from "@/core/texto";
+import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import {
   ACCION_POR_PROCESO,
@@ -237,6 +237,9 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
     if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, ctx.sucursalId))) {
       return error("No se encontró la sección destino.");
     }
+
+    const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
+    if (errorLargoFactura) return error(errorLargoFactura);
 
     // Chequeo de factura duplicada (Movimientos.js:402-416): mismo
     // proveedor + mismo número de factura ya cargados como Compra en esta

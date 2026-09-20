@@ -8,6 +8,7 @@ import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
+import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
@@ -316,7 +317,7 @@ export function PanelMovimientoForm({
           </label>
           <label className="flex flex-1 flex-col gap-1 text-sm">
             N° de factura
-            <input value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} className="rounded border px-3 py-2" />
+            <input value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} className="rounded border px-3 py-2" />
           </label>
         </div>
       )}

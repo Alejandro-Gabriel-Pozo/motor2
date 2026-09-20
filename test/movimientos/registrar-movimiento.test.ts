@@ -197,6 +197,18 @@ describe("registrarMovimiento", () => {
     expect(segunda.ok).toBe(false);
   });
 
+  it("Compra rechaza un número de factura de más de 60 caracteres, y no crea la Operacion", async () => {
+    const mp = await crearMP("Harina");
+    const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_LARGO", nombre: "Molino SA" } });
+
+    const resultado = await registrarMovimiento({
+      proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id, nroFactura: "A".repeat(61),
+      items: [{ productoId: mp.id, cantidad: 5 }],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(await prisma.operacion.count({ where: { proveedorId: proveedor.id } })).toBe(0);
+  });
+
   it("Compra con proveedor guarda referenciaProveedor en ProveedorPorProducto", async () => {
     // Necesita unidadCompraId propio: el hookup de ProveedorPorProducto solo
     // corre si armarLineaMovimiento resuelve una unidad de compra real
