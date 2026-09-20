@@ -87,7 +87,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
           <p className="text-lg font-semibold">${rep.compras.totalGastado.toLocaleString("es-AR")}</p>
           <EnDolares pesos={rep.compras.totalGastado} cotizacion={cotizacion} />
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido` : "sin ventas en el período"}
+            {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido${rep.ratioGastoVentas.excluyeNoComestibles ? " (comida y bebida)" : ""}` : "sin ventas en el período"}
             {rep.ratioGastoVentas.porcentaje !== null && rep.ratioGastoVentas.porcentajePeriodoAnterior !== null && (
               <span className="ml-1">
                 (período anterior: {rep.ratioGastoVentas.porcentajePeriodoAnterior}%
@@ -96,6 +96,11 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             )}
             <AyudaIcono texto={rep.ratioGastoVentas.aviso} />
           </p>
+          {rep.ratioGastoVentas.excluyeNoComestibles && rep.ratioGastoVentas.gastoNoComestibles > 0 && (
+            <p className="mt-1 text-xs text-neutral-500">
+              No comestibles (packaging, limpieza): ${rep.ratioGastoVentas.gastoNoComestibles.toLocaleString("es-AR")}, fuera de ese porcentaje
+            </p>
+          )}
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-neutral-500">Movimientos</p>

@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { clasificarGruposNoComestibles, type ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -20,9 +21,17 @@ export interface InfoProductoReporte {
   /// Insumo no está agrupado. Agregado para reportes de gasto por
   /// categoría (docs/grounding-reportes-compras-2026-09-18.md).
   grupoNombre: string | null;
+  /** El Insumo del producto está en el grupo «No comestibles» (o en un hijo): packaging, limpieza… Ver core/catalogo/no-comestibles.ts. */
+  esNoComestible: boolean;
   unidadStockNombre: string;
   esConsignacion: boolean;
   proveedorConsignacionNombre: string | null;
+}
+
+/** Qué grupos del árbol cuentan como «No comestibles» (una consulta chica: la tabla de Grupos es corta). */
+export async function cargarClasificacionNoComestibles(db: Db = prisma): Promise<ClasificacionNoComestibles> {
+  const grupos = await db.grupo.findMany({ select: { id: true, nombre: true, grupoPadreId: true } });
+  return clasificarGruposNoComestibles(new Map(grupos.map((g) => [g.id, { nombre: g.nombre, grupoPadreId: g.grupoPadreId }])));
 }
 
 /**
@@ -45,9 +54,10 @@ export interface InfoProductoReporte {
  * precio local — pasarlo de largo evita una query que no aporta nada ahí.
  */
 export async function construirMapaProductos(sucursalId?: string, db: Db = prisma): Promise<Map<string, InfoProductoReporte>> {
-  const [productos, preciosLocales] = await Promise.all([
+  const [productos, preciosLocales, clasificacion] = await Promise.all([
     db.producto.findMany({ include: { categoria: true, insumo: { include: { grupo: true } }, unidadStock: true, proveedorConsignacion: true } }),
     sucursalId ? db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true } }) : Promise.resolve([]),
+    cargarClasificacionNoComestibles(db),
   ]);
   const precioLocalPorProducto = new Map(preciosLocales.map((pl) => [pl.productoId, Number(pl.precio)]));
 
@@ -65,6 +75,7 @@ export async function construirMapaProductos(sucursalId?: string, db: Db = prism
         categoriaNombre: p.categoria?.nombre ?? null,
         insumoNombre: p.insumo?.nombre ?? null,
         grupoNombre: p.insumo?.grupo?.nombre ?? null,
+        esNoComestible: p.insumo?.grupoId ? clasificacion.idsGrupos.has(p.insumo.grupoId) : false,
         unidadStockNombre: p.unidadStock.nombre,
         esConsignacion: p.esConsignacion,
         proveedorConsignacionNombre: p.proveedorConsignacion?.nombre ?? null,

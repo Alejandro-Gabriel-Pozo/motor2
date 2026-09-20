@@ -93,7 +93,10 @@ export interface FilaCostoProducto {
   costo: number | null;
   margen: number | null;
   margenPct: number | null;
+  /** Costo de comida y bebida ÷ precio de venta: SIN el packaging ni la limpieza de la receta (grupo «No comestibles»); ver `costoNoComestible`. */
   foodCostPct: number | null;
+  /** Parte de `costo` que es packaging, limpieza y demás no comestibles de la receta. Cuenta en el costo y el margen, no en el food cost. */
+  costoNoComestible: number;
   costoIncompleto: boolean;
   componentes: ComponenteCosto[];
   estado: EstadoCosto;
@@ -138,6 +141,7 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
 
     const componentes: ComponenteCosto[] = [];
     let costoTotal = 0;
+    let costoNoComestible = 0;
     let costoIncompleto = false;
 
     if (tieneReceta) {
@@ -165,6 +169,7 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
 
         const costoLinea = cantidadConMerma * c.costoUnitario;
         costoTotal += costoLinea;
+        if (infoInsumo?.esNoComestible) costoNoComestible += costoLinea;
         componentes.push({
           insumoProductoId: it.insumoProductoId,
           insumoNombre: it.insumoNombre,
@@ -191,7 +196,7 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
     else if (!tieneReceta) estado = "SIN_RECETA";
     else if (costoIncompleto) estado = "COSTO_INCOMPLETO";
     else if (margen !== null && margen < 0) estado = "MARGEN_NEGATIVO";
-    else if (margen !== null && costoTotal / precioVenta > 0.4) estado = "FOOD_COST_ALTO";
+    else if (margen !== null && (costoTotal - costoNoComestible) / precioVenta > 0.4) estado = "FOOD_COST_ALTO"; // food cost = solo comida y bebida (USAR)
     else estado = "OK";
 
     filas.push({
@@ -203,7 +208,8 @@ export async function calcularCostosYMargenes(sucursalId: string, db: Db = prism
       costo: conocido ? redondearMoneda(costoTotal) : null,
       margen: margen === null ? null : redondearMoneda(margen),
       margenPct: margen !== null && precioVenta > 0 ? Math.round((margen / precioVenta) * 1000) / 10 : null,
-      foodCostPct: conocido && precioVenta > 0 ? Math.round((costoTotal / precioVenta) * 1000) / 10 : null,
+      foodCostPct: conocido && precioVenta > 0 ? Math.round(((costoTotal - costoNoComestible) / precioVenta) * 1000) / 10 : null,
+      costoNoComestible: redondearMoneda(costoNoComestible),
       costoIncompleto,
       componentes,
       estado,
@@ -262,7 +268,9 @@ export function resolverCostoRecetaCompleta(
   productoId: string,
   productos: Map<string, InfoProductoReporte>,
   recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,
-  costosCompra: Map<string, CostoMP>
+  costosCompra: Map<string, CostoMP>,
+  /** Solo comida y bebida: no suma los insumos «No comestibles» (packaging, limpieza), que igual tienen que tener costo conocido. */
+  soloComida = false
 ): number | null {
   const items = recetaPorProducto.get(productoId) ?? [];
   if (!items.length) return null;
@@ -272,6 +280,7 @@ export function resolverCostoRecetaCompleta(
   for (const it of items) {
     const c = resolverCostoUnitario(it.insumoProductoId, productos, recetaPorProducto, costosCompra, cache, new Set());
     if (!c) return null;
+    if (soloComida && productos.get(it.insumoProductoId)?.esNoComestible) continue;
     total += it.cantidad * (1 + it.mermaPorcentaje / 100) * c.costoUnitario;
   }
   return total;
@@ -325,7 +334,10 @@ export async function calcularImpactoRecetasPorPeriodo(sucursalId: string, desde
 
     const costoActual = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosActuales);
     const costoAntes = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosParaAntes);
-    if (costoActual === null || costoAntes === null) continue; // costo incompleto en alguna de las dos corridas — no se puede comparar
+    if (costoActual === null || costoAntes === null) continue;
+    // El food cost % es solo de comida y bebida (sin packaging ni limpieza); el costo y su variación siguen siendo el costo total.
+    const comidaActual = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosActuales, true) ?? costoActual;
+    const comidaAntes = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosParaAntes, true) ?? costoAntes; // costo incompleto en alguna de las dos corridas — no se puede comparar
     if (Math.abs(costoActual - costoAntes) < 0.005) continue; // sin cambio real
 
     filas.push({
@@ -335,8 +347,8 @@ export async function calcularImpactoRecetasPorPeriodo(sucursalId: string, desde
       costoAntes: redondearMoneda(costoAntes),
       costoActual: redondearMoneda(costoActual),
       deltaCosto: redondearMoneda(costoActual - costoAntes),
-      foodCostPctAntes: info.precioVenta > 0 ? Math.round((costoAntes / info.precioVenta) * 1000) / 10 : null,
-      foodCostPctActual: info.precioVenta > 0 ? Math.round((costoActual / info.precioVenta) * 1000) / 10 : null,
+      foodCostPctAntes: info.precioVenta > 0 ? Math.round((comidaAntes / info.precioVenta) * 1000) / 10 : null,
+      foodCostPctActual: info.precioVenta > 0 ? Math.round((comidaActual / info.precioVenta) * 1000) / 10 : null,
     });
   }
 

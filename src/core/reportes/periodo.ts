@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { Proceso } from "@prisma/client";
 import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
-import { construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
+import { cargarClasificacionNoComestibles, construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo, type FilaImpactoRecetaPorPeriodo } from "./costos";
 import { claveCostoHistorico, diaUtc, reconstruirCostosDeVenta } from "./costo-historico";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
@@ -133,10 +133,11 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   const resumen: Record<string, number> = {};
   for (const it of items) resumen[it.proceso] = (resumen[it.proceso] ?? 0) + 1;
 
+  const productos = await construirMapaProductos(sucursalId, db);
   const ventas = await calcularVentasDelPeriodo(sucursalId, items, db);
-  const compras = calcularComprasDelPeriodo(items);
+  const compras = calcularComprasDelPeriodo(items, productos);
   const gastoPorInsumo = await calcularGastoPorInsumoDelPeriodo(sucursalId, items, db);
-  const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, ventas.totalFacturado, db);
+  const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, compras.totalNoComestibles, ventas.totalFacturado, productos, db);
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
@@ -243,8 +244,13 @@ function generarDigestAlertas(
 }
 
 export interface RatioGastoVentas {
+  /** Compras de comida y bebida ÷ Ventas (sin packaging ni limpieza si el grupo «No comestibles» existe). */
   porcentaje: number | null;
   porcentajePeriodoAnterior: number | null;
+  /** Existe el grupo «No comestibles»: el ratio ya viene sin esas compras. */
+  excluyeNoComestibles: boolean;
+  /** Lo que se compró de no comestibles en el período y quedó fuera del ratio. */
+  gastoNoComestibles: number;
   aviso: string;
 }
 
@@ -267,27 +273,44 @@ async function calcularRatioGastoVentas(
   desde: Date,
   hasta: Date,
   totalGastado: number,
+  totalNoComestibles: number,
   totalFacturado: number,
+  productos: Map<string, InfoProductoReporte>,
   db: Db
 ): Promise<RatioGastoVentas> {
   const duracionMs = hasta.getTime() - desde.getTime();
   const hastaAnterior = new Date(desde.getTime() - 1);
   const desdeAnterior = new Date(hastaAnterior.getTime() - duracionMs);
+  const { existeGrupo } = await cargarClasificacionNoComestibles(db);
 
+  // Por producto (no solo por proceso) para poder sacar los no comestibles también del período anterior: los dos porcentajes se
+  // comparan entre sí, así que tienen que excluir lo mismo.
   const filas = await db.movimientoStock.groupBy({
-    by: ["proceso"],
+    by: ["proceso", "productoId"],
     where: { seccion: { sucursalId }, operacion: { fecha: { gte: desdeAnterior, lte: hastaAnterior } }, proceso: { in: ["COMPRA", "VENTA"] } },
     _sum: { precioTotal: true },
   });
-  const comprasAnterior = Number(filas.find((f) => f.proceso === "COMPRA")?._sum.precioTotal ?? 0);
-  const ventasAnterior = Number(filas.find((f) => f.proceso === "VENTA")?._sum.precioTotal ?? 0);
+  let comprasAnterior = 0;
+  let ventasAnterior = 0;
+  for (const f of filas) {
+    const importe = Number(f._sum.precioTotal ?? 0);
+    if (f.proceso === "VENTA") ventasAnterior += importe;
+    else if (!productos.get(f.productoId)?.esNoComestible) comprasAnterior += importe;
+  }
 
   const calcular = (gastado: number, facturado: number) => (facturado > 0 ? Math.round((gastado / facturado) * 1000) / 10 : null);
+  const gastoComida = totalGastado - totalNoComestibles;
 
   return {
-    porcentaje: calcular(totalGastado, totalFacturado),
+    porcentaje: calcular(gastoComida, totalFacturado),
     porcentajePeriodoAnterior: calcular(comprasAnterior, ventasAnterior),
-    aviso: "Compras ÷ Ventas del período — mide desembolso, no consumo real: una compra grande para stockear sube este número sin que se haya consumido más. Sirve para ver la tendencia, no como food cost exacto.",
+    excluyeNoComestibles: existeGrupo,
+    gastoNoComestibles: redondearMoneda(totalNoComestibles),
+    aviso:
+      "Compras ÷ Ventas del período — mide desembolso, no consumo real: una compra grande para stockear sube este número sin que se haya consumido más. Sirve para ver la tendencia, no como food cost exacto." +
+      (existeGrupo
+        ? " Solo cuenta comida y bebida: el packaging y la limpieza (grupo «No comestibles») quedan fuera de este porcentaje, y de su comparación con el período anterior."
+        : " Todavía cuenta TODO lo que se compra, incluido el packaging y la limpieza: para separarlos, creá el grupo «No comestibles» (con «Packaging» y «Limpieza» adentro) en Catálogo → Insumos / Grupos y asigná esos insumos."),
   };
 }
 
@@ -305,6 +328,8 @@ export interface FilaCompraPorProveedor {
 }
 export interface ComprasDelPeriodo {
   totalGastado: number;
+  /** Parte de `totalGastado` que es packaging, limpieza y demás «No comestibles» (ver core/catalogo/no-comestibles.ts). */
+  totalNoComestibles: number;
   porProveedor: FilaCompraPorProveedor[];
   hayComprasSinPrecio: boolean;
   aviso: string;
@@ -316,9 +341,10 @@ export interface ComprasDelPeriodo {
  * de Compra siempre es el importe real de esa factura puntual (o 0 si se
  * cargó sin precio — campo opcional).
  */
-function calcularComprasDelPeriodo(items: ItemPeriodo[]): ComprasDelPeriodo {
+function calcularComprasDelPeriodo(items: ItemPeriodo[], productos: Map<string, InfoProductoReporte>): ComprasDelPeriodo {
   const porProveedor = new Map<string, { proveedorId: string | null; importe: number; lineas: number; productos: Map<string, number> }>();
   let totalGastado = 0;
+  let totalNoComestibles = 0;
   let hayComprasSinPrecio = false;
 
   for (const r of items) {
@@ -327,6 +353,7 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[]): ComprasDelPeriodo {
     const importe = r.precioTotal;
     if (importe <= 0) hayComprasSinPrecio = true;
     totalGastado += importe;
+    if (productos.get(r.productoId)?.esNoComestible) totalNoComestibles += importe;
 
     if (!porProveedor.has(proveedor)) porProveedor.set(proveedor, { proveedorId: r.proveedorId, importe: 0, lineas: 0, productos: new Map() });
     const acc = porProveedor.get(proveedor)!;
@@ -349,6 +376,7 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[]): ComprasDelPeriodo {
 
   return {
     totalGastado: redondearMoneda(totalGastado),
+    totalNoComestibles: redondearMoneda(totalNoComestibles),
     porProveedor: porProveedorLista,
     hayComprasSinPrecio,
     aviso: hayComprasSinPrecio

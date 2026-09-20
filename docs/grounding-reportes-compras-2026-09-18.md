@@ -125,7 +125,7 @@ A pedido del usuario, tras entregar el paso 5: el punto 8 de la segunda pasada (
 
 | # | Paso | Esfuerzo | Estado |
 |---|---|---|---|
-| 6 | "Insumos no comestibles" como categoría propia (Grupo padre "No comestibles" con hijos "Packaging"/"Limpieza"), **+ excluirla del ratio Compras/Ventas (paso 0) para que sea un food cost % real** | Bajo | Pendiente — reemplaza y amplía al paso 6 original de la pasada 2 |
+| 6 | "Insumos no comestibles" como categoría propia (Grupo padre "No comestibles" con hijos "Packaging"/"Limpieza"), **+ excluirla del ratio Compras/Ventas (paso 0) para que sea un food cost % real** | Bajo | **Implementado (2026-09-19)**, ver `grounding-pendientes-2026-09-18.md` §6 «No comestibles (USAR)» |
 
 ## Fuentes
 
