@@ -51,6 +51,9 @@ describe("accionDeRuta", () => {
     expect(accionDeRuta("/catalogo/recetas/cmu123?editar=x&sugerido=2")).toBe("guardar_receta");
     expect(accionDeRuta("/movimientos/compra?productoId=p1")).toBe("proceso_compra");
     expect(accionDeRuta("/catalogo/productos?id=p1")).toBe("alta_producto");
+    expect(accionDeRuta("/catalogo/productos/nuevo")).toBe("alta_producto");
+    expect(accionDeRuta("/catalogo/productos/p1")).toBe("alta_producto");
+    expect(accionDeRuta("/catalogo/productos/p1/editar")).toBe("alta_producto");
   });
 
   it("la comparativa de precios (fuera del menú) tiene su propia acción, distinta de la de Proveedores", () => {

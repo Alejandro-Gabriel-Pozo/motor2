@@ -4,18 +4,13 @@ import { prisma } from "../../src/lib/db";
 /**
  * Circuito Catálogo — tocar «Editar» en la lista de productos.
  *
- * Bug encontrado por el usuario en producción (2026-09-18): el formulario
- * de edición mostraba el nombre y las observaciones del producto, pero NO su
- * categoría, unidad de stock, precio de venta ni factor de conversión
- * (aparecían vacíos / en 0 / en 1). Causa: la página muestra la lista y el
- * formulario juntos, así que al tocar «Editar» Next hace una navegación
- * suave y React REUTILIZA el `ProductoForm` que ya estaba montado en modo
- * alta; ese formulario guarda categoría, unidad, precio y factor en estado
- * interno (`useState`) que solo se inicializa al montarse, mientras que el
- * nombre y las observaciones son inputs con `defaultValue`, que sí siguen a
- * las props. Ni tsc, ni eslint, ni vitest lo ven: solo un navegador real.
+ * Bug encontrado por el usuario en producción (2026-09-18): el formulario de edición mostraba el nombre y las observaciones del producto, pero
+ * NO su categoría, unidad de stock, precio de venta ni factor de conversión. Causa: la lista y el formulario vivían en la misma página, y al
+ * tocar «Editar» React reutilizaba el formulario ya montado en modo alta (estado interno que solo se inicializa al montarse). Desde que la
+ * edición tiene su propia ruta (`/catalogo/productos/[id]/editar`) esa clase de bug no puede ocurrir; la prueba se mantiene para asegurar que
+ * la pantalla de edición cargue TODOS los datos. Ni tsc, ni eslint, ni vitest lo ven: solo un navegador real.
  */
-test("al tocar «Editar» con el formulario ya abierto en modo alta, se cargan TODOS los datos del producto", async ({ paginaAutenticada: page }) => {
+test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los datos del producto", async ({ paginaAutenticada: page }) => {
   const sufijo = Date.now();
   const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Categoría ${sufijo}` } });
@@ -33,15 +28,12 @@ test("al tocar «Editar» con el formulario ya abierto en modo alta, se cargan T
     },
   });
 
-  // 1) La página abre con el formulario montado en modo alta (estado interno vacío)...
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
-  await expect(page.getByText("Nuevo producto")).toBeVisible();
-
-  // 2) ...y tocar «Editar» es una navegación suave: el formulario NO se vuelve a montar por sí solo.
-  await page.getByRole("row", { name: new RegExp(producto.codigo) }).getByRole("link", { name: "Editar" }).click();
+  await page.getByRole("row", { name: new RegExp(producto.codigo) }).getByRole("link", { name: "Editar", exact: true }).click();
+  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/editar$`));
   await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
 
-  // 3) Todos los campos tienen que reflejar el producto, no solo los que siguen a `defaultValue`.
+  // Todos los campos tienen que reflejar el producto, no solo los que siguen a `defaultValue`.
   await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   await expect(page.locator('textarea[name="observaciones"]')).toHaveValue("Observación E2E");
   await expect(page.locator("select").first().locator("option:checked")).toHaveText(categoria.nombre);

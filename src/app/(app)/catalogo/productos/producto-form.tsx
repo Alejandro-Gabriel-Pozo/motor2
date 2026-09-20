@@ -81,9 +81,10 @@ export function ProductoForm({
             ? await actualizarProducto(productoExistente!.id, datos)
             : await darDeAltaProducto(datos);
           setMensaje(resultado.mensaje);
+          // Al guardar se vuelve a la ficha del producto, que muestra el aviso de que se guardó (antes se volvía a la lista y el cartel se perdía).
           if (resultado.ok) {
-            router.push("/catalogo/productos");
-            router.refresh();
+            const idFicha = editando ? productoExistente!.id : "id" in resultado ? resultado.id : null;
+            router.push(idFicha ? `/catalogo/productos/${idFicha}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
           }
         });
       }}

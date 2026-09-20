@@ -22,7 +22,7 @@ export interface AccionFaltante {
  */
 export function resolverAccionFaltante(fila: { estado: EstadoCosto; productoId: string; componentes: ComponenteCosto[] }): AccionFaltante | null {
   if (fila.estado === "SIN_RECETA") return { href: `/catalogo/recetas/${fila.productoId}`, etiqueta: "Sin receta — cargarla" };
-  if (fila.estado === "SIN_PRECIO_VENTA") return { href: `/catalogo/productos?id=${fila.productoId}`, etiqueta: "Sin precio de venta — cargarlo" };
+  if (fila.estado === "SIN_PRECIO_VENTA") return { href: `/catalogo/productos/${fila.productoId}/editar`, etiqueta: "Sin precio de venta — cargarlo" };
   if (fila.estado === "COSTO_INCOMPLETO") {
     const faltantes = fila.componentes.filter((c) => c.sinPrecio);
     const primero = faltantes[0];

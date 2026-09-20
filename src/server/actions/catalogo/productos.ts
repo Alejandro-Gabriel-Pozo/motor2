@@ -245,7 +245,8 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
   });
 }
 
-export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoAccion> {
+/** Devuelve también el id del producto creado: al guardar, la pantalla lleva a su ficha. */
+export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
   return conPermiso("alta_producto", async () => {
     const invalido = await validarComun(datos);
     if (invalido) return error(invalido);
@@ -254,7 +255,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
       const producto = await crearConCodigoAutogenerado(datos.tipo, datos.codigo, (codigo) =>
         prisma.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos) } })
       );
-      return ok(`Producto "${producto.nombre}" (${producto.codigo}) creado.`);
+      return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
       throw e;

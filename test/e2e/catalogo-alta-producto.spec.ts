@@ -10,7 +10,7 @@ import { test, expect } from "./fixtures/auth";
  * renderiza el DOM real) — solo un navegador real lo reproduce.
  */
 test("crear categoría inline no pisa el nombre ya tipeado del producto", async ({ paginaAutenticada: page }) => {
-  await page.goto("/catalogo/productos");
+  await page.goto("/catalogo/productos/nuevo");
 
   const nombreProducto = `E2E Producto ${Date.now()}`;
   await page.locator('input[name="nombre"]').fill(nombreProducto);

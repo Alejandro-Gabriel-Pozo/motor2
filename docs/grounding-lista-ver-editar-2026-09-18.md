@@ -65,8 +65,8 @@ Pendiente ya documentado en recetas: los formularios «Agregar ingrediente» y �
 | Fase | Contenido | Esfuerzo |
 |---|---|---|
 | F0 | `key` en el formulario | **Hecha y publicada** en `main` el 2026-09-19 (`a3c512f`); los dos deploys de Production en `success`. Sin verificar todavía en el navegador |
-| F1 | Rutas separadas `nuevo` y `editar`, con el formulario existente; la lista deja de compartir página con el formulario | Bajo |
-| F2 | Ficha de solo lectura con «Datos» y enlaces a los reportes que ya existen (historial, costos, receta) | Bajo a medio |
+| F1 | Rutas separadas `nuevo` y `editar`, con el formulario existente; la lista deja de compartir página con el formulario | **Hecha (2026-09-19)**: `/catalogo/productos/nuevo` y `/catalogo/productos/[id]/editar`; los enlaces viejos `?id=` redirigen a la edición |
+| F2 | Ficha de solo lectura con «Datos» y enlaces a los reportes que ya existen (historial, costos, receta) | **Hecha (2026-09-19)**: `/catalogo/productos/[id]`; al guardar (alta o edición) se vuelve a la ficha con el aviso |
 | F3 | Ficha con stock, proveedores y precios, y cambios de precio | Medio |
 | F4 | Mismo tratamiento para proveedores | Bajo a medio |
 
@@ -135,7 +135,7 @@ Se revisó todo lo que cambia de contenido con un `<Link>` (navegación suave) y
 | 6 | Matriz de permisos (§5) | **Opción 1: modo edición con «Guardar»**: solo lectura al abrir, cambios pendientes marcados, resumen y guardado todo o nada. Es criterio propio, no lo que hacen los referentes |
 | 7 | ¿Desactivar un rol o un usuario pide confirmación? | **Sí.** Solo desactivar pide confirmación; activar sigue directo |
 
-**Implementadas al 2026-09-19:** la decisión 5 (el `key` de proveedores) y la 7 (desactivar un rol, un usuario o una sucursal pide confirmación; commits `06fc718`, `676c8f6`, `b9ea18b`, `732703e`). **El resto sigue sin implementar:** la ficha de productos con rutas separadas (decisiones 1 a 4, fases F1 a F4) y la matriz de permisos en modo edición con «Guardar» (decisión 6). Antes de cada fase hace falta su matriz de impacto y pasar por el gobernador.
+**Implementadas al 2026-09-19:** la decisión 5 (el `key` de proveedores), la 7 (desactivar un rol, un usuario o una sucursal pide confirmación; commits `06fc718`, `676c8f6`, `b9ea18b`, `732703e`) y las decisiones 1 a 3 en lo que toca a productos: rutas separadas, ficha con «Datos» y enlaces a los reportes (F1 y F2) y guardar vuelve a la ficha. **El resto sigue sin implementar:** stock, precios y proveedores en la ficha (F3), el mismo tratamiento para proveedores (F4) y la matriz de permisos en modo edición con «Guardar» (decisión 6). Antes de cada fase hace falta su matriz de impacto y pasar por el gobernador.
 
 ## 8. Limitaciones
 
