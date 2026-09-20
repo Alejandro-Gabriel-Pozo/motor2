@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/movimientos/transiciones";
 import {
+  cargarClasificacionNoComestibles,
   construirIndiceRecetas,
   construirMapaProductos,
   obtenerCostoActualPorMP,
@@ -269,7 +270,11 @@ export function resolverCostoRecetaCompleta(
   productos: Map<string, InfoProductoReporte>,
   recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,
   costosCompra: Map<string, CostoMP>,
-  /** Solo comida y bebida: no suma los insumos «No comestibles» (packaging, limpieza), que igual tienen que tener costo conocido. */
+  /**
+   * Solo comida y bebida: no suma los insumos «No comestibles» (packaging, limpieza), que igual tienen que tener costo conocido.
+   * LÍMITE: solo mira los ingredientes de primer nivel de la receta. No abre un intermedio «se produce»: una caja dentro de una
+   * prepizza cuenta como comida, y un intermedio clasificado como no comestible se excluye entero, con la comida que lleve adentro.
+   */
   soloComida = false
 ): number | null {
   const items = recetaPorProducto.get(productoId) ?? [];
@@ -328,6 +333,8 @@ export async function calcularImpactoRecetasPorPeriodo(sucursalId: string, desde
   const costosParaAntes = new Map(costosActuales);
   for (const [productoId, c] of costosAntesDelPeriodo) costosParaAntes.set(productoId, c);
 
+  const hayNoComestibles = (await cargarClasificacionNoComestibles(db)).existeGrupo;
+
   const filas: FilaImpactoRecetaPorPeriodo[] = [];
   for (const info of productos.values()) {
     if (info.tipo !== "PV") continue;
@@ -335,10 +342,12 @@ export async function calcularImpactoRecetasPorPeriodo(sucursalId: string, desde
     const costoActual = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosActuales);
     const costoAntes = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosParaAntes);
     if (costoActual === null || costoAntes === null) continue;
-    // El food cost % es solo de comida y bebida (sin packaging ni limpieza); el costo y su variación siguen siendo el costo total.
-    const comidaActual = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosActuales, true) ?? costoActual;
-    const comidaAntes = resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosParaAntes, true) ?? costoAntes; // costo incompleto en alguna de las dos corridas — no se puede comparar
     if (Math.abs(costoActual - costoAntes) < 0.005) continue; // sin cambio real
+    // El food cost % es solo de comida y bebida (sin packaging ni limpieza); el costo y su variación siguen siendo el costo total. Sin el
+    // grupo «No comestibles» no hay nada que sacar, así que se evita recorrer las recetas otra vez. (`soloComida` devuelve null en los mismos
+    // casos que el costo completo, y esos ya se descartaron arriba.)
+    const comidaActual = hayNoComestibles ? resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosActuales, true)! : costoActual;
+    const comidaAntes = hayNoComestibles ? resolverCostoRecetaCompleta(info.id, productos, recetaPorProducto, costosParaAntes, true)! : costoAntes;
 
     filas.push({
       productoId: info.id,

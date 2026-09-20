@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { clasificarGruposNoComestibles, normalizarNombreGrupo } from "../../src/core/catalogo/no-comestibles";
-import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "../../src/core/reportes/costos";
 import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
 
 /**
@@ -156,5 +156,20 @@ describe("No comestibles en los reportes", () => {
     await prisma.producto.update({ where: { id: cajaId }, data: { insumoId: null } }); // sin clasificar, la caja cuenta como comida
     const sinClasificar = (await calcularCostosYMargenes(sucursalId)).find((f) => f.productoId === panId)!;
     expect(sinClasificar.estado).toBe("FOOD_COST_ALTO");
+  });
+
+  it("Impacto en recetas: si sube solo el packaging, el costo sube pero el food cost % no se mueve; sin clasificar, sí", async () => {
+    await marcarCajaNoComestible();
+    // La caja cuesta $10 el 1/8 y $20 el 10/8; la harina, $5 siempre.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }, { productoId: cajaId, cantidad: 10, precioTotal: 100 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-10"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 200 }] });
+
+    const [fila] = await calcularImpactoRecetasPorPeriodo(sucursalId, d("2026-08-05"));
+    expect([fila.costoAntes, fila.costoActual, fila.deltaCosto]).toEqual([20, 30, 10]); // costo total: harina $10 + caja $10 → caja $20
+    expect([fila.foodCostPctAntes, fila.foodCostPctActual]).toEqual([10, 10]); // food cost: solo la harina, no cambió
+
+    await prisma.producto.update({ where: { id: cajaId }, data: { insumoId: null } }); // sin clasificar, la caja cuenta como comida
+    const [sinClasificar] = await calcularImpactoRecetasPorPeriodo(sucursalId, d("2026-08-05"));
+    expect([sinClasificar.foodCostPctAntes, sinClasificar.foodCostPctActual]).toEqual([20, 30]);
   });
 });

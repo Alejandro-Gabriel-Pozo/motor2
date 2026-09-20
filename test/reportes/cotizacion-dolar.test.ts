@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), flush: vi.fn(async () => true) }));
 import * as Sentry from "@sentry/nextjs";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import {

@@ -20,7 +20,7 @@ export interface NodoGrupo {
 export function normalizarNombreGrupo(nombre: string): string {
   return nombre
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase();

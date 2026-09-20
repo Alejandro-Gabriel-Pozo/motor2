@@ -1,5 +1,5 @@
 import { sincronizarIPC } from "@/core/reportes/indices-economicos";
-import { reportarError } from "@/lib/reportar-error";
+import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 
 /**
  * Vercel Cron (ver vercel.json, "0 12 * * *" — TODOS los días: el INDEC publica el
@@ -12,7 +12,7 @@ import { reportarError } from "@/lib/reportar-error";
 export async function GET(request: Request): Promise<Response> {
   const auth = request.headers.get("authorization");
   // Un proyecto sin CRON_SECRET hace que el cron responda 401 SIEMPRE y en silencio: eso es un error de configuración y se avisa.
-  if (!process.env.CRON_SECRET) await reportarError(new Error("CRON_SECRET no está configurada: el cron del IPC no puede autenticarse"), "ipc-cron");
+  if (!process.env.CRON_SECRET) await reportarErrorUnaVez("ipc-cron-sin-secreto", new Error("CRON_SECRET no está configurada: el cron del IPC no puede autenticarse"), "ipc-cron");
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return Response.json({ error: "No autorizado" }, { status: 401 });
   }
