@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
+import { analizarFuente } from "./guardas/analizador";
 
 /**
  * Regla de arquitectura: toda función que exporta un archivo `"use server"` es un endpoint que se puede invocar
@@ -11,14 +12,17 @@ import { describe, expect, it } from "vitest";
  * - `requerirSesion()` / `requerirSesionEnSucursal(id)`: lecturas, con sesión y membresía (ver con-sesion.ts).
  * - `requerirVer(clave)` / `requerirVerEnSucursal(id, clave)`: lecturas de los datos propios de una pantalla: además, su permiso de Ver.
  * - `getUsuarioActual()` / `obtenerContextoUsuario()` / `requierePermiso*(...)` puestos a mano: casos puntuales.
+ * - Delegación: llamar a otra función exportada del mismo archivo que a su vez esté guardada (ej. `agregarIngredienteAReceta`
+ *   delega en `guardarReceta`).
  *
- * Es una comprobación por texto (no ejecuta nada): atrapa el olvido, no una guarda mal usada. Una función que de
- * verdad no debe llevar guarda (por ejemplo, un ayudante interno) va en un archivo SIN `"use server"`, no acá.
+ * A diferencia de una versión anterior (por regex sobre el texto), esto analiza el AST real (`test/arquitectura/guardas/analizador.ts`,
+ * con sus propios tests en `analizador-de-guardas.test.ts`): no lo engaña una guarda mencionada en un comentario o un string, detecta
+ * cuando la guarda llega DESPUÉS de una lectura de base, y cuando su resultado se llama sin `await` (queda descartado, la lógica de
+ * abajo corre igual). Sigue siendo estático: no ejecuta nada, y no verifica que la CLAVE de la guarda sea la correcta para esa
+ * pantalla (eso lo cubre `test/permisos/lecturas-con-permiso-de-ver.test.ts` y `test/arquitectura/reportes-con-permiso.test.ts`). Una
+ * función que de verdad no debe llevar guarda (un ayudante interno) va en un archivo SIN `"use server"`, no acá.
  */
 const RAIZ = join(__dirname, "../../src/server/actions");
-// `guardarReceta(` cuenta como guarda: las acciones de la ficha de receta (agregar/quitar ingrediente o paso, cabecera) no
-// llevan `conPermiso` propio, delegan en `guardarReceta`, que abre con `conPermiso("guardar_receta")`.
-const GUARDAS = /conPermiso\w*\s*(<[^>(]*>)?\(|requerirSesion(EnSucursal)?\(|requerirVer(EnSucursal)?\(|obtenerContextoUsuario\(|getUsuarioActual\(|requierePermiso(Ver)?\(|guardarReceta\(/;
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
@@ -27,34 +31,32 @@ function archivos(dir: string): string[] {
   });
 }
 
-/** Cuerpo de cada `export async function` de un archivo: desde su firma hasta la firma de la siguiente. */
-function funcionesExportadas(fuente: string): Array<{ nombre: string; texto: string }> {
-  const inicios = [...fuente.matchAll(/^export async function (\w+)/gm)];
-  return inicios.map((m, i) => ({ nombre: m[1], texto: fuente.slice(m.index, inicios[i + 1]?.index ?? fuente.length) }));
-}
+const rutasDeAcciones = archivos(RAIZ)
+  .map((ruta) => ({ ruta, fuente: readFileSync(ruta, "utf8").replace(/\r\n/g, "\n") }))
+  .filter(({ ruta, fuente }) => analizarFuente(ruta, fuente).esArchivoDeAcciones);
 
 describe("server actions: toda función exportada lleva una guarda de acceso", () => {
-  const conUseServer = archivos(RAIZ).filter((ruta) => /^\s*["']use server["']/.test(readFileSync(ruta, "utf8").slice(0, 200)));
-
   it("encuentra los archivos de acciones", () => {
-    expect(conUseServer.length).toBeGreaterThan(10);
+    expect(rutasDeAcciones.length).toBeGreaterThan(10);
   });
 
-  it("ninguna función exportada de un archivo 'use server' queda sin guarda", () => {
-    const sinGuarda: string[] = [];
-    for (const ruta of conUseServer) {
-      const fuente = readFileSync(ruta, "utf8").replace(/\r\n/g, "\n");
-      for (const f of funcionesExportadas(fuente)) {
-        if (!GUARDAS.test(f.texto)) sinGuarda.push(`${ruta.slice(RAIZ.length + 1).split(sep).join("/")} → ${f.nombre}`);
+  it("ninguna función exportada de un archivo 'use server' queda sin guarda, con guarda tardía o con la guarda descartada", () => {
+    const problemas: string[] = [];
+    for (const { ruta, fuente } of rutasDeAcciones) {
+      const nombreRelativo = ruta.slice(RAIZ.length + 1).split(sep).join("/");
+      const { funciones } = analizarFuente(ruta, fuente);
+      for (const f of funciones) {
+        if (f.estado !== "ok") problemas.push(`${nombreRelativo}:${f.linea} ${f.nombre} → ${f.estado}`);
       }
     }
-    expect(sinGuarda, `Funciones exportadas de archivos "use server" sin guarda de acceso:\n${sinGuarda.join("\n")}`).toEqual([]);
+    expect(problemas, `Funciones exportadas de archivos "use server" con guarda ausente/tardía/descartada, o con una forma de export no reconocida:\n${problemas.join("\n")}`).toEqual([]);
   });
 
   it("los archivos con guarda de lectura (con-sesion.ts) y de escritura (con-permiso.ts) no llevan 'use server'", () => {
     for (const nombre of ["con-sesion.ts", "con-permiso.ts", "catalogo/upsert-proveedor-por-producto.ts"]) {
-      const cabecera = readFileSync(join(RAIZ, nombre), "utf8").slice(0, 200);
-      expect(cabecera, `${nombre} no puede llevar "use server": sus exports serían endpoints`).not.toMatch(/^\s*["']use server["']/);
+      const ruta = join(RAIZ, nombre);
+      const fuente = readFileSync(ruta, "utf8");
+      expect(analizarFuente(ruta, fuente).esArchivoDeAcciones, `${nombre} no puede llevar "use server": sus exports serían endpoints`).toBe(false);
     }
   });
 });
