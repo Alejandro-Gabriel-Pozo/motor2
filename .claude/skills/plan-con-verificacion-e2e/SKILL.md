@@ -63,16 +63,22 @@ usuario, sin implementar ninguna a ciegas).
 
 No alcanza con pedir "verificación end-to-end". Hay que pedir, en el propio
 prompt del agente de planificación, que el plan **enumere los comandos
-concretos** y el **criterio de éxito** de cada uno, adaptado a las
-herramientas reales del proyecto. La receta genérica, por capa:
+concretos** y el **criterio de éxito** de cada uno. En este proyecto
+(motor2) las herramientas ya son las siguientes — usar estos comandos
+literales, no una paráfrasis:
 
-| Capa | Qué prueba | Ejemplo genérico | Ejemplo motor2 (Node/Next/Prisma/Vitest/Playwright) |
+| Capa | Qué prueba | Comando en motor2 | Criterio de éxito |
 |---|---|---|---|
-| Tipos | El cambio no rompe el tipado del proyecto entero, no solo del archivo tocado | `<compilador> --noEmit` o equivalente | `npx tsc --noEmit` |
-| Lint | Cero errores y cero warnings nuevos | `<linter> .` | `npm run lint` (eslint) |
-| Unitaria/integración | La lógica de negocio, contra una base de datos real si el proyecto la usa así — nunca solo el archivo tocado, la suite ENTERA | `<test runner> run` (todo el repo) | `npm test` (vitest, Postgres real, `fileParallelism:false`) |
-| Build | El artefacto de producción compila limpio | `<build command>` | `next build` / `npm run build` |
-| E2E / navegador real | Lo que solo un navegador real detecta (HTML inválido, hidratación, formularios anidados, redirecciones) — la suite ENTERA, no un spec suelto | `<e2e runner>` | `npm run test:e2e` (Playwright, `workers:1`) |
+| Tipos | El cambio no rompe el tipado del proyecto entero, no solo del archivo tocado | `npx tsc --noEmit` | Salida vacía (el único ruido preexistente y ajeno es `LayoutProps` de `layout.tsx`) |
+| Lint | Cero errores y cero warnings nuevos | `npm run lint` (ESLint, flat config) | 0 errores, 0 warnings |
+| Unitaria/integración | Lógica de negocio contra Postgres real, sin mocks (`fileParallelism: false`) — la suite ENTERA, nunca solo el archivo tocado | `npm test` (Vitest) | Todos los archivos en verde; conteo de tests igual o mayor a la línea de base |
+| Accesibilidad (WCAG 2.1) | Que la UI no introduzca violaciones detectables automáticamente — capa nueva desde 2026-09-20, hoy solo en `test/e2e/accesibilidad.spec.ts` (login + un reporte autenticado) | `npx playwright test test/e2e/accesibilidad.spec.ts` (o la suite completa, que ya la incluye) | `violations` vacío en cada página cubierta. Al tocar una pantalla nueva, evaluar sumarle su propio chequeo con `@axe-core/playwright` (`new AxeBuilder({ page }).analyze()`) en vez de asumir que las dos páginas ya cubiertas alcanzan |
+| Build | El artefacto de producción compila limpio | `npm run build` (`prisma generate && prisma migrate deploy && next build`) — ojo, aplica migraciones: apuntar `DATABASE_URL`/`DIRECT_URL` a una base local o descartable, nunca a producción | Build exitoso, sin warnings nuevos |
+| E2E / navegador real | Lo que solo un navegador real detecta (HTML inválido, hidratación, formularios anidados, redirecciones) — la suite ENTERA, no un spec suelto | `npm run test:e2e` (Playwright, `workers: 1`, requiere Postgres migrado+sembrado y `next dev` corriendo o levantado por la propia config) | Todos los specs en verde; conteo de specs igual o mayor a la línea de base |
+
+Si el proyecto que estás planificando **no** es motor2, reemplazar esta
+tabla por los comandos reales de ESE repo antes de usar la skill — ver
+"Para reusar en otro proyecto" al final.
 
 Y además, el prompt tiene que pedir:
 
@@ -145,20 +151,28 @@ orden. Cualquier paso que toque el schema/una migración va marcado
 "requiere autorización expresa" y separado del resto.
 
 Un paso final OBLIGATORIO y explícito de verificación end-to-end sobre la
-suite TOTAL del proyecto (no solo el área tocada): <listar los comandos
-reales del proyecto para tipos/lint/unitarios/build/e2e>, con línea de base
-antes de empezar y criterio de éxito conjunto. Si el pendiente es sobre
-testing, agregá la demostración de que el test nuevo detecta lo que dice
-detectar (mutación temporal → rojo → revertir → verde).
+suite TOTAL del proyecto (no solo el área tocada): npx tsc --noEmit, npm run
+lint, npm test (Vitest contra Postgres real), npm run build, npm run test:e2e
+(Playwright) y, si el pendiente toca una pantalla, evaluar si conviene
+sumarle su propio chequeo de accesibilidad con @axe-core/playwright junto a
+los de test/e2e/accesibilidad.spec.ts — con línea de base antes de empezar y
+criterio de éxito conjunto. Si el pendiente es sobre testing, agregá la
+demostración de que el test nuevo detecta lo que dice detectar (mutación
+temporal → rojo → revertir → verde).
 
 Entregá el plan en texto claro, no lo implementes.
 ```
 
 ## Para reusar en otro proyecto
 
-Este archivo no menciona ninguna herramienta como obligatoria salvo el
-`Agent` tool con `subagent_type: "Plan"` y `model: "opus"`. Al copiarlo a
-otro repo, completar la tabla de la sección "paso final obligatorio" con los
-comandos reales de ESE proyecto (compilador, linter, test runner, build,
-e2e si existe) antes de usarlo — no dejar los ejemplos de motor2 puestos por
-default.
+Lo único no negociable al copiar esta skill a otro repo es la estructura del
+proceso: `Agent` con `subagent_type: "Plan"` y `model: "opus"`, uno por
+pendiente, con un paso final de verificación total descrito con comandos.
+La tabla de "paso final obligatorio" de arriba está llena con los comandos
+**literales de motor2** (Node/Next/Prisma/Vitest/Playwright/axe) — es a
+propósito, para que quede un ejemplo real y no una plantilla vacía, pero
+**hay que reemplazarla por los comandos reales del otro proyecto** antes de
+usar la skill ahí (compilador, linter, test runner, build, e2e y, si aplica,
+la capa de accesibilidad — no todos los proyectos la van a tener). Si el
+otro proyecto no tiene una capa (por ejemplo, no tiene suite E2E todavía),
+sacar esa fila de la tabla en vez de dejarla con un comando inventado.
