@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { actualizarPromocionesHabilitado, marcarProductoComoPromocion } from "../../src/server/actions/reportes/promociones";
 import { obtenerReportePromociones } from "../../src/core/reportes/promociones";
+import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
 
 describe("Promociones y Combos", () => {
   let sucursalId: string;
@@ -80,5 +81,37 @@ describe("Promociones y Combos", () => {
     expect(filaCombo.valorALaCartaUnitario).toBe(2 * 30); // 2kg de carne × $30/kg sueltos
     expect(filaCombo.descuentoUnitario).toBeCloseTo(60 - 50);
     expect(filaCombo.incompleto).toBe(false);
+  });
+
+  it("el margen Real coincide exactamente con el de Período para el mismo producto y rango (fuente única, no dos cálculos)", async () => {
+    await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
+    await actualizarPromocionesHabilitado(true);
+
+    const mp = await prisma.producto.create({ data: { codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const combo = await prisma.producto.create({ data: { codigo: "PV_COMBO_R", nombre: "Combo real", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: combo.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+    await marcarProductoComoPromocion(combo.id, true);
+
+    const hoy = new Date();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: hoy, seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 40 }] }); // $4/kg
+    await registrarVenta({ fecha: hoy, seccionId, ventas: [{ productoId: combo.id, cantidadVendida: 1 }] });
+    // Como si no se hubiera guardado el costo al vender: se reconstruye con el historial de compras.
+    await prisma.movimientoStock.updateMany({ where: { productoId: combo.id, operacion: { proceso: "VENTA" } }, data: { costoUnitarioVenta: null } });
+
+    const desde = new Date(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1);
+    const [repPeriodo, repPromociones] = await Promise.all([
+      obtenerReportePorPeriodo(sucursalId, desde, hoy),
+      obtenerReportePromociones(sucursalId, desde, hoy),
+    ]);
+    if (!repPromociones.habilitado) throw new Error("esperaba habilitado=true");
+
+    const filaPeriodo = repPeriodo.margen.porProducto.find((f) => f.productoId === combo.id)!;
+    const filaPromo = repPromociones.promociones.find((f) => f.producto === "Combo real")!;
+
+    expect(filaPeriodo.margenReal).not.toBeNull();
+    expect(filaPromo.margenReal).toBe(filaPeriodo.margenReal);
+    expect(filaPromo.margenRealPct).toBe(filaPeriodo.margenRealPct);
+    expect(filaPromo.margenRealReconstruido).toBe(true);
+    expect(filaPromo.margenRealCompleto).toBe(filaPeriodo.margenRealCompleto);
   });
 });

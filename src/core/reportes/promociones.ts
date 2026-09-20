@@ -17,8 +17,21 @@ export interface FilaPromocion {
   valorALaCartaUnitario: number | null;
   descuentoUnitario: number | null;
   descuentoPct: number | null;
-  margen: number | null;
-  margenPct: number | null;
+  /** Costo/receta de HOY aplicados a todo lo vendido — mismo criterio que "Margen" de Período, no el de cada venta. */
+  margenNominal: number | null;
+  margenNominalPct: number | null;
+  /**
+   * Margen "Real" de este producto (`FilaMargenProducto.margenReal`,
+   * fuente única compartida con Período — ver periodo.ts): costo congelado
+   * al vender, o reconstruido con el historial de compras cuando no se
+   * guardó. `null` si ninguna venta de este producto se pudo costear así.
+   */
+  margenReal: number | null;
+  margenRealPct: number | null;
+  /** Alguna parte se reconstruyó con el historial de compras (no se guardó al vender) — mismo rótulo que Período, "· reconstruido". */
+  margenRealReconstruido: boolean;
+  /** `false` si alguna venta de este producto quedó afuera del margen Real — el número no cubre el 100% de lo vendido. */
+  margenRealCompleto: boolean;
   incompleto: boolean;
   componentes: ComponentePromocion[];
 }
@@ -101,8 +114,12 @@ export async function obtenerReportePromociones(sucursalId: string, desde: Date,
       valorALaCartaUnitario: incompleto ? null : redondearMoneda(valorALaCartaUnitario),
       descuentoUnitario: incompleto ? null : redondearMoneda(valorALaCartaUnitario - precioUnitarioReal),
       descuentoPct: !incompleto && valorALaCartaUnitario > 0 ? Math.round(((valorALaCartaUnitario - precioUnitarioReal) / valorALaCartaUnitario) * 1000) / 10 : null,
-      margen: m ? m.margen : null,
-      margenPct: m ? m.margenPct : null,
+      margenNominal: m ? m.margen : null,
+      margenNominalPct: m ? m.margenPct : null,
+      margenReal: m ? m.margenReal : null,
+      margenRealPct: m ? m.margenRealPct : null,
+      margenRealReconstruido: m ? m.ingresoRealReconstruido > 0 : false,
+      margenRealCompleto: m ? m.margenRealCompleto : false,
       incompleto,
       componentes,
     });
