@@ -120,6 +120,9 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
         </h2>
         <GraficoGastoPorGrupo filas={rep.gastoPorInsumo.porGrupo} />
         <div className="mt-3">
+          <p className="mb-2 text-xs text-neutral-500">
+            Las filas resaltadas son los insumos que, de mayor a menor gasto, concentran el 80 % de lo que compraste (regla 80/20): ahí conviene mirar primero.
+          </p>
           <TablaGastoPorInsumo filas={rep.gastoPorInsumo.porInsumo} />
         </div>
       </div>

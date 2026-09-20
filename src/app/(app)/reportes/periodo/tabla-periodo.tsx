@@ -127,6 +127,7 @@ export function TablaGastoPorInsumo({ filas }: { filas: FilaGastoPorInsumo[] }) 
       nombreExport="gasto-por-insumo"
       ordenInicial="importe"
       direccionInicial="desc"
+      claseFila={(f) => (f.dentroDel80 ? "bg-amber-50 dark:bg-amber-950/30" : undefined)}
     />
   );
 }

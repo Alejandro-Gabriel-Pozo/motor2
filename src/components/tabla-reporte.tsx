@@ -27,6 +27,8 @@ interface Props<T> {
   nombreExport?: string;
   ordenInicial?: string;
   direccionInicial?: "asc" | "desc";
+  /** Clases extra de la fila (por ejemplo, para resaltar un grupo de filas). */
+  claseFila?: (fila: T) => string | undefined;
 }
 
 /**
@@ -37,7 +39,7 @@ interface Props<T> {
  * `core/excel.ts`: los números viajan como números, así que abre bien con
  * cualquier configuración regional, cosa que un CSV no garantiza).
  */
-export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "Sin datos.", nombreExport, ordenInicial, direccionInicial = "asc" }: Props<T>) {
+export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "Sin datos.", nombreExport, ordenInicial, direccionInicial = "asc", claseFila }: Props<T>) {
   const [ordenPor, setOrdenPor] = useState<string | null>(ordenInicial ?? null);
   const [direccion, setDireccion] = useState<"asc" | "desc">(direccionInicial);
   const [exportando, setExportando] = useState(false);
@@ -142,7 +144,7 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
         </thead>
         <tbody>
           {filasOrdenadas.map((f, i) => (
-            <tr key={claveFila(f, i)} className="border-b">
+            <tr key={claveFila(f, i)} className={`border-b ${claseFila?.(f) ?? ""}`}>
               {columnas.map((c) => (
                 <td key={c.clave} className={`px-2 py-1 first:pl-0 ${c.alinear === "derecha" ? "text-right" : ""}`}>
                   {c.render(f)}

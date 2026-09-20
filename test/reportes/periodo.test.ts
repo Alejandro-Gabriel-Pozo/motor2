@@ -125,6 +125,21 @@ describe("obtenerReportePorPeriodo", () => {
     expect(rep.gastoPorInsumo.porInsumo[0]!.porcentajeAcumulado).toBe(75);
     expect(rep.gastoPorInsumo.porInsumo[1]!.porcentaje).toBe(25);
     expect(rep.gastoPorInsumo.porInsumo[1]!.porcentajeAcumulado).toBe(100);
+    // Corte 80/20: la muzzarella (75 %) no alcanza el 80 %, así que también entra la harina, que es donde el acumulado lo cruza.
+    expect(rep.gastoPorInsumo.porInsumo.map((f) => f.dentroDel80)).toEqual([true, true]);
+  });
+
+  it("gastoPorInsumo marca solo los insumos hasta el corte del 80 %: los que vienen después quedan sin resaltar", async () => {
+    const insumoA = await prisma.insumo.create({ data: { nombre: "Grande" } });
+    const insumoB = await prisma.insumo.create({ data: { nombre: "Chico" } });
+    const mpA = await prisma.producto.create({ data: { codigo: "MP_GRANDE", nombre: "Grande", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoA.id } });
+    const mpB = await prisma.producto.create({ data: { codigo: "MP_CHICO", nombre: "Chico", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoB.id } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpA.id, cantidad: 1, precioTotal: 900 }] }); // 90 %
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpB.id, cantidad: 1, precioTotal: 100 }] }); // 10 %
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+
+    expect(rep.gastoPorInsumo.porInsumo.map((f) => [f.insumo, f.dentroDel80])).toEqual([["Grande", true], ["Chico", false]]);
   });
 
   it("gastoPorInsumo separa 'Sin insumo asignado' de 'Sin categoría' cuando el producto no tiene Insumo", async () => {

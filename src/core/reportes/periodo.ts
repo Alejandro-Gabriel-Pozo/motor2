@@ -365,6 +365,8 @@ export interface FilaGastoPorInsumo {
   porcentaje: number;
   /** % acumulado hasta esta fila (la lista ya viene ordenada de mayor a menor importe) — para el corte 80/20: dónde el acumulado cruza 80% son los insumos que de verdad importan (segunda pasada del grounding, docs/grounding-reportes-compras-2026-09-18.md §5). */
   porcentajeAcumulado: number;
+  /** Está entre los insumos que, de mayor a menor gasto, concentran el 80 % del total (regla 80/20). */
+  dentroDel80: boolean;
   /** Cantidad de líneas de compra de este insumo (frecuencia de reposición — a diferencia de "líneas" por proveedor, acá sí es una señal útil: reponer seguido un mismo insumo a varios proveedores distintos sugiere consolidar). */
   cantidadCompras: number;
   proveedores: string[];
@@ -421,8 +423,12 @@ async function calcularGastoPorInsumoDelPeriodo(sucursalId: string, items: ItemP
         importe: redondearMoneda(f.importe),
         porcentaje: totalGastadoInsumos > 0 ? Math.round((f.importe / totalGastadoInsumos) * 1000) / 10 : 0,
         porcentajeAcumulado: totalGastadoInsumos > 0 ? Math.round((acumulado / totalGastadoInsumos) * 1000) / 10 : 0,
+        dentroDel80: false,
       };
     });
+  // Corte Pareto 80/20: los insumos, de mayor a menor gasto, hasta el primero donde el acumulado llega al 80 % (ese incluido).
+  const corte80 = porInsumoLista.findIndex((f) => f.porcentajeAcumulado >= 80);
+  if (corte80 >= 0) for (let i = 0; i <= corte80; i++) porInsumoLista[i].dentroDel80 = true;
 
   const porGrupoLista = Array.from(porGrupo.entries())
     .map(([grupo, importe]) => ({ grupo, importe: redondearMoneda(importe) }))
