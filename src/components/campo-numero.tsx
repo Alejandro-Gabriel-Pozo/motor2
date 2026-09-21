@@ -13,6 +13,8 @@ interface Props {
   onChange?: (valor: string) => void;
   required?: boolean;
   placeholder?: string;
+  /** Nombre accesible del campo cuando no hay un `<label>` asociado (un placeholder desaparece al tipear y no es un nombre confiable para un lector de pantalla). */
+  ariaLabel?: string;
   /** Ej. "$" — se muestra al costado del campo, nunca dentro del valor editable (mismo criterio que ERPNext/Dolibarr: el símbolo no es parte de lo que se tipea). */
   prefijo?: string;
   /** "normal" (px-3 py-2, campo de formulario apilado) o "compacto" (px-2 py-1.5 text-sm, campo dentro de una fila). */
@@ -60,7 +62,7 @@ function formatear(valor: string): string {
   return n.toLocaleString("es-AR", { maximumFractionDigits: 4 });
 }
 
-export function CampoNumero({ id, name, value, defaultValue, onChange, required, placeholder, prefijo, tamano = "normal", className }: Props) {
+export function CampoNumero({ id, name, value, defaultValue, onChange, required, placeholder, ariaLabel, prefijo, tamano = "normal", className }: Props) {
   const controlado = value !== undefined;
   const [interno, setInterno] = useState(defaultValue ?? "");
   const valorReal = controlado ? (value ?? "") : interno;
@@ -90,6 +92,7 @@ export function CampoNumero({ id, name, value, defaultValue, onChange, required,
         autoComplete="off"
         value={texto}
         placeholder={placeholder}
+        aria-label={ariaLabel}
         required={required}
         onFocus={(e) => {
           setEnFoco(true);

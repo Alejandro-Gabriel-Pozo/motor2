@@ -111,11 +111,11 @@ export function ProductoForm({
         </div>
       )}
 
-      {!editando && <input name="codigo" placeholder="Código (opcional, se autogenera)" className="rounded border px-3 py-2" />}
-      <input name="nombre" placeholder="Nombre" defaultValue={productoExistente?.nombre} required className="rounded border px-3 py-2" />
+      {!editando && <input name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" className="rounded border px-3 py-2" />}
+      <input name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required className="rounded border px-3 py-2" />
 
       <div className="flex items-center gap-2">
-        <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="flex-1 rounded border px-3 py-2">
+        <select aria-label="Categoría" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="flex-1 rounded border px-3 py-2">
           <option value="">Sin categoría</option>
           {categorias.map((c) => (
             <option key={c.id} value={c.id}>
@@ -138,7 +138,7 @@ export function ProductoForm({
       {tipo === "MP" && (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <select value={insumoId} onChange={(e) => setInsumoId(e.target.value)} className="flex-1 rounded border px-3 py-2">
+            <select aria-label="Insumo" value={insumoId} onChange={(e) => setInsumoId(e.target.value)} className="flex-1 rounded border px-3 py-2">
               <option value="">Sin insumo</option>
               {insumos.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -173,7 +173,7 @@ export function ProductoForm({
 
       <div className="flex flex-col gap-1">
         <div className="flex gap-2">
-          <select value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required className="flex-1 rounded border px-3 py-2">
+          <select aria-label="Unidad de stock" value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required className="flex-1 rounded border px-3 py-2">
             <option value="">Unidad de stock</option>
             {unidades.map((u) => (
               <option key={u.id} value={u.id}>
@@ -182,7 +182,7 @@ export function ProductoForm({
             ))}
           </select>
           {tipo === "MP" && (
-            <select name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""} className="flex-1 rounded border px-3 py-2">
+            <select aria-label="Unidad de compra" name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""} className="flex-1 rounded border px-3 py-2">
               <option value="">Unidad de compra (default)</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -203,6 +203,7 @@ export function ProductoForm({
         <CampoNumero
           name="factorConversion"
           placeholder="Factor de conversión (unidades de stock por unidad de compra)"
+          ariaLabel="Factor de conversión (unidades de stock por unidad de compra)"
           defaultValue={String(productoExistente?.factorConversion ?? 1)}
           required
         />
@@ -213,7 +214,7 @@ export function ProductoForm({
       </div>
 
       {tipo === "PV" && (
-        <CampoNumero name="precioVenta" prefijo="$" placeholder="Precio de venta" defaultValue={String(productoExistente?.precioVenta ?? 0)} />
+        <CampoNumero name="precioVenta" prefijo="$" placeholder="Precio de venta" ariaLabel="Precio de venta" defaultValue={String(productoExistente?.precioVenta ?? 0)} />
       )}
 
       {editando && tipo === "MP" && (
@@ -240,6 +241,7 @@ export function ProductoForm({
         <>
           <div className="flex items-center gap-2">
             <select
+              aria-label="Proveedor de consignación"
               value={proveedorConsignacionId}
               onChange={(e) => setProveedorConsignacionId(e.target.value)}
               className="flex-1 rounded border px-3 py-2"
@@ -267,6 +269,7 @@ export function ProductoForm({
               name="precioConsignacion"
               prefijo="$"
               placeholder="Precio de consignación"
+              ariaLabel="Precio de consignación"
               defaultValue={String(productoExistente?.precioConsignacion ?? 0)}
             />
             <AyudaCampo>Lo que le pagás al proveedor por cada unidad vendida — no tiene por qué ser igual al precio al que vos la vendés.</AyudaCampo>
@@ -274,7 +277,7 @@ export function ProductoForm({
         </>
       )}
 
-      <textarea name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} className="rounded border px-3 py-2" />
+      <textarea name="observaciones" placeholder="Observaciones" aria-label="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} className="rounded border px-3 py-2" />
 
       {mensaje && <p className={mensaje.startsWith("Producto") ? "text-sm text-green-700" : "text-sm text-red-600"}>{mensaje}</p>}
 

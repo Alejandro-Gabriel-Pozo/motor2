@@ -48,6 +48,8 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
       <Link href={`/catalogo/productos/${p.id}`} className="mb-3 inline-block text-sm underline">
         ← Volver a la ficha
       </Link>
+      {/* La pantalla de alta ya tiene su h1; esta no lo tenía (solo el h2 del formulario) y axe marca «la página debe tener un encabezado de nivel 1». */}
+      <h1 className="mb-4 text-xl font-semibold">Editar producto</h1>
       <ProductoForm
         key={p.id}
         unidades={unidades}

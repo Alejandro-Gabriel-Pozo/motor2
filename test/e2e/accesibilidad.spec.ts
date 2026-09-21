@@ -244,3 +244,36 @@ testAutenticado("catalogo/productos: la lista, con la confirmación de «Desacti
     await prisma.insumo.deleteMany({ where: { id: insumo.id } });
   }
 });
+
+testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima, producto de venta y consignación) sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  await page.goto("/catalogo/productos/nuevo");
+  await conTitulo(page, "Nuevo producto");
+  await expect(page.locator('input[name="nombre"]')).toBeVisible(); // se renderizó el formulario y no un mensaje de permiso
+
+  // Materia prima (lo que abre por defecto): categoría, insumo, unidad de stock, unidad de compra, factor y «se produce».
+  expect((await new AxeBuilder({ page }).analyze()).violations, "alta de materia prima").toEqual([]);
+
+  // Es consignación: suma el proveedor y el precio de consignación.
+  await page.getByLabel("Es consignación").check();
+  await expect(page.getByRole("combobox", { name: "Proveedor de consignación" })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations, "alta en consignación").toEqual([]);
+
+  // Producto de venta: sin insumo ni unidad de compra, con precio de venta.
+  await page.getByLabel("Producto de venta (PV)").check();
+  await expect(page.getByLabel("Precio de venta")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations, "alta de producto de venta").toEqual([]);
+});
+
+testAutenticado("catalogo/productos/[id]/editar: el formulario de edición sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-${marca}`, nombre: `E2E A11y Editar ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/editar`);
+    await conTitulo(page, /Editar/);
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "edición de materia prima").toEqual([]);
+  } finally {
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
