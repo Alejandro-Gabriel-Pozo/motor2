@@ -31,7 +31,7 @@ const UNIDADES_BASE: Array<{ nombre: string; magnitud: "PESO" | "VOLUMEN" | "CAN
  * spec de Playwright contra una página protegida solo ve el redirect a
  * /login.
  */
-async function asegurarBaseSeed() {
+export async function asegurarBaseSeed() {
   const [admin, operador] = await Promise.all([
     prisma.rol.upsert({ where: { nombre: "admin" }, update: {}, create: { nombre: "admin" } }),
     prisma.rol.upsert({ where: { nombre: "operador" }, update: {}, create: { nombre: "operador" } }),
