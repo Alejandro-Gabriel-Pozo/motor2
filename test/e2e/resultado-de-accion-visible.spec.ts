@@ -125,3 +125,25 @@ test("capacidades: si no se pudo cambiar un ✅/⛔ se avisa, y el botón sigue 
     await prisma.permisoRol.updateMany({ where, data: { puedeVer: true, puedeEditar: true } });
   }
 });
+
+test("unidades: un campo de decimales vacío no se guarda como 0", async ({ paginaAutenticada: page }) => {
+  // Antes: `Number("")` es 0, así que dejar el campo vacío y tocar «Guardar» pasaba la unidad a 0 decimales sin avisar.
+  const nombre = `e2ed${Date.now()}`;
+  const unidad = await prisma.unidad.create({ data: { nombre, magnitud: "PESO", decimales: 3 } });
+
+  try {
+    await page.goto("/catalogo/unidades");
+    const entrada = page.locator("tr", { hasText: nombre }).getByLabel(`Decimales de ${nombre}`);
+    await expect(entrada).toHaveValue("3");
+
+    await entrada.fill("");
+    await page.locator("tr", { hasText: nombre }).getByRole("button", { name: "Guardar", exact: true }).click();
+
+    // El navegador frena el envío (campo obligatorio) y no se toca la base.
+    expect(await entrada.evaluate((e: HTMLInputElement) => e.validity.valueMissing), "el campo tiene que ser obligatorio").toBe(true);
+    await page.waitForTimeout(500); // margen para que un envío que no debió salir llegue a la base
+    expect((await prisma.unidad.findUniqueOrThrow({ where: { id: unidad.id } })).decimales, "los decimales no tenían que cambiar").toBe(3);
+  } finally {
+    await prisma.unidad.deleteMany({ where: { id: unidad.id } });
+  }
+});

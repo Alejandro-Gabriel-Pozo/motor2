@@ -41,12 +41,14 @@ export default async function UnidadesPage() {
                 <FormConResultado
                   accion={async (formData: FormData) => {
                     "use server";
-                    return actualizarDecimalesUnidad(u.id, Number(formData.get("decimales")));
+                    // Vacío → NaN (la acción lo rechaza); con `Number("")` llegaría como 0 y se guardaría sin avisar.
+                    const bruto = String(formData.get("decimales") ?? "").trim();
+                    return actualizarDecimalesUnidad(u.id, bruto === "" ? NaN : Number(bruto));
                   }}
                   className="space-y-1"
                 >
                   <div className="flex items-center gap-1">
-                    <input name="decimales" type="number" aria-label={`Decimales de ${u.nombre}`} min={0} max={6} defaultValue={u.decimales} className="w-16 rounded border px-2 py-1" />
+                    <input name="decimales" type="number" required aria-label={`Decimales de ${u.nombre}`} min={0} max={6} defaultValue={u.decimales} className="w-16 rounded border px-2 py-1" />
                     <button type="submit" className="text-sm underline">
                       Guardar
                     </button>
