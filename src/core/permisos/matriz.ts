@@ -37,6 +37,21 @@ export interface CambioPermiso {
   nuevo: EstadoPermiso;
 }
 
+/**
+ * Cómo empieza el aviso cuando OTRA persona cambió lo que se estaba editando (conflicto de negocio: en la base no está lo que se vio, hay
+ * que RECARGAR la matriz). La pantalla lo usa para ofrecer «Recargar la matriz», así que el servidor y ella comparten esta constante en vez
+ * de repetir un literal que un cambio de redacción podría romper sin que nadie se entere.
+ */
+export const PREFIJO_CONFLICTO_DE_EDICION = "Otra persona cambió estos permisos";
+
+/**
+ * Aviso cuando el guardado chocó con OTRO guardado en curso y agotó los reintentos: no es un conflicto de contenido, en la base NO cambió
+ * nada, así que recargar sería el consejo equivocado (descartaría el borrador para nada). La acción correcta es reintentar. Por eso NO
+ * empieza con `PREFIJO_CONFLICTO_DE_EDICION`: la pantalla distingue los dos estados y ofrece un botón distinto para cada uno.
+ */
+export const MENSAJE_GUARDADO_EN_CONFLICTO =
+  "No se pudo guardar: había otro guardado de permisos en curso en este momento. No se guardó nada y tus cambios siguen marcados — esperá unos segundos y tocá «Reintentar».";
+
 /** «Ver ✅ Editar ⬜» → texto corto para el resumen de cambios. */
 export function textoEstado(e: EstadoPermiso): string {
   if (e.puedeEditar) return "Ver y editar";

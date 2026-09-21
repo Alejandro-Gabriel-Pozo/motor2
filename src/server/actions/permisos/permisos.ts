@@ -2,8 +2,9 @@
 
 import { prisma } from "@/lib/db";
 import type { AccionClave } from "@/core/permisos/acciones";
-import { mismoEstado, normalizarPermiso, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
+import { MENSAJE_GUARDADO_EN_CONFLICTO, mismoEstado, normalizarPermiso, PREFIJO_CONFLICTO_DE_EDICION, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/con-reintento";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
@@ -41,6 +42,13 @@ const estadoValido = (e: EstadoPermiso | undefined): e is EstadoPermiso => !!e &
  * - Concurrencia: cada cambio trae lo que la persona VIO (`anterior`). Si en la base ya es otra cosa, alguien más la cambió mientras tanto:
  *   se rechaza el guardado ENTERO y se dice cuáles. Sin esto ganaba el último que guardaba, pisando en silencio el cambio de la otra persona.
  * - Una sola transacción: las escrituras y su registro de auditoría (A3, Pivote 6) salen juntos o no salen.
+ * - Es SERIALIZABLE con reintento (`conTransaccionSerializable`), no READ COMMITTED. La comparación contra `anterior` es un chequeo optimista: en
+ *   READ COMMITTED, dos guardados sobre la misma celda podían leer los dos el estado viejo, pasar los dos la comparación y aplicar los dos — ambos
+ *   `ok: true`, el cambio de uno pisado en silencio, el aviso de conflicto sin dispararse y la auditoría del segundo con un `valorAnterior` falso.
+ *   Bajo SERIALIZABLE el segundo aborta (40001), se reintenta, RELEE el estado nuevo y ahí devuelve «Otra persona cambió…»: el serializable no
+ *   reemplaza al aviso, lo vuelve verídico. Como ese aviso se DEVUELVE (no se lanza), corta el reintento en el acto.
+ *   Efecto colateral aceptado: `PermisoRol` es una tabla chica, así que dos guardados sobre celdas distintas también pueden chocar; el reintento
+ *   lo absorbe (se edita unas pocas veces por semana, el costo es irrelevante).
  */
 export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<ResultadoAccion> {
   return conPermiso("gestion_permisos", async (ctx) => {
@@ -77,7 +85,13 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
     }
     if (!efectivos.length) return error("No hay cambios para guardar.");
 
-    return prisma.$transaction(async (tx): Promise<ResultadoAccion> => {
+    // Las lecturas de arriba (roles y acciones activos) quedan FUERA de la transacción a propósito: son validación de entrada, no un invariante
+    // que haya que sostener atómicamente. Adentro tomarían un bloqueo de predicado sobre `Rol` (activo: true) y activar o desactivar cualquier
+    // rol desde otra pantalla chocaría con un guardado de la matriz. Costo: en una carrera exótica se podrían guardar permisos de un rol recién
+    // desactivado, inocuo (un rol desactivado no otorga acceso). Reintentar este cuerpo es seguro: `efectivos` sale del input y del nombre del
+    // rol, no del estado de `PermisoRol`, y lo de adentro son lecturas y upserts idempotentes. El limitador de mutaciones se evalúa en
+    // `conPermiso`, por fuera: un guardado que reintenta cuenta como uno.
+    return conTransaccionSerializable(async (tx): Promise<ResultadoAccion> => {
       const actuales = await tx.permisoRol.findMany({
         where: { OR: efectivos.map((e) => ({ rolId: e.rolId, accionClave: e.accionClave })) },
       });
@@ -90,7 +104,7 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
       if (conflictos.length) {
         const lista = conflictos.slice(0, 5).map((e) => `«${e.rolNombre}» · ${e.accionClave}`).join(", ");
         return error(
-          `Otra persona cambió estos permisos mientras editabas (${lista}${conflictos.length > 5 ? ` y ${conflictos.length - 5} más` : ""}). No se guardó nada: recargá la matriz y volvé a aplicar tus cambios.`
+          `${PREFIJO_CONFLICTO_DE_EDICION} mientras editabas (${lista}${conflictos.length > 5 ? ` y ${conflictos.length - 5} más` : ""}). No se guardó nada: recargá la matriz y volvé a aplicar tus cambios.`
         );
       }
 
@@ -113,6 +127,12 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
         });
       }
       return ok(`${efectivos.length} permiso(s) guardado(s).`);
+    }).catch((e) => {
+      // La transacción ya hizo rollback cuando llega acá: no se guardó NADA. Agotar los reintentos de SERIALIZABLE no es un error de la persona ni
+      // un 500: es «justo ahora había otro guardado en curso». Se devuelve como mensaje de negocio para que NO pierda el borrador — un `throw` acá lo
+      // manda al error boundary y se le borran todos los cambios marcados. Cualquier otro error sigue de largo.
+      if (esConflictoDeEscritura(e)) return error(MENSAJE_GUARDADO_EN_CONFLICTO);
+      throw e;
     });
   });
 }

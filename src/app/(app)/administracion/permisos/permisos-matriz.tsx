@@ -3,7 +3,17 @@
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { guardarPermisos } from "@/server/actions/permisos/permisos";
-import { esCeldaFija, mismoEstado, normalizarPermiso, SIN_PERMISO, textoEstado, type CambioPermiso, type EstadoPermiso } from "@/core/permisos/matriz";
+import {
+  esCeldaFija,
+  MENSAJE_GUARDADO_EN_CONFLICTO,
+  mismoEstado,
+  normalizarPermiso,
+  PREFIJO_CONFLICTO_DE_EDICION,
+  SIN_PERMISO,
+  textoEstado,
+  type CambioPermiso,
+  type EstadoPermiso,
+} from "@/core/permisos/matriz";
 
 interface Accion {
   clave: string;
@@ -34,7 +44,9 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
   const [pending, startTransition] = useTransition();
   const [editando, setEditando] = useState(false);
   const [revisando, setRevisando] = useState(false);
-  const [mensaje, setMensaje] = useState<{ texto: string; ok: boolean; conflicto?: boolean } | null>(null);
+  // `conflicto`: otra persona cambió lo que se editaba → hay que RECARGAR. `reintentable`: el guardado chocó con otro en curso y no se guardó nada,
+  // los cambios siguen marcados → hay que REINTENTAR. Son estados distintos con la acción correctiva opuesta, por eso no se mezclan.
+  const [mensaje, setMensaje] = useState<{ texto: string; ok: boolean; conflicto?: boolean; reintentable?: boolean } | null>(null);
   // Lo que se vio al abrir la edición (contra esto compara el servidor) y lo que se está armando.
   const [base, setBase] = useState<Map<string, EstadoPermiso>>(new Map());
   const [borrador, setBorrador] = useState<Map<string, EstadoPermiso>>(new Map());
@@ -97,7 +109,12 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
         salirDeLaEdicion();
         router.refresh();
       } else {
-        setMensaje({ texto: resultado.mensaje, ok: false, conflicto: resultado.mensaje.startsWith("Otra persona") });
+        setMensaje({
+          texto: resultado.mensaje,
+          ok: false,
+          conflicto: resultado.mensaje.startsWith(PREFIJO_CONFLICTO_DE_EDICION),
+          reintentable: resultado.mensaje === MENSAJE_GUARDADO_EN_CONFLICTO,
+        });
         setRevisando(false);
       }
     });
@@ -161,6 +178,11 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
           {mensaje.conflicto && (
             <button type="button" onClick={recargar} className="mt-1 underline">
               Recargar la matriz
+            </button>
+          )}
+          {mensaje.reintentable && (
+            <button type="button" disabled={pending} onClick={guardar} className="mt-1 underline disabled:opacity-50">
+              Reintentar
             </button>
           )}
         </div>
