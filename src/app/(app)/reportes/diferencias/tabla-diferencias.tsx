@@ -41,7 +41,7 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
     clave: "estado",
     etiqueta: "Estado",
     valor: (f) => LABEL_ESTADO[f.estado],
-    render: (f) => <span className={f.estado === "REVISAR" ? "font-medium text-red-600" : f.estado === "ESPERADO" ? "text-amber-600" : ""}>{LABEL_ESTADO[f.estado]}</span>,
+    render: (f) => <span className={f.estado === "REVISAR" ? "font-medium text-red-600" : f.estado === "ESPERADO" ? "text-amber-700 dark:text-amber-600" : ""}>{LABEL_ESTADO[f.estado]}</span>,
   },
   {
     clave: "recetas",
@@ -57,7 +57,7 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
             </EnlaceInterno>
           ))}
           {f.sugerenciaMerma && (
-            <span className={f.sugerenciaMerma === "aumentar" ? "text-xs font-medium text-red-600" : "text-xs font-medium text-amber-600"}>
+            <span className={f.sugerenciaMerma === "aumentar" ? "text-xs font-medium text-red-600" : "text-xs font-medium text-amber-700 dark:text-amber-600"}>
               Sugerencia: {f.sugerenciaMerma === "aumentar" ? "subir" : "bajar"} la merma %
             </span>
           )}

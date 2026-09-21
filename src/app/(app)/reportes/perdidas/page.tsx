@@ -31,7 +31,7 @@ export default async function PerdidasPage({ searchParams }: { searchParams: Pro
           Desde {rep.desde.toISOString().slice(0, 10)} — merma total: ${rep.totalMerma.toLocaleString("es-AR")}, consumo interno total: $
           {rep.totalConsumo.toLocaleString("es-AR")}.
         </p>
-        {rep.hayCostoIncompleto && <p className="text-xs text-amber-600">Algún producto no tiene costo de reposición conocido: no se suma al valor total.</p>}
+        {rep.hayCostoIncompleto && <p className="text-xs text-amber-700 dark:text-amber-600">Algún producto no tiene costo de reposición conocido: no se suma al valor total.</p>}
       </div>
 
       <div>

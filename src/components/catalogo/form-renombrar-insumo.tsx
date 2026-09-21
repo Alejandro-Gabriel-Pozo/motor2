@@ -53,7 +53,7 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
   if (fusionaCon) {
     return (
       <div className="flex flex-col gap-1 text-sm">
-        <p className="text-amber-600">
+        <p className="text-amber-700 dark:text-amber-600">
           Ya existe &quot;{fusionaCon}&quot; — esto va a fusionar &quot;{nombreActual}&quot; ahí adentro (sus productos pasan a &quot;{fusionaCon}
           &quot; y &quot;{nombreActual}&quot; se borra). ¿Confirmás?
         </p>

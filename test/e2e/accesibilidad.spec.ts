@@ -16,19 +16,25 @@ base("login: sin violaciones de accesibilidad detectables por axe", async ({ pag
   expect(resultados.violations).toEqual([]);
 });
 
-testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables por axe", async ({ paginaAutenticada: page }) => {
-  await page.goto("/reportes/costos");
-  await expect(page.getByRole("heading", { name: "Costos y márgenes" })).toBeVisible();
-  const resultados = await new AxeBuilder({ page })
-    // "color-contrast" queda afuera a propósito: axe encontró que `text-amber-600` (~20 usos en
-    // src/app/(app)/reportes/, marca "incompleto"/"sin precio"/"revisar" en varias pantallas) no
-    // llega al mínimo AA sobre fondo blanco — hallazgo real, pero de un alcance totalmente distinto
-    // al de este spec puntual. Ver docs/pendientes-responsable-2026-09-20.md ("contraste de
-    // text-amber-600"). Esta pantalla en particular solo lo dispara cuando otro spec de la misma corrida
-    // dejó un producto sin precio — no es un problema de esta pantalla ni de este spec.
-    .disableRules(["color-contrast"])
-    .analyze();
-  expect(resultados.violations).toEqual([]);
+testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables por axe, contraste incluido", async ({ paginaAutenticada: page }) => {
+  // Un producto de venta con receta cuyo insumo NO tiene ninguna compra: su costo queda incompleto y la tabla lo marca en ámbar (text-amber-700 / dark:
+  // text-amber-600). Sin este dato la pantalla no dibuja ningún texto ámbar y el chequeo de contraste no auditaría nada.
+  const marca = Date.now();
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CMP-${marca}`, nombre: `E2E Insumo Sin Compra ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
+  const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CPV-${marca}`, nombre: `E2E Plato Costo Incompleto ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
+  await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidad.id }] } } });
+  try {
+    await page.goto("/reportes/costos");
+    await expect(page.getByRole("heading", { name: "Costos y márgenes" })).toBeVisible();
+    await expect(page.locator("tr", { hasText: pv.nombre }).locator("[class*=\"text-amber-\"]").first(), "el caso sembrado tiene que dibujar texto ámbar").toBeVisible();
+    // Scan completo, SIN desactivar reglas: antes `color-contrast` iba afuera porque text-amber-600 no llegaba al mínimo AA.
+    const resultados = await new AxeBuilder({ page }).analyze();
+    expect(resultados.violations).toEqual([]);
+  } finally {
+    await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+    await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+  }
 });
 
 testAutenticado(

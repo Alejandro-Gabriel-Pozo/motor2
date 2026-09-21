@@ -14,7 +14,7 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
     valor: (v) => v.producto,
     render: (v) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${v.productoId}`} className="underline">
-        {v.producto} {v.ingresoEstimado && <span className="text-amber-600">(estimado)</span>}
+        {v.producto} {v.ingresoEstimado && <span className="text-amber-700 dark:text-amber-600">(estimado)</span>}
       </EnlaceInterno>
     ),
   },
@@ -29,12 +29,12 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
       if (v.margen !== null) return `$${v.margen.toLocaleString("es-AR")} (${v.margenPct}%)`;
       if (v.accionFaltante) {
         return (
-          <EnlaceInterno href={v.accionFaltante.href} className="text-amber-600 underline">
+          <EnlaceInterno href={v.accionFaltante.href} className="text-amber-700 dark:text-amber-600 underline">
             {v.accionFaltante.etiqueta}
           </EnlaceInterno>
         );
       }
-      return <span className="text-amber-600">costo incompleto</span>;
+      return <span className="text-amber-700 dark:text-amber-600">costo incompleto</span>;
     },
   },
 ];
@@ -148,7 +148,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
       <span className="flex items-center gap-1">
         {f.insumo}
         {f.sospechoso && (
-          <span title="Variación poco creíble para una suba real de precio — probable error de carga (unidad/presentación mal tipeada). Revisá esta compra antes de asumir que es un aumento real." className="text-amber-600">
+          <span title="Variación poco creíble para una suba real de precio — probable error de carga (unidad/presentación mal tipeada). Revisá esta compra antes de asumir que es un aumento real." className="text-amber-700 dark:text-amber-600">
             ⚠
           </span>
         )}

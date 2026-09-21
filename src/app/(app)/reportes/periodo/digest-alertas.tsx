@@ -14,7 +14,7 @@ export function DigestAlertas({ alertas }: { alertas: FilaAlertaDigest[] }) {
     <ul className="flex flex-col gap-1.5 rounded border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950">
       {alertas.map((a, i) => (
         <li key={i} className="flex items-start gap-2">
-          <span className={a.severidad === "alta" ? "text-red-600" : "text-amber-600"}>{a.severidad === "alta" ? "●" : "○"}</span>
+          <span className={a.severidad === "alta" ? "text-red-600" : "text-amber-700 dark:text-amber-600"}>{a.severidad === "alta" ? "●" : "○"}</span>
           <span className="text-neutral-700 dark:text-neutral-300">{a.texto}</span>
         </li>
       ))}

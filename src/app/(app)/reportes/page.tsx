@@ -33,7 +33,7 @@ export default async function ReportesResumenPage() {
           </p>
           <p className="text-lg font-semibold">${r.financiero.ventasTotal.toLocaleString("es-AR")}</p>
           <EnDolares pesos={r.financiero.ventasTotal} cotizacion={cotizacion} />
-          {r.financiero.hayEstimados && <p className="text-xs text-amber-600">incluye estimados</p>}
+          {r.financiero.hayEstimados && <p className="text-xs text-amber-700 dark:text-amber-600">incluye estimados</p>}
         </div>
         <div className="rounded border p-4">
           <p className="flex items-center text-xs text-neutral-500">
@@ -44,7 +44,7 @@ export default async function ReportesResumenPage() {
             ${r.financiero.margenTotal.toLocaleString("es-AR")} {r.financiero.margenPct !== null && `(${r.financiero.margenPct}%)`}
           </p>
           {r.financiero.hayCostoIncompleto && (
-            <p className="text-xs text-amber-600">
+            <p className="text-xs text-amber-700 dark:text-amber-600">
               Costo incompleto en algún producto —{" "}
               <Link href="/reportes/costos" className="underline">
                 ver Costos y márgenes

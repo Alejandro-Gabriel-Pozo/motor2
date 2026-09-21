@@ -30,7 +30,7 @@ export function BotonEliminarStockMinimo({ id, etiqueta }: { id: string; etiquet
   if (confirmando) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-amber-600">¿Eliminar el mínimo de {etiqueta}? Deja de alertar sobre este producto/sección.</p>
+        <p className="text-xs text-amber-700 dark:text-amber-600">¿Eliminar el mínimo de {etiqueta}? Deja de alertar sobre este producto/sección.</p>
         <div className="flex gap-2">
           <button type="button" disabled={pending} onClick={eliminar} className="text-sm text-red-600 underline">
             {pending ? "Eliminando…" : "Sí, eliminar"}

@@ -39,7 +39,7 @@ export default async function AlertasStockPage() {
               <td>{a.saldoActual}</td>
               <td>{a.stockMinimo}</td>
               <td>{a.diferencia}</td>
-              <td className={a.estado === "CRITICO" ? "text-red-600 font-medium" : "text-amber-600"}>{a.estado}</td>
+              <td className={a.estado === "CRITICO" ? "text-red-600 font-medium" : "text-amber-700 dark:text-amber-600"}>{a.estado}</td>
               <td className="text-neutral-500">{a.ultimaFecha ? a.ultimaFecha.toISOString().slice(0, 10) : "—"}</td>
             </tr>
           ))}

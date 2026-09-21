@@ -46,7 +46,7 @@ export function AccionesConteoPendiente({ conteoId }: { conteoId: string }) {
   if (confirmandoAjuste) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-amber-600">Esto va a escribir un ajuste de stock contra el saldo de HOY. ¿Confirmás?</p>
+        <p className="text-xs text-amber-700 dark:text-amber-600">Esto va a escribir un ajuste de stock contra el saldo de HOY. ¿Confirmás?</p>
         <div className="flex gap-2">
           <button type="button" disabled={pending} onClick={ajustar} className="text-sm text-red-600 underline">
             {pending ? "Ajustando…" : "Sí, ajustar"}
@@ -95,7 +95,7 @@ export function BotonCancelarConteo({ conteoId }: { conteoId: string }) {
   if (confirmando) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-amber-600">Esto va a revertir el ajuste de stock que hizo este conteo. ¿Confirmás?</p>
+        <p className="text-xs text-amber-700 dark:text-amber-600">Esto va a revertir el ajuste de stock que hizo este conteo. ¿Confirmás?</p>
         <div className="flex gap-2">
           <button type="button" disabled={pending} onClick={cancelar} className="text-sm text-red-600 underline">
             {pending ? "Cancelando…" : "Sí, cancelar"}

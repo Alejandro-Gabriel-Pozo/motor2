@@ -31,7 +31,7 @@ export default async function ValuacionPage() {
         <div className="text-2xl font-semibold">${rep.totalValorizado.toLocaleString("es-AR")}</div>
         <EnDolares pesos={rep.totalValorizado} cotizacion={cotizacion} className="text-sm text-neutral-500" />
         {rep.cantidadSinCosto > 0 && (
-          <div className="mt-1 text-xs text-amber-600">
+          <div className="mt-1 text-xs text-amber-700 dark:text-amber-600">
             {rep.cantidadSinCosto} producto{rep.cantidadSinCosto === 1 ? "" : "s"} con stock pero sin ninguna compra registrada — no incluido
             {rep.cantidadSinCosto === 1 ? "" : "s"} en el total (ver abajo).
           </div>

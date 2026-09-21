@@ -35,7 +35,7 @@ export default async function StockPorFamiliaPage() {
               <td>{f.seccionNombre}</td>
               <td>
                 {f.unidadesMezcladas ? (
-                  <span className="text-amber-600" title="Unidades de stock distintas entre los productos de este Insumo — total no confiable">
+                  <span className="text-amber-700 dark:text-amber-600" title="Unidades de stock distintas entre los productos de este Insumo — total no confiable">
                     Unidades mezcladas
                   </span>
                 ) : (

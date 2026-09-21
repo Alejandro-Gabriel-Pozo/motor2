@@ -90,7 +90,7 @@ export function AsistenteHermanar({
               </p>
               <p className="text-sm text-neutral-500">¿Sumamos este producto nuevo al mismo grupo? Van a compartir stock para lo que se venda por receta.</p>
               {chocaUnidad && (
-                <p className="text-sm text-amber-600">
+                <p className="text-sm text-amber-700 dark:text-amber-600">
                   Ojo: esa MP usa unidad de stock &quot;{info.unidadStockNombre}&quot;, distinta a la que elegiste acá — el sistema no va a dejar guardar
                   así, revisá la unidad antes de confirmar.
                 </p>
@@ -123,7 +123,7 @@ export function AsistenteHermanar({
                 todavía no tiene un grupo (Insumo). Le creamos uno y agrupamos ahí a las dos.
               </p>
               {chocaUnidad && (
-                <p className="text-sm text-amber-600">
+                <p className="text-sm text-amber-700 dark:text-amber-600">
                   Ojo: esa MP usa unidad de stock &quot;{info.unidadStockNombre}&quot;, distinta a la que elegiste acá — el sistema no va a dejar guardar
                   así, revisá la unidad antes de confirmar.
                 </p>

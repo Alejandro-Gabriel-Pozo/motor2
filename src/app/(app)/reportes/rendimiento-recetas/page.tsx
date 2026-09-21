@@ -33,7 +33,7 @@ const ETIQUETA_CONFIANZA: Record<FilaRendimientoSimple["confianza"], string> = {
 
 function celdaDesvio(desviacionPorcentaje: number | null) {
   return (
-    <td className={`px-2 py-2 ${desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-600" : ""}`}>
+    <td className={`px-2 py-2 ${desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-700 dark:text-amber-600" : ""}`}>
       {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
     </td>
   );
@@ -185,7 +185,7 @@ export default async function RendimientoRecetasPage({
                   <strong>{filas[0].insumoONombre}</strong> — {filas[0].cantidadPlatosEnPool} platos, {filas[0].semanasConDatos} semanas con datos
                   {filas[0].resoluble && filas[0].r2 !== null && ` — ajuste R² ${filas[0].r2.toFixed(2)}`}
                 </p>
-                {!filas[0].resoluble && <p className="mb-2 text-sm text-amber-600">No se pudo estimar: {filas[0].motivoNoResoluble}</p>}
+                {!filas[0].resoluble && <p className="mb-2 text-sm text-amber-700 dark:text-amber-600">No se pudo estimar: {filas[0].motivoNoResoluble}</p>}
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-neutral-500">

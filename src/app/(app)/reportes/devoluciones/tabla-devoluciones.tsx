@@ -14,7 +14,7 @@ const COLUMNAS: ColumnaReporte<FilaDevolucionProducto>[] = [
     valor: (p) => p.valor,
     render: (p) =>
       p.accionFaltante ? (
-        <EnlaceInterno href={p.accionFaltante.href} className="text-amber-600 underline">
+        <EnlaceInterno href={p.accionFaltante.href} className="text-amber-700 dark:text-amber-600 underline">
           {p.accionFaltante.etiqueta}
         </EnlaceInterno>
       ) : (

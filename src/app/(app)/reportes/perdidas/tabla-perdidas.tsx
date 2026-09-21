@@ -25,7 +25,7 @@ function columnas(etiquetaMotivo: Map<string, string>): ColumnaReporte<FilaPerdi
       etiqueta: "Valor",
       alinear: "derecha",
       valor: (f) => f.valor,
-      render: (f) => (f.sinPrecio ? <span className="text-amber-600">costo incompleto</span> : `$${f.valor.toLocaleString("es-AR")}`),
+      render: (f) => (f.sinPrecio ? <span className="text-amber-700 dark:text-amber-600">costo incompleto</span> : `$${f.valor.toLocaleString("es-AR")}`),
     },
     {
       clave: "trazabilidad",

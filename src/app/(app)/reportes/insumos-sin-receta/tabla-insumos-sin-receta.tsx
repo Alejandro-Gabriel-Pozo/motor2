@@ -20,7 +20,7 @@ const COLUMNAS: ColumnaReporte<FilaInsumoSinReceta>[] = [
     clave: "proveedor",
     etiqueta: "Tiene proveedor",
     valor: (f) => (f.tieneProveedor ? "Sí" : "No"),
-    render: (f) => (f.tieneProveedor ? "Sí" : <span className="text-amber-600">No</span>),
+    render: (f) => (f.tieneProveedor ? "Sí" : <span className="text-amber-700 dark:text-amber-600">No</span>),
   },
 ];
 

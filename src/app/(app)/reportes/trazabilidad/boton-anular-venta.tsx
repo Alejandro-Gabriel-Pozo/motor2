@@ -31,7 +31,7 @@ export function BotonAnularVenta({ idOperacion }: { idOperacion: string }) {
   if (confirmando) {
     return (
       <div className="mb-2 flex flex-col gap-1">
-        <p className="text-xs text-amber-600">¿Anular esta venta? Revierte el stock consumido — no se puede deshacer.</p>
+        <p className="text-xs text-amber-700 dark:text-amber-600">¿Anular esta venta? Revierte el stock consumido — no se puede deshacer.</p>
         <div className="flex gap-2">
           <button type="button" disabled={pending} onClick={anular} className="text-sm text-red-600 underline">
             {pending ? "Anulando…" : "Sí, anular"}

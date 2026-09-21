@@ -104,7 +104,7 @@ export default async function ComprasRegistradasPage({
                   {c.proveedorNombre ? (
                     <span className="font-medium">{c.proveedorNombre}</span>
                   ) : (
-                    <span className="font-medium text-amber-600" title="Esta compra se cargó sin proveedor">
+                    <span className="font-medium text-amber-700 dark:text-amber-600" title="Esta compra se cargó sin proveedor">
                       Sin proveedor
                     </span>
                   )}
@@ -113,7 +113,7 @@ export default async function ComprasRegistradasPage({
                   <span className="ml-auto font-semibold tabular-nums">
                     {plata(c.total)}
                     {c.hayLineasSinPrecio && (
-                      <span className="ml-1 text-xs font-normal text-amber-600" title="Alguna línea se cargó sin precio: el total no es el de la factura">
+                      <span className="ml-1 text-xs font-normal text-amber-700 dark:text-amber-600" title="Alguna línea se cargó sin precio: el total no es el de la factura">
                         · hay líneas sin precio
                       </span>
                     )}
@@ -141,7 +141,7 @@ export default async function ComprasRegistradasPage({
                             {l.cantidad.toLocaleString("es-AR")} {l.unidad}
                           </td>
                           <td className="px-2 py-1">{l.loteVencimiento ? fechaCorta(l.loteVencimiento) : "—"}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{l.precioTotal > 0 ? plata(l.precioTotal) : <span className="text-amber-600">sin precio</span>}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{l.precioTotal > 0 ? plata(l.precioTotal) : <span className="text-amber-700 dark:text-amber-600">sin precio</span>}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{l.precioPorUnidadStock > 0 ? plata(l.precioPorUnidadStock) : "—"}</td>
                           <td className="px-2 py-1">{l.seccionNombre}</td>
                         </tr>

@@ -8,7 +8,7 @@ import { AccionesConteoPendiente, BotonCancelarConteo } from "./acciones-histori
 
 const ESTADO_COLOR: Record<string, string> = {
   RESUELTO: "text-green-700",
-  PENDIENTE: "text-amber-600",
+  PENDIENTE: "text-amber-700 dark:text-amber-600",
   DESCARTADO: "text-neutral-500",
   CANCELADO: "text-neutral-500",
 };

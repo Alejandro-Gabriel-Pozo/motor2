@@ -12,7 +12,7 @@ const COLUMNAS: ColumnaReporte<FilaPromocion>[] = [
     etiqueta: "Valor a la carta",
     alinear: "derecha",
     valor: (p) => p.valorALaCartaUnitario,
-    render: (p) => (p.valorALaCartaUnitario === null ? <span className="text-amber-600">incompleto</span> : `$${p.valorALaCartaUnitario.toLocaleString("es-AR")}`),
+    render: (p) => (p.valorALaCartaUnitario === null ? <span className="text-amber-700 dark:text-amber-600">incompleto</span> : `$${p.valorALaCartaUnitario.toLocaleString("es-AR")}`),
   },
   { clave: "descuento", etiqueta: "Descuento", alinear: "derecha", valor: (p) => p.descuentoPct, render: (p) => (p.descuentoPct === null ? "—" : `${p.descuentoPct}%`) },
   {
@@ -29,7 +29,7 @@ const COLUMNAS: ColumnaReporte<FilaPromocion>[] = [
         <>
           ${p.margenReal.toLocaleString("es-AR")}
           {p.margenRealReconstruido ? " · reconstruido" : ""}
-          {!p.margenRealCompleto && <span className="text-amber-700"> · parcial</span>}
+          {!p.margenRealCompleto && <span className="text-amber-700 dark:text-amber-600"> · parcial</span>}
         </>
       ),
   },
