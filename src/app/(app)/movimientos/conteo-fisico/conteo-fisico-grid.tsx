@@ -203,7 +203,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
               <AyudaIcono texto="Ajustar: escribe el movimiento de corrección ahora, el stock queda en lo contado. Falta movimiento: deja el conteo pendiente SIN tocar stock — usalo si lo que falta es cargar una compra/venta real, para no contar dos veces. Descartar: no ajusta y no cuenta como conteo válido." />
             </th>
             <th className="px-2">Detalle</th>
-            <th />
+            <th ><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>

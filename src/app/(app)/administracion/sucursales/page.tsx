@@ -22,7 +22,7 @@ export default async function SucursalesPage() {
           <tr className="border-b text-left text-neutral-500">
             <th className="py-2">Nombre</th>
             <th>Activo</th>
-            <th />
+            <th ><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>

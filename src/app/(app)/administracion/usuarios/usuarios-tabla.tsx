@@ -66,7 +66,7 @@ export function UsuariosTabla({
             <th className="py-2">Email</th>
             <th>Rol</th>
             <th>Activo</th>
-            <th />
+            <th ><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>

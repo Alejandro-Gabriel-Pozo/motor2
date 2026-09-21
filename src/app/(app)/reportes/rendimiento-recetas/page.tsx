@@ -140,7 +140,7 @@ export default async function RendimientoRecetasPage({
                   <AyudaIcono texto={AYUDA_DESVIO} />
                 </th>
                 <th className="px-2">Confianza</th>
-                <th className="px-2" />
+                <th className="px-2"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -199,7 +199,7 @@ export default async function RendimientoRecetasPage({
                         Desvío
                         <AyudaIcono texto={AYUDA_DESVIO} />
                       </th>
-                      <th className="px-2" />
+                      <th className="px-2"><span className="sr-only">Acciones</span></th>
                     </tr>
                   </thead>
                   <tbody>

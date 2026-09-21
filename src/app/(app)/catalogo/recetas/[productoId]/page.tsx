@@ -224,7 +224,7 @@ export default async function RecetaEditorPage({
                 <th>Cantidad</th>
                 <th>Unidad</th>
                 <th>Merma %</th>
-                <th />
+                <th ><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>

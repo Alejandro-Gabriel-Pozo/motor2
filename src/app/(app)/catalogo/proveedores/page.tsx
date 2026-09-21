@@ -46,7 +46,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
             <th>Nombre</th>
             <th>Contacto</th>
             <th>Activo</th>
-            <th />
+            <th ><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>

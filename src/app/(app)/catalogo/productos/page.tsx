@@ -51,7 +51,7 @@ export default async function ProductosPage({
             <th>Nombre</th>
             <th>Tipo</th>
             <th>Activo</th>
-            <th />
+            <th ><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
