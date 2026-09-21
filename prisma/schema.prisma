@@ -207,7 +207,7 @@ model CapacidadSucursal {
 /// JOIN futuro contra una fila que podría ya no existir.
 model RegistroAuditoria {
   id            String    @id @default(cuid())
-  /// "Producto" | "PrecioLocalProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol"
+  /// "Producto" | "PrecioLocalProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol" | "Operacion"
   entidad       String
   entidadId     String
   /// Legible de entrada, ej. `Producto "Pan Francés": precio de venta`.
