@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { conReintento } from "./reintentar";
+import { conReintento, type OpcionesEspera } from "./reintentar";
 
 /**
  * Toda escritura de esta porción (registrarMovimiento/registrarVenta/
@@ -63,7 +63,9 @@ export function esConflictoDeEscritura(e: unknown): boolean {
  */
 export async function conTransaccionSerializable<T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
-  maxIntentos = 5
+  maxIntentos = 5,
+  /** Solo para tests: la espera entre reintentos y su aleatoriedad (ver reintentar.ts). */
+  opcionesEspera: OpcionesEspera = {}
 ): Promise<T> {
   return conReintento(
     () =>
@@ -78,6 +80,7 @@ export async function conTransaccionSerializable<T>(
         timeout: 15_000,
       }),
     {
+      ...opcionesEspera,
       maxIntentos,
       esReintentable: esConflictoDeEscritura,
       // console.log, no .warn: un solo reintento resuelto es el camino
