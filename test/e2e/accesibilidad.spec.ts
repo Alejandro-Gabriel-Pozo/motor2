@@ -79,6 +79,12 @@ testAutenticado(
       .withTags(["wcag2aa"])
       .analyze();
     expect(soloElNodoNuevo.violations).toEqual([]);
+
+    // El checkbox de «marcar como Promoción/Combo» (promocion-form.tsx) tenía que llevar un nombre: sin él un lector de pantalla anuncia solo «casilla».
+    const casillas = page.locator('input[type="checkbox"]');
+    await expect(casillas.first(), "el formulario de marcar como promoción tiene que dibujar al menos una casilla").toBeVisible();
+    const soloLasCasillas = await new AxeBuilder({ page }).include('input[type="checkbox"]').analyze();
+    expect(soloLasCasillas.violations, "casillas de promoción").toEqual([]);
   }
 );
 

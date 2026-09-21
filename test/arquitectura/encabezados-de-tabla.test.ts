@@ -21,6 +21,32 @@ function tsx(dir: string): string[] {
 /** `<th />`, `<th className="x" />` y `<th></th>` (con o sin espacios adentro). Los `<th>` con hijos, aunque sean un span, no matchean. */
 const ENCABEZADO_VACIO = /<th(?:\s[^<>]*?)?\s*\/>|<th(?:\s[^<>]*?)?>\s*<\/th>/g;
 
+/**
+ * `<td>`/`<th>` con `display` propio (flex, grid, block...): deja de ser celda de tabla y se desalinea de su columna. El flex va en un `<div>` adentro.
+ * Solo se mira la clase del `<td>`/`<th>` mismo, no las de sus hijos.
+ */
+const CELDA_CON_DISPLAY = /<t[dh]\s[^>]*?className="(?:[^"]*\s)?(?:flex|inline-flex|grid|inline-grid|block|inline-block)(?:\s[^"]*)?"/g;
+
+describe("tablas: ninguna celda con display propio", () => {
+  it("la expresión distingue celdas con display de las normales", () => {
+    const hay = (t: string) => (t.match(CELDA_CON_DISPLAY) ?? []).length;
+    expect(hay('<td className="flex gap-3">')).toBe(1);
+    expect(hay('<td className="px-2 block">')).toBe(1);
+    expect(hay('<th className="grid">')).toBe(1);
+    expect(hay('<td className="px-2 py-2">')).toBe(0);
+    expect(hay('<td><div className="flex gap-3"></div></td>')).toBe(0);
+    expect(hay('<td className="flexible">')).toBe(0);
+  });
+
+  it("ningún archivo de src/ tiene una celda de tabla con display propio", () => {
+    const malas = tsx(RAIZ).flatMap((ruta) => {
+      const fuente = readFileSync(ruta, "utf8").replace(/\r\n/g, "\n");
+      return [...fuente.matchAll(CELDA_CON_DISPLAY)].map((m) => `${relative(RAIZ, ruta).replaceAll("\\", "/")}:${fuente.slice(0, m.index).split("\n").length}`);
+    });
+    expect(malas, "poner el flex en un <div> dentro de la celda").toEqual([]);
+  });
+});
+
 describe("tablas: ningún <th> vacío", () => {
   it("la expresión distingue vacíos de con contenido", () => {
     const hay = (s: string) => (s.match(ENCABEZADO_VACIO) ?? []).length;

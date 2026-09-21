@@ -273,20 +273,22 @@ export default async function RecetaEditorPage({
                         <td>{Number(ing.cantidad)}</td>
                         <td>{ing.unidad.nombre}</td>
                         <td>{Number(ing.mermaPorcentaje)}</td>
-                        <td className="flex gap-3">
-                          <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline">
-                            Editar
-                          </Link>
-                          <FormConResultado
-                            accion={async () => {
-                              "use server";
-                              return quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
-                            }}
-                          >
-                            <button type="submit" className="text-sm underline">
-                              Quitar
-                            </button>
-                          </FormConResultado>
+                        <td>
+                          <div className="flex gap-3">
+                            <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline">
+                              Editar
+                            </Link>
+                            <FormConResultado
+                              accion={async () => {
+                                "use server";
+                                return quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
+                              }}
+                            >
+                              <button type="submit" className="text-sm underline">
+                                Quitar
+                              </button>
+                            </FormConResultado>
+                          </div>
                         </td>
                       </>
                     )}

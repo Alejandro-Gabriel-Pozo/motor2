@@ -36,11 +36,14 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
                 <td className="py-2">{f.producto.nombre}</td>
                 <td>{f.seccion?.nombre ?? "Global (toda la sucursal)"}</td>
                 <td>{Number(f.minimo)}</td>
-                <td className="flex gap-3">
-                  <Link href={`/stock/minimo?editar=${f.id}`} className="text-sm underline">
-                    Editar
-                  </Link>
-                  <BotonEliminarStockMinimo id={f.id} etiqueta={`"${f.producto.nombre}" en ${f.seccion?.nombre ?? "Global (toda la sucursal)"}`} />
+                <td>
+                  {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
+                  <div className="flex gap-3">
+                    <Link href={`/stock/minimo?editar=${f.id}`} className="text-sm underline">
+                      Editar
+                    </Link>
+                    <BotonEliminarStockMinimo id={f.id} etiqueta={`"${f.producto.nombre}" en ${f.seccion?.nombre ?? "Global (toda la sucursal)"}`} />
+                  </div>
                 </td>
               </tr>
             ))}

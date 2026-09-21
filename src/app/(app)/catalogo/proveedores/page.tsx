@@ -60,20 +60,22 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
               </td>
               <td>{p.contacto ?? "—"}</td>
               <td>{p.activo ? "Sí" : "No"}</td>
-              <td className="flex gap-3 py-2">
-                <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline">
-                  Editar
-                </Link>
-                <FormConResultado
-                  accion={async () => {
-                    "use server";
-                    return actualizarActivaProveedor(p.id, !p.activo);
-                  }}
-                >
-                  <button type="submit" className="text-sm underline">
-                    {p.activo ? "Desactivar" : "Activar"}
-                  </button>
-                </FormConResultado>
+              <td className="py-2">
+                <div className="flex gap-3">
+                  <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline">
+                    Editar
+                  </Link>
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return actualizarActivaProveedor(p.id, !p.activo);
+                    }}
+                  >
+                    <button type="submit" className="text-sm underline">
+                      {p.activo ? "Desactivar" : "Activar"}
+                    </button>
+                  </FormConResultado>
+                </div>
               </td>
             </tr>
           ))}

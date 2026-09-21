@@ -61,7 +61,7 @@ export function PromocionForm({ habilitado, candidatos }: { habilitado: boolean;
                     {c.codigo} — {c.nombre}
                   </td>
                   <td>
-                    <input type="checkbox" checked={c.activa} disabled={pending} onChange={(e) => toggleProducto(c.productoId, e.target.checked)} />
+                    <input type="checkbox" aria-label={`Marcar ${c.nombre} como promoción`} checked={c.activa} disabled={pending} onChange={(e) => toggleProducto(c.productoId, e.target.checked)} />
                   </td>
                 </tr>
               ))}
