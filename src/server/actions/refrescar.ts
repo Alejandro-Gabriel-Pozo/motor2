@@ -33,8 +33,9 @@ import { refresh } from "next/cache";
  * AsistenteHermanar) que no tienen spec. Ser explícito es lo que permite
  * auditarlo con un grep.
  *
- * EXCEPCIÓN CONOCIDA: `actualizarActivoSucursal` NO lo llama — su único
- * llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente.
+ * EXCEPCIÓN CONOCIDA: `actualizarActivoSucursal` y `actualizarActivoProducto`
+ * NO lo llaman — su único llamador (`ActivarDesactivarFila`) ya hace
+ * `router.refresh()` en el cliente.
  */
 export function refrescarVistaSiHaceFalta(): void {
   try {
