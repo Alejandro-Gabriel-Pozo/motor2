@@ -64,6 +64,8 @@ type ModoServidor = keyof typeof COMANDOS;
 const modoPedido = process.env.MOTOR2_E2E_SERVIDOR?.trim() || "dev";
 if (!(modoPedido in COMANDOS)) throw new Error(`MOTOR2_E2E_SERVIDOR inválido: "${modoPedido}". Valores: ${Object.keys(COMANDOS).join(" | ")}.`);
 const MODO = modoPedido as ModoServidor;
+// El modo YA RESUELTO (con el default aplicado) se exporta al entorno: es la fuente de verdad que lee test/e2e/servidor-en-modo-produccion.spec.ts.
+process.env.MOTOR2_E2E_SERVIDOR = MODO;
 // Playwright reimporta este archivo en cada worker (TEST_WORKER_INDEX definido): el modo se imprime una sola vez, desde el proceso principal.
 if (process.env.TEST_WORKER_INDEX === undefined) console.log(`[e2e] Servidor: ${MODO} (${COMANDOS[MODO]})`);
 
