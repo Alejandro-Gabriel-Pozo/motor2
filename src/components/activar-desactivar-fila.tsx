@@ -41,7 +41,11 @@ export function ActivarDesactivarFila({
   return (
     <div className="flex flex-col gap-1">
       <BotonActivarDesactivar activo={activo} ocupado={pending} aviso={aviso} onCambiar={cambiar} />
-      {resultado && <p className={`text-sm ${resultado.ok ? "text-green-700" : "text-red-600"}`}>{resultado.mensaje}</p>}
+      {resultado && (
+        <p role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700" : "text-red-600"}`}>
+          {resultado.mensaje}
+        </p>
+      )}
     </div>
   );
 }

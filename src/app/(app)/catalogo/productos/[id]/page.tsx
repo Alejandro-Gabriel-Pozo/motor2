@@ -4,7 +4,8 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { prisma } from "@/lib/db";
-import { listarPresentaciones } from "@/server/actions/catalogo/productos";
+import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
+import { actualizarActivoProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -46,6 +47,10 @@ export default async function FichaProductoPage({
   });
   if (!p) notFound();
 
+  // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
+  const productoId = p.id;
+  const activo = p.activo;
+
   const presentaciones = p.tipo === "MP" ? await listarPresentaciones(p.id) : [];
   const tieneReceta = p.tipo === "PV" || p.seProduce;
 
@@ -68,9 +73,19 @@ export default async function FichaProductoPage({
             </p>
           </div>
           {puedeEditarProducto && (
-            <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
-              Editar
-            </Link>
+            <div className="flex items-start gap-4">
+              <ActivarDesactivarFila
+                activo={p.activo}
+                aviso="Desactivar lo saca de los selectores de movimientos, del stock consolidado y de la valuación; el historial se conserva. Si algo todavía depende de él (recetas vigentes, saldo), no se deja desactivar."
+                accion={async () => {
+                  "use server";
+                  return actualizarActivoProducto(productoId, !activo);
+                }}
+              />
+              <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+                Editar
+              </Link>
+            </div>
           )}
         </div>
       </div>

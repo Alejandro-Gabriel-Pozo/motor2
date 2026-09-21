@@ -72,10 +72,12 @@ test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni 
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
     await expect(page.getByRole("link", { name: producto.nombre })).toBeVisible(); // la fila está: es la lista, no un mensaje de permiso
     await expect(enlaceEditar, "el enlace «Editar» de la lista no tenía que mostrarse").toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^(Des)?[Aa]ctivar$/ }), "«Desactivar» de la lista no tenía que mostrarse").toHaveCount(0);
 
     await page.goto(`/catalogo/productos/${producto.id}`);
     await expect(page.getByRole("heading", { name: producto.nombre })).toBeVisible();
     await expect(enlaceEditar, "el botón «Editar» de la ficha no tenía que mostrarse").toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^(Des)?[Aa]ctivar$/ }), "«Desactivar» de la ficha no tenía que mostrarse").toHaveCount(0);
   } finally {
     await limpiar();
     await prisma.producto.deleteMany({ where: { id: producto.id } });
@@ -90,9 +92,11 @@ test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y llev
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
     await expect(enlaceEditar).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
 
     await page.goto(`/catalogo/productos/${producto.id}`);
     await expect(enlaceEditar).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
     await enlaceEditar.click();
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   } finally {

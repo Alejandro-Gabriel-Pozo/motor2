@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
-import { listarProductosPagina } from "@/server/actions/catalogo/productos";
+import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
+import { actualizarActivoProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
 
 /**
  * Lista de productos. Ya no comparte pantalla con el formulario: el alta está en `/nuevo`, la ficha (solo lectura) en `/[id]` y la edición en
@@ -47,45 +48,57 @@ export default async function ProductosPage({
           </Link>
         )}
       </form>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-neutral-500">
-            <th className="py-2">Código</th>
-            <th>Nombre</th>
-            <th>Tipo</th>
-            <th>Activo</th>
-            <th ><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {pagina.items.map((p) => (
-            <tr key={p.id} className="border-b">
-              <td className="py-2">{p.codigo}</td>
-              <td>
-                <Link href={`/catalogo/productos/${p.id}`} className="underline">
-                  {p.nombre}
-                </Link>
-              </td>
-              <td>{p.tipo}</td>
-              <td>{p.activo ? "Sí" : "No"}</td>
-              <td>
-                {puedeEditarProducto && (
-                  <Link href={`/catalogo/productos/${p.id}/editar`} className="text-sm underline">
-                    Editar
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-neutral-500">
+              <th className="py-2">Código</th>
+              <th>Nombre</th>
+              <th>Tipo</th>
+              <th>Activo</th>
+              <th><span className="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {pagina.items.map((p) => (
+              <tr key={p.id} className="border-b">
+                <td className="py-2">{p.codigo}</td>
+                <td>
+                  <Link href={`/catalogo/productos/${p.id}`} className="underline">
+                    {p.nombre}
                   </Link>
-                )}
-              </td>
-            </tr>
-          ))}
-          {!pagina.items.length && (
-            <tr>
-              <td className="py-2 text-neutral-500" colSpan={5}>
-                Sin productos{q ? " que coincidan con la búsqueda" : ""}.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                </td>
+                <td>{p.tipo}</td>
+                <td>{p.activo ? "Sí" : "No"}</td>
+                <td className="py-2">
+                  {puedeEditarProducto && (
+                    <div className="flex items-start gap-3">
+                      <Link href={`/catalogo/productos/${p.id}/editar`} className="text-sm underline">
+                        Editar
+                      </Link>
+                      <ActivarDesactivarFila
+                        activo={p.activo}
+                        aviso="Desactivar lo saca de los selectores de movimientos, del stock consolidado y de la valuación; el historial se conserva. Si algo todavía depende de él (recetas vigentes, saldo), no se deja desactivar."
+                        accion={async () => {
+                          "use server";
+                          return actualizarActivoProducto(p.id, !p.activo);
+                        }}
+                      />
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {!pagina.items.length && (
+              <tr>
+                <td className="py-2 text-neutral-500" colSpan={5}>
+                  Sin productos{q ? " que coincidan con la búsqueda" : ""}.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
       {pagina.nextCursor && (
         <Link href={`/catalogo/productos?${q ? `q=${encodeURIComponent(q)}&` : ""}cursor=${pagina.nextCursor}`} className="mt-3 inline-block text-sm underline">
           Página siguiente →
