@@ -34,7 +34,12 @@ export function FormConResultado({
       }}
     >
       {children}
-      {resultado && <p className={`text-sm ${resultado.ok ? "text-green-700" : "text-red-600"}`}>{resultado.mensaje}</p>}
+      {/* role: un lector de pantalla anuncia el resultado sin que la persona tenga que ir a buscarlo (error → alert, ok → status). */}
+      {resultado && (
+        <p role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700" : "text-red-600"}`}>
+          {resultado.mensaje}
+        </p>
+      )}
     </form>
   );
 }

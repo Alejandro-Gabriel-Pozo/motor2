@@ -2,6 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { crearCategoriaProducto, actualizarActivaCategoriaProducto, listarCategoriasProducto } from "@/server/actions/catalogo/categorias-producto";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
+import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function CategoriasPage() {
   const ctx = await obtenerContextoUsuario();
@@ -30,36 +31,40 @@ export default async function CategoriasPage() {
               <td className="py-2">{c.nombre}</td>
               <td>{c.activo ? "Sí" : "No"}</td>
               <td>
-                <form
-                  action={async () => {
+                <FormConResultado
+                  accion={async () => {
                     "use server";
-                    await actualizarActivaCategoriaProducto(c.id, !c.activo);
+                    return actualizarActivaCategoriaProducto(c.id, !c.activo);
                   }}
                 >
                   <button type="submit" className="text-sm underline">
                     {c.activo ? "Desactivar" : "Activar"}
                   </button>
-                </form>
+                </FormConResultado>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <form
-        action={async (formData: FormData) => {
+      <FormConResultado
+        accion={async (formData: FormData) => {
           "use server";
-          await crearCategoriaProducto(String(formData.get("nombre") ?? ""));
+          const r = await crearCategoriaProducto(String(formData.get("nombre") ?? ""));
           // El refresco se pide ACÁ y no en la acción: la acción también la usa el alta rápida del formulario de Producto (ver refrescar.ts).
-          refrescarVistaSiHaceFalta();
+          // Solo si salió bien: con un error no cambió nada y no hay nada que redibujar.
+          if (r.ok) refrescarVistaSiHaceFalta();
+          return r;
         }}
-        className="flex max-w-md gap-2"
+        className="max-w-md space-y-1"
       >
-        <input name="nombre" placeholder="nombre de la categoría" required className="flex-1 rounded border px-3 py-2" />
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Crear
-        </button>
-      </form>
+        <div className="flex gap-2">
+          <input name="nombre" placeholder="nombre de la categoría" required className="flex-1 rounded border px-3 py-2" />
+          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+            Crear
+          </button>
+        </div>
+      </FormConResultado>
     </div>
   );
 }
