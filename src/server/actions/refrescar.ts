@@ -12,6 +12,25 @@ import { refresh } from "next/cache";
  * función traga específicamente el error E870 ("refresh can only be
  * called from within a Server Action") y deja pasar cualquier otro error
  * sin tocar. Es un no-op inofensivo si el llamador redirige después.
+ *
+ * QUIÉN LO PIDE (regla de todo el proyecto): el refresco lo pide quien sabe
+ * que hubo una mutación y que nadie va a navegar.
+ *  - Si el llamador es un COMPONENTE CLIENTE propio (tiene `useRouter`):
+ *    `if (r.ok) router.refresh()` en el cliente (ya lo hacen ~21 sitios).
+ *  - Si el llamador es un closure `"use server"` dentro de una PÁGINA DE
+ *    SERVIDOR (`FormConResultado` o un `<form action>` crudo): la página no
+ *    tiene dónde refrescar, así que lo pide la ACCIÓN, con esta función,
+ *    justo antes del `ok(...)`. Funciona aunque se llame anidado dentro del
+ *    closure (es AsyncLocalStorage: no hace falta subirlo a la página).
+ *  - Si la acción o el closure REDIRIGE, no hace falta nada.
+ * NO va centralizado en `conPermiso`: rerenderizaría la ruta en vano en los
+ * ~21 flujos que ya refrescan desde el cliente y en todo flujo que redirige,
+ * y cambiaría en silencio los modales dentro de un `<form>` (QuickCrear,
+ * AsistenteHermanar) que no tienen spec. Ser explícito es lo que permite
+ * auditarlo con un grep.
+ *
+ * EXCEPCIÓN CONOCIDA: `actualizarActivoSucursal` NO lo llama — su único
+ * llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente.
  */
 export function refrescarVistaSiHaceFalta(): void {
   try {
