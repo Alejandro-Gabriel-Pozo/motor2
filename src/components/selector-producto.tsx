@@ -94,6 +94,11 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
     }
   }
 
+  // La lista (role="listbox") solo existe cuando hay opciones que mostrar: un listbox sin opciones no es válido (axe aria-required-children), así que
+  // «Buscando…», el error y «Sin resultados.» son avisos aparte (role="status"/"alert") y no `<li>` sueltos adentro del listbox.
+  const hayLista = !cargando && opciones.length > 0;
+  const idOpcion = (i: number) => `${listboxId}-op-${i}`;
+
   return (
     <div ref={contenedorRef} className={`relative ${className ?? ""}`}>
       <input type="hidden" required={required} value={value} onChange={() => {}} />
@@ -115,35 +120,50 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
         placeholder={placeholder}
         autoComplete="off"
         role="combobox"
-        aria-expanded={abierto}
+        aria-expanded={abierto && hayLista}
         aria-autocomplete="list"
-        aria-controls={listboxId}
+        aria-controls={abierto && hayLista ? listboxId : undefined}
+        aria-activedescendant={abierto && hayLista && resaltado < opciones.length ? idOpcion(resaltado) : undefined}
         className="w-full rounded border px-2 py-1.5 text-sm"
       />
       {abierto && (
-        <ul id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-          {cargando && <li className="px-2 py-1.5 text-neutral-500">Buscando…</li>}
-          {!cargando && errorBusqueda && (
-            <li className="px-2 py-1.5 text-red-600">No se pudo buscar. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.</li>
+        <div className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+          {cargando && (
+            <p role="status" className="px-2 py-1.5 text-neutral-500">
+              Buscando…
+            </p>
           )}
-          {!cargando && !errorBusqueda && !opciones.length && <li className="px-2 py-1.5 text-neutral-500">Sin resultados.</li>}
-          {!cargando &&
-            opciones.map((op, i) => (
-              <li
-                key={op.id}
-                role="option"
-                aria-selected={i === resaltado}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  elegir(op);
-                }}
-                onMouseEnter={() => setResaltado(i)}
-                className={`cursor-pointer px-2 py-1.5 ${i === resaltado ? "bg-neutral-100 dark:bg-neutral-800" : ""}`}
-              >
-                {op.codigo} — {op.nombre}
-              </li>
-            ))}
-        </ul>
+          {!cargando && errorBusqueda && (
+            <p role="alert" className="px-2 py-1.5 text-red-600">
+              No se pudo buscar. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.
+            </p>
+          )}
+          {!cargando && !errorBusqueda && !opciones.length && (
+            <p role="status" className="px-2 py-1.5 text-neutral-500">
+              Sin resultados.
+            </p>
+          )}
+          {hayLista && (
+            <ul id={listboxId} role="listbox">
+              {opciones.map((op, i) => (
+                <li
+                  key={op.id}
+                  id={idOpcion(i)}
+                  role="option"
+                  aria-selected={i === resaltado}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    elegir(op);
+                  }}
+                  onMouseEnter={() => setResaltado(i)}
+                  className={`cursor-pointer px-2 py-1.5 ${i === resaltado ? "bg-neutral-100 dark:bg-neutral-800" : ""}`}
+                >
+                  {op.codigo} — {op.nombre}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );

@@ -161,3 +161,30 @@ testAutenticado("movimientos/precio-local: sin violaciones de axe", async ({ pag
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
+
+testAutenticado("movimientos/precio-local: el selector de producto abierto (con resultados y sin resultados) no tiene violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const nombre = `E2E A11y Selector ${marca}`;
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-SEL-${marca}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  try {
+    await page.goto("/movimientos/precio-local");
+    await conTitulo(page, /Precio local/);
+    const selector = page.getByRole("combobox");
+
+    // Con resultados: la opción se muestra y la resaltada la anuncia el combobox (aria-activedescendant).
+    await selector.fill(nombre);
+    const opcion = page.getByRole("option", { name: new RegExp(nombre) });
+    await expect(opcion).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "listbox con resultados").toEqual([]);
+    await selector.press("ArrowDown");
+    await expect(selector).toHaveAttribute("aria-activedescendant", (await opcion.getAttribute("id")) ?? "sin-id");
+
+    // Sin resultados: el aviso «Sin resultados.» también vive dentro del listbox.
+    await selector.fill("zzz-no-existe-ningun-producto-asi");
+    await expect(page.getByText("Sin resultados.")).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "listbox sin resultados").toEqual([]);
+  } finally {
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
