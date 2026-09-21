@@ -53,6 +53,55 @@ export function esMesSinPublicar(fecha: Date, serie: SerieIPC): boolean {
 }
 
 /**
+ * Máximo de días de atraso de la serie del IPC antes de considerarla DESACTUALIZADA ("stale_days" de `get_exchange_rate` de ERPNext,
+ * docs/grounding-pendientes-2026-09-18.md §5.3). Se mide desde el FIN del último mes publicado (el dato de un mes no puede existir antes de
+ * que el mes termine, así que medir desde el inicio contaría como "atraso" el tiempo que el mes tardó en transcurrir).
+ *
+ * 60 porque el INDEC publica el IPC de un mes a mitad del mes siguiente: el rezago NORMAL llega a ~45 días medido así (el 12 de octubre el
+ * último mes publicado sigue siendo agosto, ya 42 días después de su fin). 60 deja ~15 días de colchón: solo se cruza cuando se perdió AL
+ * MENOS una publicación entera, no cuando el INDEC se demora unos días. Con 45 estaría justo en el borde de lo normal y alarmaría por
+ * cualquier demora. Es una constante en código y no un dato en la base: es lo mismo que hace `DIAS_PARA_RELLENAR` con el dólar, y crear un
+ * modelo de configuración solo para esto sería desproporcionado (ese trabajo es el de 5b, la fuente del índice como configuración).
+ */
+export const DIAS_MAXIMOS_DE_ATRASO_IPC = 60;
+
+export type EstadoSerieIPC = "sin-datos" | "al-dia" | "vencida";
+
+export interface AntiguedadSerieIPC {
+  estado: EstadoSerieIPC;
+  /** Clave "YYYY-MM" del último mes publicado, o `null` si no hay ninguno. */
+  ultimoMes: string | null;
+  /** Días desde el fin del último mes publicado; 0 si ese mes es el corriente o uno futuro. `null` sin datos. */
+  diasDeAtraso: number | null;
+  maximo: number;
+}
+
+/**
+ * Cuán vieja es la serie: `sin-datos` (no hay ningún índice), `al-dia` (atraso dentro del máximo) o `vencida` (más de
+ * `DIAS_MAXIMOS_DE_ATRASO_IPC` días desde el fin del último mes publicado). Pura: `ahora` se inyecta para poder probarla con fechas
+ * exactas. Solo CLASIFICA — no cambia ningún número de ningún reporte: lo que cambia es lo que se le avisa al usuario sobre el número.
+ *
+ * Aritmética en UTC, igual que `claveMes` (que usa `getUTC*`): acá el umbral es de 60 días, 3 horas de diferencia no mueven nada.
+ */
+export function antiguedadSerieIPC(serie: SerieIPC, ahora: Date = new Date()): AntiguedadSerieIPC {
+  const maximo = DIAS_MAXIMOS_DE_ATRASO_IPC;
+  if (serie.ultimoMes === null) return { estado: "sin-datos", ultimoMes: null, diasDeAtraso: null, maximo };
+  const anio = Number(serie.ultimoMes.slice(0, 4));
+  const mes = Number(serie.ultimoMes.slice(5, 7)); // 1-12: como índice de Date.UTC (0-11) ya es el mes SIGUIENTE, o sea el fin del último publicado
+  const finDelUltimoMes = Date.UTC(anio, mes, 1);
+  const diasDeAtraso = Math.max(0, Math.floor((ahora.getTime() - finDelUltimoMes) / 86_400_000));
+  return { estado: diasDeAtraso > maximo ? "vencida" : "al-dia", ultimoMes: serie.ultimoMes, diasDeAtraso, maximo };
+}
+
+/**
+ * Texto para cuando la serie está VENCIDA: dice desde cuándo y por qué el ajuste no es de "hoy". Distinto del rezago normal del INDEC
+ * (que se rotula "provisorio"): acá el problema es nuestro (falta sincronizar), no del INDEC.
+ */
+export function textoSerieIPCVencida(a: AntiguedadSerieIPC): string {
+  return `La serie del IPC no se actualiza desde ${a.ultimoMes} (${a.diasDeAtraso} días; el máximo previsto es ${a.maximo}): no es el rezago habitual del INDEC, falta sincronizar.`;
+}
+
+/**
  * Coeficiente para llevar una venta de `fecha` a poder adquisitivo del
  * ÚLTIMO mes con IPC cargado (no necesariamente "hoy" — el INDEC publica
  * con rezago, ver docstring del módulo).
@@ -107,6 +156,11 @@ export function resolverVariacionPeriodoIPC(desde: Date, hasta: Date, serie: Ser
 export interface ResultadoSincronizacionIPC {
   mesesNuevos: number;
   ultimoMesDisponible: string | null;
+  /**
+   * Cuán vieja quedó la serie GUARDADA después de sincronizar (se relee de la base): `ultimoMesDisponible` sale de la API y no dice nada
+   * de lo guardado. Un cron que responde 200 con `mesesNuevos: 0` todos los días durante meses es indistinguible de uno sano sin esto.
+   */
+  antiguedad: AntiguedadSerieIPC;
 }
 
 /**
@@ -134,5 +188,5 @@ export async function sincronizarIPC(db: Db = prisma): Promise<ResultadoSincroni
     await db.indicePrecio.create({ data: { mes, valor } });
     mesesNuevos++;
   }
-  return { mesesNuevos, ultimoMesDisponible };
+  return { mesesNuevos, ultimoMesDisponible, antiguedad: antiguedadSerieIPC(await cargarSerieIPC(db)) };
 }
