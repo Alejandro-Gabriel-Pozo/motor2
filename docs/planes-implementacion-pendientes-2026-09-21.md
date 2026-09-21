@@ -204,6 +204,8 @@ Nuevos: destinatarios por sucursal, cron (sin secreto, secreto incorrecto, sin h
 
 ## 5. K1b / K1c: corregir y anular una compra confirmada
 
+> **ESTADO (2026-09-21): K1c (anular) está HECHA** —Fase 0 y Fase 1 completas, en local—; ver `docs/p2109.md` §1.b. Este plan sigue vigente para **K1b (corregir)**, la Fase 2, que espera dos decisiones: qué campos se pueden corregir y con qué permiso. La decisión (6) de permisos se resolvió con la clave `anular_compra` para anular; la de corregir (`corregir_compra`) queda para K1b.
+
 ### Orden de fases recomendado
 
 **Fase 0 (cimientos) → K1c (anular) → K1b (corregir).** K1d (notas de crédito) queda fuera. K1a (el listado de compras registradas) **ya está hecho y mergeado**. Sin K1c, K1b no tiene salida para un precio mal cargado.
