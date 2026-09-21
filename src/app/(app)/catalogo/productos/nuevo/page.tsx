@@ -3,8 +3,6 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { ProductoForm } from "../producto-form";
 import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
-import { leerMemoriaAltaProducto } from "@/core/catalogo/memoria-alta-producto-almacen";
-import { sanearMemoria } from "@/core/catalogo/memoria-alta-producto";
 
 /** Alta de un producto nuevo. Al guardar, lleva a la ficha del producto creado. */
 export default async function NuevoProductoPage() {
@@ -18,12 +16,7 @@ export default async function NuevoProductoPage() {
   const gateAlta = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "alta_producto");
   if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
-  const [{ unidades, insumos, categorias, proveedores }, memoriaGuardada] = await Promise.all([
-    cargarOpcionesFormularioProducto(),
-    leerMemoriaAltaProducto(ctx.usuarioId),
-  ]);
-  // E4: lo último que este usuario usó en un alta, contra las MISMAS listas que se le dibujan (nada que no pueda elegir a mano).
-  const memoria = memoriaGuardada ? sanearMemoria(memoriaGuardada, { unidades, categorias }) : null;
+  const { unidades, insumos, categorias, proveedores } = await cargarOpcionesFormularioProducto();
 
   return (
     <div className="max-w-xl">
@@ -31,7 +24,7 @@ export default async function NuevoProductoPage() {
         ← Productos
       </Link>
       <h1 className="mb-4 text-xl font-semibold">Nuevo producto</h1>
-      <ProductoForm unidades={unidades} insumosIniciales={insumos} categoriasIniciales={categorias} proveedoresIniciales={proveedores} memoria={memoria} />
+      <ProductoForm unidades={unidades} insumosIniciales={insumos} categoriasIniciales={categorias} proveedoresIniciales={proveedores} />
     </div>
   );
 }

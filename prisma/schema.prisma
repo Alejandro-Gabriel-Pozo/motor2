@@ -38,24 +38,6 @@ model User {
   traspasosCerrados         TraspasoSucursal[] @relation("TraspasoCerradoPor")
   pagosConsignante          PagoConsignante[]
   registrosAuditoria        RegistroAuditoria[]
-  preferencias              PreferenciaUsuario[]
-}
-
-/// Preferencias personales de un usuario, en forma clave/valor: cosas cómodas de recordar que NO son un dato de negocio ni pasan por auditoría
-/// (ej. los últimos valores usados en el alta de un producto: clave "alta_producto"). Una tabla genérica, no una por preferencia: la siguiente
-/// preferencia (ej. la sugerencia de Insumo/Familia, E3) no exige otra migración.
-///
-/// Es POR USUARIO, sin sucursal: el catálogo (productos, unidades, categorías) es global. Se busca siempre por el `usuarioId` de la SESIÓN,
-/// nunca por uno que venga del cliente, y se borra con el usuario.
-model PreferenciaUsuario {
-  usuarioId     String
-  usuario       User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  clave         String
-  /// La forma de cada clave la define quien la lee (con su propio parseo tolerante): acá es JSON opaco.
-  valor         Json
-  actualizadoEn DateTime @updatedAt
-
-  @@id([usuarioId, clave])
 }
 
 model Account {
