@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { conReintento } from "./reintentar";
 
 /**
  * Toda escritura de esta porción (registrarMovimiento/registrarVenta/
@@ -40,7 +41,7 @@ import { prisma } from "@/lib/db";
  * DriverAdapterError (evita enmascarar un error real de infraestructura,
  * ej. una conexión caída, reintentándolo como si fuera un conflicto).
  */
-function esConflictoDeEscritura(e: unknown): boolean {
+export function esConflictoDeEscritura(e: unknown): boolean {
   if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return true;
   if (e instanceof Error && e.name === "DriverAdapterError") {
     const cause = (e as Error & { cause?: unknown }).cause;
@@ -64,9 +65,9 @@ export async function conTransaccionSerializable<T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
   maxIntentos = 5
 ): Promise<T> {
-  for (let intento = 0; intento < maxIntentos; intento++) {
-    try {
-      const resultado = await prisma.$transaction(fn, {
+  return conReintento(
+    () =>
+      prisma.$transaction(fn, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         // Default de Prisma (maxWait 2s / timeout 5s) es corto para el caso
         // de latencia de red más alta de lo normal — esto da más margen sin
@@ -75,25 +76,21 @@ export async function conTransaccionSerializable<T>(
         // más de lo necesario).
         maxWait: 5_000,
         timeout: 15_000,
-      });
-      if (intento > 0) {
-        // console.log, no .warn: un solo reintento resuelto es el camino
-        // sano de SERIALIZABLE ante dos escrituras genuinamente
-        // simultáneas — esperable y frecuente, no un incidente. No
-        // corresponde que dispare alertas en Vercel.
-        console.log("[con-reintento][investigacion] conflicto de escritura resuelto por reintento", { intento, maxIntentos });
-      }
-      return resultado;
-    } catch (e) {
-      if (esConflictoDeEscritura(e)) {
-        if (intento < maxIntentos - 1) continue;
+      }),
+    {
+      maxIntentos,
+      esReintentable: esConflictoDeEscritura,
+      // console.log, no .warn: un solo reintento resuelto es el camino
+      // sano de SERIALIZABLE ante dos escrituras genuinamente
+      // simultáneas — esperable y frecuente, no un incidente. No
+      // corresponde que dispare alertas en Vercel.
+      alResolverPorReintento: ({ intento }) =>
+        console.log("[con-reintento][investigacion] conflicto de escritura resuelto por reintento", { intento, maxIntentos }),
+      alAgotar: (e) =>
         console.error("[con-reintento][investigacion] conflicto de escritura agotó los reintentos", {
           maxIntentos,
           code: e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined,
-        });
-      }
-      throw e;
+        }),
     }
-  }
-  throw new Error("No se pudo completar la operación tras varios intentos (conflicto de escritura concurrente).");
+  );
 }
