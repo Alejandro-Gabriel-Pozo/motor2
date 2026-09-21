@@ -44,6 +44,29 @@ process.env.DIRECT_URL = base.url;
 const PUERTO = 3101;
 const URL_BASE = `http://localhost:${PUERTO}`;
 
+/**
+ * QUÉ SERVIDOR levanta el E2E, elegido con `MOTOR2_E2E_SERVIDOR`:
+ *  - `build`: compila el artefacto de producción (`npm run build:e2e`, SIN `prisma migrate deploy`) y lo sirve con `next start`. Es lo que se despliega.
+ *  - `start`: reusa el último build (`next start`) sin recompilar: ciclo corto para depurar un spec cuando el código no cambió.
+ *  - `dev`: `next dev`, con overlay de errores y HMR (el modo anterior).
+ *
+ * `NODE_ENV=production` vive SOLO dentro del proceso del servidor (`next start` lo fija); el proceso de Playwright nunca lo tiene, y por eso la guarda de
+ * base-e2e.ts que rechaza `NODE_ENV=production` sigue intacta. El build hereda `DATABASE_URL`/`DIRECT_URL` de la base E2E (webServer.env): aunque algo
+ * consultara datos al compilar, solo podría llegar a `motor2_e2e`, nunca a `motor2_dev` ni a Neon. Y las guardas de `resolverUrlE2E` corren al cargar
+ * ESTE archivo, antes de que Playwright arranque el webServer: una base mal configurada aborta antes de pagar un solo segundo de build.
+ */
+const COMANDOS = {
+  build: "npm run build:e2e && npm run start:e2e",
+  start: "npm run start:e2e",
+  dev: "npm run dev",
+} as const;
+type ModoServidor = keyof typeof COMANDOS;
+const modoPedido = process.env.MOTOR2_E2E_SERVIDOR?.trim() || "dev";
+if (!(modoPedido in COMANDOS)) throw new Error(`MOTOR2_E2E_SERVIDOR inválido: "${modoPedido}". Valores: ${Object.keys(COMANDOS).join(" | ")}.`);
+const MODO = modoPedido as ModoServidor;
+// Playwright reimporta este archivo en cada worker (TEST_WORKER_INDEX definido): el modo se imprime una sola vez, desde el proceso principal.
+if (process.env.TEST_WORKER_INDEX === undefined) console.log(`[e2e] Servidor: ${MODO} (${COMANDOS[MODO]})`);
+
 export default defineConfig({
   testDir: "./test/e2e",
   fullyParallel: false,
@@ -58,16 +81,22 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm run dev",
+    command: COMANDOS[MODO],
     env: {
       DATABASE_URL: base.url,
       DIRECT_URL: base.url,
       PORT: String(PUERTO),
       // Las pruebas no deben pedir el dólar a internet ni depender de él (ver actualizarDolarSiHaceFalta).
       MOTOR2_SIN_DOLAR_AUTOMATICO: "1",
+      // `next start` deja NODE_ENV=production y Auth.js entonces exige confianza EXPLÍCITA en el host
+      // (@auth/core/lib/utils/env.js: trustHost ??= !!(AUTH_URL ?? AUTH_TRUST_HOST ?? VERCEL ?? NODE_ENV !== "production")). Sin esto cada auth() devuelve
+      // UntrustedHost y se cae toda la suite autenticada. En `dev` no cambia nada. El nombre de la cookie de sesión tampoco cambia (http → sin prefijo __Secure-).
+      AUTH_TRUST_HOST: "1",
     },
     url: URL_BASE,
     reuseExistingServer: false,
-    timeout: 60_000,
+    // En `build` el timeout cubre el build ENTERO + el arranque; `stdout: "pipe"` deja ver avanzar el build (el stderr ya se imprime siempre).
+    timeout: MODO === "build" ? 300_000 : 60_000,
+    stdout: MODO === "build" ? "pipe" : undefined,
   },
 });
