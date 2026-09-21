@@ -11,6 +11,7 @@ import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
 import { detalleReversionDeVenta } from "@/core/movimientos/anulaciones";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -269,6 +270,8 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
  * precioTotal/precioPorUnidadStock en negativo — así el reporte de
  * Consignación (que suma esas líneas tal cual) neta solo automáticamente.
  *
+ * Auditoría: deja una fila en el registro de auditoría administrativa (entidad `Operacion`, campo `anuladaEn`), como `anularCompra`.
+ *
  * Reportes: la venta anulada deja de contar en todos los reportes de dinero y de consumo (`operacion.anuladaEn`, ver `ItemPeriodo.anulada` en
  * `src/core/reportes/periodo.ts`), y esta Operación AJUSTE no aparece como un ajuste manual en «Diferencias de ajuste» (`src/core/movimientos/anulaciones.ts`).
  *
@@ -287,11 +290,12 @@ export async function anularVenta(operacionId: string): Promise<ResultadoAccion>
       if (operacion.proceso !== "VENTA") return error(`La operación "${operacionId}" no es una Venta — es "${operacion.proceso}".`);
       if (operacion.anuladaEn) return error("Esta venta ya está anulada.");
 
+      const ahora = new Date();
       const reversion = await tx.operacion.create({
         data: {
           sucursalId: ctx.sucursalId,
           proceso: "AJUSTE",
-          fecha: new Date(),
+          fecha: ahora,
           detalleLibre: detalleReversionDeVenta(operacion.id, operacion.fecha),
           usuarioId: ctx.usuarioId,
         },
@@ -310,7 +314,19 @@ export async function anularVenta(operacionId: string): Promise<ResultadoAccion>
       }));
       await tx.movimientoStock.createMany({ data: filas });
 
-      await tx.operacion.update({ where: { id: operacion.id }, data: { anuladaEn: new Date(), anuladaPorId: ctx.usuarioId } });
+      await tx.operacion.update({ where: { id: operacion.id }, data: { anuladaEn: ahora, anuladaPorId: ctx.usuarioId } });
+
+      // Auditoría administrativa (igual que `anularCompra`): anular una venta mueve stock e ingreso, así que queda quién, cuándo y de cuál.
+      await registrarCambioAuditado(tx, {
+        entidad: "Operacion",
+        entidadId: operacion.id,
+        descripcion: `Venta del ${operacion.fecha.toISOString().slice(0, 10)}${operacion.nroFactura ? ` (factura ${operacion.nroFactura})` : ""}: anulación`,
+        campo: "anuladaEn",
+        valorAnterior: null,
+        valorNuevo: ahora.toISOString(),
+        actorId: ctx.usuarioId,
+        sucursalId: ctx.sucursalId,
+      });
 
       return ok(`Venta anulada. Se revirtieron ${filas.length} línea(s) de stock${filas.some((f) => f.proceso === "LIQUIDACION_CONSIGNACION") ? " y la liquidación de consignación" : ""}.`);
     });
