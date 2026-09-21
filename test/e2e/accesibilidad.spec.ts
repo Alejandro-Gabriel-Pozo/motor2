@@ -210,3 +210,37 @@ testAutenticado("modo oscuro: la página declara color-scheme, para que los cont
   await conTitulo(page, "Unidades de medida");
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz en modo oscuro").toContain("dark");
 });
+
+testAutenticado("catalogo/productos: la lista, con la confirmación de «Desactivar» abierta y con el bloqueo mostrado, sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  // Un producto activo y uno inactivo (para que se dibujen los dos estados del botón) y un plato que usa al activo (para que desactivar se bloquee y se
+  // muestre el mensaje de error). `?q=` acota la tabla: no depende de lo que dejen otros specs.
+  const marca = Date.now();
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const insumo = await prisma.insumo.create({ data: { nombre: `E2E A11y Insumo Lista ${marca}` } });
+  const activo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LA-${marca}`, nombre: `E2E A11y Lista ${marca} activo`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } });
+  const inactivo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LI-${marca}`, nombre: `E2E A11y Lista ${marca} inactivo`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id, activo: false } });
+  const plato = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LP-${marca}`, nombre: `E2E A11y Lista ${marca} plato`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  await prisma.recetaVersion.create({ data: { productoId: plato.id, version: 1, ingredientes: { create: [{ insumoProductoId: activo.id, cantidad: 1, unidadId: kg.id }] } } });
+  try {
+    await page.goto(`/catalogo/productos?q=${encodeURIComponent(`E2E A11y Lista ${marca}`)}`);
+    await conTitulo(page, "Productos");
+    const filaActiva = page.locator("tr", { hasText: activo.nombre });
+    await expect(filaActiva.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
+    await expect(page.locator("tr", { hasText: inactivo.nombre }).getByRole("button", { name: "Activar", exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "tabla en reposo").toEqual([]);
+
+    // Confirmación abierta: acá viven el role="alert" del aviso, el aria-describedby y los dos botones nuevos.
+    await filaActiva.getByRole("button", { name: "Desactivar", exact: true }).click();
+    await expect(filaActiva.getByRole("button", { name: "Sí, desactivar" })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "confirmación abierta").toEqual([]);
+
+    // Bloqueado por la receta: el mensaje de error queda visible.
+    await filaActiva.getByRole("button", { name: "Sí, desactivar" }).click();
+    await expect(filaActiva.getByRole("alert").filter({ hasText: "No se puede desactivar" })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "mensaje de bloqueo visible").toEqual([]);
+  } finally {
+    await prisma.recetaVersion.deleteMany({ where: { productoId: plato.id } });
+    await prisma.producto.deleteMany({ where: { id: { in: [plato.id, activo.id, inactivo.id] } } });
+    await prisma.insumo.deleteMany({ where: { id: insumo.id } });
+  }
+});
