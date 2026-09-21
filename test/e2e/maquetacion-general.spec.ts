@@ -80,9 +80,13 @@ test.beforeAll(async () => {
   // El caso que destapó el hallazgo original: un grupo de nombre largo ensancha el <select> de cada insumo.
   const grupo = await prisma.grupo.create({ data: { nombre: `Materias primas secas y harinas de uso frecuente ${marca}` } });
   const insumo = await prisma.insumo.create({ data: { nombre: `E2E Insumo Maquetación General ${marca}`, grupoId: grupo.id } });
+  // Una matriz de permisos ancha (acción × rol): con varios roles de nombre largo la tabla no entra en la pantalla. Es lo que dejan otros specs en una
+  // corrida completa y lo que tiene una instalación real con roles propios.
+  const roles = await Promise.all(Array.from({ length: 8 }, (_, i) => prisma.rol.create({ data: { nombre: `E2E Rol de nombre bastante largo ${marca} ${i}` } })));
   await prisma.precioLocalProducto.create({ data: { sucursalId: sucursal.id, productoId: producto.id, precio: 1500, habilitado: true } });
   await prisma.stockMinimoProducto.create({ data: { sucursalId: sucursal.id, productoId: producto.id, seccionId: seccion.id, minimo: 5 } });
   limpiar = async () => {
+    await prisma.rol.deleteMany({ where: { id: { in: roles.map((r) => r.id) } } });
     await prisma.insumo.deleteMany({ where: { id: insumo.id } });
     await prisma.grupo.deleteMany({ where: { id: grupo.id } });
     await prisma.stockMinimoProducto.deleteMany({ where: { productoId: producto.id } });

@@ -31,7 +31,10 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   return (
     <div className="flex flex-1">
       <SidebarColapsable grupos={grupos} />
-      <div className="flex flex-1 flex-col">
+      {/* min-w-0: un ítem flex tiene `min-width: auto` (el ancho mínimo de su contenido) y, sin esto, una tabla ancha, aunque esté dentro de su propio
+          `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la
+          columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
           <CotizacionEncabezado cotizacion={cotizacion} />
           <span className="flex items-center gap-1">
