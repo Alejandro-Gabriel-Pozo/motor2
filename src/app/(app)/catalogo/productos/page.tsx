@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarProductosPagina } from "@/server/actions/catalogo/productos";
 
 /**
@@ -18,6 +18,9 @@ export default async function ProductosPage({
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `editar_producto` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
+  // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
+  const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
 
   const { id, q, cursor } = await searchParams;
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/productos?id=…` (la edición estaba en esta misma pantalla).
@@ -66,9 +69,11 @@ export default async function ProductosPage({
               <td>{p.tipo}</td>
               <td>{p.activo ? "Sí" : "No"}</td>
               <td>
-                <Link href={`/catalogo/productos/${p.id}/editar`} className="text-sm underline">
-                  Editar
-                </Link>
+                {puedeEditarProducto && (
+                  <Link href={`/catalogo/productos/${p.id}/editar`} className="text-sm underline">
+                    Editar
+                  </Link>
+                )}
               </td>
             </tr>
           ))}

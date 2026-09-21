@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { prisma } from "@/lib/db";
 import { listarPresentaciones } from "@/server/actions/catalogo/productos";
@@ -34,6 +34,9 @@ export default async function FichaProductoPage({
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `editar_producto` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
+  // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
+  const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
 
   const { id } = await params;
   const { guardado } = await searchParams;
@@ -64,9 +67,11 @@ export default async function FichaProductoPage({
               {p.codigo} · {p.tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"} · {p.activo ? "Activo" : "Inactivo"}
             </p>
           </div>
-          <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
-            Editar
-          </Link>
+          {puedeEditarProducto && (
+            <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+              Editar
+            </Link>
+          )}
         </div>
       </div>
 

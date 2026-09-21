@@ -63,3 +63,40 @@ test("un rol CON editar_producto sí abre /editar y ve el formulario con el nomb
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
+
+test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni en la ficha", async ({ browser, baseURL, sucursalId }) => {
+  const producto = await crearProducto(Date.now());
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, false);
+  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
+  try {
+    await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
+    await expect(page.getByRole("link", { name: producto.nombre })).toBeVisible(); // la fila está: es la lista, no un mensaje de permiso
+    await expect(enlaceEditar, "el enlace «Editar» de la lista no tenía que mostrarse").toHaveCount(0);
+
+    await page.goto(`/catalogo/productos/${producto.id}`);
+    await expect(page.getByRole("heading", { name: producto.nombre })).toBeVisible();
+    await expect(enlaceEditar, "el botón «Editar» de la ficha no tenía que mostrarse").toHaveCount(0);
+  } finally {
+    await limpiar();
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y lleva al formulario", async ({ browser, baseURL, sucursalId }) => {
+  // Contraespejo: impide «arreglarlo» escondiendo el enlace para todos.
+  const producto = await crearProducto(Date.now());
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, true);
+  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
+  try {
+    await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
+    await expect(enlaceEditar).toHaveCount(1);
+
+    await page.goto(`/catalogo/productos/${producto.id}`);
+    await expect(enlaceEditar).toHaveCount(1);
+    await enlaceEditar.click();
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
+  } finally {
+    await limpiar();
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
