@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
+import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesionEnSucursal, requerirVerEnSucursal } from "../con-sesion";
 
@@ -41,6 +42,8 @@ export async function crearSeccion(nombre: string): Promise<ResultadoConId> {
     }
 
     const creada = await prisma.seccion.create({ data: { sucursalId: ctx.sucursalId, nombre: nombreLimpio } });
+    // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).
+    refrescarVistaSiHaceFalta();
     return okConId(`Sección "${creada.nombre}" creada.`, creada.id, creada.nombre);
   });
 }
@@ -68,6 +71,7 @@ export async function renombrarSeccion(seccionId: string, nombreNuevo: string): 
     if (existente) return error(`Ya existe una sección "${existente.nombre}" en esta sucursal.`);
 
     await prisma.seccion.update({ where: { id: seccionId }, data: { nombre } });
+    refrescarVistaSiHaceFalta(); // ver crearSeccion
     return ok(`Sección renombrada a "${nombre}".`);
   });
 }
@@ -79,6 +83,7 @@ export async function actualizarActivaSeccion(seccionId: string, activa: boolean
     if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
 
     await prisma.seccion.update({ where: { id: seccionId }, data: { activa } });
+    refrescarVistaSiHaceFalta(); // ver crearSeccion
     return ok(`Sección "${seccion.nombre}" ${activa ? "activada" : "desactivada"}.`);
   });
 }
