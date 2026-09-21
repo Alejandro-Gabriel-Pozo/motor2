@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && prisma migrate deploy && next build",
+    "build:e2e": "prisma generate && next build",
+    "start:e2e": "next start",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
