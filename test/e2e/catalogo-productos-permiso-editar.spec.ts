@@ -8,10 +8,12 @@ import { prisma } from "../../src/lib/db";
  * vea productos y no los edite (admin y operador tienen los dos), así que cada caso fabrica el suyo: rol propio, usuario propio, sesión propia.
  * Nada depende del rol `operador` compartido (otros specs lo mutan).
  */
-async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, puedeEditarProducto: boolean) {
+/** `editarProducto`: Ver+Editar de `editar_producto`. `altaEditar`: Editar (además de Ver) de `alta_producto`, el permiso del alta. Por defecto solo Ver de `alta_producto`. */
+async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, permisos: { editarProducto?: boolean; altaEditar?: boolean }) {
+  const { editarProducto: puedeEditarProducto = false, altaEditar = false } = permisos;
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const rol = await prisma.rol.create({ data: { nombre: `e2e-productos-${puedeEditarProducto ? "edita" : "solo-ve"}-${marca}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "alta_producto", puedeVer: true, puedeEditar: false } });
+  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "alta_producto", puedeVer: true, puedeEditar: altaEditar } });
   if (puedeEditarProducto) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "editar_producto", puedeVer: true, puedeEditar: true } });
   const usuario = await prisma.user.create({ data: { email: `e2e-productos-${marca}@local.test`, activoGlobal: true } });
   await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
@@ -40,7 +42,7 @@ async function crearProducto(marca: number) {
 
 test("un rol que solo VE productos no abre /editar por URL directa: no se dibuja el formulario", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now());
-  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, false);
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
   try {
     await page.goto(`/catalogo/productos/${producto.id}/editar`);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
@@ -54,7 +56,7 @@ test("un rol que solo VE productos no abre /editar por URL directa: no se dibuja
 test("un rol CON editar_producto sí abre /editar y ve el formulario con el nombre cargado", async ({ browser, baseURL, sucursalId }) => {
   // Contraespejo del caso anterior: impide «arreglarlo» cerrando la ruta para todos.
   const producto = await crearProducto(Date.now());
-  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, true);
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   try {
     await page.goto(`/catalogo/productos/${producto.id}/editar`);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
@@ -66,7 +68,7 @@ test("un rol CON editar_producto sí abre /editar y ve el formulario con el nomb
 
 test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni en la ficha", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now());
-  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, false);
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
   const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
@@ -87,7 +89,7 @@ test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni 
 test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y lleva al formulario", async ({ browser, baseURL, sucursalId }) => {
   // Contraespejo: impide «arreglarlo» escondiendo el enlace para todos.
   const producto = await crearProducto(Date.now());
-  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, true);
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
@@ -102,5 +104,33 @@ test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y llev
   } finally {
     await limpiar();
     await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+test("un rol que solo VE productos no abre /nuevo por URL directa y no tiene el botón «+ Nuevo producto»", async ({ browser, baseURL, sucursalId }) => {
+  // El alta la guarda `alta_producto` con permiso de EDITAR; la página solo pedía el de Ver (mismo hueco que /editar).
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
+  try {
+    await page.goto("/catalogo/productos/nuevo");
+    await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
+    await expect(page.locator('input[name="nombre"]'), "el formulario de alta no tenía que llegar a dibujarse").toHaveCount(0);
+
+    await page.goto("/catalogo/productos");
+    await expect(page.getByRole("heading", { name: "Productos", exact: true })).toBeVisible(); // es la lista, no un mensaje de permiso
+    await expect(page.locator('a[href="/catalogo/productos/nuevo"]'), "«+ Nuevo producto» no tenía que mostrarse").toHaveCount(0);
+  } finally {
+    await limpiar();
+  }
+});
+
+test("un rol CON permiso de editar el alta ve «+ Nuevo producto» y el formulario de /nuevo", async ({ browser, baseURL, sucursalId }) => {
+  // Contraespejo: impide «arreglarlo» cerrando el alta para todos.
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { altaEditar: true });
+  try {
+    await page.goto("/catalogo/productos");
+    await page.locator('a[href="/catalogo/productos/nuevo"]').click();
+    await expect(page.locator('input[name="nombre"]')).toBeVisible();
+  } finally {
+    await limpiar();
   }
 });

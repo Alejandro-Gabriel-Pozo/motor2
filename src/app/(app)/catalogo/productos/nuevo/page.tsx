@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { ProductoForm } from "../producto-form";
 import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
 
@@ -11,6 +11,10 @@ export default async function NuevoProductoPage() {
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  // Además de Ver, EDITAR: `darDeAltaProducto` exige Editar de `alta_producto`. Quien solo ve productos no tiene por qué recibir el formulario completo
+  // para descubrir recién al guardar que no puede (mismo criterio que la ruta /editar).
+  const gateAlta = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "alta_producto");
+  if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
   const { unidades, insumos, categorias, proveedores } = await cargarOpcionesFormularioProducto();
 

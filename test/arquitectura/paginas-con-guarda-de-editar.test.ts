@@ -13,7 +13,10 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = join(__dirname, "../../src/app/(app)");
 
-const PAGINAS_DE_EDICION = [{ pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "editar_producto" }];
+const PAGINAS_DE_EDICION = [
+  { pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "editar_producto" },
+  { pagina: "catalogo/productos/nuevo/page.tsx", clave: "alta_producto" },
+];
 
 describe("páginas de edición: exigen el permiso de Editar en el servidor", () => {
   for (const { pagina, clave } of PAGINAS_DE_EDICION) {

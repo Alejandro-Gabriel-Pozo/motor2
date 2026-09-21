@@ -22,6 +22,7 @@ export default async function ProductosPage({
   // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `editar_producto` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
+  const { editar: puedeDarDeAlta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "alta_producto");
 
   const { id, q, cursor } = await searchParams;
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/productos?id=…` (la edición estaba en esta misma pantalla).
@@ -33,9 +34,11 @@ export default async function ProductosPage({
     <div>
       <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Productos</h1>
-        <Link href="/catalogo/productos/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
-          + Nuevo producto
-        </Link>
+        {puedeDarDeAlta && (
+          <Link href="/catalogo/productos/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+            + Nuevo producto
+          </Link>
+        )}
       </div>
       <form className="mb-3 flex gap-2 text-sm">
         <input type="text" name="q" defaultValue={q ?? ""} placeholder="Buscar por código o nombre…" className="w-64 rounded border px-3 py-2" />
