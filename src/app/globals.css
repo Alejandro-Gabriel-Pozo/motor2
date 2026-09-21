@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
+/* `light dark`: el navegador dibuja sus propios controles (lista desplegada de un <select>, scrollbars, autocompletado) en el esquema del sistema, en
+   sintonía con los colores de más abajo. Sin esto, en modo oscuro salen claros con el texto claro heredado. */
 :root {
+  color-scheme: light dark;
   --background: #ffffff;
   --foreground: #171717;
 }

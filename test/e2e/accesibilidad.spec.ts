@@ -188,3 +188,13 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
+
+testAutenticado("modo oscuro: la página declara color-scheme, para que los controles nativos (lista de un <select>, scrollbars) se dibujen oscuros", async ({ paginaAutenticada: page }) => {
+  // Los inputs de la app tienen fondo transparente (preflight de Tailwind), así que el fondo de un <input> no dice nada; lo que sí se ve mal sin
+  // `color-scheme` son los controles que dibuja el navegador: la lista desplegada de un <select> sale blanca con el texto claro heredado, y las
+  // barras de scroll salen claras. Se verifica la declaración (no se puede fotografiar un popup nativo en headless).
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/catalogo/unidades");
+  await conTitulo(page, "Unidades de medida");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz en modo oscuro").toContain("dark");
+});
