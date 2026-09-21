@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarPreciosLocales, setPrecioLocalProducto } from "@/server/actions/movimientos/precio-local";
+import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { PrecioLocalForm } from "./precio-local-form";
 
 export default async function PrecioLocalPage() {
@@ -38,6 +39,9 @@ export default async function PrecioLocalPage() {
                     action={async () => {
                       "use server";
                       await setPrecioLocalProducto(p.productoId, Number(p.precio), !p.habilitado);
+                      // El refresco se pide ACÁ y no en la acción: la acción también la usa el formulario cliente de alta, que ya hace su propio
+                      // router.refresh() (ver refrescar.ts). Sin esto la columna «Habilitado» no cambiaba hasta recargar a mano.
+                      refrescarVistaSiHaceFalta();
                     }}
                   >
                     <button type="submit" className="text-sm underline">

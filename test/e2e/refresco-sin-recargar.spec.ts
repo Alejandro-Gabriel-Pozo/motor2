@@ -230,3 +230,27 @@ test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y sol
     await prisma.sucursal.updateMany({ where: { nombre }, data: { activo: false } });
   }
 });
+
+test("precio local: habilitar y deshabilitar un precio de la tabla se ve sin recargar la página", async ({ paginaAutenticada: page, sucursalId }) => {
+  const nombre = `E2E Precio Local ${Date.now()}`;
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-PL-${Date.now()}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 50, habilitado: true } });
+  const fila = page.locator("tr", { hasText: nombre });
+
+  try {
+    await page.goto("/movimientos/precio-local");
+    await expect(page.getByRole("heading", { name: /Precio local/ })).toBeVisible();
+    await ponerMarca(page);
+
+    await expect(fila.getByRole("cell", { name: "Sí", exact: true })).toBeVisible();
+    await fila.getByRole("button", { name: "Deshabilitar", exact: true }).click();
+    await expect(fila.getByRole("cell", { name: "No", exact: true })).toBeVisible();
+    await expect(fila.getByRole("button", { name: "Habilitar", exact: true })).toBeVisible();
+
+    expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+  } finally {
+    // Un precio local suelto cambiaría los márgenes de otros specs de esa sucursal: se borra.
+    await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
+  }
+});
