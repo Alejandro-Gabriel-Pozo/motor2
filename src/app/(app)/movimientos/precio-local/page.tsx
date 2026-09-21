@@ -25,7 +25,7 @@ export default async function PrecioLocalPage() {
               <th>Precio local</th>
               <th>Precio global</th>
               <th>Habilitado</th>
-              <th />
+              <th><span className="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>

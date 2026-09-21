@@ -82,7 +82,7 @@ export function CampoNumero({ id, name, value, defaultValue, onChange, required,
   return (
     <div className={`relative ${className ?? ""}`}>
       {name && <input type="hidden" name={name} value={valorReal} onChange={() => {}} />}
-      {prefijo && <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-neutral-400">{prefijo}</span>}
+      {prefijo && <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">{prefijo}</span>}
       <input
         id={id}
         type="text"

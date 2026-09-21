@@ -38,7 +38,7 @@ export default async function InsumosGruposPage() {
                 <th className="px-2 py-2 first:pl-0">Nombre</th>
                 <th className="px-2">Grupo</th>
                 <th className="px-2">Activo</th>
-                <th className="px-2" />
+                <th className="px-2"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -57,7 +57,7 @@ export default async function InsumosGruposPage() {
                       className="space-y-1"
                     >
                       <div className="flex gap-1">
-                        <select name="grupoId" defaultValue={i.grupoId ?? ""} className="rounded border px-2 py-1">
+                        <select name="grupoId" aria-label={`Grupo de ${i.nombre}`} defaultValue={i.grupoId ?? ""} className="rounded border px-2 py-1">
                           <option value="">Sin grupo</option>
                           {grupos.map((g) => (
                             <option key={g.id} value={g.id}>
@@ -118,7 +118,7 @@ export default async function InsumosGruposPage() {
               <tr className="border-b text-left text-neutral-500">
                 <th className="px-2 py-2 first:pl-0">Cadena</th>
                 <th className="px-2">Activo</th>
-                <th className="px-2" />
+                <th className="px-2"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -154,7 +154,7 @@ export default async function InsumosGruposPage() {
         >
           <h2 className="font-medium">Nuevo grupo / actualizar padre</h2>
           <input name="nombre" placeholder="nombre del grupo (nuevo o existente)" required className="rounded border px-3 py-2" />
-          <select name="grupoPadreId" className="rounded border px-3 py-2">
+          <select name="grupoPadreId" aria-label="Grupo padre" className="rounded border px-3 py-2">
             <option value="">Sin padre (raíz)</option>
             {grupos.map((g) => (
               <option key={g.id} value={g.id}>

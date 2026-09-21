@@ -72,7 +72,7 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
   return (
     <div className="flex flex-col gap-1">
       <div className="flex gap-1">
-        <input value={nombre} onChange={(e) => setNombre(e.target.value)} className="w-32 rounded border px-2 py-1" />
+        <input value={nombre} onChange={(e) => setNombre(e.target.value)} aria-label={`Nombre de ${nombreActual}`} className="w-32 rounded border px-2 py-1" />
         <button type="button" disabled={pending} className="text-sm underline" onClick={intentarGuardar}>
           {pending ? "Guardando…" : "Renombrar/fusionar"}
         </button>

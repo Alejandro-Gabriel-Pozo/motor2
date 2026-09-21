@@ -29,7 +29,7 @@ export default async function UnidadesPage() {
             <th>Magnitud</th>
             <th>Decimales</th>
             <th>Activa</th>
-            <th />
+            <th><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
@@ -46,7 +46,7 @@ export default async function UnidadesPage() {
                   className="space-y-1"
                 >
                   <div className="flex items-center gap-1">
-                    <input name="decimales" type="number" min={0} max={6} defaultValue={u.decimales} className="w-16 rounded border px-2 py-1" />
+                    <input name="decimales" type="number" aria-label={`Decimales de ${u.nombre}`} min={0} max={6} defaultValue={u.decimales} className="w-16 rounded border px-2 py-1" />
                     <button type="submit" className="text-sm underline">
                       Guardar
                     </button>
@@ -83,7 +83,7 @@ export default async function UnidadesPage() {
       >
         <h2 className="font-medium">Nueva unidad</h2>
         <input name="nombre" placeholder="nombre (ej. kg)" required className="rounded border px-3 py-2" />
-        <select name="magnitud" required className="rounded border px-3 py-2">
+        <select name="magnitud" aria-label="Magnitud" required className="rounded border px-3 py-2">
           <option value="PESO">Peso</option>
           <option value="VOLUMEN">Volumen</option>
           <option value="CANTIDAD">Cantidad</option>

@@ -4,11 +4,10 @@ import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
 /**
- * Primera pasada de accesibilidad (WCAG 2.1 A/AA vía axe-core), sobre dos
- * pantallas representativas: la pública (login, sin sesión) y una
- * autenticada con datos reales (Costos y márgenes). No es exhaustivo sobre
- * las 19 pantallas — es el punto de partida para sumar más específicas si
- * aparece una necesidad concreta, no una auditoría completa.
+ * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
+ * Promociones), la matriz de permisos y las cinco pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
+ * insumos-grupos, capacidades por sucursal, precio local). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
+ * necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -25,9 +24,8 @@ testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables p
     // src/app/(app)/reportes/, marca "incompleto"/"sin precio"/"revisar" en varias pantallas) no
     // llega al mínimo AA sobre fondo blanco — hallazgo real, pero de un alcance totalmente distinto
     // al de este spec puntual. Ver docs/pendientes-responsable-2026-09-20.md ("contraste de
-    // text-amber-600"). Esta pantalla en particular solo lo dispara cuando queda dando vueltas un
-    // producto de otro test sin precio (no hay limpieza entre specs, ver el mismo documento) — no es
-    // un problema de esta pantalla ni de este spec.
+    // text-amber-600"). Esta pantalla en particular solo lo dispara cuando otro spec de la misma corrida
+    // dejó un producto sin precio — no es un problema de esta pantalla ni de este spec.
     .disableRules(["color-contrast"])
     .analyze();
   expect(resultados.violations).toEqual([]);
@@ -62,8 +60,8 @@ testAutenticado(
 
     await page.goto(`/reportes/promociones?desde=2026-08-01&hasta=2026-08-10`);
     await expect(page.getByRole("heading", { name: "Promociones y Combos" })).toBeVisible();
-    // `.first()`: sin limpieza entre corridas de e2e (docs/pendientes-responsable-2026-09-20.md), puede haber
-    // más de un "· parcial" en la tabla si quedó uno de una corrida anterior — no afecta lo que se audita.
+    // `.first()`: la base de e2e se reinicia al empezar cada corrida (global-setup), pero dentro de una misma corrida
+    // otro spec puede haber dejado un "· parcial" en la tabla — no afecta lo que se audita.
     await expect(page.getByText("· parcial").first()).toBeVisible(); // confirma que el caso que se quiere auditar realmente se renderizó
 
     // Chequeo ACOTADO al elemento nuevo, no un scan de toda la pantalla: el formulario de "marcar como
@@ -99,3 +97,67 @@ testAutenticado(
     expect(enEdicion.violations, "matriz en edición con el resumen abierto").toEqual([]);
   }
 );
+
+/**
+ * Pantallas de catálogo y administración que tenían formularios sueltos (revisadas al arreglar que descartaban el resultado de la acción).
+ * Cada una se audita CON DATOS (una fila al menos): sin filas no hay inputs de fila ni botones que auditar. Scan completo, sin desactivar reglas.
+ */
+const conTitulo = (page: import("@playwright/test").Page, titulo: string | RegExp) => expect(page.getByRole("heading", { name: titulo }).first()).toBeVisible();
+
+testAutenticado("catalogo/categorias: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E A11y Categoría ${Date.now()}`;
+  await prisma.categoriaProducto.create({ data: { nombre } });
+  try {
+    await page.goto("/catalogo/categorias");
+    await conTitulo(page, /Categorías/);
+    await expect(page.getByText(nombre)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.categoriaProducto.deleteMany({ where: { nombre } });
+  }
+});
+
+testAutenticado("catalogo/unidades: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  await page.goto("/catalogo/unidades");
+  await conTitulo(page, "Unidades de medida");
+  await expect(page.getByRole("cell", { name: "kg", exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+testAutenticado("catalogo/insumos-grupos: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const grupo = await prisma.grupo.create({ data: { nombre: `E2E A11y Grupo ${marca}` } });
+  const insumo = await prisma.insumo.create({ data: { nombre: `E2E A11y Insumo ${marca}`, grupoId: grupo.id } });
+  try {
+    await page.goto("/catalogo/insumos-grupos");
+    await conTitulo(page, "Árbol de grupos");
+    await expect(page.locator(`input[value="${insumo.nombre}"]`)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.insumo.deleteMany({ where: { id: insumo.id } });
+    await prisma.grupo.deleteMany({ where: { id: grupo.id } });
+  }
+});
+
+testAutenticado("administracion/capacidades-sucursal: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  await page.goto("/administracion/capacidades-sucursal");
+  await conTitulo(page, /Capacidades por sucursal/);
+  await expect(page.getByRole("cell", { name: "stock_minimo", exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+testAutenticado("movimientos/precio-local: sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  const nombre = `E2E A11y Precio ${Date.now()}`;
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PL-${Date.now()}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 120, habilitado: true } });
+  try {
+    await page.goto("/movimientos/precio-local");
+    await conTitulo(page, /Precio local/);
+    await expect(page.getByText(nombre)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
