@@ -27,6 +27,8 @@ export async function limpiarBaseDeTest() {
   await prisma.cotizacionDolar.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
+  // Antes que `user`: la FK (con cascade) igual la borraría, pero el orden explícito deja el fallo claro si algún día se le quita el cascade.
+  await prisma.preferenciaUsuario.deleteMany();
   await prisma.user.deleteMany();
   await prisma.rol.deleteMany();
   await prisma.accion.deleteMany();
