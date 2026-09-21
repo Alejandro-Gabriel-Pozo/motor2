@@ -7,6 +7,7 @@ import {
   listarUnidadesParaPanel,
   detectarInsumosConUnidadMezclada,
 } from "@/server/actions/catalogo/unidades";
+import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function UnidadesPage() {
   const ctx = await obtenerContextoUsuario();
@@ -37,41 +38,43 @@ export default async function UnidadesPage() {
               <td className="py-2">{u.nombre}</td>
               <td>{u.magnitud}</td>
               <td>
-                <form
-                  action={async (formData: FormData) => {
+                <FormConResultado
+                  accion={async (formData: FormData) => {
                     "use server";
-                    await actualizarDecimalesUnidad(u.id, Number(formData.get("decimales")));
+                    return actualizarDecimalesUnidad(u.id, Number(formData.get("decimales")));
                   }}
-                  className="flex items-center gap-1"
+                  className="space-y-1"
                 >
-                  <input name="decimales" type="number" min={0} max={6} defaultValue={u.decimales} className="w-16 rounded border px-2 py-1" />
-                  <button type="submit" className="text-sm underline">
-                    Guardar
-                  </button>
-                </form>
+                  <div className="flex items-center gap-1">
+                    <input name="decimales" type="number" min={0} max={6} defaultValue={u.decimales} className="w-16 rounded border px-2 py-1" />
+                    <button type="submit" className="text-sm underline">
+                      Guardar
+                    </button>
+                  </div>
+                </FormConResultado>
               </td>
               <td>{u.activa ? "Sí" : "No"}</td>
               <td>
-                <form
-                  action={async () => {
+                <FormConResultado
+                  accion={async () => {
                     "use server";
-                    await actualizarActivaUnidad(u.id, !u.activa);
+                    return actualizarActivaUnidad(u.id, !u.activa);
                   }}
                 >
                   <button type="submit" className="text-sm underline">
                     {u.activa ? "Desactivar" : "Activar"}
                   </button>
-                </form>
+                </FormConResultado>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <form
-        action={async (formData: FormData) => {
+      <FormConResultado
+        accion={async (formData: FormData) => {
           "use server";
-          await crearUnidad({
+          return crearUnidad({
             nombre: String(formData.get("nombre") ?? ""),
             magnitud: formData.get("magnitud") as "PESO" | "VOLUMEN" | "CANTIDAD",
           });
@@ -88,7 +91,7 @@ export default async function UnidadesPage() {
         <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
           Crear
         </button>
-      </form>
+      </FormConResultado>
 
       {mezclados.ok && mezclados.datos.length > 0 && (
         <div className="rounded border border-amber-400 bg-amber-50 p-3 text-sm dark:bg-amber-950">

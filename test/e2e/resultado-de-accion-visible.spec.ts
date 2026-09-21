@@ -23,3 +23,25 @@ test("categorías: un nombre con caracteres no permitidos muestra el error y no 
   await expect(page.getByRole("alert").filter({ hasText: "tiene caracteres no permitidos" })).toBeVisible();
   expect(await prisma.categoriaProducto.count({ where: { nombre } }), "no tenía que crearse nada").toBe(0);
 });
+
+test("unidades: un nombre repetido muestra el error, y al corregirlo se ve el «creada» junto a la fila nueva", async ({ paginaAutenticada: page }) => {
+  const nuevo = `e2eu${Date.now()}`;
+
+  try {
+    await page.goto("/catalogo/unidades");
+    await expect(page.getByRole("heading", { name: "Unidades de medida" })).toBeVisible();
+
+    // «kg» ya existe en el seed de las pruebas.
+    await page.getByPlaceholder("nombre (ej. kg)").fill("kg");
+    await page.getByRole("button", { name: "Crear", exact: true }).click();
+    await expect(page.getByText('Ya existe una unidad llamada "kg".')).toBeVisible();
+
+    // Corregido: el ok se ve Y la fila aparece. El mensaje tiene que sobrevivir al refresco de la ruta que pide la acción.
+    await page.getByPlaceholder("nombre (ej. kg)").fill(nuevo);
+    await page.getByRole("button", { name: "Crear", exact: true }).click();
+    await expect(page.locator("tr", { hasText: nuevo })).toHaveCount(1);
+    await expect(page.getByText(`Unidad "${nuevo}" creada.`)).toBeVisible();
+  } finally {
+    await prisma.unidad.updateMany({ where: { nombre: nuevo }, data: { activa: false } });
+  }
+});
