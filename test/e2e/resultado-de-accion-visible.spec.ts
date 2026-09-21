@@ -98,3 +98,30 @@ test("precio local: un precio inválido muestra el error y la fila no cambia", a
     await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
   }
 });
+
+test("capacidades: si no se pudo cambiar un ✅/⛔ se avisa, y el botón sigue mostrando el estado real", async ({ paginaAutenticada: page }) => {
+  const admin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+  const where = { rolId: admin.id, accionClave: "capacidades_sucursal" };
+
+  try {
+    // En esta pantalla la acción no tiene ningún error de validación alcanzable desde la UI (la matriz excluye la única acción que rechaza), así
+    // que se llega al error por el permiso: se le quita «editar» al admin dejando «ver», para que la página siga renderizando.
+    await prisma.permisoRol.updateMany({ where, data: { puedeVer: true, puedeEditar: false } });
+
+    await page.goto("/administracion/capacidades-sucursal");
+    await expect(page.getByRole("heading", { name: /Capacidades por sucursal/ })).toBeVisible();
+    const celda = page.locator("tr", { has: page.getByRole("cell", { name: "stock_minimo", exact: true }) }).locator("td").nth(1); // columna «Default»
+    await expect(celda.getByRole("button")).toHaveText("✅");
+
+    await celda.getByRole("button").click();
+
+    await expect(page.getByRole("alert").filter({ hasText: "No tenés permiso para esta acción" })).toBeVisible();
+    await expect(celda.getByRole("button"), "el cambio no se hizo: el botón tiene que seguir mostrando ✅").toHaveText("✅");
+
+    // El aviso es fijo en la pantalla y se cierra a mano.
+    await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "No tenés permiso para esta acción" })).toHaveCount(0);
+  } finally {
+    await prisma.permisoRol.updateMany({ where, data: { puedeVer: true, puedeEditar: true } });
+  }
+});

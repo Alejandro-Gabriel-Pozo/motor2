@@ -3,6 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { actualizarCapacidad, listarCapacidades } from "@/server/actions/permisos/capacidades-sucursal";
 import type { AccionClave } from "@/core/permisos/acciones";
+import { AvisosDeAccion, FormConAviso } from "@/components/avisos-de-accion";
 
 export default async function CapacidadesSucursalPage() {
   const ctx = await obtenerContextoUsuario();
@@ -16,7 +17,7 @@ export default async function CapacidadesSucursalPage() {
     capacidades.find((c) => c.accionClave === accionClave && c.sucursalId === sucursalId);
 
   return (
-    <div className="space-y-4">
+    <AvisosDeAccion className="space-y-4">
       <h1 className="text-xl font-semibold">Capacidades por sucursal (matriz de la Central)</h1>
       <p className="text-xs text-neutral-500">
         Columna &quot;Default&quot; = comportamiento para cualquier sucursal sin fila propia. Sin ninguna fila, la acción está habilitada.
@@ -44,14 +45,14 @@ export default async function CapacidadesSucursalPage() {
                   return (
                     <Fragment key={sucursalId ?? "default"}>
                       <td>
-                        <form
-                          action={async () => {
+                        <FormConAviso
+                          accion={async () => {
                             "use server";
-                            await actualizarCapacidad(a.clave as AccionClave, sucursalId, !habilitado);
+                            return actualizarCapacidad(a.clave as AccionClave, sucursalId, !habilitado);
                           }}
                         >
                           <button type="submit">{habilitado ? "✅" : "⛔"}</button>
-                        </form>
+                        </FormConAviso>
                       </td>
                     </Fragment>
                   );
@@ -61,6 +62,6 @@ export default async function CapacidadesSucursalPage() {
           </tbody>
         </table>
       </div>
-    </div>
+    </AvisosDeAccion>
   );
 }
