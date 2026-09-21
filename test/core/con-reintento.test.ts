@@ -36,7 +36,7 @@ describe("conReintento — comportamiento del ciclo", () => {
     const operacion = vi.fn().mockRejectedValueOnce(conflictoP2034()).mockResolvedValueOnce("ok");
     await expect(conReintento(operacion, c)).resolves.toBe("ok");
     expect(operacion).toHaveBeenCalledTimes(2);
-    expect(c.alResolverPorReintento).toHaveBeenCalledWith({ intento: 1, maxIntentos: 5 });
+    expect(c.alResolverPorReintento).toHaveBeenCalledWith(expect.objectContaining({ intento: 1, maxIntentos: 5 }));
     expect(c.alAgotar).not.toHaveBeenCalled();
   });
 
@@ -136,6 +136,17 @@ describe("conReintento — backoff con jitter entre intentos", () => {
     const { esperas } = await correr(operacion);
     expect(esperas).toEqual([]);
     expect(operacion).toHaveBeenCalledTimes(1);
+  });
+
+  it("informa la espera acumulada: al resolverse por reintento y al agotarse (dato para decidir si maxIntentos alcanza)", async () => {
+    const alResolver = vi.fn();
+    const operacion = vi.fn().mockRejectedValueOnce(conflictoP2034()).mockRejectedValueOnce(conflictoP2034()).mockResolvedValueOnce("ok");
+    await correr(operacion, { aleatorio: () => 1, alResolverPorReintento: alResolver });
+    expect(alResolver).toHaveBeenCalledWith({ intento: 2, maxIntentos: 5, esperaTotalMs: 25 + 50 });
+
+    const alAgotar = vi.fn();
+    await correr(vi.fn().mockRejectedValue(conflictoP2034()), { aleatorio: () => 1, alAgotar });
+    expect(alAgotar).toHaveBeenCalledWith(expect.anything(), { intento: 4, maxIntentos: 5, esperaTotalMs: 25 + 50 + 100 + 200 });
   });
 
   it("calcularEsperaBackoffMs: techo = min(tope, base * 2^intento), multiplicado por el aleatorio", () => {

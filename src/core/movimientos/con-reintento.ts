@@ -51,15 +51,16 @@ export function esConflictoDeEscritura(e: unknown): boolean {
 }
 
 /**
- * INVESTIGACIÓN temporal (2026-09-18, ver
- * docs/auditoria-motor2-deuda-tecnica-flake-eslint-2026-09-17.md — flake de
- * C2): no cambia ningún comportamiento, solo deja rastro en los logs de
- * producción (Vercel) para saber si esto ocurre alguna vez en el uso real y
- * con qué frecuencia — la única evidencia hoy es un test que fuerza
- * concurrencia perfecta en loop, no representativo de dos personas
- * clickeando. Buscar "[con-reintento][investigacion]" en los logs. Retirar
- * (o convertir en una métrica real) una vez que haya datos suficientes para
- * decidir si vale la pena subir `maxIntentos`/agregar backoff.
+ * Reintenta, con backoff y jitter entre intentos (ver reintentar.ts), un
+ * conflicto de escritura de una transacción SERIALIZABLE. El backoff se agregó
+ * el 2026-09-21: la causa del flake de C2 estaba confirmada (5 intentos sin
+ * ninguna espera, docs/auditoria-motor2-deuda-tecnica-flake-eslint-2026-09-17.md).
+ *
+ * Los logs "[con-reintento][investigacion]" quedan como la forma de medir si
+ * alcanzó: `esperaTotalMs` dice cuánto se esperó en total. El criterio de cierre
+ * real NO es que la suite pase (el flake era de ~0,3 %): es que "agotó los
+ * reintentos" deje de aparecer en los logs de producción. Si vuelve a aparecer,
+ * recién ahí se decide subir `maxIntentos` — aparte, y con esos datos.
  */
 export async function conTransaccionSerializable<T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
@@ -87,11 +88,16 @@ export async function conTransaccionSerializable<T>(
       // sano de SERIALIZABLE ante dos escrituras genuinamente
       // simultáneas — esperable y frecuente, no un incidente. No
       // corresponde que dispare alertas en Vercel.
-      alResolverPorReintento: ({ intento }) =>
-        console.log("[con-reintento][investigacion] conflicto de escritura resuelto por reintento", { intento, maxIntentos }),
-      alAgotar: (e) =>
+      alResolverPorReintento: ({ intento, esperaTotalMs }) =>
+        console.log("[con-reintento][investigacion] conflicto de escritura resuelto por reintento", {
+          intento,
+          maxIntentos,
+          esperaTotalMs: Math.round(esperaTotalMs),
+        }),
+      alAgotar: (e, { esperaTotalMs }) =>
         console.error("[con-reintento][investigacion] conflicto de escritura agotó los reintentos", {
           maxIntentos,
+          esperaTotalMs: Math.round(esperaTotalMs),
           code: e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined,
         }),
     }

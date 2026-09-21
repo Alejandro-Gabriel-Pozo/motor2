@@ -28,6 +28,8 @@ export interface InfoReintento {
   /** Número de intento que acaba de terminar (0 = el primero). */
   intento: number;
   maxIntentos: number;
+  /** Suma de lo esperado entre intentos, en ms: el dato que faltaba para decidir si `maxIntentos` alcanza. */
+  esperaTotalMs: number;
 }
 
 export interface OpcionesEspera {
@@ -66,20 +68,23 @@ const dormirDeVerdad = (ms: number) => new Promise<void>((resolver) => setTimeou
 
 export async function conReintento<T>(operacion: () => Promise<T>, config: ConfigReintento): Promise<T> {
   const { maxIntentos, esReintentable, baseEsperaMs, topeEsperaMs, aleatorio, dormir = dormirDeVerdad } = config;
+  let esperaTotalMs = 0;
   for (let intento = 0; intento < maxIntentos; intento++) {
     try {
       const resultado = await operacion();
-      if (intento > 0) config.alResolverPorReintento?.({ intento, maxIntentos });
+      if (intento > 0) config.alResolverPorReintento?.({ intento, maxIntentos, esperaTotalMs });
       return resultado;
     } catch (e) {
       if (esReintentable(e)) {
         if (intento < maxIntentos - 1) {
           // La espera vive DENTRO del catch: el camino feliz (el 99,99 % de los
           // casos, sin conflicto) no toca ningún temporizador.
-          await dormir(calcularEsperaBackoffMs(intento, { baseMs: baseEsperaMs, topeMs: topeEsperaMs, aleatorio }));
+          const espera = calcularEsperaBackoffMs(intento, { baseMs: baseEsperaMs, topeMs: topeEsperaMs, aleatorio });
+          esperaTotalMs += espera;
+          await dormir(espera);
           continue;
         }
-        config.alAgotar?.(e, { intento, maxIntentos });
+        config.alAgotar?.(e, { intento, maxIntentos, esperaTotalMs });
       }
       throw e;
     }
