@@ -77,3 +77,25 @@ testAutenticado(
     expect(soloElNodoNuevo.violations).toEqual([]);
   }
 );
+
+testAutenticado(
+  "administracion/permisos: la matriz, en solo lectura y en edición con el resumen de cambios abierto, sin violaciones de axe",
+  async ({ paginaAutenticada: page }) => {
+    await page.goto("/administracion/permisos");
+    await expect(page.getByRole("heading", { name: "Matriz de permisos (acción × rol)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Editar permisos" })).toBeVisible(); // confirma que se renderizó la matriz y no un mensaje de permiso
+
+    const soloLectura = await new AxeBuilder({ page }).analyze();
+    expect(soloLectura.violations, "matriz en solo lectura").toEqual([]);
+
+    // Modo edición con un cambio marcado y el diálogo de resumen abierto (es donde vive el `role="dialog"` y el mensaje de estado). No se
+    // guarda nada: la base no cambia.
+    await page.getByRole("button", { name: "Editar permisos" }).click();
+    await page.locator("[data-celda]").first().click();
+    await page.getByRole("button", { name: "Revisar y guardar" }).click();
+    await expect(page.getByRole("dialog", { name: "Resumen de cambios" })).toBeVisible();
+
+    const enEdicion = await new AxeBuilder({ page }).analyze();
+    expect(enEdicion.violations, "matriz en edición con el resumen abierto").toEqual([]);
+  }
+);

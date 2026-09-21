@@ -199,8 +199,8 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                 </th>
               ))}
             </tr>
-            <tr className="border-b text-left text-xs text-neutral-400">
-              <th />
+            <tr className="border-b text-left text-xs text-neutral-500">
+              <td />
               {roles.map((r) => (
                 <Fragment key={r.id}>
                   <th>Ver</th>
