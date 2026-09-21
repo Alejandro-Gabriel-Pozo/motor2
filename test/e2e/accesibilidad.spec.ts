@@ -341,3 +341,52 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado(
+  "reportes/compras: la corrección de una compra (formulario abierto, con el rechazo por factura repetida y ya corregida) sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CO-${marca}`, nombre: `E2E A11y Corregir ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_A11Y_CO_${marca}`, nombre: `E2E A11y Proveedor Corregir ${marca}` } });
+    const operaciones: string[] = [];
+    async function compra(nroFactura: string) {
+      const op = await prisma.operacion.create({
+        data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00Z"), proveedorId: proveedor.id, nroFactura, usuarioId: admin.id },
+      });
+      operaciones.push(op.id);
+      await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 5, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 10 } });
+      return op;
+    }
+    await compra(`A11Y-USADA-${marca}`);
+    const aCorregir = await compra(`A11Y-MAL-${marca}`);
+    try {
+      await page.goto(`/reportes/compras?proveedorId=${proveedor.id}`);
+      await conTitulo(page, "Compras registradas");
+      const tarjeta = page.locator(`[data-compra="${aCorregir.id}"]`);
+      await tarjeta.locator("summary").click();
+      await tarjeta.getByRole("button", { name: /^Corregir proveedor y factura/ }).click();
+      await expect(tarjeta.getByLabel("Proveedor", { exact: true })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "formulario abierto").toEqual([]);
+
+      // Rechazo por factura repetida: el aviso queda visible.
+      await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`A11Y-USADA-${marca}`);
+      await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
+      await expect(tarjeta.getByRole("alert").filter({ hasText: "Ya hay una compra registrada con esa factura" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "rechazo por factura repetida").toEqual([]);
+
+      // Corregida: el formulario se cierra y queda el aviso de éxito.
+      await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`A11Y-BIEN-${marca}`);
+      await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
+      await expect(tarjeta.getByRole("status").filter({ hasText: "Compra corregida" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "compra corregida").toEqual([]);
+    } finally {
+      await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: operaciones } } });
+      await prisma.movimientoStock.deleteMany({ where: { productoId: producto.id } });
+      await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+      await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
+    }
+  }
+);
