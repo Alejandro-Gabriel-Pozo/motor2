@@ -5,6 +5,7 @@ import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
+import { conReintento } from "@/core/movimientos/reintentar";
 import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/pasos-receta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -159,7 +160,8 @@ function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): string | n
  * append-only real — NUNCA pisa ni borra una versión vieja. `version` se
  * calcula de forma optimista (MAX(version)+1); el
  * `@@unique([productoId, version])` es el árbitro final ante dos
- * ediciones simultáneas de la misma receta (se reintenta el cálculo).
+ * ediciones simultáneas de la misma receta (se reintenta el cálculo, con
+ * backoff y jitter entre intentos — `conReintento`).
  *
  * `pasos`/`cabecera` viajan en la MISMA versión que `items` — reemplazo
  * completo de los tres a la vez, igual criterio que ya tenían los
@@ -190,11 +192,15 @@ export async function guardarReceta(
     const invalidoPasos = validarPasos(pasos, items);
     if (invalidoPasos) return error(invalidoPasos);
 
-    const maxIntentos = 5;
-    for (let intento = 0; intento < maxIntentos; intento++) {
-      const ultima = await prisma.recetaVersion.findFirst({ where: { productoId }, orderBy: { version: "desc" } });
-      const version = (ultima?.version ?? 0) + 1;
-      try {
+    // Reintento con backoff y jitter (el mismo ciclo que usa `conTransaccionSerializable`, ver core/movimientos/reintentar.ts): dos ediciones
+    // simultáneas de la MISMA receta calculan la misma `version` y una choca con el UNIQUE (productoId, version). Se relee el máximo y se
+    // reintenta; esperar un tiempo aleatorio entre intentos evita que las dos vuelvan a chocar en el mismo instante. Si se agotan los
+    // intentos, el error de unicidad sale tal cual, como antes.
+    let version = 0;
+    await conReintento(
+      async () => {
+        const ultima = await prisma.recetaVersion.findFirst({ where: { productoId }, orderBy: { version: "desc" } });
+        version = (ultima?.version ?? 0) + 1;
         await prisma.$transaction(async (tx) => {
           const creada = await tx.recetaVersion.create({
             data: {
@@ -249,18 +255,15 @@ export async function guardarReceta(
             }
           }
         }, { maxWait: 5_000, timeout: 15_000 });
-        // Sin esto la página no refleja el cambio en un navegador real hasta
-        // recargar a mano (ver src/server/actions/refrescar.ts) — detectado
-        // con Playwright, no con Vitest ni con los closures que ya hacían
-        // `redirect(volver)` tras un `ok` (una navegación real ya refresca sola).
-        refrescarVistaSiHaceFalta();
-        return ok(`Receta de "${producto.nombre}" guardada como versión ${version}.`);
-      } catch (e) {
-        if (esErrorDeUnicidad(e) && intento < maxIntentos - 1) continue;
-        throw e;
-      }
-    }
-    return error("No se pudo guardar la receta tras varios intentos (choque de versión concurrente).");
+      },
+      { maxIntentos: 5, esReintentable: esErrorDeUnicidad }
+    );
+    // Sin esto la página no refleja el cambio en un navegador real hasta
+    // recargar a mano (ver src/server/actions/refrescar.ts) — detectado
+    // con Playwright, no con Vitest ni con los closures que ya hacían
+    // `redirect(volver)` tras un `ok` (una navegación real ya refresca sola).
+    refrescarVistaSiHaceFalta();
+    return ok(`Receta de "${producto.nombre}" guardada como versión ${version}.`);
   });
 }
 
