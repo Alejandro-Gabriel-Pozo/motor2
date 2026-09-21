@@ -65,11 +65,29 @@ de alta rápida (`QuickCrearProducto`/`QuickCrear`) que reseteaba el
 formulario exterior entero al crear un producto/categoría inline —
 `npx playwright test --ui` para verlo correr paso a paso.
 
-Levanta `next dev` solo si no está corriendo (`webServer` en
-`playwright.config.ts`). `workers: 1` a propósito — los specs comparten la
-misma base Postgres, sin mocks (mismo criterio que `fileParallelism: false`
-de Vitest); cada spec usa nombres únicos (`Date.now()`) para no chocar
-entre corridas.
+**Base de datos dedicada.** Los E2E corren contra `MOTOR2_E2E_DATABASE_URL`,
+una base local aparte cuyo nombre termina en `_e2e` (nunca la de desarrollo,
+nunca Neon). Se crea una sola vez:
+
+```
+psql -h localhost -U postgres -c "CREATE DATABASE motor2_e2e OWNER motor2"
+DIRECT_URL="postgresql://motor2:motor2@localhost:5432/motor2_e2e" npx prisma migrate deploy
+```
+
+y se pone la URL en `.env` (ver `.env.example`). Cada corrida la deja vacía
+antes (`globalSetup`, más un seed mínimo) y después (`globalTeardown`), así que
+no se acumulan datos entre corridas ni se toca `motor2_dev`. Las guardas
+(`test/e2e/fixtures/base-e2e.ts`) abortan sin conectarse si el host no es
+local o el nombre no termina en `_e2e`; no hay fallback a `DATABASE_URL`.
+
+`npx playwright test --list` también necesita la variable, porque la
+configuración la valida al cargarse.
+
+Levanta su propio `next dev` en el puerto 3101 y nunca reutiliza uno ya
+abierto (el del 3000 apunta a `motor2_dev`). `workers: 1` a propósito — los
+specs comparten la misma base Postgres, sin mocks (mismo criterio que
+`fileParallelism: false` de Vitest); cada spec usa nombres únicos
+(`Date.now()`) para no chocar con otros specs de la misma corrida.
 
 ## Pendiente
 
