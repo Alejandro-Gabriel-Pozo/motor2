@@ -8,6 +8,8 @@ import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/g
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { memoriaDesdeAlta } from "@/core/catalogo/memoria-alta-producto";
+import { guardarMemoriaAltaProducto } from "@/core/catalogo/memoria-alta-producto-almacen";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
@@ -246,9 +248,16 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
   });
 }
 
-/** Devuelve también el id del producto creado: al guardar, la pantalla lleva a su ficha. */
+/**
+ * Devuelve también el id del producto creado: al guardar, la pantalla lleva a su ficha.
+ *
+ * E4: tras un alta exitosa se recuerdan, por usuario, los últimos valores usados (tipo, categoría, unidades y factor) para precargar el
+ * próximo alta. Solo acá: ni la edición (`actualizarProducto`) ni el alta rápida del wizard de Compra la tocan — editar un producto viejo
+ * no dice nada del próximo alta, y el alta rápida crea con valores fijos que el usuario no eligió. Es best-effort: un fallo de la memoria
+ * no convierte un alta exitosa en error.
+ */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
-  return conPermiso("alta_producto", async () => {
+  return conPermiso("alta_producto", async (ctx) => {
     const invalido = await validarComun(datos);
     if (invalido) return error(invalido);
 
@@ -256,6 +265,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
       const producto = await crearConCodigoAutogenerado(datos.tipo, datos.codigo, (codigo) =>
         prisma.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos) } })
       );
+      await guardarMemoriaAltaProducto(ctx.usuarioId, memoriaDesdeAlta(datos));
       return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
