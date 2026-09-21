@@ -77,3 +77,24 @@ test("grupos: poner un grupo como su propio padre muestra el error del ciclo", a
     await prisma.grupo.deleteMany({ where: { id: grupo.id } });
   }
 });
+
+test("precio local: un precio inválido muestra el error y la fila no cambia", async ({ paginaAutenticada: page, sucursalId }) => {
+  const nombre = `E2E Precio Inválido ${Date.now()}`;
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-PI-${Date.now()}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  // El schema no tiene un check que impida un precio negativo: así se llega al error de la acción desde la tabla.
+  await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: -1, habilitado: true } });
+  const fila = page.locator("tr", { hasText: nombre });
+
+  try {
+    await page.goto("/movimientos/precio-local");
+    await expect(page.getByRole("heading", { name: /Precio local/ })).toBeVisible();
+
+    await fila.getByRole("button", { name: "Deshabilitar", exact: true }).click();
+
+    await expect(fila.getByText("El precio no puede ser negativo.")).toBeVisible();
+    await expect(fila.getByRole("cell", { name: "Sí", exact: true })).toBeVisible();
+  } finally {
+    await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
+  }
+});
