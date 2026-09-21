@@ -42,7 +42,7 @@ export function RolesTabla({ rolesIniciales }: { rolesIniciales: Rol[] }) {
           <tr className="border-b text-left text-neutral-500">
             <th className="py-2">Nombre</th>
             <th>Activo</th>
-            <th ><span className="sr-only">Acciones</span></th>
+            <th><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>

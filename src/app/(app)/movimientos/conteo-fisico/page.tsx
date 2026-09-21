@@ -88,7 +88,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
               <th className="px-2">Contado</th>
               <th className="px-2">Diferencia</th>
               <th className="px-2">Estado</th>
-              <th ><span className="sr-only">Acciones</span></th>
+              <th><span className="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>

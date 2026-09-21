@@ -27,7 +27,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
               <th className="py-2">Producto</th>
               <th>Sección</th>
               <th>Mínimo</th>
-              <th ><span className="sr-only">Acciones</span></th>
+              <th><span className="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>

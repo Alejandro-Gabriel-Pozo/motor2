@@ -85,7 +85,7 @@ export function GestionPresentaciones({
               <th className="py-1">Unidad de compra</th>
               <th>Factor de conversión</th>
               <th>Activa</th>
-              <th ><span className="sr-only">Acciones</span></th>
+              <th><span className="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
