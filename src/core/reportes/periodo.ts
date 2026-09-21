@@ -133,16 +133,20 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   const resumen: Record<string, number> = {};
   for (const it of items) resumen[it.proceso] = (resumen[it.proceso] ?? 0) + 1;
 
-  // Una sola carga del catálogo para todo el reporte — antes cada función de abajo hacía la suya (4 veces la misma
-  // consulta, y el Consolidado la repite una vez por sucursal encima).
+  // Una sola carga del catálogo para todo el reporte: se pasa como parámetro a TODAS las funciones de abajo que lo necesitan. Antes
+  // tres de ellas (impacto de recetas, margen nominal y margen Real reconstruido) volvían a cargarlo por su cuenta: 4 consultas
+  // `producto.findMany` por reporte en vez de 1. Lo fija test/reportes/catalogo-una-sola-carga.test.ts — si se suma una función que use
+  // el catálogo, hay que pasárselo acá (recibirlo es opcional, así que olvidarlo NO da error: da una consulta de más, y ese test avisa).
+  // Sigue habiendo una carga por sucursal en el Consolidado, y es correcta: `precioVenta` sale resuelto con el Precio Local de CADA
+  // sucursal, así que el mapa de una no sirve para otra. Promociones y Categorías arman además el suyo (2 en vez de 4).
   const productos = await construirMapaProductos(sucursalId, db);
   const ventas = calcularVentasDelPeriodo(items, productos);
   const compras = calcularComprasDelPeriodo(items, productos);
   const gastoPorInsumo = calcularGastoPorInsumoDelPeriodo(items, productos);
   const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, compras.totalNoComestibles, ventas.totalFacturado, productos, db);
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
-  const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db);
-  const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db);
+  const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos);
+  const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos);
   const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(desde, hasta, tendenciaPrecios, ventas.porProducto, db);
   const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas);
 
@@ -817,8 +821,14 @@ export interface MargenDelPeriodo {
  * `margenRealTotal` para la alternativa que no tiene este descalce
  * temporal (a costo de solo cubrir ventas recientes).
  */
-async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[], ventasDelPeriodo: VentasDelPeriodo, db: Db): Promise<MargenDelPeriodo> {
-  const costos = await calcularCostosYMargenes(sucursalId, db);
+async function calcularMargenDelPeriodo(
+  sucursalId: string,
+  items: ItemPeriodo[],
+  ventasDelPeriodo: VentasDelPeriodo,
+  db: Db,
+  productos: Map<string, InfoProductoReporte>
+): Promise<MargenDelPeriodo> {
+  const costos = await calcularCostosYMargenes(sucursalId, db, productos);
   const costoPorProducto = new Map(costos.map((c) => [c.productoId, c]));
 
   let costoTotal = 0;
@@ -864,7 +874,7 @@ async function calcularMargenDelPeriodo(sucursalId: string, items: ItemPeriodo[]
   // Las ventas que no guardaron su costo al venderse (cargadas sin ese dato) se intentan costear al día de la venta con el historial
   // de compras (ver costo-historico.ts); las que no se pueden costear quedan en `ingresoSinCostoReal`.
   const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && it.costoUnitarioVenta === null);
-  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db);
+  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos);
   // Mismo bucle línea a línea de arriba, acumulado ADEMÁS por producto — fuente única del margen Real por fila,
   // para que Período y cualquier otro consumidor (Promociones) lean el mismo número (docs/pendientes-*.md, hallazgo
   // "el mismo dato calculado distinto").

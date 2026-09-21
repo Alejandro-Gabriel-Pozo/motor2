@@ -123,8 +123,18 @@ const ORDEN_ESTADO: Record<EstadoCosto, number> = {
  * un margen parcial — mostrar un número que parece real pero está calculado
  * sobre menos ingredientes de los que hay sería peor que no mostrar nada.
  */
-export async function calcularCostosYMargenes(sucursalId: string, db: Db = prisma): Promise<FilaCostoProducto[]> {
-  const productos = await construirMapaProductos(sucursalId, db);
+export async function calcularCostosYMargenes(
+  sucursalId: string,
+  db: Db = prisma,
+  /**
+   * El catálogo ya cargado, para no volver a leerlo. TIENE que ser el de LA MISMA sucursal (`precioVenta` sale resuelto con el Precio
+   * Local de esa sucursal): pasar el de otra da márgenes de otra sucursal sin ningún error. `obtenerReportePorPeriodo` lo comparte entre
+   * todas sus funciones; no lo pasa quien llama desde una transacción (ver `registrarVenta`), donde un mapa traído de afuera sería de
+   * otro snapshot.
+   */
+  productosCargados?: Map<string, InfoProductoReporte>
+): Promise<FilaCostoProducto[]> {
+  const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
   const { recetaPorProducto } = await construirIndiceRecetas(db);
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   // Compartido entre todos los PV de este cálculo: un mismo intermedio
@@ -324,8 +334,14 @@ export interface FilaImpactoRecetaPorPeriodo {
  * ACTUAL para ese producto puntual (no introduce una diferencia donde no
  * hay dato, mismo criterio que el delta `null` de `calcularTendenciaPreciosDelPeriodo`).
  */
-export async function calcularImpactoRecetasPorPeriodo(sucursalId: string, desde: Date, db: Db = prisma): Promise<FilaImpactoRecetaPorPeriodo[]> {
-  const productos = await construirMapaProductos(sucursalId, db);
+export async function calcularImpactoRecetasPorPeriodo(
+  sucursalId: string,
+  desde: Date,
+  db: Db = prisma,
+  /** El catálogo ya cargado de LA MISMA sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
+  productosCargados?: Map<string, InfoProductoReporte>
+): Promise<FilaImpactoRecetaPorPeriodo[]> {
+  const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
   const { recetaPorProducto } = await construirIndiceRecetas(db);
   const costosActuales = await obtenerCostoActualPorMP(sucursalId, db);
   const costosAntesDelPeriodo = await obtenerCostoActualPorMP(sucursalId, db, desde);

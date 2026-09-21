@@ -338,10 +338,10 @@ async function main() {
   console.log(`  Llamadas a producto.findMany en 1 sola corrida de obtenerReportePorPeriodo: ${llamadasAProductoFindMany}`);
   if (llamadasAProductoFindMany > 1) {
     console.log(
-      `  ⚠️  El comentario de periodo.ts:137 ("Una sola carga del catálogo para todo el reporte") ya NO es exacto: ` +
-        `calcularImpactoRecetasPorPeriodo, calcularCostosYMargenes (margen nominal) y reconstruirCostosDeVenta (margen ` +
-        `Real) cada uno vuelve a llamar a construirMapaProductos por su cuenta — la deduplicación de Plan 1 solo cubrió ` +
-        `ventas/gastoPorInsumo/tendenciaPrecios. Hallazgo de este benchmark, no arreglado acá (Plan 6 es de medición pura).`
+      `  ⚠️  REGRESIÓN: obtenerReportePorPeriodo volvió a cargar el catálogo más de una vez (debe ser 1). Alguna función que usa el ` +
+        `catálogo (calcularImpactoRecetasPorPeriodo, calcularCostosYMargenes, reconstruirCostosDeVenta u otra nueva) no recibe el ` +
+        `mapa que periodo.ts ya cargó y llama a construirMapaProductos por su cuenta. Está fijado por ` +
+        `test/reportes/catalogo-una-sola-carga.test.ts: si aparece acá es que alguien lo rompió y ese test no lo cubre.`
     );
   }
   const { medianaMs: medianaPeriodo } = await medir("obtenerReportePorPeriodo (10 días)", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador), 3);
