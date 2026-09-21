@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { prisma } from "../../src/lib/db";
 
 /**
  * En esta versión de Next un Server Action que no redirige NO re-renderiza la ruta: la pantalla seguía mostrando los datos viejos en un
@@ -43,4 +44,31 @@ test("secciones: crear, desactivar y renombrar se ven sin recargar la página", 
   await expect(filaDe(renombrada)).toHaveCount(1);
 
   expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+});
+
+test("sucursales: crear y renombrar se ven sin recargar la página", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const nombre = `E2E Sucursal Refresco ${marca}`;
+  const renombrada = `${nombre} v2`;
+  const filaDe = (n: string) => page.locator(`tr:has(input[value="${n}"])`);
+
+  try {
+    await page.goto("/administracion/sucursales");
+    await expect(page.getByRole("heading", { name: "Sucursales", exact: true })).toBeVisible();
+    await ponerMarca(page);
+
+    await page.getByPlaceholder("Nombre de la sucursal").fill(nombre);
+    await page.getByPlaceholder("Email del primer admin").fill(`e2e-refresco-${marca}@local.test`);
+    await page.getByRole("button", { name: "Crear", exact: true }).click();
+    await expect(filaDe(nombre)).toHaveCount(1);
+
+    await filaDe(nombre).locator('input[name="nombre"]').fill(renombrada);
+    await filaDe(nombre).getByRole("button", { name: "Renombrar", exact: true }).click();
+    await expect(filaDe(renombrada)).toHaveCount(1);
+
+    expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+  } finally {
+    // Una sucursal activa de más rompe a otros specs (p. ej. el de Consolidado espera UNA sola): se deja desactivada.
+    await prisma.sucursal.updateMany({ where: { nombre: { in: [nombre, renombrada] } }, data: { activo: false } });
+  }
 });

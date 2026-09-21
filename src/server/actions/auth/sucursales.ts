@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
+import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
@@ -57,6 +58,8 @@ export async function crearSucursalConAdmin(input: {
       });
     }, { maxWait: 5_000, timeout: 15_000 });
 
+    // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).
+    refrescarVistaSiHaceFalta();
     return ok(`Sucursal "${nombre}" creada, con "${email}" como primer admin.`);
   });
 }
@@ -81,6 +84,8 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
     }
 
     await prisma.sucursal.update({ where: { id: sucursalId }, data: { activo } });
+    // A propósito SIN `refrescarVistaSiHaceFalta()`: su único llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente, y
+    // otras pantallas que reusen ese componente heredan lo mismo (ver la regla en refrescar.ts).
     return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
   });
 }
@@ -100,6 +105,7 @@ export async function renombrarSucursal(sucursalId: string, nombreNuevo: string)
     if (existente) return error(`Ya existe una sucursal "${existente.nombre}".`);
 
     await prisma.sucursal.update({ where: { id: sucursalId }, data: { nombre } });
+    refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
     return ok(`Sucursal renombrada a "${nombre}".`);
   });
 }
