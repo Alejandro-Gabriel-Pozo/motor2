@@ -98,6 +98,8 @@ Memoria por **usuario**, no por usuario × sucursal: `Producto` y el catálogo s
 
 ## 3. 6b: costo de lo vendido (consumo) junto al ratio Compras/Ventas
 
+> **ESTADO (2026-09-21): HECHA**, con el paso 2 (excluir las ventas sin precio) aplicado; ver `docs/p2109.md` §1.c. Quedan sin hacer los pasos opcionales 4 (columna por producto) y 5 (Resumen operativo).
+
 ### Hallazgo principal
 
 **El cálculo ya existe.** `calcularMargenDelPeriodo` (`src/core/reportes/periodo.ts`) acumula `costoRealTotal` pero no lo devuelve. 6b es exponerlo y presentarlo: cero consultas nuevas, cero columnas.
