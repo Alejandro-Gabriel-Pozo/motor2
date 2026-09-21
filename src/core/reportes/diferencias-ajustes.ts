@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/anulaciones";
 import { construirIndiceRecetas, construirMapaProductos, redondearCantidad, type Db } from "./comun";
 
 export type EstadoDiferencia = "REVISAR" | "ESPERADO" | "OK";
@@ -73,7 +74,8 @@ export async function generarReporteDiferenciasAjustes(sucursalId: string, db: D
   }
 
   const movimientos = await db.movimientoStock.findMany({
-    where: { seccion: { sucursalId }, proceso: { in: ["AJUSTE", "CONTROL"] } },
+    // Sin las Operaciones AJUSTE que escribe una anulación (de una venta o de una compra): son el propio deshacer, no un ajuste manual de stock.
+    where: { seccion: { sucursalId }, proceso: { in: ["AJUSTE", "CONTROL"] }, operacion: OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION },
     select: { productoId: true, proceso: true, cantidad: true, operacion: { select: { fecha: true } } },
   });
 

@@ -49,7 +49,8 @@ export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db = 
   const { mpsEnRecetas } = await construirIndiceRecetas(db);
 
   const vendidos = await db.movimientoStock.findMany({
-    where: { proceso: "VENTA", seccion: { sucursalId } },
+    // Una venta ANULADA no cuenta como «vendido alguna vez».
+    where: { proceso: "VENTA", seccion: { sucursalId }, operacion: { anuladaEn: null } },
     select: { productoId: true },
     distinct: ["productoId"],
   });

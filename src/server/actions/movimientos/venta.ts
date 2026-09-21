@@ -10,6 +10,7 @@ import { calcularCostosYMargenes } from "@/core/reportes/costos";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
+import { detalleReversionDeVenta } from "@/core/movimientos/anulaciones";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -268,6 +269,9 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
  * precioTotal/precioPorUnidadStock en negativo — así el reporte de
  * Consignación (que suma esas líneas tal cual) neta solo automáticamente.
  *
+ * Reportes: la venta anulada deja de contar en todos los reportes de dinero y de consumo (`operacion.anuladaEn`, ver `ItemPeriodo.anulada` en
+ * `src/core/reportes/periodo.ts`), y esta Operación AJUSTE no aparece como un ajuste manual en «Diferencias de ajuste» (`src/core/movimientos/anulaciones.ts`).
+ *
  * Gate: 'anular_venta', admin-only en la semilla — mismo criterio que
  * 'cancelar_conteo' (más restrictivo que el permiso para CARGAR el proceso
  * original, a propósito).
@@ -288,7 +292,7 @@ export async function anularVenta(operacionId: string): Promise<ResultadoAccion>
           sucursalId: ctx.sucursalId,
           proceso: "AJUSTE",
           fecha: new Date(),
-          detalleLibre: `Anulación de la venta ${operacion.id} (${operacion.fecha.toISOString().slice(0, 10)}).`,
+          detalleLibre: detalleReversionDeVenta(operacion.id, operacion.fecha),
           usuarioId: ctx.usuarioId,
         },
       });

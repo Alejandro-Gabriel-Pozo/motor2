@@ -200,7 +200,7 @@ export async function calcularRendimientoRecetasSimples(
         select: { cantidad: true, operacion: { select: { fecha: true } } },
       }),
       db.movimientoStock.findMany({
-        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta } }, proceso: "VENTA", productoId: uso.pvProductoId },
+        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: uso.pvProductoId },
         select: { cantidad: true, operacion: { select: { fecha: true } } },
       }),
     ]);
@@ -270,7 +270,7 @@ export async function calcularRendimientoRecetasCompartidas(
     const ventasPorPlato = await Promise.all(
       pool.usos.map((uso) =>
         db.movimientoStock.findMany({
-          where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta } }, proceso: "VENTA", productoId: uso.pvProductoId },
+          where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: uso.pvProductoId },
           select: { cantidad: true, operacion: { select: { fecha: true } } },
         })
       )

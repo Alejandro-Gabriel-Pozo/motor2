@@ -14,6 +14,7 @@ import {
   type CabeceraCompra,
 } from "@/core/compras/correccion";
 import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/factura-unica";
+import { detalleReversionDeCompra } from "@/core/movimientos/anulaciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -96,7 +97,7 @@ export async function anularCompra(operacionId: string, claveIdempotencia?: stri
           sucursalId: ctx.sucursalId,
           proceso: "AJUSTE",
           fecha: ahora,
-          detalleLibre: `Anulación de la compra ${operacion.id} (${fechaCorta(operacion.fecha)}${operacion.nroFactura ? `, factura ${operacion.nroFactura}` : ""}).`,
+          detalleLibre: detalleReversionDeCompra(operacion.id, operacion.fecha, operacion.nroFactura),
           usuarioId: ctx.usuarioId,
           claveIdempotencia: claveIdempotencia ?? null,
           payloadHash: claveIdempotencia ? payloadHash : null,

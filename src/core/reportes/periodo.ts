@@ -43,9 +43,8 @@ export interface ItemPeriodo {
   /** Solo proceso VENTA, desde 2026-09-17 — ver docstring en schema.prisma (MovimientoStock.costoUnitarioVenta). */
   costoUnitarioVenta: number | null;
   /**
-   * La operación de esta línea está anulada. Los cálculos de dinero de COMPRA (gasto, gasto por insumo, tendencia de precios) la saltean: una compra
-   * anulada es una factura que no ocurrió. Todavía ninguna COMPRA puede estar anulada (hoy solo se anulan ventas), así que esto no cambia ningún
-   * número; deja los reportes listos para cuando se pueda anular una compra. Ver `docs/planes-implementacion-pendientes-2026-09-21.md` (K1c, Fase 0).
+   * La operación de esta línea está anulada (una venta o una compra). Todo cálculo de dinero la saltea: una venta o una compra anulada es algo que no
+   * ocurrió, y su efecto en el stock ya lo deshizo el contra-asiento. La línea sigue en `items` (para trazabilidad); lo que no debe hacer es sumar.
    */
   anulada: boolean;
 }
@@ -320,12 +319,11 @@ async function calcularRatioGastoVentas(
   // comparan entre sí, así que tienen que excluir lo mismo.
   const filas = await db.movimientoStock.groupBy({
     by: ["proceso", "productoId"],
-    // Una COMPRA anulada no es gasto. Solo se excluye la COMPRA (no la VENTA anulada) a propósito: hoy una venta anulada sigue sumando al ingreso en
-    // todos los reportes (`calcularVentasDelPeriodo`), y este período anterior tiene que comparar lo mismo que el actual.
+    // Una compra o una venta anuladas no son gasto ni ingreso: el período anterior tiene que comparar lo mismo que el actual.
     where: {
       seccion: { sucursalId },
-      operacion: { fecha: { gte: desdeAnterior, lte: hastaAnterior } },
-      OR: [{ proceso: "VENTA" }, { proceso: "COMPRA", operacion: { anuladaEn: null } }],
+      operacion: { fecha: { gte: desdeAnterior, lte: hastaAnterior }, anuladaEn: null },
+      proceso: { in: ["COMPRA", "VENTA"] },
     },
     _sum: { precioTotal: true },
   });
@@ -333,6 +331,7 @@ async function calcularRatioGastoVentas(
   let ventasAnterior = 0;
   for (const f of filas) {
     const importe = Number(f._sum.precioTotal ?? 0);
+    // Las compras y ventas anuladas ya las dejó afuera la consulta de arriba (`anuladaEn: null`).
     if (f.proceso === "VENTA") ventasAnterior += importe;
     else if (!productos.get(f.productoId)?.esNoComestible) comprasAnterior += importe;
   }
@@ -750,7 +749,7 @@ function calcularVentasDelPeriodo(items: ItemPeriodo[], productos: Map<string, I
   let totalFacturado = 0;
 
   for (const r of items) {
-    if (r.proceso !== "VENTA") continue;
+    if (r.proceso !== "VENTA" || r.anulada) continue;
     const esReal = r.precioTotal > 0;
     const precioVentaVigente = productos.get(r.productoId)?.precioVenta ?? 0;
     const importe = esReal ? r.precioTotal : r.cantidad * precioVentaVigente;
@@ -938,15 +937,16 @@ async function calcularMargenDelPeriodo(
   // de compras (ver costo-historico.ts); las que no se pueden costear quedan en `ingresoSinCostoReal`.
   // Una venta cargada SIN precio (`precioTotal` 0) no entra al margen Real ni al costo de lo vendido: no tiene ingreso con qué compararse, y sumar su costo
   // sin su ingreso inflaba el costo y deformaba el margen (el bucle del ajuste por IPC, más abajo, ya las saltea por lo mismo).
-  const ventasSinPrecioExcluidas = items.filter((it) => it.proceso === "VENTA" && it.precioTotal <= 0).length;
-  const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && it.precioTotal > 0 && it.costoUnitarioVenta === null);
+  // Una venta ANULADA tampoco entra: no ocurrió.
+  const ventasSinPrecioExcluidas = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal <= 0).length;
+  const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal > 0 && it.costoUnitarioVenta === null);
   const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos);
   // Mismo bucle línea a línea de arriba, acumulado ADEMÁS por producto — fuente única del margen Real por fila,
   // para que Período y cualquier otro consumidor (Promociones) lean el mismo número (docs/pendientes-*.md, hallazgo
   // "el mismo dato calculado distinto").
   const realPorProducto = new Map<string, { ingresoConCostoReal: number; costoRealTotal: number; ingresoRealReconstruido: number }>();
   for (const it of items) {
-    if (it.proceso !== "VENTA" || it.precioTotal <= 0) continue;
+    if (it.proceso !== "VENTA" || it.anulada || it.precioTotal <= 0) continue;
     const acc = realPorProducto.get(it.productoId) ?? { ingresoConCostoReal: 0, costoRealTotal: 0, ingresoRealReconstruido: 0 };
     realPorProducto.set(it.productoId, acc);
     if (it.costoUnitarioVenta !== null) {
@@ -1013,7 +1013,7 @@ async function calcularMargenDelPeriodo(
   let ingresoSinIPC = 0;
   let ingresoProvisorioIPC = 0; // ingreso de meses que el INDEC todavía no publicó (coeficiente provisorio, ver resolverCoeficienteIPC)
   for (const it of items) {
-    if (it.proceso !== "VENTA" || it.precioTotal <= 0) continue;
+    if (it.proceso !== "VENTA" || it.anulada || it.precioTotal <= 0) continue;
     const infoCosto = costoPorProducto.get(it.productoId);
     const costoUnitario = infoCosto && !infoCosto.costoIncompleto ? Number(infoCosto.costo ?? 0) : null;
     const coeficiente = resolverCoeficienteIPC(it.fecha, serieIPC);
@@ -1090,7 +1090,7 @@ export interface FilaCategoriaVenta {
  * reimplementar el criterio real-vs-estimado, solo reagrupa por Categoría.
  */
 export async function generarReporteVentasPorCategoria(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma) {
-  // El catálogo sale del propio reporte (ya lo cargó): no se lee de nuevo.
+  // El catálogo sale del propio reporte (ya lo cargó): no se lee de nuevo. Las ventas anuladas las descarta `calcularVentasDelPeriodo` (`r.anulada`).
   const { reporte: rep, productos } = await obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, { proceso: "VENTA" }, db);
 
   const porCategoria = new Map<string, { cantidad: number; importe: number; productos: { producto: string; cantidad: number; importe: number }[] }>();

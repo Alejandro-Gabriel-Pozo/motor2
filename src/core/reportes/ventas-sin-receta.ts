@@ -21,7 +21,8 @@ export interface FilaVentaSinReceta {
  */
 export async function generarReporteVentasSinReceta(sucursalId: string, db: Db = prisma): Promise<FilaVentaSinReceta[]> {
   const ventas = await db.movimientoStock.findMany({
-    where: { proceso: "VENTA", seccion: { sucursalId } },
+    // Una venta ANULADA no cuenta: no ocurrió.
+    where: { proceso: "VENTA", seccion: { sucursalId }, operacion: { anuladaEn: null } },
     select: { productoId: true, operacionId: true, operacion: { select: { fecha: true } } },
   });
   if (!ventas.length) return [];

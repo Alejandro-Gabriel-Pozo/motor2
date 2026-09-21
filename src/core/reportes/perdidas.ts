@@ -50,7 +50,8 @@ export async function generarReportePerdidas(sucursalId: string, diasAtras: numb
 
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   const movimientos = await db.movimientoStock.findMany({
-    where: { proceso: { in: ["MERMA", "CONSUMO"] }, seccion: { sucursalId }, operacion: { fecha: { gte: desde } } },
+    // El consumo automático por receta de una venta ANULADA no es una pérdida ni un consumo: la venta no ocurrió.
+    where: { proceso: { in: ["MERMA", "CONSUMO"] }, seccion: { sucursalId }, operacion: { fecha: { gte: desde }, anuladaEn: null } },
     select: {
       id: true,
       operacionId: true,

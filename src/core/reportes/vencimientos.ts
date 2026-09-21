@@ -95,7 +95,8 @@ async function sumarVentasYConsumosDeProducto(sucursalId: string, productoId: st
       productoId,
       seccion: { sucursalId },
       proceso: { in: ["VENTA", "CONSUMO"] },
-      operacion: { fecha: { gte: desde, lte: hasta } },
+      // Una venta anulada ya quedó neta en cero en el stock (su contra-asiento es un AJUSTE): sus líneas originales no son volumen que salió.
+      operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null },
     },
     _sum: { cantidad: true },
   });
