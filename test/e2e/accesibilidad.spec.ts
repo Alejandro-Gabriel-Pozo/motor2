@@ -277,3 +277,67 @@ testAutenticado("catalogo/productos/[id]/editar: el formulario de edición sin v
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
+
+testAutenticado(
+  "reportes/compras: la anulación de una compra (en reposo, con la confirmación abierta, con el rechazo por stock y ya anulada) sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    // Dos compras de un proveedor propio: una con su stock intacto (se anula) y otra ya consumida (la anulación se rechaza). `proveedorId` acota la lista.
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_A11Y_AN_${marca}`, nombre: `E2E A11y Proveedor Anular ${marca}` } });
+    const productos: string[] = [];
+    const operaciones: string[] = [];
+    async function compra(sufijo: string, consumido: number) {
+      const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-AN-${sufijo}-${marca}`, nombre: `E2E A11y Anular ${sufijo} ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+      productos.push(producto.id);
+      const op = await prisma.operacion.create({
+        data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00Z"), proveedorId: proveedor.id, nroFactura: `A11Y-${sufijo}-${marca}`, usuarioId: admin.id },
+      });
+      operaciones.push(op.id);
+      await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 100, precioPorUnidadStock: 10 } });
+      if (consumido) {
+        const consumo = await prisma.operacion.create({ data: { sucursalId, proceso: "CONSUMO", fecha: new Date("2026-08-11T12:00:00Z"), usuarioId: admin.id } });
+        operaciones.push(consumo.id);
+        await prisma.movimientoStock.create({ data: { operacionId: consumo.id, productoId: producto.id, seccionId, proceso: "CONSUMO", cantidad: -consumido, detalle: "Consumo", precioTotal: 0, precioPorUnidadStock: 0 } });
+      }
+      return op;
+    }
+    const intacta = await compra("intacta", 0);
+    const consumida = await compra("consumida", 7);
+    try {
+      await page.goto(`/reportes/compras?proveedorId=${proveedor.id}`);
+      await conTitulo(page, "Compras registradas");
+      const tarjetaIntacta = page.locator(`[data-compra="${intacta.id}"]`);
+      const tarjetaConsumida = page.locator(`[data-compra="${consumida.id}"]`);
+      await tarjetaIntacta.locator("summary").click();
+      await tarjetaConsumida.locator("summary").click();
+      await expect(tarjetaIntacta.getByRole("button", { name: /^Anular compra/ })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "detalles abiertos, en reposo").toEqual([]);
+
+      // Confirmación abierta: acá viven el role="alert", el aria-describedby y los dos botones.
+      await tarjetaIntacta.getByRole("button", { name: /^Anular compra/ }).click();
+      await expect(tarjetaIntacta.getByRole("button", { name: "Sí, anular" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "confirmación abierta").toEqual([]);
+
+      // Rechazo por stock consumido: el mensaje de error queda visible.
+      await tarjetaConsumida.getByRole("button", { name: /^Anular compra/ }).click();
+      await tarjetaConsumida.getByRole("button", { name: "Sí, anular" }).click();
+      await expect(tarjetaConsumida.getByRole("alert").filter({ hasText: "No se puede anular" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "rechazo por stock consumido").toEqual([]);
+
+      // Anulada: la fila marcada y el aviso de éxito.
+      await tarjetaIntacta.getByRole("button", { name: "Sí, anular" }).click();
+      await expect(tarjetaIntacta.getByRole("status").filter({ hasText: "Compra anulada" })).toBeVisible();
+      await expect(tarjetaIntacta.getByText("Anulada", { exact: true })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "compra anulada").toEqual([]);
+    } finally {
+      const reversiones = await prisma.operacion.findMany({ where: { OR: [{ detalleLibre: { contains: intacta.id } }, { detalleLibre: { contains: consumida.id } }] }, select: { id: true } });
+      await prisma.movimientoStock.deleteMany({ where: { productoId: { in: productos } } });
+      await prisma.operacion.deleteMany({ where: { id: { in: [...operaciones, ...reversiones.map((r) => r.id)] } } });
+      await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: [intacta.id, consumida.id] } } });
+      await prisma.producto.deleteMany({ where: { id: { in: productos } } });
+      await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
+    }
+  }
+);

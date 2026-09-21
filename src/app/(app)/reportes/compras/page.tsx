@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarComprasRegistradas, SIN_PROVEEDOR } from "@/core/reportes/compras-registradas";
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
+import { BotonAnularCompra } from "./boton-anular-compra";
 
 const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
 /**
  * Compras registradas, una fila por factura. Antes una compra solo se veía por el historial de un producto o por su ID de operación: no
- * había forma de ver qué se le compró a un proveedor, con qué factura, cuándo y por cuánto. Es de solo lectura.
+ * había forma de ver qué se le compró a un proveedor, con qué factura, cuándo y por cuánto. Quien tiene el permiso `anular_compra` puede anular una
+ * compra desde su detalle (K1c); corregirla en el lugar todavía no se puede.
  */
 export default async function ComprasRegistradasPage({
   searchParams,
@@ -23,6 +25,7 @@ export default async function ComprasRegistradasPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
+  const { editar: puedeAnular } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_compra");
   const sp = await searchParams;
   const desde = sp.desde && !Number.isNaN(new Date(sp.desde).getTime()) ? sp.desde : "";
   const hasta = sp.hasta && !Number.isNaN(new Date(sp.hasta).getTime()) ? sp.hasta : "";
@@ -54,7 +57,7 @@ export default async function ComprasRegistradasPage({
       <div>
         <h1 className="mb-1 text-xl font-semibold">Compras registradas</h1>
         <p className="text-sm text-neutral-500">
-          Una fila por factura, con lo que se compró en cada una. Más recientes primero. Es de solo lectura: una compra ya cargada todavía no se puede corregir ni anular.
+          Una fila por factura, con lo que se compró en cada una. Más recientes primero. Una compra mal cargada se puede anular (mientras lo comprado siga en stock) y volver a cargar; corregirla en el lugar todavía no se puede.
         </p>
       </div>
 
@@ -167,6 +170,15 @@ export default async function ComprasRegistradasPage({
                       ver la operación
                     </EnlaceInterno>
                   </p>
+                  {puedeAnular && (
+                    <div className="mt-2">
+                      <BotonAnularCompra
+                        idOperacion={c.idOperacion}
+                        anulada={Boolean(c.anuladaEn)}
+                        resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` a ${c.proveedorNombre}` : ""}${c.nroFactura ? `, factura ${c.nroFactura}` : ""}`}
+                      />
+                    </div>
+                  )}
                 </div>
               </details>
             ))}
