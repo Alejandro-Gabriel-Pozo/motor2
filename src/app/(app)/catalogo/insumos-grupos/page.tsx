@@ -27,60 +27,65 @@ export default async function InsumosGruposPage() {
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
       <section className="space-y-6">
         <h1 className="text-xl font-semibold">Insumos</h1>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="px-2 py-2 first:pl-0">Nombre</th>
-              <th className="px-2">Grupo</th>
-              <th className="px-2">Activo</th>
-              <th className="px-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {insumos.map((i) => (
-              <tr key={i.id} className="border-b align-top">
-                <td className="px-2 py-2 first:pl-0">
-                  <FormRenombrarInsumo insumoId={i.id} nombreActual={i.nombre} />
-                </td>
-                <td className="px-2 py-2">
-                  <form
-                    action={async (formData: FormData) => {
-                      "use server";
-                      const grupoId = String(formData.get("grupoId") ?? "");
-                      await actualizarGrupoDeInsumo(i.id, grupoId || null);
-                    }}
-                    className="flex gap-1"
-                  >
-                    <select name="grupoId" defaultValue={i.grupoId ?? ""} className="rounded border px-2 py-1">
-                      <option value="">Sin grupo</option>
-                      {grupos.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.nombre}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="submit" className="text-sm underline">
-                      Guardar
-                    </button>
-                  </form>
-                </td>
-                <td className="px-2 py-2">{i.activo ? "Sí" : "No"}</td>
-                <td className="px-2 py-2">
-                  <form
-                    action={async () => {
-                      "use server";
-                      await actualizarActivoInsumo(i.id, !i.activo);
-                    }}
-                  >
-                    <button type="submit" className="text-sm underline">
-                      {i.activo ? "Desactivar" : "Activar"}
-                    </button>
-                  </form>
-                </td>
+        {/* Cada tabla va en su propio contenedor con scroll: a 1280 px la de Insumos no entra en media pantalla y, sin esto, se salía de su
+            sección y se pintaba ENCIMA de la de grupos (que viene después en el DOM), que se quedaba con los clics de «Desactivar». Mismo patrón que
+            capacidades-sucursal y permisos-matriz. Lo cubre test/e2e/catalogo-insumos-grupos-maquetacion.spec.ts: sacar este contenedor reintroduce el bug. */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-neutral-500">
+                <th className="px-2 py-2 first:pl-0">Nombre</th>
+                <th className="px-2">Grupo</th>
+                <th className="px-2">Activo</th>
+                <th className="px-2" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {insumos.map((i) => (
+                <tr key={i.id} className="border-b align-top">
+                  <td className="px-2 py-2 first:pl-0">
+                    <FormRenombrarInsumo insumoId={i.id} nombreActual={i.nombre} />
+                  </td>
+                  <td className="px-2 py-2">
+                    <form
+                      action={async (formData: FormData) => {
+                        "use server";
+                        const grupoId = String(formData.get("grupoId") ?? "");
+                        await actualizarGrupoDeInsumo(i.id, grupoId || null);
+                      }}
+                      className="flex gap-1"
+                    >
+                      <select name="grupoId" defaultValue={i.grupoId ?? ""} className="rounded border px-2 py-1">
+                        <option value="">Sin grupo</option>
+                        {grupos.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="submit" className="text-sm underline">
+                        Guardar
+                      </button>
+                    </form>
+                  </td>
+                  <td className="px-2 py-2">{i.activo ? "Sí" : "No"}</td>
+                  <td className="px-2 py-2">
+                    <form
+                      action={async () => {
+                        "use server";
+                        await actualizarActivoInsumo(i.id, !i.activo);
+                      }}
+                    >
+                      <button type="submit" className="text-sm underline">
+                        {i.activo ? "Desactivar" : "Activar"}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <form
           action={async (formData: FormData) => {
@@ -100,35 +105,37 @@ export default async function InsumosGruposPage() {
 
       <section className="space-y-6">
         <h1 className="text-xl font-semibold">Árbol de grupos</h1>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-neutral-500">
-              <th className="px-2 py-2 first:pl-0">Cadena</th>
-              <th className="px-2">Activo</th>
-              <th className="px-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {grupos.map((g, idx) => (
-              <tr key={g.id} className="border-b">
-                <td className="px-2 py-2 first:pl-0">{cadenas[idx]}</td>
-                <td className="px-2 py-2">{g.activo ? "Sí" : "No"}</td>
-                <td className="px-2 py-2">
-                  <form
-                    action={async () => {
-                      "use server";
-                      await actualizarActivoGrupo(g.id, !g.activo);
-                    }}
-                  >
-                    <button type="submit" className="text-sm underline">
-                      {g.activo ? "Desactivar" : "Activar"}
-                    </button>
-                  </form>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-neutral-500">
+                <th className="px-2 py-2 first:pl-0">Cadena</th>
+                <th className="px-2">Activo</th>
+                <th className="px-2" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {grupos.map((g, idx) => (
+                <tr key={g.id} className="border-b">
+                  <td className="px-2 py-2 first:pl-0">{cadenas[idx]}</td>
+                  <td className="px-2 py-2">{g.activo ? "Sí" : "No"}</td>
+                  <td className="px-2 py-2">
+                    <form
+                      action={async () => {
+                        "use server";
+                        await actualizarActivoGrupo(g.id, !g.activo);
+                      }}
+                    >
+                      <button type="submit" className="text-sm underline">
+                        {g.activo ? "Desactivar" : "Activar"}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <form
           action={async (formData: FormData) => {
