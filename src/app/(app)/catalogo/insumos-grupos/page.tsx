@@ -12,6 +12,7 @@ import {
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { textoCadenaDeGrupos } from "@/core/catalogo/grupo";
 import { FormRenombrarInsumo } from "@/components/catalogo/form-renombrar-insumo";
+import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function InsumosGruposPage() {
   const ctx = await obtenerContextoUsuario();
@@ -47,39 +48,41 @@ export default async function InsumosGruposPage() {
                     <FormRenombrarInsumo insumoId={i.id} nombreActual={i.nombre} />
                   </td>
                   <td className="px-2 py-2">
-                    <form
-                      action={async (formData: FormData) => {
+                    <FormConResultado
+                      accion={async (formData: FormData) => {
                         "use server";
                         const grupoId = String(formData.get("grupoId") ?? "");
-                        await actualizarGrupoDeInsumo(i.id, grupoId || null);
+                        return actualizarGrupoDeInsumo(i.id, grupoId || null);
                       }}
-                      className="flex gap-1"
+                      className="space-y-1"
                     >
-                      <select name="grupoId" defaultValue={i.grupoId ?? ""} className="rounded border px-2 py-1">
-                        <option value="">Sin grupo</option>
-                        {grupos.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.nombre}
-                          </option>
-                        ))}
-                      </select>
-                      <button type="submit" className="text-sm underline">
-                        Guardar
-                      </button>
-                    </form>
+                      <div className="flex gap-1">
+                        <select name="grupoId" defaultValue={i.grupoId ?? ""} className="rounded border px-2 py-1">
+                          <option value="">Sin grupo</option>
+                          {grupos.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="submit" className="text-sm underline">
+                          Guardar
+                        </button>
+                      </div>
+                    </FormConResultado>
                   </td>
                   <td className="px-2 py-2">{i.activo ? "Sí" : "No"}</td>
                   <td className="px-2 py-2">
-                    <form
-                      action={async () => {
+                    <FormConResultado
+                      accion={async () => {
                         "use server";
-                        await actualizarActivoInsumo(i.id, !i.activo);
+                        return actualizarActivoInsumo(i.id, !i.activo);
                       }}
                     >
                       <button type="submit" className="text-sm underline">
                         {i.activo ? "Desactivar" : "Activar"}
                       </button>
-                    </form>
+                    </FormConResultado>
                   </td>
                 </tr>
               ))}
@@ -87,20 +90,24 @@ export default async function InsumosGruposPage() {
           </table>
         </div>
 
-        <form
-          action={async (formData: FormData) => {
+        <FormConResultado
+          accion={async (formData: FormData) => {
             "use server";
-            await crearInsumo(String(formData.get("nombre") ?? ""));
+            const r = await crearInsumo(String(formData.get("nombre") ?? ""));
             // El refresco se pide ACÁ y no en la acción: la acción también la usan el alta rápida y el AsistenteHermanar del formulario de Producto (ver refrescar.ts).
-            refrescarVistaSiHaceFalta();
+            // Solo si salió bien: con un error no cambió nada y no hay nada que redibujar.
+            if (r.ok) refrescarVistaSiHaceFalta();
+            return r;
           }}
-          className="flex max-w-md gap-2"
+          className="max-w-md space-y-1"
         >
-          <input name="nombre" placeholder="nombre del insumo" required className="flex-1 rounded border px-3 py-2" />
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Crear
-          </button>
-        </form>
+          <div className="flex gap-2">
+            <input name="nombre" placeholder="nombre del insumo" required className="flex-1 rounded border px-3 py-2" />
+            <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+              Crear
+            </button>
+          </div>
+        </FormConResultado>
       </section>
 
       <section className="space-y-6">
@@ -120,16 +127,16 @@ export default async function InsumosGruposPage() {
                   <td className="px-2 py-2 first:pl-0">{cadenas[idx]}</td>
                   <td className="px-2 py-2">{g.activo ? "Sí" : "No"}</td>
                   <td className="px-2 py-2">
-                    <form
-                      action={async () => {
+                    <FormConResultado
+                      accion={async () => {
                         "use server";
-                        await actualizarActivoGrupo(g.id, !g.activo);
+                        return actualizarActivoGrupo(g.id, !g.activo);
                       }}
                     >
                       <button type="submit" className="text-sm underline">
                         {g.activo ? "Desactivar" : "Activar"}
                       </button>
-                    </form>
+                    </FormConResultado>
                   </td>
                 </tr>
               ))}
@@ -137,11 +144,11 @@ export default async function InsumosGruposPage() {
           </table>
         </div>
 
-        <form
-          action={async (formData: FormData) => {
+        <FormConResultado
+          accion={async (formData: FormData) => {
             "use server";
             const grupoPadreId = String(formData.get("grupoPadreId") ?? "");
-            await crearOActualizarGrupo(String(formData.get("nombre") ?? ""), grupoPadreId || null);
+            return crearOActualizarGrupo(String(formData.get("nombre") ?? ""), grupoPadreId || null);
           }}
           className="flex max-w-md flex-col gap-2"
         >
@@ -158,7 +165,7 @@ export default async function InsumosGruposPage() {
           <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
             Guardar
           </button>
-        </form>
+        </FormConResultado>
       </section>
     </div>
   );

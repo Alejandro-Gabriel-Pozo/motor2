@@ -45,3 +45,35 @@ test("unidades: un nombre repetido muestra el error, y al corregirlo se ve el «
     await prisma.unidad.updateMany({ where: { nombre: nuevo }, data: { activa: false } });
   }
 });
+
+test("insumos: un nombre con caracteres no permitidos muestra el error y no crea nada", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E Insumo Inválido ${Date.now()} @@`;
+
+  await page.goto("/catalogo/insumos-grupos");
+  await expect(page.getByRole("heading", { name: "Insumos", exact: true })).toBeVisible();
+
+  await page.getByPlaceholder("nombre del insumo").fill(nombre);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+
+  await expect(page.getByText(/tiene caracteres no permitidos/)).toBeVisible();
+  expect(await prisma.insumo.count({ where: { nombre } }), "no tenía que crearse nada").toBe(0);
+});
+
+test("grupos: poner un grupo como su propio padre muestra el error del ciclo", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E Grupo Ciclo ${Date.now()}`;
+  const grupo = await prisma.grupo.create({ data: { nombre } });
+
+  try {
+    await page.goto("/catalogo/insumos-grupos");
+    await expect(page.getByRole("heading", { name: "Árbol de grupos" })).toBeVisible();
+
+    const formulario = page.locator("form", { has: page.getByPlaceholder("nombre del grupo (nuevo o existente)") });
+    await formulario.getByPlaceholder("nombre del grupo (nuevo o existente)").fill(nombre);
+    await formulario.locator('select[name="grupoPadreId"]').selectOption({ label: nombre });
+    await formulario.getByRole("button", { name: "Guardar", exact: true }).click();
+
+    await expect(page.getByText(/crearía un ciclo/)).toBeVisible();
+  } finally {
+    await prisma.grupo.deleteMany({ where: { id: grupo.id } });
+  }
+});
