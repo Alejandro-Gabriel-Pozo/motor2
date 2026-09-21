@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
@@ -14,6 +14,10 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  // Además de Ver (que ubica la pantalla en su familia), EDITAR: quien solo ve productos no tiene por qué recibir el formulario completo para descubrir
+  // recién al guardar que no puede. La barrera es esta, en el servidor; esconder el enlace en la lista y la ficha es solo cortesía de la interfaz.
+  const gateEditar = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
+  if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
 
   const { id } = await params;
   const p = await prisma.producto.findUnique({ where: { id } });
