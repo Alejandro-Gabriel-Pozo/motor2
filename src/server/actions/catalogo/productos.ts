@@ -309,8 +309,10 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
 
 export async function actualizarActivoProducto(productoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("editar_producto", async () => {
+    const existente = await prisma.producto.findUnique({ where: { id: productoId } });
+    if (!existente) return error("No se encontró el producto.");
     await prisma.producto.update({ where: { id: productoId }, data: { activo } });
-    return ok(`Producto ${activo ? "activado" : "desactivado"}.`);
+    return ok(`Producto "${existente.nombre}" ${activo ? "activado" : "desactivado"}.`);
   });
 }
 
