@@ -5,7 +5,15 @@ import { cargarClasificacionNoComestibles, construirMapaProductos, redondearCant
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo, type FilaImpactoRecetaPorPeriodo } from "./costos";
 import { claveCostoHistorico, diaUtc, reconstruirCostosDeVenta } from "./costo-historico";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
-import { cargarSerieIPC, esMesSinPublicar, resolverCoeficienteIPC, resolverVariacionPeriodoIPC } from "./indices-economicos";
+import {
+  antiguedadSerieIPC,
+  cargarSerieIPC,
+  esMesSinPublicar,
+  resolverCoeficienteIPC,
+  resolverVariacionPeriodoIPC,
+  textoSerieIPCVencida,
+  type AntiguedadSerieIPC,
+} from "./indices-economicos";
 
 export interface FiltrosPeriodo {
   proceso?: Proceso;
@@ -609,6 +617,8 @@ export interface ComparativaPreciosDelPeriodo {
   aviso: string;
   avisoCarta: string;
   avisoIPC: string;
+  /** Cuán vieja es la serie del IPC (5c): con `vencida`, el aviso deja de culpar al INDEC por un atraso que es de la sincronización. */
+  antiguedadIPC: AntiguedadSerieIPC;
 }
 
 /**
@@ -674,12 +684,14 @@ async function calcularComparativaPreciosDelPeriodo(
 
   const serieIPC = await cargarSerieIPC(db);
   const variacionIPCPct = resolverVariacionPeriodoIPC(desde, hasta, serieIPC);
+  const antiguedadIPC = antiguedadSerieIPC(serieIPC);
 
   return {
     variacionInsumosPct,
     variacionCartaPropiaPct,
     cantidadProductosConCambioCarta,
     variacionIPCPct,
+    antiguedadIPC,
     aviso: "Compara cuánto subieron tus insumos (ponderado por lo que realmente compraste) contra cuánto ajustaste tu propia carta y contra la inflación general — para ver si la carta está acompañando el costo, no solo si subió.",
     avisoCarta:
       variacionCartaPropiaPct !== null
@@ -689,9 +701,12 @@ async function calcularComparativaPreciosDelPeriodo(
           : "Todavía no hay cambios de precio de venta registrados en este período (el registro de auditoría arrancó el 2026-09-18) — este comparador mejora con el uso.",
     avisoIPC:
       variacionIPCPct !== null
-        ? `IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico.${esMesSinPublicar(hasta, serieIPC) || esMesSinPublicar(desde, serieIPC) ? ` PROVISORIO: el INDEC todavía no publicó el mes del período; se usó ${serieIPC.ultimoMes}, el último disponible.` : ""}`
+        ? `IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico.${esMesSinPublicar(hasta, serieIPC) || esMesSinPublicar(desde, serieIPC) ? (antiguedadIPC.estado === "vencida" ? ` ${textoSerieIPCVencida(antiguedadIPC)} Se usó ${serieIPC.ultimoMes}, el último cargado.` : ` PROVISORIO: el INDEC todavía no publicó el mes del período; se usó ${serieIPC.ultimoMes}, el último disponible.`) : ""}`
         : esMesSinPublicar(desde, serieIPC)
-          ? "El INDEC todavía no publicó el IPC de este período (lo publica a mitad del mes siguiente): la inflación se va a poder medir cuando salga."
+          ? antiguedadIPC.estado === "vencida"
+            ? // No es el rezago del INDEC: la serie está parada. Decir "lo publica a mitad del mes siguiente" desviaría el diagnóstico.
+              textoSerieIPCVencida(antiguedadIPC)
+            : "El INDEC todavía no publicó el IPC de este período (lo publica a mitad del mes siguiente): la inflación se va a poder medir cuando salga."
           : "Sin IPC sincronizado para alguno de los dos meses del período.",
   };
 }
@@ -824,6 +839,8 @@ export interface MargenDelPeriodo {
   /** Cuánto del ingreso con IPC es de un mes que el INDEC todavía no publicó (coeficiente provisorio). */
   ingresoProvisorioIPC: number;
   avisoIPC: string;
+  /** Cuán vieja es la serie del IPC (5c). Con `vencida` el ajuste está en plata del último mes cargado, no de hoy. */
+  antiguedadIPC: AntiguedadSerieIPC;
 }
 
 /**
@@ -940,6 +957,13 @@ async function calcularMargenDelPeriodo(
   // propósito: acá se ajusta el ingreso para que los dos lados de la
   // resta queden en plata de hoy.
   const serieIPC = await cargarSerieIPC(db);
+  // 5c: con la serie VENCIDA (parada hace más del máximo previsto) el ajuste sigue calculándose igual —ningún número cambia—, pero deja
+  // de decir que es «de hoy»: está en plata del último mes cargado y subestima el margen ajustado. Mismo cálculo, otro aviso.
+  const antiguedadIPC = antiguedadSerieIPC(serieIPC);
+  const serieVencida = antiguedadIPC.estado === "vencida";
+  const textoBaseAvisoIPC = serieVencida
+    ? `Ventas llevadas a poder adquisitivo de ${serieIPC.ultimoMes} (el último mes con IPC cargado), NO de hoy, antes de restar el costo de reposición de HOY. ${textoSerieIPCVencida(antiguedadIPC)} El margen ajustado queda subestimado.`
+    : `Ventas llevadas a poder adquisitivo de hoy (IPC INDEC) antes de restar el costo de reposición de HOY — los dos lados de la resta quedan en la misma plata, a diferencia de "Margen".`;
   let ingresoAjustadoIPCTotal = 0;
   let costoIPCTotal = 0;
   let ingresoConIPC = 0;
@@ -993,8 +1017,9 @@ async function calcularMargenDelPeriodo(
     ingresoConIPC: redondearMoneda(ingresoConIPC),
     ingresoSinIPC: redondearMoneda(ingresoSinIPC),
     ingresoProvisorioIPC: redondearMoneda(ingresoProvisorioIPC),
+    antiguedadIPC,
     avisoIPC: ingresoConIPC > 0
-      ? `Ventas llevadas a poder adquisitivo de hoy (IPC INDEC) antes de restar el costo de reposición de HOY — los dos lados de la resta quedan en la misma plata, a diferencia de "Margen".${ingresoSinIPC > 0 ? ` Cubre $${redondearMoneda(ingresoConIPC).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} — el resto es de un producto con costo incompleto o de un mes que falta en la serie del IPC.` : ""}${ingresoProvisorioIPC > 0 ? ` PROVISORIO: $${redondearMoneda(ingresoProvisorioIPC).toLocaleString("es-AR")} son de un mes que el INDEC todavía no publicó; se los trata como hechos en ${serieIPC.ultimoMes} (el último publicado), sin inflación entre medio. Se corrige solo cuando se publique.` : ""}`
+      ? `${textoBaseAvisoIPC}${ingresoSinIPC > 0 ? ` Cubre $${redondearMoneda(ingresoConIPC).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} — el resto es de un producto con costo incompleto o de un mes que falta en la serie del IPC.` : ""}${ingresoProvisorioIPC > 0 ? ` PROVISORIO: $${redondearMoneda(ingresoProvisorioIPC).toLocaleString("es-AR")} son de un mes que el INDEC todavía no publicó; se los trata como hechos en ${serieIPC.ultimoMes} (el último publicado), sin inflación entre medio.${serieVencida ? "" : " Se corrige solo cuando se publique."}` : ""}`
       : "Todavía no hay índice de IPC sincronizado (o ninguna venta del rango cae en un mes ya sincronizado).",
   };
 }
