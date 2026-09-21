@@ -74,7 +74,7 @@ literales, no una paráfrasis:
 | Unitaria/integración | Lógica de negocio contra Postgres real, sin mocks (`fileParallelism: false`) — la suite ENTERA, nunca solo el archivo tocado | `npm test` (Vitest) | Todos los archivos en verde; conteo de tests igual o mayor a la línea de base |
 | Accesibilidad (WCAG 2.1) | Que la UI no introduzca violaciones detectables automáticamente — capa nueva desde 2026-09-20, hoy solo en `test/e2e/accesibilidad.spec.ts` (login + un reporte autenticado) | `npx playwright test test/e2e/accesibilidad.spec.ts` (o la suite completa, que ya la incluye) | `violations` vacío en cada página cubierta. Al tocar una pantalla nueva, evaluar sumarle su propio chequeo con `@axe-core/playwright` (`new AxeBuilder({ page }).analyze()`) en vez de asumir que las dos páginas ya cubiertas alcanzan |
 | Build | El artefacto de producción compila limpio | `npm run build` (`prisma generate && prisma migrate deploy && next build`) — ojo, aplica migraciones: apuntar `DATABASE_URL`/`DIRECT_URL` a una base local o descartable, nunca a producción | Build exitoso, sin warnings nuevos |
-| E2E / navegador real | Lo que solo un navegador real detecta (HTML inválido, hidratación, formularios anidados, redirecciones) — la suite ENTERA, no un spec suelto | `npm run test:e2e` (Playwright, `workers: 1`, requiere Postgres migrado+sembrado y `next dev` corriendo o levantado por la propia config) | Todos los specs en verde; conteo de specs igual o mayor a la línea de base |
+| E2E / navegador real | Lo que solo un navegador real detecta (HTML inválido, hidratación, formularios anidados, redirecciones) — la suite ENTERA, no un spec suelto | `npm run test:e2e` (Playwright, `workers: 1`, requiere Postgres migrado+sembrado; la propia config levanta el servidor: por defecto `next build` + `next start`, con `MOTOR2_E2E_SERVIDOR=dev` para volver a `next dev`) | Todos los specs en verde; conteo de specs igual o mayor a la línea de base |
 
 Si el proyecto que estás planificando **no** es motor2, reemplazar esta
 tabla por los comandos reales de ESE repo antes de usar la skill — ver
@@ -132,7 +132,13 @@ ya existentes, pedirle al agente que confirme explícitamente:
   de lentitud/flakiness en CI, y que cambiar a build+start tiene su propio
   costo (separar el build de la aplicación de cualquier paso que aplique
   migraciones; confirmar que ningún spec depende de un comportamiento
-  específico del modo desarrollo, como un overlay de errores más detallado).
+  específico del modo desarrollo, como un overlay de errores más detallado;
+  y, si el proyecto usa Auth.js, que `next start` deja `NODE_ENV=production` y
+  entonces hace falta `AUTH_TRUST_HOST`). **Medir antes de asumir**: en motor2
+  (Next 16, Turbopack) se estimaba que build+start costaba +0 a +45 s y resultó
+  ~37 % MÁS RÁPIDO (129 s contra 206 s en 192 tests) porque desaparece la
+  compilación bajo demanda. En Next 16 `next dev` escribe en `.next/dev`, así
+  que ya no pisa el `.next` de un build (en versiones anteriores sí).
 
 ## Plantilla de prompt (para copiar y adaptar)
 

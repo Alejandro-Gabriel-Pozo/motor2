@@ -54,7 +54,8 @@ Movimientos + Stock + Reportes + Traspasos).
 
 ## Tests E2E (navegador real)
 
-`npm run test:e2e` corre Playwright contra `next dev` + Postgres real, con
+`npm run test:e2e` corre Playwright contra el build de producción (`next build`
++ `next start`) + Postgres real, con
 sesión de Auth.js real (una fila en `Session`, sin pasar por Google OAuth —
 ver `test/e2e/fixtures/auth.ts`). Complementa, no reemplaza, la suite de
 Vitest: esos tests nunca renderizan el DOM (`environment: "node"`), así que
@@ -83,8 +84,23 @@ local o el nombre no termina en `_e2e`; no hay fallback a `DATABASE_URL`.
 `npx playwright test --list` también necesita la variable, porque la
 configuración la valida al cargarse.
 
-Levanta su propio `next dev` en el puerto 3101 y nunca reutiliza uno ya
-abierto (el del 3000 apunta a `motor2_dev`). `workers: 1` a propósito — los
+**Qué servidor levanta.** Por defecto compila y sirve el artefacto de producción
+(`npm run build:e2e` — sin `prisma migrate deploy` — y `next start`), que es lo
+que se despliega: minificación, límites `"use client"`, hidratación y prefetch
+reales. Medido, es más rápido que `next dev` (unos 2,1 min contra 3,4 min para
+193 tests) y elimina la compilación bajo demanda como fuente de flakiness. Se
+elige con `MOTOR2_E2E_SERVIDOR` (en `.env` o en la shell):
+
+- `build` (default): compila y sirve. Es el que vale para cerrar un cambio.
+- `start`: reusa el último build sin recompilar; ciclo corto para depurar un
+  spec cuando el código no cambió.
+- `dev`: `next dev`, con overlay de errores y HMR; conviene para
+  `npm run test:e2e:ui` y para depurar. **Dejarlo en `dev` debilita el gate de
+  cierre**: la salida dice `[e2e] Servidor: <modo>` y
+  `test/e2e/servidor-en-modo-produccion.spec.ts` afirma que el modo es real.
+
+Usa su propio puerto (3101) y nunca reutiliza un servidor ya abierto (el del
+3000 apunta a `motor2_dev`). `workers: 1` a propósito — los
 specs comparten la misma base Postgres, sin mocks (mismo criterio que
 `fileParallelism: false` de Vitest); cada spec usa nombres únicos
 (`Date.now()`) para no chocar con otros specs de la misma corrida.

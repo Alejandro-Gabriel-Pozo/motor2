@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 import { resolverUrlE2E } from "./test/e2e/fixtures/base-e2e";
 
 /**
- * E2E real: navegador de verdad contra `next dev` + Postgres real — ver
+ * E2E real: navegador de verdad contra el servidor de producción (`next build` + `next start`, ver `MOTOR2_E2E_SERVIDOR` más abajo) + Postgres real — ver
  * test/e2e/fixtures/auth.ts para cómo se resuelve la sesión sin Google
  * OAuth. Complementa (no reemplaza) los tests de Vitest: esos cubren
  * lógica de negocio contra Postgres real pero SIN navegador (`environment:
@@ -61,7 +61,7 @@ const COMANDOS = {
   dev: "npm run dev",
 } as const;
 type ModoServidor = keyof typeof COMANDOS;
-const modoPedido = process.env.MOTOR2_E2E_SERVIDOR?.trim() || "dev";
+const modoPedido = process.env.MOTOR2_E2E_SERVIDOR?.trim() || "build";
 if (!(modoPedido in COMANDOS)) throw new Error(`MOTOR2_E2E_SERVIDOR inválido: "${modoPedido}". Valores: ${Object.keys(COMANDOS).join(" | ")}.`);
 const MODO = modoPedido as ModoServidor;
 // El modo YA RESUELTO (con el default aplicado) se exporta al entorno: es la fuente de verdad que lee test/e2e/servidor-en-modo-produccion.spec.ts.
