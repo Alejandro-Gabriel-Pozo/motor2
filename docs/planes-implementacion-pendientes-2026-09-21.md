@@ -12,7 +12,7 @@ Este documento es una **versión condensada** de los seis informes: conserva hal
 | **6b** | Costo de lo vendido (consumo) junto al ratio Compras/Ventas | No | ¿Se muestra? ¿Se aplica el paso 2 (ventas sin precio)? | Exponer el número en el core (paso 1) |
 | **E1** | Digest diario de alertas de stock por mail | Sí (`AlertaStockAvisada`) | Digest o mail por ítem; a quién | Pasos 1 a 5 y 7 sin cuenta de Resend |
 | **K1b/K1c** | Anular y corregir una compra confirmada | Sí (índice único) | Campos corregibles, bonificación, permisos, orden | Fase 0 |
-| **E5** | Conteo Físico: buscar por receta | No | 7 preguntas de alcance (el corte 1 no depende de ninguna) | Corte 1 |
+| ~~**E5**~~ | ~~Conteo Físico: buscar por receta~~ **Descartada por innecesaria (2026-09-21)** | — | — | — |
 | **Paso 7** | Pivot de reportes para el contador | No | 8 preguntas de alcance (el corte 1 no depende de ninguna) | Corte 1 |
 
 **Reglas comunes a todos los planes**
@@ -269,6 +269,8 @@ Retroactividad de la anulación sobre costos históricos; asimetría preexistent
 
 ## 6. E5: Conteo Físico, búsqueda por receta
 
+> **DESCARTADA (2026-09-21):** la persona responsable la consideró innecesaria. Esta sección queda solo como registro; no hay nada pendiente.
+
 ### Hallazgos del código (corrigen el grounding y reducen el peso de las 7 preguntas)
 
 1. **Un ingrediente no puede ser un PV con `seProduce`:** `validarIngredientes` (`recetas.ts`) solo acepta MP activas. El caso recursivo real es una **MP con `seProduce`** (salsa base, prepizza).
@@ -388,7 +390,6 @@ La conciliación falla por centavos si se suman celdas ya redondeadas; falla la 
 | 6b | ¿Se muestra el consumo? ¿Se aplica el paso 2 (ventas sin precio)? | Solo se puede hacer el paso 1 (core, sin UI) |
 | E1 | ¿Digest o mail por ítem? ¿A todos con el permiso o a un responsable? Además, límite de crons de Vercel y cuenta de Resend | Se pueden construir los pasos 1 a 5 y 7 |
 | K1b/K1c | Campos corregibles (4), bonificación (2), permisos (6), orden (7) | Se puede empezar por la Fase 0 |
-| E5 | Aprobar el alcance del corte 1 | Nada; las 7 preguntas son extensiones |
 | Paso 7 | Aprobar el alcance del corte 1 | Nada; las 8 preguntas son extensiones |
 
 **Nota operativa:** `AGENTS.md` empieza con un bloque que `next dev` reescribe. Si aparece modificado en un diff, se commitea junto con el trabajo (borrarlo solo lo recrea).
