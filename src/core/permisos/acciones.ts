@@ -67,6 +67,8 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "anular_venta", descripcion: "Anular una venta ya confirmada", rolesEditarSemilla: ["admin"] },
   // Más restrictivo que `proceso_compra` (cargarla), a propósito y con el mismo criterio que `anular_venta`: deshacer una compra confirmada mueve el stock y el gasto.
   { clave: "anular_compra", descripcion: "Anular una compra ya confirmada", rolesEditarSemilla: ["admin"] },
+  // Corregir solo la CABECERA de una compra ya confirmada (proveedor, N.º de factura, detalle); nunca sus líneas. Mismo criterio restrictivo que `anular_compra`.
+  { clave: "corregir_compra", descripcion: "Corregir el proveedor, el N.º de factura o el detalle de una compra ya confirmada", rolesEditarSemilla: ["admin"] },
   { clave: "capacidades_sucursal", descripcion: "Habilitar/deshabilitar qué puede gestionar cada sucursal", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, "Bootstrap de admin"):
   // reemplaza el paso manual crear-contenedor.js por una acción real del
