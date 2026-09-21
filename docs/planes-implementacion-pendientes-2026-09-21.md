@@ -8,7 +8,7 @@ Este documento es una **versión condensada** de los seis informes: conserva hal
 
 | Plan | Qué es | Migración | Decisión que falta | Corte implementable ya |
 |---|---|---|---|---|
-| **E4** | Memoria por usuario de los últimos valores del alta de producto | Solo con la variante «base de datos» | Cookie o base de datos | Módulo puro (paso 1) |
+| ~~**E4**~~ | ~~Memoria por usuario de los últimos valores del alta de producto~~ **Descartada e implementada-revertida (`76a44fa`)** | — | — | — |
 | **6b** | Costo de lo vendido (consumo) junto al ratio Compras/Ventas | No | ¿Se muestra? ¿Se aplica el paso 2 (ventas sin precio)? | Exponer el número en el core (paso 1) |
 | **E1** | Digest diario de alertas de stock por mail | Sí (`AlertaStockAvisada`) | Digest o mail por ítem; a quién | Pasos 1 a 5 y 7 sin cuenta de Resend |
 | **K1b/K1c** | Anular y corregir una compra confirmada | Sí (índice único) | Campos corregibles, bonificación, permisos, orden | Fase 0 |
@@ -34,6 +34,10 @@ Este documento es una **versión condensada** de los seis informes: conserva hal
 **Aislamiento E2E (verificado por los agentes).** `global-setup.ts` vacía la base `_e2e` (todas las tablas leídas de `information_schema`, así que una tabla nueva queda cubierta sola) y siembra antes de cada corrida; `global-teardown.ts` la vacía al final; `workers: 1`. **Dentro de una misma corrida no hay limpieza entre specs**: los specs nuevos usan nombres únicos con `Date.now()` y limpian en `finally`. Ningún spec depende del modo dev. En Vitest, `test/setup/test-db.ts::limpiarBaseDeTest` es una lista **hardcodeada**: una tabla nueva exige agregarle su `deleteMany`.
 
 ## 2. E4: memoria de los últimos valores del alta de producto
+
+> **DESCARTADA (2026-09-21).** Se implementó con la variante «base de datos» hasta el paso 5 (commits `e7acde1`, `7ddac47`, `59d7bf0`, `2f22bc9`, `d147113`) y se revirtió completa en `76a44fa` porque la función resultó innecesaria. La migración `PreferenciaUsuario` nunca se aplicó en Neon y se quitó de las bases locales (`motor2_dev`, `motor2_e2e`). Esta sección queda solo como registro.
+>
+> **Sigue vigente de este plan:** el hallazgo 4 (la pantalla de alta de producto **falla axe hoy**: los `<select>` y varios campos no tienen nombre accesible). Es deuda preexistente, independiente de E4, y conviene tratarla como pendiente propio.
 
 ### Recomendación
 
@@ -381,7 +385,6 @@ La conciliación falla por centavos si se suman celdas ya redondeadas; falla la 
 
 | Plan | Decisión | Sin ella |
 |---|---|---|
-| E4 | ¿Cookie o base de datos? | El plan no puede completarse (la diferencia es un archivo y una migración) |
 | 6b | ¿Se muestra el consumo? ¿Se aplica el paso 2 (ventas sin precio)? | Solo se puede hacer el paso 1 (core, sin UI) |
 | E1 | ¿Digest o mail por ítem? ¿A todos con el permiso o a un responsable? Además, límite de crons de Vercel y cuenta de Resend | Se pueden construir los pasos 1 a 5 y 7 |
 | K1b/K1c | Campos corregibles (4), bonificación (2), permisos (6), orden (7) | Se puede empezar por la Fase 0 |
