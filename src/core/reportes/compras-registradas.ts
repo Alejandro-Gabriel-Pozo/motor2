@@ -47,6 +47,9 @@ export interface CompraRegistrada {
   total: number;
   /** Alguna línea se cargó sin precio: el total no es el de la factura. */
   hayLineasSinPrecio: boolean;
+  /** La compra está anulada (null = vigente): se muestra marcada y NO suma al gasto. Hoy ninguna compra se puede anular; queda listo para K1c. */
+  anuladaEn: Date | null;
+  anuladaPorEmail: string | null;
   lineas: LineaCompra[];
 }
 
@@ -81,6 +84,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
     include: {
       proveedor: { select: { nombre: true } },
       usuario: { select: { email: true } },
+      anuladaPor: { select: { email: true } },
       movimientos: {
         where: { proceso: "COMPRA" },
         include: { producto: { select: { codigo: true, nombre: true, unidadStock: { select: { nombre: true } } } }, seccion: { select: { nombre: true } } },
@@ -117,6 +121,8 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       detalle: o.detalleLibre,
       total: redondearMoneda(lineas.reduce((suma, l) => suma + l.precioTotal, 0)),
       hayLineasSinPrecio: lineas.some((l) => !(l.precioTotal > 0)),
+      anuladaEn: o.anuladaEn,
+      anuladaPorEmail: o.anuladaPor?.email ?? null,
       lineas,
     };
   });

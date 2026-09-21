@@ -196,7 +196,7 @@ export async function calcularRendimientoRecetasSimples(
 
     const [compras, ventas] = await Promise.all([
       db.movimientoStock.findMany({
-        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta } }, proceso: "COMPRA", productoId: { in: pool.productoIds } },
+        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "COMPRA", productoId: { in: pool.productoIds } },
         select: { cantidad: true, operacion: { select: { fecha: true } } },
       }),
       db.movimientoStock.findMany({
@@ -263,7 +263,7 @@ export async function calcularRendimientoRecetasCompartidas(
     if (pool.usos.length < 2) continue; // Fase 1 — ver calcularRendimientoRecetasSimples.
 
     const compras = await db.movimientoStock.findMany({
-      where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta } }, proceso: "COMPRA", productoId: { in: pool.productoIds } },
+      where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "COMPRA", productoId: { in: pool.productoIds } },
       select: { cantidad: true, operacion: { select: { fecha: true } } },
     });
 

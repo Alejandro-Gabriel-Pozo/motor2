@@ -55,15 +55,15 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
               {operacion.nroFactura && `Factura: ${operacion.nroFactura}.`}
             </p>
           )}
-          {operacion.proceso === "VENTA" &&
-            (operacion.anuladaEn ? (
-              <p className="mb-2 text-xs text-red-600">
-                Anulada el {operacion.anuladaEn.toISOString().slice(0, 10)}
-                {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
-              </p>
-            ) : (
-              <BotonAnularVenta idOperacion={operacion.idOperacion} />
-            ))}
+          {/* El cartel de «Anulada» vale para cualquier proceso; el botón para anular, solo para una venta vigente. */}
+          {operacion.anuladaEn ? (
+            <p className="mb-2 text-xs text-red-600">
+              Anulada el {operacion.anuladaEn.toISOString().slice(0, 10)}
+              {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
+            </p>
+          ) : (
+            operacion.proceso === "VENTA" && <BotonAnularVenta idOperacion={operacion.idOperacion} />
+          )}
           <TablaItemsOperacion filas={operacion.items} nombreExport={`operacion-${operacion.idOperacion}`} />
         </div>
       )}

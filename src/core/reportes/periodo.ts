@@ -42,6 +42,12 @@ export interface ItemPeriodo {
   precioPorUnidadStock: number;
   /** Solo proceso VENTA, desde 2026-09-17 — ver docstring en schema.prisma (MovimientoStock.costoUnitarioVenta). */
   costoUnitarioVenta: number | null;
+  /**
+   * La operación de esta línea está anulada. Los cálculos de dinero de COMPRA (gasto, gasto por insumo, tendencia de precios) la saltean: una compra
+   * anulada es una factura que no ocurrió. Todavía ninguna COMPRA puede estar anulada (hoy solo se anulan ventas), así que esto no cambia ningún
+   * número; deja los reportes listos para cuando se pueda anular una compra. Ver `docs/planes-implementacion-pendientes-2026-09-21.md` (K1c, Fase 0).
+   */
+  anulada: boolean;
 }
 
 /**
@@ -117,7 +123,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
       costoUnitarioVenta: true,
       producto: { select: { nombre: true, codigo: true } },
       seccion: { select: { nombre: true } },
-      operacion: { select: { fecha: true, nroFactura: true, proveedorId: true, proveedor: { select: { nombre: true } } } },
+      operacion: { select: { fecha: true, nroFactura: true, proveedorId: true, anuladaEn: true, proveedor: { select: { nombre: true } } } },
     },
     orderBy: { operacion: { fecha: "asc" } },
   });
@@ -146,6 +152,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
     precioTotal: Number(m.precioTotal),
     precioPorUnidadStock: Number(m.precioPorUnidadStock),
     costoUnitarioVenta: m.costoUnitarioVenta !== null ? Number(m.costoUnitarioVenta) : null,
+    anulada: m.operacion.anuladaEn !== null,
   }));
 
   const resumen: Record<string, number> = {};
@@ -313,7 +320,13 @@ async function calcularRatioGastoVentas(
   // comparan entre sí, así que tienen que excluir lo mismo.
   const filas = await db.movimientoStock.groupBy({
     by: ["proceso", "productoId"],
-    where: { seccion: { sucursalId }, operacion: { fecha: { gte: desdeAnterior, lte: hastaAnterior } }, proceso: { in: ["COMPRA", "VENTA"] } },
+    // Una COMPRA anulada no es gasto. Solo se excluye la COMPRA (no la VENTA anulada) a propósito: hoy una venta anulada sigue sumando al ingreso en
+    // todos los reportes (`calcularVentasDelPeriodo`), y este período anterior tiene que comparar lo mismo que el actual.
+    where: {
+      seccion: { sucursalId },
+      operacion: { fecha: { gte: desdeAnterior, lte: hastaAnterior } },
+      OR: [{ proceso: "VENTA" }, { proceso: "COMPRA", operacion: { anuladaEn: null } }],
+    },
     _sum: { precioTotal: true },
   });
   let comprasAnterior = 0;
@@ -374,7 +387,7 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[], productos: Map<string, 
   let hayComprasSinPrecio = false;
 
   for (const r of items) {
-    if (r.proceso !== "COMPRA") continue;
+    if (r.proceso !== "COMPRA" || r.anulada) continue;
     const proveedor = r.proveedorNombre || "Sin proveedor";
     const importe = r.precioTotal;
     if (importe <= 0) hayComprasSinPrecio = true;
@@ -448,7 +461,7 @@ function calcularGastoPorInsumoDelPeriodo(items: ItemPeriodo[], productos: Map<s
   const porGrupo = new Map<string, number>();
 
   for (const r of items) {
-    if (r.proceso !== "COMPRA") continue;
+    if (r.proceso !== "COMPRA" || r.anulada) continue;
     const info = productos.get(r.productoId);
     const insumo = info?.insumoNombre ?? "Sin insumo asignado";
     const grupo = info?.grupoNombre ?? null;
@@ -526,7 +539,7 @@ async function obtenerPrecioAnteriorPorInsumo(
   if (!productoIdsRelevantes.length) return new Map();
 
   const previas = await db.movimientoStock.findMany({
-    where: { productoId: { in: productoIdsRelevantes }, proceso: "COMPRA", seccion: { sucursalId }, operacion: { fecha: { lt: desde } } },
+    where: { productoId: { in: productoIdsRelevantes }, proceso: "COMPRA", seccion: { sucursalId }, operacion: { fecha: { lt: desde }, anuladaEn: null } },
     select: { productoId: true, precioTotal: true, cantidad: true },
     orderBy: { operacion: { fecha: "desc" } },
   });
@@ -563,7 +576,7 @@ async function calcularTendenciaPreciosDelPeriodo(
   const porInsumo = new Map<string, { grupo: string | null; sumaPrecioTotal: number; sumaCantidad: number }>();
 
   for (const r of items) {
-    if (r.proceso !== "COMPRA") continue;
+    if (r.proceso !== "COMPRA" || r.anulada) continue;
     if (!(r.cantidad > 0) || r.precioTotal <= 0) continue; // sin cantidad o sin precio no aporta un precio unitario real
     const info = productos.get(r.productoId);
     const insumo = info?.insumoNombre;

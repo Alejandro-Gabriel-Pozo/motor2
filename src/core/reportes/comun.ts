@@ -154,7 +154,8 @@ export async function obtenerCostoActualPorMP(sucursalId: string, db: Db = prism
       proceso: "COMPRA",
       seccion: { sucursalId },
       precioPorUnidadStock: { gt: 0 },
-      ...(antesDe ? { operacion: { fecha: { lt: antesDe } } } : {}),
+      // Una compra anulada no fija el costo de reposición.
+      operacion: { anuladaEn: null, ...(antesDe ? { fecha: { lt: antesDe } } : {}) },
     },
     orderBy: { operacion: { fecha: "desc" } },
     select: { productoId: true, precioPorUnidadStock: true, operacion: { select: { fecha: true, proveedor: { select: { nombre: true } } } } },

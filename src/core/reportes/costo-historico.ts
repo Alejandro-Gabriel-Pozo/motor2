@@ -76,7 +76,8 @@ export async function reconstruirCostosDeVenta(
         proceso: "COMPRA",
         seccion: { sucursalId },
         precioPorUnidadStock: { gt: 0 },
-        operacion: { fecha: { gte: primerDiaFecha, lt: ultimoDiaFechaExclusiva } },
+        // Una compra anulada no cuenta para reconstruir el costo de un día (ni acá ni en la semilla de abajo).
+        operacion: { fecha: { gte: primerDiaFecha, lt: ultimoDiaFechaExclusiva }, anuladaEn: null },
       },
       select: { productoId: true, precioPorUnidadStock: true, operacion: { select: { fecha: true } } },
     }),
@@ -89,7 +90,7 @@ export async function reconstruirCostosDeVenta(
       JOIN "Operacion" o ON o."id" = m."operacionId"
       JOIN "Seccion" s ON s."id" = m."seccionId"
       WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = ${sucursalId}
-        AND m."precioPorUnidadStock" > 0 AND o."fecha" < ${primerDiaFecha}
+        AND m."precioPorUnidadStock" > 0 AND o."fecha" < ${primerDiaFecha} AND o."anuladaEn" IS NULL
       ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
     `,
   ]);

@@ -44,7 +44,10 @@ export default async function ComprasRegistradasPage({
   if (sp.factura) paramsSiguiente.set("factura", sp.factura);
   if (nextCursor) paramsSiguiente.set("cursor", nextCursor);
 
-  const totalPagina = items.reduce((suma, c) => suma + c.total, 0);
+  // Una compra anulada es una factura que no ocurrió: se muestra marcada pero no suma al total de la página.
+  const vigentes = items.filter((c) => !c.anuladaEn);
+  const cantidadAnuladas = items.length - vigentes.length;
+  const totalPagina = vigentes.reduce((suma, c) => suma + c.total, 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,6 +98,7 @@ export default async function ComprasRegistradasPage({
         <>
           <p className="text-xs text-neutral-500">
             {items.length} compra(s) en esta página · suman {plata(Math.round(totalPagina * 100) / 100)}
+            {cantidadAnuladas > 0 && ` (sin contar ${cantidadAnuladas} anulada(s))`}
           </p>
           <div className="flex flex-col gap-2">
             {items.map((c) => (
@@ -110,7 +114,15 @@ export default async function ComprasRegistradasPage({
                   )}
                   <span className="text-neutral-500">{c.nroFactura ? `Factura ${c.nroFactura}` : "sin N.º de factura"}</span>
                   <span className="text-neutral-500">{c.lineas.length} línea(s)</span>
-                  <span className="ml-auto font-semibold tabular-nums">
+                  {c.anuladaEn && (
+                    <span
+                      className="rounded border border-red-600 px-1.5 text-xs text-red-600"
+                      title={`Anulada el ${fechaCorta(c.anuladaEn)}${c.anuladaPorEmail ? ` por ${c.anuladaPorEmail}` : ""}: no cuenta en el gasto`}
+                    >
+                      Anulada
+                    </span>
+                  )}
+                  <span className={`ml-auto font-semibold tabular-nums ${c.anuladaEn ? "line-through" : ""}`}>
                     {plata(c.total)}
                     {c.hayLineasSinPrecio && (
                       <span className="ml-1 text-xs font-normal text-amber-700 dark:text-amber-600" title="Alguna línea se cargó sin precio: el total no es el de la factura">

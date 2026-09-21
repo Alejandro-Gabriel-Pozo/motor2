@@ -20,7 +20,7 @@ export interface DatosOperacion {
   nroFactura: string | null;
   total: number;
   items: ItemOperacion[];
-  /** Solo relevante si proceso === "VENTA" — ver anularVenta (server/actions/venta.ts). */
+  /** Null = vigente. Hoy solo se anulan las ventas (ver anularVenta, server/actions/venta.ts), pero se informa para cualquier proceso. */
   anuladaEn: Date | null;
   anuladaPorEmail: string | null;
 }
