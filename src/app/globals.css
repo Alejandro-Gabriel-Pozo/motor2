@@ -19,6 +19,15 @@
   }
 }
 
+/* Un <th> con texto solo para lectores de pantalla (<span class="sr-only">Acciones</span>, en las columnas de botones) es position:absolute. Sin
+   un ancestro posicionado, su bloque contenedor queda FUERA del <div overflow-x-auto> de la tabla: no se recorta ni scrollea con ella y agranda la
+   página (scroll horizontal). Con el <th> posicionado el span queda dentro de la tabla. En @layer base para que `sticky` & cía. lo sigan pisando. */
+@layer base {
+  th {
+    position: relative;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
