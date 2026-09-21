@@ -322,7 +322,7 @@ function enumerar(items: string[], tope = 4): string {
  * cualquier sección) y el mensaje dice qué es. Reactivar nunca se bloquea. Ver `dependenciasParaDesactivar`.
  */
 export async function actualizarActivoProducto(productoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async () => {
+  return conPermiso("editar_producto", async (ctx) => {
     const existente = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     if (!activo) {
@@ -336,6 +336,12 @@ export async function actualizarActivoProducto(productoId: string, activo: boole
       if (motivos.length) return error(`No se puede desactivar "${existente.nombre}": ${motivos.join("; y ")} antes de desactivarlo.`);
     }
     await prisma.producto.update({ where: { id: productoId }, data: { activo } });
+    // Auditoría administrativa, como el cambio de activo de un rol. No-op si el valor no cambió (registrarCambioAuditado).
+    await registrarCambioAuditado(prisma, {
+      entidad: "Producto", entidadId: productoId, campo: "activo",
+      descripcion: `Producto "${existente.nombre}": activo`,
+      valorAnterior: existente.activo, valorNuevo: activo, actorId: ctx.usuarioId,
+    });
     return ok(`Producto "${existente.nombre}" ${activo ? "activado" : "desactivado"}.`);
   });
 }

@@ -54,6 +54,28 @@ describe("actualizarActivoProducto", () => {
     expect(r.mensaje).toMatch(/No tenés permiso/);
     expect((await prisma.producto.findUniqueOrThrow({ where: { id: productoId } })).activo).toBe(true);
   });
+  describe("auditoría", () => {
+    const registros = () => prisma.registroAuditoria.findMany({ where: { entidad: "Producto", entidadId: productoId, campo: "activo" }, orderBy: { creadoEn: "asc" } });
+
+    it("cada activar/desactivar queda en la auditoría, con quién y qué valor anterior", async () => {
+      await actualizarActivoProducto(productoId, false);
+      await actualizarActivoProducto(productoId, true);
+      const filas = await registros();
+      expect(filas.map((f) => [f.valorAnterior, f.valorNuevo])).toEqual([["true", "false"], ["false", "true"]]);
+      expect(filas[0].descripcion).toBe('Producto "Pizza Activar": activo');
+      expect(filas.every((f) => f.actorId === adminUsuarioId)).toBe(true);
+    });
+
+    it("un intento bloqueado, o repetir el mismo estado, no deja registro", async () => {
+      const seccion = await sembrarSeccion(sucursalId, "Depósito");
+      const op = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: adminUsuarioId } });
+      await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId, seccionId: seccion.id, proceso: "COMPRA", cantidad: 1, detalle: "test" } });
+      expect((await actualizarActivoProducto(productoId, false)).ok).toBe(false); // bloqueado por saldo
+      expect((await actualizarActivoProducto(productoId, true)).ok).toBe(true); // ya estaba activo
+      expect(await registros()).toEqual([]);
+    });
+  });
+
   describe("al DESACTIVAR bloquea si todavía depende de él algo que se rompería", () => {
     async function platoActivoQueLoUsa(nombre: string) {
       const plato = await prisma.producto.create({ data: { codigo: `PV_${nombre}`, nombre, tipo: "PV", unidadStockId: kgId, precioVenta: 100 } });
