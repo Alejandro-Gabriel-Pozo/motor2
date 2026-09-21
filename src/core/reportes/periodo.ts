@@ -830,6 +830,27 @@ export interface MargenDelPeriodo {
   /** Parte de `ingresoConCostoReal` cuyo costo se RECONSTRUYÓ con el historial de compras (la venta no lo guardó al venderse). */
   ingresoRealReconstruido: number;
   avisoReal: string;
+  /** Ventas cargadas SIN precio (`precioTotal` en 0) que quedaron afuera del margen Real y del costo de lo vendido: no tienen un ingreso con qué compararse. */
+  ventasSinPrecioExcluidas: number;
+  /**
+   * «Costo de lo vendido (consumo)» (6b): lo que costó, en total, lo que efectivamente se vendió en el rango — el costo congelado al vender (o el
+   * reconstruido con el historial de compras) de cada línea COSTEABLE, no lo que se compró. Es el numerador del food cost real; su denominador es
+   * `ingresoConCostoReal` (lo vendido que se pudo costear), NUNCA `ingresoTotal`: mezclarlos daría un porcentaje artificialmente bajo, porque el
+   * numerador solo cubre una parte de las ventas. Se cumple `costoDeLoVendidoTotal ≈ ingresoConCostoReal − margenRealTotal` (cada número se redondea por
+   * separado). `null` si NINGUNA venta del rango se pudo costear.
+   *
+   * A diferencia del ratio Compras/Ventas (desembolso), INCLUYE el packaging y la limpieza que estén en la receta: `costoUnitarioVenta` guarda el costo
+   * total del plato. Por eso los dos números no son comparables al centavo, y el aviso lo dice.
+   */
+  costoDeLoVendidoTotal: number | null;
+  /** `costoDeLoVendidoTotal / ingresoConCostoReal`, en %. */
+  costoDeLoVendidoPctTotal: number | null;
+  /**
+   * Qué parte de lo vendido se pudo costear: `ingresoConCostoReal / (ingresoConCostoReal + ingresoSinCostoReal)`. La base NO es `ingresoTotal`: ese incluye las
+   * ventas viejas sin precio valorizadas al precio vigente (estimado), que acá ni siquiera entran. `null` si no hay ventas costeables ni sin costear.
+   */
+  coberturaCostoRealPct: number | null;
+  avisoCostoDeLoVendido: string;
   /**
    * "Margen ajustado por IPC" (Método 1, docs/comparativa-ux-erpnext-
    * dolibarr.md §10) — lleva el ingreso de cada venta a poder adquisitivo
@@ -915,14 +936,17 @@ async function calcularMargenDelPeriodo(
   let ingresoRealReconstruido = 0;
   // Las ventas que no guardaron su costo al venderse (cargadas sin ese dato) se intentan costear al día de la venta con el historial
   // de compras (ver costo-historico.ts); las que no se pueden costear quedan en `ingresoSinCostoReal`.
-  const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && it.costoUnitarioVenta === null);
+  // Una venta cargada SIN precio (`precioTotal` 0) no entra al margen Real ni al costo de lo vendido: no tiene ingreso con qué compararse, y sumar su costo
+  // sin su ingreso inflaba el costo y deformaba el margen (el bucle del ajuste por IPC, más abajo, ya las saltea por lo mismo).
+  const ventasSinPrecioExcluidas = items.filter((it) => it.proceso === "VENTA" && it.precioTotal <= 0).length;
+  const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && it.precioTotal > 0 && it.costoUnitarioVenta === null);
   const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos);
   // Mismo bucle línea a línea de arriba, acumulado ADEMÁS por producto — fuente única del margen Real por fila,
   // para que Período y cualquier otro consumidor (Promociones) lean el mismo número (docs/pendientes-*.md, hallazgo
   // "el mismo dato calculado distinto").
   const realPorProducto = new Map<string, { ingresoConCostoReal: number; costoRealTotal: number; ingresoRealReconstruido: number }>();
   for (const it of items) {
-    if (it.proceso !== "VENTA") continue;
+    if (it.proceso !== "VENTA" || it.precioTotal <= 0) continue;
     const acc = realPorProducto.get(it.productoId) ?? { ingresoConCostoReal: 0, costoRealTotal: 0, ingresoRealReconstruido: 0 };
     realPorProducto.set(it.productoId, acc);
     if (it.costoUnitarioVenta !== null) {
@@ -946,6 +970,12 @@ async function calcularMargenDelPeriodo(
   }
   const hayCostoReal = ingresoConCostoReal > 0;
   const margenRealTotal = hayCostoReal ? redondearMoneda(ingresoConCostoReal - costoRealTotal) : null;
+  const baseCobertura = ingresoConCostoReal + ingresoSinCostoReal;
+  const coberturaCostoRealPct = baseCobertura > 0 ? Math.round((ingresoConCostoReal / baseCobertura) * 1000) / 10 : null;
+  const avisoVentasSinPrecio =
+    ventasSinPrecioExcluidas > 0
+      ? ` ${ventasSinPrecioExcluidas} venta(s) cargada(s) sin precio no se cuentan (no tienen un ingreso con qué comparar su costo).`
+      : "";
 
   const porProducto: FilaMargenProducto[] = porProductoNominal.map((f) => {
     const real = realPorProducto.get(f.productoId);
@@ -1022,8 +1052,18 @@ async function calcularMargenDelPeriodo(
           ingresoRealReconstruido > 0
             ? ` RECONSTRUIDO: $${redondearMoneda(ingresoRealReconstruido).toLocaleString("es-AR")} de lo vendido no guardó su costo al venderse y se lo calculó con el historial de compras (el precio de la compra más reciente de cada insumo hasta ese día) y la receta de hoy: es una aproximación.`
             : ""
-        }${ingresoSinCostoReal > 0 ? ` No se pudo costear $${redondearMoneda(ingresoSinCostoReal).toLocaleString("es-AR")} (algún insumo sin compras hasta ese día, o el plato sin receta).` : ""}`
-      : "No hay ventas que se puedan costear al día de la venta (ninguna guardó su costo y falta el historial de compras de algún insumo).",
+        }${ingresoSinCostoReal > 0 ? ` No se pudo costear $${redondearMoneda(ingresoSinCostoReal).toLocaleString("es-AR")} (algún insumo sin compras hasta ese día, o el plato sin receta).` : ""}${avisoVentasSinPrecio}`
+      : `No hay ventas que se puedan costear al día de la venta (ninguna guardó su costo y falta el historial de compras de algún insumo).${avisoVentasSinPrecio}`,
+    ventasSinPrecioExcluidas,
+    costoDeLoVendidoTotal: hayCostoReal ? redondearMoneda(costoRealTotal) : null,
+    costoDeLoVendidoPctTotal: hayCostoReal ? Math.round((costoRealTotal / ingresoConCostoReal) * 1000) / 10 : null,
+    coberturaCostoRealPct,
+    avisoCostoDeLoVendido: hayCostoReal
+      ? "Costo real de lo que se vendió: el costo congelado al momento de cada venta (o reconstruido con el historial de compras cuando la venta no lo guardó), dividido por lo vendido que se pudo costear — no por el total facturado. " +
+        "Mide CONSUMO, a diferencia de Compras/Ventas, que mide desembolso. " +
+        "Incluye el packaging y la limpieza que estén en la receta, a diferencia del ratio de compras y del «Food cost %» de Costos y márgenes, que los dejan afuera. " +
+        `Cubre $${redondearMoneda(ingresoConCostoReal).toLocaleString("es-AR")} de $${redondearMoneda(baseCobertura).toLocaleString("es-AR")} vendidos (${coberturaCostoRealPct} %)${ingresoSinCostoReal > 0 ? "; el resto no se pudo costear (algún insumo sin compras hasta ese día, o el plato sin receta)" : ""}.${avisoVentasSinPrecio}`
+      : `Todavía no hay ventas que se puedan costear: ninguna guardó su costo y falta el historial de compras de algún insumo (o el plato no tiene receta).${avisoVentasSinPrecio}`,
     margenIPCTotal,
     margenIPCPctTotal: margenIPCTotal !== null && ingresoAjustadoIPCTotal > 0 ? Math.round((margenIPCTotal / ingresoAjustadoIPCTotal) * 1000) / 10 : null,
     ingresoAjustadoIPCTotal: redondearMoneda(ingresoAjustadoIPCTotal),

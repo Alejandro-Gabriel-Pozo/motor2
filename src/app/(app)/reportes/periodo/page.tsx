@@ -87,7 +87,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
           <p className="text-lg font-semibold">${rep.compras.totalGastado.toLocaleString("es-AR")}</p>
           <EnDolares pesos={rep.compras.totalGastado} cotizacion={cotizacion} />
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido${rep.ratioGastoVentas.excluyeNoComestibles ? " (comida y bebida)" : ""}` : "sin ventas en el período"}
+            Compras / Ventas (desembolso): {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido${rep.ratioGastoVentas.excluyeNoComestibles ? " (comida y bebida)" : ""}` : "sin ventas en el período"}
             {rep.ratioGastoVentas.porcentaje !== null && rep.ratioGastoVentas.porcentajePeriodoAnterior !== null && (
               <span className="ml-1">
                 (período anterior: {rep.ratioGastoVentas.porcentajePeriodoAnterior}%
@@ -101,6 +101,22 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
               No comestibles (packaging, limpieza): ${rep.ratioGastoVentas.gastoNoComestibles.toLocaleString("es-AR")}, fuera de ese porcentaje
             </p>
           )}
+          {/* Consumo (lo que costó lo que SE VENDIÓ), al lado del desembolso (lo que se compró): responden preguntas distintas y por eso llevan rótulos distintos. */}
+          <p data-costo-de-lo-vendido className="mt-1 flex flex-wrap items-center text-xs text-neutral-500">
+            Costo de lo vendido (consumo):{" "}
+            {rep.margen.costoDeLoVendidoTotal !== null ? (
+              <>
+                ${rep.margen.costoDeLoVendidoTotal.toLocaleString("es-AR")} ({rep.margen.costoDeLoVendidoPctTotal}%)
+                {rep.margen.ingresoRealReconstruido > 0 && " · reconstruido"}
+                {rep.margen.coberturaCostoRealPct !== null && rep.margen.coberturaCostoRealPct < 100 && (
+                  <span className="ml-1 text-amber-700 dark:text-amber-600">· parcial (cubre {rep.margen.coberturaCostoRealPct}% de lo vendido)</span>
+                )}
+              </>
+            ) : (
+              "sin datos todavía"
+            )}
+            <AyudaIcono texto={rep.margen.avisoCostoDeLoVendido} />
+          </p>
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-neutral-500">Movimientos</p>
