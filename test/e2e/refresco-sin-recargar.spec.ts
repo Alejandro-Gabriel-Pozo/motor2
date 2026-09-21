@@ -200,3 +200,33 @@ test("insumos: fusionar uno con otro hace desaparecer la fila del absorbido sin 
   // Deja el destino desactivado: no ensucia a otros specs.
   await prisma.insumo.updateMany({ where: { nombre: destino }, data: { activo: false } });
 });
+
+test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y solo se toca la columna de una sucursal propia)", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E Sucursal Capacidad ${Date.now()}`;
+  // Sucursal propia y activa (la matriz lista solo las activas): así no se toca la columna «Default», que es global y compartida con otros specs.
+  await prisma.sucursal.create({ data: { nombre } });
+
+  try {
+    await page.goto("/administracion/capacidades-sucursal");
+    await expect(page.getByRole("heading", { name: /Capacidades por sucursal/ })).toBeVisible();
+    await ponerMarca(page);
+
+    // La columna de la sucursal propia: el índice de su <th> es el del <td> de cada fila.
+    const columnas = await page.locator("thead th").allTextContents();
+    const indice = columnas.findIndex((t) => t.trim() === nombre);
+    expect(indice, "no apareció la columna de la sucursal propia").toBeGreaterThan(1);
+    const celda = page.locator("tr", { has: page.getByRole("cell", { name: "stock_minimo", exact: true }) }).locator("td").nth(indice);
+
+    // Sin ninguna fila, la acción está habilitada; «el botón ES el estado», así que si no se refresca queda mostrando el estado viejo.
+    await expect(celda.getByRole("button")).toHaveText("✅");
+    await celda.getByRole("button").click();
+    await expect(celda.getByRole("button")).toHaveText("⛔");
+    await celda.getByRole("button").click();
+    await expect(celda.getByRole("button")).toHaveText("✅");
+
+    expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+  } finally {
+    // Una sucursal activa de más rompe a otros specs (p. ej. el de Consolidado espera UNA sola): se deja desactivada.
+    await prisma.sucursal.updateMany({ where: { nombre }, data: { activo: false } });
+  }
+});

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
+import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
 
@@ -56,6 +57,9 @@ export async function actualizarCapacidad(
       valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId,
     });
 
+    // Se llama desde un closure "use server" de la página, sin redirigir. Acá el botón ES el estado (✅/⛔): sin esto seguía mostrando el estado
+    // viejo después de cambiarlo, hasta recargar a mano (ver refrescar.ts).
+    refrescarVistaSiHaceFalta();
     return ok(`Capacidad de "${accionClave}" actualizada.`);
   });
 }
