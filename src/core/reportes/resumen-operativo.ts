@@ -32,6 +32,8 @@ export interface ResumenFinancieroMes {
   margenIPCPct: number | null;
   /** El ajuste por IPC incluye ventas de un mes que el INDEC todavía no publicó (provisorio). */
   margenIPCProvisorio: boolean;
+  /** La serie del IPC está parada hace más del máximo previsto (5c): el ajuste no es «de hoy». Gana sobre `margenIPCProvisorio` en el rótulo. */
+  ipcVencido: boolean;
   avisoVentas: string;
   avisoMargen: string;
   avisoMargenReal: string;
@@ -64,6 +66,7 @@ export async function obtenerResumenFinancieroMesActual(sucursalId: string, db: 
     margenIPCTotal: rep.margen.margenIPCTotal,
     margenIPCPct: rep.margen.margenIPCPctTotal,
     margenIPCProvisorio: rep.margen.ingresoProvisorioIPC > 0,
+    ipcVencido: rep.margen.antiguedadIPC.estado === "vencida",
     avisoVentas: rep.ventas.aviso,
     avisoMargen: rep.margen.aviso,
     avisoMargenReal: rep.margen.avisoReal,

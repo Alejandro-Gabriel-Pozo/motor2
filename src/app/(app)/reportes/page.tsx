@@ -56,7 +56,7 @@ export default async function ReportesResumenPage() {
             <AyudaIcono texto={r.financiero.avisoMargenReal} />
           </p>
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Ajustado IPC: {r.financiero.margenIPCTotal !== null ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)${r.financiero.margenIPCProvisorio ? " · provisorio" : ""}` : "sin datos todavía"}
+            Ajustado IPC: {r.financiero.margenIPCTotal !== null ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)${r.financiero.ipcVencido ? " · IPC desactualizado" : r.financiero.margenIPCProvisorio ? " · provisorio" : ""}` : "sin datos todavía"}
             <AyudaIcono texto={r.financiero.avisoMargenIPC} />
           </p>
         </div>

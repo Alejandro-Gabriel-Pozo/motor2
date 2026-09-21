@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { obtenerResumenOperativo } from "../../src/core/reportes/resumen-operativo";
 
 /**
  * 5c — serie del IPC vencida. Lo que se prueba: cuando la serie está parada hace más del máximo previsto (60 días desde el fin del último
@@ -107,5 +108,19 @@ describe("reportes con la serie del IPC vencida", () => {
 
     expect(comparativaPrecios.antiguedadIPC.estado).toBe("al-dia");
     expect(comparativaPrecios.avisoIPC).toContain("mitad del mes siguiente");
+  });
+
+  it("resumen operativo (tarjeta de /reportes): ipcVencido sube con la serie vencida, y «provisorio» sigue siendo independiente", async () => {
+    await serieConMeses([2, 1]);
+    const alDia = (await obtenerResumenOperativo(sucursalId)).financiero;
+    await serieConMeses([9, 8]);
+    const vencida = (await obtenerResumenOperativo(sucursalId)).financiero;
+
+    expect(alDia.ipcVencido).toBe(false);
+    expect(alDia.margenIPCProvisorio).toBe(true);
+    expect(vencida.ipcVencido).toBe(true);
+    expect(vencida.margenIPCProvisorio, "la venta de hoy sigue siendo de un mes sin publicar: es un dato distinto").toBe(true);
+    expect(vencida.avisoMargenIPC).toContain("no se actualiza desde");
+    expect(vencida.margenIPCTotal, "ningún número cambia").toBe(alDia.margenIPCTotal);
   });
 });

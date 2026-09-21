@@ -75,7 +75,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <AyudaIcono texto={rep.margen.avisoReal} />
           </p>
           <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Ajustado IPC: {rep.margen.margenIPCTotal !== null ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)${rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}` : "sin datos todavía"}
+            Ajustado IPC: {rep.margen.margenIPCTotal !== null ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)${rep.margen.antiguedadIPC.estado === "vencida" ? " · IPC desactualizado" : rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}` : "sin datos todavía"}
             <AyudaIcono texto={rep.margen.avisoIPC} />
           </p>
         </div>
