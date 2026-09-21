@@ -39,7 +39,7 @@ export function SidebarNav({ grupos }: { grupos: GrupoNav[] }) {
               className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               {grupo.label}
-              <span className="text-xs text-neutral-400">{abierto ? "▾" : "▸"}</span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">{abierto ? "▾" : "▸"}</span>
             </button>
             {abierto && (
               <div className="ml-2 flex flex-col gap-0.5 border-l border-neutral-200 pl-2 dark:border-neutral-800">

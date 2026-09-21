@@ -364,7 +364,7 @@ export function PanelMovimientoForm({
                 etiquetaInicial={fila.etiquetaInicial}
                 required
               />
-              {fila.ultimaCompraTexto && <span className="text-neutral-400">{fila.ultimaCompraTexto}</span>}
+              {fila.ultimaCompraTexto && <span className="text-neutral-500 dark:text-neutral-400">{fila.ultimaCompraTexto}</span>}
               {config.proceso === "COMPRA" && unidades && (
                 // Deshabilitado mientras se cargan los productos del proveedor: cuando esa carga responde
                 // cambia `versionItems`, y con él la `key` de la fila, que se remonta y se lleva puesto un

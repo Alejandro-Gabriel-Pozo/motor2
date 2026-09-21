@@ -73,21 +73,21 @@ export default async function FichaProductoPage({
       <section>
         <h2 className="mb-2 text-sm font-medium">Datos</h2>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded border p-4 sm:grid-cols-2">
-          <Dato etiqueta="Categoría">{p.categoria?.nombre ?? <span className="text-neutral-400">Sin categoría</span>}</Dato>
+          <Dato etiqueta="Categoría">{p.categoria?.nombre ?? <span className="text-neutral-500 dark:text-neutral-400">Sin categoría</span>}</Dato>
           {p.tipo === "MP" && (
             <Dato etiqueta="Insumo (grupo)">
               {p.insumo ? (
                 <>
                   {p.insumo.nombre}
-                  {p.insumo.grupo ? <span className="text-neutral-500"> ({p.insumo.grupo.nombre})</span> : <span className="text-neutral-400"> (sin grupo)</span>}
+                  {p.insumo.grupo ? <span className="text-neutral-500"> ({p.insumo.grupo.nombre})</span> : <span className="text-neutral-500 dark:text-neutral-400"> (sin grupo)</span>}
                 </>
               ) : (
-                <span className="text-neutral-400">Sin insumo asignado</span>
+                <span className="text-neutral-500 dark:text-neutral-400">Sin insumo asignado</span>
               )}
             </Dato>
           )}
           <Dato etiqueta="Unidad de stock">{p.unidadStock.nombre}</Dato>
-          <Dato etiqueta="Unidad de compra">{p.unidadCompra?.nombre ?? <span className="text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="Unidad de compra">{p.unidadCompra?.nombre ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           <Dato etiqueta="Factor de conversión">
             {Number(p.factorConversion).toLocaleString("es-AR")} {p.unidadStock.nombre} por {p.unidadCompra?.nombre ?? "unidad de compra"}
           </Dato>
@@ -116,7 +116,7 @@ export default async function FichaProductoPage({
           <h2 className="mb-2 text-sm font-medium">Presentaciones de compra</h2>
           <ul className="rounded border p-4 text-sm">
             {presentaciones.map((pr) => (
-              <li key={pr.id} className={pr.activa ? "" : "text-neutral-400"}>
+              <li key={pr.id} className={pr.activa ? "" : "text-neutral-500 dark:text-neutral-400"}>
                 {pr.unidadCompraNombre} — {pr.factorConversion.toLocaleString("es-AR")} {p.unidadStock.nombre} cada una{pr.activa ? "" : " (inactiva)"}
               </li>
             ))}

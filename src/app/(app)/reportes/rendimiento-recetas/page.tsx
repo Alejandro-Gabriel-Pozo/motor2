@@ -150,7 +150,7 @@ export default async function RendimientoRecetasPage({
                   <td className="px-2 py-2">
                     {f.insumoONombre}
                     {f.esTrivial && (
-                      <span className="ml-1 text-xs text-neutral-400">
+                      <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">
                         (venta directa)
                         <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
                         <EnlaceInterno href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
@@ -208,7 +208,7 @@ export default async function RendimientoRecetasPage({
                         <td className="px-2 py-2 first:pl-0">
                           {f.productoVentaNombre}
                           {f.esTrivial && (
-                            <span className="ml-1 text-xs text-neutral-400">
+                            <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">
                               (venta directa)
                               <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
                               <EnlaceInterno href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">

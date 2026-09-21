@@ -64,7 +64,7 @@ export function SidebarColapsable({ grupos }: { grupos: GrupoNav[] }) {
         onClick={alternar}
         aria-label={colapsado ? "Mostrar menú" : "Ocultar menú"}
         title={colapsado ? "Mostrar menú" : "Ocultar menú"}
-        className="flex w-5 flex-shrink-0 items-center justify-center border-r border-neutral-200 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+        className="flex w-5 flex-shrink-0 items-center justify-center border-r border-neutral-200 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
       >
         {colapsado ? "›" : "‹"}
       </button>

@@ -16,10 +16,10 @@ export interface FilaAuditoria {
 const COLUMNAS: ColumnaReporte<FilaAuditoria>[] = [
   { clave: "fecha", etiqueta: "Fecha", tipoFecha: "fechaHora", valor: (f) => f.fecha.toISOString(), render: (f) => f.fecha.toLocaleString("es-AR") },
   { clave: "descripcion", etiqueta: "Cambio", valor: (f) => f.descripcion, render: (f) => f.descripcion },
-  { clave: "anterior", etiqueta: "Antes", valor: (f) => f.valorAnterior, render: (f) => f.valorAnterior ?? <span className="text-neutral-400">—</span> },
-  { clave: "nuevo", etiqueta: "Después", valor: (f) => f.valorNuevo, render: (f) => f.valorNuevo ?? <span className="text-neutral-400">—</span> },
+  { clave: "anterior", etiqueta: "Antes", valor: (f) => f.valorAnterior, render: (f) => f.valorAnterior ?? <span className="text-neutral-500 dark:text-neutral-400">—</span> },
+  { clave: "nuevo", etiqueta: "Después", valor: (f) => f.valorNuevo, render: (f) => f.valorNuevo ?? <span className="text-neutral-500 dark:text-neutral-400">—</span> },
   { clave: "actor", etiqueta: "Quién", valor: (f) => f.actorNombre, render: (f) => f.actorNombre },
-  { clave: "sucursal", etiqueta: "Sucursal", valor: (f) => f.sucursalNombre, render: (f) => f.sucursalNombre ?? <span className="text-neutral-400">Catálogo Central</span> },
+  { clave: "sucursal", etiqueta: "Sucursal", valor: (f) => f.sucursalNombre, render: (f) => f.sucursalNombre ?? <span className="text-neutral-500 dark:text-neutral-400">Catálogo Central</span> },
 ];
 
 export function TablaAuditoria({ filas }: { filas: FilaAuditoria[] }) {

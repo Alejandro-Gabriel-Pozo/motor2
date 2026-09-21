@@ -24,7 +24,7 @@ const COLUMNAS: ColumnaReporte<FilaPromocion>[] = [
       "Mismo cálculo que el Margen Real de Período: costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó. \"parcial\" si alguna venta de este producto no se pudo costear así.",
     render: (p) =>
       p.margenReal === null ? (
-        <span className="text-neutral-400">—</span>
+        <span className="text-neutral-500 dark:text-neutral-400">—</span>
       ) : (
         <>
           ${p.margenReal.toLocaleString("es-AR")}

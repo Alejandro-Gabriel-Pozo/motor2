@@ -79,11 +79,11 @@ export default async function FichaProveedorPage({
       <section>
         <h2 className="mb-2 text-sm font-medium">Datos</h2>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded border p-4 sm:grid-cols-2">
-          <Dato etiqueta="Contacto">{p.contacto ?? <span className="text-neutral-400">—</span>}</Dato>
-          <Dato etiqueta="Teléfono">{p.telefono ?? <span className="text-neutral-400">—</span>}</Dato>
-          <Dato etiqueta="Email">{p.email ?? <span className="text-neutral-400">—</span>}</Dato>
-          <Dato etiqueta="CUIT">{p.cuit ?? <span className="text-neutral-400">—</span>}</Dato>
-          <Dato etiqueta="Condiciones de pago">{p.condicionesPago ?? <span className="text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="Contacto">{p.contacto ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="Teléfono">{p.telefono ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="Email">{p.email ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="CUIT">{p.cuit ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="Condiciones de pago">{p.condicionesPago ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           {p.notas && (
             <div className="sm:col-span-2">
               <Dato etiqueta="Notas">{p.notas}</Dato>
@@ -111,7 +111,7 @@ export default async function FichaProveedorPage({
                     {pp.producto.codigo} — {pp.producto.nombre}
                   </td>
                   <td>{pp.unidadCompra.nombre}</td>
-                  <td>{pp.referenciaProveedor ?? <span className="text-neutral-400">—</span>}</td>
+                  <td>{pp.referenciaProveedor ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</td>
                   {puedeVerPrecios.has("comparar_precios") && (
                     <td className="text-right tabular-nums">{Number(pp.precioPorUnidadStock) > 0 ? plata(Number(pp.precioPorUnidadStock)) : "—"}</td>
                   )}
