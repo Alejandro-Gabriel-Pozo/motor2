@@ -250,13 +250,14 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
     // real (dos requests simultáneos con la misma factura) este `findFirst`
     // no alcanza — ninguno de los dos ve todavía la Operacion del otro
     // (TOCTOU clásico). El árbitro real es el índice único parcial
-    // `Operacion_factura_unica_key` (docs/auditoria-motor2-plan-i3-
+    // `Operacion_factura_unica_vigente_key` (docs/auditoria-motor2-plan-i3-
     // idempotencia-2026-09-17.md §9.2): su violación se atrapa más abajo,
     // fuera de la transacción (ya hizo rollback para cuando el `.catch`
     // la recibe).
     if (datos.proceso === "COMPRA" && datos.proveedorId && texto(datos.nroFactura)) {
       const yaExiste = await prisma.operacion.findFirst({
-        where: { sucursalId: ctx.sucursalId, proceso: "COMPRA", proveedorId: datos.proveedorId, nroFactura: texto(datos.nroFactura) },
+        // Solo cuentan las compras vigentes: una compra anulada deja libre su N.º de factura (igual que el índice único).
+        where: { sucursalId: ctx.sucursalId, proceso: "COMPRA", proveedorId: datos.proveedorId, nroFactura: texto(datos.nroFactura), anuladaEn: null },
       });
       if (yaExiste) return error(MENSAJE_FACTURA_DUPLICADA);
     }

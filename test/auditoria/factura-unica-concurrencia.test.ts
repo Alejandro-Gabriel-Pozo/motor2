@@ -68,4 +68,54 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
       expect(await calcularSaldoTotal(mp.id, seccionId), `iteración ${i}: el saldo refleja UNA sola compra, no dos`).toBe(10);
     }
   });
+
+  /** Marca una compra ya cargada como anulada, directo en la base (la acción de anular se prueba aparte; acá solo importa el estado). */
+  async function anular(operacionId: string) {
+    const admin = await prisma.user.findFirstOrThrow();
+    await prisma.operacion.update({ where: { id: operacionId }, data: { anuladaEn: new Date(), anuladaPorId: admin.id } });
+  }
+
+  it("K1c: la factura de una compra ANULADA se puede volver a usar («anular y recargar» con el mismo número)", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_RECARGA", nombre: "Harina Recarga", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_RECARGA", nombre: "Proveedor Recarga" } });
+    const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "R-0001", items: [{ productoId: mp.id, cantidad: 10 }] };
+
+    const primera = await registrarMovimiento(payload);
+    expect(primera.ok).toBe(true);
+    // Vigente: el número está ocupado.
+    const repetida = await registrarMovimiento(payload);
+    expect(repetida.ok).toBe(false);
+    expect(repetida.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
+
+    // Anulada: el número queda libre, tanto para el chequeo rápido de la aplicación como para el índice único de la base.
+    await anular((await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedor.id, nroFactura: "R-0001" } })).id);
+    const recarga = await registrarMovimiento(payload);
+    expect(recarga.ok, recarga.mensaje).toBe(true);
+
+    // Y la recarga, ahora vigente, vuelve a ocupar el número.
+    const otraVez = await registrarMovimiento(payload);
+    expect(otraVez.ok).toBe(false);
+    expect(otraVez.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
+
+    expect(await prisma.operacion.count({ where: { proveedorId: proveedor.id, nroFactura: "R-0001" } }), "la anulada y la recarga conviven").toBe(2);
+    expect(await prisma.operacion.count({ where: { proveedorId: proveedor.id, nroFactura: "R-0001", anuladaEn: null } }), "pero vigente hay una sola").toBe(1);
+  });
+
+  it("K1c: dos recargas simultáneas de una factura anulada — exactamente una gana (el índice sigue arbitrando la carrera)", async () => {
+    for (let i = 0; i < 5; i++) {
+      const mp = await prisma.producto.create({ data: { codigo: `MP_RECARGA_C${i}`, nombre: `Harina Recarga Carrera ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_RECARGA_C${i}`, nombre: `Proveedor Recarga Carrera ${i}` } });
+      const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "R-0002", items: [{ productoId: mp.id, cantidad: 10 }] };
+
+      expect((await registrarMovimiento(payload)).ok).toBe(true);
+      await anular((await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedor.id, nroFactura: "R-0002" } })).id);
+
+      const settled = await Promise.allSettled([registrarMovimiento(payload), registrarMovimiento({ ...payload })]);
+      expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar`).toBe(true);
+      const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+      expect(resultados.filter((r) => r.ok).length, `iteración ${i}: exactamente una recarga exitosa`).toBe(1);
+      expect(resultados.find((r) => !r.ok)?.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
+      expect(await prisma.operacion.count({ where: { proveedorId: proveedor.id, nroFactura: "R-0002", anuladaEn: null } }), `iteración ${i}: una sola vigente`).toBe(1);
+    }
+  });
 });

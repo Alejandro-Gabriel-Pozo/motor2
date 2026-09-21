@@ -4,16 +4,25 @@ import { Prisma } from "@prisma/client";
  * Índice único parcial que arbitra la condición de carrera de factura de
  * compra duplicada (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
  * §9.2/§11): `ON "Operacion" ("sucursalId", "proveedorId", "nroFactura")
- * WHERE "nroFactura" IS NOT NULL AND proceso = 'COMPRA'`. Vive en una
- * migración SQL escrita a mano (Prisma no declara índices parciales en
- * schema.prisma — ver el precedente en
+ * WHERE "nroFactura" IS NOT NULL AND proceso = 'COMPRA' AND "anuladaEn" IS NULL`.
+ * Vive en una migración SQL escrita a mano (Prisma no declara índices parciales
+ * en schema.prisma — ver el precedente en
  * prisma/migrations/20260915034450_indices_manuales/), no en el modelo
- * `Operacion`. NO filtra por anulación: hoy ninguna Operacion de COMPRA
- * puede tener `anuladaEn` distinto de null (ese campo es solo de VENTA,
- * escrito únicamente por `anularVenta`) — si K1b/K1c (anular una compra)
- * se decide en el futuro, este índice deberá recrearse con ese predicado.
+ * `Operacion`.
+ *
+ * Solo cuentan las compras VIGENTES: una compra anulada (K1c) deja libre su
+ * N.º de factura, para poder anularla y volver a cargarla con el mismo número.
+ * Nació sin ese predicado (`Operacion_factura_unica_key`, migración
+ * 20260920220000) y se reemplazó en 20260921230000/20260921230100.
  */
-export const NOMBRE_INDICE_FACTURA_UNICA = "Operacion_factura_unica_key";
+export const NOMBRE_INDICE_FACTURA_UNICA = "Operacion_factura_unica_vigente_key";
+
+/**
+ * Nombres con los que Postgres puede reportar la violación. Incluye el índice VIEJO (sin filtro de anuladas) para que, en una base a medio
+ * migrar (entre la migración que crea el nuevo y la que borra el viejo), el choque se siga reconociendo como «factura duplicada» y no salga como
+ * un error 500.
+ */
+const NOMBRES_INDICE_FACTURA_UNICA: readonly string[] = [NOMBRE_INDICE_FACTURA_UNICA, "Operacion_factura_unica_key"];
 
 /**
  * Mismo mensaje que el chequeo previo de `registrarMovimiento` (el camino
@@ -50,7 +59,7 @@ function nombreDeIndiceViolado(e: unknown): string | undefined {
 }
 
 /**
- * Detecta ESPECÍFICAMENTE la violación de `NOMBRE_INDICE_FACTURA_UNICA` —
+ * Detecta ESPECÍFICAMENTE la violación del índice de factura única (`NOMBRES_INDICE_FACTURA_UNICA`) —
  * nunca "cualquier P2002": dentro de la misma transacción puede saltar la
  * violación de otro índice único (`Operacion_claveIdempotencia_key`, o
  * cualquier otro futuro) y disfrazarlo de "factura duplicada" sería
@@ -59,5 +68,6 @@ function nombreDeIndiceViolado(e: unknown): string | undefined {
  * (visible, investigable) a que se lo confunda con este.
  */
 export function esChoqueDeFacturaUnica(e: unknown): boolean {
-  return nombreDeIndiceViolado(e) === NOMBRE_INDICE_FACTURA_UNICA;
+  const nombre = nombreDeIndiceViolado(e);
+  return nombre !== undefined && NOMBRES_INDICE_FACTURA_UNICA.includes(nombre);
 }
