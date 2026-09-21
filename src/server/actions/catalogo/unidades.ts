@@ -6,6 +6,7 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { conPermiso } from "../con-permiso";
+import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
@@ -41,6 +42,8 @@ export async function crearUnidad(datos: { nombre: string; magnitud: MagnitudUni
     if (existente) return error(`Ya existe una unidad llamada "${nombre}".`);
 
     const creada = await prisma.unidad.create({ data: { nombre, magnitud: datos.magnitud, decimales } });
+    // Se llama desde un closure "use server" de la página de Unidades, sin redirigir: sin esto la tabla no cambia (ver refrescar.ts).
+    refrescarVistaSiHaceFalta();
     return okConId(`Unidad "${creada.nombre}" creada.`, creada.id, creada.nombre);
   });
 }
@@ -48,6 +51,7 @@ export async function crearUnidad(datos: { nombre: string; magnitud: MagnitudUni
 export async function actualizarActivaUnidad(unidadId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("unidades", async () => {
     await prisma.unidad.update({ where: { id: unidadId }, data: { activa } });
+    refrescarVistaSiHaceFalta(); // ver crearUnidad
     return ok(`Unidad ${activa ? "activada" : "desactivada"}.`);
   });
 }
@@ -58,6 +62,7 @@ export async function actualizarDecimalesUnidad(unidadId: string, decimales: num
       return error("Los decimales tienen que ser un entero entre 0 y 6.");
     }
     await prisma.unidad.update({ where: { id: unidadId }, data: { decimales } });
+    refrescarVistaSiHaceFalta(); // ver crearUnidad
     return ok("Decimales actualizados.");
   });
 }

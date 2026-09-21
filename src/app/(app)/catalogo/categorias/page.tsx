@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { crearCategoriaProducto, actualizarActivaCategoriaProducto, listarCategoriasProducto } from "@/server/actions/catalogo/categorias-producto";
+import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 
 export default async function CategoriasPage() {
   const ctx = await obtenerContextoUsuario();
@@ -49,6 +50,8 @@ export default async function CategoriasPage() {
         action={async (formData: FormData) => {
           "use server";
           await crearCategoriaProducto(String(formData.get("nombre") ?? ""));
+          // El refresco se pide ACÁ y no en la acción: la acción también la usa el alta rápida del formulario de Producto (ver refrescar.ts).
+          refrescarVistaSiHaceFalta();
         }}
         className="flex max-w-md gap-2"
       >

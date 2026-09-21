@@ -22,6 +22,10 @@ import { refresh } from "next/cache";
  *    tiene dónde refrescar, así que lo pide la ACCIÓN, con esta función,
  *    justo antes del `ok(...)`. Funciona aunque se llame anidado dentro del
  *    closure (es AsyncLocalStorage: no hace falta subirlo a la página).
+ *  - EXCEPCIÓN al punto anterior: si la acción la llaman TAMBIÉN flujos de cliente
+ *    dentro de un formulario a medio llenar (`QuickCrear`, `AsistenteHermanar`:
+ *    `crearCategoriaProducto`, `crearInsumo`), el pedido va en el CLOSURE de la
+ *    página y no en la acción — así el alta rápida no re-renderiza la ruta.
  *  - Si la acción o el closure REDIRIGE, no hace falta nada.
  * NO va centralizado en `conPermiso`: rerenderizaría la ruta en vano en los
  * ~21 flujos que ya refrescan desde el cliente y en todo flujo que redirige,

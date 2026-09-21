@@ -72,3 +72,47 @@ test("sucursales: crear y renombrar se ven sin recargar la página", async ({ pa
     await prisma.sucursal.updateMany({ where: { nombre: { in: [nombre, renombrada] } }, data: { activo: false } });
   }
 });
+
+test("categorías: crear y desactivar se ven sin recargar la página", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E Categoría ${Date.now()}`;
+  const fila = page.locator("tr", { hasText: nombre });
+
+  await page.goto("/catalogo/categorias");
+  await expect(page.getByRole("heading", { name: /Categorías/ })).toBeVisible();
+  await ponerMarca(page);
+
+  await page.getByPlaceholder("nombre de la categoría").fill(nombre);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(fila).toHaveCount(1);
+  await expect(fila.getByRole("cell", { name: "Sí", exact: true })).toBeVisible();
+
+  // Queda desactivada al terminar: no ensucia los selectores de categoría de otros specs.
+  await fila.getByRole("button", { name: "Desactivar", exact: true }).click();
+  await expect(fila.getByRole("cell", { name: "No", exact: true })).toBeVisible();
+  await expect(fila.getByRole("button", { name: "Activar", exact: true })).toBeVisible();
+
+  expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+});
+
+test("unidades: crear, cambiar decimales y desactivar se ven sin recargar la página", async ({ paginaAutenticada: page }) => {
+  const nombre = `e2eu${Date.now()}`;
+  const fila = page.locator("tr", { hasText: nombre });
+
+  await page.goto("/catalogo/unidades");
+  await expect(page.getByRole("heading", { name: "Unidades de medida" })).toBeVisible();
+  await ponerMarca(page);
+
+  await page.getByPlaceholder("nombre (ej. kg)").fill(nombre);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(fila).toHaveCount(1);
+
+  // Decimales: el valor guardado se ve en el input (su atributo `value` cambia solo si la pantalla se vuelve a renderizar).
+  await fila.locator('input[name="decimales"]').fill("5");
+  await fila.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(fila.locator('input[name="decimales"]')).toHaveAttribute("value", "5");
+
+  await fila.getByRole("button", { name: "Desactivar", exact: true }).click();
+  await expect(fila.getByRole("cell", { name: "No", exact: true })).toBeVisible();
+
+  expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+});
