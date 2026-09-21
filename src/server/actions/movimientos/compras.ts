@@ -4,6 +4,16 @@ import type { Prisma } from "@prisma/client";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { claveDeLote, evaluarAnulacion, type LineaComprada } from "@/core/compras/anulacion";
+import {
+  ETIQUETA_CAMPO,
+  cabeceraCoincide,
+  clavesDeFactura,
+  diferenciasDeCabecera,
+  normalizarCorreccion,
+  validarCorreccion,
+  type CabeceraCompra,
+} from "@/core/compras/correccion";
+import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/factura-unica";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -123,6 +133,106 @@ export async function anularCompra(operacionId: string, claveIdempotencia?: stri
       // I3: se persiste el mensaje ya formateado, no se reconstruye (mismo criterio que registrarMovimiento).
       if (claveIdempotencia) await tx.operacion.update({ where: { id: reversion.id }, data: { resultadoMensaje: mensaje } });
       return ok(mensaje);
+    });
+  });
+}
+
+/** Lo que se puede corregir de una compra ya confirmada: solo la cabecera (ver `src/core/compras/correccion.ts`). */
+export interface CorreccionCompraInput {
+  /** Vacío o null = sin proveedor. */
+  proveedorId: string | null;
+  nroFactura: string;
+  detalleLibre: string;
+}
+
+/** Lo que la persona vio al abrir el formulario: es la guarda optimista contra pisar una corrección hecha por otra persona. */
+export interface CabeceraVista {
+  proveedorId: string | null;
+  nroFactura: string | null;
+  detalleLibre: string | null;
+}
+
+/**
+ * Corrige la CABECERA de una compra ya confirmada —proveedor, N.º de factura y detalle libre— sin tocar su Kardex (K1b). Las reglas viven en
+ * `src/core/compras/correccion.ts`; esto es la orquestación: permiso, transacción, guardas, escritura y auditoría.
+ *
+ * Nunca toca las líneas (ni precios ni cantidades): editarlas contradice el Kardex append-only y cambiaría en forma retroactiva el costo de reposición y el
+ * margen real de períodos cerrados. Un precio mal cargado se arregla anulando la compra (`anularCompra`) y volviéndola a cargar.
+ *
+ * Guardas: es una Compra de ESTA sucursal (la sesión manda, no se puede corregir la de otra solo conociendo su id); no está anulada; el proveedor nuevo
+ * existe y está activo; el par proveedor + N.º de factura no lo usa OTRA compra vigente (mismo criterio que la carga; la base lo arbitra bajo concurrencia
+ * con su índice único); y lo que la persona vio (`esperado`) es lo que hoy está guardado, para no pisar en silencio la corrección de otra persona.
+ *
+ * Es naturalmente idempotente: si la compra ya tiene exactamente lo pedido (por ejemplo, un reenvío tras perderse la respuesta), responde que no hay nada
+ * que corregir en vez de un conflicto.
+ *
+ * LIMITACIÓN conocida: al cargar una compra se arma el vínculo proveedor ↔ producto del catálogo (`ProveedorPorProducto`, para comparar precios). Corregir el
+ * proveedor NO lo recalcula: ese vínculo se sigue apoyando en lo que se cargó originalmente.
+ *
+ * Auditoría: una fila por campo que cambió (entidad `Operacion`), con el nombre del proveedor y no su id. Gate: `corregir_compra`, solo admin en la semilla.
+ */
+export async function corregirCompra(operacionId: string, nueva: CorreccionCompraInput, esperado: CabeceraVista): Promise<ResultadoAccion> {
+  return conPermiso("corregir_compra", async (ctx) => {
+    const pedida = normalizarCorreccion(nueva);
+    const vista = normalizarCorreccion(esperado);
+
+    return conTransaccionSerializable(async (tx) => {
+      const operacion = await tx.operacion.findFirst({
+        where: { id: operacionId, sucursalId: ctx.sucursalId },
+        include: { proveedor: { select: { nombre: true } } },
+      });
+      if (!operacion) return error("No se encontró esa operación en esta sucursal.");
+      if (operacion.proceso !== "COMPRA") return error(`Esa operación no es una Compra — es "${operacion.proceso}".`);
+      if (operacion.anuladaEn) return error("Una compra anulada no se puede corregir.");
+
+      const actual: CabeceraCompra = { proveedorId: operacion.proveedorId, nroFactura: operacion.nroFactura, detalleLibre: operacion.detalleLibre };
+      const cambios = diferenciasDeCabecera(actual, pedida);
+      if (!cambios.length) return ok("La compra ya tiene esos datos: no hay nada que corregir.");
+      if (!cabeceraCoincide(actual, vista)) return error("Esta compra cambió mientras la editabas (otra persona la corrigió). Recargá la página y volvé a intentarlo.");
+
+      const invalido = validarCorreccion(cambios);
+      if (invalido) return error(invalido);
+
+      let proveedorNuevoNombre: string | null = null;
+      if (cambios.some((c) => c.campo === "proveedorId") && pedida.proveedorId) {
+        const proveedor = await tx.proveedor.findUnique({ where: { id: pedida.proveedorId }, select: { nombre: true, activo: true } });
+        if (!proveedor) return error("El proveedor no existe.");
+        if (!proveedor.activo) return error(`El proveedor "${proveedor.nombre}" está inactivo.`);
+        proveedorNuevoNombre = proveedor.nombre;
+      }
+
+      const clave = clavesDeFactura(pedida);
+      if (clave) {
+        const otra = await tx.operacion.findFirst({
+          where: { sucursalId: ctx.sucursalId, proceso: "COMPRA", proveedorId: clave.proveedorId, nroFactura: clave.nroFactura, anuladaEn: null, id: { not: operacion.id } },
+          select: { id: true },
+        });
+        if (otra) return error(MENSAJE_FACTURA_DUPLICADA);
+      }
+
+      await tx.operacion.update({ where: { id: operacion.id }, data: { proveedorId: pedida.proveedorId, nroFactura: pedida.nroFactura, detalleLibre: pedida.detalleLibre } });
+
+      const descripcion = `Compra del ${fechaCorta(operacion.fecha)}${actual.nroFactura ? ` (factura ${actual.nroFactura})` : ""}`;
+      for (const c of cambios) {
+        const esProveedor = c.campo === "proveedorId";
+        await registrarCambioAuditado(tx, {
+          entidad: "Operacion",
+          entidadId: operacion.id,
+          descripcion: `${descripcion}: ${ETIQUETA_CAMPO[c.campo]}`,
+          campo: c.campo,
+          valorAnterior: esProveedor ? (operacion.proveedor?.nombre ?? null) : c.anterior,
+          valorNuevo: esProveedor ? proveedorNuevoNombre : c.nuevo,
+          actorId: ctx.usuarioId,
+          sucursalId: ctx.sucursalId,
+        });
+      }
+
+      return ok(`Compra corregida: ${cambios.map((c) => ETIQUETA_CAMPO[c.campo]).join(", ")}.`);
+    }).catch((e) => {
+      // La transacción ya hizo rollback. Choque de la carrera de factura repetida (dos escrituras simultáneas con el mismo par proveedor + N.º de factura):
+      // mismo mensaje de negocio que la carga, no un error 500. Cualquier otro error sigue de largo.
+      if (esChoqueDeFacturaUnica(e)) return error(MENSAJE_FACTURA_DUPLICADA);
+      throw e;
     });
   });
 }
