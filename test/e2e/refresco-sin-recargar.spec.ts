@@ -13,13 +13,6 @@ import { prisma } from "../../src/lib/db";
  * Los datos van con `Date.now()` (varios specs comparten la misma base dentro de una corrida) y quedan hasta que `globalTeardown` vacía la
  * base E2E al terminar.
  */
-/**
- * /catalogo/insumos-grupos tiene un problema de maquetación REAL a 1280 px (hallazgo de este spec): la tabla de Insumos desborda su columna y
- * el botón «Desactivar» de cada insumo queda TAPADO por la sección de grupos, que intercepta el clic. No es de este cambio y arreglarlo exige una
- * decisión de diseño (¿scroll horizontal o reacomodar columnas?), así que estos casos usan una ventana más ancha para poder probar el refresco.
- * Anotado en docs/pendientes-responsable-2026-09-20.md.
- */
-const VENTANA_ANCHA = { width: 1700, height: 900 };
 type ConMarca = { __sinRecargar?: boolean };
 const ponerMarca = (page: import("@playwright/test").Page) => page.evaluate(() => ((window as unknown as ConMarca).__sinRecargar = true));
 const marcaSigue = (page: import("@playwright/test").Page) => page.evaluate(() => (window as unknown as ConMarca).__sinRecargar === true);
@@ -128,7 +121,6 @@ test("insumos: crear y desactivar se ven sin recargar la página", async ({ pagi
   const nombre = `E2E Insumo ${Date.now()}`;
   const fila = page.locator(`tr:has(input[value="${nombre}"])`);
 
-  await page.setViewportSize(VENTANA_ANCHA);
   await page.goto("/catalogo/insumos-grupos");
   await expect(page.getByRole("heading", { name: "Insumos", exact: true })).toBeVisible();
   await ponerMarca(page);
@@ -150,7 +142,6 @@ test("grupos: crear y desactivar se ven sin recargar la página", async ({ pagin
   const formularioDeGrupo = page.locator("form", { has: page.getByPlaceholder("nombre del grupo (nuevo o existente)") });
   const fila = page.locator("tr", { has: page.getByRole("cell", { name: nombre, exact: true }) });
 
-  await page.setViewportSize(VENTANA_ANCHA);
   await page.goto("/catalogo/insumos-grupos");
   await expect(page.getByRole("heading", { name: "Árbol de grupos" })).toBeVisible();
   await ponerMarca(page);
@@ -173,7 +164,6 @@ test("insumos: fusionar uno con otro hace desaparecer la fila del absorbido sin 
   await prisma.insumo.create({ data: { nombre: absorbido } });
   await prisma.insumo.create({ data: { nombre: destino } });
 
-  await page.setViewportSize(VENTANA_ANCHA);
   await page.goto("/catalogo/insumos-grupos");
   await expect(page.getByRole("heading", { name: "Insumos", exact: true })).toBeVisible();
   await ponerMarca(page);
