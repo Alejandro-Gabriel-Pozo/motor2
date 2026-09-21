@@ -11,6 +11,7 @@ import { darDeAltaProducto, actualizarProducto, type DatosProducto, type Present
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
 import { crearCategoriaProducto } from "@/server/actions/catalogo/categorias-producto";
 import { altaProveedor } from "@/server/actions/catalogo/proveedores";
+import type { MemoriaAltaProducto } from "@/core/catalogo/memoria-alta-producto";
 
 interface Opcion {
   id: string;
@@ -29,6 +30,7 @@ export function ProductoForm({
   proveedoresIniciales,
   productoExistente,
   presentacionesIniciales,
+  memoria,
 }: {
   unidades: Opcion[];
   insumosIniciales: Opcion[];
@@ -36,16 +38,29 @@ export function ProductoForm({
   proveedoresIniciales: Opcion[];
   productoExistente?: ProductoExistente;
   presentacionesIniciales?: PresentacionOpcion[];
+  /**
+   * E4: los últimos valores que este usuario usó en un alta, ya SANEADOS contra las listas de arriba (nunca propone algo que no se podría elegir a mano).
+   * Solo el alta la recibe; la edición no (que el prop no exista ahí es la garantía de que editar nunca se contamina). Precedencia de cada campo:
+   * lo que el usuario tipea/elige > la memoria > el valor de siempre.
+   */
+  memoria?: MemoriaAltaProducto | null;
 }) {
   const router = useRouter();
   const [insumos, setInsumos] = useState(insumosIniciales);
   const [categorias, setCategorias] = useState(categoriasIniciales);
   const [proveedores, setProveedores] = useState(proveedoresIniciales);
 
-  const [tipo, setTipo] = useState<"MP" | "PV">(productoExistente?.tipo ?? "MP");
+  // La memoria solo aplica al alta: con `productoExistente` (edición) se ignora aunque alguien la pase.
+  const recordada = productoExistente ? null : (memoria ?? null);
+
+  const [tipo, setTipo] = useState<"MP" | "PV">(productoExistente?.tipo ?? recordada?.tipo ?? "MP");
+  // El insumo NO se recuerda a propósito: es la clave de agrupación de productos y lo va a proponer la sugerencia por nombre (E3).
   const [insumoId, setInsumoId] = useState(productoExistente?.insumoId ?? "");
-  const [unidadStockId, setUnidadStockId] = useState(productoExistente?.unidadStockId ?? "");
-  const [categoriaId, setCategoriaId] = useState(productoExistente?.categoriaId ?? "");
+  const [unidadStockId, setUnidadStockId] = useState(productoExistente?.unidadStockId ?? recordada?.unidadStockId ?? "");
+  const [categoriaId, setCategoriaId] = useState(productoExistente?.categoriaId ?? recordada?.categoriaId ?? "");
+  // Unidad de compra y factor eran no controlados (`defaultValue`); pasan a estado para poder precargarse y, más adelante, resetearse sin remontar.
+  const [unidadCompraId, setUnidadCompraId] = useState(productoExistente?.unidadCompraId ?? recordada?.unidadCompraId ?? "");
+  const [factorConversion, setFactorConversion] = useState(String(productoExistente?.factorConversion ?? recordada?.factorConversion ?? 1));
   const [esConsignacion, setEsConsignacion] = useState(productoExistente?.esConsignacion ?? false);
   const [proveedorConsignacionId, setProveedorConsignacionId] = useState(productoExistente?.proveedorConsignacionId ?? "");
 
@@ -91,6 +106,8 @@ export function ProductoForm({
       className="flex max-w-xl flex-col gap-3"
     >
       <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>
+
+      {recordada && <AyudaCampo>Precargado con lo último que cargaste.</AyudaCampo>}
 
       {editando ? (
         <div className="flex flex-col gap-1">
@@ -182,7 +199,7 @@ export function ProductoForm({
             ))}
           </select>
           {tipo === "MP" && (
-            <select name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""} className="flex-1 rounded border px-3 py-2">
+            <select name="unidadCompraId" value={unidadCompraId} onChange={(e) => setUnidadCompraId(e.target.value)} className="flex-1 rounded border px-3 py-2">
               <option value="">Unidad de compra (default)</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -203,7 +220,8 @@ export function ProductoForm({
         <CampoNumero
           name="factorConversion"
           placeholder="Factor de conversión (unidades de stock por unidad de compra)"
-          defaultValue={String(productoExistente?.factorConversion ?? 1)}
+          value={factorConversion}
+          onChange={setFactorConversion}
           required
         />
         <AyudaCampo>
