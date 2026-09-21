@@ -322,7 +322,7 @@ Esfuerzos: los de los pasos 1-7 vienen del roadmap de `grounding-reportes-compra
 | 6b | Food cost por consumo (`costoUnitarioVenta`) junto al ratio de compras | Bajo-Medio* | Propuesta nueva (§4) |
 | E1 | Digest diario de stock por mail, con cantidad sugerida y flag "ya avisado" | Medio* | Diseño en §3. Proveedor de mail: Resend, propuesto por el usuario (§7.6). Falta cuenta, dominio y API key |
 | 5b | Columna de serie en `IndicePrecio` + fuente como configuración | Medio* | Prerrequisito de la serie Alimentos y del USD (§5.2) |
-| 5c | Antigüedad máxima explícita del IPC | Bajo* | Propuesta (§5.3) |
+| 5c | Antigüedad máxima explícita del IPC | Bajo* | **Implementado (2026-09-21)** — constante de 60 días en código, sin migración; con la serie vencida cambian los avisos, no los números; el cron avisa a Sentry. 5b sigue aparte (§5.3) |
 | D1 | Dólar oficial (BNA): tabla, cron diario, encabezado y USD en Resumen/Período/Valuación | Medio* | **Implementado (2026-09-19)**, ver §6 |
 | D2 | Precio en USD en Compra y en la comparativa de proveedores; conversión a la cotización de cada día | Medio* | Pendiente, a decidir |
 | I1 | IPC del mes sin publicar (provisorio) + cron diario + carga en stockhneuquen | Bajo | **Implementado (2026-09-19)** |
