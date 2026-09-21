@@ -147,3 +147,27 @@ test("unidades: un campo de decimales vacío no se guarda como 0", async ({ pagi
     await prisma.unidad.deleteMany({ where: { id: unidad.id } });
   }
 });
+
+test("categorías: tras un error el texto tipeado se conserva; tras un éxito el campo se limpia", async ({ paginaAutenticada: page }) => {
+  const invalido = `E2E Conserva ${Date.now()} #!`;
+  const valido = `E2E Conserva ${Date.now()}`;
+
+  try {
+    await page.goto("/catalogo/categorias");
+    const campo = page.getByPlaceholder("nombre de la categoría");
+    await expect(campo).toBeVisible();
+
+    await campo.fill(invalido);
+    await page.getByRole("button", { name: "Crear", exact: true }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "tiene caracteres no permitidos" })).toBeVisible();
+    // React 19 resetea los campos de un <form action> tras CADA envío: la persona tenía que volver a escribirlo todo para corregir una letra.
+    await expect(campo, "el texto tipeado tiene que seguir ahí para corregirlo").toHaveValue(invalido);
+
+    await campo.fill(valido);
+    await page.getByRole("button", { name: "Crear", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "creada" })).toBeVisible();
+    await expect(campo, "tras un éxito el formulario queda limpio").toHaveValue("");
+  } finally {
+    await prisma.categoriaProducto.deleteMany({ where: { nombre: valido } });
+  }
+});

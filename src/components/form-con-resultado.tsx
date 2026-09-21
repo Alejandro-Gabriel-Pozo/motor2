@@ -26,10 +26,17 @@ export function FormConResultado({
   return (
     <form
       className={className}
-      action={(formData: FormData) => {
+      // `onSubmit` y no `action={fn}`: React 19 resetea los campos de un <form action> tras CADA envío, aun con error, y la persona tenía que
+      // volver a escribir todo para corregir una letra. Acá el formulario se limpia solo cuando la acción salió bien.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const formData = new FormData(form);
         setResultado(null);
         startTransition(async () => {
-          setResultado(await accion(formData));
+          const r = await accion(formData);
+          setResultado(r);
+          if (r.ok) form.reset();
         });
       }}
     >
