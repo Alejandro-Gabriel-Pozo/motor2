@@ -13,6 +13,13 @@ import { prisma } from "../../src/lib/db";
  * Los datos van con `Date.now()` (varios specs comparten la misma base dentro de una corrida) y quedan hasta que `globalTeardown` vacía la
  * base E2E al terminar.
  */
+/**
+ * /catalogo/insumos-grupos tiene un problema de maquetación REAL a 1280 px (hallazgo de este spec): la tabla de Insumos desborda su columna y
+ * el botón «Desactivar» de cada insumo queda TAPADO por la sección de grupos, que intercepta el clic. No es de este cambio y arreglarlo exige una
+ * decisión de diseño (¿scroll horizontal o reacomodar columnas?), así que estos casos usan una ventana más ancha para poder probar el refresco.
+ * Anotado en docs/pendientes-responsable-2026-09-20.md.
+ */
+const VENTANA_ANCHA = { width: 1700, height: 900 };
 type ConMarca = { __sinRecargar?: boolean };
 const ponerMarca = (page: import("@playwright/test").Page) => page.evaluate(() => ((window as unknown as ConMarca).__sinRecargar = true));
 const marcaSigue = (page: import("@playwright/test").Page) => page.evaluate(() => (window as unknown as ConMarca).__sinRecargar === true);
@@ -115,4 +122,81 @@ test("unidades: crear, cambiar decimales y desactivar se ven sin recargar la pá
   await expect(fila.getByRole("cell", { name: "No", exact: true })).toBeVisible();
 
   expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+});
+
+test("insumos: crear y desactivar se ven sin recargar la página", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E Insumo ${Date.now()}`;
+  const fila = page.locator(`tr:has(input[value="${nombre}"])`);
+
+  await page.setViewportSize(VENTANA_ANCHA);
+  await page.goto("/catalogo/insumos-grupos");
+  await expect(page.getByRole("heading", { name: "Insumos", exact: true })).toBeVisible();
+  await ponerMarca(page);
+
+  await page.getByPlaceholder("nombre del insumo").fill(nombre);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(fila).toHaveCount(1);
+
+  // Queda desactivado al terminar: no ensucia los selectores de insumo de otros specs.
+  await fila.getByRole("button", { name: "Desactivar", exact: true }).click();
+  await expect(fila.getByRole("cell", { name: "No", exact: true })).toBeVisible();
+
+  expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+});
+
+test("grupos: crear y desactivar se ven sin recargar la página", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E Grupo ${Date.now()}`;
+  // El «Guardar» del formulario de grupos se distingue de los «Guardar» de cada fila de insumos por el formulario que lo contiene.
+  const formularioDeGrupo = page.locator("form", { has: page.getByPlaceholder("nombre del grupo (nuevo o existente)") });
+  const fila = page.locator("tr", { has: page.getByRole("cell", { name: nombre, exact: true }) });
+
+  await page.setViewportSize(VENTANA_ANCHA);
+  await page.goto("/catalogo/insumos-grupos");
+  await expect(page.getByRole("heading", { name: "Árbol de grupos" })).toBeVisible();
+  await ponerMarca(page);
+
+  await page.getByPlaceholder("nombre del grupo (nuevo o existente)").fill(nombre);
+  await formularioDeGrupo.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(fila).toHaveCount(1);
+  await expect(fila.getByRole("cell", { name: "Sí", exact: true })).toBeVisible();
+
+  await fila.getByRole("button", { name: "Desactivar", exact: true }).click();
+  await expect(fila.getByRole("cell", { name: "No", exact: true })).toBeVisible();
+
+  expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
+});
+
+test("insumos: fusionar uno con otro hace desaparecer la fila del absorbido sin recargar", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const absorbido = `E2E Insumo Absorbido ${marca}`;
+  const destino = `E2E Insumo Destino ${marca}`;
+  await prisma.insumo.create({ data: { nombre: absorbido } });
+  await prisma.insumo.create({ data: { nombre: destino } });
+
+  await page.setViewportSize(VENTANA_ANCHA);
+  await page.goto("/catalogo/insumos-grupos");
+  await expect(page.getByRole("heading", { name: "Insumos", exact: true })).toBeVisible();
+  await ponerMarca(page);
+
+  // La fila se toma UNA vez como elemento: al tipear, el input es controlado y el atributo `value` no es una referencia estable.
+  const filaAbsorbido = await page.locator(`tr:has(input[value="${absorbido}"])`).elementHandle();
+  expect(filaAbsorbido, "no apareció la fila del insumo a fusionar").not.toBeNull();
+  await (await filaAbsorbido!.$("input"))!.fill(destino);
+  await (await filaAbsorbido!.$("button"))!.click(); // «Renombrar/fusionar»
+  await page.getByRole("button", { name: "Sí, fusionar", exact: true }).click();
+
+  // 1) Primero se espera a que la fusión TERMINE en la base (mientras corre, la fila muestra la confirmación en lugar del input, y mirar la
+  //    pantalla antes daría un falso resultado).
+  await expect.poll(() => prisma.insumo.count({ where: { nombre: absorbido } }), { message: "el insumo absorbido tiene que haberse borrado" }).toBe(0);
+  // 2) Recién ahí, la pantalla: tras fusionar hay UNA sola fila con el nombre destino. Sin refresco, la fila del absorbido sigue mostrando ese
+  //    mismo nombre (su input es controlado y conserva lo tipeado).
+  await expect
+    .poll(() => page.locator("input").evaluateAll((els, v) => els.filter((e) => (e as HTMLInputElement).value === v).length, destino), {
+      message: "la fila del insumo absorbido sigue en pantalla",
+    })
+    .toBe(1);
+  expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco").toBe(true);
+
+  // Deja el destino desactivado: no ensucia a otros specs.
+  await prisma.insumo.updateMany({ where: { nombre: destino }, data: { activo: false } });
 });

@@ -5,6 +5,7 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { creariaCiclo } from "@/core/catalogo/grupo";
 import { validarFusionInsumos } from "@/core/catalogo/producto";
 import { conPermiso } from "../con-permiso";
+import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
@@ -18,7 +19,13 @@ export async function listarGrupos() {
   return prisma.grupo.findMany({ orderBy: { nombre: "asc" } });
 }
 
-/** Equivalente de crearFamiliaDesdePanel/crearFamilia_ (Catalogo.js:2939-2967): upsert case/espacio-insensible, reusa en silencio si ya existe. Devuelve el id — lo usa el quick-create inline del form de Producto. */
+/**
+ * Equivalente de crearFamiliaDesdePanel/crearFamilia_ (Catalogo.js:2939-2967): upsert case/espacio-insensible, reusa en silencio si ya existe. Devuelve el id — lo usa el quick-create inline del form de Producto.
+ *
+ * NO pide el refresco de la vista: la llaman TRES flujos y a dos les sobraría — la pantalla de Insumos (closure "use server" de la página, que
+ * sí lo pide ahí), el alta rápida inline del formulario de Producto (QuickCrear) y el AsistenteHermanar (un modal dentro de ese formulario).
+ * Esos dos devuelven el insumo por callback y NO deben re-renderizar la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
+ */
 export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
   return conPermiso<ResultadoConId>("alta_producto", async () => {
     const n = texto(nombre);
@@ -37,6 +44,8 @@ export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
 export async function actualizarActivoInsumo(insumoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("grupos_familia", async () => {
     await prisma.insumo.update({ where: { id: insumoId }, data: { activo } });
+    // Se llama desde un closure "use server" de la página de Insumos, sin redirigir: sin esto la columna «Activo» no cambia (ver refrescar.ts).
+    refrescarVistaSiHaceFalta();
     return ok(`Insumo ${activo ? "activado" : "desactivado"}.`);
   });
 }
@@ -44,6 +53,7 @@ export async function actualizarActivoInsumo(insumoId: string, activo: boolean):
 export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string | null): Promise<ResultadoAccion> {
   return conPermiso("grupos_familia", async () => {
     await prisma.insumo.update({ where: { id: insumoId }, data: { grupoId } });
+    refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok("Grupo del insumo actualizado.");
   });
 }
@@ -131,12 +141,15 @@ export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string
         return error(`Ese padre ya desciende de "${n}", o es el mismo grupo — crearía un ciclo.`);
       }
       await prisma.grupo.update({ where: { id: existente.id }, data: { grupoPadreId } });
+      // La «Cadena» de cada grupo se calcula en el servidor: sin refresco no cambia hasta recargar (ver actualizarActivoInsumo).
+      refrescarVistaSiHaceFalta();
       return ok(`Grupo "${n}" actualizado.`);
     }
 
     // Un grupo recién creado nunca puede formar un ciclo consigo mismo
     // (su id todavía no existe), así que no hace falta validar acá.
     const creado = await prisma.grupo.create({ data: { nombre: n, grupoPadreId } });
+    refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok(`Grupo "${creado.nombre}" creado.`);
   });
 }
@@ -144,6 +157,7 @@ export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string
 export async function actualizarActivoGrupo(grupoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("grupos_familia", async () => {
     await prisma.grupo.update({ where: { id: grupoId }, data: { activo } });
+    refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok(`Grupo ${activo ? "activado" : "desactivado"}.`);
   });
 }

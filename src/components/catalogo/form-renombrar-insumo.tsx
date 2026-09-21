@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { previsualizarFusionInsumo, renombrarOFusionarInsumo } from "@/server/actions/catalogo/insumos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
@@ -12,6 +13,7 @@ import { useLeerServidor } from "@/lib/use-leer-servidor";
  * previsualiza antes de tocar nada y se muestra siempre el resultado.
  */
 export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: string; nombreActual: string }) {
+  const router = useRouter();
   const [nombre, setNombre] = useState(nombreActual);
   const [fusionaCon, setFusionaCon] = useState<string | null>(null);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -32,6 +34,9 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
       }
       const r = await renombrarOFusionarInsumo(insumoId, nombre);
       setResultado({ ok: r.ok, texto: r.mensaje });
+      // Es un componente cliente: el refresco se pide acá (ver refrescar.ts). Sin esto, otras pantallas y el orden alfabético de la tabla
+      // quedan con el nombre viejo hasta recargar a mano.
+      if (r.ok) router.refresh();
     });
   }
 
@@ -40,6 +45,8 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
       const r = await renombrarOFusionarInsumo(insumoId, nombre, true);
       setFusionaCon(null);
       setResultado({ ok: r.ok, texto: r.mensaje });
+      // Tras FUSIONAR, el insumo absorbido ya no existe: su fila tiene que desaparecer de la tabla (sin esto seguía ahí como si existiera).
+      if (r.ok) router.refresh();
     });
   }
 

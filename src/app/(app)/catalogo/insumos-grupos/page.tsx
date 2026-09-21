@@ -9,6 +9,7 @@ import {
   listarInsumos,
   listarGrupos,
 } from "@/server/actions/catalogo/insumos";
+import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { textoCadenaDeGrupos } from "@/core/catalogo/grupo";
 import { FormRenombrarInsumo } from "@/components/catalogo/form-renombrar-insumo";
 
@@ -85,6 +86,8 @@ export default async function InsumosGruposPage() {
           action={async (formData: FormData) => {
             "use server";
             await crearInsumo(String(formData.get("nombre") ?? ""));
+            // El refresco se pide ACÁ y no en la acción: la acción también la usan el alta rápida y el AsistenteHermanar del formulario de Producto (ver refrescar.ts).
+            refrescarVistaSiHaceFalta();
           }}
           className="flex max-w-md gap-2"
         >
