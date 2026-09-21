@@ -6,7 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, cr
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { generarReporteVentasPorCategoria, obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { obtenerReportePromociones } from "../../src/core/reportes/promociones";
 import type { Db } from "../../src/core/reportes/comun";
 
 /**
@@ -73,5 +74,41 @@ describe("obtenerReportePorPeriodo — una sola carga del catálogo", () => {
     expect(rep.margen.ingresoRealReconstruido, "no corrió el margen Real reconstruido").toBeGreaterThan(0);
 
     expect(llamadas).toBe(1);
+  });
+
+  // Promociones y Categorías se apoyan en `obtenerReportePorPeriodo` y necesitan el MISMO catálogo: antes lo leían de nuevo (2 consultas por
+  // reporte); ahora lo toman del propio reporte (`obtenerReportePorPeriodoConCatalogo`).
+  const contando = () => {
+    const cuenta = { llamadas: 0 };
+    const db = prisma.$extends({
+      query: {
+        producto: {
+          findMany({ args, query }) {
+            cuenta.llamadas++;
+            return query(args);
+          },
+        },
+      },
+    }) as unknown as Db;
+    return { cuenta, db };
+  };
+
+  it("Promociones hace UNA consulta de productos, no dos", async () => {
+    await prisma.sucursal.update({ where: { id: sucursalId }, data: { promocionesHabilitadas: true } });
+    const { cuenta, db } = contando();
+
+    const rep = await obtenerReportePromociones(sucursalId, d("2026-08-02"), d("2026-08-10"), db);
+
+    expect(rep.habilitado, "la pantalla no llegó a calcular (el guardián del fixture)").toBe(true);
+    expect(cuenta.llamadas).toBe(1);
+  });
+
+  it("Categorías hace UNA consulta de productos, no dos", async () => {
+    const { cuenta, db } = contando();
+
+    const rep = await generarReporteVentasPorCategoria(sucursalId, d("2026-08-02"), d("2026-08-10"), db);
+
+    expect(rep.porCategoria.length, "no había ventas que agrupar (el guardián del fixture)").toBeGreaterThan(0);
+    expect(cuenta.llamadas).toBe(1);
   });
 });

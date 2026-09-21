@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/movimientos/transiciones";
-import { construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
-import { obtenerReportePorPeriodo } from "./periodo";
+import { construirIndiceRecetas, type Db } from "./comun";
+import { obtenerReportePorPeriodoConCatalogo } from "./periodo";
 
 export interface ComponentePromocion {
   insumo: string;
@@ -66,10 +66,10 @@ export async function obtenerReportePromociones(sucursalId: string, desde: Date,
   const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId } });
   if (!sucursal?.promocionesHabilitadas) return { habilitado: false };
 
-  const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, {}, db);
+  // El catálogo sale del propio reporte (ya lo cargó): no se lee de nuevo.
+  const { reporte: rep, productos } = await obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, {}, db);
   const marcados = await db.promocionProducto.findMany({ where: { sucursalId } });
   const marcadoPorProducto = new Map(marcados.map((m) => [m.productoId, m.activa]));
-  const productos = await construirMapaProductos(sucursalId, db);
   const { recetaPorProducto } = await construirIndiceRecetas(db);
   const margenPorProducto = new Map(rep.margen.porProducto.map((m) => [m.productoId, m]));
 

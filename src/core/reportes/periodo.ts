@@ -66,6 +66,16 @@ function rangoUtc(desde: Date, hasta: Date): { desde: Date; hasta: Date } {
  * línea, no un agregado.
  */
 export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db = prisma) {
+  return (await obtenerReportePorPeriodoConCatalogo(sucursalId, desdeIn, hastaIn, filtros, db)).reporte;
+}
+
+/**
+ * Lo mismo que `obtenerReportePorPeriodo`, pero además devuelve el catálogo de productos que el reporte YA cargó, para que Promociones y
+ * Categorías —que necesitan el mismo mapa— no lo vuelvan a leer (hacían 2 consultas `producto.findMany` por reporte en vez de 1). El mapa va
+ * APARTE del reporte, no adentro: un `Map` dentro de un objeto de reporte se rompe (error de serialización) en cuanto alguien lo pasa
+ * entero a un Client Component, y así la forma pública del reporte no cambia.
+ */
+export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db = prisma) {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
 
   // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md
@@ -138,7 +148,8 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   // `producto.findMany` por reporte en vez de 1. Lo fija test/reportes/catalogo-una-sola-carga.test.ts — si se suma una función que use
   // el catálogo, hay que pasárselo acá (recibirlo es opcional, así que olvidarlo NO da error: da una consulta de más, y ese test avisa).
   // Sigue habiendo una carga por sucursal en el Consolidado, y es correcta: `precioVenta` sale resuelto con el Precio Local de CADA
-  // sucursal, así que el mapa de una no sirve para otra. Promociones y Categorías arman además el suyo (2 en vez de 4).
+  // sucursal, así que el mapa de una no sirve para otra. Promociones y Categorías toman este mismo mapa del reporte
+  // (`obtenerReportePorPeriodoConCatalogo`) en vez de armar el suyo: también 1 por reporte, fijado en el mismo test.
   const productos = await construirMapaProductos(sucursalId, db);
   const ventas = calcularVentasDelPeriodo(items, productos);
   const compras = calcularComprasDelPeriodo(items, productos);
@@ -150,7 +161,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
   const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(desde, hasta, tendenciaPrecios, ventas.porProducto, db);
   const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas);
 
-  return {
+  const reporte = {
     total: items.length,
     items,
     resumen,
@@ -166,6 +177,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
     digest,
     margen,
   };
+  return { reporte, productos };
 }
 
 export interface FilaAlertaDigest {
@@ -1000,8 +1012,8 @@ export interface FilaCategoriaVenta {
  * reimplementar el criterio real-vs-estimado, solo reagrupa por Categoría.
  */
 export async function generarReporteVentasPorCategoria(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma) {
-  const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db);
-  const productos = await construirMapaProductos(sucursalId, db);
+  // El catálogo sale del propio reporte (ya lo cargó): no se lee de nuevo.
+  const { reporte: rep, productos } = await obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, { proceso: "VENTA" }, db);
 
   const porCategoria = new Map<string, { cantidad: number; importe: number; productos: { producto: string; cantidad: number; importe: number }[] }>();
   for (const v of rep.ventas.porProducto) {
