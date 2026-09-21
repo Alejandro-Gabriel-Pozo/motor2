@@ -5,7 +5,7 @@
 ## 1. Se puede resolver con código, sin depender de nada más
 
 - **5c** Antigüedad máxima explícita del IPC (`stale_days`), en lugar de que el mes en curso caiga en silencio en `ingresoSinIPC`.
-- **Flake de reintentos** (`src/core/movimientos/con-reintento.ts`): agregar backoff/jitter en vez de reintentar sin espera.
+- ~~**Flake de reintentos**~~ **Resuelto (2026-09-21)** en el código: backoff exponencial con jitter completo entre reintentos de `conTransaccionSerializable` (`src/core/movimientos/reintentar.ts`), `maxIntentos` sigue en 5. **Falta confirmar en producción:** que el log `agotó los reintentos` no vuelva a aparecer; el detalle y los parámetros están en `docs/auditoria-motor2-deuda-tecnica-flake-eslint-2026-09-17.md`. Queda aparte, como pendiente opcional: `guardarReceta` (`src/server/actions/catalogo/recetas.ts`) tiene la misma contención real con `continue` sin espera y podría usar `conReintento`.
 - **Matriz de permisos**: pasar `guardarPermisos` (`src/server/actions/permisos/permisos.ts`) a `conTransaccionSerializable` + test de concurrencia real (hoy corre en READ COMMITTED).
 - **F3 de Productos**: mostrar "Editar" solo con el permiso `editar_producto` (hoy lo ve cualquiera con Ver de `alta_producto`) y agregar "Desactivar".
 - **Paso 7**: selector de pivot (dimensión + período) para el contador.
