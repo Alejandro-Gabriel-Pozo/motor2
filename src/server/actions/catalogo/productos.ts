@@ -6,6 +6,7 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
+import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -307,10 +308,33 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
   });
 }
 
+/** «A, B y C» / «A, B y 2 más»: para que un mensaje de error no crezca sin límite con un catálogo grande. */
+function enumerar(items: string[], tope = 4): string {
+  const vistos = items.slice(0, tope);
+  const resto = items.length - vistos.length;
+  const cola = resto > 0 ? ` y ${resto} más` : "";
+  return vistos.length > 1 && resto === 0 ? `${vistos.slice(0, -1).join(", ")} y ${vistos[vistos.length - 1]}` : `${vistos.join(", ")}${cola}`;
+}
+
+/**
+ * Desactivar saca el producto de los selectores de movimiento, de Stock consolidado y de la Valuación, y si es una MP de la receta vigente de un plato
+ * activo ese plato deja de poder venderse. Por eso al DESACTIVAR se BLOQUEA mientras algo dependa de él (recetas vigentes de platos activos, saldo en
+ * cualquier sección) y el mensaje dice qué es. Reactivar nunca se bloquea. Ver `dependenciasParaDesactivar`.
+ */
 export async function actualizarActivoProducto(productoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("editar_producto", async () => {
     const existente = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
+    if (!activo) {
+      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId);
+      const motivos: string[] = [];
+      if (recetasVigentes.length) motivos.push(`está en la receta vigente de ${enumerar(recetasVigentes.map((r) => r.nombre))}: sacalo de esas recetas`);
+      if (saldos.length) {
+        const donde = enumerar(saldos.map((s) => `${s.sucursalNombre} / ${s.seccionNombre} (${s.saldo})`));
+        motivos.push(`tiene saldo en ${donde}: dejalo en cero con un ajuste`);
+      }
+      if (motivos.length) return error(`No se puede desactivar "${existente.nombre}": ${motivos.join("; y ")} antes de desactivarlo.`);
+    }
     await prisma.producto.update({ where: { id: productoId }, data: { activo } });
     return ok(`Producto "${existente.nombre}" ${activo ? "activado" : "desactivado"}.`);
   });
