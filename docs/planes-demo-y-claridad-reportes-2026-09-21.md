@@ -84,9 +84,11 @@ La demo no es un banco de pruebas de reportes: es **una herramienta de venta**. 
 
 ## 3. Rendimiento real de recetas: el +14,3 % y el botón peligroso
 
-### Plan de implementación (2026-09-22)
+### Plan de implementación (2026-09-22) — IMPLEMENTADO Y CERRADO
 
-`docs/plan-rendimiento-recetas-2026-09-22.md` — 11 pasos chicos y reversibles (P1-P11), ninguno toca el schema de Prisma. Verificado contra el código real: corrige 8 premisas del diagnóstico/grounding original (la pantalla YA tiene chequeo axe desde `74a14ab`; el cruce con `/reportes/diferencias` necesita `EnlaceInterno`, no `Link`, por tener permisos distintos; "un insumo que es a su vez PV" no puede existir por los caminos normales — el dato correcto es `seProduce` del insumo MP; pasar a "neta + merma" también exige corregir `?sugerido=` del botón "Usar este valor", o vuelve a ser peligroso para toda línea con merma; la Variante 3 no hace falta construirla, `/reportes/diferencias` grupo "b" ya la cubre; entre otras). Hay un **sub-plan aparte (S), que SÍ toca el schema** (agenda de conteo físico por sucursal × producto) — separado y marcado "requiere autorización expresa", los pasos P1-P11 funcionan completos sin él.
+`docs/plan-rendimiento-recetas-2026-09-22.md` — 11 pasos chicos y reversibles (P1-P11), ninguno toca el schema de Prisma. Verificado contra el código real: corrige 8 premisas del diagnóstico/grounding original (la pantalla YA tiene chequeo axe desde `74a14ab`; el cruce con `/reportes/diferencias` necesita `EnlaceInterno`, no `Link`, por tener permisos distintos; "un insumo que es a su vez PV" no puede existir por los caminos normales — el dato correcto es `seProduce` del insumo MP; pasar a "neta + merma" también exige corregir `?sugerido=` del botón "Usar este valor", o vuelve a ser peligroso para toda línea con merma; la Variante 3 no hace falta construirla, `/reportes/diferencias` grupo "b" ya la cubre; entre otras). Hubo un **sub-plan aparte (S), que SÍ toca el schema** (agenda de conteo físico por sucursal × producto) — autorizado expresamente por el dueño 2026-09-22 ("Autorizar ahora, mismo tramo de trabajo") e implementado en el mismo tramo.
+
+**Los dos, P0-P11 y el sub-plan S, están implementados y verificados end-to-end** (un commit por paso, `7b1e3ae`…`a290422` — detalle y resultado de la verificación final en el propio `docs/plan-rendimiento-recetas-2026-09-22.md`, encabezado y cierre del documento).
 
 ### El número, reconstruido
 

@@ -21,8 +21,32 @@ importaba `@/lib/db` transitivamente rompía el build del cliente) en el
 commit `1901c30`, aplicado preventivamente también a `historial-vistas.ts`
 (§4).
 
-Pendiente: **sub-plan S** (§E, conteo físico periódico) — autorizado por el
-dueño, no implementado todavía en este documento.
+**Sub-plan S (§E, conteo físico periódico) TAMBIÉN implementado y cerrado
+(2026-09-22)** — un commit por paso (`d6eea18`…`a290422`):
+- S1: `FrecuenciaConteoProducto` (migración `20260922225810`, aplicada solo
+  contra `motor2_dev` local).
+- S2: permiso reusado (`proceso_control`, sin acción nueva) — aplicado
+  directo en S5, sin commit propio.
+- S3: `resolverProximoConteo` (`src/core/stock/frecuencia-conteo.ts`, pura).
+- S4: `sugerirInsumosClaseA` (`src/core/stock/sugerencia-clase-a.ts`) —
+  corte 80/20 por producto, no por Insumo agrupado.
+- S5: `/stock/conteo-frecuencia` (clon de `/stock/minimo` + panel de
+  sugerencias de S4).
+- S6: columna "Próximo conteo" en `/reportes/diferencias`
+  (`diferencias-ajustes.ts` + `tabla-diferencias.tsx`), con cruce de vuelta
+  hacia S5.
+- S7: sin código — la `sugerenciaMerma` de S6/§A6 pasa a tener una
+  magnitud real detrás en cuanto haya conteos regulares; la Variante 3 ya
+  queda cubierta por ese reporte existente, confirmado, no se construyó
+  nada nuevo para eso.
+- S8: verificación end-to-end final (mismos 6 comandos de §G) — tsc
+  limpio, lint 0/0, Vitest 1265/1265 (línea de base 1244 tras P0-P11),
+  axe sin violaciones, `npm run build` con la migración de S1 ya aplicada
+  (22 migraciones, ninguna pendiente en la corrida final), Playwright
+  224/224 (línea de base 222 tras P0-P11 — sube por las 2 filas nuevas de
+  `/stock/conteo-frecuencia` en `maquetacion-general.spec.ts`).
+
+**§3 queda así completamente implementado: P0-P11 + sub-plan S.**
 
 ---
 
