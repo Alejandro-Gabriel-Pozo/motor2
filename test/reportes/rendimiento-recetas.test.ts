@@ -47,10 +47,10 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(filas[0].cantidadEstimada).toBe(0.5); // 10 comprado / 20 vendido
     expect(filas[0].desviacionPorcentaje).toBe(25); // (0.5 - 0.4) / 0.4 * 100
     expect(filas[0].confianza).toBe("baja"); // un solo movimiento dentro del rango = 1 semana con datos
-    expect(filas[0].esTrivial).toBe(false); // cantidad != 1
+    expect(filas[0].rotulo).toBeNull(); // cantidad != 1, no aplica ningún rótulo
   });
 
-  it("marca esTrivial cuando la receta es venta directa 1:1 sin merma (ej. una bebida envasada)", async () => {
+  it("rotula 'PRODUCTO_DE_REVENTA' cuando la receta es venta directa 1:1 sin merma (ej. una bebida envasada)", async () => {
     const casoBebida = await prisma.producto.create({ data: { codigo: "MX_BEBIDA", nombre: "Bebida caja x12", tipo: "MP", unidadStockId: unidadKgId } });
     const bebida = await prisma.producto.create({ data: { codigo: "PV_BEBIDA", nombre: "Bebida 500ml", tipo: "PV", unidadStockId: unidadKgId } });
     await prisma.recetaVersion.create({
@@ -62,7 +62,33 @@ describe("calcularRendimientoRecetasSimples", () => {
 
     const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
     expect(filas).toHaveLength(1);
-    expect(filas[0].esTrivial).toBe(true);
+    expect(filas[0].rotulo).toBe("PRODUCTO_DE_REVENTA");
+  });
+
+  it("rotula 'SUBRECETA_PRODUCIDA' cuando el insumo tiene seProduce=true — nunca 'PRODUCTO_DE_REVENTA', aunque la receta sea 1:1", async () => {
+    const salsaBase = await prisma.producto.create({ data: { codigo: "MP_SALSA_ROT", nombre: "Salsa base rótulo", tipo: "MP", unidadStockId: unidadKgId, seProduce: true } });
+    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_ROT", nombre: "Pizza rótulo", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: salsaBase.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
+    });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Pizza rótulo")!;
+    expect(fila.rotulo).toBe("SUBRECETA_PRODUCIDA");
+  });
+
+  it("rotula 'PACKAGING_NO_COMESTIBLE' cuando el insumo está en el grupo No comestibles", async () => {
+    const grupoNoComestibles = await prisma.grupo.create({ data: { nombre: "No comestibles" } });
+    const insumoCaja = await prisma.insumo.create({ data: { nombre: "Caja de cartón", grupoId: grupoNoComestibles.id } });
+    const caja = await prisma.producto.create({ data: { codigo: "MP_CAJA_ROT", nombre: "Caja de pizza", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCaja.id } });
+    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_CAJA", nombre: "Pizza con caja", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: caja.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
+    });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Pizza con caja")!;
+    expect(fila.rotulo).toBe("PACKAGING_NO_COMESTIBLE");
   });
 
   it("agrupa por Insumo: compras de TODOS los hermanos activos, no solo la MP anclada en la receta", async () => {
@@ -335,7 +361,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
     expect(filaMilanesa.cantidadEstimada).toBeCloseTo(0.15, 2);
     expect(filaBife.cantidadEstimada).toBeCloseTo(0.25, 2);
     expect(filaMilanesa.cantidadPlatosEnPool).toBe(2);
-    expect(filaMilanesa.esTrivial).toBe(false); // cantidad 0.1 != 1
+    expect(filaMilanesa.rotulo).toBeNull(); // cantidad 0.1 != 1, no aplica ningún rótulo
   });
 
   it("no resoluble si hay pocas semanas de historial (menos que platos+1)", async () => {

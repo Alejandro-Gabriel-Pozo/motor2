@@ -119,7 +119,7 @@ export default async function RendimientoRecetasPage({
                   totalVendido={f.totalVendido}
                   semanasConDatos={f.semanasConDatos}
                   confianza={f.confianza}
-                  esTrivial={f.esTrivial}
+                  esTrivial={f.rotulo === "PRODUCTO_DE_REVENTA" /* shim temporal — P7 reemplaza esto por los 3 rótulos reales */}
                 />
               ))}
             </tbody>
@@ -170,7 +170,7 @@ export default async function RendimientoRecetasPage({
                         cantidadPlatosEnPool={f.cantidadPlatosEnPool}
                         semanasConDatos={f.semanasConDatos}
                         r2={f.r2}
-                        esTrivial={f.esTrivial}
+                        esTrivial={f.rotulo === "PRODUCTO_DE_REVENTA" /* shim temporal — P7 reemplaza esto por los 3 rótulos reales */}
                       />
                     ))}
                   </tbody>

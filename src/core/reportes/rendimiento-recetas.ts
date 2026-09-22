@@ -1,8 +1,15 @@
 import { prisma } from "@/lib/db";
-import { redondearCantidad } from "./comun";
+import { cargarClasificacionNoComestibles, redondearCantidad } from "./comun";
 import type { Db } from "./comun";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
-import { calcularCantidadEstimadaNeta, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, motivoSinEstimacion as calcularMotivoSinEstimacion } from "./rendimiento-recetas-vistas";
+import {
+  calcularCantidadEstimadaNeta,
+  calcularCantidadTeoricaBruta,
+  calcularDesviacionPorcentaje,
+  motivoSinEstimacion as calcularMotivoSinEstimacion,
+  rotularLineaDeReceta,
+  type RotuloLinea,
+} from "./rendimiento-recetas-vistas";
 
 export interface FilaRendimientoSimple {
   productoVentaId: string;
@@ -31,16 +38,13 @@ export interface FilaRendimientoSimple {
   semanasConDatos: number;
   confianza: "alta" | "media" | "baja" | "sin_datos";
   /**
-   * Venta directa 1:1 sin transformación (1 unidad de receta, 0% merma) —
-   * ej. una bebida envasada que se revende tal cual. Para estos casos el
-   * desvío "real" no puede significar un error de receta (no hay nada que
-   * calibrar: 1 vendido siempre debería consumir exactamente 1 comprado)
-   * — lo que se ve es ruido de lote de compra (comprás por caja, vendés
-   * de a uno) frente a la ventana de fechas elegida. Se marca en vez de
-   * ocultarse: un desvío grande igual puede señalar rotura/robo no
-   * cargado como Merma.
+   * Rótulo DECLARADO (nunca inferido) — reemplaza el viejo `esTrivial`
+   * (`cantidad===1 && merma===0`, que rotulaba mal una sub-receta producida
+   * o un packaging como "venta directa"). Ver `rotularLineaDeReceta`
+   * (rendimiento-recetas-vistas.ts) para la prioridad exacta entre los tres
+   * casos. Ninguno oculta la fila.
    */
-  esTrivial: boolean;
+  rotulo: RotuloLinea;
 }
 
 export interface FilaRendimientoCompartido {
@@ -69,8 +73,8 @@ export interface FilaRendimientoCompartido {
   motivoNoResoluble: string | null;
   /** Solo cuando SÍ es resoluble pero el desvío no se puede calcular igual (ver docstring en FilaRendimientoSimple) — si `motivoNoResoluble` ya explica la falta de estimado, este queda null (es más básico). */
   motivoSinEstimacion: string | null;
-  /** Ver el docstring del mismo campo en FilaRendimientoSimple — acá es por fila, no por pool: dos platos pueden compartir un insumo con cantidades/merma distintas. */
-  esTrivial: boolean;
+  /** Ver el docstring del mismo campo en FilaRendimientoSimple — acá es por fila, no por pool: dos platos pueden compartir un insumo con cantidades/merma distintas, así que el rótulo también puede ser distinto por fila. */
+  rotulo: RotuloLinea;
 }
 
 /**
@@ -125,11 +129,10 @@ interface UsoDeInsumo {
   cantidad: number;
   unidadNombre: string;
   mermaPorcentaje: number;
-}
-
-/** Ver el docstring de `esTrivial` en FilaRendimientoSimple. */
-function esUsoTrivial(uso: Pick<UsoDeInsumo, "cantidad" | "mermaPorcentaje">): boolean {
-  return uso.cantidad === 1 && uso.mermaPorcentaje === 0;
+  /** Los tres datos DECLARADOS que alimentan `rotularLineaDeReceta` — ver su docstring en rendimiento-recetas-vistas.ts. */
+  insumoSeProduce: boolean;
+  insumoEsNoComestible: boolean;
+  pvSeProduce: boolean;
 }
 
 interface Pool {
@@ -149,16 +152,19 @@ interface Pool {
  * construcción, solo cambia qué se hace con cada pool después.
  */
 async function construirPools(db: Db): Promise<Pool[]> {
-  const productosConReceta = await db.producto.findMany({
-    where: { activo: true, recetaVersiones: { some: {} } },
-    include: {
-      recetaVersiones: {
-        orderBy: { version: "desc" },
-        take: 1,
-        include: { ingredientes: { include: { insumoProducto: { include: { insumo: true } }, unidad: true } } },
+  const [productosConReceta, clasificacion] = await Promise.all([
+    db.producto.findMany({
+      where: { activo: true, recetaVersiones: { some: {} } },
+      include: {
+        recetaVersiones: {
+          orderBy: { version: "desc" },
+          take: 1,
+          include: { ingredientes: { include: { insumoProducto: { include: { insumo: true } }, unidad: true } } },
+        },
       },
-    },
-  });
+    }),
+    cargarClasificacionNoComestibles(db),
+  ]);
 
   const nombrePorClave = new Map<string, string>();
   const productoIdsPorClave = new Map<string, Set<string>>();
@@ -186,6 +192,9 @@ async function construirPools(db: Db): Promise<Pool[]> {
         cantidad: Number(ing.cantidad),
         unidadNombre: ing.unidad.nombre,
         mermaPorcentaje: Number(ing.mermaPorcentaje),
+        insumoSeProduce: ing.insumoProducto.seProduce,
+        insumoEsNoComestible: ing.insumoProducto.insumo?.grupoId ? clasificacion.idsGrupos.has(ing.insumoProducto.insumo.grupoId) : false,
+        pvSeProduce: pv.seProduce,
       });
     }
   }
@@ -278,7 +287,7 @@ export async function calcularRendimientoRecetasSimples(
       motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta }),
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
-      esTrivial: esUsoTrivial(uso),
+      rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidad, mermaPorcentaje: uso.mermaPorcentaje }),
     });
   }
 
@@ -393,7 +402,7 @@ export async function calcularRendimientoRecetasCompartidas(
         r2,
         resoluble,
         motivoNoResoluble,
-        esTrivial: esUsoTrivial(uso),
+        rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidad, mermaPorcentaje: uso.mermaPorcentaje }),
       });
     });
   }
