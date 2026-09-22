@@ -27,7 +27,19 @@ export default async function RecetaEditorPage({
   searchParams,
 }: {
   params: Promise<{ productoId: string }>;
-  searchParams: Promise<{ editar?: string; sugerido?: string; editarPaso?: string; editarFicha?: string }>;
+  searchParams: Promise<{
+    editar?: string;
+    sugerido?: string;
+    editarPaso?: string;
+    editarFicha?: string;
+    /** Contexto de "Usar este valor" (Rendimiento real de recetas): por qué se sugiere este número, a la vista en el punto donde se guarda. */
+    comprado?: string;
+    vendido?: string;
+    semanas?: string;
+    confianza?: string;
+    platos?: string;
+    ajuste?: string;
+  }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -36,7 +48,15 @@ export default async function RecetaEditorPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;
-  const { editar, sugerido, editarPaso, editarFicha } = await searchParams;
+  const { editar, sugerido, editarPaso, editarFicha, comprado, vendido, semanas, confianza, platos, ajuste } = await searchParams;
+  // El detalle del "por qué" del valor sugerido — viene armado desde el reporte (comprado/vendido directo, o el ajuste por
+  // regresión de un insumo compartido). Sigue a la vista acá, en el punto donde el cambio se guarda de verdad.
+  const detalleSugerido =
+    comprado && vendido
+      ? `compraste ${comprado} y vendiste ${vendido} en ${semanas} semana(s) — confianza ${confianza}`
+      : platos
+        ? `insumo compartido por ${platos} plato(s), ${semanas} semana(s) con datos${ajuste ? `, ajuste R² ${ajuste}` : ""}`
+        : null;
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpActivas, unidades] = await Promise.all([
@@ -250,7 +270,11 @@ export default async function RecetaEditorPage({
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
                           <CampoNumero name="cantidad" defaultValue={sugerido || String(Number(ing.cantidad))} required className="w-28" />
-                          {sugerido && <span className="text-xs text-neutral-500">(sugerido por rendimiento real — tenías {Number(ing.cantidad)})</span>}
+                          {sugerido && (
+                            <span role="alert" className="text-xs text-amber-700 dark:text-amber-600">
+                              Sugerido por Rendimiento real de recetas — tenías {Number(ing.cantidad)}.{detalleSugerido && ` (${detalleSugerido}.)`}
+                            </span>
+                          )}
                           <select name="unidadId" defaultValue={ing.unidadId} required className="rounded border px-2 py-1.5 text-sm">
                             {unidades.map((u) => (
                               <option key={u.id} value={u.id}>

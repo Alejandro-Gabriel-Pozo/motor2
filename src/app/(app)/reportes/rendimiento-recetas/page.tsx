@@ -1,20 +1,15 @@
 import Link from "next/link";
-import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import {
-  calcularRendimientoRecetasSimples,
-  calcularRendimientoRecetasCompartidas,
-  type FilaRendimientoSimple,
-} from "@/core/reportes/rendimiento-recetas";
+import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/core/reportes/rendimiento-recetas";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { FilaRendimientoSimple } from "./fila-simple";
+import { FilaRendimientoCompartida } from "./fila-compartida";
 
 const AYUDA_RENDIMIENTO_REAL =
   "Total comprado ÷ total vendido en el rango de fechas elegido. Es una estimación indirecta, no una medición física: asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12).";
 const AYUDA_DESVIO =
   "Diferencia entre Rendimiento real y Receta actual. En un producto de venta directa (1 a 1, sin preparación — ver \"venta directa\" en la fila) el desvío no puede ser un error de receta: es ruido de comprar por lote dentro de esta ventana de fechas, no necesariamente algo para corregir.";
-const AYUDA_TRIVIAL =
-  "Venta directa 1:1 sin preparación (1 unidad de receta, 0% merma) — un desvío acá no puede deberse a la receta en sí. Puede ser ruido de lote de compra, o señal real de rotura/robo no cargado como Merma.";
 
 function primerDiaDelMesISO() {
   const hoy = new Date();
@@ -24,38 +19,16 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const ETIQUETA_CONFIANZA: Record<FilaRendimientoSimple["confianza"], string> = {
-  alta: "Alta",
-  media: "Media",
-  baja: "Baja",
-  sin_datos: "Sin datos",
-};
-
-function celdaDesvio(desviacionPorcentaje: number | null) {
-  return (
-    <td className={`px-2 py-2 ${desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-700 dark:text-amber-600" : ""}`}>
-      {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
-    </td>
-  );
-}
-
-function celdaUsarValor(productoVentaId: string, insumoProductoId: string, cantidadEstimada: number | null) {
-  if (cantidadEstimada === null) return <td className="px-2 py-2" />;
-  return (
-    <td className="px-2 py-2">
-      <EnlaceInterno href={`/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}`} className="text-sm underline">
-        Usar este valor
-      </EnlaceInterno>
-    </td>
-  );
-}
-
 /**
  * Fases 1 y 2 del diseño (docs/diseno-rendimiento-recetas-por-sucursal.md):
  * compara la receta cargada contra lo que las compras/ventas reales de
  * ESTA sucursal sugieren que realmente se consume. Corre siempre para la
  * sucursal activa, nunca mezclado con otras (ver §2.4 del diseño: mezclar
  * sucursales destruye la comparación entre cocineros).
+ *
+ * "Usar este valor" nunca aplica directo: cada fila pide confirmación con el porqué a la vista antes de ir al editor de
+ * recetas (ver `fila-simple.tsx`/`fila-compartida.tsx`) — decisión del usuario, 2026-09-21, docs/planes-demo-y-claridad-
+ * reportes-2026-09-21.md §3.
  */
 export default async function RendimientoRecetasPage({
   searchParams,
@@ -145,28 +118,22 @@ export default async function RendimientoRecetasPage({
             </thead>
             <tbody>
               {filasSimples.map((f) => (
-                <tr key={f.recetaIngredienteId} className="border-b">
-                  <td className="px-2 py-2 first:pl-0">{f.productoVentaNombre}</td>
-                  <td className="px-2 py-2">
-                    {f.insumoONombre}
-                    {f.esTrivial && (
-                      <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">
-                        (venta directa)
-                        <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
-                        <EnlaceInterno href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
-                          Ver historial
-                        </EnlaceInterno>
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">
-                    {f.cantidadActual} {f.unidadRecetaNombre}
-                  </td>
-                  <td className="px-2 py-2">{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
-                  {celdaDesvio(f.desviacionPorcentaje)}
-                  <td className="px-2 py-2">{ETIQUETA_CONFIANZA[f.confianza]}</td>
-                  {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
-                </tr>
+                <FilaRendimientoSimple
+                  key={f.recetaIngredienteId}
+                  productoVentaId={f.productoVentaId}
+                  productoVentaNombre={f.productoVentaNombre}
+                  insumoProductoId={f.insumoProductoId}
+                  insumoONombre={f.insumoONombre}
+                  unidadRecetaNombre={f.unidadRecetaNombre}
+                  cantidadActual={f.cantidadActual}
+                  cantidadEstimada={f.cantidadEstimada}
+                  desviacionPorcentaje={f.desviacionPorcentaje}
+                  totalComprado={f.totalComprado}
+                  totalVendido={f.totalVendido}
+                  semanasConDatos={f.semanasConDatos}
+                  confianza={f.confianza}
+                  esTrivial={f.esTrivial}
+                />
               ))}
             </tbody>
           </table>
@@ -204,26 +171,20 @@ export default async function RendimientoRecetasPage({
                   </thead>
                   <tbody>
                     {filas.map((f) => (
-                      <tr key={f.recetaIngredienteId} className="border-b">
-                        <td className="px-2 py-2 first:pl-0">
-                          {f.productoVentaNombre}
-                          {f.esTrivial && (
-                            <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">
-                              (venta directa)
-                              <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
-                              <EnlaceInterno href={`/reportes/historial?productoId=${f.insumoProductoId}`} className="underline">
-                                Ver historial
-                              </EnlaceInterno>
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-2 py-2">
-                          {f.cantidadActual} {f.unidadRecetaNombre}
-                        </td>
-                        <td className="px-2 py-2">{f.cantidadEstimada !== null ? `${f.cantidadEstimada} ${f.unidadRecetaNombre}` : "—"}</td>
-                        {celdaDesvio(f.desviacionPorcentaje)}
-                        {celdaUsarValor(f.productoVentaId, f.insumoProductoId, f.cantidadEstimada)}
-                      </tr>
+                      <FilaRendimientoCompartida
+                        key={f.recetaIngredienteId}
+                        productoVentaId={f.productoVentaId}
+                        productoVentaNombre={f.productoVentaNombre}
+                        insumoProductoId={f.insumoProductoId}
+                        unidadRecetaNombre={f.unidadRecetaNombre}
+                        cantidadActual={f.cantidadActual}
+                        cantidadEstimada={f.cantidadEstimada}
+                        desviacionPorcentaje={f.desviacionPorcentaje}
+                        cantidadPlatosEnPool={f.cantidadPlatosEnPool}
+                        semanasConDatos={f.semanasConDatos}
+                        r2={f.r2}
+                        esTrivial={f.esTrivial}
+                      />
                     ))}
                   </tbody>
                 </table>

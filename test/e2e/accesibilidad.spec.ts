@@ -390,3 +390,37 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado(
+  "reportes/rendimiento-recetas: la tabla en reposo y con la confirmación de «Usar este valor» abierta, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-MP-${marca}`, nombre: `E2E A11y Salsa Rendimiento ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-PV-${marca}`, nombre: `E2E A11y Pizza Rendimiento ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } } });
+    const hoy = new Date();
+    const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: hoy, usuarioId: admin.id } });
+    await prisma.movimientoStock.create({ data: { operacionId: compra.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 20, detalle: "Compra", precioTotal: 200, precioPorUnidadStock: 10 } });
+    const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: hoy, usuarioId: admin.id } });
+    await prisma.movimientoStock.create({ data: { operacionId: venta.id, productoId: pv.id, seccionId, proceso: "VENTA", cantidad: -10, detalle: "Venta", precioTotal: 1000, precioPorUnidadStock: 100 } });
+    try {
+      await page.goto("/reportes/rendimiento-recetas");
+      await conTitulo(page, "Rendimiento real de recetas");
+      const fila = page.getByRole("row", { name: new RegExp(pv.nombre) });
+      const botonUsar = fila.getByRole("button", { name: `Usar este valor para ${pv.nombre} — ${mp.nombre}` });
+      await expect(botonUsar).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "tabla en reposo").toEqual([]);
+
+      await botonUsar.click();
+      await expect(page.getByRole("alert").filter({ hasText: "¿Cambiar la receta" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "confirmación abierta").toEqual([]);
+    } finally {
+      await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
+      await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+    }
+  }
+);
