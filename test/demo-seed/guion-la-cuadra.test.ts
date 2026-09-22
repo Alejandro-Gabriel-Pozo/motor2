@@ -87,6 +87,20 @@ describe("generarGuionLaCuadra", () => {
     expect(anulaciones[0]!.semana).toBe(correcciones[0]!.semana);
   });
 
+  it("siembra stock inicial (día -1 de la semana 0), antes de la primera venta — sin esto, el domingo de la semana 0 se queda sin stock (las primeras compras programadas recién caen martes/miércoles)", () => {
+    const guion = generarGuionLaCuadra(CONFIG_LA_CUADRA_DEFAULT, crearGeneradorAleatorio(1));
+    const stockInicial = guion.eventos.filter((e) => e.diaSemana === -1);
+    expect(stockInicial.length).toBeGreaterThan(0);
+    expect(stockInicial.every((e) => e.semana === 0)).toBe(true);
+    // Es el PRIMER evento del guion en orden (día -1 < día 0): valida el orden cronológico también acá.
+    expect(guion.eventos[0]!.diaSemana).toBe(-1);
+    // Cubre MP directos (compra) y los intermedios que se producen (MPZ01/MPZ02/PV030).
+    const compraInicial = stockInicial.find((e) => e.tipo === "COMPRA");
+    expect(compraInicial).toBeDefined();
+    const produccionInicial = stockInicial.filter((e) => e.tipo === "PRODUCCION").map((e) => (e as { productoCodigo: string }).productoCodigo);
+    expect(produccionInicial).toEqual(expect.arrayContaining(["MPZ01", "MPZ02", "PV030"]));
+  });
+
   it("al menos un lote de compra queda con loteVencimiento cargado", () => {
     const guion = generarGuionLaCuadra(CONFIG_LA_CUADRA_DEFAULT, crearGeneradorAleatorio(1));
     const compras = porTipo(guion, "COMPRA");
@@ -96,7 +110,9 @@ describe("generarGuionLaCuadra", () => {
 
   it("el bug del proveedor alternativo está corregido: cuando MP001 sale de un proveedor distinto del habitual, esa compra es SU PROPIA Operación (no mezclada con el resto de PRV_HARINAS)", () => {
     const guion = generarGuionLaCuadra(CONFIG_LA_CUADRA_DEFAULT, crearGeneradorAleatorio(1));
-    const compras = porTipo(guion, "COMPRA");
+    // Fuera del stock inicial (día -1): esa compra agrupa TODO lo que hace falta tener a mano antes de arrancar, de
+    // cualquier proveedor de referencia — no es la sustitución periódica que este test verifica.
+    const compras = porTipo(guion, "COMPRA").filter((c) => c.nroFactura !== "STOCK-INICIAL");
     const conMP001 = compras.filter((c) => c.items.some((it) => it.productoCodigo === "MP001"));
     // Tiene que haber al menos una compra de MP001 a un proveedor que NO es PRV_HARINAS (la sustitución se disparó alguna vez en 26 semanas).
     const sustituidas = conMP001.filter((c) => c.proveedorCodigo !== "PRV_HARINAS");

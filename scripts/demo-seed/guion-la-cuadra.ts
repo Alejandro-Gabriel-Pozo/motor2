@@ -165,6 +165,11 @@ function precioDeCompra(series: Map<string, PuntoDeSerie[]>, productoCodigo: str
   return precioEnSemana(serie, semana);
 }
 
+/** El proveedor de referencia de un producto (el primero que aparece en PRECIOS_REFERENCIA) — para el stock inicial, que compra CUALQUIER MP que haga falta, no solo los que tienen una cadencia semanal propia (ej. descartables, bebidas). */
+function proveedorHabitualDe(productoCodigo: string): string | null {
+  return PRECIOS_REFERENCIA.find((p) => p.productoCodigo === productoCodigo)?.proveedorCodigo ?? null;
+}
+
 /** Contador incremental para refs únicas — un objeto mutable simple, no hace falta más ceremonia para esto. */
 function crearContador() {
   let n = 0;
@@ -182,6 +187,37 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
   const series = construirSeriesDePrecios(config.semanas, rand);
   const ref = crearContador();
   const eventos: EventoDemo[] = [];
+
+  // --- Stock inicial ("día -1" de la semana 0): sin esto, las ventas/producción del domingo de la semana 0 se
+  // quedarían sin stock — las primeras compras programadas recién caen martes/miércoles (CADENCIA_PROVEEDOR), como si
+  // la cocina arrancara de cero un domingo. Mismo motivo que el seed de 30 días (que sembraba "un día antes de la
+  // ventana"): acá se expresa con `diaSemana: -1` en la semana 0, que `fechaDe` (ejecutor) resuelve un día antes que
+  // semana 0/día 0 — la fórmula ya generaliza sin necesitar un caso especial.
+  {
+    const necesidadInicial = necesidadSemanal(0, multiplicadores);
+    const itemsPorSeccion = new Map<Seccion, ItemCompra[]>();
+    for (const [mpCodigo, cantidadNecesaria] of Object.entries(necesidadInicial.directa)) {
+      if (!(cantidadNecesaria > 0)) continue;
+      const proveedorCodigo = proveedorHabitualDe(mpCodigo);
+      if (!proveedorCodigo) continue; // no debería pasar (todo MP de receta tiene un precio de referencia), pero no aborta el guion entero por eso
+      const factor = FACTOR_CONVERSION_POR_CODIGO.get(mpCodigo) ?? 1;
+      const cantidadCompra = Math.max(1, Math.ceil((cantidadNecesaria * BUFFER * 2) / factor)); // 2 semanas de colchón inicial
+      const precio = precioDeCompra(series, mpCodigo, proveedorCodigo, 0);
+      const seccion = seccionDe(mpCodigo);
+      if (!itemsPorSeccion.has(seccion)) itemsPorSeccion.set(seccion, []);
+      itemsPorSeccion.get(seccion)!.push({ productoCodigo: mpCodigo, cantidad: cantidadCompra, precioUnitario: Math.round(cantidadCompra * precio) / cantidadCompra });
+    }
+    for (const [seccion, items] of itemsPorSeccion) {
+      if (!items.length) continue;
+      eventos.push({ tipo: "COMPRA", ref: ref(), semana: 0, diaSemana: -1, seccion, proveedorCodigo: null, nroFactura: "STOCK-INICIAL", items });
+    }
+    // Producción inicial de los intermedios y de PV030 — para que el día 0 ya tenga algo armado, no solo comprado.
+    for (const clave of ["MPZ01", "MPZ02", "PV030"] as const) {
+      const necesidadDiaria = (necesidadInicial.produccion[clave] ?? 0) / 7;
+      const cantidad = Math.max(1, Math.round(necesidadDiaria * BUFFER * 2) * (clave === "PV030" ? 12 : 1));
+      if ((necesidadInicial.produccion[clave] ?? 0) > 0) eventos.push({ tipo: "PRODUCCION", ref: ref(), semana: 0, diaSemana: -1, seccion: "Cocina", productoCodigo: clave, cantidad });
+    }
+  }
 
   // --- Recetas: todas al día 0 salvo PV020 (la más vendida), que se carga recién al final del tramo de desorden —
   // el mecanismo detrás de "ventas sin costo congelado" del tramo de desorden (ver EventoCrearReceta en guion.ts).
@@ -261,7 +297,12 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
             diaSemana: dia,
             seccion: "Cocina",
             proveedorCodigo: proveedorEfectivo,
-            nroFactura: `${proveedorEfectivo}-s${semana}d${dia}`,
+            // Incluye la RONDA (provCodigo) además del proveedor efectivo: cuando la sustitución del proveedor
+            // alternativo cae el mismo día que la entrega habitual de ESE MISMO proveedor efectivo (ej. MP001
+            // sustituido a PRV_ALMACEN un martes, el mismo día que la entrega regular de PRV_ALMACEN), las dos
+            // compras son operaciones DISTINTAS a nombre del mismo proveedor — sin la ronda en la factura, la
+            // segunda pisaría el número de la primera (única por proveedor+factura).
+            nroFactura: `${provCodigo}-${proveedorEfectivo}-s${semana}d${dia}`,
             items: semana === SEMANA_VENCIMIENTO && dia === dias[0] ? items.map((it) => (it.productoCodigo === "MP006" ? { ...it, loteVencimiento: new Date(Date.UTC(2000, 0, 1 + semana * 7 + dia + 12)) } : it)) : items,
           });
           refsCompraDeLaSemana.push(r);

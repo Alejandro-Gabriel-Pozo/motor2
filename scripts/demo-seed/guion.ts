@@ -8,6 +8,7 @@
  * Los eventos referencian productos/proveedores por CÓDIGO (`PRODUCTOS`/`PROVEEDORES` de seed-demo-pizzeria-data.ts), nunca por
  * id: a esta altura (guion puro, sin base) los ids todavía no existen — el ejecutor es quien los resuelve.
  */
+import type { MotivoMerma } from "@prisma/client";
 
 export type Seccion = "Cocina" | "Barra";
 
@@ -81,7 +82,7 @@ export interface EventoMerma {
   seccion: Seccion;
   productoCodigo: string;
   cantidad: number;
-  motivo: string;
+  motivo: MotivoMerma;
   detalleLibre?: string;
 }
 
