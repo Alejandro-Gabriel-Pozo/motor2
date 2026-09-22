@@ -169,7 +169,7 @@ Los tres planes de reportes coinciden en que sus mejoras **no se pueden demostra
 
 ## 6. Orden sugerido de implementación
 
-1. **Rendimiento real, el arreglo urgente:** el link "Usar este valor" pasa a pedir siempre una confirmación explícita, con el porqué a la vista (comprado, vendido, semanas de datos, banda de ruido o motivo), en vez de aplicar el valor directo — nunca se oculta, incluso con datos confiables (evita que alguien acepte sin querer 0,317 kg de ajo por pizza, o 0 prepizzas por pizza, sin verlo venir). Es chico y no depende de nada más.
+1. **Rendimiento real, el arreglo urgente — HECHO (2026-09-21, commit `74a14ab`, local sin push).** El link "Usar este valor" pide siempre una confirmación explícita, con el porqué a la vista (comprado, vendido, semanas de datos, confianza), en vez de aplicar el valor directo — nunca se oculta, incluso con datos confiables. El mismo contexto viaja hasta el editor de recetas. Sin migración; verificación completa en una misma corrida (Vitest, axe nuevo para esta pantalla, Playwright, `tsc`, lint, build). **No incluye** el resto de la Variante 1 (banda de ruido, `motivoSinEstimacion`, teórico con merma, `PRODUCCION` como entrada): eso sigue pendiente, en §3.
 2. **Selector de rango (§1) + Período y márgenes (§2)**, juntos: tocan los mismos archivos y ninguno depende del seed.
 3. **Seed de la demo (§5)**, con el guion de 6 meses de §0: es lo que hace falta para poder verificar con datos creíbles los otros dos planes, y hay que tenerlo listo antes de que la demo actual termine de envejecer.
 4. **Historial por producto (§4)**, que se apoya en los datos nuevos del seed.
