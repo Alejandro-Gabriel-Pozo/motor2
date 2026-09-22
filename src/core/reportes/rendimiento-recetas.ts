@@ -22,6 +22,10 @@ export interface FilaRendimientoSimple {
   /** totalComprado + totalProducido — lo que de verdad entró al pool en la ventana. */
   totalEntradas: number;
   totalVendido: number;
+  /** Saldo del pool ANTES de `desde` — contexto, nunca entra en ninguna fórmula (ver docstring de `stockCierre`). */
+  stockApertura: number;
+  /** Saldo del pool DESPUÉS de `hasta` (`stockApertura + deltaStock`) — si subió durante la ventana, parte de lo "comprado" en realidad se quedó en el depósito, no se consumió (el caso real del Agua: +14,3 % con Δstock=+9 es 0 % de desvío real). */
+  stockCierre: number;
   /** Por qué `cantidadEstimada` es null, cuando lo es — nunca se oculta la fila, se explica (docs/plan-rendimiento-recetas-2026-09-22.md §B7). */
   motivoSinEstimacion: string | null;
   semanasConDatos: number;
@@ -55,6 +59,9 @@ export interface FilaRendimientoCompartido {
   cantidadPlatosEnPool: number;
   /** Comprado + producido del POOL entero en la ventana — mismo valor repetido en todas las filas del pool (a diferencia de Fase 1, acá no hay "totalComprado" por plato: el pool es lo que se ajusta). */
   totalEntradasPool: number;
+  /** Ver docstring en FilaRendimientoSimple — acá es del POOL, mismo valor repetido en todas sus filas. */
+  stockApertura: number;
+  stockCierre: number;
   semanasConDatos: number;
   /** Calidad del ajuste (0-1) — mismo valor en todas las filas del pool, null si no se pudo resolver. */
   r2: number | null;
@@ -64,6 +71,25 @@ export interface FilaRendimientoCompartido {
   motivoSinEstimacion: string | null;
   /** Ver el docstring del mismo campo en FilaRendimientoSimple — acá es por fila, no por pool: dos platos pueden compartir un insumo con cantidades/merma distintas. */
   esTrivial: boolean;
+}
+
+/**
+ * Saldo del pool antes de `desde` y después de `hasta` — CONTEXTO, nunca
+ * entra en ninguna fórmula de rendimiento (docs/plan-rendimiento-recetas-
+ * 2026-09-22.md §B4). Sin filtro de `proceso` (es TODO el movimiento real
+ * del pool, no solo compras/producción) y SIN `anuladaEn: null` — la
+ * anulación es su propio contra-asiento (compra + reversión AJUSTE); si se
+ * filtrara, el saldo quedaría mal. Mismo patrón que `historial-producto.ts`
+ * (`saldoInicial`, con `operacion.fecha < desde`, sin filtro de anuladas).
+ */
+async function calcularStockAperturaYCierre(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<{ stockApertura: number; stockCierre: number }> {
+  const [apertura, delta] = await Promise.all([
+    db.movimientoStock.aggregate({ where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { lt: desde } } }, _sum: { cantidad: true } }),
+    db.movimientoStock.aggregate({ where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { gte: desde, lte: hasta } } }, _sum: { cantidad: true } }),
+  ]);
+  const stockApertura = redondearCantidad(Number(apertura._sum.cantidad ?? 0));
+  const stockCierre = redondearCantidad(stockApertura + Number(delta._sum.cantidad ?? 0));
+  return { stockApertura, stockCierre };
 }
 
 function rangoUtc(desdeIn: Date, hastaIn: Date): { desde: Date; hasta: Date } {
@@ -206,6 +232,8 @@ export async function calcularRendimientoRecetasSimples(
     if (pool.usos.length !== 1) continue; // Fase 2 — ver calcularRendimientoRecetasCompartidas.
     const uso = pool.usos[0];
 
+    const { stockApertura, stockCierre } = await calcularStockAperturaYCierre(sucursalId, pool.productoIds, desde, hasta, db);
+
     const [entradas, ventas] = await Promise.all([
       // COMPRA + PRODUCCION: un insumo con seProduce=true (una sub-receta) entra por producción, no por compra — antes solo se miraba COMPRA, así que un insumo así siempre daba -100% (defecto 1 de §3). anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
       db.movimientoStock.findMany({
@@ -245,6 +273,8 @@ export async function calcularRendimientoRecetasSimples(
       totalProducido,
       totalEntradas,
       totalVendido,
+      stockApertura,
+      stockCierre,
       motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta }),
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
@@ -282,6 +312,8 @@ export async function calcularRendimientoRecetasCompartidas(
 
   for (const pool of pools) {
     if (pool.usos.length < 2) continue; // Fase 1 — ver calcularRendimientoRecetasSimples.
+
+    const { stockApertura, stockCierre } = await calcularStockAperturaYCierre(sucursalId, pool.productoIds, desde, hasta, db);
 
     // COMPRA + PRODUCCION: mismo motivo que Fase 1 — un insumo con seProduce=true entra por producción, no por compra. anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
     const entradas = await db.movimientoStock.findMany({
@@ -355,6 +387,8 @@ export async function calcularRendimientoRecetasCompartidas(
         motivoSinEstimacion: motivo,
         cantidadPlatosEnPool: pool.usos.length,
         totalEntradasPool,
+        stockApertura,
+        stockCierre,
         semanasConDatos: semanas.length,
         r2,
         resoluble,

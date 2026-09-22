@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../../src/core/reportes/rendimiento-recetas";
+import { anularCompra } from "../../src/server/actions/movimientos/compras";
 
 describe("calcularRendimientoRecetasSimples", () => {
   let sucursalId: string;
@@ -225,6 +226,47 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(fila.totalEntradas).toBe(20);
     expect(fila.cantidadEstimada).not.toBeNull(); // antes de P3: null (sin compras, motivoSinEstimacion) — ahora hay una estimación real
     expect(fila.motivoSinEstimacion).toBeNull();
+  });
+
+  // --- P4 del plan: Δ de stock — CONTEXTO, nunca entra en ninguna fórmula. ---
+
+  it("reproduce el caso real del Agua: 72 comprados, 63 vendidos, el stock del insumo sube 9 dentro de la ventana", async () => {
+    const aguaCaja = await prisma.producto.create({ data: { codigo: "MX_AGUA", nombre: "Agua caja x12", tipo: "MP", unidadStockId: unidadKgId } });
+    const aguaBotella = await prisma.producto.create({ data: { codigo: "PV_AGUA", nombre: "Agua botella", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: aguaBotella.id, version: 1, ingredientes: { create: [{ insumoProductoId: aguaCaja.id, cantidad: 1, unidadId: unidadKgId }] } },
+    });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: aguaCaja.id, cantidad: 72 }] });
+    await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
+    expect(fila.stockApertura).toBe(0); // nada antes de `desde`
+    expect(fila.stockCierre).toBe(9); // 72 comprados - 63 consumidos por la venta = quedaron 9 en el depósito
+    expect(fila.desviacionPorcentaje).toBeCloseTo(14.3, 1); // el % "crudo" sigue dando +14,3% — el Δstock es contexto, no corrige la fórmula
+  });
+
+  it("una compra anulada no mueve los saldos: el contra-asiento (AJUSTE) cancela el efecto de la compra original en el Δ de stock", async () => {
+    const harina = await prisma.producto.create({ data: { codigo: "MP_HARINA_AN", nombre: "Harina anulable", tipo: "MP", unidadStockId: unidadKgId } });
+    const pan = await prisma.producto.create({ data: { codigo: "PV_PAN_AN", nombre: "Pan anulable", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 0.4, unidadId: unidadKgId }] } },
+    });
+
+    const hoy = new Date();
+    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy, seccionId, items: [{ productoId: harina.id, cantidad: 50 }] });
+    expect(r.ok, r.mensaje).toBe(true);
+    const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId, movimientos: { some: { productoId: harina.id } } } });
+    const anulacion = await anularCompra(compra.id);
+    expect(anulacion.ok, anulacion.mensaje).toBe(true);
+
+    // El contra-asiento (AJUSTE) se escribe a la fecha REAL de la anulación (ahora), no a la fecha de la compra original — el rango tiene que cubrir las dos.
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, new Date(hoy.getTime() - 86_400_000), new Date(hoy.getTime() + 86_400_000));
+    const fila = filas.find((f) => f.productoVentaNombre === "Pan anulable")!;
+    // Si el Δstock filtrara anuladaEn: null (mal, ver §B4), solo se vería el contra-asiento (AJUSTE, -50) y el saldo daría -50, no 0.
+    expect(fila.stockCierre).toBe(0);
+    expect(fila.totalComprado).toBe(0); // esto SÍ filtra anuladas — una compra anulada no cuenta como entrada real
   });
 });
 
