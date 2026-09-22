@@ -84,6 +84,10 @@ La demo no es un banco de pruebas de reportes: es **una herramienta de venta**. 
 
 ## 3. Rendimiento real de recetas: el +14,3 % y el botón peligroso
 
+### Plan de implementación (2026-09-22)
+
+`docs/plan-rendimiento-recetas-2026-09-22.md` — 11 pasos chicos y reversibles (P1-P11), ninguno toca el schema de Prisma. Verificado contra el código real: corrige 8 premisas del diagnóstico/grounding original (la pantalla YA tiene chequeo axe desde `74a14ab`; el cruce con `/reportes/diferencias` necesita `EnlaceInterno`, no `Link`, por tener permisos distintos; "un insumo que es a su vez PV" no puede existir por los caminos normales — el dato correcto es `seProduce` del insumo MP; pasar a "neta + merma" también exige corregir `?sugerido=` del botón "Usar este valor", o vuelve a ser peligroso para toda línea con merma; la Variante 3 no hace falta construirla, `/reportes/diferencias` grupo "b" ya la cubre; entre otras). Hay un **sub-plan aparte (S), que SÍ toca el schema** (agenda de conteo físico por sucursal × producto) — separado y marcado "requiere autorización expresa", los pasos P1-P11 funcionan completos sin él.
+
 ### El número, reconstruido
 
 El ítem es **Agua mineral 500 ml** (consume 1 unidad de "Agua caja x12" por venta). No es un error: 72 comprados ÷ 63 vendidos = 1,143 → +14,3 %. Verificado contra el Kardex de la demo: el stock de ese insumo pasó de 81 a 90 dentro de la ventana — **las 9 unidades de diferencia están en el depósito, no se perdieron**. Descontando el cambio de stock, el consumo real es 63/63 = 0,0 % de desvío.
