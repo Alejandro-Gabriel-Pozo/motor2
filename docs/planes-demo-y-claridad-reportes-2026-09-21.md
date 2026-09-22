@@ -156,8 +156,13 @@ El ítem es **Agua mineral 500 ml** (consume 1 unidad de "Agua caja x12" por ven
 7. *(surgida del grounding)* Encabezado de un PV sin stock propio: **no muestra ningún número** — solo el cartel explicativo + link a la receta (alineado con ERPNext/Dolibarr, que directamente no generan ese dato).
 8. *(surgida del grounding)* Nombre visible del patrón "se vende, no se produce, consume 1:1 de otra MP": **"Producto de reventa"**.
 9. *(surgida del grounding)* ¿Sacar la línea `VENTA` del Kardex para un PV sin stock real (como ERPNext)? **No** — se mantiene como hoy (esa fila alimenta margen real y ventas por producto/categoría; Kardex append-only por decisión ya cerrada). Solo se deja de MOSTRAR el saldo (decisión 7), no de escribir el movimiento.
+10. *(surgida del plan de implementación)* El rango por defecto de 90 días (decisión 5) alimenta toda la pantalla con una sola consulta — en la práctica también cambiaría el Kardex de abajo (hoy abre mostrando todo). **Un solo rango + opción explícita "Todo el historial"** (no dos rangos separados) — los números de arriba y el Kardex siempre coinciden entre sí.
 
-### Pasos y verificación
+### Plan de implementación
+
+`docs/plan-historial-producto-mp-pv-2026-09-22.md` — 12 pasos chicos y reversibles (uno por commit), ninguno toca el schema de Prisma. Verificado contra el código real: corrige 3 premisas del diagnóstico original (la analogía de permisos con `/reportes/compras` era inexacta — esa pantalla gatea todo, no columnas; el cambio "líneas"→"productos" choca con un guardián de arquitectura que hay que extender en el mismo commit; el filtro "Qué mostrar" tiene que ser de presentación, no de SQL, o rompe el saldo corriente). Termina con el paso obligatorio de verificación end-to-end sobre la suite total (tsc, lint, Vitest, axe, build, Playwright) con línea de base y criterio de cierre conjunto.
+
+### Pasos y verificación (diagnóstico original, para referencia — ver el plan de arriba para el detalle real)
 
 8 pasos, sin migración: terminología → lógica pura de compras (con tests puros: mediana, frecuencia, Δ de precio, cambio de proveedor) → capa de datos de compras contra Postgres real (con el filtro de anuladas en la misma línea, por el guardián de arquitectura) → ventas por día (con tope de filas y aviso si hay demasiadas) → UI reordenada → gráficos con su alternativa tabular siempre visible → margen reconstruido (opcional) → E2E con axe. Riesgo señalado: coordinar el rótulo "productos" con el de §2, para no tener dos palabras distintas en dos pantallas.
 
