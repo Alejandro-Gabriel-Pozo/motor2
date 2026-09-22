@@ -199,6 +199,33 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(filas[0].desviacionPorcentaje).toBeNull();
     expect(filas[0].motivoSinEstimacion).toMatch(/no hubo compras ni producción/i);
   });
+
+  // --- P3 del plan: PRODUCCION cuenta como entrada (defecto 1 de §3 — antes un insumo producido, nunca comprado, siempre daba -100%). ---
+
+  it("un insumo con seProduce=true (sub-receta) entra por PRODUCCION, no por compra — deja de dar -100%/null", async () => {
+    const tomate = await prisma.producto.create({ data: { codigo: "MP_TOMATE", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId } });
+    const salsaBase = await prisma.producto.create({ data: { codigo: "MP_SALSA", nombre: "Salsa base", tipo: "MP", unidadStockId: unidadKgId, seProduce: true } });
+    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_S", nombre: "Pizza con salsa", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: salsaBase.id, version: 1, ingredientes: { create: [{ insumoProductoId: tomate.id, cantidad: 2, unidadId: unidadKgId }] } },
+    });
+    await prisma.recetaVersion.create({
+      data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: salsaBase.id, cantidad: 0.5, unidadId: unidadKgId }] } },
+    });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: tomate.id, cantidad: 40 }] });
+    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: dentroDelRango, seccionId, items: [{ productoId: salsaBase.id, cantidad: 20 }] });
+    expect(produccion.ok, produccion.mensaje).toBe(true);
+    await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: pizza.id, cantidadVendida: 10 }] });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Pizza con salsa")!;
+    expect(fila.totalComprado).toBe(0); // la salsa base nunca se COMPRA
+    expect(fila.totalProducido).toBe(20);
+    expect(fila.totalEntradas).toBe(20);
+    expect(fila.cantidadEstimada).not.toBeNull(); // antes de P3: null (sin compras, motivoSinEstimacion) — ahora hay una estimación real
+    expect(fila.motivoSinEstimacion).toBeNull();
+  });
 });
 
 describe("calcularRendimientoRecetasCompartidas", () => {

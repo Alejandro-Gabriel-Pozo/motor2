@@ -17,6 +17,10 @@ export interface FilaRendimientoSimple {
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
   totalComprado: number;
+  /** Solo insumos con `seProduce: true` pueden tener esto > 0 — un insumo producido nunca antes contaba como entrada, y por eso siempre daba -100% (defecto 1 de §3). */
+  totalProducido: number;
+  /** totalComprado + totalProducido — lo que de verdad entró al pool en la ventana. */
+  totalEntradas: number;
   totalVendido: number;
   /** Por qué `cantidadEstimada` es null, cuando lo es — nunca se oculta la fila, se explica (docs/plan-rendimiento-recetas-2026-09-22.md §B7). */
   motivoSinEstimacion: string | null;
@@ -49,6 +53,8 @@ export interface FilaRendimientoCompartido {
   desviacionPorcentaje: number | null;
   /** Cuántos platos comparten este pool — mismo valor repetido en todas las filas del pool. */
   cantidadPlatosEnPool: number;
+  /** Comprado + producido del POOL entero en la ventana — mismo valor repetido en todas las filas del pool (a diferencia de Fase 1, acá no hay "totalComprado" por plato: el pool es lo que se ajusta). */
+  totalEntradasPool: number;
   semanasConDatos: number;
   /** Calidad del ajuste (0-1) — mismo valor en todas las filas del pool, null si no se pudo resolver. */
   r2: number | null;
@@ -200,10 +206,11 @@ export async function calcularRendimientoRecetasSimples(
     if (pool.usos.length !== 1) continue; // Fase 2 — ver calcularRendimientoRecetasCompartidas.
     const uso = pool.usos[0];
 
-    const [compras, ventas] = await Promise.all([
+    const [entradas, ventas] = await Promise.all([
+      // COMPRA + PRODUCCION: un insumo con seProduce=true (una sub-receta) entra por producción, no por compra — antes solo se miraba COMPRA, así que un insumo así siempre daba -100% (defecto 1 de §3). anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
       db.movimientoStock.findMany({
-        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "COMPRA", productoId: { in: pool.productoIds } },
-        select: { cantidad: true, operacion: { select: { fecha: true } } },
+        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: pool.productoIds } },
+        select: { cantidad: true, proceso: true, operacion: { select: { fecha: true } } },
       }),
       db.movimientoStock.findMany({
         where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: uso.pvProductoId },
@@ -211,13 +218,16 @@ export async function calcularRendimientoRecetasSimples(
       }),
     ]);
 
-    const totalComprado = redondearCantidad(compras.reduce((acc, m) => acc + Number(m.cantidad), 0));
+    // `entradas` ya salió filtrada por anuladaEn: null arriba — separar COMPRA de PRODUCCION acá es solo para mostrarlas por separado, no vuelve a decidir nada sobre anuladas.
+    const totalComprado = redondearCantidad(entradas.filter((m) => m.proceso === "COMPRA").reduce((acc, m) => acc + Number(m.cantidad), 0));
+    const totalProducido = redondearCantidad(entradas.filter((m) => m.proceso === "PRODUCCION").reduce((acc, m) => acc + Number(m.cantidad), 0));
+    const totalEntradas = redondearCantidad(totalComprado + totalProducido);
     const totalVendido = redondearCantidad(ventas.reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
-    const semanasConDatos = contarSemanasConDatos([...compras, ...ventas].map((m) => m.operacion.fecha));
+    const semanasConDatos = contarSemanasConDatos([...entradas, ...ventas].map((m) => m.operacion.fecha));
 
     const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
-    // 0 comprado con ventas sí registradas daría -100% (0/vendido) — un número inventado a partir de "no entró nada", no una medición (defecto 1 de §3). Se prefiere null + el motivo explicado, igual que sin ventas.
-    const cantidadEstimadaBruta = totalVendido > 0 && totalComprado > 0 ? redondearCantidad(totalComprado / totalVendido) : null;
+    // 0 entradas con ventas sí registradas daría -100% (0/vendido) — un número inventado a partir de "no entró nada", no una medición (defecto 1 de §3). Se prefiere null + el motivo explicado, igual que sin ventas.
+    const cantidadEstimadaBruta = totalVendido > 0 && totalEntradas > 0 ? redondearCantidad(totalEntradas / totalVendido) : null;
     const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
     const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
 
@@ -232,8 +242,10 @@ export async function calcularRendimientoRecetasSimples(
       cantidadEstimada,
       desviacionPorcentaje,
       totalComprado,
+      totalProducido,
+      totalEntradas,
       totalVendido,
-      motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas: totalComprado, cantidadTeoricaBruta }),
+      motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta }),
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
       esTrivial: esUsoTrivial(uso),
@@ -271,8 +283,9 @@ export async function calcularRendimientoRecetasCompartidas(
   for (const pool of pools) {
     if (pool.usos.length < 2) continue; // Fase 1 — ver calcularRendimientoRecetasSimples.
 
-    const compras = await db.movimientoStock.findMany({
-      where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "COMPRA", productoId: { in: pool.productoIds } },
+    // COMPRA + PRODUCCION: mismo motivo que Fase 1 — un insumo con seProduce=true entra por producción, no por compra. anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
+    const entradas = await db.movimientoStock.findMany({
+      where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: pool.productoIds } },
       select: { cantidad: true, operacion: { select: { fecha: true } } },
     });
 
@@ -285,8 +298,8 @@ export async function calcularRendimientoRecetasCompartidas(
       )
     );
 
-    const comprasPorSemana = new Map<number, number>();
-    for (const m of compras) comprasPorSemana.set(claveSemana(m.operacion.fecha), (comprasPorSemana.get(claveSemana(m.operacion.fecha)) ?? 0) + Number(m.cantidad));
+    const entradasPorSemana = new Map<number, number>();
+    for (const m of entradas) entradasPorSemana.set(claveSemana(m.operacion.fecha), (entradasPorSemana.get(claveSemana(m.operacion.fecha)) ?? 0) + Number(m.cantidad));
 
     const ventasPorSemanaPorPlato = ventasPorPlato.map((ventas) => {
       const mapa = new Map<number, number>();
@@ -294,11 +307,11 @@ export async function calcularRendimientoRecetasCompartidas(
       return mapa;
     });
 
-    const todasLasSemanas = new Set<number>(comprasPorSemana.keys());
+    const todasLasSemanas = new Set<number>(entradasPorSemana.keys());
     for (const mapa of ventasPorSemanaPorPlato) for (const semana of mapa.keys()) todasLasSemanas.add(semana);
     const semanas = Array.from(todasLasSemanas).sort();
 
-    const y = semanas.map((s) => comprasPorSemana.get(s) ?? 0);
+    const y = semanas.map((s) => entradasPorSemana.get(s) ?? 0);
     const X = semanas.map((s) => ventasPorSemanaPorPlato.map((mapa) => mapa.get(s) ?? 0));
 
     let motivoNoResoluble: string | null = null;
@@ -316,17 +329,17 @@ export async function calcularRendimientoRecetasCompartidas(
 
     const resoluble = motivoNoResoluble === null;
     const r2 = resoluble ? resultado!.r2 : null;
-    const totalCompradoPool = redondearCantidad(compras.reduce((acc, m) => acc + Number(m.cantidad), 0));
+    const totalEntradasPool = redondearCantidad(entradas.reduce((acc, m) => acc + Number(m.cantidad), 0));
 
     pool.usos.forEach((uso, i) => {
-      // El coeficiente de la regresión sale en la misma unidad que `y` (compras crudas del pool) — es BRUTO, misma interpretación que cantidadEstimadaBruta de Fase 1.
+      // El coeficiente de la regresión sale en la misma unidad que `y` (entradas crudas del pool) — es BRUTO, misma interpretación que cantidadEstimadaBruta de Fase 1.
       const cantidadEstimadaBruta = resoluble ? redondearCantidad(resultado!.coeficientes[i]) : null;
       const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
       const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
       const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
       const totalVendidoUso = redondearCantidad(ventasPorPlato[i].reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
       // Si la regresión ya explicó por qué no hay estimado (motivoNoResoluble), no hace falta un segundo motivo más básico encima.
-      const motivo = motivoNoResoluble ? null : calcularMotivoSinEstimacion({ totalVendido: totalVendidoUso, totalEntradas: totalCompradoPool, cantidadTeoricaBruta });
+      const motivo = motivoNoResoluble ? null : calcularMotivoSinEstimacion({ totalVendido: totalVendidoUso, totalEntradas: totalEntradasPool, cantidadTeoricaBruta });
 
       filas.push({
         poolClave: pool.clave,
@@ -341,6 +354,7 @@ export async function calcularRendimientoRecetasCompartidas(
         desviacionPorcentaje,
         motivoSinEstimacion: motivo,
         cantidadPlatosEnPool: pool.usos.length,
+        totalEntradasPool,
         semanasConDatos: semanas.length,
         r2,
         resoluble,
