@@ -45,6 +45,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/reportes/vencimientos",
   "/stock/alertas",
   "/stock/consolidado",
+  "/stock/conteo-frecuencia",
   "/stock/minimo",
   "/stock/por-familia",
   "/stock/reclasificar",

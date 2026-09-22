@@ -63,6 +63,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/stock/alertas", label: "Alertas", accion: "ver_stock" },
       { href: "/stock/minimo", label: "Stock mínimo", accion: "stock_minimo" },
       { href: "/stock/reclasificar", label: "Reclasificar", accion: "proceso_control" },
+      { href: "/stock/conteo-frecuencia", label: "Frecuencia de conteo", accion: "proceso_control" },
     ],
   },
   {
