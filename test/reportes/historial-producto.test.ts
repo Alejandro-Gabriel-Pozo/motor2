@@ -6,7 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, cr
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { obtenerHistorialProducto, buscarProductoParaHistorial } from "../../src/core/reportes/historial-producto";
+import { anularCompra } from "../../src/server/actions/movimientos/compras";
+import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente, buscarProductoParaHistorial } from "../../src/core/reportes/historial-producto";
 
 describe("obtenerHistorialProducto", () => {
   let sucursalId: string;
@@ -94,6 +95,98 @@ describe("obtenerHistorialProducto", () => {
     expect(historial?.eventos.length).toBe(1);
     expect(historial?.eventos[0].saldoCorriente).toBe(15); // 10 (saldo inicial de ESTA sección) + 5, sin la seccionB
     expect(historial?.totalMovimientos).toBe(2); // solo los 2 de seccionId, no el de seccionB
+  });
+
+  // --- Paso 2 del plan (docs/plan-historial-producto-mp-pv-2026-09-22.md): campos nuevos para "Cómo se compró"/"Cómo se vendió". ---
+
+  it("precioPorUnidadStock llega desde una COMPRA real", async () => {
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }] });
+
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    const compra = historial?.eventos.find((e) => e.tipo === "movimiento");
+    expect(compra?.precioTotal).toBe(1000);
+    expect(compra?.precioPorUnidadStock).toBe(100); // 1000 / 10kg
+  });
+
+  it("una línea sin hecho financiero propio (AJUSTE) trae precioTotal/precioPorUnidadStock en 0, no undefined", async () => {
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }] });
+
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    const ajuste = historial?.eventos.find((e) => e.proceso === "AJUSTE");
+    expect(ajuste?.precioTotal).toBe(0);
+    expect(ajuste?.precioPorUnidadStock).toBe(0);
+  });
+
+  it("después de anularCompra: la compra original queda anulada:true, y el contra-asiento AJUSTE aparece como su propia fila (anulada:false)", async () => {
+    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }] });
+    expect(r.ok, r.mensaje).toBe(true);
+    const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
+
+    const anulacion = await anularCompra(compra.id);
+    expect(anulacion.ok, anulacion.mensaje).toBe(true);
+
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    expect(historial?.eventos).toHaveLength(2); // la compra original + el contra-asiento, append-only
+
+    const original = historial?.eventos.find((e) => e.idOperacion === compra.id);
+    expect(original?.anulada).toBe(true);
+    expect(original?.cantidadConSigno).toBe(10); // append-only: la línea original NO se edita
+
+    const contraAsiento = historial?.eventos.find((e) => e.idOperacion !== compra.id);
+    expect(contraAsiento?.proceso).toBe("AJUSTE");
+    expect(contraAsiento?.anulada).toBe(false); // el contra-asiento en sí no está anulado
+    expect(contraAsiento?.cantidadConSigno).toBe(-10); // reversión
+
+    // Con ambas líneas, el saldo neto vuelve a 0 — la anulación no queda "flotando".
+    expect(historial?.saldoActual).toBe(0);
+  });
+
+  it("tieneStockPropio: true para una MP, false para un PV que no se produce, true para un PV que sí se produce", async () => {
+    const pvSinProducir = await prisma.producto.create({ data: { codigo: "PV_REVENTA", nombre: "Agua", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const pvConReceta = await prisma.producto.create({ data: { codigo: "PV_PLATO", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000, seProduce: true } });
+
+    const historialMp = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    expect(historialMp?.tieneStockPropio).toBe(true);
+
+    const historialPvReventa = await obtenerHistorialProducto(sucursalId, pvSinProducir.id, undefined, undefined, undefined);
+    expect(historialPvReventa?.tieneStockPropio).toBe(false);
+
+    const historialPvProducido = await obtenerHistorialProducto(sucursalId, pvConReceta.id, undefined, undefined, undefined);
+    expect(historialPvProducido?.tieneStockPropio).toBe(true);
+  });
+});
+
+describe("obtenerIngredientesRecetaVigente", () => {
+  let sucursalId: string;
+  let unidadKgId: string;
+  let insumoId: string;
+  let mpId: string;
+  let pvId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    sucursalId = base.sucursal.id;
+    const catalogo = await sembrarCatalogoBase();
+    unidadKgId = catalogo.kg.id;
+    insumoId = catalogo.insumo.id;
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+    mpId = (await prisma.producto.create({ data: { codigo: "MP_AGUA", nombre: "Agua mineral caja x12", tipo: "MP", unidadStockId: unidadKgId, insumoId } })).id;
+    pvId = (await prisma.producto.create({ data: { codigo: "PV_AGUA", nombre: "Agua mineral 500ml", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1500 } })).id;
+  });
+
+  it("devuelve los ingredientes de la versión MÁS RECIENTE de la receta", async () => {
+    await prisma.recetaVersion.create({ data: { productoId: pvId, version: 1, ingredientes: { create: [{ insumoProductoId: mpId, cantidad: 1, unidadId: unidadKgId }] } } });
+    await prisma.recetaVersion.create({ data: { productoId: pvId, version: 2, ingredientes: { create: [{ insumoProductoId: mpId, cantidad: 2, unidadId: unidadKgId }] } } });
+
+    const ingredientes = await obtenerIngredientesRecetaVigente(pvId);
+    expect(ingredientes).toEqual([{ nombre: "Agua mineral caja x12", cantidad: 2, unidad: "kg" }]); // versión 2, no la 1
+  });
+
+  it("producto sin ninguna receta: lista vacía, sin tirar error", async () => {
+    expect(await obtenerIngredientesRecetaVigente(pvId)).toEqual([]);
   });
 });
 

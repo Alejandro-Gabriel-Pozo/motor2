@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { tieneStockReal } from "@/core/movimientos/transiciones";
 import { redondearCantidad, type Db } from "./comun";
 
 export interface FilaBusquedaProducto {
@@ -38,6 +39,12 @@ export interface EventoHistorialProducto {
   idOperacion?: string;
   cantidadConSigno?: number;
   saldoCorriente?: number;
+  /** Importe real de la línea (0 si no representa un hecho financiero propio — ver docstring de MovimientoStock.precioTotal). Para "Cómo se vendió" (§4). */
+  precioTotal?: number;
+  /** Precio por unidad de stock (0 en líneas sin hecho financiero propio). Para "Cómo se compró" — variación contra la compra anterior (§4, decisión 3). */
+  precioPorUnidadStock?: number;
+  /** La Operación de esta línea está anulada — mismo criterio que ItemPeriodo.anulada (periodo.ts): el Kardex la sigue mostrando (append-only, auditoría), pero "Cómo se compró"/"Cómo se vendió" la excluyen (una compra/venta anulada no ocurrió). */
+  anulada?: boolean;
   // Solo `tipo === "conteo"`:
   saldoSistema?: number;
   conteoReal?: number;
@@ -55,6 +62,17 @@ export interface HistorialProducto {
   eventos: EventoHistorialProducto[];
   totalMovimientos: number;
   totalConteos: number;
+  /**
+   * `tieneStockReal(tipo, seProduce)` — mismo predicado que ya filtra
+   * consolidado/valuación/alertas/conteo/traspasos/catálogo (docs/grounding-
+   * historial-producto-mp-pv-2026-09-22.md §1.3: esta pantalla era la única
+   * superficie de stock del proyecto que no lo consultaba). `false` para un
+   * PV que no se produce: el saldo corriente de ese producto es un
+   * artefacto contable (unidades vendidas acumuladas, sin sentido físico de
+   * stock) — la UI usa este flag para mostrar el cartel "Producto de
+   * reventa" en vez del saldo (§4, decisiones 7-8).
+   */
+  tieneStockPropio: boolean;
 }
 
 /**
@@ -131,6 +149,9 @@ export async function obtenerHistorialProducto(
     nroFactura: m.operacion.nroFactura,
     idOperacion: m.operacionId,
     cantidadConSigno: Number(m.cantidad),
+    precioTotal: Number(m.precioTotal),
+    precioPorUnidadStock: Number(m.precioPorUnidadStock),
+    anulada: m.operacion.anuladaEn !== null,
   }));
 
   const eventosConteo: EventoHistorialProducto[] = conteos.map((c) => ({
@@ -166,5 +187,33 @@ export async function obtenerHistorialProducto(
     eventos: eventosVisibles,
     totalMovimientos,
     totalConteos,
+    tieneStockPropio: tieneStockReal(producto.tipo, producto.seProduce),
   };
+}
+
+export interface IngredienteRecetaVigente {
+  nombre: string;
+  cantidad: number;
+  unidad: string;
+}
+
+/**
+ * Ingredientes de la receta VIGENTE de un producto (MAX(version) — mismo
+ * criterio derivado que ya usan venta.ts, movimientos.ts y comun.ts). Sirve
+ * al cartel "Producto de reventa" de un PV sin stock propio (§4, decisión
+ * 8): en vez de un saldo sin sentido, explica de qué está hecho y enlaza a
+ * su receta.
+ *
+ * NO reusa `obtenerRecetaVigente` de `server/actions/catalogo/recetas.ts`:
+ * esa función exige el permiso `guardar_receta`, que le negaría esta
+ * pantalla a un usuario con solo `ver_reportes_operativos`.
+ */
+export async function obtenerIngredientesRecetaVigente(productoId: string, db: Db = prisma): Promise<IngredienteRecetaVigente[]> {
+  const version = await db.recetaVersion.findFirst({
+    where: { productoId },
+    orderBy: { version: "desc" },
+    include: { ingredientes: { include: { insumoProducto: { select: { nombre: true } }, unidad: { select: { nombre: true } } } } },
+  });
+  if (!version) return [];
+  return version.ingredientes.map((i) => ({ nombre: i.insumoProducto.nombre, cantidad: Number(i.cantidad), unidad: i.unidad.nombre }));
 }
