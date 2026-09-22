@@ -149,6 +149,56 @@ describe("calcularRendimientoRecetasSimples", () => {
     const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
     expect(filas[0].cantidadEstimada).toBeNull();
   });
+
+  // --- P2 del plan (docs/plan-rendimiento-recetas-2026-09-22.md): teórico con merma + estimado neto + motivoSinEstimacion. ---
+
+  it("con merma: el desvío se calcula contra la receta CON merma, y cantidadEstimada viaja en NETO (no en bruto)", async () => {
+    const harina = await prisma.producto.create({ data: { codigo: "MP_HARINA_M", nombre: "Harina con merma", tipo: "MP", unidadStockId: unidadKgId } });
+    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_M", nombre: "Pizza con merma", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 1, mermaPorcentaje: 20, unidadId: unidadKgId }] } },
+    });
+
+    // Teórico bruto = 1 * 1.2 = 1.2. Comprado 13.2, vendido 10 → estimado bruto 1.32 → desvío (1.32-1.2)/1.2*100 = 10%. Estimado neto = 1.32/1.2 = 1.1.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: harina.id, cantidad: 13.2 }] });
+    await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: pizza.id, cantidadVendida: 10 }] });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    expect(filas).toHaveLength(1);
+    expect(filas[0].cantidadEstimada).toBe(1.1); // NETO — antes del fix hubiera comparado 1.32 (bruto) contra 1 (neto): 32%, no 10%
+    expect(filas[0].desviacionPorcentaje).toBe(10);
+    expect(filas[0].motivoSinEstimacion).toBeNull();
+  });
+
+  it("sin compras pero CON ventas: motivoSinEstimacion explica en vez de dar -100% (antes de que PRODUCCION cuente en P3)", async () => {
+    const sal = await prisma.producto.create({ data: { codigo: "MP_SAL_2", nombre: "Sal sin comprar", tipo: "MP", unidadStockId: unidadKgId } });
+    const papas = await prisma.producto.create({ data: { codigo: "PV_PAPAS_2", nombre: "Papas sin compra", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({
+      data: { productoId: papas.id, version: 1, ingredientes: { create: [{ insumoProductoId: sal.id, cantidad: 0.05, unidadId: unidadKgId }] } },
+    });
+    // Solo venta — sin ninguna compra de sal en el rango (la sal ya estaba en stock de antes, fuera de este test).
+    await prisma.movimientoStock.create({
+      data: {
+        operacionId: (await prisma.operacion.create({ data: { sucursalId, proceso: "AJUSTE", fecha: dentroDelRango, usuarioId: (await prisma.user.findFirstOrThrow()).id } })).id,
+        productoId: sal.id,
+        seccionId,
+        proceso: "AJUSTE",
+        cantidad: 10,
+        detalle: "stock inicial de prueba",
+        precioTotal: 0,
+        precioPorUnidadStock: 0,
+      },
+    });
+    await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: papas.id, cantidadVendida: 5 }] });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    expect(filas).toHaveLength(1);
+    expect(filas[0].totalComprado).toBe(0);
+    expect(filas[0].totalVendido).toBe(5);
+    expect(filas[0].cantidadEstimada).toBeNull(); // no -100%
+    expect(filas[0].desviacionPorcentaje).toBeNull();
+    expect(filas[0].motivoSinEstimacion).toMatch(/no hubo compras ni producción/i);
+  });
 });
 
 describe("calcularRendimientoRecetasCompartidas", () => {

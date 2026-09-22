@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { redondearCantidad } from "./comun";
 import type { Db } from "./comun";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
+import { calcularCantidadEstimadaNeta, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, motivoSinEstimacion as calcularMotivoSinEstimacion } from "./rendimiento-recetas-vistas";
 
 export interface FilaRendimientoSimple {
   productoVentaId: string;
@@ -12,10 +13,13 @@ export interface FilaRendimientoSimple {
   insumoONombre: string;
   unidadRecetaNombre: string;
   cantidadActual: number;
+  /** NETO (misma base que `cantidadActual` — RecetaIngrediente.cantidad es neta) — ver docstring de `calcularCantidadEstimadaNeta`, es lo que se escribe si se usa este valor. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
   totalComprado: number;
   totalVendido: number;
+  /** Por qué `cantidadEstimada` es null, cuando lo es — nunca se oculta la fila, se explica (docs/plan-rendimiento-recetas-2026-09-22.md §B7). */
+  motivoSinEstimacion: string | null;
   semanasConDatos: number;
   confianza: "alta" | "media" | "baja" | "sin_datos";
   /**
@@ -40,7 +44,7 @@ export interface FilaRendimientoCompartido {
   insumoProductoId: string;
   unidadRecetaNombre: string;
   cantidadActual: number;
-  /** El coeficiente resuelto por regresión para ESTE plato — null si el pool no fue resoluble. */
+  /** El coeficiente resuelto por regresión para ESTE plato, ya en NETO — null si el pool no fue resoluble. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
   /** Cuántos platos comparten este pool — mismo valor repetido en todas las filas del pool. */
@@ -50,6 +54,8 @@ export interface FilaRendimientoCompartido {
   r2: number | null;
   resoluble: boolean;
   motivoNoResoluble: string | null;
+  /** Solo cuando SÍ es resoluble pero el desvío no se puede calcular igual (ver docstring en FilaRendimientoSimple) — si `motivoNoResoluble` ya explica la falta de estimado, este queda null (es más básico). */
+  motivoSinEstimacion: string | null;
   /** Ver el docstring del mismo campo en FilaRendimientoSimple — acá es por fila, no por pool: dos platos pueden compartir un insumo con cantidades/merma distintas. */
   esTrivial: boolean;
 }
@@ -209,9 +215,11 @@ export async function calcularRendimientoRecetasSimples(
     const totalVendido = redondearCantidad(ventas.reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
     const semanasConDatos = contarSemanasConDatos([...compras, ...ventas].map((m) => m.operacion.fecha));
 
-    const cantidadEstimada = totalVendido > 0 ? redondearCantidad(totalComprado / totalVendido) : null;
-    const desviacionPorcentaje =
-      cantidadEstimada !== null && uso.cantidad > 0 ? Math.round(((cantidadEstimada - uso.cantidad) / uso.cantidad) * 1000) / 10 : null;
+    const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
+    // 0 comprado con ventas sí registradas daría -100% (0/vendido) — un número inventado a partir de "no entró nada", no una medición (defecto 1 de §3). Se prefiere null + el motivo explicado, igual que sin ventas.
+    const cantidadEstimadaBruta = totalVendido > 0 && totalComprado > 0 ? redondearCantidad(totalComprado / totalVendido) : null;
+    const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
+    const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
 
     filas.push({
       productoVentaId: uso.pvProductoId,
@@ -225,6 +233,7 @@ export async function calcularRendimientoRecetasSimples(
       desviacionPorcentaje,
       totalComprado,
       totalVendido,
+      motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas: totalComprado, cantidadTeoricaBruta }),
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
       esTrivial: esUsoTrivial(uso),
@@ -307,11 +316,17 @@ export async function calcularRendimientoRecetasCompartidas(
 
     const resoluble = motivoNoResoluble === null;
     const r2 = resoluble ? resultado!.r2 : null;
+    const totalCompradoPool = redondearCantidad(compras.reduce((acc, m) => acc + Number(m.cantidad), 0));
 
     pool.usos.forEach((uso, i) => {
-      const cantidadEstimada = resoluble ? redondearCantidad(resultado!.coeficientes[i]) : null;
-      const desviacionPorcentaje =
-        cantidadEstimada !== null && uso.cantidad > 0 ? Math.round(((cantidadEstimada - uso.cantidad) / uso.cantidad) * 1000) / 10 : null;
+      // El coeficiente de la regresión sale en la misma unidad que `y` (compras crudas del pool) — es BRUTO, misma interpretación que cantidadEstimadaBruta de Fase 1.
+      const cantidadEstimadaBruta = resoluble ? redondearCantidad(resultado!.coeficientes[i]) : null;
+      const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
+      const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
+      const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
+      const totalVendidoUso = redondearCantidad(ventasPorPlato[i].reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
+      // Si la regresión ya explicó por qué no hay estimado (motivoNoResoluble), no hace falta un segundo motivo más básico encima.
+      const motivo = motivoNoResoluble ? null : calcularMotivoSinEstimacion({ totalVendido: totalVendidoUso, totalEntradas: totalCompradoPool, cantidadTeoricaBruta });
 
       filas.push({
         poolClave: pool.clave,
@@ -324,6 +339,7 @@ export async function calcularRendimientoRecetasCompartidas(
         cantidadActual: uso.cantidad,
         cantidadEstimada,
         desviacionPorcentaje,
+        motivoSinEstimacion: motivo,
         cantidadPlatosEnPool: pool.usos.length,
         semanasConDatos: semanas.length,
         r2,
