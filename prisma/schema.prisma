@@ -107,6 +107,7 @@ model Sucursal {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  frecuenciasConteo    FrecuenciaConteoProducto[]
   promociones          PromocionProducto[]
   traspasosComoOrigen  TraspasoSucursal[]    @relation("TraspasoOrigen")
   traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
@@ -311,6 +312,7 @@ model Producto {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  frecuenciasConteo    FrecuenciaConteoProducto[]
   promociones          PromocionProducto[]
   traspasos            TraspasoSucursal[]
 
@@ -996,6 +998,33 @@ model PrecioLocalProducto {
   /// Catalogo.js:2072-2077) — no se borra la fila al deshabilitar, mismo
   /// patrón que el resto del catálogo (activo/habilitado, nunca DELETE).
   habilitado Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
+}
+
+/// Cada cuánto toca volver a contar este producto en esta sucursal.
+/// `0` = desactivado, mismo criterio que Odoo `cyclic_inventory_frequency`
+/// (addons/stock/models/stock_location.py, rama 17.0 — el único de los
+/// sistemas de referencia que modela una agenda de conteo; ERPNext,
+/// Dolibarr y Grocy: NO ENCONTRADO). Por sucursal × producto, no por
+/// sección: una agenda de conteo es una política operativa de la sucursal,
+/// no de una sección puntual (a diferencia de StockMinimoProducto, que sí
+/// es por sección — acá esa granularidad no se necesita).
+/// La "próxima fecha" NO se persiste — se deriva de ConteoFisico.fecha más
+/// reciente + frecuenciaDias (mismo criterio que el resto del sistema: no
+/// materializar lo que se puede calcular; ver el docstring de
+/// StockMinimoProducto sobre por qué las vistas de stock no son tablas).
+/// Fila ausente = sin agenda, mismo criterio de "no hay fila" que
+/// PrecioLocalProducto/StockMinimoProducto (docs/plan-rendimiento-recetas-
+/// 2026-09-22.md §E, sub-plan S — decisión 2 de §3, conteos físicos
+/// periódicos, comprometida por el dueño 2026-09-22).
+model FrecuenciaConteoProducto {
+  id             String   @id @default(cuid())
+  sucursalId     String
+  sucursal       Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId     String
+  producto       Producto @relation(fields: [productoId], references: [id])
+  frecuenciaDias Int
 
   @@unique([sucursalId, productoId])
 }
