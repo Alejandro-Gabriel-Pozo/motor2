@@ -1,11 +1,12 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
-import { obtenerHistorialProducto } from "@/core/reportes/historial-producto";
+import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/core/reportes/historial-producto";
 import { filtrarEventosKardex, type QueMostrar } from "@/core/reportes/historial-vistas";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";
+import { CartelSinStockPropio } from "./cartel-sin-stock-propio";
 
 const VALORES_QUE_MOSTRAR: readonly QueMostrar[] = ["todo", "compras", "consumos-ventas", "ajustes-conteos"];
 
@@ -38,6 +39,9 @@ export default async function HistorialProductoPage({
       )
     : null;
 
+  // Solo para un PV sin stock propio (§4, decisiones 7-8) — para el resto, ni se consulta.
+  const ingredientes = historial && !historial.tieneStockPropio ? await obtenerIngredientesRecetaVigente(historial.productoId) : null;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -56,18 +60,27 @@ export default async function HistorialProductoPage({
       {historial && (
         <div>
           <h2 className="mb-2 text-sm font-medium">
-            {historial.codigo} — {historial.producto} ({historial.tipo}) — saldo actual: {historial.saldoActual} {historial.unidadStockNombre}
+            {historial.codigo} — {historial.producto} ({historial.tipo})
+            {historial.tieneStockPropio && ` — saldo actual: ${historial.saldoActual} ${historial.unidadStockNombre}`}
           </h2>
           <p className="mb-2 text-xs text-neutral-500">
-            {historial.totalMovimientos} movimiento(s), {historial.totalConteos} conteo(s) en total (el saldo corriente arranca del primer movimiento
-            real, no del rango elegido).
+            {historial.totalMovimientos} movimiento(s), {historial.totalConteos} conteo(s) en total
+            {historial.tieneStockPropio && " (el saldo corriente arranca del primer movimiento real, no del rango elegido)"}.
           </p>
-          <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium">Evolución del saldo</h3>
-            {/* SIEMPRE el historial completo, nunca filtrado por "Qué mostrar" — ese filtro es solo para la tabla de abajo (declutter), no cambia qué pasó de verdad. */}
-            <GraficoSaldoCorriente eventos={historial.eventos} unidadStockNombre={historial.unidadStockNombre} />
-          </div>
-          <TablaHistorialEventos filas={filtrarEventosKardex(historial.eventos, queMostrar)} nombreExport={`historial-${historial.codigo}`} />
+          {historial.tieneStockPropio ? (
+            <div className="mb-4">
+              <h3 className="mb-2 text-sm font-medium">Evolución del saldo</h3>
+              {/* SIEMPRE el historial completo, nunca filtrado por "Qué mostrar" — ese filtro es solo para la tabla de abajo (declutter), no cambia qué pasó de verdad. */}
+              <GraficoSaldoCorriente eventos={historial.eventos} unidadStockNombre={historial.unidadStockNombre} />
+            </div>
+          ) : (
+            <CartelSinStockPropio productoId={historial.productoId} ingredientes={ingredientes ?? []} />
+          )}
+          <TablaHistorialEventos
+            filas={filtrarEventosKardex(historial.eventos, queMostrar)}
+            nombreExport={`historial-${historial.codigo}`}
+            mostrarSaldo={historial.tieneStockPropio}
+          />
         </div>
       )}
     </div>
