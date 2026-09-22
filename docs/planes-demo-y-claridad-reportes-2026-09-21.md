@@ -141,14 +141,21 @@ El ítem es **Agua mineral 500 ml** (consume 1 unidad de "Agua caja x12" por ven
 - **Terminología:** "líneas" → "productos" en `/reportes/compras` (contando productos **distintos**, no renglones — dos renglones del mismo producto en una factura no deben contarse dos veces); en los mensajes de anulación, → "movimientos" (mismo criterio que §2).
 - **Permisos, decisión importante:** el historial está bajo `ver_reportes_operativos`, pero las vistas nuevas traen precios. Recomendado: mantener la pantalla en ese permiso y **condicionar solo las columnas de dinero** a `ver_reportes_dinero` (mismo patrón que ya usa `/reportes/compras` con `anular_compra`/`corregir_compra`), sin migración.
 
-### Decisiones del dueño (no tomadas)
+### Grounding externo (2026-09-22)
 
-1. "Cantidad típica": ¿mediana (recomendada, resiste el stock inicial) o promedio?
-2. Frecuencia: ¿días entre compras (recomendado) o compras por semana?
-3. Variación de precio: ¿contra la compra anterior (recomendado) o contra el promedio del mes?
-4. ¿Se muestra margen reconstruido en el PV? Commit aparte si se acepta.
-5. Rango por defecto de las vistas nuevas: recomendado, últimos 90 días.
-6. ¿Las devoluciones a proveedor entran en "Cómo se compró"? Recomendado: no, en la primera versión.
+`docs/grounding-historial-producto-mp-pv-2026-09-22.md` — investigación contra ERPNext/Dolibarr/Tandoor Recipes/Grocy pedida explícitamente por el dueño. **Confirma** esta recomendación en forma y prioridad, con 3 ajustes: (1) para un PV sin stock propio hay que suprimir el saldo en **tres** lugares (encabezado, gráfico y columna "Saldo corriente"), no solo el gráfico — ERPNext directamente prohíbe que ese tipo de ítem tenga un asiento de stock; (2) agregar columna **"Origen"** con link a `/reportes/trazabilidad?idOperacion=` (dato ya calculado, cero backend nuevo) — de paso resuelve "las anulaciones se ven como movimientos fantasma"; (3) "cantidad típica"/"frecuencia" no tienen precedente en ningún sistema de referencia (son hipótesis propia del proyecto, no estándar de industria). Hallazgo adicional: `tieneStockReal` ya se usa como filtro en 6 lugares del código — `/reportes/historial` es el único que no lo consulta (asimetría puntual, no falta una regla nueva).
+
+### Decisiones del dueño — RESUELTAS (2026-09-22)
+
+1. "Cantidad típica": **mediana** (resiste el stock inicial).
+2. Frecuencia: **compras por semana** (no días entre compras — ajustado contra la recomendación original).
+3. Variación de precio: **contra la compra anterior** (respondida la pregunta real; respaldo directo en Grocy/ERPNext).
+4. Margen reconstruido en el PV: **no por ahora** — commit aparte si se acepta más adelante.
+5. Rango por defecto de las vistas nuevas: **últimos 90 días**.
+6. Devoluciones a proveedor en "Cómo se compró": **no**, en la primera versión.
+7. *(surgida del grounding)* Encabezado de un PV sin stock propio: **no muestra ningún número** — solo el cartel explicativo + link a la receta (alineado con ERPNext/Dolibarr, que directamente no generan ese dato).
+8. *(surgida del grounding)* Nombre visible del patrón "se vende, no se produce, consume 1:1 de otra MP": **"Producto de reventa"**.
+9. *(surgida del grounding)* ¿Sacar la línea `VENTA` del Kardex para un PV sin stock real (como ERPNext)? **No** — se mantiene como hoy (esa fila alimenta margen real y ventas por producto/categoría; Kardex append-only por decisión ya cerrada). Solo se deja de MOSTRAR el saldo (decisión 7), no de escribir el movimiento.
 
 ### Pasos y verificación
 
