@@ -3,16 +3,22 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { ETIQUETA_ROTULO, desvioEsNotable, explicarConfianza, type Confianza, type RotuloLinea } from "@/core/reportes/rendimiento-recetas-vistas";
 
-const AYUDA_TRIVIAL =
-  "Venta directa 1:1 sin preparación (1 unidad de receta, 0% merma) — un desvío acá no puede deberse a la receta en sí. Puede ser ruido de lote de compra, o señal real de rotura/robo no cargado como Merma.";
-
-const ETIQUETA_CONFIANZA: Record<"alta" | "media" | "baja" | "sin_datos", string> = {
-  alta: "Alta",
-  media: "Media",
-  baja: "Baja",
-  sin_datos: "Sin datos",
+/** Ayuda por tipo de rótulo — reemplaza el AYUDA_TRIVIAL único (§3, plan P7): cada uno explica algo distinto sobre por qué el desvío se lee diferente acá. */
+const AYUDA_ROTULO: Record<Exclude<RotuloLinea, null>, string> = {
+  PRODUCTO_DE_REVENTA:
+    "Venta directa 1:1 sin preparación — un desvío acá no puede deberse a la receta en sí. Puede ser ruido de comprar por lote, o señal real de rotura/robo no cargado como Merma.",
+  SUBRECETA_PRODUCIDA: "Este insumo se PRODUCE (no se compra) — es una sub-receta. Acá un desvío SÍ puede ser un error de receta real: conviene revisarlo con atención.",
+  PACKAGING_NO_COMESTIBLE: "Packaging o limpieza (grupo «No comestibles») — queda fuera del food cost, pero la cantidad de la receta igual se puede calibrar.",
 };
+
+function claseImpacto(pesos: number | null): string {
+  if (pesos === null) return "text-neutral-500 dark:text-neutral-400";
+  if (pesos > 0) return "text-red-600";
+  if (pesos < 0) return "text-green-700";
+  return "";
+}
 
 export interface FilaRendimientoSimpleProps {
   productoVentaId: string;
@@ -23,19 +29,18 @@ export interface FilaRendimientoSimpleProps {
   cantidadActual: number;
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
+  motivoSinEstimacion: string | null;
   totalComprado: number;
+  totalProducido: number;
   totalVendido: number;
+  stockApertura: number;
+  stockCierre: number;
+  bandaRuidoPct: number | null;
+  impactoPesos: number | null;
+  sinCosto: boolean;
   semanasConDatos: number;
-  confianza: "alta" | "media" | "baja" | "sin_datos";
-  esTrivial: boolean;
-}
-
-function celdaDesvio(desviacionPorcentaje: number | null) {
-  return (
-    <td className={`px-2 py-2 ${desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) >= 10 ? "font-medium text-amber-700 dark:text-amber-600" : ""}`}>
-      {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
-    </td>
-  );
+  confianza: Confianza;
+  rotulo: RotuloLinea;
 }
 
 /**
@@ -49,7 +54,28 @@ function celdaDesvio(desviacionPorcentaje: number | null) {
  * cambio se guarda de verdad (ver la nota junto al campo "cantidad" en `catalogo/recetas/[productoId]/page.tsx`).
  */
 export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
-  const { productoVentaId, productoVentaNombre, insumoProductoId, insumoONombre, unidadRecetaNombre, cantidadActual, cantidadEstimada, desviacionPorcentaje, totalComprado, totalVendido, semanasConDatos, confianza, esTrivial } = props;
+  const {
+    productoVentaId,
+    productoVentaNombre,
+    insumoProductoId,
+    insumoONombre,
+    unidadRecetaNombre,
+    cantidadActual,
+    cantidadEstimada,
+    desviacionPorcentaje,
+    motivoSinEstimacion,
+    totalComprado,
+    totalProducido,
+    totalVendido,
+    stockApertura,
+    stockCierre,
+    bandaRuidoPct,
+    impactoPesos,
+    sinCosto,
+    semanasConDatos,
+    confianza,
+    rotulo,
+  } = props;
   const [confirmando, setConfirmando] = useState(false);
   const idAviso = useId();
   const botonUsar = useRef<HTMLButtonElement>(null);
@@ -71,23 +97,25 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
   }
 
   const resumen = `${productoVentaNombre} — ${insumoONombre}`;
+  // comprado/vendido/semanas/confianza acá siguen siendo los de SIEMPRE (no totalEntradas) — es el contexto que ya lee catalogo/recetas/[productoId]/page.tsx, sin tocar esa pantalla.
   const href =
     cantidadEstimada !== null
       ? `/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}` +
-        `&comprado=${totalComprado}&vendido=${totalVendido}&semanas=${semanasConDatos}&confianza=${encodeURIComponent(ETIQUETA_CONFIANZA[confianza])}`
+        `&comprado=${totalComprado}&vendido=${totalVendido}&semanas=${semanasConDatos}&confianza=${encodeURIComponent(explicarConfianza(confianza, semanasConDatos))}`
       : null;
 
   if (confirmando && href) {
     return (
       <tr className="border-b">
-        <td colSpan={7} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
+        <td colSpan={11} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
           <div className="flex flex-col gap-1">
             <p id={idAviso} role="alert" className="text-sm text-amber-700 dark:text-amber-600">
               ¿Cambiar la receta de {resumen}? Vas a pasar de {cantidadActual} a {cantidadEstimada} {unidadRecetaNombre}.
             </p>
             <p className="text-xs text-neutral-500">
-              Comprado: {totalComprado} · Vendido: {totalVendido} · {semanasConDatos} semana(s) con datos · Confianza: {ETIQUETA_CONFIANZA[confianza]}.
-              {esTrivial && " Venta directa 1:1: el desvío puede ser ruido de comprar por lote, no necesariamente un error de receta."}
+              Comprado: {totalComprado}
+              {totalProducido > 0 && ` (+${totalProducido} producido)`} · Vendido: {totalVendido} · Confianza: {explicarConfianza(confianza, semanasConDatos)}.
+              {rotulo && ` ${AYUDA_ROTULO[rotulo]}`}
             </p>
             <div className="flex gap-3">
               <EnlaceInterno href={href} aria-describedby={idAviso} className="text-sm font-medium text-amber-700 underline dark:text-amber-600">
@@ -108,10 +136,10 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
       <td className="px-2 py-2 first:pl-0">{productoVentaNombre}</td>
       <td className="px-2 py-2">
         {insumoONombre}
-        {esTrivial && (
+        {rotulo && (
           <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">
-            (venta directa)
-            <AyudaIcono texto={AYUDA_TRIVIAL} />{" "}
+            ({ETIQUETA_ROTULO[rotulo]})
+            <AyudaIcono texto={AYUDA_ROTULO[rotulo]} />{" "}
             <EnlaceInterno href={`/reportes/historial?productoId=${insumoProductoId}`} className="underline">
               Ver historial
             </EnlaceInterno>
@@ -121,9 +149,42 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
       <td className="px-2 py-2">
         {cantidadActual} {unidadRecetaNombre}
       </td>
-      <td className="px-2 py-2">{cantidadEstimada !== null ? `${cantidadEstimada} ${unidadRecetaNombre}` : "—"}</td>
-      {celdaDesvio(desviacionPorcentaje)}
-      <td className="px-2 py-2">{ETIQUETA_CONFIANZA[confianza]}</td>
+      <td className="px-2 py-2">
+        {cantidadEstimada !== null ? (
+          `${cantidadEstimada} ${unidadRecetaNombre}`
+        ) : (
+          <span className="text-neutral-500 dark:text-neutral-400" title={motivoSinEstimacion ?? undefined}>
+            {motivoSinEstimacion ?? "—"}
+          </span>
+        )}
+      </td>
+      <td className={`px-2 py-2 ${desvioEsNotable(desviacionPorcentaje) ? "font-medium text-amber-700 dark:text-amber-600" : ""}`}>
+        {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
+        {bandaRuidoPct !== null && (
+          <span className="block text-xs font-normal text-neutral-500 dark:text-neutral-400">
+            ±{bandaRuidoPct}% de ruido esperable por comprar de a lotes{Math.abs(desviacionPorcentaje ?? 0) <= bandaRuidoPct && " — el desvío cae dentro de esa banda"}
+          </span>
+        )}
+      </td>
+      <td className="px-2 py-2">
+        {totalComprado}
+        {totalProducido > 0 && <span className="text-xs text-neutral-500 dark:text-neutral-400"> (+{totalProducido} producido)</span>}
+      </td>
+      <td className="px-2 py-2">{totalVendido}</td>
+      <td className="px-2 py-2" title={`Antes de este rango: ${stockApertura} — después: ${stockCierre}`}>
+        {stockCierre - stockApertura > 0 ? "+" : ""}
+        {redondearParaMostrar(stockCierre - stockApertura)}
+      </td>
+      <td className={`px-2 py-2 ${claseImpacto(impactoPesos)}`}>
+        {impactoPesos !== null ? (
+          <>
+            {impactoPesos > 0 ? "+" : ""}${impactoPesos.toLocaleString("es-AR")}
+          </>
+        ) : (
+          <span className="text-neutral-500 dark:text-neutral-400">{sinCosto ? "sin costo conocido" : "—"}</span>
+        )}
+      </td>
+      <td className="px-2 py-2">{explicarConfianza(confianza, semanasConDatos)}</td>
       <td className="px-2 py-2">
         {href && (
           <button ref={botonUsar} type="button" aria-label={`Usar este valor para ${resumen}`} onClick={() => setConfirmando(true)} className="text-sm underline">
@@ -133,4 +194,9 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
       </td>
     </tr>
   );
+}
+
+/** Evita que un −0 (redondeo de punto flotante en una resta que da 0) se muestre como "-0". */
+function redondearParaMostrar(n: number): number {
+  return Object.is(n, -0) ? 0 : n;
 }

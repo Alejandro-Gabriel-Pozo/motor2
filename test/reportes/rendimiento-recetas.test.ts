@@ -271,6 +271,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(fila.stockApertura).toBe(0); // nada antes de `desde`
     expect(fila.stockCierre).toBe(9); // 72 comprados - 63 consumidos por la venta = quedaron 9 en el depósito
     expect(fila.desviacionPorcentaje).toBeCloseTo(14.3, 1); // el % "crudo" sigue dando +14,3% — el Δstock es contexto, no corrige la fórmula
+    expect(fila.bandaRuidoPct).toBeCloseTo(114.3, 1); // una sola compra de 72 (un solo lote) sobre 63 vendidos: mediana([72])/63/1*100
   });
 
   it("una compra anulada no mueve los saldos: el contra-asiento (AJUSTE) cancela el efecto de la compra original en el Δ de stock", async () => {

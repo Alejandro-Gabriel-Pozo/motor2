@@ -3,6 +3,7 @@ import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCan
 import type { CostoMP, Db } from "./comun";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import {
+  bandaDeRuidoDeLote,
   calcularCantidadEstimadaNeta,
   calcularCantidadTeoricaBruta,
   calcularDesviacionPorcentaje,
@@ -37,6 +38,8 @@ export interface FilaRendimientoSimple {
   stockCierre: number;
   /** Por qué `cantidadEstimada` es null, cuando lo es — nunca se oculta la fila, se explica (docs/plan-rendimiento-recetas-2026-09-22.md §B7). */
   motivoSinEstimacion: string | null;
+  /** Cuánto puede moverse el % de desvío solo por comprar de a lotes — CONTEXTO en texto, nunca decide si la celda se pinta ámbar (eso es fijo, ver `desvioEsNotable`). Ver `bandaDeRuidoDeLote`. */
+  bandaRuidoPct: number | null;
   /** (entradas reales − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA el ranking, no el %. Ver `impactoDelDesvio`. */
   impactoPesos: number | null;
   /** true cuando `impactoPesos` es null por falta de costo conocido (nunca se inventa un precio — mismo criterio que perdidas.ts). */
@@ -77,6 +80,8 @@ export interface FilaRendimientoCompartido {
   /** Ver docstring en FilaRendimientoSimple — acá es del POOL, mismo valor repetido en todas sus filas. */
   stockApertura: number;
   stockCierre: number;
+  /** Ver docstring en FilaRendimientoSimple — el LOTE de compra es del pool (todo el insumo compartido), pero la banda en sí es por FILA: depende de cuánto vendió y qué recta pide CADA plato, así que varía entre las filas de un mismo pool. */
+  bandaRuidoPct: number | null;
   semanasConDatos: number;
   /** Calidad del ajuste (0-1) — mismo valor en todas las filas del pool, null si no se pudo resolver. */
   r2: number | null;
@@ -302,6 +307,9 @@ export async function calcularRendimientoRecetasSimples(
     const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
     const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
     const impactoPesos = impactoDelDesvio(totalEntradas, cantidadTeoricaBruta, totalVendido, costoUnitario);
+    // `entradas` ya viene filtrada por anuladaEn: null (misma consulta que totalComprado) — este filtro es solo para separar COMPRA de PRODUCCION, no vuelve a decidir nada sobre anuladas.
+    const cantidadesDeCadaCompra = entradas.filter((m) => m.proceso === "COMPRA").map((m) => Number(m.cantidad));
+    const bandaRuidoPct = bandaDeRuidoDeLote(cantidadesDeCadaCompra, totalVendido, cantidadTeoricaBruta);
 
     filas.push({
       productoVentaId: uso.pvProductoId,
@@ -319,6 +327,7 @@ export async function calcularRendimientoRecetasSimples(
       totalVendido,
       stockApertura,
       stockCierre,
+      bandaRuidoPct,
       impactoPesos,
       sinCosto: costoUnitario === null,
       motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta }),
@@ -366,8 +375,9 @@ export async function calcularRendimientoRecetasCompartidas(
     // COMPRA + PRODUCCION: mismo motivo que Fase 1 — un insumo con seProduce=true entra por producción, no por compra. anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
     const entradas = await db.movimientoStock.findMany({
       where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: pool.productoIds } },
-      select: { cantidad: true, operacion: { select: { fecha: true } } },
+      select: { cantidad: true, proceso: true, operacion: { select: { fecha: true } } },
     });
+    const cantidadesDeCadaCompraPool = entradas.filter((m) => m.proceso === "COMPRA").map((m) => Number(m.cantidad));
 
     const ventasPorPlato = await Promise.all(
       pool.usos.map((uso) =>
@@ -418,6 +428,7 @@ export async function calcularRendimientoRecetasCompartidas(
       const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
       const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
       const totalVendidoUso = redondearCantidad(ventasPorPlato[i].reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
+      const bandaRuidoPct = bandaDeRuidoDeLote(cantidadesDeCadaCompraPool, totalVendidoUso, cantidadTeoricaBruta);
       // Si la regresión ya explicó por qué no hay estimado (motivoNoResoluble), no hace falta un segundo motivo más básico encima.
       const motivo = motivoNoResoluble ? null : calcularMotivoSinEstimacion({ totalVendido: totalVendidoUso, totalEntradas: totalEntradasPool, cantidadTeoricaBruta });
       // Impacto de ESTE plato (no del pool entero): reconstruye "cuánto de las entradas del pool le toca a este plato" a partir del coeficiente ya estimado (cantidadEstimadaBruta × lo que vendió), y de ahí la misma resta que Fase 1. Sin regresión resoluble, no hay estimado del que partir → null (nunca se inventa un impacto).
@@ -442,6 +453,7 @@ export async function calcularRendimientoRecetasCompartidas(
         totalEntradasPool,
         stockApertura,
         stockCierre,
+        bandaRuidoPct,
         semanasConDatos: semanas.length,
         r2,
         resoluble,

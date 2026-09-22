@@ -1,7 +1,16 @@
 import type { Proceso } from "@prisma/client";
 import { redondearMoneda } from "@/core/movimientos/transiciones";
 import { mediana } from "@/core/estadistica/mediana";
-import { redondearCantidad } from "./comun";
+
+// A propósito NO importa `redondearCantidad` de `./comun`: ese módulo importa
+// `@/lib/db` a nivel de archivo, así que cualquier import de VALOR (no de
+// tipo) desde acá arrastraría Prisma/`pg` al bundle del cliente en cuanto un
+// componente "use client" importe un valor de este archivo (bug real
+// encontrado en rendimiento-recetas-vistas.ts, mismo patrón — ver su
+// docstring). Se duplica localmente por eso.
+function redondearCantidad(n: number): number {
+  return Math.round(Number(n || 0) * 1000) / 1000;
+}
 
 /**
  * View-model puro para "Cómo se compró (MP)" / "Cómo se vendió (PV)" y el

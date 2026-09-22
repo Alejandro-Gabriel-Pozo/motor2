@@ -1,6 +1,5 @@
 import { redondearMoneda } from "@/core/movimientos/transiciones";
 import { mediana } from "@/core/estadistica/mediana";
-import { redondearCantidad } from "./comun";
 
 /**
  * View-model puro de "Rendimiento real de recetas" (docs/planes-demo-y-
@@ -9,7 +8,17 @@ import { redondearCantidad } from "./comun";
  * datos y llama a estas funciones. Mismo molde que `historial-vistas.ts`
  * (§4): tipos locales, sin depender de que la capa de datos ya declare los
  * campos nuevos.
+ *
+ * A propósito NO importa nada de `./comun` (aunque tiene `redondearCantidad`,
+ * la misma función de abajo): ese módulo importa `@/lib/db` a nivel de
+ * archivo, así que CUALQUIER import de valor (no de tipo) desde acá arrastra
+ * Prisma/`pg` al bundle del cliente — reventó el build la primera vez que un
+ * componente "use client" (fila-simple.tsx/fila-compartida.tsx) importó una
+ * función de este archivo. `redondearCantidad` se duplica localmente por eso.
  */
+function redondearCantidad(n: number): number {
+  return Math.round(Number(n || 0) * 1000) / 1000;
+}
 
 // ---------------------------------------------------------------------------
 // Umbral de ámbar — FIJO, no configurable (decisión 5)
