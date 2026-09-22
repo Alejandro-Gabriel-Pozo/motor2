@@ -3,7 +3,26 @@
 Diseñado por un agente de planificación (Opus), a partir de las 5 decisiones ya
 resueltas de §3 (`docs/planes-demo-y-claridad-reportes-2026-09-21.md`) y el
 grounding externo (`docs/grounding-rendimiento-recetas-decisiones-2026-09-22.md`).
-**No implementado todavía** — es el plan, verificado contra el código real.
+
+**P0-P11 IMPLEMENTADOS y cerrados (2026-09-22)** — un commit por paso
+(`7b1e3ae`…`02aae25`). Verificación end-to-end final (§G), en una sola
+corrida: `npx tsc --noEmit` limpio, `npm run lint` 0/0, `npm test` 1244/1244
+(121 archivos, línea de base 1192), `npx playwright test
+test/e2e/accesibilidad.spec.ts` sin violaciones, `npm run build` exitoso sin
+migración nueva (contra `motor2_dev` local), `npm run test:e2e` 222/222
+specs (línea de base 220). Demostración de mutación obligatoria hecha sobre
+las 4 funciones citadas en §G (`impactoDelDesvio` signo invertido,
+`compararPorImpacto` sin `Math.abs`, `bandaDeRuidoDeLote` promedio en vez de
+mediana, `calcularCantidadEstimadaNeta` sin dividir por la merma) — las
+cuatro pusieron tests en rojo por separado, revertidas, suite verde de
+nuevo. Detalle de un bug real de bundling encontrado y corregido durante
+P7 (importar un valor runtime de un módulo "vistas" puro que a su vez
+importaba `@/lib/db` transitivamente rompía el build del cliente) en el
+commit `1901c30`, aplicado preventivamente también a `historial-vistas.ts`
+(§4).
+
+Pendiente: **sub-plan S** (§E, conteo físico periódico) — autorizado por el
+dueño, no implementado todavía en este documento.
 
 ---
 
