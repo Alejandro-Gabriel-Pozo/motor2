@@ -393,7 +393,7 @@ testAutenticado(
 );
 
 testAutenticado(
-  "reportes/rendimiento-recetas: la tabla en reposo y con la confirmación de «Usar este valor» abierta, sin violaciones de axe",
+  "reportes/rendimiento-recetas: la tabla en reposo (con rótulo, banda de ruido y motivoSinEstimacion) y con la confirmación de «Usar este valor» abierta (colSpan 11), sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     const marca = Date.now();
     const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
@@ -406,22 +406,39 @@ testAutenticado(
     await prisma.movimientoStock.create({ data: { operacionId: compra.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 20, detalle: "Compra", precioTotal: 200, precioPorUnidadStock: 10 } });
     const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: hoy, usuarioId: admin.id } });
     await prisma.movimientoStock.create({ data: { operacionId: venta.id, productoId: pv.id, seccionId, proceso: "VENTA", cantidad: -10, detalle: "Venta", precioTotal: 1000, precioPorUnidadStock: 100 } });
+
+    // Segundo plato/insumo, SIN compra en la ventana — solo venta: cae en motivoSinEstimacion ("No hubo compras ni producción...") en vez de ocultarse (decisión 3, rotular/explicar, nunca ocultar).
+    const mp2 = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-MP2-${marca}`, nombre: `E2E A11y Queso Sin Compra ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv2 = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-PV2-${marca}`, nombre: `E2E A11y Muzzarella Sin Compra ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv2.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp2.id, cantidad: 1, unidadId: kg.id }] } } });
+    const venta2 = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: hoy, usuarioId: admin.id } });
+    await prisma.movimientoStock.create({ data: { operacionId: venta2.id, productoId: pv2.id, seccionId, proceso: "VENTA", cantidad: -5, detalle: "Venta", precioTotal: 500, precioPorUnidadStock: 100 } });
+
     try {
       await page.goto("/reportes/rendimiento-recetas");
       await conTitulo(page, "Rendimiento real de recetas");
       const fila = page.getByRole("row", { name: new RegExp(pv.nombre) });
       const botonUsar = fila.getByRole("button", { name: `Usar este valor para ${pv.nombre} — ${mp.nombre}` });
       await expect(botonUsar).toBeVisible();
+      // Rótulo declarado: mp/pv sin producción, 1:1 sin merma → "Producto de reventa" (decisión 4).
+      await expect(fila.getByText("(Producto de reventa)")).toBeVisible();
+      // Banda de ruido de lote: compra de 20 contra una receta 1:1 con 10 vendidos — mucho más de lo que la receta prevé, se explica como ruido de lote, texto en la misma celda del desvío.
+      await expect(fila.getByText(/de ruido esperable por comprar de a lotes/)).toBeVisible();
+
+      const filaSinCompra = page.getByRole("row", { name: new RegExp(pv2.nombre) });
+      await expect(filaSinCompra.getByText("No hubo compras ni producción de este insumo en la ventana: no se puede estimar el consumo.")).toBeVisible();
+
       expect((await new AxeBuilder({ page }).analyze()).violations, "tabla en reposo").toEqual([]);
 
       await botonUsar.click();
-      await expect(page.getByRole("alert").filter({ hasText: "¿Cambiar la receta" })).toBeVisible();
+      const filaConfirmacion = page.getByRole("alert").filter({ hasText: "¿Cambiar la receta" }).locator("xpath=ancestor::tr");
+      await expect(filaConfirmacion.locator("td")).toHaveAttribute("colspan", "11");
       expect((await new AxeBuilder({ page }).analyze()).violations, "confirmación abierta").toEqual([]);
     } finally {
-      await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
-      await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
-      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
-      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+      await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id, mp2.id, pv2.id] } } });
+      await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id, venta2.id] } } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: { in: [pv.id, pv2.id] } } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id, pv2.id, mp2.id] } } });
     }
   }
 );
