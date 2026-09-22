@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/core/reportes/historial-producto";
-import { agruparVentasPorDia, filtrarEventosKardex, resumirCompras, type QueMostrar } from "@/core/reportes/historial-vistas";
+import { agruparVentasPorDia, filtrarEventosKardex, resolverRangoHistorial, resumirCompras, type QueMostrar, type RangoHistorial } from "@/core/reportes/historial-vistas";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";
@@ -16,10 +16,16 @@ function comoQueMostrar(valor: string | undefined): QueMostrar {
   return (VALORES_QUE_MOSTRAR as readonly string[]).includes(valor ?? "") ? (valor as QueMostrar) : "todo";
 }
 
+const ETIQUETA_RANGO_HISTORIAL: Record<RangoHistorial, string> = {
+  "90d": "los últimos 90 días",
+  todo: "todo el historial",
+  personalizado: "el rango elegido",
+};
+
 export default async function HistorialProductoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ productoId?: string; seccionId?: string; desde?: string; hasta?: string; queMostrar?: string }>;
+  searchParams: Promise<{ productoId?: string; seccionId?: string; desde?: string; hasta?: string; queMostrar?: string; rango?: string }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -35,16 +41,11 @@ export default async function HistorialProductoPage({
   const sp = await searchParams;
   const secciones = await listarSeccionesActivas(ctx.sucursalId);
   const queMostrar = comoQueMostrar(sp.queMostrar);
+  // Un solo rango para TODA la pantalla (decisión 10 de §4): los números de arriba y el Kardex de abajo siempre parten de
+  // la MISMA consulta, así que siempre cierran entre sí. Default "90d"; "todo" es la alternativa explícita.
+  const { rango, desde, hasta } = resolverRangoHistorial(sp);
 
-  const historial = sp.productoId
-    ? await obtenerHistorialProducto(
-        ctx.sucursalId,
-        sp.productoId,
-        sp.seccionId || undefined,
-        sp.desde ? new Date(sp.desde) : undefined,
-        sp.hasta ? new Date(sp.hasta) : undefined
-      )
-    : null;
+  const historial = sp.productoId ? await obtenerHistorialProducto(ctx.sucursalId, sp.productoId, sp.seccionId || undefined, desde, hasta) : null;
 
   // Solo para un PV sin stock propio (§4, decisiones 7-8) — para el resto, ni se consulta.
   const ingredientes = historial && !historial.tieneStockPropio ? await obtenerIngredientesRecetaVigente(historial.productoId) : null;
@@ -61,6 +62,7 @@ export default async function HistorialProductoPage({
           desde={sp.desde ?? ""}
           hasta={sp.hasta ?? ""}
           queMostrar={queMostrar}
+          rango={rango}
         />
       </div>
 
@@ -71,13 +73,14 @@ export default async function HistorialProductoPage({
             {historial.tieneStockPropio && ` — saldo actual: ${historial.saldoActual} ${historial.unidadStockNombre}`}
           </h2>
           <p className="mb-2 text-xs text-neutral-500">
-            {historial.totalMovimientos} movimiento(s), {historial.totalConteos} conteo(s) en total
+            Mostrando {ETIQUETA_RANGO_HISTORIAL[rango]}: {historial.eventos.length} evento(s) visible(s), de {historial.totalMovimientos} movimiento(s) y{" "}
+            {historial.totalConteos} conteo(s) en total
             {historial.tieneStockPropio && " (el saldo corriente arranca del primer movimiento real, no del rango elegido)"}.
           </p>
           {historial.tieneStockPropio ? (
             <div className="mb-4">
               <h3 className="mb-2 text-sm font-medium">Evolución del saldo</h3>
-              {/* SIEMPRE el historial completo, nunca filtrado por "Qué mostrar" — ese filtro es solo para la tabla de abajo (declutter), no cambia qué pasó de verdad. */}
+              {/* El mismo rango elegido arriba — no "Qué mostrar" (ese filtro es solo para el Kardex de abajo, declutter, no cambia qué pasó de verdad). */}
               <GraficoSaldoCorriente eventos={historial.eventos} unidadStockNombre={historial.unidadStockNombre} />
             </div>
           ) : (
@@ -85,11 +88,16 @@ export default async function HistorialProductoPage({
           )}
           {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(historial.eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} />}
           {historial.tipo === "PV" && <ComoSeVendio filas={agruparVentasPorDia(historial.eventos)} mostrarDinero={mostrarDinero} />}
-          <TablaHistorialEventos
-            filas={filtrarEventosKardex(historial.eventos, queMostrar)}
-            nombreExport={`historial-${historial.codigo}`}
-            mostrarSaldo={historial.tieneStockPropio}
-          />
+          <details className="mt-2">
+            <summary className="cursor-pointer text-sm font-medium">Movimiento por movimiento (auditoría)</summary>
+            <div className="mt-2">
+              <TablaHistorialEventos
+                filas={filtrarEventosKardex(historial.eventos, queMostrar)}
+                nombreExport={`historial-${historial.codigo}`}
+                mostrarSaldo={historial.tieneStockPropio}
+              />
+            </div>
+          </details>
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
-import type { QueMostrar } from "@/core/reportes/historial-vistas";
+import type { QueMostrar, RangoHistorial } from "@/core/reportes/historial-vistas";
 
 interface Props {
   secciones: { id: string; nombre: string }[];
@@ -13,6 +13,7 @@ interface Props {
   desde: string;
   hasta: string;
   queMostrar: QueMostrar;
+  rango: RangoHistorial;
 }
 
 const OPCIONES_QUE_MOSTRAR: { valor: QueMostrar; etiqueta: string }[] = [
@@ -20,6 +21,12 @@ const OPCIONES_QUE_MOSTRAR: { valor: QueMostrar; etiqueta: string }[] = [
   { valor: "compras", etiqueta: "Solo compras" },
   { valor: "consumos-ventas", etiqueta: "Solo consumos y ventas" },
   { valor: "ajustes-conteos", etiqueta: "Solo ajustes y conteos" },
+];
+
+const OPCIONES_RANGO: { valor: RangoHistorial; etiqueta: string }[] = [
+  { valor: "90d", etiqueta: "Últimos 90 días" },
+  { valor: "todo", etiqueta: "Todo el historial" },
+  { valor: "personalizado", etiqueta: "Fechas personalizadas" },
 ];
 
 /** Antes un `<form>` GET nativo con un `<select>` poblado con `listarProductos()` sin límite — ahora navega por `router.push` para poder usar el combobox con búsqueda server-side. */
@@ -31,6 +38,7 @@ export function HistorialFiltros({
   desde: desdeInicial,
   hasta: hastaInicial,
   queMostrar: queMostrarInicial,
+  rango: rangoInicial,
 }: Props) {
   const router = useRouter();
   const [productoId, setProductoId] = useState(productoIdInicial);
@@ -38,14 +46,21 @@ export function HistorialFiltros({
   const [desde, setDesde] = useState(desdeInicial);
   const [hasta, setHasta] = useState(hastaInicial);
   const [queMostrar, setQueMostrar] = useState<QueMostrar>(queMostrarInicial);
+  const [rango, setRango] = useState<RangoHistorial>(rangoInicial);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
     if (productoId) params.set("productoId", productoId);
     if (seccionId) params.set("seccionId", seccionId);
-    if (desde) params.set("desde", desde);
-    if (hasta) params.set("hasta", hasta);
+    if (rango === "personalizado") {
+      params.set("rango", "personalizado"); // así un submit sin tocar los inputs (que recién se muestran acá) sigue siendo "personalizado", no cae a 90d.
+      if (desde) params.set("desde", desde);
+      if (hasta) params.set("hasta", hasta);
+    } else if (rango === "todo") {
+      params.set("rango", "todo");
+    }
+    // rango === "90d": es el default, no se escribe nada (URL limpia — mismo criterio que SelectorRango).
     if (queMostrar !== "todo") params.set("queMostrar", queMostrar);
     router.push(`/reportes/historial?${params.toString()}`);
   };
@@ -67,14 +82,29 @@ export function HistorialFiltros({
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1">
-        Desde
-        <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
-      <label className="flex flex-col gap-1">
-        Hasta
-        <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
+      <div className="flex flex-col gap-1">
+        {/* label AL LADO del <select>, no envolviéndolo — mismo motivo que "Qué mostrar" más abajo. */}
+        <label htmlFor="rango-historial">Rango</label>
+        <select id="rango-historial" value={rango} onChange={(e) => setRango(e.target.value as RangoHistorial)} className="rounded border px-3 py-2">
+          {OPCIONES_RANGO.map((o) => (
+            <option key={o.valor} value={o.valor}>
+              {o.etiqueta}
+            </option>
+          ))}
+        </select>
+      </div>
+      {rango === "personalizado" && (
+        <>
+          <label className="flex flex-col gap-1">
+            Desde
+            <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded border px-3 py-2" />
+          </label>
+          <label className="flex flex-col gap-1">
+            Hasta
+            <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded border px-3 py-2" />
+          </label>
+        </>
+      )}
       <div className="flex flex-col gap-1">
         {/* label AL LADO del <select>, no envolviéndolo — uno que lo envuelve suma el texto de la opción vigente a su nombre accesible (ver selector-rango.tsx). */}
         <label htmlFor="que-mostrar">Qué mostrar</label>

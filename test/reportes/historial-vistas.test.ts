@@ -4,6 +4,7 @@ import {
   GRUPO_POR_PROCESO,
   agruparVentasPorDia,
   filtrarEventosKardex,
+  resolverRangoHistorial,
   resumirCompras,
   variacionPorcentual,
 } from "../../src/core/reportes/historial-vistas";
@@ -154,6 +155,38 @@ describe("resumirCompras", () => {
       { ...base, fecha: new Date("2026-01-03"), cantidadConSigno: 25, precioPorUnidadStock: 1000, proveedorNombre: "A", nroFactura: null, idOperacion: "op3" },
     ];
     expect(resumirCompras(eventos).proveedores).toEqual(["A", "B"]);
+  });
+});
+
+describe("resolverRangoHistorial", () => {
+  const ahora = new Date("2026-06-15T12:00:00Z");
+
+  it("sin nada en searchParams: últimos 90 días (89 atrás + hoy), sin hasta (abierto a hoy)", () => {
+    const r = resolverRangoHistorial({}, ahora);
+    expect(r.rango).toBe("90d");
+    expect(r.desde?.toISOString().slice(0, 10)).toBe("2026-03-18"); // 89 días antes del 15/06
+    expect(r.hasta).toBeUndefined();
+  });
+
+  it("rango=todo: sin desde ni hasta (comportamiento de siempre, el historial completo)", () => {
+    expect(resolverRangoHistorial({ rango: "todo" }, ahora)).toEqual({ rango: "todo", desde: undefined, hasta: undefined });
+  });
+
+  it("con desde explícito: 'personalizado', aunque no venga `rango`", () => {
+    const r = resolverRangoHistorial({ desde: "2026-01-01" }, ahora);
+    expect(r.rango).toBe("personalizado");
+    expect(r.desde).toEqual(new Date("2026-01-01"));
+    expect(r.hasta).toBeUndefined();
+  });
+
+  it("rango=personalizado sin desde/hasta (primer submit tras elegir la opción, antes de tocar los inputs): sigue siendo 'personalizado', no cae a 90d", () => {
+    expect(resolverRangoHistorial({ rango: "personalizado" }, ahora)).toEqual({ rango: "personalizado", desde: undefined, hasta: undefined });
+  });
+
+  it("desde Y hasta explícitos: los dos viajan", () => {
+    const r = resolverRangoHistorial({ desde: "2026-01-01", hasta: "2026-01-31" }, ahora);
+    expect(r.desde).toEqual(new Date("2026-01-01"));
+    expect(r.hasta).toEqual(new Date("2026-01-31"));
   });
 });
 

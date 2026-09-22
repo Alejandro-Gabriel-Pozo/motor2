@@ -218,6 +218,47 @@ interface EventoParaVentas {
   precioTotal?: number;
 }
 
+// ---------------------------------------------------------------------------
+// Rango por defecto de /reportes/historial
+// ---------------------------------------------------------------------------
+
+export type RangoHistorial = "90d" | "todo" | "personalizado";
+
+export interface RangoHistorialResuelto {
+  rango: RangoHistorial;
+  desde: Date | undefined;
+  hasta: Date | undefined;
+}
+
+/**
+ * Rango por defecto de /reportes/historial (§4, decisión 10 — surgida del
+ * plan de implementación). NO extiende `OpcionRango`/`resolverRangoDeReporte`
+ * (`rango-por-defecto.ts`): esa unión la comparten 5 pantallas de §1 —
+ * agregar "90d" ahí las obligaría a todas a saber manejarlo, para un default
+ * que solo tiene sentido acá.
+ *
+ * Default "90 días" (no "30 días" como el resto): un insumo que se compra
+ * cada 2-3 semanas necesita más ventana para mostrar un patrón real en
+ * "Cómo se compró". "Todo el historial" queda como alternativa EXPLÍCITA
+ * (`rango=todo`): sin eso, el Kardex de abajo —que comparte esta MISMA
+ * consulta, una sola, para que sus números siempre cierren con los de
+ * arriba— dejaría de poder verse completo como hoy.
+ *
+ * `ahora` inyectable, mismo criterio testeable que `resolverRangoPorDefecto`.
+ */
+export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date = new Date()): RangoHistorialResuelto {
+  if (sp.desde || sp.hasta || sp.rango === "personalizado") {
+    return { rango: "personalizado", desde: sp.desde ? new Date(sp.desde) : undefined, hasta: sp.hasta ? new Date(sp.hasta) : undefined };
+  }
+  if (sp.rango === "todo") return { rango: "todo", desde: undefined, hasta: undefined };
+
+  const hoy = new Date(ahora);
+  hoy.setUTCHours(0, 0, 0, 0);
+  const desde = new Date(hoy);
+  desde.setUTCDate(desde.getUTCDate() - 89); // 89 días atrás + hoy = 90 días, inclusive de los dos extremos.
+  return { rango: "90d", desde, hasta: undefined };
+}
+
 /** Ventas agrupadas por día — EXCLUYE las anuladas (mismo criterio que `resumirCompras`). Orden cronológico ascendente. */
 export function agruparVentasPorDia(eventos: EventoParaVentas[]): FilaVentaPorDia[] {
   const porDia = new Map<string, { cantidad: number; importe: number }>();
