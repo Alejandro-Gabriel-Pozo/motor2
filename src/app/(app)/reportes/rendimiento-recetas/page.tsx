@@ -16,6 +16,14 @@ const AYUDA_DESVIO =
 const AYUDA_DELTA_STOCK = "Cuánto cambió el stock del insumo dentro de la ventana elegida (pasá el mouse para ver el saldo antes y después). Si subió, parte de lo comprado quedó en el depósito, no se consumió — no es, por sí solo, un error de receta.";
 const AYUDA_IMPACTO = "(entradas reales − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA la tabla, no el %. Un desvío grande en un insumo barato puede pesar menos que uno moderado en un insumo caro.";
 
+/** Mismo criterio que `hoyUtcSinHora`/"29 + hoy" de rango-por-defecto.ts — acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
+function fechaUtcIsoHaceNDias(n: number): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * Fases 1 y 2 del diseño (docs/diseno-rendimiento-recetas-por-sucursal.md):
  * compara la receta cargada contra lo que las compras/producción/ventas
@@ -60,6 +68,12 @@ export default async function RendimientoRecetasPage({
 
   const nombreFiltrado = filasSimples[0]?.productoVentaNombre ?? filasCompartidas[0]?.productoVentaNombre;
 
+  // B10: "barato" en vez de extender OpcionRango (razones en el plan §B10) — solo se ofrece cuando de verdad ayudaría.
+  const confianzaLimitadaPorVentana = filasSimples.some((f) => f.confianza !== "alta") || filasCompartidas.some((f) => f.semanasConDatos < 8);
+  const hrefUltimas8Semanas =
+    `/reportes/rendimiento-recetas?rango=personalizado&desde=${fechaUtcIsoHaceNDias(55)}&hasta=${fechaUtcIsoHaceNDias(0)}` +
+    (sp.productoId ? `&productoId=${sp.productoId}` : "");
+
   const poolsCompartidos = new Map<string, typeof filasCompartidas>();
   for (const f of filasCompartidas) {
     if (!poolsCompartidos.has(f.poolClave)) poolsCompartidos.set(f.poolClave, []);
@@ -99,6 +113,14 @@ export default async function RendimientoRecetasPage({
           hastaISO={hastaStr}
           camposOcultos={sp.productoId ? { productoId: sp.productoId } : undefined}
         />
+        {confianzaLimitadaPorVentana && (
+          <p className="mt-1 text-sm">
+            <EnlaceInterno href={hrefUltimas8Semanas} className="underline">
+              Ver las últimas 8 semanas
+            </EnlaceInterno>{" "}
+            <span className="text-neutral-500">— con más semanas de datos la confianza puede subir.</span>
+          </p>
+        )}
       </div>
 
       <div>
