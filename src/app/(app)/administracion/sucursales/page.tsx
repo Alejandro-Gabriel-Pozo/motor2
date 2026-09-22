@@ -36,7 +36,7 @@ export default async function SucursalesPage() {
                   }}
                   className="flex gap-1"
                 >
-                  <input name="nombre" defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
+                  <input name="nombre" aria-label={`Nombre de la sucursal "${s.nombre}"`} defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
                   <button type="submit" className="text-sm underline">
                     Renombrar
                   </button>

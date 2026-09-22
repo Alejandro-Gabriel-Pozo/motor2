@@ -9,6 +9,7 @@ export function SelectorSucursal({ membresias, actual }: { membresias: Membresia
 
   return (
     <select
+      aria-label="Sucursal activa"
       value={actual}
       disabled={pending}
       onChange={(e) => startTransition(() => cambiarSucursalActiva(e.target.value))}

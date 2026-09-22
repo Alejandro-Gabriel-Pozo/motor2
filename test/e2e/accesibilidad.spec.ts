@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
@@ -475,6 +476,66 @@ testAutenticado(
       await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
       await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
       await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+    }
+  }
+);
+
+base(
+  "el selector de sucursal (solo se dibuja con 2+ sucursales — con una sola queda como texto fijo) no tiene violaciones de axe",
+  async ({ browser, baseURL }) => {
+    // Encontrado corriendo el proyecto Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo
+    // 5): ningún spec de este archivo había ejercitado nunca un usuario con 2+ sucursales — `paginaAutenticada` siempre da
+    // una sola, así que `<SelectorSucursal>` (app-shell.tsx: solo se dibuja con `membresias.length > 1`) nunca se había
+    // auditado. Sin `aria-label`, un `<select>` con más de una opción no tiene nombre accesible (WCAG 4.1.2).
+    const marca = Date.now();
+    const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+    const segunda = await prisma.sucursal.create({ data: { nombre: `E2E A11y Sucursal Dos ${marca}` } });
+    const rol = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+    const usuario = await prisma.user.create({ data: { email: `e2e-a11y-selector-sucursal-${marca}@local.test`, activoGlobal: true } });
+    await prisma.usuarioSucursal.createMany({
+      data: [
+        { usuarioId: usuario.id, sucursalId: central.id, rolId: rol.id, activo: true },
+        { usuarioId: usuario.id, sucursalId: segunda.id, rolId: rol.id, activo: true },
+      ],
+    });
+    const sessionToken = randomUUID();
+    await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
+
+    const contexto = await browser.newContext();
+    await contexto.addCookies([{ name: "authjs.session-token", value: sessionToken, domain: new URL(baseURL ?? "http://localhost:3000").hostname, path: "/", httpOnly: true, sameSite: "Lax" }]);
+    const page = await contexto.newPage();
+    try {
+      await page.goto("/inicio");
+      const selector = page.getByLabel("Sucursal activa");
+      await expect(selector).toBeVisible();
+      await expect(selector).toHaveValue(central.id);
+      const resultados = await new AxeBuilder({ page }).analyze();
+      expect(resultados.violations).toEqual([]);
+    } finally {
+      await contexto.close();
+    }
+  }
+);
+
+testAutenticado(
+  "administracion/sucursales (con 2+ filas) y administracion/usuarios: sin violaciones de axe — ninguna de las dos pantallas tenía chequeo hasta ahora",
+  async ({ paginaAutenticada: page }) => {
+    // Encontrado corriendo el proyecto Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo
+    // 5): el input de renombrar (una fila por sucursal) no tenía nombre accesible, y el <select> de rol en "Agregar/
+    // actualizar usuario" tampoco — ninguno de los dos requiere 2+ sucursales para fallar (el de sucursales SÍ necesita al
+    // menos una fila para tener algo que auditar; con la sucursal "Central" del seed base alcanza).
+    const marca = Date.now();
+    await prisma.sucursal.create({ data: { nombre: `E2E A11y Sucursal ${marca}` } });
+    try {
+      await page.goto("/administracion/sucursales");
+      await expect(page.getByRole("heading", { name: "Sucursales" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "administracion/sucursales").toEqual([]);
+
+      await page.goto("/administracion/usuarios");
+      await expect(page.getByLabel("Rol")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "administracion/usuarios").toEqual([]);
+    } finally {
+      await prisma.sucursal.deleteMany({ where: { nombre: `E2E A11y Sucursal ${marca}` } });
     }
   }
 );

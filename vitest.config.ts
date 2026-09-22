@@ -26,10 +26,10 @@ export default defineConfig({
     // Catálogo Central de prueba real, ver plan). Se corren secuenciales
     // por default para evitar carreras entre tests que comparten tablas.
     fileParallelism: false,
-    // test/e2e/*.spec.ts son specs de Playwright (navegador real, otro
+    // test/e2e/*.spec.ts y test/e2e-demo/*.spec.ts son specs de Playwright (navegador real, otro
     // test runner) — matchean el include por defecto de Vitest
     // (**/*.spec.ts) pero no corren acá; ver playwright.config.ts / `npm
-    // run test:e2e`.
-    exclude: [...configDefaults.exclude, "test/e2e/**"],
+    // run test:e2e` y playwright.demo.config.ts.
+    exclude: [...configDefaults.exclude, "test/e2e/**", "test/e2e-demo/**"],
   },
 });

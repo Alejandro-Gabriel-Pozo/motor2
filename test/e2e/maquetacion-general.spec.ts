@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { RUTAS_SIN_PARAMETROS } from "./rutas-sin-parametros";
 
 /**
  * Maquetación de TODAS las pantallas sin parámetros a 1024 y 1280 px, con datos de nombre largo (1024 es donde arrancan las grillas de dos
@@ -16,56 +17,6 @@ import { prisma } from "../../src/lib/db";
  * Los anchos van EXPLÍCITOS aunque uno sea el default: ensancharlos escondería justamente esta regresión.
  */
 const ANCHOS = [1024, 1280];
-
-const RUTAS = [
-  "/inicio",
-  "/administracion/auditoria",
-  "/administracion/capacidades-sucursal",
-  "/administracion/permisos",
-  "/administracion/roles",
-  "/administracion/sucursales",
-  "/administracion/usuarios",
-  "/catalogo/categorias",
-  "/catalogo/insumos-grupos",
-  "/catalogo/productos",
-  "/catalogo/proveedores",
-  "/catalogo/proveedores/comparativa",
-  "/catalogo/recetas",
-  "/catalogo/unidades",
-  "/movimientos/conteo-fisico",
-  "/movimientos/precio-local",
-  "/movimientos/secciones",
-  "/movimientos/venta",
-  "/reportes",
-  "/reportes/categorias",
-  "/reportes/compras",
-  "/reportes/consignacion",
-  "/reportes/consolidado",
-  "/reportes/conteos",
-  "/reportes/costos",
-  "/reportes/devoluciones",
-  "/reportes/diferencias",
-  "/reportes/historial",
-  "/reportes/huecos-catalogo",
-  "/reportes/insumos-sin-receta",
-  "/reportes/perdidas",
-  "/reportes/periodo",
-  "/reportes/promociones",
-  "/reportes/rendimiento-recetas",
-  "/reportes/salud",
-  "/reportes/sin-receta",
-  "/reportes/trazabilidad",
-  "/reportes/valuacion",
-  "/reportes/vencimientos",
-  "/stock/alertas",
-  "/stock/consolidado",
-  "/stock/minimo",
-  "/stock/por-familia",
-  "/stock/reclasificar",
-  "/traspasos",
-  "/traspasos/enviar",
-  "/traspasos/solicitar",
-];
 
 let limpiar: () => Promise<void> = async () => {};
 
@@ -100,7 +51,7 @@ test.afterAll(async () => {
   await limpiar();
 });
 
-for (const ancho of ANCHOS) for (const ruta of RUTAS) {
+for (const ancho of ANCHOS) for (const ruta of RUTAS_SIN_PARAMETROS) {
   test(`${ruta}: nada se sale de su caja a ${ancho} px`, async ({ paginaAutenticada: page }) => {
     await page.setViewportSize({ width: ancho, height: 720 });
     await page.goto(ruta);

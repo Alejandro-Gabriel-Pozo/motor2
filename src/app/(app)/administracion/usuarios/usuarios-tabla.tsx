@@ -105,13 +105,16 @@ export function UsuariosTabla({
             ))}
           </select>
         </label>
-        <select name="rolId" required className="rounded border px-3 py-2">
-          {roles.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.nombre}
-            </option>
-          ))}
-        </select>
+        <label className="flex flex-col gap-1 text-sm text-neutral-500">
+          Rol
+          <select name="rolId" required className="rounded border px-3 py-2 text-neutral-900 dark:text-neutral-100">
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
         {mensaje && <p className={mensaje.endsWith("guardado en la sucursal.") || mensaje.startsWith("Usuario ") ? "text-sm text-green-700" : "text-sm text-red-600"}>{mensaje}</p>}
         <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
           {pending ? "Guardando..." : "Guardar"}

@@ -131,7 +131,12 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
                 onClick={() => alHacerClicEncabezado(c.clave, Boolean(c.valor))}
                 className={`px-2 py-1 first:pl-0 ${c.valor ? "cursor-pointer select-none hover:text-neutral-900" : ""} ${c.alinear === "derecha" ? "text-right" : ""}`}
               >
-                {c.etiqueta}
+                {/* Una columna sin etiqueta (ej. "acción"/"ver", un link o botón fijo sin texto de encabezado propio) deja un <th> vacío —
+                    invisible para un lector de pantalla, no solo visualmente (axe empty-table-header). Encontrado corriendo el proyecto
+                    Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo 5) con datos reales: el guardián
+                    estático (test/arquitectura/encabezados-de-tabla.test.ts) no lo detecta porque la fuente SÍ tiene contenido (`{c.etiqueta}`),
+                    la vaciedad es de runtime, no del JSX. */}
+                {c.etiqueta || <span className="sr-only">Acciones</span>}
                 {ordenPor === c.clave ? (direccion === "asc" ? " ▲" : " ▼") : ""}
                 {c.ayuda && (
                   <span onClick={(e) => e.stopPropagation()}>
