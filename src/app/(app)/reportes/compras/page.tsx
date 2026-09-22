@@ -121,7 +121,9 @@ export default async function ComprasRegistradasPage({
                     </span>
                   )}
                   <span className="text-neutral-500">{c.nroFactura ? `Factura ${c.nroFactura}` : "sin N.º de factura"}</span>
-                  <span className="text-neutral-500">{c.lineas.length} línea(s)</span>
+                  <span className="text-neutral-500" title="Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez.">
+                    {c.cantidadProductos} producto(s)
+                  </span>
                   {c.anuladaEn && (
                     <span
                       className="rounded border border-red-600 px-1.5 text-xs text-red-600"
@@ -132,9 +134,9 @@ export default async function ComprasRegistradasPage({
                   )}
                   <span className={`ml-auto font-semibold tabular-nums ${c.anuladaEn ? "line-through" : ""}`}>
                     {plata(c.total)}
-                    {c.hayLineasSinPrecio && (
-                      <span className="ml-1 text-xs font-normal text-amber-700 dark:text-amber-600" title="Alguna línea se cargó sin precio: el total no es el de la factura">
-                        · hay líneas sin precio
+                    {c.haySinPrecio && (
+                      <span className="ml-1 text-xs font-normal text-amber-700 dark:text-amber-600" title="Algún producto se cargó sin precio: el total no es el de la factura">
+                        · hay productos sin precio
                       </span>
                     )}
                   </span>
@@ -152,7 +154,7 @@ export default async function ComprasRegistradasPage({
                       </tr>
                     </thead>
                     <tbody>
-                      {c.lineas.map((l) => (
+                      {c.renglones.map((l) => (
                         <tr key={l.idMovimiento} className="border-b last:border-0">
                           <td className="px-2 py-1">
                             {l.productoCodigo} — {l.productoNombre}

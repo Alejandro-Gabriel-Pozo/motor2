@@ -56,8 +56,9 @@ describe("listarComprasRegistradas", () => {
     expect(a.proveedorNombre).toBe("Molino A");
     expect(a.cargadaPor).toBe("admin@test.com");
     expect(a.total).toBe(90);
-    expect(a.hayLineasSinPrecio).toBe(false);
-    expect(a.lineas.map((l) => [l.productoCodigo, l.cantidad, l.unidad, l.precioTotal])).toEqual([
+    expect(a.haySinPrecio).toBe(false);
+    expect(a.cantidadProductos).toBe(2); // 2 productos distintos, aunque haya más renglones si alguno se repitiera
+    expect(a.renglones.map((l) => [l.productoCodigo, l.cantidad, l.unidad, l.precioTotal])).toEqual([
       ["MP_HARINA", 10, "kg", 50],
       ["MP_QUESO", 2, "kg", 40],
     ]);
@@ -93,8 +94,18 @@ describe("listarComprasRegistradas", () => {
       { productoId: quesoId, cantidad: 2 },
     ]);
     const [c] = (await listarComprasRegistradas(sucursalId)).items;
-    expect(c.hayLineasSinPrecio).toBe(true);
+    expect(c.haySinPrecio).toBe(true);
     expect(c.total).toBe(50);
+  });
+
+  it("cuenta un producto DISTINTO una sola vez, aunque tenga dos renglones (dos lotes) en la misma factura", async () => {
+    await comprar("2026-08-01", provAId, "A-0001", [
+      { productoId: harinaId, cantidad: 5, precioTotal: 25 },
+      { productoId: harinaId, cantidad: 5, precioTotal: 25 }, // mismo producto, otro renglón — ej. dos lotes con vencimiento distinto
+    ]);
+    const [c] = (await listarComprasRegistradas(sucursalId)).items;
+    expect(c.renglones).toHaveLength(2);
+    expect(c.cantidadProductos).toBe(1);
   });
 
   it("solo lista COMPRAS de la sucursal pedida: ni otros procesos ni otras sucursales", async () => {

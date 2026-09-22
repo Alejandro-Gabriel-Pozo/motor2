@@ -24,7 +24,7 @@ export interface FiltroCompras {
   cursor?: string;
 }
 
-export interface LineaCompra {
+export interface RenglonCompra {
   idMovimiento: string;
   productoCodigo: string;
   productoNombre: string;
@@ -46,11 +46,13 @@ export interface CompraRegistrada {
   detalle: string | null;
   total: number;
   /** Alguna línea se cargó sin precio: el total no es el de la factura. */
-  hayLineasSinPrecio: boolean;
+  haySinPrecio: boolean;
   /** La compra está anulada (null = vigente): se muestra marcada y NO suma al gasto. Hoy ninguna compra se puede anular; queda listo para K1c. */
   anuladaEn: Date | null;
   anuladaPorEmail: string | null;
-  lineas: LineaCompra[];
+  /** Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez (antes "líneas", un conteo de renglones que los confundía; §4, docs/planes-demo-y-claridad-reportes-2026-09-21.md, coordinado con el mismo vocabulario de §2 en /reportes/periodo). */
+  cantidadProductos: number;
+  renglones: RenglonCompra[];
 }
 
 export interface PaginaCompras {
@@ -100,7 +102,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
   const pagina = hayMas ? operaciones.slice(0, TAMANO_PAGINA_COMPRAS) : operaciones;
 
   const items: CompraRegistrada[] = pagina.map((o) => {
-    const lineas: LineaCompra[] = o.movimientos.map((m) => ({
+    const renglones: RenglonCompra[] = o.movimientos.map((m) => ({
       idMovimiento: m.id,
       productoCodigo: m.producto.codigo,
       productoNombre: m.producto.nombre,
@@ -119,11 +121,13 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       nroFactura: o.nroFactura,
       cargadaPor: o.usuario.email,
       detalle: o.detalleLibre,
-      total: redondearMoneda(lineas.reduce((suma, l) => suma + l.precioTotal, 0)),
-      hayLineasSinPrecio: lineas.some((l) => !(l.precioTotal > 0)),
+      total: redondearMoneda(renglones.reduce((suma, l) => suma + l.precioTotal, 0)),
+      haySinPrecio: renglones.some((l) => !(l.precioTotal > 0)),
       anuladaEn: o.anuladaEn,
       anuladaPorEmail: o.anuladaPor?.email ?? null,
-      lineas,
+      // codigo es @unique (prisma/schema.prisma) — dedupe seguro, mismo criterio de "productos distintos" que §2 (tabla-periodo.tsx).
+      cantidadProductos: new Set(renglones.map((l) => l.productoCodigo)).size,
+      renglones,
     };
   });
 

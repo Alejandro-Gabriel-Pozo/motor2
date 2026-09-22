@@ -5,15 +5,17 @@ import { describe, expect, it } from "vitest";
 /**
  * "Líneas" es un conteo de renglones de MovimientoStock, no de productos ni de compras — confundía al usuario (docs/planes-demo-
  * y-claridad-reportes-2026-09-21.md §2, "Líneas" es un conteo de renglones..."). Se reemplazó por "Productos"/"Compras" en la
- * tabla de compras por proveedor, y por "movimiento(s)" en los mensajes de anulación.
+ * tabla de compras por proveedor (§2, /reportes/periodo), por "movimiento(s)" en los mensajes de anulación, y por "producto(s)"
+ * en /reportes/compras (§4, paso 6 del plan — docs/plan-historial-producto-mp-pv-2026-09-22.md): mismo criterio de conteo que §2
+ * (productos DISTINTOS, no renglones), mismo vocabulario, coordinado a propósito para no tener dos palabras en dos pantallas.
  *
- * Acotado a lo que tocó §2 (Período y márgenes + el mismo tratamiento en /reportes) — NO a todo `src/app/`: `/reportes/compras`
- * (la lista de compras registradas) todavía dice "N línea(s)" a propósito, ese arreglo es de §4 (Historial por producto y
- * "líneas" en Compras registradas), que usa un criterio de conteo distinto (productos, no renglones) y no se tocó en este paso.
+ * Acotado a lo que tocaron §2 y §4 — NO a todo `src/app/`: cualquier pantalla nueva que use "líneas" (renglones de Kardex u
+ * otra cosa) con un sentido genuinamente distinto queda afuera de este chequeo hasta que alguien decida qué palabra usar ahí.
  */
 const ARCHIVOS = [
   join(__dirname, "../../src/app/(app)/reportes/periodo"),
   join(__dirname, "../../src/app/(app)/reportes/page.tsx"),
+  join(__dirname, "../../src/app/(app)/reportes/compras"),
 ];
 
 /** `\b`: evita falsos positivos como "alinear" (que contiene la subcadena "linea" pero no es la palabra "línea"). */
@@ -29,7 +31,7 @@ function tsx(ruta: string): string[] {
   return readdirSync(ruta).flatMap((nombre) => tsx(join(ruta, nombre)));
 }
 
-describe("reportes/periodo y reportes (resumen): sin 'línea(s)' como texto visible", () => {
+describe("reportes/periodo, reportes (resumen) y reportes/compras: sin 'línea(s)' como texto visible", () => {
   it("la expresión distingue la palabra 'línea(s)' de 'alinear'", () => {
     expect(PALABRA_LINEA.test("alinear: 'derecha'")).toBe(false);
     expect(PALABRA_LINEA.test("N línea(s) de stock")).toBe(true);
@@ -37,7 +39,7 @@ describe("reportes/periodo y reportes (resumen): sin 'línea(s)' como texto visi
     expect(PALABRA_LINEA.test("Línea")).toBe(true);
   });
 
-  it("ningún archivo de la ruta /reportes/periodo ni de /reportes usa 'línea(s)' fuera de un comentario", () => {
+  it("ningún archivo de /reportes/periodo, /reportes o /reportes/compras usa 'línea(s)' fuera de un comentario", () => {
     const raiz = join(__dirname, "../../src");
     const malos = ARCHIVOS.flatMap((base) =>
       tsx(base).flatMap((ruta) => {
