@@ -480,6 +480,61 @@ testAutenticado(
   }
 );
 
+testAutenticado(
+  "reportes/historial: el cartel 'Producto de reventa' de un PV sin stock propio, 'Cómo se compró' de una MP, y el Kardex plegado/desplegado con el filtro 'Qué mostrar', sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    // §4 (docs/plan-historial-producto-mp-pv-2026-09-22.md, paso 11): ninguna pantalla cubierta hasta ahora ejercita el
+    // <details>/<summary> del Kardex, el <select> "Qué mostrar", ni el cartel de un PV sin stock propio.
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-HIST-MP-${marca}`, nombre: `E2E A11y Historial MP ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-HIST-PV-${marca}`, nombre: `E2E A11y Historial PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } } });
+    const operaciones: string[] = [];
+    const compra1 = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date(Date.now() - 2 * 86_400_000), usuarioId: admin.id } });
+    operaciones.push(compra1.id);
+    await prisma.movimientoStock.create({ data: { operacionId: compra1.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 100, precioPorUnidadStock: 10 } });
+    const compra2 = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date(Date.now() - 1 * 86_400_000), usuarioId: admin.id } });
+    operaciones.push(compra2.id);
+    await prisma.movimientoStock.create({ data: { operacionId: compra2.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 120, precioPorUnidadStock: 12 } });
+    const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(Date.now() - 1 * 86_400_000), usuarioId: admin.id } });
+    operaciones.push(venta.id);
+    await prisma.movimientoStock.create({
+      data: { operacionId: venta.id, productoId: pv.id, seccionId, proceso: "VENTA", cantidad: -2, detalle: `Venta de "${pv.nombre}"`, precioTotal: 200, precioPorUnidadStock: 100 },
+    });
+
+    try {
+      // PV sin stock propio: el cartel "Producto de reventa" + "Cómo se vendió".
+      await page.goto(`/reportes/historial?productoId=${pv.id}`);
+      await expect(page.getByText("Producto de reventa: no lleva stock propio.")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "PV sin stock propio").toEqual([]);
+
+      // MP con compras: "Cómo se compró" + el Kardex plegado (cerrado, el estado por defecto).
+      await page.goto(`/reportes/historial?productoId=${mp.id}`);
+      await expect(page.getByRole("heading", { name: "Cómo se compró" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "MP con compras, Kardex plegado").toEqual([]);
+
+      // El Kardex desplegado.
+      const kardex = page.locator("details").filter({ hasText: "Movimiento por movimiento" });
+      await kardex.locator("summary").click();
+      await expect(kardex.getByRole("table")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "Kardex desplegado").toEqual([]);
+
+      // El filtro "Qué mostrar" cambiado a "Solo compras".
+      await page.getByLabel("Qué mostrar").selectOption("compras");
+      await page.getByRole("button", { name: "Ver historial" }).click();
+      await expect(kardex.getByRole("row", { name: /VENTA|CONSUMO/ })).toHaveCount(0);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "filtro 'Solo compras'").toEqual([]);
+    } finally {
+      await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
+      await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+    }
+  }
+);
+
 base(
   "el selector de sucursal (solo se dibuja con 2+ sucursales — con una sola queda como texto fijo) no tiene violaciones de axe",
   async ({ browser, baseURL }) => {
