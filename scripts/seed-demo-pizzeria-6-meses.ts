@@ -42,9 +42,10 @@ import { registrarMovimiento } from "../src/server/actions/movimientos/movimient
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
 import { registrarConteoFisico } from "../src/server/actions/movimientos/conteo-fisico";
 import { anularCompra, corregirCompra } from "../src/server/actions/movimientos/compras";
+import { setStockMinimoProducto } from "../src/server/actions/stock/stock-minimo";
 import type { ResultadoAccion } from "../src/server/actions/tipos";
 import { crearGeneradorAleatorio } from "./demo-seed/prng";
-import { generarGuionLaCuadra, CONFIG_LA_CUADRA_DEFAULT } from "./demo-seed/guion-la-cuadra";
+import { generarGuionLaCuadra, necesidadSemanal, construirMultiplicadoresPorPV, MP_POR_PROVEEDOR, CONFIG_LA_CUADRA_DEFAULT } from "./demo-seed/guion-la-cuadra";
 import { validarGuion, calcularTotalesEsperados } from "./demo-seed/guion";
 import { verificarBaseVacia, pideRehacer } from "./demo-seed/guardas-destino";
 import { PROVEEDORES, PRODUCTOS, RECETAS } from "./seed-demo-pizzeria-data";
@@ -313,6 +314,20 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       const segundos = (Date.now() - inicioEjecucion) / 1000;
       console.log(`\nEjecución: ${guion.eventos.length} eventos en ${segundos.toFixed(1)}s (${(guion.eventos.length / segundos).toFixed(1)} eventos/s).`);
       console.log("Por tipo: " + Object.entries(contadorPorTipo).map(([t, n]) => `${t}=${n}`).join(", "));
+
+      // --- Stock mínimo (§0: "el resto ordenado: recetas completas, stock mínimo cargado, conteos periódicos") — una
+      // decisión de catálogo (CUÁNTO y para CUÁLES), no un evento del guion. Mínimo = ~40% de la necesidad semanal en
+      // régimen (última semana, ya sin el ruido del tramo de desorden), redondeado — para que "Alertas de stock" tenga
+      // algo real que mostrar sin que la demo arranque llena de alertas falsas por un mínimo mal calibrado.
+      const multiplicadoresRef = construirMultiplicadoresPorPV(crearGeneradorAleatorio(SEMILLA_GUION), CONFIG_LA_CUADRA_DEFAULT.semanas);
+      const necesidadEnRegimen = necesidadSemanal(CONFIG_LA_CUADRA_DEFAULT.semanas - 1, multiplicadoresRef).directa;
+      const mpsConMinimo = Object.values(MP_POR_PROVEEDOR).flat();
+      for (const codigo of mpsConMinimo) {
+        const necesidad = necesidadEnRegimen[codigo] ?? 0;
+        if (!(necesidad > 0)) continue;
+        const minimo = Math.max(1, Math.round(necesidad * 0.4));
+        anotarSiFalla(`stockMinimo(${codigo})`, await setStockMinimoProducto(idProd(codigo), minimo));
+      }
 
       if (fallos.length) console.error(`\nFALLOS DURANTE LA EJECUCIÓN (${fallos.length}):\n` + fallos.slice(0, 30).join("\n") + (fallos.length > 30 ? `\n… y ${fallos.length - 30} más` : ""));
       expect(fallos.length, `${fallos.length} fallos — ver arriba`).toBe(0);

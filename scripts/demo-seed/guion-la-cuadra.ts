@@ -59,7 +59,8 @@ const CADENCIA_PROVEEDOR: Record<string, number[]> = {
   PRV_FIAMBRES: [1],
   PRV_ALMACEN: [2],
 };
-const MP_POR_PROVEEDOR: Record<string, string[]> = {
+/** Exportado para el ejecutor (§0: "stock mínimo cargado" en el tramo ordenado — configurar cuáles MP llevan mínimo es una decisión de catálogo, no un evento del guion). */
+export const MP_POR_PROVEEDOR: Record<string, string[]> = {
   PRV_HARINAS: ["MP001"],
   PRV_LACTEOS: ["MP006", "MP007", "MP017", "MP018"],
   PRV_VERDULERIA: ["MP010", "MP011", "MP012", "MP015", "MP016"],
