@@ -45,22 +45,63 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
           <p className="text-lg font-semibold">${rep.ventas.totalFacturado.toLocaleString("es-AR")}</p>
           <EnDolares pesos={rep.ventas.totalFacturado} cotizacion={cotizacion} />
         </div>
+        {/*
+          Ganancia = Ventas costeadas − Costo de lo vendido, con la resta a la vista (los dos números están acá, uno debajo del
+          otro) — decisión del usuario, 2026-09-22 (docs/planes-demo-y-claridad-reportes-2026-09-21.md §2): el margen "principal"
+          es el Real (costo del momento de cada venta, no el de reposición de hoy), porque es lo que de verdad ganó. El nominal
+          ("Si repusieras hoy") y el ajustado por IPC quedan plegados: siguen ahí, pero no compiten por atención con el número
+          que más importa. Las tres definiciones van en texto VISIBLE (antes vivían solo en un `title=`, casi invisible).
+          `<dl>` en vez de `<table>`: es una lista de término→definición, no una grilla, y no se rompe a 1024 px.
+        */}
         <div className="rounded border p-4">
-          <p className="flex items-center text-xs text-neutral-500">
-            Margen
-            <AyudaIcono texto={rep.margen.aviso} />
-          </p>
-          <p className="text-lg font-semibold">
-            ${rep.margen.margenTotal.toLocaleString("es-AR")} {rep.margen.margenPctTotal !== null && `(${rep.margen.margenPctTotal}%)`}
-          </p>
-          <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Real: {rep.margen.margenRealTotal !== null ? `$${rep.margen.margenRealTotal.toLocaleString("es-AR")} (${rep.margen.margenRealPctTotal}%)${rep.margen.ingresoRealReconstruido > 0 ? " · reconstruido" : ""}` : "sin datos todavía"}
-            <AyudaIcono texto={rep.margen.avisoReal} />
-          </p>
-          <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Ajustado IPC: {rep.margen.margenIPCTotal !== null ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)${rep.margen.antiguedadIPC.estado === "vencida" ? " · IPC desactualizado" : rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}` : "sin datos todavía"}
-            <AyudaIcono texto={rep.margen.avisoIPC} />
-          </p>
+          <dl>
+            <dt className="text-xs text-neutral-500">Ganancia de lo vendido</dt>
+            <dd className="text-lg font-semibold">
+              {rep.margen.margenRealTotal !== null
+                ? `$${rep.margen.margenRealTotal.toLocaleString("es-AR")} (${rep.margen.margenRealPctTotal}%)${rep.margen.ingresoRealReconstruido > 0 ? " · reconstruido" : ""}`
+                : "sin datos todavía"}
+            </dd>
+            <dd className="text-xs text-neutral-500">{rep.margen.avisoReal}</dd>
+          </dl>
+          {/* Consumo (lo que costó lo que SE VENDIÓ) — el otro lado de la resta de arriba: costoDeLoVendidoTotal ≈ ingresoConCostoReal − margenRealTotal. */}
+          <dl data-costo-de-lo-vendido className="mt-3">
+            <dt className="text-xs text-neutral-500">Costo de lo vendido (consumo):</dt>
+            <dd className="flex flex-wrap items-center text-sm">
+              {rep.margen.costoDeLoVendidoTotal !== null ? (
+                <>
+                  ${rep.margen.costoDeLoVendidoTotal.toLocaleString("es-AR")} ({rep.margen.costoDeLoVendidoPctTotal}%)
+                  {rep.margen.ingresoRealReconstruido > 0 && " · reconstruido"}
+                  {rep.margen.coberturaCostoRealPct !== null && rep.margen.coberturaCostoRealPct < 100 && (
+                    <span className="ml-1 text-amber-700 dark:text-amber-600">· parcial (cubre {rep.margen.coberturaCostoRealPct}% de lo vendido)</span>
+                  )}
+                </>
+              ) : (
+                "sin datos todavía"
+              )}
+              <AyudaIcono texto={rep.margen.avisoCostoDeLoVendido} />
+            </dd>
+          </dl>
+          <details className="mt-3 text-xs">
+            <summary className="cursor-pointer text-neutral-500">Otras formas de ver el margen (con qué costo se calculan)</summary>
+            <dl className="mt-2 flex flex-col gap-3">
+              <div>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Si repusieras hoy</dt>
+                <dd>
+                  ${rep.margen.margenTotal.toLocaleString("es-AR")} {rep.margen.margenPctTotal !== null && `(${rep.margen.margenPctTotal}%)`}
+                </dd>
+                <dd className="text-neutral-500">{rep.margen.aviso}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Ajustada por inflación (IPC)</dt>
+                <dd>
+                  {rep.margen.margenIPCTotal !== null
+                    ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)${rep.margen.antiguedadIPC.estado === "vencida" ? " · IPC desactualizado" : rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}`
+                    : "sin datos todavía"}
+                </dd>
+                <dd className="text-neutral-500">{rep.margen.avisoIPC}</dd>
+              </div>
+            </dl>
+          </details>
         </div>
         <div className="rounded border p-4">
           <p className="flex items-center text-xs text-neutral-500">
@@ -84,22 +125,6 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
               No comestibles (packaging, limpieza): ${rep.ratioGastoVentas.gastoNoComestibles.toLocaleString("es-AR")}, fuera de ese porcentaje
             </p>
           )}
-          {/* Consumo (lo que costó lo que SE VENDIÓ), al lado del desembolso (lo que se compró): responden preguntas distintas y por eso llevan rótulos distintos. */}
-          <p data-costo-de-lo-vendido className="mt-1 flex flex-wrap items-center text-xs text-neutral-500">
-            Costo de lo vendido (consumo):{" "}
-            {rep.margen.costoDeLoVendidoTotal !== null ? (
-              <>
-                ${rep.margen.costoDeLoVendidoTotal.toLocaleString("es-AR")} ({rep.margen.costoDeLoVendidoPctTotal}%)
-                {rep.margen.ingresoRealReconstruido > 0 && " · reconstruido"}
-                {rep.margen.coberturaCostoRealPct !== null && rep.margen.coberturaCostoRealPct < 100 && (
-                  <span className="ml-1 text-amber-700 dark:text-amber-600">· parcial (cubre {rep.margen.coberturaCostoRealPct}% de lo vendido)</span>
-                )}
-              </>
-            ) : (
-              "sin datos todavía"
-            )}
-            <AyudaIcono texto={rep.margen.avisoCostoDeLoVendido} />
-          </p>
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-neutral-500">Movimientos</p>

@@ -73,13 +73,38 @@ describe("obtenerReportePorPeriodo", () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 500 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 5 }] }); // sin precio
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 5 }] }); // sin precio, MISMO producto: otra compra, no otro producto
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
     expect(rep.compras.totalGastado).toBe(500);
     expect(rep.compras.hayComprasSinPrecio).toBe(true);
     expect(rep.compras.porProveedor[0].proveedor).toBe("Molino SA");
-    expect(rep.compras.porProveedor[0].lineas).toBe(2);
+    // 2 compras (operaciones) DISTINTAS del mismo único producto — antes "líneas" mezclaba ambos conceptos en un solo número.
+    expect(rep.compras.porProveedor[0].cantidadCompras).toBe(2);
+    expect(rep.compras.porProveedor[0].cantidadProductos).toBe(1);
+  });
+
+  it("compras: cantidadProductos cuenta productos distintos, no renglones — dos renglones del mismo producto en UNA factura no se cuentan dos veces", async () => {
+    const mp1 = await prisma.producto.create({ data: { codigo: "MP_A", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp2 = await prisma.producto.create({ data: { codigo: "MP_B", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId } });
+    const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_2", nombre: "Distribuidora" } });
+    // Una sola compra (una Operacion) con dos renglones del MISMO producto (dos lotes) + uno de otro producto: 3 renglones, 2 productos distintos, 1 compra.
+    await registrarMovimiento({
+      proceso: "COMPRA",
+      fecha: new Date(),
+      seccionId,
+      proveedorId: proveedor.id,
+      items: [
+        { productoId: mp1.id, cantidad: 10, precioTotal: 100 },
+        { productoId: mp1.id, cantidad: 5, precioTotal: 50 },
+        { productoId: mp2.id, cantidad: 1, precioTotal: 20 },
+      ],
+    });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
+    const fila = rep.compras.porProveedor.find((p) => p.proveedor === "Distribuidora")!;
+    expect(fila.cantidadCompras).toBe(1);
+    expect(fila.cantidadProductos).toBe(2);
   });
 
   it("gastoPorInsumo agrupa por Insumo/Grupo en vez de por proveedor, distinto de compras.porProveedor", async () => {

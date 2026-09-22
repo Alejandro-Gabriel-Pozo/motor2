@@ -328,7 +328,7 @@ export async function anularVenta(operacionId: string): Promise<ResultadoAccion>
         sucursalId: ctx.sucursalId,
       });
 
-      return ok(`Venta anulada. Se revirtieron ${filas.length} línea(s) de stock${filas.some((f) => f.proceso === "LIQUIDACION_CONSIGNACION") ? " y la liquidación de consignación" : ""}.`);
+      return ok(`Venta anulada. Se revirtieron ${filas.length} movimiento(s) de stock${filas.some((f) => f.proceso === "LIQUIDACION_CONSIGNACION") ? " y la liquidación de consignación" : ""}.`);
     });
   });
 }

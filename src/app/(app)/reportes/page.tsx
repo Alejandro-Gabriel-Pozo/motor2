@@ -43,30 +43,46 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
           <EnDolares pesos={r.financiero.ventasTotal} cotizacion={cotizacion} />
           {r.financiero.hayEstimados && <p className="text-xs text-amber-700 dark:text-amber-600">incluye estimados</p>}
         </div>
+        {/* Mismo tratamiento que /reportes/periodo (§2): una cifra principal (el margen Real, acá "Ganancia de lo vendido"), definiciones visibles en vez de tooltip, nominal e IPC plegados. */}
         <div className="rounded border p-4">
-          <p className="flex items-center text-xs text-neutral-500">
-            Margen
-            <AyudaIcono texto={r.financiero.avisoMargen} />
-          </p>
-          <p className="text-lg font-semibold">
-            ${r.financiero.margenTotal.toLocaleString("es-AR")} {r.financiero.margenPct !== null && `(${r.financiero.margenPct}%)`}
-          </p>
+          <dl>
+            <dt className="text-xs text-neutral-500">Ganancia de lo vendido</dt>
+            <dd className="text-lg font-semibold">
+              {r.financiero.margenRealTotal !== null
+                ? `$${r.financiero.margenRealTotal.toLocaleString("es-AR")} (${r.financiero.margenRealPct}%)${r.financiero.margenRealReconstruido ? " · reconstruido" : ""}`
+                : "sin datos todavía"}
+            </dd>
+            <dd className="text-xs text-neutral-500">{r.financiero.avisoMargenReal}</dd>
+          </dl>
           {r.financiero.hayCostoIncompleto && (
-            <p className="text-xs text-amber-700 dark:text-amber-600">
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-600">
               Costo incompleto en algún producto —{" "}
               <Link href="/reportes/costos" className="underline">
                 ver Costos y márgenes
               </Link>
             </p>
           )}
-          <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Real: {r.financiero.margenRealTotal !== null ? `$${r.financiero.margenRealTotal.toLocaleString("es-AR")} (${r.financiero.margenRealPct}%)${r.financiero.margenRealReconstruido ? " · reconstruido" : ""}` : "sin datos todavía"}
-            <AyudaIcono texto={r.financiero.avisoMargenReal} />
-          </p>
-          <p className="mt-1 flex items-center text-xs text-neutral-500">
-            Ajustado IPC: {r.financiero.margenIPCTotal !== null ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)${r.financiero.ipcVencido ? " · IPC desactualizado" : r.financiero.margenIPCProvisorio ? " · provisorio" : ""}` : "sin datos todavía"}
-            <AyudaIcono texto={r.financiero.avisoMargenIPC} />
-          </p>
+          <details className="mt-3 text-xs">
+            <summary className="cursor-pointer text-neutral-500">Otras formas de ver el margen (con qué costo se calculan)</summary>
+            <dl className="mt-2 flex flex-col gap-3">
+              <div>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Si repusieras hoy</dt>
+                <dd>
+                  ${r.financiero.margenTotal.toLocaleString("es-AR")} {r.financiero.margenPct !== null && `(${r.financiero.margenPct}%)`}
+                </dd>
+                <dd className="text-neutral-500">{r.financiero.avisoMargen}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Ajustada por inflación (IPC)</dt>
+                <dd>
+                  {r.financiero.margenIPCTotal !== null
+                    ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)${r.financiero.ipcVencido ? " · IPC desactualizado" : r.financiero.margenIPCProvisorio ? " · provisorio" : ""}`
+                    : "sin datos todavía"}
+                </dd>
+                <dd className="text-neutral-500">{r.financiero.avisoMargenIPC}</dd>
+              </div>
+            </dl>
+          </details>
         </div>
         <div className="rounded border p-4">
           <p className="flex items-center text-xs text-neutral-500">

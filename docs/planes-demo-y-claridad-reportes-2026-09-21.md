@@ -42,7 +42,7 @@ La demo no es un banco de pruebas de reportes: es **una herramienta de venta**. 
 
 **Sin migración.** Coordinado con §2 (Período), que toca los mismos archivos — §2 (la reestructuración de la tarjeta de margen y "Compras por proveedor") queda pendiente, es trabajo aparte.
 
-## 2. Período y márgenes: de qué es cada número
+## 2. Período y márgenes: de qué es cada número — HECHO (2026-09-22, local sin push)
 
 ### Diagnóstico verificado
 
@@ -59,15 +59,26 @@ La demo no es un banco de pruebas de reportes: es **una herramienta de venta**. 
 - **Vocabulario:** "producto" para lo comprado/vendido; "movimiento" para un renglón del Kardex en los mensajes de acción (p. ej. "se revirtieron N movimiento(s) de stock", no "línea(s)" — una anulación revierte también consumos de receta, que no son "productos comprados"); "compra" y no "factura" (hay compras sin N.º).
 - **Ningún número cambia de valor** en el corte recomendado; solo rótulo, lugar y jerarquía.
 
-### Decisiones del dueño (no tomadas)
+### Decisiones del dueño (no tomadas por el dueño — resueltas con la recomendación del plan, marcadas para revisar, mismo criterio que K1b/K1c/6b)
 
-1. ¿Cuál es el margen "principal"? Recomendado: el **Real** (es lo que ganó; es lo que usa ERPNext por defecto). Alternativa: el nominal, porque siempre tiene valor.
-2. Nombres: p. ej. "Ganancia de lo vendido" (real) / "Si repusieras hoy" (nominal) / "Ajustada por inflación (IPC)".
-3. ¿El IPC se sigue mostrando en Período, plegado? Recomendado: sí.
-4. ¿Se corrige el denominador del margen nominal (hallazgo de fondo)? Cambia un número ya visible; commit aparte si se acepta.
-5. En "Ventas por producto" la columna "Margen" es el nominal, y en Promociones el mismo concepto se llama "Margen Real": ¿se renombra la de Período a "Margen teórico"?
+1. ¿Cuál es el margen "principal"? **Aplicado: el Real** ("Ganancia de lo vendido"), la recomendación.
+2. Nombres: **aplicados tal cual el plan** — "Ganancia de lo vendido" (real), "Si repusieras hoy" (nominal), "Ajustada por inflación (IPC)".
+3. ¿El IPC se sigue mostrando en Período, plegado? **Aplicado: sí**, dentro del mismo `<details>` que el nominal.
+4. ¿Se corrige el denominador del margen nominal (hallazgo de fondo)? **NO aplicado a propósito** — cambia un número ya visible, tal como advertía el plan; sigue pendiente, requiere confirmación explícita y un commit aparte.
+5. ¿Se renombra la columna "Margen" de "Ventas por producto" (Período) a "Margen teórico"? **Aplicado** — evita que la misma palabra "Margen" signifique dos bases de costo distintas en dos pantallas (nominal acá, Real en Promociones). Promociones NO se tocó (fuera del alcance de este paso): sigue diciendo "Margen Real", que ahora es un nombre distinto al de la tarjeta de Período ("Ganancia de lo vendido") para el MISMO concepto — inconsistencia menor, no bloqueante, a revisar si se retoma Promociones.
 
-### Pasos y verificación
+### Implementado
+
+- `src/core/reportes/periodo.ts`: `FilaCompraPorProveedor.lineas` → `cantidadProductos` (productos DISTINTOS) + `cantidadCompras` (operaciones DISTINTAS); `calcularComprasDelPeriodo` cuenta con un `Set<idOperacion>` en vez de incrementar un contador por renglón.
+- `src/app/(app)/reportes/periodo/tabla-periodo.tsx`: columna "Líneas" → "Productos" + "Compras"; columna "Margen" de Ventas por producto → "Margen teórico" (con su definición visible en el tooltip de ayuda de la columna, que sí es un uso aceptable de `title=` para un encabezado angosto).
+- `src/app/(app)/reportes/periodo/page.tsx` y `src/app/(app)/reportes/page.tsx` (resumen operativo, "mismo tratamiento"): la tarjeta de margen pasa a `<dl>` con una sola cifra principal (Real / "Ganancia de lo vendido"), su definición en texto visible (ya no en `title=`), "Costo de lo vendido" mudado ahí desde "Compras" (mismo `data-costo-de-lo-vendido`, mismo tooltip de detalle — eso SÍ se conservó, lo pedía el spec existente), y el nominal + IPC plegados en un `<details>` con sus definiciones también visibles.
+- `src/server/actions/movimientos/compras.ts` y `venta.ts`: "Se revirtieron N línea(s) de stock" → "N movimiento(s) de stock" en los mensajes de anulación.
+- **Ningún número cambió de valor** (salvo lo explícitamente excluido en la decisión 4): verificado con un E2E nuevo que siembra un caso con margen Real y nominal bien distintos y confirma que cada cifra aparece donde corresponde (test/e2e/reportes-margen-principal.spec.ts), mutado para confirmar que detecta un cruce Real↔nominal.
+- Tests nuevos: `test/arquitectura/periodo-sin-lineas.test.ts` (prohíbe "línea(s)" visible, acotado a `/reportes/periodo` y `/reportes` — **no** a todo `src/app/`: `/reportes/compras` sigue diciendo "línea(s)" a propósito, es tarea de §4, que usa un criterio de conteo distinto), 2 tests más en `test/reportes/periodo.test.ts` (productos vs. compras distintas), `test/e2e/reportes-margen-principal.spec.ts`, y un chequeo axe de la tarjeta plegada/desplegada en las dos pantallas.
+- `test/e2e/reportes-costo-de-lo-vendido.spec.ts`: sin cambios de comportamiento, sigue pasando tal cual (el atributo `data-costo-de-lo-vendido` y su `title=` de detalle se conservaron en el nuevo lugar).
+- Verificación: Vitest 113 archivos/1067 tests (antes 112/1064), axe 19 (antes 18), Playwright 212 (antes 210), `tsc`/lint limpios, build OK, `test:e2e` confirma modo `build`.
+
+### Pasos y verificación (plan original, para referencia)
 
 10 pasos, sin migración: terminología → sacar definiciones del tooltip → reestructurar la tarjeta (con `<dl>`, nunca `<table>`, por la maquetación a 1024 px) → mismo tratamiento en `/reportes` → tests nuevos, incluido uno que prohíbe "línea(s)" como texto visible en `src/app/` y otro que afirma que la presentación coincide con la definición del cálculo. Verificación final: los 7 comandos de siempre en una misma corrida (línea de base a confirmar: Vitest ≈111 archivos/≈1049 tests, axe 16, Playwright 206), con un chequeo axe por cada estado nuevo de la tarjeta (plegada/desplegada) y actualización de `test/e2e/reportes-costo-de-lo-vendido.spec.ts` (conservando el atributo `data-costo-de-lo-vendido`, que usa su chequeo axe).
 
@@ -179,7 +190,7 @@ Los tres planes de reportes coinciden en que sus mejoras **no se pueden demostra
 ## 6. Orden sugerido de implementación
 
 1. **Rendimiento real, el arreglo urgente — HECHO (2026-09-21, commit `74a14ab`, local sin push).** El link "Usar este valor" pide siempre una confirmación explícita, con el porqué a la vista (comprado, vendido, semanas de datos, confianza), en vez de aplicar el valor directo — nunca se oculta, incluso con datos confiables. El mismo contexto viaja hasta el editor de recetas. Sin migración; verificación completa en una misma corrida (Vitest, axe nuevo para esta pantalla, Playwright, `tsc`, lint, build). **No incluye** el resto de la Variante 1 (banda de ruido, `motivoSinEstimacion`, teórico con merma, `PRODUCCION` como entrada): eso sigue pendiente, en §3.
-2. **Selector de rango (§1) — HECHO (2026-09-22).** + **Período y márgenes (§2) — pendiente**: tocan los mismos archivos y ninguno depende del seed; §1 ya no bloquea a §2.
+2. **Selector de rango (§1) — HECHO (2026-09-22).** + **Período y márgenes (§2) — HECHO (2026-09-22).** La decisión 4 de §2 (corregir el denominador del margen nominal) quedó explícitamente sin aplicar, según lo previsto en el plan.
 3. **Seed de la demo (§5)**, con el guion de 6 meses de §0: es lo que hace falta para poder verificar con datos creíbles los otros dos planes, y hay que tenerlo listo antes de que la demo actual termine de envejecer.
 4. **Historial por producto (§4)**, que se apoya en los datos nuevos del seed.
 5. **Rendimiento real, Variante 3 (§3)**, solo si se decide adoptar conteos físicos periódicos.

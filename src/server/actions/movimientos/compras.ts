@@ -130,7 +130,7 @@ export async function anularCompra(operacionId: string, claveIdempotencia?: stri
         sucursalId: ctx.sucursalId,
       });
 
-      const mensaje = `Compra anulada. Se revirtieron ${filas.length} línea(s) de stock${operacion.nroFactura ? ` y el N.º de factura ${operacion.nroFactura} quedó libre para volver a cargarla` : ""}.`;
+      const mensaje = `Compra anulada. Se revirtieron ${filas.length} movimiento(s) de stock${operacion.nroFactura ? ` y el N.º de factura ${operacion.nroFactura} quedó libre para volver a cargarla` : ""}.`;
       // I3: se persiste el mensaje ya formateado, no se reconstruye (mismo criterio que registrarMovimiento).
       if (claveIdempotencia) await tx.operacion.update({ where: { id: reversion.id }, data: { resultadoMensaje: mensaje } });
       return ok(mensaje);

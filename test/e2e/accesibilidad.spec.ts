@@ -442,3 +442,39 @@ testAutenticado(
     expect((await new AxeBuilder({ page }).analyze()).violations, "fechas personalizadas").toEqual([]);
   }
 );
+
+testAutenticado(
+  "reportes/periodo y reportes: la tarjeta de margen (§2), plegada y desplegada, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-MRG-MP-${marca}`, nombre: `E2E A11y Margen MP ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-MRG-PV-${marca}`, nombre: `E2E A11y Margen PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } } });
+    const hoy = new Date();
+    const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: hoy, usuarioId: admin.id } });
+    await prisma.movimientoStock.create({ data: { operacionId: compra.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 5 } });
+    const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: hoy, usuarioId: admin.id } });
+    await prisma.movimientoStock.create({
+      data: { operacionId: venta.id, productoId: pv.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 100, precioPorUnidadStock: 100, costoUnitarioVenta: 5 },
+    });
+    try {
+      for (const ruta of ["/reportes/periodo", "/reportes"]) {
+        await page.goto(ruta);
+        await expect(page.getByText("Ganancia de lo vendido")).toBeVisible();
+        expect((await new AxeBuilder({ page }).analyze()).violations, `${ruta}: plegada`).toEqual([]);
+
+        const detalle = page.locator("details").filter({ hasText: "Otras formas de ver el margen" });
+        await detalle.locator("summary").click();
+        await expect(detalle.getByText("Si repusieras hoy")).toBeVisible();
+        expect((await new AxeBuilder({ page }).analyze()).violations, `${ruta}: desplegada`).toEqual([]);
+      }
+    } finally {
+      await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
+      await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+    }
+  }
+);

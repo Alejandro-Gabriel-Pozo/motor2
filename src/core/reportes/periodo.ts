@@ -361,7 +361,10 @@ export interface FilaCompraPorProveedor {
   proveedorId: string | null;
   proveedor: string;
   importe: number;
-  lineas: number;
+  /** Productos DISTINTOS comprados a este proveedor en el rango — antes era "líneas" (renglones de MovimientoStock), que confundía dos renglones del mismo producto en una misma factura con dos productos distintos. */
+  cantidadProductos: number;
+  /** Compras (operaciones) DISTINTAS hechas a este proveedor en el rango — antes no se distinguía de "líneas". */
+  cantidadCompras: number;
   productos: FilaCompraPorProveedorProducto[];
 }
 export interface ComprasDelPeriodo {
@@ -380,7 +383,7 @@ export interface ComprasDelPeriodo {
  * cargó sin precio — campo opcional).
  */
 function calcularComprasDelPeriodo(items: ItemPeriodo[], productos: Map<string, InfoProductoReporte>): ComprasDelPeriodo {
-  const porProveedor = new Map<string, { proveedorId: string | null; importe: number; lineas: number; productos: Map<string, number> }>();
+  const porProveedor = new Map<string, { proveedorId: string | null; importe: number; operaciones: Set<string>; productos: Map<string, number> }>();
   let totalGastado = 0;
   let totalNoComestibles = 0;
   let hayComprasSinPrecio = false;
@@ -393,10 +396,10 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[], productos: Map<string, 
     totalGastado += importe;
     if (productos.get(r.productoId)?.esNoComestible) totalNoComestibles += importe;
 
-    if (!porProveedor.has(proveedor)) porProveedor.set(proveedor, { proveedorId: r.proveedorId, importe: 0, lineas: 0, productos: new Map() });
+    if (!porProveedor.has(proveedor)) porProveedor.set(proveedor, { proveedorId: r.proveedorId, importe: 0, operaciones: new Set(), productos: new Map() });
     const acc = porProveedor.get(proveedor)!;
     acc.importe += importe;
-    acc.lineas += 1;
+    acc.operaciones.add(r.idOperacion);
     acc.productos.set(r.productoNombre, (acc.productos.get(r.productoNombre) ?? 0) + importe);
   }
 
@@ -405,7 +408,8 @@ function calcularComprasDelPeriodo(items: ItemPeriodo[], productos: Map<string, 
       proveedorId: v.proveedorId,
       proveedor,
       importe: redondearMoneda(v.importe),
-      lineas: v.lineas,
+      cantidadCompras: v.operaciones.size,
+      cantidadProductos: v.productos.size,
       productos: Array.from(v.productos.entries())
         .map(([nombre, importe]) => ({ nombre, importe: redondearMoneda(importe) }))
         .sort((a, b) => b.importe - a.importe),

@@ -22,7 +22,7 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (v) => v.ingreso, render: (v) => `$${v.ingreso.toLocaleString("es-AR")}` },
   {
     clave: "margen",
-    etiqueta: "Margen",
+    etiqueta: "Margen teórico",
     alinear: "derecha",
     valor: (v) => v.margen,
     render: (v) => {
@@ -36,6 +36,7 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
       }
       return <span className="text-amber-700 dark:text-amber-600">costo incompleto</span>;
     },
+    ayuda: "Con la receta y el precio de insumos de HOY aplicados a lo vendido en el período — no el costo real al momento de cada venta (ver «Ganancia de lo vendido» arriba, que sí usa el costo de cada momento).",
   },
 ];
 
@@ -53,12 +54,20 @@ function columnasCompras(desde?: string, hasta?: string): ColumnaReporte<FilaCom
     ),
   },
   {
-    clave: "lineas",
-    etiqueta: "Líneas",
+    clave: "productos",
+    etiqueta: "Productos",
     alinear: "derecha",
-    valor: (p) => p.lineas,
-    render: (p) => p.lineas,
-    ayuda: "Cantidad de renglones de compra (no de facturas ni de productos distintos) sumados de todas las compras a este proveedor en el rango de fechas elegido.",
+    valor: (p) => p.cantidadProductos,
+    render: (p) => p.cantidadProductos,
+    ayuda: "Productos DISTINTOS comprados a este proveedor en el rango — dos renglones del mismo producto en una misma factura cuentan una sola vez.",
+  },
+  {
+    clave: "compras",
+    etiqueta: "Compras",
+    alinear: "derecha",
+    valor: (p) => p.cantidadCompras,
+    render: (p) => p.cantidadCompras,
+    ayuda: "Cantidad de compras (facturas/remitos) distintas cargadas a este proveedor en el rango de fechas elegido.",
   },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `$${p.importe.toLocaleString("es-AR")}` },
   ];
