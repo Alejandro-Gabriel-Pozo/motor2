@@ -387,6 +387,25 @@ describe("obtenerReportePorPeriodo", () => {
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"));
 
     expect(rep.digest.some((a) => a.texto.includes("Pan Especial"))).toBe(true);
+    expect(rep.digest.some((a) => a.texto.includes("se encareció"))).toBe(true);
+  });
+
+  it("cuando el costo de una receta BAJA, el digest dice que se abarató (no 'golpeado' — bajar el food cost es una mejora)", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
+
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"));
+
+    const alerta = rep.digest.find((a) => a.texto.includes("Pan Especial"));
+    expect(alerta).toBeDefined();
+    expect(alerta!.texto).toContain("se abarató");
+    expect(alerta!.texto).not.toContain("golpead");
+    expect(alerta!.texto).not.toContain("se encareció");
+    expect(alerta!.severidad).toBe("media");
   });
 
   it("digest nunca tiene más de 5 alertas", async () => {

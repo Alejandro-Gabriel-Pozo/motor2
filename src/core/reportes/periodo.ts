@@ -244,11 +244,12 @@ function generarDigestAlertas(
   }
 
   if (impactoRecetas.length > 0) {
-    const plato = impactoRecetas[0]!; // ya viene ordenado por |deltaCosto| desde calcularImpactoRecetasPorPeriodo
+    const plato = impactoRecetas[0]!; // ya viene ordenado por |deltaCosto| desde calcularImpactoRecetasPorPeriodo — puede ser el que más subió O el que más bajó
     const pctTexto = plato.foodCostPctAntes !== null && plato.foodCostPctActual !== null ? ` (food cost ${plato.foodCostPctAntes}% → ${plato.foodCostPctActual}%)` : "";
+    const empeoro = plato.deltaCosto > 0; // costo subió = le pegó de verdad; costo bajó = mejoró el margen, no es algo "golpeado"
     alertas.push({
-      severidad: plato.deltaCosto > 0 ? "alta" : "media",
-      texto: `El plato más golpeado por estos cambios es "${plato.productoNombre}": costo ${plato.deltaCosto > 0 ? "+" : ""}$${plato.deltaCosto.toLocaleString("es-AR")}${pctTexto}.`,
+      severidad: empeoro ? "alta" : "media",
+      texto: `El plato que más se ${empeoro ? "encareció" : "abarató"} por estos cambios es "${plato.productoNombre}": costo ${empeoro ? "+" : ""}$${plato.deltaCosto.toLocaleString("es-AR")}${pctTexto}.`,
     });
   }
 
