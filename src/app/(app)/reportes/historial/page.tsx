@@ -2,14 +2,21 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialProducto } from "@/core/reportes/historial-producto";
+import { filtrarEventosKardex, type QueMostrar } from "@/core/reportes/historial-vistas";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";
 
+const VALORES_QUE_MOSTRAR: readonly QueMostrar[] = ["todo", "compras", "consumos-ventas", "ajustes-conteos"];
+
+function comoQueMostrar(valor: string | undefined): QueMostrar {
+  return (VALORES_QUE_MOSTRAR as readonly string[]).includes(valor ?? "") ? (valor as QueMostrar) : "todo";
+}
+
 export default async function HistorialProductoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ productoId?: string; seccionId?: string; desde?: string; hasta?: string }>;
+  searchParams: Promise<{ productoId?: string; seccionId?: string; desde?: string; hasta?: string; queMostrar?: string }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -19,6 +26,7 @@ export default async function HistorialProductoPage({
 
   const sp = await searchParams;
   const secciones = await listarSeccionesActivas(ctx.sucursalId);
+  const queMostrar = comoQueMostrar(sp.queMostrar);
 
   const historial = sp.productoId
     ? await obtenerHistorialProducto(
@@ -41,6 +49,7 @@ export default async function HistorialProductoPage({
           seccionId={sp.seccionId ?? ""}
           desde={sp.desde ?? ""}
           hasta={sp.hasta ?? ""}
+          queMostrar={queMostrar}
         />
       </div>
 
@@ -55,9 +64,10 @@ export default async function HistorialProductoPage({
           </p>
           <div className="mb-4">
             <h3 className="mb-2 text-sm font-medium">Evolución del saldo</h3>
+            {/* SIEMPRE el historial completo, nunca filtrado por "Qué mostrar" — ese filtro es solo para la tabla de abajo (declutter), no cambia qué pasó de verdad. */}
             <GraficoSaldoCorriente eventos={historial.eventos} unidadStockNombre={historial.unidadStockNombre} />
           </div>
-          <TablaHistorialEventos filas={historial.eventos} nombreExport={`historial-${historial.codigo}`} />
+          <TablaHistorialEventos filas={filtrarEventosKardex(historial.eventos, queMostrar)} nombreExport={`historial-${historial.codigo}`} />
         </div>
       )}
     </div>
