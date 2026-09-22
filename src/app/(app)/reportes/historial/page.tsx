@@ -2,12 +2,13 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/core/reportes/historial-producto";
-import { filtrarEventosKardex, resumirCompras, type QueMostrar } from "@/core/reportes/historial-vistas";
+import { agruparVentasPorDia, filtrarEventosKardex, resumirCompras, type QueMostrar } from "@/core/reportes/historial-vistas";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";
 import { CartelSinStockPropio } from "./cartel-sin-stock-propio";
 import { ComoSeCompro } from "./como-se-compro";
+import { ComoSeVendio } from "./como-se-vendio";
 
 const VALORES_QUE_MOSTRAR: readonly QueMostrar[] = ["todo", "compras", "consumos-ventas", "ajustes-conteos"];
 
@@ -83,6 +84,7 @@ export default async function HistorialProductoPage({
             <CartelSinStockPropio productoId={historial.productoId} ingredientes={ingredientes ?? []} />
           )}
           {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(historial.eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} />}
+          {historial.tipo === "PV" && <ComoSeVendio filas={agruparVentasPorDia(historial.eventos)} mostrarDinero={mostrarDinero} />}
           <TablaHistorialEventos
             filas={filtrarEventosKardex(historial.eventos, queMostrar)}
             nombreExport={`historial-${historial.codigo}`}
