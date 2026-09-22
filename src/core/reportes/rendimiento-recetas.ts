@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/db";
-import { cargarClasificacionNoComestibles, redondearCantidad } from "./comun";
-import type { Db } from "./comun";
+import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
+import type { CostoMP, Db } from "./comun";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import {
   calcularCantidadEstimadaNeta,
   calcularCantidadTeoricaBruta,
   calcularDesviacionPorcentaje,
+  compararPorImpacto,
+  impactoDelDesvio,
   motivoSinEstimacion as calcularMotivoSinEstimacion,
   rotularLineaDeReceta,
   type RotuloLinea,
@@ -35,6 +37,10 @@ export interface FilaRendimientoSimple {
   stockCierre: number;
   /** Por qué `cantidadEstimada` es null, cuando lo es — nunca se oculta la fila, se explica (docs/plan-rendimiento-recetas-2026-09-22.md §B7). */
   motivoSinEstimacion: string | null;
+  /** (entradas reales − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA el ranking, no el %. Ver `impactoDelDesvio`. */
+  impactoPesos: number | null;
+  /** true cuando `impactoPesos` es null por falta de costo conocido (nunca se inventa un precio — mismo criterio que perdidas.ts). */
+  sinCosto: boolean;
   semanasConDatos: number;
   confianza: "alta" | "media" | "baja" | "sin_datos";
   /**
@@ -59,6 +65,11 @@ export interface FilaRendimientoCompartido {
   /** El coeficiente resuelto por regresión para ESTE plato, ya en NETO — null si el pool no fue resoluble. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
+  /** Vendido de ESTE plato (no del pool) — antes se calculaba para la regresión y se descartaba, sin exponerse en la fila. */
+  totalVendido: number;
+  /** Ver docstring en FilaRendimientoSimple — acá con el `totalVendido` de ESTE plato, no del pool. */
+  impactoPesos: number | null;
+  sinCosto: boolean;
   /** Cuántos platos comparten este pool — mismo valor repetido en todas las filas del pool. */
   cantidadPlatosEnPool: number;
   /** Comprado + producido del POOL entero en la ventana — mismo valor repetido en todas las filas del pool (a diferencia de Fase 1, acá no hay "totalComprado" por plato: el pool es lo que se ajusta). */
@@ -94,6 +105,28 @@ async function calcularStockAperturaYCierre(sucursalId: string, productoIds: str
   const stockApertura = redondearCantidad(Number(apertura._sum.cantidad ?? 0));
   const stockCierre = redondearCantidad(stockApertura + Number(delta._sum.cantidad ?? 0));
   return { stockApertura, stockCierre };
+}
+
+/**
+ * El costo de reposición del pool — entre `productoIds` que tengan costo
+ * conocido (`obtenerCostoActualPorMP`, la MISMA fuente de costo que usa el
+ * resto del proyecto), el de la compra MÁS RECIENTE; empate en fecha →
+ * el de menor `productoId` (determinismo, sin depender del orden de
+ * iteración del Map). `null` si ninguno de los hermanos del pool tiene
+ * costo conocido — nunca se inventa un precio.
+ */
+function costoUnitarioDePool(productoIds: string[], costos: Map<string, CostoMP>): number | null {
+  let mejor: { id: string; precio: number; fecha: Date | null } | null = null;
+  for (const id of productoIds) {
+    const c = costos.get(id);
+    if (!c) continue;
+    const fechaActual = c.fecha?.getTime() ?? -Infinity;
+    const fechaMejor = mejor?.fecha?.getTime() ?? -Infinity;
+    if (!mejor || fechaActual > fechaMejor || (fechaActual === fechaMejor && id < mejor.id)) {
+      mejor = { id, precio: c.precioPorUnidadStock, fecha: c.fecha };
+    }
+  }
+  return mejor?.precio ?? null;
 }
 
 function rangoUtc(desdeIn: Date, hastaIn: Date): { desde: Date; hasta: Date } {
@@ -234,13 +267,14 @@ export async function calcularRendimientoRecetasSimples(
   db: Db = prisma
 ): Promise<FilaRendimientoSimple[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
-  const pools = await construirPools(db);
+  const [pools, costos] = await Promise.all([construirPools(db), obtenerCostoActualPorMP(sucursalId, db)]);
   const filas: FilaRendimientoSimple[] = [];
 
   for (const pool of pools) {
     if (pool.usos.length !== 1) continue; // Fase 2 — ver calcularRendimientoRecetasCompartidas.
     const uso = pool.usos[0];
 
+    const costoUnitario = costoUnitarioDePool(pool.productoIds, costos);
     const { stockApertura, stockCierre } = await calcularStockAperturaYCierre(sucursalId, pool.productoIds, desde, hasta, db);
 
     const [entradas, ventas] = await Promise.all([
@@ -267,6 +301,7 @@ export async function calcularRendimientoRecetasSimples(
     const cantidadEstimadaBruta = totalVendido > 0 && totalEntradas > 0 ? redondearCantidad(totalEntradas / totalVendido) : null;
     const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
     const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
+    const impactoPesos = impactoDelDesvio(totalEntradas, cantidadTeoricaBruta, totalVendido, costoUnitario);
 
     filas.push({
       productoVentaId: uso.pvProductoId,
@@ -284,6 +319,8 @@ export async function calcularRendimientoRecetasSimples(
       totalVendido,
       stockApertura,
       stockCierre,
+      impactoPesos,
+      sinCosto: costoUnitario === null,
       motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta }),
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
@@ -291,8 +328,9 @@ export async function calcularRendimientoRecetasSimples(
     });
   }
 
-  filas.sort(
-    (a, b) => a.productoVentaNombre.localeCompare(b.productoVentaNombre, "es") || a.insumoONombre.localeCompare(b.insumoONombre, "es")
+  // Por impacto en $ — decisión 5 de §3, ordena por plata, no por %. Desempate: el orden alfabético de siempre.
+  filas.sort((a, b) =>
+    compararPorImpacto(a, b, (f) => f.impactoPesos, (x, y) => x.productoVentaNombre.localeCompare(y.productoVentaNombre, "es") || x.insumoONombre.localeCompare(y.insumoONombre, "es"))
   );
   return filas;
 }
@@ -316,12 +354,13 @@ export async function calcularRendimientoRecetasCompartidas(
   db: Db = prisma
 ): Promise<FilaRendimientoCompartido[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
-  const pools = await construirPools(db);
+  const [pools, costos] = await Promise.all([construirPools(db), obtenerCostoActualPorMP(sucursalId, db)]);
   const filas: FilaRendimientoCompartido[] = [];
 
   for (const pool of pools) {
     if (pool.usos.length < 2) continue; // Fase 1 — ver calcularRendimientoRecetasSimples.
 
+    const costoUnitario = costoUnitarioDePool(pool.productoIds, costos);
     const { stockApertura, stockCierre } = await calcularStockAperturaYCierre(sucursalId, pool.productoIds, desde, hasta, db);
 
     // COMPRA + PRODUCCION: mismo motivo que Fase 1 — un insumo con seProduce=true entra por producción, no por compra. anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
@@ -381,6 +420,8 @@ export async function calcularRendimientoRecetasCompartidas(
       const totalVendidoUso = redondearCantidad(ventasPorPlato[i].reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
       // Si la regresión ya explicó por qué no hay estimado (motivoNoResoluble), no hace falta un segundo motivo más básico encima.
       const motivo = motivoNoResoluble ? null : calcularMotivoSinEstimacion({ totalVendido: totalVendidoUso, totalEntradas: totalEntradasPool, cantidadTeoricaBruta });
+      // Impacto de ESTE plato (no del pool entero): reconstruye "cuánto de las entradas del pool le toca a este plato" a partir del coeficiente ya estimado (cantidadEstimadaBruta × lo que vendió), y de ahí la misma resta que Fase 1. Sin regresión resoluble, no hay estimado del que partir → null (nunca se inventa un impacto).
+      const impactoPesos = cantidadEstimadaBruta !== null ? impactoDelDesvio(redondearCantidad(cantidadEstimadaBruta * totalVendidoUso), cantidadTeoricaBruta, totalVendidoUso, costoUnitario) : null;
 
       filas.push({
         poolClave: pool.clave,
@@ -393,6 +434,9 @@ export async function calcularRendimientoRecetasCompartidas(
         cantidadActual: uso.cantidad,
         cantidadEstimada,
         desviacionPorcentaje,
+        totalVendido: totalVendidoUso,
+        impactoPesos,
+        sinCosto: costoUnitario === null,
         motivoSinEstimacion: motivo,
         cantidadPlatosEnPool: pool.usos.length,
         totalEntradasPool,
@@ -407,6 +451,23 @@ export async function calcularRendimientoRecetasCompartidas(
     });
   }
 
-  filas.sort((a, b) => a.insumoONombre.localeCompare(b.insumoONombre, "es") || a.productoVentaNombre.localeCompare(b.productoVentaNombre, "es"));
+  // Por impacto en $ — decisión 5 de §3. Dos niveles: los POOLS se ordenan por su mayor |impactoPesos| (page.tsx arma los grupos en el orden en que aparecen acá), y DENTRO de cada pool, sus filas por el propio |impactoPesos|.
+  const maxImpactoPorPool = new Map<string, number | null>();
+  for (const f of filas) {
+    const actual = maxImpactoPorPool.get(f.poolClave);
+    if (f.impactoPesos !== null && (actual === undefined || actual === null || Math.abs(f.impactoPesos) > Math.abs(actual))) maxImpactoPorPool.set(f.poolClave, f.impactoPesos);
+    else if (!maxImpactoPorPool.has(f.poolClave)) maxImpactoPorPool.set(f.poolClave, null);
+  }
+  filas.sort((a, b) => {
+    if (a.poolClave !== b.poolClave) {
+      return compararPorImpacto(
+        { impactoPesos: maxImpactoPorPool.get(a.poolClave) ?? null },
+        { impactoPesos: maxImpactoPorPool.get(b.poolClave) ?? null },
+        (f) => f.impactoPesos,
+        () => a.insumoONombre.localeCompare(b.insumoONombre, "es")
+      );
+    }
+    return compararPorImpacto(a, b, (f) => f.impactoPesos, (x, y) => x.productoVentaNombre.localeCompare(y.productoVentaNombre, "es"));
+  });
   return filas;
 }

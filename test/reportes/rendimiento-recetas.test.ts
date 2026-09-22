@@ -294,6 +294,32 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(fila.stockCierre).toBe(0);
     expect(fila.totalComprado).toBe(0); // esto SÍ filtra anuladas — una compra anulada no cuenta como entrada real
   });
+
+  // --- P6 del plan: impacto en $ + orden del ranking (decisión 5 de §3 — no por %). ---
+
+  it("ordena por impacto en $: un desvío grande CON costo conocido va antes que uno SIN costo conocido, aunque el % sea menor", async () => {
+    const insumoA = await prisma.producto.create({ data: { codigo: "MP_IMPACTO_A", nombre: "Insumo con impacto", tipo: "MP", unidadStockId: unidadKgId } });
+    const platoA = await prisma.producto.create({ data: { codigo: "PV_IMPACTO_A", nombre: "Plato con impacto", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({ data: { productoId: platoA.id, version: 1, ingredientes: { create: [{ insumoProductoId: insumoA.id, cantidad: 1, unidadId: unidadKgId }] } } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: insumoA.id, cantidad: 20, precioTotal: 100 }] }); // $5/unidad
+    await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: platoA.id, cantidadVendida: 10 }] });
+    // desvío 100% (20 comprado / 10 vendido vs. receta 1); impacto = (20 - 1*10) * 5 = $50.
+
+    const insumoB = await prisma.producto.create({ data: { codigo: "MP_IMPACTO_B", nombre: "Insumo sin costo", tipo: "MP", unidadStockId: unidadKgId } });
+    const platoB = await prisma.producto.create({ data: { codigo: "PV_IMPACTO_B", nombre: "Plato sin costo", tipo: "PV", unidadStockId: unidadKgId } });
+    await prisma.recetaVersion.create({ data: { productoId: platoB.id, version: 1, ingredientes: { create: [{ insumoProductoId: insumoB.id, cantidad: 1, unidadId: unidadKgId }] } } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: insumoB.id, cantidad: 11 }] }); // sin precio — nunca se inventa un costo
+    await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: platoB.id, cantidadVendida: 10 }] });
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filaA = filas.find((f) => f.productoVentaNombre === "Plato con impacto")!;
+    const filaB = filas.find((f) => f.productoVentaNombre === "Plato sin costo")!;
+    expect(filaA.impactoPesos).toBe(50);
+    expect(filaA.sinCosto).toBe(false);
+    expect(filaB.impactoPesos).toBeNull();
+    expect(filaB.sinCosto).toBe(true);
+    expect(filas.indexOf(filaA)).toBeLessThan(filas.indexOf(filaB)); // impacto real ANTES que null, sin importar el %
+  });
 });
 
 describe("calcularRendimientoRecetasCompartidas", () => {
@@ -414,6 +440,38 @@ describe("calcularRendimientoRecetasCompartidas", () => {
 
     const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
     expect(filas).toEqual([]);
+  });
+
+  // --- P6 del plan: totalVendido y el impacto en $ son por PLATO, no por pool. ---
+
+  it("totalVendido en cada fila es el del PLATO (no el del pool, que es distinto para cada uno)", async () => {
+    const { milanesa, bife } = await armarPoolCompartido();
+    const nalga = await prisma.producto.findFirstOrThrow({ where: { codigo: "MP_NALGA" } });
+
+    const semanas = [
+      { fecha: new Date("2026-01-05"), milanesa: 10, bife: 4 },
+      { fecha: new Date("2026-01-15"), milanesa: 6, bife: 12 },
+      { fecha: new Date("2026-01-25"), milanesa: 15, bife: 2 },
+      { fecha: new Date("2026-02-04"), milanesa: 3, bife: 9 },
+      { fecha: new Date("2026-02-14"), milanesa: 8, bife: 8 },
+    ];
+    for (const s of semanas) {
+      const comprado = 0.15 * s.milanesa + 0.25 * s.bife;
+      await registrarMovimiento({ proceso: "COMPRA", fecha: s.fecha, seccionId, items: [{ productoId: nalga.id, cantidad: comprado, precioTotal: comprado * 10 }] });
+      await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: s.milanesa }] });
+      await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: s.bife }] });
+    }
+    const totalMilanesa = semanas.reduce((acc, s) => acc + s.milanesa, 0); // 42
+    const totalBife = semanas.reduce((acc, s) => acc + s.bife, 0); // 35
+
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa")!;
+    const filaBife = filas.find((f) => f.productoVentaNombre === "Bife")!;
+    expect(filaMilanesa.totalVendido).toBe(totalMilanesa);
+    expect(filaBife.totalVendido).toBe(totalBife);
+    expect(filaMilanesa.totalVendido).not.toBe(filaBife.totalVendido); // confirma que NO es el mismo valor repetido (el del pool)
+    expect(filaMilanesa.sinCosto).toBe(false);
+    expect(filaMilanesa.impactoPesos).not.toBeNull();
   });
 });
 
