@@ -5,7 +5,7 @@ import { prisma } from "../../src/lib/db";
  * "Usar este valor" (Rendimiento real de recetas) nunca aplica directo: pide confirmación en la misma fila, con el porqué a la
  * vista, y ese contexto sigue visible en el editor de recetas donde el cambio se guarda de verdad — decisión del usuario,
  * 2026-09-21 (docs/planes-demo-y-claridad-reportes-2026-09-21.md §3). Se siembra directo en la base (compra de 20, venta de 10,
- * receta que dice 1 → sugiere 2) con fecha de HOY, para caer dentro del rango por defecto de la pantalla (mes en curso)
+ * receta que dice 1 → sugiere 2) con fecha de HOY, para caer dentro del rango por defecto de la pantalla (últimos 30 días)
  * cualquier día del mes.
  */
 test("pide confirmación con comprado/vendido antes de ir a aplicar el valor sugerido, y ese contexto sigue en el editor", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {

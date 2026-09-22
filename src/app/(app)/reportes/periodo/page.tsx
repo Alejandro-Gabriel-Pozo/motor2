@@ -1,23 +1,17 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
+import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { DigestAlertas } from "./digest-alertas";
 import { ComparativaPrecios } from "./comparativa-precios";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
+import { SelectorRango } from "@/components/selector-rango";
 import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 
-function primerDiaDelMesISO() {
-  const hoy = new Date();
-  return new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
-}
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-export default async function PeriodoPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string }> }) {
+export default async function PeriodoPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
@@ -25,8 +19,9 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
-  const desdeStr = sp.desde || primerDiaDelMesISO();
-  const hastaStr = sp.hasta || hoyISO();
+  const rango = resolverRangoDeReporte(sp);
+  const desdeStr = rango.desdeISO;
+  const hastaStr = rango.hastaISO;
   const [rep, cotizacion] = await Promise.all([
     obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr)),
     obtenerUltimaCotizacion().catch(() => null),
@@ -36,19 +31,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Reporte por período</h1>
-        <form className="flex items-end gap-3 text-sm">
-          <label className="flex flex-col gap-1">
-            Desde
-            <input type="date" name="desde" defaultValue={desdeStr} className="rounded border px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-1">
-            Hasta
-            <input type="date" name="hasta" defaultValue={hastaStr} className="rounded border px-3 py-2" />
-          </label>
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Actualizar
-          </button>
-        </form>
+        <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} />
       </div>
 
       <DigestAlertas alertas={rep.digest} />

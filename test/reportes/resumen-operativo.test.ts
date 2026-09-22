@@ -26,7 +26,7 @@ describe("obtenerResumenOperativo", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("cuenta combinaciones producto+sección con movimientos, detecta negativos, y trae el financiero del mes actual", async () => {
+  it("cuenta combinaciones producto+sección con movimientos, detecta negativos, y trae el financiero de los últimos 30 días (default)", async () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
@@ -40,5 +40,20 @@ describe("obtenerResumenOperativo", () => {
     // El PV vendido sin ser "Se produce" queda con saldo negativo (artefacto contable de la venta).
     const filaPv = resumen.topStockBajo.find((s) => s.producto === "Pan");
     expect(filaPv?.saldo).toBe(-2);
+  });
+
+  it("con un rango explícito que no incluye la venta, el financiero no la cuenta (el default de 30 días no es el único rango posible)", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Harina 2", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await prisma.producto.create({ data: { codigo: "PV_2", nombre: "Pan 2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 50 }] });
+    await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
+
+    const haceUnAño = new Date();
+    haceUnAño.setUTCFullYear(haceUnAño.getUTCFullYear() - 1);
+    const resumen = await obtenerResumenOperativo(sucursalId, prisma, { desde: haceUnAño, hasta: haceUnAño });
+    expect(resumen.financiero.ventasTotal).toBe(0);
+    // El stock/movimientos no dependen del rango del financiero: siguen viendo el libro mayor completo.
+    expect(resumen.movimientos.total).toBeGreaterThan(0);
   });
 });

@@ -424,3 +424,21 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado(
+  "reportes/periodo: el selector de rango, en su estado de solo lectura y con «Fechas personalizadas» (inputs de fecha visibles), sin violaciones de axe",
+  async ({ paginaAutenticada: page }) => {
+    // Solo lectura (default: "Últimos 30 días", sin inputs de fecha — ver SelectorRango).
+    await page.goto("/reportes/periodo");
+    await expect(page.getByRole("heading", { name: "Reporte por período" })).toBeVisible();
+    await expect(page.getByText(/^Del \d{4}-\d{2}-\d{2} al \d{4}-\d{2}-\d{2}$/)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "rango de solo lectura").toEqual([]);
+
+    // "Fechas personalizadas": recién ahí aparecen los <input type="date">.
+    await page.getByLabel("Rango").selectOption("personalizado");
+    await page.getByRole("button", { name: "Actualizar" }).click();
+    await expect(page.getByLabel("Desde", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Hasta", { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "fechas personalizadas").toEqual([]);
+  }
+);

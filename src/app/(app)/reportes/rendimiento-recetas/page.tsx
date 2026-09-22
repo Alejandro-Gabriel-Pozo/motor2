@@ -2,7 +2,9 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/core/reportes/rendimiento-recetas";
+import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
 
@@ -10,14 +12,6 @@ const AYUDA_RENDIMIENTO_REAL =
   "Total comprado ÷ total vendido en el rango de fechas elegido. Es una estimación indirecta, no una medición física: asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12).";
 const AYUDA_DESVIO =
   "Diferencia entre Rendimiento real y Receta actual. En un producto de venta directa (1 a 1, sin preparación — ver \"venta directa\" en la fila) el desvío no puede ser un error de receta: es ruido de comprar por lote dentro de esta ventana de fechas, no necesariamente algo para corregir.";
-
-function primerDiaDelMesISO() {
-  const hoy = new Date();
-  return new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
-}
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 /**
  * Fases 1 y 2 del diseño (docs/diseno-rendimiento-recetas-por-sucursal.md):
@@ -33,7 +27,7 @@ function hoyISO() {
 export default async function RendimientoRecetasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ desde?: string; hasta?: string; productoId?: string }>;
+  searchParams: Promise<{ desde?: string; hasta?: string; rango?: string; productoId?: string }>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -42,8 +36,9 @@ export default async function RendimientoRecetasPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
-  const desdeStr = sp.desde || primerDiaDelMesISO();
-  const hastaStr = sp.hasta || hoyISO();
+  const rango = resolverRangoDeReporte(sp);
+  const desdeStr = rango.desdeISO;
+  const hastaStr = rango.hastaISO;
   const desde = new Date(desdeStr);
   const hasta = new Date(hastaStr);
 
@@ -77,20 +72,12 @@ export default async function RendimientoRecetasPage({
         <p className="mb-4 text-sm text-neutral-500">
           Compara la receta cargada contra lo que compras y ventas de esta sucursal sugieren que realmente se consume.
         </p>
-        <form className="flex items-end gap-3 text-sm">
-          {sp.productoId && <input type="hidden" name="productoId" value={sp.productoId} />}
-          <label className="flex flex-col gap-1">
-            Desde
-            <input type="date" name="desde" defaultValue={desdeStr} className="rounded border px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-1">
-            Hasta
-            <input type="date" name="hasta" defaultValue={hastaStr} className="rounded border px-3 py-2" />
-          </label>
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Actualizar
-          </button>
-        </form>
+        <SelectorRango
+          opcion={rango.opcion}
+          desdeISO={desdeStr}
+          hastaISO={hastaStr}
+          camposOcultos={sp.productoId ? { productoId: sp.productoId } : undefined}
+        />
       </div>
 
       <div>

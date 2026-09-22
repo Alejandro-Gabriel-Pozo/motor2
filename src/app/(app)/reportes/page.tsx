@@ -2,33 +2,41 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerResumenOperativo } from "@/core/reportes/resumen-operativo";
+import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-resumen";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
+import { SelectorRango } from "@/components/selector-rango";
 import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 
-export default async function ReportesResumenPage() {
+export default async function ReportesResumenPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [r, cotizacion] = await Promise.all([obtenerResumenOperativo(ctx.sucursalId), obtenerUltimaCotizacion().catch(() => null)]);
+  const sp = await searchParams;
+  const rango = resolverRangoDeReporte(sp);
+  const [r, cotizacion] = await Promise.all([
+    obtenerResumenOperativo(ctx.sucursalId, undefined, { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }),
+    obtenerUltimaCotizacion().catch(() => null),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Resumen operativo</h1>
-        <p className="text-sm text-neutral-500">
-          Financiero del mes actual ({r.financiero.desde.toISOString().slice(0, 10)} a {r.financiero.hasta.toISOString().slice(0, 10)}).
+        <p className="mb-2 text-sm text-neutral-500">
+          Financiero de {r.financiero.desde.toISOString().slice(0, 10)} a {r.financiero.hasta.toISOString().slice(0, 10)}.
         </p>
+        <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">
           <p className="flex items-center text-xs text-neutral-500">
-            Ventas del mes
+            Ventas
             <AyudaIcono texto={r.financiero.avisoVentas} />
           </p>
           <p className="text-lg font-semibold">${r.financiero.ventasTotal.toLocaleString("es-AR")}</p>
@@ -37,7 +45,7 @@ export default async function ReportesResumenPage() {
         </div>
         <div className="rounded border p-4">
           <p className="flex items-center text-xs text-neutral-500">
-            Margen del mes
+            Margen
             <AyudaIcono texto={r.financiero.avisoMargen} />
           </p>
           <p className="text-lg font-semibold">
@@ -78,11 +86,11 @@ export default async function ReportesResumenPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <h2 className="mb-2 text-sm font-medium">Top productos vendidos (mes)</h2>
+          <h2 className="mb-2 text-sm font-medium">Top productos vendidos</h2>
           <TablaTopProductos filas={r.financiero.topProductos} />
         </div>
         <div>
-          <h2 className="mb-2 text-sm font-medium">Top proveedores (mes)</h2>
+          <h2 className="mb-2 text-sm font-medium">Top proveedores</h2>
           <TablaTopProveedores filas={r.financiero.topProveedores} />
         </div>
       </div>

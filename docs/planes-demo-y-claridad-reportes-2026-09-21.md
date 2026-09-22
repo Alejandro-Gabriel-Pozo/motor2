@@ -19,7 +19,7 @@ La demo no es un banco de pruebas de reportes: es **una herramienta de venta**. 
 
 **Rango por defecto de los reportes (decidido):** las cinco pantallas que hoy abren en "mes en curso" (Resumen operativo, Período, Categorías, Promociones, Rendimiento de recetas) pasan a un **selector con "Últimos 30 días" por defecto y "Mes en curso" como segunda opción**, más fecha libre. Detalle en §1.
 
-## 1. Selector de rango por defecto ("Últimos 30 días" / "Mes en curso")
+## 1. Selector de rango por defecto ("Últimos 30 días" / "Mes en curso") — HECHO (2026-09-22, local sin push)
 
 **Verificado en el código:** `primerDiaDelMes()`/`primerDiaDelMesISO()` está copiada cinco veces (`resumen-operativo.ts`, y los `page.tsx` de periodo, categorias, promociones, rendimiento-recetas). Ningún test de Playwright depende de esos rótulos; un solo test de Vitest (`resumen-operativo.test.ts`) menciona "mes actual" y hay que actualizarlo.
 
@@ -31,7 +31,16 @@ La demo no es un banco de pruebas de reportes: es **una herramienta de venta**. 
 
 **Tests:** el cálculo puro (día 1, fin de mes, mes de 31 días, febrero, UTC), el test de resumen operativo actualizado, un E2E de que el selector cambia rango y rótulo, un chequeo axe del formulario en los dos estados, y maquetación a 1024/1280 px (el formulario se ensancha).
 
-**Sin migración.** Coordinar con el plan de §2 (Período), que toca los mismos archivos.
+**Implementado tal cual el diseño:**
+- `src/core/reportes/rango-por-defecto.ts` (nuevo): `resolverRangoPorDefecto`/`resolverRangoDeReporte`/`ETIQUETA_RANGO`, con 14 tests unitarios (`test/reportes/rango-por-defecto.test.ts`).
+- `src/components/selector-rango.tsx` (nuevo): el `<select>` compartido por las cinco pantallas. Los `<input type="date">` solo se dibujan cuando la opción vigente es "personalizado" (evita que un valor de fecha obsoleto pise una elección fresca de `rango` en el próximo submit — no hay JS para mantenerlos sincronizados). El `<label>` del `<select>` va al lado del control (`htmlFor`), no envolviéndolo, por el mismo motivo ya documentado en `FormularioCorregirCompra` (K1b).
+- `resumen-operativo.ts`: `ResumenFinancieroMes` → `ResumenFinanciero`; `obtenerResumenFinancieroMesActual` → `obtenerResumenFinancieroDelRango(sucursalId, desde, hasta, db)`; `obtenerResumenOperativo` acepta un tercer parámetro opcional `{ desde, hasta }`, con default de 30 días si no se pasa.
+- Las 5 pantallas (`/reportes`, `/reportes/periodo`, `/reportes/categorias`, `/reportes/promociones`, `/reportes/rendimiento-recetas`) cableadas con `resolverRangoDeReporte` + `<SelectorRango>`; `/reportes` ganó `searchParams` (no tenía) y sus rótulos "del mes"/"(mes)" se sacaron (el subtítulo ya dice el rango exacto).
+- Compatibilidad verificada: enlaces/specs que pasan `desde`/`hasta` sin `rango` (incluido `?desde=no-es-una-fecha` de `pantalla-de-error.spec.ts`, sin validar) siguen funcionando idéntico — la opción vigente pasa a ser "personalizado".
+- Tests nuevos: `test/reportes/rango-por-defecto.test.ts` (14), un test más en `resumen-operativo.test.ts` (rango explícito que excluye la venta), `test/e2e/selector-rango.spec.ts` (cambia rango/rótulo por URL, verificado con mutación), y en `accesibilidad.spec.ts` un chequeo axe de `/reportes/periodo` en sus dos estados (solo lectura y "Fechas personalizadas").
+- Verificación: Vitest 112 archivos/1064 tests, axe 18, Playwright 210, `tsc`/lint limpios, build OK, `test:e2e` confirma modo `build`.
+
+**Sin migración.** Coordinado con §2 (Período), que toca los mismos archivos — §2 (la reestructuración de la tarjeta de margen y "Compras por proveedor") queda pendiente, es trabajo aparte.
 
 ## 2. Período y márgenes: de qué es cada número
 
@@ -170,7 +179,7 @@ Los tres planes de reportes coinciden en que sus mejoras **no se pueden demostra
 ## 6. Orden sugerido de implementación
 
 1. **Rendimiento real, el arreglo urgente — HECHO (2026-09-21, commit `74a14ab`, local sin push).** El link "Usar este valor" pide siempre una confirmación explícita, con el porqué a la vista (comprado, vendido, semanas de datos, confianza), en vez de aplicar el valor directo — nunca se oculta, incluso con datos confiables. El mismo contexto viaja hasta el editor de recetas. Sin migración; verificación completa en una misma corrida (Vitest, axe nuevo para esta pantalla, Playwright, `tsc`, lint, build). **No incluye** el resto de la Variante 1 (banda de ruido, `motivoSinEstimacion`, teórico con merma, `PRODUCCION` como entrada): eso sigue pendiente, en §3.
-2. **Selector de rango (§1) + Período y márgenes (§2)**, juntos: tocan los mismos archivos y ninguno depende del seed.
+2. **Selector de rango (§1) — HECHO (2026-09-22).** + **Período y márgenes (§2) — pendiente**: tocan los mismos archivos y ninguno depende del seed; §1 ya no bloquea a §2.
 3. **Seed de la demo (§5)**, con el guion de 6 meses de §0: es lo que hace falta para poder verificar con datos creíbles los otros dos planes, y hay que tenerlo listo antes de que la demo actual termine de envejecer.
 4. **Historial por producto (§4)**, que se apoya en los datos nuevos del seed.
 5. **Rendimiento real, Variante 3 (§3)**, solo si se decide adoptar conteos físicos periódicos.

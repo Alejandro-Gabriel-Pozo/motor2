@@ -2,14 +2,9 @@ import { prisma } from "@/lib/db";
 import { obtenerResumenAlertasStock } from "@/core/stock/alertas";
 import { redondearCantidad, type Db } from "./comun";
 import { obtenerReportePorPeriodo } from "./periodo";
+import { resolverRangoPorDefecto } from "./rango-por-defecto";
 
-/** Primer día del mes calendario actual, en UTC (ver la nota de rangoUtc en periodo.ts). */
-function primerDiaDelMes(): Date {
-  const hoy = new Date();
-  return new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1));
-}
-
-export interface ResumenFinancieroMes {
+export interface ResumenFinanciero {
   desde: Date;
   hasta: Date;
   ventasTotal: number;
@@ -41,11 +36,13 @@ export interface ResumenFinancieroMes {
   avisoCompras: string;
 }
 
-/** Port de obtenerResumenFinancieroMesActual_ (Reportes.js:1507-1528). */
-export async function obtenerResumenFinancieroMesActual(sucursalId: string, db: Db = prisma): Promise<ResumenFinancieroMes> {
-  const desde = primerDiaDelMes();
-  const hoy = new Date();
-  const rep = await obtenerReportePorPeriodo(sucursalId, desde, hoy, {}, db);
+/**
+ * Port de obtenerResumenFinancieroMesActual_ (Reportes.js:1507-1528), adaptado para aceptar cualquier rango en vez de fijar
+ * "mes en curso" — decisión del usuario (2026-09-21, docs/planes-demo-y-claridad-reportes-2026-09-21.md §1): el default del
+ * dashboard pasa a ser "Últimos 30 días". Sin `rango`, cae al mismo default (ver rango-por-defecto.ts).
+ */
+export async function obtenerResumenFinancieroDelRango(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<ResumenFinanciero> {
+  const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, {}, db);
 
   return {
     desde: rep.desde,
@@ -80,7 +77,7 @@ export interface ResumenOperativo {
   alertas: { total: number; criticos: number; bajos: number };
   movimientos: { total: number; porProceso: Record<string, number> };
   topStockBajo: { producto: string; saldo: number; seccion: string }[];
-  financiero: ResumenFinancieroMes;
+  financiero: ResumenFinanciero;
 }
 
 /**
@@ -89,13 +86,20 @@ export interface ResumenOperativo {
  * movimiento, mismo criterio que calcularStockActual_ en Apps Script), a
  * diferencia de Stock Consolidado que hace LEFT JOIN contra todo el
  * catálogo — acá interesa "qué se está moviendo", no la foto completa.
+ *
+ * El financiero usa el rango recibido; sin uno explícito cae al default del selector (últimos 30 días) para que `financiero`
+ * nunca quede vacío por casualidad de calendario (ver rango-por-defecto.ts).
  */
-export async function obtenerResumenOperativo(sucursalId: string, db: Db = prisma): Promise<ResumenOperativo> {
+export async function obtenerResumenOperativo(sucursalId: string, db: Db = prisma, rango?: { desde: Date; hasta: Date }): Promise<ResumenOperativo> {
+  const { desde: desdeFinanciero, hasta: hastaFinanciero } = rango ?? (() => {
+    const r = resolverRangoPorDefecto(undefined);
+    return { desde: new Date(r.desdeISO), hasta: new Date(r.hastaISO) };
+  })();
   const [saldos, movimientosPorProceso, alertas, financiero] = await Promise.all([
     db.movimientoStock.groupBy({ by: ["productoId", "seccionId"], where: { seccion: { sucursalId } }, _sum: { cantidad: true } }),
     db.movimientoStock.groupBy({ by: ["proceso"], where: { seccion: { sucursalId } }, _count: { _all: true } }),
     obtenerResumenAlertasStock(sucursalId, db),
-    obtenerResumenFinancieroMesActual(sucursalId, db),
+    obtenerResumenFinancieroDelRango(sucursalId, desdeFinanciero, hastaFinanciero, db),
   ]);
 
   const productoIds = Array.from(new Set(saldos.map((s) => s.productoId)));
