@@ -52,9 +52,15 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
       f.recetasQueLoUsan.length > 0 ? (
         <div className="flex flex-col gap-0.5">
           {f.recetasQueLoUsan.map((r) => (
-            <EnlaceInterno key={r.productoVentaId} href={`/catalogo/recetas/${r.productoVentaId}?editar=${f.productoId}`} className="underline">
-              {r.productoVentaNombre} (merma {r.mermaPorcentajeActual}%)
-            </EnlaceInterno>
+            <span key={r.productoVentaId}>
+              <EnlaceInterno href={`/catalogo/recetas/${r.productoVentaId}?editar=${f.productoId}`} className="underline">
+                {r.productoVentaNombre} (merma {r.mermaPorcentajeActual}%)
+              </EnlaceInterno>{" "}
+              ·{" "}
+              <EnlaceInterno href={`/reportes/rendimiento-recetas?productoId=${r.productoVentaId}`} className="text-xs underline">
+                ver rendimiento
+              </EnlaceInterno>
+            </span>
           ))}
           {f.sugerenciaMerma && (
             <span className={f.sugerenciaMerma === "aumentar" ? "text-xs font-medium text-red-600" : "text-xs font-medium text-amber-700 dark:text-amber-600"}>
