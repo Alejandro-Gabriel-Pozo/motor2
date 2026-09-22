@@ -130,13 +130,21 @@ Entrar como `alepogabriel@gmail.com` (el login de Google real pide esa cuenta) y
 con el selector del encabezado. **No dejar el `.env` apuntando a `motor2_demo` por error** — al terminar, confirmar
 que `DATABASE_URL` vuelve a `motor2_dev` antes de seguir desarrollando.
 
-## 8. Neon (pendiente — requiere autorización expresa, paso a paso)
+## 8. Neon — HECHO (2026-09-22)
 
-**Todavía no implementado.** Por diseño (§5 del plan), el seed NUNCA corre contra Neon — a Neon llega un dump YA
-VERIFICADO (pasos 4-6 en verde), aplicado a una rama NUEVA creada desde `main` (para heredar las migraciones con
-sus checksums), nunca sembrando sobre la rama viva. Cada escritura en Neon (crear rama, restaurar el dump, cambiar
-la variable de entorno de Vercel que apunta a la demo) necesita confirmación expresa del usuario, igual que las
-migraciones que ya se aplicaron esta sesión — no correr nada de esto sin pedirlo primero.
+Por diseño (§5 del plan), el seed NUNCA corrió contra Neon directo — a Neon llegó un dump YA VERIFICADO (pasos 4-6
+en verde), aplicado a una rama NUEVA creada desde `main` (para heredar las migraciones con sus checksums), sin
+sembrar sobre la rama viva. Ejecutado con autorización expresa del usuario, paso a paso:
+
+- Rama nueva `demo-la-cuadra-6-meses-2026-09-22` (`br-sweet-term-aff8ggxs`), creada desde `main`.
+- Migración de datos verificada completa y correcta (conteo de filas + integridad de FKs, 0 hallazgos).
+- Cutover de Vercel: `DATABASE_URL`/`DIRECT_URL` de Producción apuntados a la rama nueva (cambio manual del usuario
+  en el dashboard — un cambio de variable de entorno no dispara redeploy solo, así que se forzó uno con un commit
+  vacío vía la integración de git de Vercel). Deployment verificado `READY`.
+
+**Vigencia**: la demo se ancla a `new Date()` al momento de sembrarla (§0) — pasado el plazo de "cada 2 meses
+aproximadamente", hay que repetir el procedimiento completo (recrear localmente, verificar, volver a migrar a una
+rama nueva) para que la ventana de fechas no quede vacía en los reportes.
 
 ## Resumen de comandos (una vez que la base ya existe y solo se quiere re-sembrar desde cero)
 

@@ -273,24 +273,25 @@ Los tres planes de reportes coinciden en que sus mejoras **no se pueden demostra
   - `docs/runbook-demo-6-meses-2026-09-22.md` (nuevo): procedimiento paso a paso para (re)generar la demo — base local dedicada → migraciones + seed base → usuario admin → el ejecutor → invariantes de dominio → el barrido de Playwright → (opcional) mirarla a mano con `next dev` → Neon (marcado explícitamente como PENDIENTE, requiere autorización expresa paso a paso, nunca automatizado). Incluye el resumen de comandos de una corrida completa y una sección de troubleshooting (qué hacer si el ejecutor falla a mitad de camino, si una invariante falla, si el barrido de Playwright encuentra una violación nueva).
   - Referenciado desde §0 ("Vigencia de la demo"), que es quien fija el "cada 2 meses aproximadamente".
   - Sin cambios de código: no aplica verificación de Vitest/Playwright/build (es solo documentación).
+- **Neon — HECHO (2026-09-22), con autorización expresa paso a paso.** Rama nueva `demo-la-cuadra-6-meses-2026-09-22` (`br-sweet-term-aff8ggxs`) creada desde `main`; dump migrado y verificado completo/correcto (conteo de filas + integridad de FKs); cutover de `DATABASE_URL`/`DIRECT_URL` de Vercel Producción a la rama nueva, deployment verificado `READY` (detalle en `docs/runbook-demo-6-meses-2026-09-22.md` §8). **Ya no queda nada pendiente de este plan.**
 
 ## 6. Orden sugerido de implementación
 
 1. **Rendimiento real, el arreglo urgente — HECHO (2026-09-21, commit `74a14ab`, local sin push).** El link "Usar este valor" pide siempre una confirmación explícita, con el porqué a la vista (comprado, vendido, semanas de datos, confianza), en vez de aplicar el valor directo — nunca se oculta, incluso con datos confiables. El mismo contexto viaja hasta el editor de recetas. Sin migración; verificación completa en una misma corrida (Vitest, axe nuevo para esta pantalla, Playwright, `tsc`, lint, build). **No incluye** el resto de la Variante 1 (banda de ruido, `motivoSinEstimacion`, teórico con merma, `PRODUCCION` como entrada): eso sigue pendiente, en §3.
 2. **Selector de rango (§1) — HECHO (2026-09-22).** + **Período y márgenes (§2) — HECHO (2026-09-22).** La decisión 4 de §2 (corregir el denominador del margen nominal) quedó explícitamente sin aplicar, según lo previsto en el plan.
 3. **Historial por producto (§4) — HECHO (2026-09-22, local sin push).** Grounding externo contra ERPNext/Dolibarr/Tandoor Recipes/Grocy (confirma la recomendación con 3 ajustes), 10 decisiones resueltas, plan de 12 pasos y los 12 implementados: "Cómo se compró"/"Cómo se vendió", cartel "Producto de reventa" (saldo suprimido en los 3 lugares donde salía), filtro "Qué mostrar", columna "Origen", "líneas"→"productos" en `/reportes/compras`, rango 90 días con "Todo el historial" explícito, Kardex plegado. Sin migración; verificación completa en una misma corrida (`tsc`, lint, 1192 tests de Vitest, build, 220 specs de Playwright con axe).
-4. **Seed de la demo (§5) — COMPLETO en lo que dependía de una decisión técnica (2026-09-22).** Tramos 1-6: guion + ejecutor + stock mínimo + 12 invariantes de dominio + proyecto Playwright propio (47/47 pantallas, encontró y corrigió 4 bugs reales de accesibilidad) + runbook documentado, corridos y verificados contra Postgres local (`motor2_demo`). Escenarios adicionales (segunda sucursal/traspasos/rol operador/consignación): decidido que NINGUNO (no aportan a la historia de §0). **Solo queda pendiente**: con autorización expresa del usuario, paso a paso, la re-inserción real en Neon (§5 "Neon", nunca automatizada).
-5. **Rendimiento real, Variante 3 (§3)**, solo si se decide adoptar conteos físicos periódicos.
+4. **Seed de la demo (§5) — COMPLETO, incluido Neon (2026-09-22).** Tramos 1-6: guion + ejecutor + stock mínimo + 12 invariantes de dominio + proyecto Playwright propio (47/47 pantallas, encontró y corrigió 4 bugs reales de accesibilidad) + runbook documentado, corridos y verificados contra Postgres local (`motor2_demo`). Escenarios adicionales (segunda sucursal/traspasos/rol operador/consignación): decidido que NINGUNO (no aportan a la historia de §0). Neon (rama nueva + cutover de Vercel) HECHO, con autorización expresa paso a paso — nada pendiente de este plan.
+5. **Rendimiento real, Variante 3 (§3) — HECHO (2026-09-22).** Se decidió adoptar conteos físicos periódicos (decisión 2 de §3) y se implementó el sub-plan S completo (agenda por sucursal × producto, sugerencia automática de clase A, "Próximo conteo" en Diferencias de ajuste).
 
 ## 7. Decisiones que más destraban (resumen)
 
-| Decisión | Dónde | Recomendación |
-|---|---|---|
-| ¿Cuál es el margen "principal" de Período? | §2 | El Real |
-| ¿Rendimiento real es calibrador o medidor de pérdidas? | §3 | A definir; condiciona toda la Variante 3 |
-| ¿Se adoptan conteos físicos periódicos? | §3, §5 | Necesario para la Variante 3 y para que el seed tenga casos con ancla |
-| ¿Quién ve precios y proveedor en el Historial? | §4 | Condicionar a `ver_reportes_dinero`, sin migración |
-| ¿Cómo se recuerda regenerar la demo cada 2 meses? | §0 | A definir: recordatorio de calendario o solo queda anotado acá |
+| Decisión | Dónde | Recomendación | Estado |
+|---|---|---|---|
+| ¿Cuál es el margen "principal" de Período? | §2 | El Real | Resuelto — el Real |
+| ¿Rendimiento real es calibrador o medidor de pérdidas? | §3 | A definir; condiciona toda la Variante 3 | Resuelto (2026-09-22) — calibrador |
+| ¿Se adoptan conteos físicos periódicos? | §3, §5 | Necesario para la Variante 3 y para que el seed tenga casos con ancla | Resuelto (2026-09-22) — sí, implementado |
+| ¿Quién ve precios y proveedor en el Historial? | §4 | Condicionar a `ver_reportes_dinero`, sin migración | Resuelto |
+| ¿Cómo se recuerda regenerar la demo cada 2 meses? | §0 | A definir: recordatorio de calendario o solo queda anotado acá | **Abierta** |
 
 ## 8. Reglas comunes verificadas por los cuatro agentes
 
