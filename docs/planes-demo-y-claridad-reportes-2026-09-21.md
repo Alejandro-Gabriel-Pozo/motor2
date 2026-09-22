@@ -109,13 +109,17 @@ El ítem es **Agua mineral 500 ml** (consume 1 unidad de "Agua caja x12" por ven
 | 2 — Netear con el Kardex | `saldo inicial + compras − saldo final` | **Descartada sola**: en motor2 es casi tautológica (las salidas del Kardex las genera la propia receta); da ≈0 % en casi todo y no informa nada nuevo |
 | 3 — Varianza real entre conteos físicos | El estándar de la industria ("actual vs. theoretical", verificado en ERPNext Stock Balance y en la literatura de restaurantes) | Después, **si el negocio adopta conteos periódicos** |
 
-### Decisiones del dueño (no tomadas)
+### Grounding externo (2026-09-22)
 
-1. ¿Qué es este reporte: un **calibrador de recetas** o un **medidor de pérdidas**? Hoy mezcla los dos.
-2. ¿Se acepta el compromiso de **conteos físicos periódicos** de los insumos que más pesan? Sin eso, la Variante 3 no tiene ancla.
-3. ¿Las filas 1:1/packaging se ocultan del ranking de "revisar receta" o quedan rotuladas?
-4. ¿Ventana por defecto: "mes en curso" o "últimas 8 semanas"? (coordinar con §1: si el selector de rango cambia el default de la pantalla, esta pregunta puede resolverse sola con "últimos 30 días" + acumulación de historia).
-5. ¿Umbral de ámbar relativo a la banda de ruido, en vez de fijo en 10 %?
+`docs/grounding-rendimiento-recetas-decisiones-2026-09-22.md` — investigación contra ERPNext/Dolibarr/Grocy/Tandoor Recipes (+ Odoo y literatura de cycle counting), pedida explícitamente por el dueño para las 5 decisiones de abajo. Hallazgo más importante: **motor2 ya tiene el medidor de pérdidas construido y en producción** (`/reportes/diferencias` + `/reportes/perdidas`, anclado en conteos físicos) — "Rendimiento real de recetas" no debería intentar medir pérdida también, sería duplicar un reporte que ya existe con peores datos (compras en vez de consumo declarado). 3 de las 5 decisiones quedan resueltas por evidencia externa; las otras 2 tienen su mitad técnica resuelta y su mitad operativa/de negocio explícitamente marcada como tal.
+
+### Decisiones del dueño — RESUELTAS (2026-09-22)
+
+1. ¿Qué es este reporte: un calibrador de recetas o un medidor de pérdidas? **Calibrador, y solo calibrador** — los 3 sistemas que modelan producción separan las dos preguntas en reportes distintos, ninguno las mezcla, y el medidor de pérdidas de motor2 ya existe (`/reportes/diferencias` + `/reportes/perdidas`). El título/texto de la pantalla debe decir "¿la receta cargada refleja lo que se usa?" y remitir a esos dos reportes para "¿me falta stock?".
+2. ¿Se acepta el compromiso de conteos físicos periódicos de los insumos que más pesan? **Sí.** Habilita construir la Variante 3 más adelante, y de paso mejora el calibrador ya existente (el grupo "b" de `/reportes/diferencias` pasa a tener una magnitud real detrás de "aumentar/disminuir merma"). Alcance realista: ~10-15 insumos clase A (derivables solos del gasto que ya se calcula, sin que el dueño los declare a mano), contados semanal o quincenalmente.
+3. ¿Las filas 1:1/packaging se ocultan del ranking de "revisar receta" o quedan rotuladas? **Rotular, nunca ocultar** — ningún sistema de referencia infiere la exclusión de los números (o es estructural, o es un flag declarado por un humano). Tres rótulos distintos, todos derivables sin migración: `!seProduce` + receta 1:1 → "Producto de reventa" (§4, decisión 8); insumo del grupo "No comestibles" → "Packaging/no comestible"; insumo que es un PV con `seProduce: true` → NO es trivial, es justo una línea que conviene revisar (hoy se rotula mal, "venta directa").
+4. ¿Ventana por defecto: "mes en curso" o "últimas 8 semanas"? **Ya resuelta en el código** — 30 días, por consistencia con §1 (`resolverRangoDeReporte`, ya implementado). El grounding no aportó nada nuevo; queda un residuo real y distinto (la escala de confianza nunca llega a "alta" con 30 días — problema de rótulo, no de ventana).
+5. ¿Umbral de ámbar relativo a la banda de ruido, en vez de fijo en 10 %? **Umbral fijo (10 %, el estándar — ERPNext usa el mismo número de ejemplo), banda de ruido visible como CONTEXTO de la fila (no como criterio de alerta), y ranking por impacto en $ en vez de por %** (mismo patrón que `periodo.ts`, ya en producción) — esto solo ya disuelve el caso del agua sin necesitar ninguna estadística nueva. **No configurable** — mantiene la regla que el proyecto ya eligió una vez por grounding ("un dueño de pizzería chica no configura umbrales", `periodo.ts:205`); con el ranking por impacto en $, el 10 % fijo deja de ser un problema real.
 
 ### Pasos y verificación
 
