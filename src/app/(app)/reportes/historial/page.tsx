@@ -1,12 +1,13 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/core/reportes/historial-producto";
-import { filtrarEventosKardex, type QueMostrar } from "@/core/reportes/historial-vistas";
+import { filtrarEventosKardex, resumirCompras, type QueMostrar } from "@/core/reportes/historial-vistas";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";
 import { CartelSinStockPropio } from "./cartel-sin-stock-propio";
+import { ComoSeCompro } from "./como-se-compro";
 
 const VALORES_QUE_MOSTRAR: readonly QueMostrar[] = ["todo", "compras", "consumos-ventas", "ajustes-conteos"];
 
@@ -24,6 +25,11 @@ export default async function HistorialProductoPage({
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_operativos");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+
+  // Cableado ANTES de las vistas "Cómo se compró"/"Cómo se vendió" (pasos 8-9) a propósito: así ningún commit intermedio
+  // llega a mostrarle precio a un rol que tiene ver_reportes_operativos pero no ver_reportes_dinero — mismo patrón que ya
+  // usa /reportes/compras (que gatea la pantalla entera; acá se condicionan solo las columnas de dinero, ver grounding §7).
+  const { ver: mostrarDinero } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
 
   const sp = await searchParams;
   const secciones = await listarSeccionesActivas(ctx.sucursalId);
@@ -76,6 +82,7 @@ export default async function HistorialProductoPage({
           ) : (
             <CartelSinStockPropio productoId={historial.productoId} ingredientes={ingredientes ?? []} />
           )}
+          {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(historial.eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} />}
           <TablaHistorialEventos
             filas={filtrarEventosKardex(historial.eventos, queMostrar)}
             nombreExport={`historial-${historial.codigo}`}
