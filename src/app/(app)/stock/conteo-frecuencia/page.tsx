@@ -16,14 +16,14 @@ import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
  * alta/edición + eliminar. `frecuenciaDias = 0` desactiva la agenda sin
  * borrar la fila.
  */
-export default async function ConteoFrecuenciaPage({ searchParams }: { searchParams: Promise<{ editar?: string; sugerido?: string }> }) {
+export default async function ConteoFrecuenciaPage({ searchParams }: { searchParams: Promise<{ editar?: string; sugerido?: string; sugeridoNombre?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar, sugerido } = await searchParams;
+  const { editar, sugerido, sugeridoNombre } = await searchParams;
   const rango = resolverRangoPorDefecto(undefined);
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
@@ -32,7 +32,9 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
   const idsConAgenda = new Set(filas.filter((f) => f.frecuenciaDias > 0).map((f) => f.productoId));
   const sugerenciasSinAgenda = sugerencias.filter((s) => !idsConAgenda.has(s.productoId));
-  const sugeridoElegido = sugerido ? sugerencias.find((s) => s.productoId === sugerido) : undefined;
+  // El link puede venir de la lista de sugerencias de acá abajo, o de "Configurar agenda" en /reportes/diferencias (S6) —
+  // ese segundo caso trae el nombre por query (`sugeridoNombre`) para no tener que ir a buscarlo de nuevo a la base.
+  const sugeridoElegido = sugerido ? (sugerencias.find((s) => s.productoId === sugerido) ?? (sugeridoNombre ? { productoId: sugerido, nombre: sugeridoNombre } : undefined)) : undefined;
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">

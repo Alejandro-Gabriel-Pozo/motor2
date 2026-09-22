@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/anulaciones";
 import { construirIndiceRecetas, construirMapaProductos, redondearCantidad, type Db } from "./comun";
+import { resolverProximoConteo } from "@/core/stock/frecuencia-conteo";
 
 export type EstadoDiferencia = "REVISAR" | "ESPERADO" | "OK";
 
@@ -39,6 +40,16 @@ export interface FilaDiferenciaAjuste {
    * (conviene subir el %); si es positivo, fue MENOR (conviene bajarlo).
    */
   sugerenciaMerma: "aumentar" | "disminuir" | null;
+  /**
+   * Agenda de conteo periódico (sub-plan S, docs/plan-rendimiento-recetas-
+   * 2026-09-22.md §E — decisión 2 de §3). `null` sin agenda
+   * (`FrecuenciaConteoProducto` ausente o `frecuenciaDias` 0) o sin ningún
+   * conteo previo (no hay ancla desde la cual calcular — ver
+   * `resolverProximoConteo`).
+   */
+  proximaFechaConteo: Date | null;
+  /** Agenda activa y sin ningún conteo cumplido todavía, o `hoy` ya pasó `proximaFechaConteo`. */
+  conteoVencido: boolean;
 }
 
 const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1, OK: 2 };
@@ -56,9 +67,11 @@ const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1
  * bugfix documentado ahí), acá siempre estuvieron separados —
  * MovimientoStock.proceso distingue 'AJUSTE' de 'CONTROL' desde el día uno.
  */
-export async function generarReporteDiferenciasAjustes(sucursalId: string, db: Db = prisma): Promise<FilaDiferenciaAjuste[]> {
+export async function generarReporteDiferenciasAjustes(sucursalId: string, db: Db = prisma, hoy: Date = new Date()): Promise<FilaDiferenciaAjuste[]> {
   const productos = await construirMapaProductos(sucursalId, db);
   const { recetaPorProducto, mpsEnRecetas } = await construirIndiceRecetas(db);
+  const frecuencias = await db.frecuenciaConteoProducto.findMany({ where: { sucursalId }, select: { productoId: true, frecuenciaDias: true } });
+  const frecuenciaPorProducto = new Map(frecuencias.map((f) => [f.productoId, f.frecuenciaDias]));
 
   // Índice inverso: por cada insumo (MP), en qué recetas (PV) aparece y con
   // qué merma % vigente — para poder linkear directo a corregirla.
@@ -117,6 +130,8 @@ export async function generarReporteDiferenciasAjustes(sucursalId: string, db: D
     const sugerenciaMerma: FilaDiferenciaAjuste["sugerenciaMerma"] =
       grupo === "b" && netoAjustesYConteos !== 0 ? (netoAjustesYConteos < 0 ? "aumentar" : "disminuir") : null;
 
+    const { proximaFecha, vencido } = resolverProximoConteo({ ultimaFechaConteo: conteo.ultimaFecha, frecuenciaDias: frecuenciaPorProducto.get(info.id) ?? 0, hoy });
+
     filas.push({
       productoId: info.id,
       producto: info.nombre,
@@ -132,6 +147,8 @@ export async function generarReporteDiferenciasAjustes(sucursalId: string, db: D
       estado,
       recetasQueLoUsan: grupo === "b" ? (recetasPorInsumo.get(info.id) ?? []) : [],
       sugerenciaMerma,
+      proximaFechaConteo: proximaFecha,
+      conteoVencido: vencido,
     });
   }
 

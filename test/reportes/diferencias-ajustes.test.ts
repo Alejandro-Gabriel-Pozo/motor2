@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { generarReporteDiferenciasAjustes } from "../../src/core/reportes/diferencias-ajustes";
+import { setFrecuenciaConteo } from "../../src/server/actions/stock/frecuencia-conteo";
 
 describe("generarReporteDiferenciasAjustes", () => {
   let sucursalId: string;
@@ -116,6 +117,53 @@ describe("generarReporteDiferenciasAjustes", () => {
       const fila = filas.find((f) => f.productoId === mp.id)!;
       expect(fila.recetasQueLoUsan).toEqual([]);
       expect(fila.sugerenciaMerma).toBeNull();
+    });
+  });
+
+  describe("proximaFechaConteo / conteoVencido (sub-plan S6 — la agenda de conteo periódico)", () => {
+    it("sin ninguna fila de FrecuenciaConteoProducto, no hay agenda: null, nunca vencido", async () => {
+      const mp = await prisma.producto.create({ data: { codigo: "MP_SIN_AGENDA", nombre: "Sin agenda", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const filas = await generarReporteDiferenciasAjustes(sucursalId);
+      const fila = filas.find((f) => f.productoId === mp.id)!;
+      expect(fila.proximaFechaConteo).toBeNull();
+      expect(fila.conteoVencido).toBe(false);
+    });
+
+    it("con agenda y un conteo previo, calcula la próxima fecha y no está vencido si todavía falta", async () => {
+      const mp = await prisma.producto.create({ data: { codigo: "MP_AGENDA_OK", nombre: "Agenda al día", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      await setFrecuenciaConteo(mp.id, 30);
+      // conteoReal distinto del saldo del sistema (10), para que quede un movimiento CONTROL real — con diferencia 0 no se escribe nada.
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: new Date(), accion: "AJUSTAR" });
+
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
+      const fila = filas.find((f) => f.productoId === mp.id)!;
+      expect(fila.conteoVencido).toBe(false);
+      expect(fila.proximaFechaConteo).not.toBeNull();
+    });
+
+    it("con agenda pero sin ningún conteo previo, está vencido sin fecha calculable", async () => {
+      const mp = await prisma.producto.create({ data: { codigo: "MP_AGENDA_NUNCA", nombre: "Agenda sin conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      await setFrecuenciaConteo(mp.id, 7);
+
+      const filas = await generarReporteDiferenciasAjustes(sucursalId);
+      const fila = filas.find((f) => f.productoId === mp.id)!;
+      expect(fila.conteoVencido).toBe(true);
+      expect(fila.proximaFechaConteo).toBeNull();
+    });
+
+    it("con agenda y un conteo viejo, queda vencido con la fecha calculada en el pasado", async () => {
+      const mp = await prisma.producto.create({ data: { codigo: "MP_AGENDA_VENCIDA", nombre: "Agenda vencida", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      await setFrecuenciaConteo(mp.id, 7);
+      const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      await registrarMovimiento({ proceso: "COMPRA", fecha: hace30Dias, seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: hace30Dias, accion: "AJUSTAR" });
+
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
+      const fila = filas.find((f) => f.productoId === mp.id)!;
+      expect(fila.conteoVencido).toBe(true);
+      expect(fila.proximaFechaConteo).not.toBeNull();
+      expect(fila.proximaFechaConteo!.getTime()).toBeLessThan(Date.now());
     });
   });
 });

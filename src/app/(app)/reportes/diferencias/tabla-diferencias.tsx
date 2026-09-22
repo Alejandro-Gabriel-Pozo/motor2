@@ -9,6 +9,25 @@ const LABEL_ESTADO: Record<string, string> = { REVISAR: "Revisar", ESPERADO: "Es
 const AYUDA_RECETAS =
   "Un Ajuste/Conteo en una MP que solo se consume por receta (nunca es esperable un Ajuste manual real) es una señal para recalibrar la Merma % de la receta, no necesariamente un error a corregir a mano. Neto negativo (se perdió más de lo que la receta preveía): conviene subir la Merma %. Neto positivo (sobró más de lo previsto): conviene bajarla. No es un número exacto — si el insumo aparece en varias recetas, la magnitud no se puede atribuir a una sola sin prorratear.";
 
+const AYUDA_PROXIMO_CONTEO =
+  "Según la agenda configurada en Frecuencia de conteo (sub-plan de conteos físicos periódicos). Sin agenda, esta pantalla no lo marca como pendiente — no es un chequeo de stock (para eso está Stock → Alertas), es higiene de control.";
+
+function celdaProximoConteo(f: FilaDiferenciaAjuste) {
+  if (f.conteoVencido) {
+    return (
+      <span className="font-medium text-red-600">
+        {f.proximaFechaConteo ? `Vencido desde ${f.proximaFechaConteo.toISOString().slice(0, 10)}` : "Nunca se contó (con agenda activa)"}
+      </span>
+    );
+  }
+  if (f.proximaFechaConteo) return <span>{f.proximaFechaConteo.toISOString().slice(0, 10)}</span>;
+  return (
+    <EnlaceInterno href={`/stock/conteo-frecuencia?sugerido=${f.productoId}&sugeridoNombre=${encodeURIComponent(f.producto)}`} className="text-xs text-neutral-500 underline">
+      Sin agenda — configurar
+    </EnlaceInterno>
+  );
+}
+
 const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
   {
     clave: "producto",
@@ -36,6 +55,13 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
     tipoFecha: "dia",
     valor: (f) => (f.ultimaFechaConteo ? f.ultimaFechaConteo.toISOString().slice(0, 10) : ""),
     render: (f) => (f.ultimaFechaConteo ? f.ultimaFechaConteo.toISOString().slice(0, 10) : "—"),
+  },
+  {
+    clave: "proximoConteo",
+    etiqueta: "Próximo conteo",
+    ayuda: AYUDA_PROXIMO_CONTEO,
+    valor: (f) => (f.conteoVencido ? "Vencido" : f.proximaFechaConteo ? f.proximaFechaConteo.toISOString().slice(0, 10) : ""),
+    render: (f) => celdaProximoConteo(f),
   },
   {
     clave: "estado",
