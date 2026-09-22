@@ -15,7 +15,7 @@ La demo no es un banco de pruebas de reportes: es **una herramienta de venta**. 
 5. **Los errores de carga (compra duplicada, venta de más) no son el tema central.** Como mucho, un episodio corto para mostrar que se corrigen y quedan auditados — opcional, a decidir.
 6. **Ningún reporte debe verse "vacío" o "roto" en el estado ordenado.** Los reportes de calidad de catálogo (Huecos, Insumos sin receta, Ventas sin receta) van a estar en cero: conviene que dijeran algo como "Todo en orden: no hay platos sin receta" en vez de una tabla en blanco — **esto es un cambio de la aplicación, no solo de los datos**, y queda como ítem a evaluar (no estaba en el alcance original de los cuatro planes).
 
-**Vigencia de la demo (decidido):** se regenera manualmente cada 2 meses aproximadamente. **Se descartó** una "fecha de referencia" fija en el código (tocaba ~15 archivos y agregaba una pieza a mantener para siempre) a favor de la opción operativamente más simple: sin cambios en la aplicación, con el costo de un recordatorio para no dejarla envejecer. Pendiente: decidir si el recordatorio es un evento de calendario o solo queda anotado en este documento.
+**Vigencia de la demo (decidido):** se regenera manualmente cada 2 meses aproximadamente. **Se descartó** una "fecha de referencia" fija en el código (tocaba ~15 archivos y agregaba una pieza a mantener para siempre) a favor de la opción operativamente más simple: sin cambios en la aplicación, con el costo de un recordatorio para no dejarla envejecer. **El recordatorio queda anotado acá, sin evento de calendario**: cada tanto, al volver a este documento, corresponde revisar hace cuánto se regeneró la demo.
 
 **Rango por defecto de los reportes (decidido):** las cinco pantallas que hoy abren en "mes en curso" (Resumen operativo, Período, Categorías, Promociones, Rendimiento de recetas) pasan a un **selector con "Últimos 30 días" por defecto y "Mes en curso" como segunda opción**, más fecha libre. Detalle en §1.
 
@@ -76,7 +76,7 @@ El ítem es **Agua mineral 500 ml** (consume 1 unidad de "Agua caja x12" por ven
 ### Defectos reales encontrados de paso (con la tabla completa de la demo reconstruida)
 
 1. **`−100 %` en productos que se producen** (no se compran nunca, como la prepizza): el cálculo solo mira compras.
-2. **El link "Usar este valor" no tiene ninguna guarda de plausibilidad.** Propondría 0,317 kg de ajo por pizza (la receta dice 0,01) o 0 prepizzas por pizza. **Es el hallazgo más urgente de arreglar de los cuatro planes**, por el riesgo de que alguien lo clickee.
+2. **El link "Usar este valor" no tiene ninguna guarda de plausibilidad.** Propondría 0,317 kg de ajo por pizza (la receta dice 0,01) o 0 prepizzas por pizza. **Es el hallazgo más urgente de arreglar de los cuatro planes**, por el riesgo de que alguien lo clickee. **Decisión del usuario (2026-09-21): no ocultar ni deshabilitar el link en ningún caso — en cambio, siempre pedir confirmación explícita antes de aplicar el valor**, mostrando el porqué (comprado, vendido, semanas de datos, y la banda de ruido o el motivo cuando corresponda). La confirmación aparece igual cuando el dato es confiable: la diferencia entre un caso confiable y uno dudoso va en lo que dice el aviso, no en si el botón existe. Reemplaza la idea original de "sin 'Usar este valor' cuando hay motivo" (fila 1 de la tabla de variantes, más abajo).
 3. **Compara contra la cantidad neta de receta, no contra la bruta con merma** — toda línea con merma arrastra un sesgo.
 4. **`esTrivial` rotula mal**: una sub-receta producida o una caja de cartón se etiquetan "(venta directa)".
 5. **La confianza "alta" exige ≥8 semanas**, inalcanzable con la ventana por defecto (mes en curso).
@@ -85,7 +85,7 @@ El ítem es **Agua mineral 500 ml** (consume 1 unidad de "Agua caja x12" por ven
 
 | Variante | Qué es | Veredicto |
 |---|---|---|
-| 1 — Mostrar la cuenta, banda de ruido, callarse cuando no se puede opinar | Sin cambiar la fórmula: columnas Comprado/Vendido/Δstock visibles, teórico con merma, `motivoSinEstimacion`, sin "Usar este valor" cuando hay motivo | **Recomendada, hacer ahora** |
+| 1 — Mostrar la cuenta, banda de ruido, callarse cuando no se puede opinar | Sin cambiar la fórmula: columnas Comprado/Vendido/Δstock visibles, teórico con merma, `motivoSinEstimacion`; "Usar este valor" **siempre disponible, con confirmación explícita y el porqué a la vista** (ver decisión del usuario más arriba) | **Recomendada, hacer ahora** |
 | 2 — Netear con el Kardex | `saldo inicial + compras − saldo final` | **Descartada sola**: en motor2 es casi tautológica (las salidas del Kardex las genera la propia receta); da ≈0 % en casi todo y no informa nada nuevo |
 | 3 — Varianza real entre conteos físicos | El estándar de la industria ("actual vs. theoretical", verificado en ERPNext Stock Balance y en la literatura de restaurantes) | Después, **si el negocio adopta conteos periódicos** |
 
@@ -169,7 +169,7 @@ Los tres planes de reportes coinciden en que sus mejoras **no se pueden demostra
 
 ## 6. Orden sugerido de implementación
 
-1. **Rendimiento real, el arreglo urgente:** quitar el link "Usar este valor" cuando no hay entradas suficientes o el desvío es puro ruido de lote (evita proponer 0,317 kg de ajo por pizza). Es chico y no depende de nada más.
+1. **Rendimiento real, el arreglo urgente:** el link "Usar este valor" pasa a pedir siempre una confirmación explícita, con el porqué a la vista (comprado, vendido, semanas de datos, banda de ruido o motivo), en vez de aplicar el valor directo — nunca se oculta, incluso con datos confiables (evita que alguien acepte sin querer 0,317 kg de ajo por pizza, o 0 prepizzas por pizza, sin verlo venir). Es chico y no depende de nada más.
 2. **Selector de rango (§1) + Período y márgenes (§2)**, juntos: tocan los mismos archivos y ninguno depende del seed.
 3. **Seed de la demo (§5)**, con el guion de 6 meses de §0: es lo que hace falta para poder verificar con datos creíbles los otros dos planes, y hay que tenerlo listo antes de que la demo actual termine de envejecer.
 4. **Historial por producto (§4)**, que se apoya en los datos nuevos del seed.
