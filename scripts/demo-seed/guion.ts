@@ -15,6 +15,8 @@ export interface ItemCompra {
   productoCodigo: string;
   cantidad: number;
   precioUnitario: number;
+  /** Vence este lote (ej. una compra grande de oportunidad que después queda parte sin consumir) — reporte de vencimientos, §0 regla 4. */
+  loteVencimiento?: Date;
 }
 export interface EventoCompra {
   tipo: "COMPRA";
@@ -60,7 +62,13 @@ export interface EventoConteoFisico {
   diaSemana: number;
   seccion: Seccion;
   productoCodigo: string;
-  conteoReal: number;
+  /**
+   * Diferencia contra el saldo del sistema EN ESE MOMENTO (negativo = faltante, positivo = sobrante) — NO un valor absoluto: el
+   * guion es puro y no simula el saldo acumulado del Kardex (eso lo hace de verdad Postgres, corriendo cada evento anterior). El
+   * ejecutor lee el saldo real al llegar a este evento y calcula `conteoReal = saldoActual + ajusteRelativo` antes de llamar a
+   * `registrarConteoFisico` — mismo patrón que ya usaba el seed de 30 días (`saldoActual - 1.4`), generalizado acá.
+   */
+  ajusteRelativo: number;
   accion: "AJUSTAR" | "FALTA_MOVIMIENTO" | "DESCARTAR";
   detalle?: string;
 }
@@ -75,6 +83,22 @@ export interface EventoMerma {
   cantidad: number;
   motivo: string;
   detalleLibre?: string;
+}
+
+/**
+ * Da de alta la receta de un producto EN ESE MOMENTO del guion, no en el catálogo inicial — el mecanismo detrás de "recetas
+ * incompletas" del tramo de desorden (§0, docs/planes-demo-y-claridad-reportes-2026-09-21.md): mientras la receta no existe,
+ * una VENTA de ese producto no puede congelar costo (`registrarVenta` necesita la receta para costear al vender), así que
+ * queda con `costoUnitarioVenta: null` — exactamente lo que hace falta para que el margen Real de esas ventas salga
+ * "reconstruido"/"parcial" más adelante. La reconstrucción usa la receta VIGENTE HOY (ver costo-historico.ts), así que basta con
+ * que la receta exista para cuando se genera el reporte — no hace falta que existiera el día de la venta.
+ */
+export interface EventoCrearReceta {
+  tipo: "CREAR_RECETA";
+  ref: string;
+  semana: number;
+  diaSemana: number;
+  productoCodigo: string;
 }
 
 export interface EventoAnularCompra {
@@ -97,7 +121,7 @@ export interface EventoCorregirCompra {
   nroFactura?: string;
 }
 
-export type EventoDemo = EventoCompra | EventoVenta | EventoProduccion | EventoConteoFisico | EventoMerma | EventoAnularCompra | EventoCorregirCompra;
+export type EventoDemo = EventoCompra | EventoVenta | EventoProduccion | EventoConteoFisico | EventoMerma | EventoCrearReceta | EventoAnularCompra | EventoCorregirCompra;
 
 export interface GuionDemo {
   eventos: EventoDemo[];

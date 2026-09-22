@@ -57,6 +57,11 @@ export const PRODUCTOS: DatoProducto[] = [
   { codigo: "PV027", nombre: "Pizza Vegetariana grande", tipo: "PV", categoria: "Cocina", unidadCompra: "UN", unidadStock: "UN", factorConversion: 1, activo: true, observaciones: "Se arma al vender", precioVenta: 11200, seProduce: false },
   { codigo: "PV099", nombre: "Pizza Rúcula y jamón crudo", tipo: "PV", categoria: "Cocina", unidadCompra: "UN", unidadStock: "UN", factorConversion: 1, activo: false, observaciones: "Fuera de carta a propósito (ejemplo de inactivo)", precioVenta: 0, seProduce: false },
   { codigo: "MP099", nombre: "Harina integral (descontinuada)", tipo: "MP", categoria: "Cocina", unidadCompra: "BOL", unidadStock: "KG", factorConversion: 25, activo: false, observaciones: "MP fuera de uso (ejemplo de inactivo)", precioVenta: 0, seProduce: false },
+  // Agregado manualmente (no viene del xlsx), mismo criterio que MP011B: falta un caso donde un PV "se produce" — el
+  // resto de la carta "se arma al vender" (sin stock propio significativo, ver docstring de obtenerResumenOperativo).
+  // Horneada por bandeja de antemano y vendida por porción: acá el saldo del PV SÍ es información real (§5, docs/planes-
+  // demo-y-claridad-reportes-2026-09-21.md).
+  { codigo: "PV030", nombre: "Pizza al corte (porción)", tipo: "PV", categoria: "Cocina", unidadCompra: "UN", unidadStock: "UN", factorConversion: 1, activo: true, observaciones: "Se produce por bandeja horneada de antemano (12 porciones); se vende por porción — a diferencia del resto de la carta, no se arma al momento.", precioVenta: 3800, seProduce: true },
 ];
 
 export interface DatoPrecioProveedor { productoCodigo: string; proveedorCodigo: string; precioUnitarioCompra: number; unidadCompra: string; precioPorUnidadStock: number; }
@@ -185,5 +190,12 @@ export const RECETAS: DatoReceta[] = [
   ] },
   { productoCodigo: "PV011", ingredientes: [
     { insumoCodigo: "MX005", cantidad: 1, unidad: "UN", mermaPorcentaje: 0, observaciones: "1 unidad de stock por venta" },
+  ] },
+  // PV030 (agregado manual, ver PRODUCTOS): a diferencia del resto, esta receta se consume al PRODUCIR (la bandeja), no al
+  // vender — la venta solo descuenta el stock propio del PV, ya horneado.
+  { productoCodigo: "PV030", ingredientes: [
+    { insumoCodigo: "MPZ01", cantidad: 0.125, unidad: "UN", mermaPorcentaje: 0, observaciones: "1/8 de una prepizza grande por porción" },
+    { insumoCodigo: "MP005", cantidad: 0.05, unidad: "KG", mermaPorcentaje: 5, observaciones: undefined },
+    { insumoCodigo: "MP006", cantidad: 0.06, unidad: "KG", mermaPorcentaje: 5, observaciones: undefined },
   ] },
 ];
