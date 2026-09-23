@@ -48,7 +48,7 @@
 
 ## 6. Limpieza de git pendiente
 
-- Borrar `origin/fix/csv-export-formulas` y `origin/fix/editar-producto-key`: confirmadas obsoletas (la primera ya está 100% contenida en `main`; la segunda es anterior a casi todo el trabajo actual y su merge haría retroceder `main`). El intento de borrado con `git push origin --delete` fue bloqueado por el clasificador de modo automático de Claude Code (regla "Git Destructive"); hace falta aprobar ese permiso o borrarlas a mano en GitHub.
+- ~~Borrar `origin/fix/csv-export-formulas` y `origin/fix/editar-producto-key`~~ **Resuelto (2026-09-22).** `fix/editar-producto-key` ya no existía en el remoto (borrada en algún momento anterior, sin documentarlo). `fix/csv-export-formulas` se reconfirmó 100% contenida en `main` (`git merge-base --is-ancestor`) y se borró con autorización expresa del usuario (`git push origin --delete`). Nada pendiente de este ítem — la limpieza de las 37 ramas LOCALES ya mergeadas (`docs/p2109.md` §2) es un ítem aparte, sin pedir todavía.
 
 ## 7. Hallazgos nuevos de implementar Plan 3 (reordenar receta + tope de factura), 2026-09-20
 
