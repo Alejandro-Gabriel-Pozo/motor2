@@ -25,6 +25,10 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "unidades", descripcion: "Administrar el catálogo de Unidades de medida", rolesEditarSemilla: ["admin"] },
   { clave: "proveedores", descripcion: "Administrar el catálogo de Proveedores (activar/desactivar)", rolesEditarSemilla: ["admin"] },
   { clave: "categorias", descripcion: "Administrar el catálogo de Categorías", rolesEditarSemilla: ["admin"] },
+  // Nueva (hallazgo real, 2026-09-23: el dueño marcó que los motivos de Consumo/Merma vienen hardcodeados en un enum fijo
+  // — sin forma de agregar uno nuevo sin tocar código). Una sola clave para los dos catálogos (mismo criterio que ya fijó
+  // el dueño el 2026-09-19 para los reportes: "~5 claves y no una por reporte").
+  { clave: "motivos_movimiento", descripcion: "Administrar los catálogos de Motivos de merma y Destinos de consumo", rolesEditarSemilla: ["admin"] },
   { clave: "stock_minimo", descripcion: "Fijar Stock Mínimo (global o por sección)", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, porción Stock):
   // calcularStockConsolidado_/calcularStockPorFamilia_/calcularAlertasStock_
