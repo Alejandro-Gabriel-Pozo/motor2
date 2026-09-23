@@ -46,6 +46,8 @@ testAutenticado(
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-MP-${marca}`, nombre: `E2E Harina A11y ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
     const combo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PV-${marca}`, nombre: `E2E Combo A11y ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
+    // buscarProductoParaPromocion filtra whereDisponibleEn(sucursalId) (P11) — sin esto no aparece como candidato y el formulario no dibuja ningún checkbox.
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: combo.id, disponible: true } });
     await prisma.recetaVersion.create({ data: { productoId: combo.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidad.id }] } } });
     await prisma.sucursal.update({ where: { id: sucursalId }, data: { promocionesHabilitadas: true } });
     await prisma.promocionProducto.create({ data: { sucursalId, productoId: combo.id, activa: true } });
@@ -175,11 +177,13 @@ testAutenticado("movimientos/precio-local: sin violaciones de axe", async ({ pag
   }
 });
 
-testAutenticado("movimientos/precio-local: el selector de producto abierto (con resultados y sin resultados) no tiene violaciones de axe", async ({ paginaAutenticada: page }) => {
+testAutenticado("movimientos/precio-local: el selector de producto abierto (con resultados y sin resultados) no tiene violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = Date.now();
   const nombre = `E2E A11y Selector ${marca}`;
   const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-SEL-${marca}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  // El selector filtra { tipo: "PV", soloDisponibles: true } (precio-local-form.tsx) — sin esto no aparece ninguna opción.
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
   try {
     await page.goto("/movimientos/precio-local");
     await conTitulo(page, /Precio local/);
@@ -198,6 +202,7 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
     await expect(page.getByText("Sin resultados.")).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations, "listbox sin resultados").toEqual([]);
   } finally {
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
@@ -245,10 +250,36 @@ testAutenticado("catalogo/productos: la lista, con la confirmación de «Desacti
     expect((await new AxeBuilder({ page }).analyze()).violations, "mensaje de bloqueo visible").toEqual([]);
   } finally {
     await prisma.recetaVersion.deleteMany({ where: { productoId: plato.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [plato.id, activo.id, inactivo.id] } } });
     await prisma.producto.deleteMany({ where: { id: { in: [plato.id, activo.id, inactivo.id] } } });
     await prisma.insumo.deleteMany({ where: { id: insumo.id } });
   }
 });
+
+testAutenticado(
+  "catalogo/productos/[id]: la tabla nueva «Disponibilidad por sucursal», con 2+ sucursales, sin violaciones de axe (mismo tipo de pantalla que ya dio empty-table-header/contraste en este proyecto)",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const otraSucursal = await prisma.sucursal.create({ data: { nombre: `E2E A11y Norte ${marca}` } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-DISP-${marca}`, nombre: `E2E A11y Disponibilidad ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
+    // Disponible en la propia (fila con botón «Desactivar») y NO disponible en la otra (fila sin ninguna acción, botón ausente para esa sucursal) — las
+    // dos formas de fila que dibuja la tabla nueva.
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+    try {
+      await page.goto(`/catalogo/productos/${producto.id}`);
+      await conTitulo(page, producto.nombre);
+      await expect(page.getByRole("heading", { name: "Disponibilidad por sucursal" })).toBeVisible();
+      await expect(page.getByRole("row", { name: new RegExp(otraSucursal.nombre) })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible(); // solo en la fila de la sucursal activa
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    } finally {
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+      await prisma.sucursal.deleteMany({ where: { id: otraSucursal.id } });
+    }
+  }
+);
 
 testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima, producto de venta y consignación) sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   await page.goto("/catalogo/productos/nuevo");
@@ -404,6 +435,8 @@ testAutenticado(
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-MP-${marca}`, nombre: `E2E A11y Salsa Rendimiento ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-PV-${marca}`, nombre: `E2E A11y Pizza Rendimiento ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    // construirPools (P7) filtra whereDisponibleEn(sucursalId) — sin esto ninguno de los 4 productos de este test aparece en la tabla.
+    await prisma.disponibilidadProducto.createMany({ data: [mp.id, pv.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } } });
     const hoy = new Date();
     const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: hoy, usuarioId: admin.id } });
@@ -414,6 +447,7 @@ testAutenticado(
     // Segundo plato/insumo, SIN compra en la ventana — solo venta: cae en motivoSinEstimacion ("No hubo compras ni producción...") en vez de ocultarse (decisión 3, rotular/explicar, nunca ocultar).
     const mp2 = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-MP2-${marca}`, nombre: `E2E A11y Queso Sin Compra ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const pv2 = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-PV2-${marca}`, nombre: `E2E A11y Muzzarella Sin Compra ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    await prisma.disponibilidadProducto.createMany({ data: [mp2.id, pv2.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
     await prisma.recetaVersion.create({ data: { productoId: pv2.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp2.id, cantidad: 1, unidadId: kg.id }] } } });
     const venta2 = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: hoy, usuarioId: admin.id } });
     await prisma.movimientoStock.create({ data: { operacionId: venta2.id, productoId: pv2.id, seccionId, proceso: "VENTA", cantidad: -5, detalle: "Venta", precioTotal: 500, precioPorUnidadStock: 100 } });
@@ -442,6 +476,7 @@ testAutenticado(
       await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id, mp2.id, pv2.id] } } });
       await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id, venta2.id] } } });
       await prisma.recetaVersion.deleteMany({ where: { productoId: { in: [pv.id, pv2.id] } } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [pv.id, mp.id, pv2.id, mp2.id] } } });
       await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id, pv2.id, mp2.id] } } });
     }
   }

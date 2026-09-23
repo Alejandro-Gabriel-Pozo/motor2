@@ -7,7 +7,7 @@ import { prisma } from "../../src/lib/db";
  * siembra directo en la base (PV + MP + una RecetaVersion con 3 pasos) para
  * no depender de otros specs.
  */
-test("bajar el primer paso reordena la vigente y el historial conserva el orden original de la v1", async ({ paginaAutenticada: page }) => {
+test("bajar el primer paso reordena la vigente y el historial conserva el orden original de la v1", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = Date.now();
   const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
   const mp = await prisma.producto.create({
@@ -16,6 +16,8 @@ test("bajar el primer paso reordena la vigente y el historial conserva el orden 
   const pv = await prisma.producto.create({
     data: { codigo: `E2E-PASO-PV-${marca}`, nombre: `E2E Pizza Pasos ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 },
   });
+  // Reordenar pasos re-guarda la receta → re-valida ingredientes (validarIngredientes, whereDisponibleEnAlguna, P11) — sin esto la MP no califica.
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: mp.id, disponible: true } });
   await prisma.recetaVersion.create({
     data: {
       productoId: pv.id,

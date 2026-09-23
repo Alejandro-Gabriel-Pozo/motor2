@@ -109,6 +109,8 @@ test("si falla la carga de productos del proveedor, se avisa, se vacían las fil
     data: { productoId: producto.id, proveedorId: proveedorA.id, unidadCompraId: unidad.id, precioUnitario: 100, precioPorUnidadStock: 100 },
   });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  // listarProductosDeProveedor filtra whereDisponibleEn(ctx.sucursalId) (P11) — sin esto no aparece como "ya comprado a este proveedor".
+  await prisma.disponibilidadProducto.create({ data: { sucursalId: seccion.sucursalId, productoId: producto.id, disponible: true } });
   const rutaCompra = /\/movimientos\/compra(\?.*)?$/;
   const productoDeLaFila = page.locator('input[placeholder="Código o nombre…"]').first();
   const selectorProveedor = page.locator("select").filter({ has: page.locator("option", { hasText: proveedorA.nombre }) });

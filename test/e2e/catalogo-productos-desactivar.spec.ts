@@ -21,6 +21,7 @@ async function sembrar(marca: number, conReceta: boolean, sucursalId: string) {
     limpiar: async () => {
       await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
       await prisma.registroAuditoria.deleteMany({ where: { entidad: "DisponibilidadProducto", entidadId: { in: [`${sucursalId}:${mp.id}`, `${sucursalId}:${pv.id}`] } } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [pv.id, mp.id] } } });
       await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
       await prisma.insumo.deleteMany({ where: { id: insumo.id } });
     },

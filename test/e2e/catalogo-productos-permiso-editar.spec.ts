@@ -35,13 +35,16 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
   };
 }
 
-async function crearProducto(marca: number) {
+async function crearProducto(marca: number, sucursalId: string) {
   const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
-  return prisma.producto.create({ data: { codigo: `E2E-PE-${marca}`, nombre: `E2E Permiso Editar ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-PE-${marca}`, nombre: `E2E Permiso Editar ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
+  // La columna "Disponible acá"/el botón «Desactivar» (P10) dependen de una fila real, no del activo global — sin esto el producto siempre aparece "No disponible".
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  return producto;
 }
 
 test("un rol que solo VE productos no abre /editar por URL directa: no se dibuja el formulario", async ({ browser, baseURL, sucursalId }) => {
-  const producto = await crearProducto(Date.now());
+  const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
   try {
     await page.goto(`/catalogo/productos/${producto.id}/editar`);
@@ -49,25 +52,27 @@ test("un rol que solo VE productos no abre /editar por URL directa: no se dibuja
     await expect(page.locator('input[name="nombre"]'), "el formulario de edición no tenía que llegar a dibujarse").toHaveCount(0);
   } finally {
     await limpiar();
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
 
 test("un rol CON editar_producto sí abre /editar y ve el formulario con el nombre cargado", async ({ browser, baseURL, sucursalId }) => {
   // Contraespejo del caso anterior: impide «arreglarlo» cerrando la ruta para todos.
-  const producto = await crearProducto(Date.now());
+  const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   try {
     await page.goto(`/catalogo/productos/${producto.id}/editar`);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   } finally {
     await limpiar();
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
 
 test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni en la ficha", async ({ browser, baseURL, sucursalId }) => {
-  const producto = await crearProducto(Date.now());
+  const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
   const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
   try {
@@ -82,13 +87,14 @@ test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni 
     await expect(page.getByRole("button", { name: /^(Des)?[Aa]ctivar$/ }), "«Desactivar» de la ficha no tenía que mostrarse").toHaveCount(0);
   } finally {
     await limpiar();
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
 
 test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y lleva al formulario", async ({ browser, baseURL, sucursalId }) => {
   // Contraespejo: impide «arreglarlo» escondiendo el enlace para todos.
-  const producto = await crearProducto(Date.now());
+  const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
   try {
@@ -103,6 +109,7 @@ test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y llev
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   } finally {
     await limpiar();
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });

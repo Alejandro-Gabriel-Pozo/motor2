@@ -104,6 +104,8 @@ test("con la sesión vencida, el disponible de Reclasificar lleva al login; con 
     data: { codigo: `E2E-RC-${ahora}`, nombre: `E2E Producto Reclasif ${ahora}`, tipo: "MP", unidadStockId: unidad.id, unidadCompraId: unidad.id },
   });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  // El selector filtra { soloDisponibles: true } (reclasificar-form.tsx) — sin esto no aparece ninguna opción.
+  await prisma.disponibilidadProducto.create({ data: { sucursalId: seccion.sucursalId, productoId: producto.id, disponible: true } });
   await page.goto("/stock/reclasificar");
 
   // Vigente: elegir producto y sección origen muestra «Disponible en origen» (sin stock, es 0).

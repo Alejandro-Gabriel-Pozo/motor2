@@ -17,6 +17,7 @@ test("registrar el conteo de varias filas es UNA llamada al servidor, y se regis
   const productos = [];
   for (const codigo of codigos) {
     const producto = await prisma.producto.create({ data: { codigo, nombre: `E2E Conteo ${codigo}`, tipo: "MP", unidadStockId: kg.id } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal.sucursalId, productoId: producto.id, disponible: true } });
     const operacion = await prisma.operacion.create({ data: { sucursalId: sucursal.sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
     await prisma.movimientoStock.create({
       data: { operacionId: operacion.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Stock inicial del test", precioTotal: 0, precioPorUnidadStock: 0 },
@@ -61,6 +62,7 @@ test("una grilla de más de 50 filas se manda en tandas (2 llamadas), y se regis
   for (let i = 0; i < TOTAL; i++) {
     const codigo = `E2E-CG-${String(i).padStart(2, "0")}-${ahora}`;
     const producto = await prisma.producto.create({ data: { codigo, nombre: `E2E Grande ${codigo}`, tipo: "MP", unidadStockId: kg.id } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: seccion.sucursalId, productoId: producto.id, disponible: true } });
     const operacion = await prisma.operacion.create({ data: { sucursalId: seccion.sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
     await prisma.movimientoStock.create({
       data: { operacionId: operacion.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Stock inicial del test", precioTotal: 0, precioPorUnidadStock: 0 },
@@ -91,6 +93,7 @@ test("con la sesión vencida, «Registrar conteo» lleva al login y no escribe n
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const codigo = `E2E-CS-${ahora}`;
   const producto = await prisma.producto.create({ data: { codigo, nombre: `E2E Sesion ${codigo}`, tipo: "MP", unidadStockId: kg.id } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId: seccion.sucursalId, productoId: producto.id, disponible: true } });
   const operacion = await prisma.operacion.create({ data: { sucursalId: seccion.sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
   await prisma.movimientoStock.create({
     data: { operacionId: operacion.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Stock inicial del test", precioTotal: 0, precioPorUnidadStock: 0 },

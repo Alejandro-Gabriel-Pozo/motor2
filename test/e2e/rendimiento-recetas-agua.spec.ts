@@ -28,6 +28,10 @@ test("caso real del Agua: Δ stock, banda de ruido, rótulo 'Producto de reventa
   const aceite = await prisma.producto.create({ data: { codigo: `E2E-ACEITE-MP-${marca}`, nombre: `E2E Aceite caro ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const frito = await prisma.producto.create({ data: { codigo: `E2E-FRITO-PV-${marca}`, nombre: `E2E Papas fritas ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 50 } });
   await prisma.recetaVersion.create({ data: { productoId: frito.id, version: 1, ingredientes: { create: [{ insumoProductoId: aceite.id, cantidad: 1, unidadId: kg.id }] } } });
+  // construirPools (P7) filtra whereDisponibleEn(sucursalId) — sin esto ninguno de los 4 aparece en la tabla.
+  await prisma.disponibilidadProducto.createMany({
+    data: [aguaCaja.id, aguaBotella.id, aceite.id, frito.id].map((productoId) => ({ sucursalId, productoId, disponible: true })),
+  });
 
   const hoy = new Date();
   const compraAgua = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: hoy, usuarioId: admin.id } });
@@ -85,6 +89,7 @@ test("caso real del Agua: Δ stock, banda de ruido, rótulo 'Producto de reventa
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [aguaCaja.id, aguaBotella.id, aceite.id, frito.id] } } });
     await prisma.operacion.deleteMany({ where: { id: { in: [compraAgua.id, ventaAgua.id, compraAceite.id, ventaAceite.id] } } });
     await prisma.recetaVersion.deleteMany({ where: { productoId: { in: [aguaBotella.id, frito.id] } } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [aguaBotella.id, aguaCaja.id, frito.id, aceite.id] } } });
     await prisma.producto.deleteMany({ where: { id: { in: [aguaBotella.id, aguaCaja.id, frito.id, aceite.id] } } });
   }
 });
@@ -98,6 +103,8 @@ test("con merma, «Usar este valor» lleva el estimado NETO en ?sugerido= (no el
   // teórico bruto) → estimado NETO 3 ÷ 1,25 = 2,4. Si el bug volviera (escribir el bruto en la receta neta), sugeriría 3.
   const mp = await prisma.producto.create({ data: { codigo: `E2E-MERMA-MP-${marca}`, nombre: `E2E Papa con Merma ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-MERMA-PV-${marca}`, nombre: `E2E Puré con Merma ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  // construirPools (P7) filtra whereDisponibleEn(sucursalId).
+  await prisma.disponibilidadProducto.createMany({ data: [mp.id, pv.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
   await prisma.recetaVersion.create({
     data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 2, mermaPorcentaje: 25, unidadId: kg.id }] } },
   });
@@ -129,6 +136,7 @@ test("con merma, «Usar este valor» lleva el estimado NETO en ?sugerido= (no el
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
     await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
     await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [pv.id, mp.id] } } });
     await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
   }
 });

@@ -14,6 +14,8 @@ test("pide confirmación con comprado/vendido antes de ir a aplicar el valor sug
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-RR-MP-${marca}`, nombre: `E2E Salsa Rendimiento ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-RR-PV-${marca}`, nombre: `E2E Pizza Rendimiento ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  // construirPools (P7) filtra whereDisponibleEn(sucursalId).
+  await prisma.disponibilidadProducto.createMany({ data: [mp.id, pv.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
   await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } } });
 
   const hoy = new Date();
@@ -61,6 +63,7 @@ test("pide confirmación con comprado/vendido antes de ir a aplicar el valor sug
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
     await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
     await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [pv.id, mp.id] } } });
     await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
   }
 });
