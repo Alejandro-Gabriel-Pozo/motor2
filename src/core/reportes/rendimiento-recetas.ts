@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
 import type { CostoMP, Db } from "./comun";
+import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import {
   bandaDeRuidoDeLote,
@@ -189,10 +190,10 @@ interface Pool {
  * con 2+ usos es el caso compartido (Fase 2) — ambas fases comparten esta
  * construcción, solo cambia qué se hace con cada pool después.
  */
-async function construirPools(db: Db): Promise<Pool[]> {
+async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
   const [productosConReceta, clasificacion] = await Promise.all([
     db.producto.findMany({
-      where: { activo: true, recetaVersiones: { some: {} } },
+      where: { ...whereDisponibleEn(sucursalId), recetaVersiones: { some: {} } },
       include: {
         recetaVersiones: {
           orderBy: { version: "desc" },
@@ -243,7 +244,7 @@ async function construirPools(db: Db): Promise<Pool[]> {
   for (const [clave, productoIds] of productoIdsPorClave) {
     if (!clave.startsWith("insumo:")) continue;
     const insumoId = clave.slice("insumo:".length);
-    const hermanos = await db.producto.findMany({ where: { insumoId, tipo: "MP", activo: true }, select: { id: true } });
+    const hermanos = await db.producto.findMany({ where: { insumoId, tipo: "MP", ...whereDisponibleEn(sucursalId) }, select: { id: true } });
     for (const h of hermanos) productoIds.add(h.id);
   }
 
@@ -272,7 +273,7 @@ export async function calcularRendimientoRecetasSimples(
   db: Db = prisma
 ): Promise<FilaRendimientoSimple[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
-  const [pools, costos] = await Promise.all([construirPools(db), obtenerCostoActualPorMP(sucursalId, db)]);
+  const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
   const filas: FilaRendimientoSimple[] = [];
 
   for (const pool of pools) {
@@ -363,7 +364,7 @@ export async function calcularRendimientoRecetasCompartidas(
   db: Db = prisma
 ): Promise<FilaRendimientoCompartido[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
-  const [pools, costos] = await Promise.all([construirPools(db), obtenerCostoActualPorMP(sucursalId, db)]);
+  const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
   const filas: FilaRendimientoCompartido[] = [];
 
   for (const pool of pools) {

@@ -27,6 +27,7 @@ describe("listarStockParaConteo", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     mpId = (await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } })).id;
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: mpId, disponible: true } });
   });
 
   it("sin ningún movimiento en la sección, da vacío", async () => {

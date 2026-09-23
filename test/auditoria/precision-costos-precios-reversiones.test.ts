@@ -18,7 +18,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
@@ -60,9 +60,9 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
 
   describe("1) Costos acumulados encadenados", () => {
     it("calcularCostosYMargenes: receta con 2 ingredientes de costo/merma fraccionarios da un costoTotal exacto (comparado con aritmética de enteros)", async () => {
-      const harina = await prisma.producto.create({ data: { codigo: "MP_HAR", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-      const manteca = await prisma.producto.create({ data: { codigo: "MP_MAN", nombre: "Manteca", tipo: "MP", unidadStockId: unidadKgId } });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 500 } });
+      const harina = await sembrarProductoDisponible({ codigo: "MP_HAR", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const manteca = await sembrarProductoDisponible({ codigo: "MP_MAN", nombre: "Manteca", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 500 }, sucursalId);
 
       // Compra con precioTotal fraccionario → precioPorUnidadStock también
       // fraccionario (no un número "redondo" a propósito).
@@ -104,8 +104,8 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
     });
 
     it("calcularValuacionInventario: saldo × costoUnitario (precio de la ÚLTIMA compra) da un total exacto con múltiples productos de precio fraccionario", async () => {
-      const p1 = await prisma.producto.create({ data: { codigo: "MP_V1", nombre: "Aceite", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-      const p2 = await prisma.producto.create({ data: { codigo: "MP_V2", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId } });
+      const p1 = await sembrarProductoDisponible({ codigo: "MP_V1", nombre: "Aceite", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const p2 = await sembrarProductoDisponible({ codigo: "MP_V2", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
 
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p1.id, cantidad: 6, precioTotal: 19.17 }] }); // 3.195/kg
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p2.id, cantidad: 11, precioTotal: 40.37 }] }); // 3.670909.../kg
@@ -130,12 +130,12 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
 
   describe("2) Precios con dos decimales y redondearMoneda", () => {
     it("VENTA con cantidad e importe que caen justo en el borde del redondeo (X.XX5): el precioTotal persistido coincide EXACTO con centavos-exactos calculados a mano", async () => {
-      const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_PAN", nombre: "Harina Pan", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_PAN", nombre: "Harina Pan", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       // precioVenta debe respetar Decimal(14,2) — 2 decimales, como
       // cualquier precio real cargado por UI. Elegido junto con la
       // cantidad para que el PRODUCTO caiga exacto en un borde de
       // redondeo: 2.5 × 4.05 = 10.125 (mitad exacta entre 10.12 y 10.13).
-      const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 4.05 } });
+      const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 4.05 }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.2, unidadId: unidadKgId }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
 
@@ -154,8 +154,8 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
     });
 
     it("acumulación de 8 ventas con importes fraccionarios: la SUMA de precioTotal en la base coincide exacto con la suma en centavos calculada a mano", async () => {
-      const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_AC", nombre: "Harina Acum", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_AC", nombre: "Facturas", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 4.37 } });
+      const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_AC", nombre: "Harina Acum", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_AC", nombre: "Facturas", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 4.37 }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.05, unidadId: unidadKgId }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
 
@@ -176,8 +176,8 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
 
   describe("3) Reversiones de cantidades/importes previamente redondeados", () => {
     it("anularVenta: el neto de cantidad e importe entre la venta original y su reversión es EXACTAMENTE cero, no una aproximación", async () => {
-      const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_REV", nombre: "Harina Reversion", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_REV", nombre: "Medialuna", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 3.15 } });
+      const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_REV", nombre: "Harina Reversion", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_REV", nombre: "Medialuna", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 3.15 }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.045, unidadId: unidadKgId, mermaPorcentaje: 7 }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
 
@@ -210,8 +210,8 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       // Unidad con pocos decimales (0) para forzar que el consumo de receta
       // SÍ se redondee de forma no trivial antes de persistir.
       const unidadSinDecimales = await prisma.unidad.create({ data: { nombre: "unidad_entera", magnitud: "CANTIDAD", decimales: 0 } });
-      const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_ENT", nombre: "Huevos", tipo: "MP", unidadStockId: unidadSinDecimales.id } });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_ENT", nombre: "Budín", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 8.9 } });
+      const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_ENT", nombre: "Huevos", tipo: "MP", unidadStockId: unidadSinDecimales.id }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_ENT", nombre: "Budín", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 8.9 }, sucursalId);
       // 0.3 huevos por budín, con merma → consumo por venta se redondea a
       // entero (decimales:0) antes de persistir, un caso ya identificado
       // como de riesgo (redondearACantidadDeUnidad con pocos decimales).

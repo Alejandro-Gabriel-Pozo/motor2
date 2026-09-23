@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
@@ -63,8 +63,8 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
     await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
 
-    harinaId = (await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kgId, insumoId } })).id;
-    panId = (await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kgId, precioVenta: 100 } })).id;
+    harinaId = (await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kgId, insumoId }, sucursalId)).id;
+    panId = (await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kgId, precioVenta: 100 }, sucursalId)).id;
     await prisma.recetaVersion.create({ data: { productoId: panId, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 2, unidadId: kgId }] } } });
   });
 
@@ -152,7 +152,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     });
 
     it("Ventas sin receta: una venta anulada de un plato sin receta ya no figura", async () => {
-      const sinReceta = await prisma.producto.create({ data: { codigo: "PV_SR", nombre: "Plato sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 50 } });
+      const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SR", nombre: "Plato sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 50 }, sucursalId);
       const venta = await registrarVenta({ fecha: d("2026-08-06"), seccionId, ventas: [{ productoId: sinReceta.id, cantidadVendida: 1 }] });
       expect(venta.ok, venta.mensaje).toBe(true);
       expect((await generarReporteVentasSinReceta(sucursalId)).map((f) => f.productoId)).toContain(sinReceta.id);

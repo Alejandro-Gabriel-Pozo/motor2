@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { actualizarCabeceraDeReceta } from "../../src/server/actions/catalogo/recetas";
@@ -36,8 +36,8 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
   });
 
   it("Round-trip: 5 ediciones sucesivas de la CABECERA (que no tocan ingredientes) no hacen derivar cantidad/mermaPorcentaje del ingrediente ni un centésimo", async () => {
-    const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_RT", nombre: "Levadura RT", tipo: "MP", unidadStockId: unidadKgId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_RT", nombre: "Pan RT", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_RT", nombre: "Levadura RT", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_RT", nombre: "Pan RT", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
 
     // cantidad con los 4 decimales que permite el schema (Decimal(14,4)),
     // mermaPorcentaje con los 2 que permite el suyo (Decimal(6,2)) — los
@@ -67,9 +67,9 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
   });
 
   it("Round-trip: el mismo caso pero editando un ingrediente puntual DISTINTO (agregarIngredienteAReceta) — el primero no debe derivar", async () => {
-    const mp1 = await prisma.producto.create({ data: { codigo: "MP_RT2A", nombre: "Sal RT", tipo: "MP", unidadStockId: unidadKgId } });
-    const mp2 = await prisma.producto.create({ data: { codigo: "MP_RT2B", nombre: "Azúcar RT", tipo: "MP", unidadStockId: unidadKgId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_RT2", nombre: "Pan RT2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp1 = await sembrarProductoDisponible({ codigo: "MP_RT2A", nombre: "Sal RT", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const mp2 = await sembrarProductoDisponible({ codigo: "MP_RT2B", nombre: "Azúcar RT", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_RT2", nombre: "Pan RT2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
 
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp1.id, cantidad: 0.0913, unidadId: unidadKgId, mermaPorcentaje: 1.07 }] } },
@@ -88,9 +88,9 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
   describe("resolverConsumoPorFamilia: la suma de las partes repartidas coincide EXACTA con la cantidad pedida", () => {
     it("3 hermanos con saldos fraccionarios que no dividen parejo — pide exactamente el total disponible", async () => {
       const insumoFamilia = await prisma.insumo.create({ data: { nombre: "FamiliaReparto" } });
-      const h1 = await prisma.producto.create({ data: { codigo: "MP_H1", nombre: "Hermano1", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id } });
-      const h2 = await prisma.producto.create({ data: { codigo: "MP_H2", nombre: "Hermano2", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id } });
-      const h3 = await prisma.producto.create({ data: { codigo: "MP_H3", nombre: "Hermano3", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id } });
+      const h1 = await sembrarProductoDisponible({ codigo: "MP_H1", nombre: "Hermano1", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id }, sucursalId);
+      const h2 = await sembrarProductoDisponible({ codigo: "MP_H2", nombre: "Hermano2", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id }, sucursalId);
+      const h3 = await sembrarProductoDisponible({ codigo: "MP_H3", nombre: "Hermano3", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id }, sucursalId);
 
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: h1.id, cantidad: 3.37 }] });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-02"), seccionId, items: [{ productoId: h2.id, cantidad: 2.19 }] });
@@ -123,7 +123,7 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       const saldos = [1.1234, 0.9876, 2.3456, 0.5555, 1.0001];
       const hermanos = [];
       for (let i = 0; i < saldos.length; i++) {
-        const h = await prisma.producto.create({ data: { codigo: `MP_HH${i}`, nombre: `HermanoH${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id } });
+        const h = await sembrarProductoDisponible({ codigo: `MP_HH${i}`, nombre: `HermanoH${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id }, sucursalId);
         await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(`2026-01-0${i + 1}`), seccionId, items: [{ productoId: h.id, cantidad: saldos[i]! }] });
         hermanos.push(h);
       }

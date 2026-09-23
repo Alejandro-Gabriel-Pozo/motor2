@@ -1,4 +1,5 @@
 import "dotenv/config";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../src/lib/db";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 
@@ -44,6 +45,18 @@ export async function limpiarBaseDeTest() {
   await prisma.categoriaProducto.deleteMany();
   await prisma.unidad.deleteMany();
   await prisma.proveedor.deleteMany();
+}
+
+/**
+ * Crea un producto Y su fila `DisponibilidadProducto` (disponible: true) en `sucursalId` — atajo para fixtures que siembran el
+ * catálogo directo con `prisma.producto.create` (docs/plan-disponibilidad-por-sucursal-2026-09-23.md: fila ausente = no
+ * disponible, así que un producto sembrado a mano sin esto queda invisible en selectores/reportes por sucursal). El alta real
+ * de la app (`darDeAltaProducto`) hace esto mismo a través del server action.
+ */
+export async function sembrarProductoDisponible(data: Prisma.ProductoUncheckedCreateInput, sucursalId: string) {
+  const producto = await prisma.producto.create({ data });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  return producto;
 }
 
 /** Fixtures mínimas de Catálogo: unidades kg/g, una categoría y un insumo. */

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -31,8 +31,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("caso simple: un solo PV consume un producto puntual — estima compras/ventas y calcula el desvío", async () => {
-    const panRallado = await prisma.producto.create({ data: { codigo: "MP_PAN", nombre: "Pan rallado", tipo: "MP", unidadStockId: unidadKgId } });
-    const milanesa = await prisma.producto.create({ data: { codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId } });
+    const panRallado = await sembrarProductoDisponible({ codigo: "MP_PAN", nombre: "Pan rallado", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: panRallado.id, cantidad: 0.4, unidadId: unidadKgId }] } },
     });
@@ -51,8 +51,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("rotula 'PRODUCTO_DE_REVENTA' cuando la receta es venta directa 1:1 sin merma (ej. una bebida envasada)", async () => {
-    const casoBebida = await prisma.producto.create({ data: { codigo: "MX_BEBIDA", nombre: "Bebida caja x12", tipo: "MP", unidadStockId: unidadKgId } });
-    const bebida = await prisma.producto.create({ data: { codigo: "PV_BEBIDA", nombre: "Bebida 500ml", tipo: "PV", unidadStockId: unidadKgId } });
+    const casoBebida = await sembrarProductoDisponible({ codigo: "MX_BEBIDA", nombre: "Bebida caja x12", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const bebida = await sembrarProductoDisponible({ codigo: "PV_BEBIDA", nombre: "Bebida 500ml", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: bebida.id, version: 1, ingredientes: { create: [{ insumoProductoId: casoBebida.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
     });
@@ -66,8 +66,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("rotula 'SUBRECETA_PRODUCIDA' cuando el insumo tiene seProduce=true — nunca 'PRODUCTO_DE_REVENTA', aunque la receta sea 1:1", async () => {
-    const salsaBase = await prisma.producto.create({ data: { codigo: "MP_SALSA_ROT", nombre: "Salsa base rótulo", tipo: "MP", unidadStockId: unidadKgId, seProduce: true } });
-    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_ROT", nombre: "Pizza rótulo", tipo: "PV", unidadStockId: unidadKgId } });
+    const salsaBase = await sembrarProductoDisponible({ codigo: "MP_SALSA_ROT", nombre: "Salsa base rótulo", tipo: "MP", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
+    const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA_ROT", nombre: "Pizza rótulo", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: salsaBase.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
     });
@@ -80,8 +80,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   it("rotula 'PACKAGING_NO_COMESTIBLE' cuando el insumo está en el grupo No comestibles", async () => {
     const grupoNoComestibles = await prisma.grupo.create({ data: { nombre: "No comestibles" } });
     const insumoCaja = await prisma.insumo.create({ data: { nombre: "Caja de cartón", grupoId: grupoNoComestibles.id } });
-    const caja = await prisma.producto.create({ data: { codigo: "MP_CAJA_ROT", nombre: "Caja de pizza", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCaja.id } });
-    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_CAJA", nombre: "Pizza con caja", tipo: "PV", unidadStockId: unidadKgId } });
+    const caja = await sembrarProductoDisponible({ codigo: "MP_CAJA_ROT", nombre: "Caja de pizza", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCaja.id }, sucursalId);
+    const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA_CAJA", nombre: "Pizza con caja", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: caja.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
     });
@@ -93,9 +93,9 @@ describe("calcularRendimientoRecetasSimples", () => {
 
   it("agrupa por Insumo: compras de TODOS los hermanos activos, no solo la MP anclada en la receta", async () => {
     const insumoCarne = await prisma.insumo.create({ data: { nombre: "Carne vacuna" } });
-    const nalga = await prisma.producto.create({ data: { codigo: "MP_NALGA", nombre: "Nalga", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id } });
-    const lomo = await prisma.producto.create({ data: { codigo: "MP_LOMO", nombre: "Lomo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id } });
-    const bife = await prisma.producto.create({ data: { codigo: "PV_BIFE", nombre: "Bife", tipo: "PV", unidadStockId: unidadKgId } });
+    const nalga = await sembrarProductoDisponible({ codigo: "MP_NALGA", nombre: "Nalga", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const lomo = await sembrarProductoDisponible({ codigo: "MP_LOMO", nombre: "Lomo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const bife = await sembrarProductoDisponible({ codigo: "PV_BIFE", nombre: "Bife", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     // La receta ancla en nalga — solo nalga tiene una línea de receta.
     await prisma.recetaVersion.create({
       data: { productoId: bife.id, version: 1, ingredientes: { create: [{ insumoProductoId: nalga.id, cantidad: 0.2, unidadId: unidadKgId }] } },
@@ -113,9 +113,9 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("caso compartido (2+ PVs consumen del mismo insumo/producto) se omite — Fase 2 no implementada todavía", async () => {
-    const huevo = await prisma.producto.create({ data: { codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: unidadKgId } });
-    const milanesa = await prisma.producto.create({ data: { codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId } });
-    const pastel = await prisma.producto.create({ data: { codigo: "PV_PASTEL", nombre: "Pastel", tipo: "PV", unidadStockId: unidadKgId } });
+    const huevo = await sembrarProductoDisponible({ codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    const pastel = await sembrarProductoDisponible({ codigo: "PV_PASTEL", nombre: "Pastel", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: huevo.id, cantidad: 0.1, unidadId: unidadKgId }] } },
     });
@@ -131,8 +131,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("sin movimientos en el período — devuelve la línea con estimado null y confianza 'sin_datos'", async () => {
-    const sal = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId } });
-    const papas = await prisma.producto.create({ data: { codigo: "PV_PAPAS", nombre: "Papas fritas", tipo: "PV", unidadStockId: unidadKgId } });
+    const sal = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const papas = await sembrarProductoDisponible({ codigo: "PV_PAPAS", nombre: "Papas fritas", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: papas.id, version: 1, ingredientes: { create: [{ insumoProductoId: sal.id, cantidad: 0.05, unidadId: unidadKgId }] } },
     });
@@ -148,8 +148,8 @@ describe("calcularRendimientoRecetasSimples", () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Sucursal B" } });
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito B");
 
-    const queso = await prisma.producto.create({ data: { codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId } });
-    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId } });
+    const queso = await sembrarProductoDisponible({ codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: queso.id, cantidad: 0.2, unidadId: unidadKgId }] } },
     });
@@ -164,8 +164,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("respeta el rango de fechas — movimientos fuera del rango no cuentan", async () => {
-    const azucar = await prisma.producto.create({ data: { codigo: "MP_AZUCAR", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId } });
-    const torta = await prisma.producto.create({ data: { codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId } });
+    const azucar = await sembrarProductoDisponible({ codigo: "MP_AZUCAR", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const torta = await sembrarProductoDisponible({ codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: torta.id, version: 1, ingredientes: { create: [{ insumoProductoId: azucar.id, cantidad: 0.3, unidadId: unidadKgId }] } },
     });
@@ -180,8 +180,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   // --- P2 del plan (docs/plan-rendimiento-recetas-2026-09-22.md): teórico con merma + estimado neto + motivoSinEstimacion. ---
 
   it("con merma: el desvío se calcula contra la receta CON merma, y cantidadEstimada viaja en NETO (no en bruto)", async () => {
-    const harina = await prisma.producto.create({ data: { codigo: "MP_HARINA_M", nombre: "Harina con merma", tipo: "MP", unidadStockId: unidadKgId } });
-    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_M", nombre: "Pizza con merma", tipo: "PV", unidadStockId: unidadKgId } });
+    const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA_M", nombre: "Harina con merma", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA_M", nombre: "Pizza con merma", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 1, mermaPorcentaje: 20, unidadId: unidadKgId }] } },
     });
@@ -198,8 +198,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("sin compras pero CON ventas: motivoSinEstimacion explica en vez de dar -100% (antes de que PRODUCCION cuente en P3)", async () => {
-    const sal = await prisma.producto.create({ data: { codigo: "MP_SAL_2", nombre: "Sal sin comprar", tipo: "MP", unidadStockId: unidadKgId } });
-    const papas = await prisma.producto.create({ data: { codigo: "PV_PAPAS_2", nombre: "Papas sin compra", tipo: "PV", unidadStockId: unidadKgId } });
+    const sal = await sembrarProductoDisponible({ codigo: "MP_SAL_2", nombre: "Sal sin comprar", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const papas = await sembrarProductoDisponible({ codigo: "PV_PAPAS_2", nombre: "Papas sin compra", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: papas.id, version: 1, ingredientes: { create: [{ insumoProductoId: sal.id, cantidad: 0.05, unidadId: unidadKgId }] } },
     });
@@ -230,9 +230,9 @@ describe("calcularRendimientoRecetasSimples", () => {
   // --- P3 del plan: PRODUCCION cuenta como entrada (defecto 1 de §3 — antes un insumo producido, nunca comprado, siempre daba -100%). ---
 
   it("un insumo con seProduce=true (sub-receta) entra por PRODUCCION, no por compra — deja de dar -100%/null", async () => {
-    const tomate = await prisma.producto.create({ data: { codigo: "MP_TOMATE", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId } });
-    const salsaBase = await prisma.producto.create({ data: { codigo: "MP_SALSA", nombre: "Salsa base", tipo: "MP", unidadStockId: unidadKgId, seProduce: true } });
-    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA_S", nombre: "Pizza con salsa", tipo: "PV", unidadStockId: unidadKgId } });
+    const tomate = await sembrarProductoDisponible({ codigo: "MP_TOMATE", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const salsaBase = await sembrarProductoDisponible({ codigo: "MP_SALSA", nombre: "Salsa base", tipo: "MP", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
+    const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA_S", nombre: "Pizza con salsa", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: salsaBase.id, version: 1, ingredientes: { create: [{ insumoProductoId: tomate.id, cantidad: 2, unidadId: unidadKgId }] } },
     });
@@ -257,8 +257,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   // --- P4 del plan: Δ de stock — CONTEXTO, nunca entra en ninguna fórmula. ---
 
   it("reproduce el caso real del Agua: 72 comprados, 63 vendidos, el stock del insumo sube 9 dentro de la ventana", async () => {
-    const aguaCaja = await prisma.producto.create({ data: { codigo: "MX_AGUA", nombre: "Agua caja x12", tipo: "MP", unidadStockId: unidadKgId } });
-    const aguaBotella = await prisma.producto.create({ data: { codigo: "PV_AGUA", nombre: "Agua botella", tipo: "PV", unidadStockId: unidadKgId } });
+    const aguaCaja = await sembrarProductoDisponible({ codigo: "MX_AGUA", nombre: "Agua caja x12", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const aguaBotella = await sembrarProductoDisponible({ codigo: "PV_AGUA", nombre: "Agua botella", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: aguaBotella.id, version: 1, ingredientes: { create: [{ insumoProductoId: aguaCaja.id, cantidad: 1, unidadId: unidadKgId }] } },
     });
@@ -275,8 +275,8 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 
   it("una compra anulada no mueve los saldos: el contra-asiento (AJUSTE) cancela el efecto de la compra original en el Δ de stock", async () => {
-    const harina = await prisma.producto.create({ data: { codigo: "MP_HARINA_AN", nombre: "Harina anulable", tipo: "MP", unidadStockId: unidadKgId } });
-    const pan = await prisma.producto.create({ data: { codigo: "PV_PAN_AN", nombre: "Pan anulable", tipo: "PV", unidadStockId: unidadKgId } });
+    const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA_AN", nombre: "Harina anulable", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const pan = await sembrarProductoDisponible({ codigo: "PV_PAN_AN", nombre: "Pan anulable", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 0.4, unidadId: unidadKgId }] } },
     });
@@ -299,15 +299,15 @@ describe("calcularRendimientoRecetasSimples", () => {
   // --- P6 del plan: impacto en $ + orden del ranking (decisión 5 de §3 — no por %). ---
 
   it("ordena por impacto en $: un desvío grande CON costo conocido va antes que uno SIN costo conocido, aunque el % sea menor", async () => {
-    const insumoA = await prisma.producto.create({ data: { codigo: "MP_IMPACTO_A", nombre: "Insumo con impacto", tipo: "MP", unidadStockId: unidadKgId } });
-    const platoA = await prisma.producto.create({ data: { codigo: "PV_IMPACTO_A", nombre: "Plato con impacto", tipo: "PV", unidadStockId: unidadKgId } });
+    const insumoA = await sembrarProductoDisponible({ codigo: "MP_IMPACTO_A", nombre: "Insumo con impacto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const platoA = await sembrarProductoDisponible({ codigo: "PV_IMPACTO_A", nombre: "Plato con impacto", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: platoA.id, version: 1, ingredientes: { create: [{ insumoProductoId: insumoA.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: insumoA.id, cantidad: 20, precioTotal: 100 }] }); // $5/unidad
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: platoA.id, cantidadVendida: 10 }] });
     // desvío 100% (20 comprado / 10 vendido vs. receta 1); impacto = (20 - 1*10) * 5 = $50.
 
-    const insumoB = await prisma.producto.create({ data: { codigo: "MP_IMPACTO_B", nombre: "Insumo sin costo", tipo: "MP", unidadStockId: unidadKgId } });
-    const platoB = await prisma.producto.create({ data: { codigo: "PV_IMPACTO_B", nombre: "Plato sin costo", tipo: "PV", unidadStockId: unidadKgId } });
+    const insumoB = await sembrarProductoDisponible({ codigo: "MP_IMPACTO_B", nombre: "Insumo sin costo", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const platoB = await sembrarProductoDisponible({ codigo: "PV_IMPACTO_B", nombre: "Plato sin costo", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: platoB.id, version: 1, ingredientes: { create: [{ insumoProductoId: insumoB.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: insumoB.id, cantidad: 11 }] }); // sin precio — nunca se inventa un costo
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: platoB.id, cantidadVendida: 10 }] });
@@ -346,10 +346,10 @@ describe("calcularRendimientoRecetasCompartidas", () => {
   /** Arma un pool nalga/lomo (mismo Insumo) usado por Milanesa (ancla=nalga) y Bife (ancla=lomo). */
   async function armarPoolCompartido() {
     const insumoCarne = await prisma.insumo.create({ data: { nombre: "Carne vacuna" } });
-    const nalga = await prisma.producto.create({ data: { codigo: "MP_NALGA", nombre: "Nalga", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id } });
-    const lomo = await prisma.producto.create({ data: { codigo: "MP_LOMO", nombre: "Lomo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id } });
-    const milanesa = await prisma.producto.create({ data: { codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId } });
-    const bife = await prisma.producto.create({ data: { codigo: "PV_BIFE", nombre: "Bife", tipo: "PV", unidadStockId: unidadKgId } });
+    const nalga = await sembrarProductoDisponible({ codigo: "MP_NALGA", nombre: "Nalga", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const lomo = await sembrarProductoDisponible({ codigo: "MP_LOMO", nombre: "Lomo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    const bife = await sembrarProductoDisponible({ codigo: "PV_BIFE", nombre: "Bife", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: nalga.id, cantidad: 0.1, unidadId: unidadKgId }] } },
     });
@@ -431,8 +431,8 @@ describe("calcularRendimientoRecetasCompartidas", () => {
   });
 
   it("un pool con un solo plato no aparece acá — es el caso simple, no el compartido", async () => {
-    const panRallado = await prisma.producto.create({ data: { codigo: "MP_PAN", nombre: "Pan rallado", tipo: "MP", unidadStockId: unidadKgId } });
-    const milanesa = await prisma.producto.create({ data: { codigo: "PV_MILA_SOLO", nombre: "Milanesa sola", tipo: "PV", unidadStockId: unidadKgId } });
+    const panRallado = await sembrarProductoDisponible({ codigo: "MP_PAN", nombre: "Pan rallado", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA_SOLO", nombre: "Milanesa sola", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: panRallado.id, cantidad: 0.04, unidadId: unidadKgId }] } },
     });
@@ -513,12 +513,12 @@ describe("escenario realista: 6 insumos × 4 platos, superpuestos entre sí", ()
   it("resuelve cada pool de forma independiente, sin que se crucen platos ni insumos no relacionados", async () => {
     const [carne, panRallado, huevo, aceite, lechuga, queso] = await Promise.all(
       ["Carne", "Pan rallado", "Huevo", "Aceite", "Lechuga", "Queso"].map((nombre, i) =>
-        prisma.producto.create({ data: { codigo: `MP_${i}`, nombre, tipo: "MP", unidadStockId: unidadKgId } })
+        sembrarProductoDisponible({ codigo: `MP_${i}`, nombre, tipo: "MP", unidadStockId: unidadKgId }, sucursalId)
       )
     );
     const [milanesa, bife, pollo, ensalada] = await Promise.all(
       ["Milanesa", "Bife", "Pollo", "Ensalada"].map((nombre, i) =>
-        prisma.producto.create({ data: { codigo: `PV_${i}`, nombre, tipo: "PV", unidadStockId: unidadKgId } })
+        sembrarProductoDisponible({ codigo: `PV_${i}`, nombre, tipo: "PV", unidadStockId: unidadKgId }, sucursalId)
       )
     );
 

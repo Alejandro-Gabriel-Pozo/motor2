@@ -249,6 +249,9 @@ describe("registrarMovimiento", () => {
     const insumoCompartido = await prisma.insumo.create({ data: { nombre: "Harina compartida" } });
     const mpA = await crearMP("Harina Proveedor A", { insumoId: insumoCompartido.id });
     const mpB = await crearMP("Harina Proveedor B", { insumoId: insumoCompartido.id });
+    // resolverConsumoPorFamilia (P7, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.3) exige que los "hermanos"
+    // estén disponibles EN ESTA SUCURSAL para repartirles consumo — sin esto ninguno calificaría.
+    await prisma.disponibilidadProducto.createMany({ data: [mpA.id, mpB.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
     const pv = await prisma.producto.create({ data: { codigo: "PV_EMPANADA", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true } });
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpA.id, cantidad: 3 }] });

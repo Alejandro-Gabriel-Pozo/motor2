@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { tieneStockReal } from "@/core/movimientos/transiciones";
+import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -48,7 +49,7 @@ const ORDEN_ESTADO: Record<EstadoStockConsolidado, number> = {
  */
 export async function calcularStockConsolidado(sucursalId: string, db: Db = prisma): Promise<FilaStockConsolidado[]> {
   const productos = await db.producto.findMany({
-    where: { activo: true },
+    where: whereDisponibleEn(sucursalId),
     include: { unidadStock: true, insumo: true },
   });
   const elegibles = productos.filter((p) => tieneStockReal(p.tipo, p.seProduce));
@@ -56,7 +57,7 @@ export async function calcularStockConsolidado(sucursalId: string, db: Db = pris
 
   const teorico = await db.movimientoStock.groupBy({
     by: ["productoId", "seccionId", "loteVencimiento"],
-    where: { producto: { activo: true }, seccion: { sucursalId } },
+    where: { producto: whereDisponibleEn(sucursalId), seccion: { sucursalId } },
     _sum: { cantidad: true },
   });
 

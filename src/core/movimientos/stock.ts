@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { redondearACantidadDeUnidad, tieneStockReal } from "./transiciones";
+import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -132,13 +133,17 @@ export async function listarStockParaConteo(seccionId: string, db: Db = prisma):
   if (!conSaldo.length) return [];
 
   const productoIds = Array.from(new Set(conSaldo.map((g) => g.productoId)));
-  const productos = await db.producto.findMany({ where: { id: { in: productoIds } }, include: { unidadStock: true } });
+  const [productos, seccion] = await Promise.all([
+    db.producto.findMany({ where: { id: { in: productoIds } }, include: { unidadStock: true } }),
+    db.seccion.findUniqueOrThrow({ where: { id: seccionId }, select: { sucursalId: true } }),
+  ]);
   const productoPorId = new Map(productos.map((p) => [p.id, p]));
+  const disponibilidad = await disponibilidadDeProductos(seccion.sucursalId, productoIds, db);
 
   const filas: FilaStockParaConteo[] = [];
   for (const g of conSaldo) {
     const p = productoPorId.get(g.productoId);
-    if (!p || !p.activo || !tieneStockReal(p.tipo, p.seProduce)) continue;
+    if (!p || !disponibilidad.get(p.id) || !tieneStockReal(p.tipo, p.seProduce)) continue;
     filas.push({
       productoId: p.id,
       productoCodigo: p.codigo,
@@ -196,11 +201,15 @@ export async function resolverConsumoPorFamilia(
   const producto = await obtenerProducto(productoId);
   if (!producto?.insumoId) return sinReparto();
 
-  const hermanos = await db.producto.findMany({
-    where: { insumoId: producto.insumoId, tipo: "MP", activo: true },
-    select: { id: true },
-  });
-  const hermanoIds = hermanos.map((h) => h.id);
+  // Hermanos disponibles EN LA SUCURSAL de esta sección (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.3) — antes
+  // "activos" a secas podía repartir consumo a una MP que no se usa acá; ahora exige que de verdad esté habilitada en esta
+  // sucursal, no solo en el catálogo central.
+  const [candidatosHermanos, seccion] = await Promise.all([
+    db.producto.findMany({ where: { insumoId: producto.insumoId, tipo: "MP" }, select: { id: true } }),
+    db.seccion.findUniqueOrThrow({ where: { id: seccionId }, select: { sucursalId: true } }),
+  ]);
+  const disponibilidad = await disponibilidadDeProductos(seccion.sucursalId, candidatosHermanos.map((h) => h.id), db);
+  const hermanoIds = candidatosHermanos.filter((h) => disponibilidad.get(h.id)).map((h) => h.id);
   if (!hermanoIds.length) return sinReparto();
 
   const lotes = await db.movimientoStock.groupBy({

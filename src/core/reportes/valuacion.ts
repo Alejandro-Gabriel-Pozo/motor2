@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda, tieneStockReal } from "@/core/movimientos/transiciones";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
+import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 
 export interface FilaValuacionInventario {
   productoId: string;
@@ -35,7 +36,7 @@ export interface ReporteValuacionInventario {
  */
 export async function calcularValuacionInventario(sucursalId: string, db: Db = prisma): Promise<ReporteValuacionInventario> {
   const productos = await db.producto.findMany({
-    where: { activo: true },
+    where: whereDisponibleEn(sucursalId),
     include: { unidadStock: true, insumo: true },
   });
   const elegibles = productos.filter((p) => tieneStockReal(p.tipo, p.seProduce));
@@ -44,7 +45,7 @@ export async function calcularValuacionInventario(sucursalId: string, db: Db = p
   const [saldos, costos] = await Promise.all([
     db.movimientoStock.groupBy({
       by: ["productoId"],
-      where: { producto: { activo: true }, seccion: { sucursalId } },
+      where: { producto: whereDisponibleEn(sucursalId), seccion: { sucursalId } },
       _sum: { cantidad: true },
     }),
     obtenerCostoActualPorMP(sucursalId, db),

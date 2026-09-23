@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
@@ -28,7 +28,7 @@ describe("calcularStockConsolidado", () => {
   });
 
   it("un producto elegible sin ningún movimiento aparece igual, en SIN_MOVIMIENTOS", async () => {
-    await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
 
     const filas = await calcularStockConsolidado(sucursalId);
     const fila = filas.find((f) => f.productoNombre === "Sal");
@@ -38,7 +38,7 @@ describe("calcularStockConsolidado", () => {
   });
 
   it("con movimientos pero sin conteo físico todavía: SIN_CONTEO", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     const filas = await calcularStockConsolidado(sucursalId);
@@ -48,7 +48,7 @@ describe("calcularStockConsolidado", () => {
   });
 
   it("conteo sin diferencia: CONCILIADO; con diferencia: CON_DESVIO", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_3", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_3", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
 
@@ -67,7 +67,7 @@ describe("calcularStockConsolidado", () => {
 
   it("un PV \"Se produce\" vendido de más que lo producido queda NEGATIVO (Venta nunca valida el stock del propio PV, solo el de su receta)", async () => {
     const { registrarVenta } = await import("../../src/server/actions/movimientos/venta");
-    const pv = await prisma.producto.create({ data: { codigo: "PV_3", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, seProduce: true, precioVenta: 10 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_3", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, seProduce: true, precioVenta: 10 }, sucursalId);
     await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 2 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 5 }] });
 
@@ -78,7 +78,7 @@ describe("calcularStockConsolidado", () => {
   });
 
   it("un conteo DESCARTADO no cuenta como último conteo válido", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_5", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_5", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 99, fechaConteo: new Date(), accion: "DESCARTAR" });
 
@@ -89,14 +89,14 @@ describe("calcularStockConsolidado", () => {
   });
 
   it("un PV normal (no \"Se produce\") no aparece en el consolidado", async () => {
-    await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId } });
+    await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
 
     const filas = await calcularStockConsolidado(sucursalId);
     expect(filas.find((f) => f.productoNombre === "Gaseosa")).toBeUndefined();
   });
 
   it("un PV \"Se produce\" SÍ aparece", async () => {
-    await prisma.producto.create({ data: { codigo: "PV_2", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true } });
+    await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
 
     const filas = await calcularStockConsolidado(sucursalId);
     expect(filas.find((f) => f.productoNombre === "Empanada")).toBeDefined();
