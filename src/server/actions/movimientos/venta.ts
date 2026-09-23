@@ -5,6 +5,7 @@ import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
+import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/core/reportes/costos";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -59,6 +60,7 @@ async function armarVentaCalculada(
   item: ItemVentaInput,
   seccionId: string,
   sucursalId: string,
+  sucursalNombre: string,
   tx: Prisma.TransactionClient,
   obtenerProducto: ReturnType<typeof crearCacheProducto>,
   costoUnitarioPorProducto: Map<string, number | null>
@@ -68,7 +70,10 @@ async function armarVentaCalculada(
   if (!esNumeroFinito(cantidad)) return { ok: false, mensaje: "La cantidad vendida no es un número válido." };
 
   const producto = await obtenerProducto(item.productoId);
-  if (!producto || !producto.activo) return { ok: false, mensaje: `El producto no existe o no está activo.` };
+  if (!producto) return { ok: false, mensaje: `El producto no existe.` };
+  if (!(await productoDisponibleEn(sucursalId, producto.id, tx))) {
+    return { ok: false, mensaje: `«${producto.nombre}» no está disponible en «${sucursalNombre}».` };
+  }
   if (producto.tipo !== "PV") {
     return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para venta: solo se puede vender un PV (vinculado por receta a la materia prima que consume).` };
   }
@@ -79,8 +84,11 @@ async function armarVentaCalculada(
     const receta = await tx.recetaVersion.findFirst({ where: { productoId: producto.id }, orderBy: { version: "desc" }, include: { ingredientes: true } });
     for (const ing of receta?.ingredientes ?? []) {
       const mp = await obtenerProducto(ing.insumoProductoId);
-      if (!mp?.activo || mp.tipo !== "MP") {
-        return { ok: false, mensaje: `La materia prima de la receta de "${producto.nombre}" no está marcada como MP activa.` };
+      if (!mp || mp.tipo !== "MP") {
+        return { ok: false, mensaje: `La materia prima de la receta de "${producto.nombre}" no está marcada como MP.` };
+      }
+      if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) {
+        return { ok: false, mensaje: `La receta de «${producto.nombre}» usa «${mp.nombre}», que no está disponible en «${sucursalNombre}»: activala acá o cambiá la receta.` };
       }
       const cantidadSalida = cantidad * Number(ing.cantidad) * (1 + Number(ing.mermaPorcentaje) / 100);
       const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx, obtenerProducto);
@@ -149,7 +157,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       const costoUnitarioPorProducto = new Map(costosDeHoy.map((c) => [c.productoId, c.costoIncompleto ? null : c.costo]));
       const ventas: VentaCalculada[] = [];
       for (const item of datos.ventas) {
-        const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, tx, obtenerProducto, costoUnitarioPorProducto);
+        const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, ctx.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto);
         if (!armado.ok) return error(armado.mensaje);
         if (armado.venta) ventas.push(armado.venta);
       }

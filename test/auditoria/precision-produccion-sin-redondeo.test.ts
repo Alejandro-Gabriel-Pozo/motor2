@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 
@@ -32,8 +32,8 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
 
   it("REGRESIÓN: produce un PV cuya receta consume un insumo de unidad SIN decimales (entera) — el consumo persistido debe redondearse a un entero, no violar la unidad", async () => {
     const unidadEntera = await prisma.unidad.create({ data: { nombre: "unidad_entera_prod", magnitud: "CANTIDAD", decimales: 0 } });
-    const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_HUEVOS", nombre: "Huevos", tipo: "MP", unidadStockId: unidadEntera.id } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_BUDIN", nombre: "Budín", tipo: "PV", unidadStockId: unidadEntera.id, precioVenta: 10, seProduce: true } });
+    const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_HUEVOS", nombre: "Huevos", tipo: "MP", unidadStockId: unidadEntera.id }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_BUDIN", nombre: "Budín", tipo: "PV", unidadStockId: unidadEntera.id, precioVenta: 10, seProduce: true }, sucursalId);
     // cantidadSalida = 7 (producido) × 0.3 × 1.07 = 2.247 — no es entero,
     // pero la unidad del insumo (Huevos) tiene decimales:0.
     await prisma.recetaVersion.create({
@@ -59,8 +59,8 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
 
   it("Contraste: el mismo escenario via VENTA (no PRODUCCIÓN) SÍ redondea correctamente a la unidad del insumo", async () => {
     const unidadEntera = await prisma.unidad.create({ data: { nombre: "unidad_entera_venta", magnitud: "CANTIDAD", decimales: 0 } });
-    const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_HUEVOS_V", nombre: "Huevos V", tipo: "MP", unidadStockId: unidadEntera.id } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_BUDIN_V", nombre: "Budín V", tipo: "PV", unidadStockId: unidadEntera.id, precioVenta: 10 } }); // seProduce: false (default) → consumo vía VENTA
+    const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_HUEVOS_V", nombre: "Huevos V", tipo: "MP", unidadStockId: unidadEntera.id }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_BUDIN_V", nombre: "Budín V", tipo: "PV", unidadStockId: unidadEntera.id, precioVenta: 10 }, sucursalId); // seProduce: false (default) → consumo vía VENTA
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.3, unidadId: unidadEntera.id, mermaPorcentaje: 7 }] } },
     });

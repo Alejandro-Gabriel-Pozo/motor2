@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente, cancelarConteoFisico, obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
@@ -30,7 +30,7 @@ describe("Conteo Físico", () => {
     adminOriginal = { id: admin.id, email: admin.email, nombre: null };
     await mockearUsuarioActual(adminOriginal);
 
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     mpId = mp.id;
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
   });
@@ -144,7 +144,7 @@ describe("Conteo Físico", () => {
 
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito otra sucursal");
-    const otroMp = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const otroAdmin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } })).id });
     await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
     await registrarConteoFisico({ productoId: otroMp.id, seccionId: otraSeccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
@@ -177,7 +177,7 @@ describe("Conteo Físico", () => {
   });
 
   it("obtenerHistorialConteosFisicos filtra por producto y por rango de fechas (hallazgo de la auditoría: existían pero nunca se exponían)", async () => {
-    const otroMp = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: otroMp.id, cantidad: 5 }] });
 
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 3, fechaConteo: new Date(2026, 0, 5), accion: "AJUSTAR" });
@@ -203,7 +203,7 @@ describe("Conteo Físico", () => {
   });
   describe("registrarConteosFisicos (toda la grilla en una llamada)", () => {
     async function crearMpConStock(codigo: string, cantidad: number) {
-      const mp = await prisma.producto.create({ data: { codigo, nombre: `Producto ${codigo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo, nombre: `Producto ${codigo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad }] });
       return mp;
     }

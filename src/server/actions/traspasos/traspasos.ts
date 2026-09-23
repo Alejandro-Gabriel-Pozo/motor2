@@ -6,6 +6,7 @@ import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoTotal, obtenerSeccionPropia, validarStockSuficiente } from "@/core/movimientos/stock";
+import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import type { ContextoUsuario } from "@/core/auth/contexto";
@@ -38,11 +39,30 @@ import { requerirVerEnSucursal } from "../con-sesion";
  * la Bandeja).
  */
 
-async function obtenerProductoTransferible(productoId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
+/**
+ * Producto elegible para traspasar — existe, tiene stock real, y está
+ * disponible en TODAS las sucursales dadas (docs/plan-disponibilidad-por-
+ * sucursal-2026-09-23.md §5.5). Un traspaso tiene origen y destino: si el
+ * destino no lo tiene disponible, el stock aterriza en una sucursal que lo
+ * filtra de su Stock consolidado y su Valuación — stock invisible. Por eso
+ * quien llama pasa las sucursales que corresponda chequear en ese punto del
+ * ciclo (origen+destino al crear, la que corresponda al re-chequear en cada
+ * paso siguiente).
+ */
+async function obtenerProductoTransferible(
+  productoId: string,
+  sucursales: { sucursalId: string; sucursalNombre: string }[],
+  tx: Prisma.TransactionClient | typeof prisma = prisma
+) {
   const producto = await tx.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
-  if (!producto || !producto.activo) return { ok: false as const, mensaje: "El producto no existe o no está activo." };
+  if (!producto) return { ok: false as const, mensaje: "El producto no existe." };
   if (!tieneStockReal(producto.tipo, producto.seProduce)) {
     return { ok: false as const, mensaje: `"${producto.nombre}" no tiene stock real — no se puede transferir.` };
+  }
+  for (const s of sucursales) {
+    if (!(await productoDisponibleEn(s.sucursalId, producto.id, tx))) {
+      return { ok: false as const, mensaje: `«${producto.nombre}» no está disponible en «${s.sucursalNombre}»: activalo allá antes de enviar.` };
+    }
   }
   return { ok: true as const, producto };
 }
@@ -108,7 +128,10 @@ export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso)
     const seccionDestino = await obtenerSeccionPropia(datos.seccionDestinoId, ctx.sucursalId);
     if (!seccionDestino) return error("Elegí a qué sección propia tiene que entrar.");
 
-    const resProducto = await obtenerProductoTransferible(datos.productoId);
+    const resProducto = await obtenerProductoTransferible(datos.productoId, [
+      { sucursalId: origenSucursalId, sucursalNombre: origen.nombre },
+      { sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
+    ]);
     if (!resProducto.ok) return error(resProducto.mensaje);
 
     // Mismo redondeo que crearEnvioDirectoTransferencia (PUSH) — sin esto,
@@ -158,7 +181,10 @@ export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTra
     const seccionOrigen = await obtenerSeccionPropia(datos.seccionOrigenId, ctx.sucursalId);
     if (!seccionOrigen) return error("Elegí de qué sección propia sale.");
 
-    const resProducto = await obtenerProductoTransferible(datos.productoId);
+    const resProducto = await obtenerProductoTransferible(datos.productoId, [
+      { sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
+      { sucursalId: destinoSucursalId, sucursalNombre: destino.nombre },
+    ]);
     if (!resProducto.ok) return error(resProducto.mensaje);
 
     const chequeoStock = await validarStockSuficiente(datos.productoId, seccionOrigen.id, datos.cantidad);
@@ -220,7 +246,15 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
       if (!traspaso) return error("No se encontró ese traspaso.");
       if (traspaso.origenSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como origen.");
       if (traspaso.estado !== "SOLICITADA") return error(`Este traspaso ya está en estado "${traspaso.estado}" — no se puede aprobar de nuevo.`);
-      if (!traspaso.producto.activo) return error(`"${traspaso.producto.nombre}" ya no existe o no está activo.`);
+
+      const destino = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.destinoSucursalId } });
+      // El stock sale de acá recién ahora — re-chequea disponibilidad en origen Y destino (pudo haber cambiado desde la solicitud).
+      const resProducto = await obtenerProductoTransferible(
+        traspaso.productoId,
+        [{ sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre }, { sucursalId: destino.id, sucursalNombre: destino.nombre }],
+        tx
+      );
+      if (!resProducto.ok) return error(resProducto.mensaje);
 
       const cantidad = Number(traspaso.cantidad);
       const disponible = await calcularSaldoTotal(traspaso.productoId, seccionOrigen.id, tx);
@@ -228,7 +262,6 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
         return error(`Stock insuficiente de "${traspaso.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${disponible}, requerido: ${cantidad}.`);
       }
 
-      const destino = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.destinoSucursalId } });
       await escribirMovimientoTraspaso(
         tx, ctx, traspaso.id, "TRANSFERENCIA_SALIDA_SUCURSAL", traspaso.productoId, seccionOrigen.id, -cantidad,
         `Transferencia a sucursal "${destino.nombre}".`
@@ -313,7 +346,9 @@ export async function aceptarTransferencia(id: string, seccionDestinoId: string,
       if (!traspaso) return error("No se encontró ese traspaso.");
       if (traspaso.destinoSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como destino.");
       if (traspaso.estado !== "ENVIADA") return error(`Este traspaso está en estado "${traspaso.estado}" — no se puede aceptar.`);
-      if (!traspaso.producto.activo) return error(`"${traspaso.producto.nombre}" ya no existe o no está activo.`);
+      // El stock entra a ESTA sucursal recién ahora — re-chequea disponibilidad acá (pudo haber cambiado desde el envío).
+      const resProducto = await obtenerProductoTransferible(traspaso.productoId, [{ sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre }], tx);
+      if (!resProducto.ok) return error(resProducto.mensaje);
 
       const cantidad = Number(traspaso.cantidad);
       const origen = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.origenSucursalId } });

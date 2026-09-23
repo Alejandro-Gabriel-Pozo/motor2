@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -41,7 +41,7 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
   });
 
   it("MERMA: un reenvío secuencial del mismo payload crea dos Operaciones y descuenta el doble — sin protección alguna", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_M1", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_M1", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     const payload = { proceso: "MERMA" as const, fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }], motivo: "VENCIDO" as const };
@@ -55,8 +55,8 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
   });
 
   it("PRODUCCIÓN: un reenvío secuencial del mismo payload crea dos Operaciones (y consume el insumo el doble)", async () => {
-    const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_P1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_P1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100, seProduce: true } });
+    const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_P1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_P1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100, seProduce: true }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
 
@@ -72,7 +72,7 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
 
   it("DEVOLUCION_PROVEEDOR: un reenvío secuencial del mismo payload crea dos Operaciones — sin ningún guard, a diferencia de COMPRA que al menos lo intenta", async () => {
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_D1", nombre: "Proveedor D1" } });
-    const mp = await prisma.producto.create({ data: { codigo: "MP_D1", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_D1", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     const payload = { proceso: "DEVOLUCION_PROVEEDOR" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 2 }] };
@@ -86,7 +86,7 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
   });
 
   it("RECLASIFICACION: un reenvío secuencial del mismo payload ejecuta la reclasificación dos veces (mueve el doble de stock)", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_R1", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_R1", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     // reclasificarStock exige que los destinos sumen EXACTO el disponible
@@ -108,8 +108,8 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
   });
 
   it("VENTA: un reenvío secuencial del mismo payload registra dos ventas (y dos consumos de receta) — mismo patrón que CONSUMO", async () => {
-    const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_V1", nombre: "Harina V", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_V1", nombre: "Pan V", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_V1", nombre: "Harina V", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_V1", nombre: "Pan V", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
 

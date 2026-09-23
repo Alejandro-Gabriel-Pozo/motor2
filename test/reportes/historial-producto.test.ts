@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
@@ -26,7 +26,7 @@ describe("obtenerHistorialProducto", () => {
     seccionId = (await sembrarSeccion(sucursalId)).id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
-    mpId = (await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } })).id;
+    mpId = (await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
   });
 
   it("calcula el saldo corriente acumulado y mergea los conteos físicos en la misma línea de tiempo", async () => {
@@ -143,8 +143,8 @@ describe("obtenerHistorialProducto", () => {
   });
 
   it("tieneStockPropio: true para una MP, false para un PV que no se produce, true para un PV que sí se produce", async () => {
-    const pvSinProducir = await prisma.producto.create({ data: { codigo: "PV_REVENTA", nombre: "Agua", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
-    const pvConReceta = await prisma.producto.create({ data: { codigo: "PV_PLATO", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000, seProduce: true } });
+    const pvSinProducir = await sembrarProductoDisponible({ codigo: "PV_REVENTA", nombre: "Agua", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+    const pvConReceta = await sembrarProductoDisponible({ codigo: "PV_PLATO", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000, seProduce: true }, sucursalId);
 
     const historialMp = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
     expect(historialMp?.tieneStockPropio).toBe(true);
@@ -173,8 +173,8 @@ describe("obtenerIngredientesRecetaVigente", () => {
     insumoId = catalogo.insumo.id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
-    mpId = (await prisma.producto.create({ data: { codigo: "MP_AGUA", nombre: "Agua mineral caja x12", tipo: "MP", unidadStockId: unidadKgId, insumoId } })).id;
-    pvId = (await prisma.producto.create({ data: { codigo: "PV_AGUA", nombre: "Agua mineral 500ml", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1500 } })).id;
+    mpId = (await sembrarProductoDisponible({ codigo: "MP_AGUA", nombre: "Agua mineral caja x12", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
+    pvId = (await sembrarProductoDisponible({ codigo: "PV_AGUA", nombre: "Agua mineral 500ml", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1500 }, sucursalId)).id;
   });
 
   it("devuelve los ingredientes de la versión MÁS RECIENTE de la receta", async () => {

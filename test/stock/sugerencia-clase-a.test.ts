@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { sugerirInsumosClaseA } from "../../src/core/stock/sugerencia-clase-a";
@@ -33,9 +33,9 @@ describe("sugerirInsumosClaseA", () => {
   });
 
   it("corta en el 80% acumulado: un insumo caro solo, dos baratos afuera", async () => {
-    const caro = await prisma.producto.create({ data: { codigo: "MP_CARO", nombre: "Carne", tipo: "MP", unidadStockId: unidadKgId } });
-    const barato1 = await prisma.producto.create({ data: { codigo: "MP_B1", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId } });
-    const barato2 = await prisma.producto.create({ data: { codigo: "MP_B2", nombre: "Pimienta", tipo: "MP", unidadStockId: unidadKgId } });
+    const caro = await sembrarProductoDisponible({ codigo: "MP_CARO", nombre: "Carne", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const barato1 = await sembrarProductoDisponible({ codigo: "MP_B1", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const barato2 = await sembrarProductoDisponible({ codigo: "MP_B2", nombre: "Pimienta", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
 
     // 900 + 50 + 50 = 1000 total: Carne sola ya es 90% acumulado → clase A; las otras dos quedan afuera.
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: caro.id, cantidad: 10, precioTotal: 900 }] });
@@ -49,7 +49,7 @@ describe("sugerirInsumosClaseA", () => {
 
   it("con gasto repartido parejo, el corte 80% incluye varios productos", async () => {
     const productos = await Promise.all(
-      Array.from({ length: 5 }, (_, i) => prisma.producto.create({ data: { codigo: `MP_PAR_${i}`, nombre: `Insumo ${i}`, tipo: "MP", unidadStockId: unidadKgId } }))
+      Array.from({ length: 5 }, (_, i) => sembrarProductoDisponible({ codigo: `MP_PAR_${i}`, nombre: `Insumo ${i}`, tipo: "MP", unidadStockId: unidadKgId }, sucursalId))
     );
     // 5 x 200 = 1000: el corte al 80% (800) cae en el 4to producto (200+200+200+200=800, acumulado exactamente 80%).
     for (const p of productos) {
@@ -61,7 +61,7 @@ describe("sugerirInsumosClaseA", () => {
   });
 
   it("ignora compras anuladas y fuera de la ventana elegida", async () => {
-    const insumo = await prisma.producto.create({ data: { codigo: "MP_FUERA", nombre: "Fuera de ventana", tipo: "MP", unidadStockId: unidadKgId } });
+    const insumo = await sembrarProductoDisponible({ codigo: "MP_FUERA", nombre: "Fuera de ventana", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-06-01"), seccionId, items: [{ productoId: insumo.id, cantidad: 10, precioTotal: 500 }] });
     expect(await sugerirInsumosClaseA(sucursalId, desde, hasta)).toEqual([]);
   });

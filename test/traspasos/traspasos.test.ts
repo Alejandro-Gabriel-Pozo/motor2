@@ -56,10 +56,56 @@ describe("Traspasos entre sucursales", () => {
 
   async function crearProductoConStock(codigo: string, cantidad: number) {
     const mp = await prisma.producto.create({ data: { codigo, nombre: codigo, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    // Disponible en AMBAS sucursales por defecto: la mayoría de estos tests ejercitan el traspaso en sí (origen Y destino
+    // ya lo tienen habilitado), no el chequeo nuevo de disponibilidad de §5.5 — ese tiene sus propios tests puntuales.
+    await prisma.disponibilidadProducto.createMany({
+      data: [sucursalAId, sucursalBId].map((sucursalId) => ({ sucursalId, productoId: mp.id, disponible: true })),
+    });
     await comoA();
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad }] });
     return mp;
   }
+
+  it("crearSolicitudTransferencia rechaza si el producto no está disponible en destino (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.5)", async () => {
+    // Disponible solo en A (origen) — falta la fila en B, que es quien pide (destino).
+    const mp = await prisma.producto.create({ data: { codigo: "MP_SOLO_A", nombre: "Solo en A", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursalAId, productoId: mp.id, disponible: true } });
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5, seccionDestinoId: seccionBId });
+    expect(sol.ok).toBe(false);
+    if (sol.ok) return;
+    expect(sol.mensaje).toContain("no está disponible en");
+    expect(await prisma.traspasoSucursal.count()).toBe(0);
+  });
+
+  it("crearEnvioDirectoTransferencia rechaza si el producto no está disponible en destino: el stock no aterriza invisible (§5.5)", async () => {
+    // Disponible solo en A (origen, quien envía) — falta la fila en B (destino).
+    const mp = await prisma.producto.create({ data: { codigo: "MP_SOLO_A2", nombre: "Solo en A 2", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursalAId, productoId: mp.id, disponible: true } });
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 5, seccionOrigenId: seccionAId });
+    expect(envio.ok).toBe(false);
+    if (envio.ok) return;
+    expect(envio.mensaje).toContain("no está disponible en");
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // no se descontó nada
+  });
+
+  it("crearSolicitudTransferencia rechaza si el producto no está disponible en origen", async () => {
+    // Disponible solo en B (destino, quien pide) — falta la fila en A (origen).
+    const mp = await prisma.producto.create({ data: { codigo: "MP_SOLO_B", nombre: "Solo en B", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursalBId, productoId: mp.id, disponible: true } });
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5, seccionDestinoId: seccionBId });
+    expect(sol.ok).toBe(false);
+    if (sol.ok) return;
+    expect(sol.mensaje).toContain("no está disponible en");
+  });
 
   it("crearSolicitudTransferencia redondea la cantidad a los decimales de la unidad, igual que crearEnvioDirectoTransferencia (PUSH)", async () => {
     const mp = await crearProductoConStock("MP_PULL_DEC", 20); // unidadStock = kg, 2 decimales
@@ -98,6 +144,25 @@ describe("Traspasos entre sucursales", () => {
     const aceptar = await aceptarTransferencia(sol.id, seccionBId);
     expect(aceptar.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(5);
+  });
+
+  it("aprobarYEnviarTransferencia re-chequea disponibilidad en destino: si cambió desde la solicitud, no deja salir el stock (§5.5)", async () => {
+    const mp = await crearProductoConStock("MP_PULL_RECHEQUEO", 20);
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5, seccionDestinoId: seccionBId });
+    expect(sol.ok).toBe(true);
+    if (!sol.ok) return;
+
+    // Entre la solicitud y la aprobación, B desactiva el producto en su propia sucursal.
+    await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId: sucursalBId, productoId: mp.id } }, data: { disponible: false } });
+
+    await comoA();
+    const aprobar = await aprobarYEnviarTransferencia(sol.id, seccionAId);
+    expect(aprobar.ok).toBe(false);
+    if (aprobar.ok) return;
+    expect(aprobar.mensaje).toContain("no está disponible en");
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(20); // no se tocó el stock de origen
   });
 
   it("flujo push completo: A envía directo a B (sale YA al crear el envío), B acepta", async () => {

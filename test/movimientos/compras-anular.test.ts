@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
@@ -70,7 +70,7 @@ describe("anularCompra", () => {
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
     operadorId = (await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.operador.id })).id;
     await comoAdmin();
-    harinaId = (await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } })).id;
+    harinaId = (await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
     proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } })).id;
   });
 
@@ -200,7 +200,7 @@ describe("anularCompra", () => {
     it("una operación que no es una Compra no se anula con esta acción", async () => {
       const mp = harinaId;
       await comprar({ cantidad: 20 });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+      const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp, cantidad: 1, unidadId: unidadKgId }] } } });
       expect((await registrarVenta({ fecha: hoy(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] })).ok).toBe(true);
       const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
@@ -331,7 +331,7 @@ describe("anularCompra", () => {
   it("anularVenta no cambió: sigue anulando ventas", async () => {
     // Guardia de regresión: esta fase tocó la marca `anuladaEn` y los reportes, no la anulación de ventas.
     await comprar({ cantidad: 20 });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_PAN2", nombre: "Pan 2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_PAN2", nombre: "Pan 2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarVenta({ fecha: hoy(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -27,9 +27,9 @@ describe("generarReporteVentasSinReceta", () => {
   });
 
   it("detecta el corte: PV sin receta cargada aparece, PV con receta (que sí generó consumo) no", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const conReceta = await prisma.producto.create({ data: { codigo: "PV_CON", nombre: "Con receta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
-    const sinReceta = await prisma.producto.create({ data: { codigo: "PV_SIN", nombre: "Sin receta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const conReceta = await sembrarProductoDisponible({ codigo: "PV_CON", nombre: "Con receta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+    const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SIN", nombre: "Sin receta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: conReceta.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] });

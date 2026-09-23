@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -65,8 +65,8 @@ describe("costo de lo vendido (consumo) del período", () => {
     adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    harinaId = (await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kgId } })).id;
-    panId = (await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kgId, precioVenta: 100 } })).id;
+    harinaId = (await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kgId }, sucursalId)).id;
+    panId = (await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kgId, precioVenta: 100 }, sucursalId)).id;
     await prisma.recetaVersion.create({ data: { productoId: panId, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 2, unidadId: kgId }] } } });
   });
 
@@ -107,7 +107,7 @@ describe("costo de lo vendido (consumo) del período", () => {
   });
 
   it("sin ninguna venta costeable: todo en null, la cobertura en 0 y un aviso que lo explica", async () => {
-    const sinReceta = await prisma.producto.create({ data: { codigo: "PV_SIN_RECETA", nombre: "Plato sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 100 } });
+    const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SIN_RECETA", nombre: "Plato sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 100 }, sucursalId);
     await ventaDirecta(sinReceta.id, "2026-08-06", { cantidad: 1, precioTotal: 100, costoUnitarioVenta: null });
 
     const { margen } = await agosto();
@@ -154,11 +154,11 @@ describe("costo de lo vendido (consumo) del período", () => {
   });
 
   it("el consumo INCLUYE el packaging que está en la receta, mientras el ratio de compras lo excluye (y el aviso lo dice)", async () => {
-    const cajaId = (await prisma.producto.create({ data: { codigo: "MP_CAJA", nombre: "Caja de pizza", tipo: "MP", unidadStockId: kgId } })).id;
+    const cajaId = (await sembrarProductoDisponible({ codigo: "MP_CAJA", nombre: "Caja de pizza", tipo: "MP", unidadStockId: kgId }, sucursalId)).id;
     const noComestibles = await prisma.grupo.create({ data: { nombre: "No comestibles" } });
     const insumoCajas = await prisma.insumo.create({ data: { nombre: "Cajas", grupoId: noComestibles.id } });
     await prisma.producto.update({ where: { id: cajaId }, data: { insumoId: insumoCajas.id } });
-    const pizza = await prisma.producto.create({ data: { codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: kgId, precioVenta: 100 } });
+    const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: kgId, precioVenta: 100 }, sucursalId);
     // 2 kg de harina ($5/kg) + 1 caja ($10): comida $10, packaging $10, costo total $20.
     await prisma.recetaVersion.create({
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 2, unidadId: kgId }, { insumoProductoId: cajaId, cantidad: 1, unidadId: kgId }] } },

@@ -13,6 +13,7 @@ import {
   redondearMoneda,
 } from "@/core/movimientos/transiciones";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
+import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
@@ -109,11 +110,16 @@ async function armarLineaMovimiento(
   item: ItemMovimientoInput,
   datos: DatosMovimientoInput,
   tx: Prisma.TransactionClient,
-  obtenerProducto: ReturnType<typeof crearCacheProducto>
+  obtenerProducto: ReturnType<typeof crearCacheProducto>,
+  sucursalId: string,
+  sucursalNombre: string
 ): Promise<{ ok: true; linea: LineaCalculada | null } | { ok: false; mensaje: string }> {
   const transicion = TRANSICIONES[datos.proceso];
   const producto = await obtenerProducto(item.productoId);
-  if (!producto || !producto.activo) return { ok: false, mensaje: `El producto no existe o está inactivo.` };
+  if (!producto) return { ok: false, mensaje: `El producto no existe.` };
+  if (!(await productoDisponibleEn(sucursalId, producto.id, tx))) {
+    return { ok: false, mensaje: `«${producto.nombre}» no está disponible en «${sucursalNombre}».` };
+  }
 
   if (!productoValidoParaProceso(datos.proceso, producto)) {
     return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para el proceso "${datos.proceso}" (revisá Tipo/"Se produce"/Consignación).` };
@@ -275,7 +281,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
       // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
       const lineas: LineaCalculada[] = [];
       for (const item of datos.items) {
-        const armado = await armarLineaMovimiento(item, datos, tx, obtenerProducto);
+        const armado = await armarLineaMovimiento(item, datos, tx, obtenerProducto, ctx.sucursalId, ctx.sucursalNombre);
         if (!armado.ok) return error(armado.mensaje);
         if (armado.linea) lineas.push(armado.linea);
       }

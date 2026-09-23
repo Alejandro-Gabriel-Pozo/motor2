@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
@@ -29,13 +29,31 @@ describe("registrarVenta", () => {
   });
 
   it("rechaza vender un producto que no es PV (sesión 'eliminar COMPRA+VENTA': ya no existe la venta directa de una MP)", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: mp.id, cantidadVendida: 1 }] });
     expect(resultado.ok).toBe(false);
   });
 
+  it("rechaza vender un PV no disponible en esta sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.4)", async () => {
+    const pv = await prisma.producto.create({ data: { codigo: "PV_OTRA", nombre: "Solo en otra sucursal", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toContain("no está disponible en");
+  });
+
+  it("rechaza vender un PV cuya receta usa una MP no disponible EN ESTA SUCURSAL, con el mensaje por sucursal de §5.4", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_NO_ACA", nombre: "Harina especial", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_ESPECIAL", nombre: "Pan especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId }] } } });
+
+    const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toContain("Harina especial");
+    expect(resultado.mensaje).toContain("no está disponible en");
+  });
+
   it("rechaza un número de factura de más de 60 caracteres, y no crea la Operacion", async () => {
-    const pv = await prisma.producto.create({ data: { codigo: "PV_SIN_RECETA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_SIN_RECETA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     const resultado = await registrarVenta({
       fecha: new Date(), seccionId, nroFactura: "A".repeat(61),
       ventas: [{ productoId: pv.id, cantidadVendida: 1 }],
@@ -45,8 +63,8 @@ describe("registrarVenta", () => {
   });
 
   it("vender un PV con receta consume la MP correspondiente, sin descontar stock del propio PV", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -61,8 +79,8 @@ describe("registrarVenta", () => {
   });
 
   it("un PV \"Se produce\" no vuelve a consumir su receta al venderse (ya se consumió al producir)", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_CARNE", nombre: "Carne", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_EMPANADA", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true, precioVenta: 50 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_CARNE", nombre: "Carne", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_EMPANADA", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -81,10 +99,11 @@ describe("registrarVenta", () => {
 
   it("vender una MP en consignación (vía receta) genera Consumo + Liquidación con importe según precioConsignacion", async () => {
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_C", nombre: "Consignante" } });
-    const mp = await prisma.producto.create({
-      data: { codigo: "MP_VINO", nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, insumoId, esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 30 },
-    });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 80 } });
+    const mp = await sembrarProductoDisponible(
+      { codigo: "MP_VINO", nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, insumoId, esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 30 },
+      sucursalId
+    );
+    const pv = await sembrarProductoDisponible({ codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 80 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.15, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -100,7 +119,7 @@ describe("registrarVenta", () => {
   });
 
   it("Precio Local habilitado pisa el precio global; deshabilitado usa el global", async () => {
-    const pv = await prisma.producto.create({ data: { codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
 
     await setPrecioLocalProducto(pv.id, 120, true);
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
@@ -114,8 +133,8 @@ describe("registrarVenta", () => {
   });
 
   it("rechaza la venta si no alcanza el stock de la MP consumida por receta", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_ESCASA", nombre: "Trufa", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_RISOTTO", nombre: "Risotto", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 500 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_ESCASA", nombre: "Trufa", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_RISOTTO", nombre: "Risotto", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 500 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -146,8 +165,8 @@ describe("anularVenta", () => {
   });
 
   it("revierte el consumo de la MP y el saldo del PV, y marca la venta como anulada", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -169,10 +188,11 @@ describe("anularVenta", () => {
 
   it("revierte también la Liquidación de consignación, neteando el importe a 0", async () => {
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_C", nombre: "Consignante" } });
-    const mp = await prisma.producto.create({
-      data: { codigo: "MP_VINO", nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, insumoId, esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 30 },
-    });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 80 } });
+    const mp = await sembrarProductoDisponible(
+      { codigo: "MP_VINO", nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, insumoId, esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 30 },
+      sucursalId
+    );
+    const pv = await sembrarProductoDisponible({ codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 80 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.15, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -190,8 +210,8 @@ describe("anularVenta", () => {
   });
 
   it("rechaza anular la misma venta dos veces", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -205,7 +225,7 @@ describe("anularVenta", () => {
   });
 
   it("rechaza anular una Operacion que no es Venta", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
     const operacionCompra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
@@ -216,7 +236,7 @@ describe("anularVenta", () => {
   it("nunca anula una venta de otra sucursal, aunque el ID exista de verdad", async () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Sucursal B" } });
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito B");
-    const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const admin = await prisma.user.findFirstOrThrow({ where: { email: "admin@test.com" } });
 
     // Venta real en la OTRA sucursal — armada directo por Prisma (no hay
@@ -238,7 +258,7 @@ describe("anularVenta", () => {
   it("Fase 6 (auditoría de seguridad/contratos): rechaza un seccionId de OTRA sucursal aunque el usuario tenga permiso en la suya", async () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const seccionAjena = await sembrarSeccion(otraSucursal.id);
-    const pv = await prisma.producto.create({ data: { codigo: "PV_AJENO", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_AJENO", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
 
     const resultado = await registrarVenta({ fecha: new Date(), seccionId: seccionAjena.id, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
 

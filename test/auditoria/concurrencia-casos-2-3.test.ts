@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -40,8 +40,8 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
 
   describe("Caso 2: dos VENTAS simultáneas que consumen la misma receta (mismo insumo, stock limitado)", () => {
     it("con stock exacto para UNA sola venta, la otra falla limpio (o el Hallazgo 1 se repite acá también) — nunca ambas tienen éxito", async () => {
-      const mpInsumo = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+      const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
       await prisma.recetaVersion.create({
         data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } },
       });
@@ -73,8 +73,8 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         // iteraciones, resolverConsumoPorFamilia trataría los productos de
         // iteraciones distintas como "hermanos" y podría repartir el
         // consumo entre ellos, contaminando el aislamiento del loop.
-        const mpInsumo = await prisma.producto.create({ data: { codigo: `MP_HARINA2_${intento}`, nombre: `Harina2_${intento}`, tipo: "MP", unidadStockId: unidadKgId } });
-        const pv = await prisma.producto.create({ data: { codigo: `PV_PAN2_${intento}`, nombre: `Pan2_${intento}`, tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+        const mpInsumo = await sembrarProductoDisponible({ codigo: `MP_HARINA2_${intento}`, nombre: `Harina2_${intento}`, tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+        const pv = await sembrarProductoDisponible({ codigo: `PV_PAN2_${intento}`, nombre: `Pan2_${intento}`, tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
         await prisma.recetaVersion.create({
           data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } },
         });
@@ -94,7 +94,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
 
   describe("Caso 3: CONSUMO simultáneo con MERMA / TRANSFERENCIA sobre el mismo producto+sección", () => {
     it("CONSUMO + MERMA simultáneos, stock exacto para uno solo de los dos: el saldo final nunca queda negativo", async () => {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_TOMATE", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_TOMATE", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
       const settled = await Promise.allSettled([
@@ -110,7 +110,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
     });
 
     it("CONSUMO + TRANSFERENCIA (salida) simultáneos, stock exacto para uno solo de los dos: el saldo final nunca queda negativo", async () => {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
       const settled = await Promise.allSettled([

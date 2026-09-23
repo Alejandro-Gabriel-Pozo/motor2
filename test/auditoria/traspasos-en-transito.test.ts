@@ -56,9 +56,14 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   }
 
   async function crearMP(nombre: string) {
-    return prisma.producto.create({
+    const mp = await prisma.producto.create({
       data: { codigo: `MP_${nombre.toUpperCase()}`, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId },
     });
+    // Disponible en AMBAS sucursales — este archivo prueba el ciclo de traspaso en sí, no el chequeo de disponibilidad.
+    await prisma.disponibilidadProducto.createMany({
+      data: [sucursalAId, sucursalBId].map((sucursalId) => ({ sucursalId, productoId: mp.id, disponible: true })),
+    });
+    return mp;
   }
 
   it("Estado 'en tránsito' (ENVIADA): el origen ya bajó su stock, el destino todavía no lo tiene — el stock total del sistema (A+B) es menor durante ese lapso, por diseño (no es un bug)", async () => {

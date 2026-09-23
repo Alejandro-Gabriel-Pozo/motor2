@@ -30,7 +30,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("no se corre un día por timezone: un rango 1-al-5 incluye el 1 y el 5 completos", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     // Fecha límite: primer día del rango, a la mañana temprano en UTC — el
     // bug que se está evitando (Reportes.js:41-48) haría que esto caiga
     // afuera si el límite se calculara con setHours() en vez de setUTCHours().
@@ -45,8 +45,8 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("ventas con Precio Total real se toman tal cual; sin precio se estiman al precio de venta vigente y se marcan 'estimado'", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 100 }] });
 
@@ -70,7 +70,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("compras agrupa por proveedor y suma importe; avisa si alguna se cargó sin precio", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 500 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 5 }] }); // sin precio, MISMO producto: otra compra, no otro producto
@@ -85,8 +85,8 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("compras: cantidadProductos cuenta productos distintos, no renglones — dos renglones del mismo producto en UNA factura no se cuentan dos veces", async () => {
-    const mp1 = await prisma.producto.create({ data: { codigo: "MP_A", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const mp2 = await prisma.producto.create({ data: { codigo: "MP_B", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId } });
+    const mp1 = await sembrarProductoDisponible({ codigo: "MP_A", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const mp2 = await sembrarProductoDisponible({ codigo: "MP_B", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_2", nombre: "Distribuidora" } });
     // Una sola compra (una Operacion) con dos renglones del MISMO producto (dos lotes) + uno de otro producto: 3 renglones, 2 productos distintos, 1 compra.
     await registrarMovimiento({
@@ -110,8 +110,8 @@ describe("obtenerReportePorPeriodo", () => {
   it("gastoPorInsumo agrupa por Insumo/Grupo en vez de por proveedor, distinto de compras.porProveedor", async () => {
     const grupo = await prisma.grupo.create({ data: { nombre: "Secos" } });
     await prisma.insumo.update({ where: { id: insumoId }, data: { grupoId: grupo.id } });
-    const mp1 = await prisma.producto.create({ data: { codigo: "MP_H1", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const mp2 = await prisma.producto.create({ data: { codigo: "MP_H2", nombre: "Harina 0000", tipo: "MP", unidadStockId: unidadKgId, insumoId } }); // mismo Insumo "Harina", producto distinto
+    const mp1 = await sembrarProductoDisponible({ codigo: "MP_H1", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const mp2 = await sembrarProductoDisponible({ codigo: "MP_H2", nombre: "Harina 0000", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId); // mismo Insumo "Harina", producto distinto
     const proveedorA = await prisma.proveedor.create({ data: { codigo: "PRV_A", nombre: "Molino A" } });
     const proveedorB = await prisma.proveedor.create({ data: { codigo: "PRV_B", nombre: "Molino B" } });
 
@@ -136,9 +136,9 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("gastoPorInsumo calcula % y % acumulado (regla 80/20) sobre 2+ insumos, ordenado de mayor a menor gasto", async () => {
-    const mp1 = await prisma.producto.create({ data: { codigo: "MP_H1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp1 = await sembrarProductoDisponible({ codigo: "MP_H1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const insumo2 = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
-    const mp2 = await prisma.producto.create({ data: { codigo: "MP_M1", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumo2.id } });
+    const mp2 = await sembrarProductoDisponible({ codigo: "MP_M1", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumo2.id }, sucursalId);
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp2.id, cantidad: 1, precioTotal: 750 }] }); // 75% del gasto
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 250 }] }); // 25% del gasto
@@ -157,8 +157,8 @@ describe("obtenerReportePorPeriodo", () => {
   it("gastoPorInsumo marca solo los insumos hasta el corte del 80 %: los que vienen después quedan sin resaltar", async () => {
     const insumoA = await prisma.insumo.create({ data: { nombre: "Grande" } });
     const insumoB = await prisma.insumo.create({ data: { nombre: "Chico" } });
-    const mpA = await prisma.producto.create({ data: { codigo: "MP_GRANDE", nombre: "Grande", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoA.id } });
-    const mpB = await prisma.producto.create({ data: { codigo: "MP_CHICO", nombre: "Chico", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoB.id } });
+    const mpA = await sembrarProductoDisponible({ codigo: "MP_GRANDE", nombre: "Grande", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoA.id }, sucursalId);
+    const mpB = await sembrarProductoDisponible({ codigo: "MP_CHICO", nombre: "Chico", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoB.id }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpA.id, cantidad: 1, precioTotal: 900 }] }); // 90 %
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpB.id, cantidad: 1, precioTotal: 100 }] }); // 10 %
 
@@ -168,7 +168,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("gastoPorInsumo separa 'Sin insumo asignado' de 'Sin categoría' cuando el producto no tiene Insumo", async () => {
-    const mpSinInsumo = await prisma.producto.create({ data: { codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId } });
+    const mpSinInsumo = await sembrarProductoDisponible({ codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSinInsumo.id, cantidad: 1, precioTotal: 50 }] });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
@@ -180,8 +180,8 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("margen del período cruza ventas contra el costo actual de la receta, marcando costoIncompleto cuando falta un precio de insumo", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
     // Stock disponible vía Ajuste (no deja costo de reposición conocido, a diferencia de una Compra) para que la venta pueda concretarse igual.
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
@@ -194,8 +194,8 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("ratioGastoVentas compara Compras/Ventas del período contra el período inmediato anterior de igual duración", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
 
     // Período anterior (9 de agosto, un día antes del rango elegido): compró 80, facturó 100 -> 80%.
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-09T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 80 }] });
@@ -212,7 +212,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("ratioGastoVentas da null (no divide por cero) si no hubo ventas facturadas", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100 }] });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
@@ -221,9 +221,9 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("tendenciaPrecios ordena por impacto en $, no por %: un insumo caro con suba moderada pesa más que uno barato con suba grande", async () => {
     const barato = await prisma.insumo.create({ data: { nombre: "Orégano" } });
-    const mpBarato = await prisma.producto.create({ data: { codigo: "MP_OREGANO", nombre: "Orégano", tipo: "MP", unidadStockId: unidadKgId, insumoId: barato.id } });
+    const mpBarato = await sembrarProductoDisponible({ codigo: "MP_OREGANO", nombre: "Orégano", tipo: "MP", unidadStockId: unidadKgId, insumoId: barato.id }, sucursalId);
     const caro = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
-    const mpCaro = await prisma.producto.create({ data: { codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id } });
+    const mpCaro = await sembrarProductoDisponible({ codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id }, sucursalId);
 
     // Orégano: $10/kg -> $20/kg dentro del período (+100%, pero solo 1kg -> impacto $10).
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpBarato.id, cantidad: 1, precioTotal: 10 }] });
@@ -249,11 +249,11 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("tendenciaPrecios: primera compra de un insumo da delta null (no hay con qué comparar); una variación poco creíble se marca sospechosa", async () => {
     const insumoNuevo = await prisma.insumo.create({ data: { nombre: "Insumo nuevo" } });
-    const mpNuevo = await prisma.producto.create({ data: { codigo: "MP_NUEVO", nombre: "Insumo nuevo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoNuevo.id } });
+    const mpNuevo = await sembrarProductoDisponible({ codigo: "MP_NUEVO", nombre: "Insumo nuevo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoNuevo.id }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpNuevo.id, cantidad: 1, precioTotal: 100 }] });
 
     const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
-    const mpSal = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id } });
+    const mpSal = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg, antes del período
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — +4900%, probable error de carga
 
@@ -270,7 +270,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("tendenciaPrecios excluye productos sin Insumo asignado (mezclar precios sin relación no tiene sentido)", async () => {
-    const mpSuelto = await prisma.producto.create({ data: { codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId } });
+    const mpSuelto = await sembrarProductoDisponible({ codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSuelto.id, cantidad: 1, precioTotal: 50 }] });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000));
@@ -279,13 +279,13 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("comparativaPrecios: variacionInsumosPct es el agregado ponderado por $ de tendenciaPrecios, excluyendo sospechosos", async () => {
     const caro = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
-    const mpCaro = await prisma.producto.create({ data: { codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id } });
+    const mpCaro = await sembrarProductoDisponible({ codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id }, sucursalId);
     // $1000/kg -> $1100/kg dentro del período (+10%, 50kg): base=50000, delta=5000.
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000 }] });
 
     const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
-    const mpSal = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id } });
+    const mpSal = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — sospechoso, se excluye del agregado
 
@@ -295,7 +295,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("comparativaPrecios: variacionCartaPropiaPct sale de RegistroAuditoria (Producto.precioVenta), ponderado por lo facturado del período", async () => {
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pizza Muzzarella", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1100 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pizza Muzzarella", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1100 }, sucursalId);
     await registrarVenta({ fecha: new Date("2026-08-12T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
 
     await prisma.registroAuditoria.create({
@@ -324,7 +324,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("comparativaPrecios: un cambio de precio registrado de un producto NO vendido en el período cuenta pero no pondera", async () => {
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 220 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 220 }, sucursalId);
     await prisma.registroAuditoria.create({
       data: {
         entidad: "Producto",
@@ -365,7 +365,7 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("digest prioriza el dato sospechoso primero, y nombra el insumo", async () => {
     const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
-    const mpSal = await prisma.producto.create({ data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id } });
+    const mpSal = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg antes
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — sospechoso
 
@@ -377,8 +377,8 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("digest nombra el plato más golpeado cuando un cambio de precio le pega a una receta", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
@@ -391,8 +391,8 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("cuando el costo de una receta BAJA, el digest dice que se abarató (no 'golpeado' — bajar el food cost es una mejora)", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }] });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { setStockMinimoProducto } from "../../src/server/actions/stock/stock-minimo";
@@ -29,7 +29,7 @@ describe("calcularAlertasStock", () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     mpId = mp.id;
   });
 
@@ -94,7 +94,7 @@ describe("calcularAlertasStock", () => {
   });
 
   it("obtenerResumenAlertasStock cuenta críticos y bajos por separado", async () => {
-    const otroMp = await prisma.producto.create({ data: { codigo: "MP_2", nombre: "Cebolla", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Cebolla", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 3 }] });
     await setStockMinimoProducto(mpId, 10); // BAJO
     await setStockMinimoProducto(otroMp.id, 5); // sin compra: saldo 0 -> nunca alerta (groupBy no ve productos sin movimientos)

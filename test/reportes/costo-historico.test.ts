@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -59,8 +59,8 @@ describe("Margen real reconstruido en el reporte por período", () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    const harina = await prisma.producto.create({ data: { codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id } });
-    const pan = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id }, sucursalId);
+    const pan = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 2, unidadId: kg.id }] } } });
     pvId = pan.id;
     harinaId = harina.id;
@@ -92,8 +92,8 @@ describe("Margen real reconstruido en el reporte por período", () => {
 
   it("margen Real por producto: fuente única para cada fila, mezclando costo congelado y reconstruido", async () => {
     const kgTorta = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
-    const huevo = await prisma.producto.create({ data: { codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: kgTorta.id } });
-    const torta = await prisma.producto.create({ data: { codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: kgTorta.id, precioVenta: 200 } });
+    const huevo = await sembrarProductoDisponible({ codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: kgTorta.id }, sucursalId);
+    const torta = await sembrarProductoDisponible({ codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: kgTorta.id, precioVenta: 200 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: torta.id, version: 1, ingredientes: { create: [{ insumoProductoId: huevo.id, cantidad: 1, unidadId: kgTorta.id }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: huevo.id, cantidad: 10, precioTotal: 60 }] }); // $6/kg
 

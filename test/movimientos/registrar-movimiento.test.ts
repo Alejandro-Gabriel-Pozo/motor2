@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
@@ -34,8 +34,8 @@ describe("registrarMovimiento", () => {
   });
 
   async function crearMP(nombre: string, extra?: Partial<{ insumoId: string | null; esConsignacion: boolean; proveedorConsignacionId: string; precioConsignacion: number }>) {
-    return prisma.producto.create({
-      data: {
+    return sembrarProductoDisponible(
+      {
         codigo: `MP_${nombre.toUpperCase().replace(/\s/g, "_")}`,
         nombre,
         tipo: "MP",
@@ -45,7 +45,8 @@ describe("registrarMovimiento", () => {
         proveedorConsignacionId: extra?.proveedorConsignacionId,
         precioConsignacion: extra?.precioConsignacion,
       },
-    });
+      sucursalId
+    );
   }
 
   it("Compra suma stock (signoStock +1)", async () => {
@@ -56,6 +57,18 @@ describe("registrarMovimiento", () => {
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+  });
+
+  it("rechaza un producto no disponible en esta sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.4)", async () => {
+    const mp = await prisma.producto.create({ data: { codigo: "MP_OTRA", nombre: "Solo en otra sucursal", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    // Sin fila DisponibilidadProducto en sucursalId: "fila ausente = no disponible".
+    const resultado = await registrarMovimiento({
+      proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
+      items: [{ productoId: mp.id, cantidad: 10 }],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toContain("no está disponible en");
+    expect(await prisma.movimientoStock.count({ where: { productoId: mp.id } })).toBe(0);
   });
 
   it("Compra respeta la Presentación alternativa elegida, con su propio factor de conversión (no el default del producto)", async () => {
@@ -214,9 +227,10 @@ describe("registrarMovimiento", () => {
     // corre si armarLineaMovimiento resuelve una unidad de compra real
     // (aplicaFactorConversion), mismo requisito que ya tenía el hookup del
     // precio — sin esto la línea nunca llega a upsertProveedorPorProducto.
-    const mp = await prisma.producto.create({
-      data: { codigo: "MP_ACEITE", nombre: "Aceite", tipo: "MP", unidadStockId: unidadKgId, unidadCompraId: unidadKgId, insumoId },
-    });
+    const mp = await sembrarProductoDisponible(
+      { codigo: "MP_ACEITE", nombre: "Aceite", tipo: "MP", unidadStockId: unidadKgId, unidadCompraId: unidadKgId, insumoId },
+      sucursalId
+    );
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_2", nombre: "Distribuidora del Sur" } });
 
     const resultado = await registrarMovimiento({
@@ -231,12 +245,13 @@ describe("registrarMovimiento", () => {
 
   it("Compra aplica el factor de conversión de unidad de compra a unidad de stock", async () => {
     const g = await prisma.unidad.findFirst({ where: { nombre: "g" } });
-    const mp = await prisma.producto.create({
-      data: {
+    const mp = await sembrarProductoDisponible(
+      {
         codigo: "MP_MANTECA", nombre: "Manteca", tipo: "MP",
         unidadStockId: unidadKgId, unidadCompraId: g!.id, factorConversion: 0.001, insumoId,
       },
-    });
+      sucursalId
+    );
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: mp.id, cantidad: 500 }], // 500 g de unidad de compra
@@ -250,9 +265,8 @@ describe("registrarMovimiento", () => {
     const mpA = await crearMP("Harina Proveedor A", { insumoId: insumoCompartido.id });
     const mpB = await crearMP("Harina Proveedor B", { insumoId: insumoCompartido.id });
     // resolverConsumoPorFamilia (P7, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.3) exige que los "hermanos"
-    // estén disponibles EN ESTA SUCURSAL para repartirles consumo — sin esto ninguno calificaría.
-    await prisma.disponibilidadProducto.createMany({ data: [mpA.id, mpB.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_EMPANADA", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true } });
+    // estén disponibles EN ESTA SUCURSAL para repartirles consumo — crearMP ya lo hace (sembrarProductoDisponible).
+    const pv = await sembrarProductoDisponible({ codigo: "PV_EMPANADA", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpA.id, cantidad: 3 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpB.id, cantidad: 10 }] });
@@ -278,7 +292,7 @@ describe("registrarMovimiento", () => {
   it("Producción de un insumo en consignación genera Consumo + Liquidación (cantidad 0, importe según precioConsignacion)", async () => {
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_CONS", nombre: "Consignante SA" } });
     const mpConsignacion = await crearMP("Café en consignación", { esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 50 });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_CAFE", nombre: "Café con leche", tipo: "PV", unidadStockId: unidadKgId, seProduce: true } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_CAFE", nombre: "Café con leche", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpConsignacion.id, cantidad: 20 }] });
     await prisma.recetaVersion.create({

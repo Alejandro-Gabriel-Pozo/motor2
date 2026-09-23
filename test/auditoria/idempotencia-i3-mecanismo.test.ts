@@ -58,8 +58,11 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  async function crearMP(nombre: string) {
-    return prisma.producto.create({ data: { codigo: `MP_${nombre.toUpperCase()}`, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+  /** `sucursalesDisponibles` por defecto solo la propia — el bloque de traspasos (más abajo) pasa también la sucursal B, origen Y destino del envío. */
+  async function crearMP(nombre: string, sucursalesDisponibles: string[] = [sucursalId]) {
+    const mp = await prisma.producto.create({ data: { codigo: `MP_${nombre.toUpperCase()}`, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    await prisma.disponibilidadProducto.createMany({ data: sucursalesDisponibles.map((sId) => ({ sucursalId: sId, productoId: mp.id, disponible: true })) });
+    return mp;
   }
 
   describe("registrarMovimiento (comparte código con 7 de los 10 procesos)", () => {
@@ -141,8 +144,9 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
 
   describe("registrarVenta (crea 1 Operacion POR VENTA — la clave/hash/resultado viven solo en la primera del lote)", () => {
     async function sembrarPvConReceta(sufijo: string) {
-      const mpInsumo = await prisma.producto.create({ data: { codigo: `MP_V${sufijo}`, nombre: `HarinaV${sufijo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mpInsumo = await crearMP(`V${sufijo}`);
       const pv = await prisma.producto.create({ data: { codigo: `PV_V${sufijo}`, nombre: `PanV${sufijo}`, tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: pv.id, disponible: true } });
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
       return pv;
@@ -248,7 +252,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     }
 
     it("aceptarTransferencia: misma clave + mismo payload (secuencial) → 1 sola aceptación, mismo mensaje", async () => {
-      const mp = await crearMP("HarinaT1");
+      const mp = await crearMP("HarinaT1", [sucursalId, sucursalBId]);
       await comoA();
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
       const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
@@ -266,7 +270,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     });
 
     it("aceptarTransferencia: misma clave + payload distinto (otra sección destino) → conflicto", async () => {
-      const mp = await crearMP("HarinaT2");
+      const mp = await crearMP("HarinaT2", [sucursalId, sucursalBId]);
       const seccionB2 = await sembrarSeccion(sucursalBId, "Depósito B2");
       await comoA();
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
@@ -283,7 +287,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     });
 
     it("confirmarReingresoTransferencia: misma clave + mismo payload (secuencial) → 1 sola confirmación, mismo mensaje", async () => {
-      const mp = await crearMP("HarinaT3");
+      const mp = await crearMP("HarinaT3", [sucursalId, sucursalBId]);
       await comoA();
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
       const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
@@ -310,7 +314,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     // idempotencia) y nunca debe quedar más de un efecto real.
     it("aceptarTransferencia: misma clave, CONCURRENTE de verdad (Promise.allSettled) → nunca dos efectos, ninguna llamada rechaza", async () => {
       for (let i = 0; i < 12; i++) {
-        const mp = await crearMP(`HarinaConc${i}`);
+        const mp = await crearMP(`HarinaConc${i}`, [sucursalId, sucursalBId]);
         await comoA();
         await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
         const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
@@ -335,7 +339,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
 
     it("confirmarReingresoTransferencia: misma clave, CONCURRENTE de verdad (Promise.allSettled) → nunca dos efectos, ninguna llamada rechaza", async () => {
       for (let i = 0; i < 12; i++) {
-        const mp = await crearMP(`HarinaConcReingreso${i}`);
+        const mp = await crearMP(`HarinaConcReingreso${i}`, [sucursalId, sucursalBId]);
         await comoA();
         await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
         const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });

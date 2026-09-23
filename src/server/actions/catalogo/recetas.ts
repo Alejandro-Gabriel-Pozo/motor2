@@ -7,6 +7,7 @@ import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conReintento } from "@/core/movimientos/reintentar";
 import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/pasos-receta";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
@@ -131,8 +132,15 @@ async function validarIngredientes(items: IngredienteInput[]) {
     if (Number(item.mermaPorcentaje ?? 0) < 0) return "La merma no puede ser negativa.";
     if (!esNumeroFinito(item.mermaPorcentaje ?? 0)) return "La merma no es un número válido.";
     const mp = await prisma.producto.findUnique({ where: { id: item.insumoProductoId } });
-    if (!mp || mp.tipo !== "MP" || !mp.activo) {
-      return `Cada ingrediente tiene que ser una materia prima (MP) activa (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
+    if (!mp || mp.tipo !== "MP") {
+      return `Cada ingrediente tiene que ser una materia prima (MP) (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
+    }
+    // Global, no por sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6): la receta es del Catálogo
+    // Central, compartida entre sucursales — bloquear el editor porque UNA sucursal desactivó esta MP impediría editar
+    // una receta de todas. Basta con que esté disponible EN ALGUNA; la aplicación local ya la bloquea en venta.ts/movimientos.ts.
+    const disponibleEnAlguna = await prisma.producto.findFirst({ where: { id: mp.id, ...whereDisponibleEnAlguna() } });
+    if (!disponibleEnAlguna) {
+      return `Cada ingrediente tiene que ser una materia prima (MP) disponible en alguna sucursal (${mp.nombre} no lo está en ninguna).`;
     }
   }
   return null;

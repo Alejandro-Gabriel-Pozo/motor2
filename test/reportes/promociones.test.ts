@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -50,7 +50,7 @@ describe("Promociones y Combos", () => {
   });
 
   it("marcarProductoComoPromocion requiere admin", async () => {
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Menú ejecutivo", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Menú ejecutivo", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
 
     await mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
     const resultado = await marcarProductoComoPromocion(pv.id, true);
@@ -61,9 +61,9 @@ describe("Promociones y Combos", () => {
     await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
     await actualizarPromocionesHabilitado(true);
 
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Carne", tipo: "MP", unidadStockId: unidadKgId, insumoId, precioVenta: 30 } }); // se vende suelta a $30/kg
-    const combo = await prisma.producto.create({ data: { codigo: "PV_COMBO", nombre: "Menú ejecutivo", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 } });
-    const aLaCarta = await prisma.producto.create({ data: { codigo: "PV_CARTA", nombre: "Ensalada", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 40 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Carne", tipo: "MP", unidadStockId: unidadKgId, insumoId, precioVenta: 30 }, sucursalId); // se vende suelta a $30/kg
+    const combo = await sembrarProductoDisponible({ codigo: "PV_COMBO", nombre: "Menú ejecutivo", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
+    const aLaCarta = await sembrarProductoDisponible({ codigo: "PV_CARTA", nombre: "Ensalada", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 40 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: combo.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 2, unidadId: unidadKgId }] } } });
     await marcarProductoComoPromocion(combo.id, true);
 
@@ -87,8 +87,8 @@ describe("Promociones y Combos", () => {
     await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
     await actualizarPromocionesHabilitado(true);
 
-    const mp = await prisma.producto.create({ data: { codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const combo = await prisma.producto.create({ data: { codigo: "PV_COMBO_R", nombre: "Combo real", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const combo = await sembrarProductoDisponible({ codigo: "PV_COMBO_R", nombre: "Combo real", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: combo.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await marcarProductoComoPromocion(combo.id, true);
 

@@ -15,7 +15,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
@@ -41,9 +41,10 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
 
   it("dos compras simultáneas con la MISMA factura+proveedor y SIN clave de idempotencia (o con claves distintas) — exactamente una tiene éxito, la otra recibe el mensaje de negocio, ninguna rechaza", async () => {
     for (let i = 0; i < 10; i++) {
-      const mp = await prisma.producto.create({
-        data: { codigo: `MP_FACTURA_${i}`, nombre: `Harina Factura ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId },
-      });
+      const mp = await sembrarProductoDisponible(
+        { codigo: `MP_FACTURA_${i}`, nombre: `Harina Factura ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId },
+        sucursalId
+      );
       const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_FACTURA_${i}`, nombre: `Proveedor ${i}` } });
 
       const payloadA = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-0001", items: [{ productoId: mp.id, cantidad: 10 }] };
@@ -76,7 +77,7 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
   }
 
   it("K1c: la factura de una compra ANULADA se puede volver a usar («anular y recargar» con el mismo número)", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_RECARGA", nombre: "Harina Recarga", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_RECARGA", nombre: "Harina Recarga", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_RECARGA", nombre: "Proveedor Recarga" } });
     const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "R-0001", items: [{ productoId: mp.id, cantidad: 10 }] };
 
@@ -103,7 +104,7 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
 
   it("K1c: dos recargas simultáneas de una factura anulada — exactamente una gana (el índice sigue arbitrando la carrera)", async () => {
     for (let i = 0; i < 5; i++) {
-      const mp = await prisma.producto.create({ data: { codigo: `MP_RECARGA_C${i}`, nombre: `Harina Recarga Carrera ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: `MP_RECARGA_C${i}`, nombre: `Harina Recarga Carrera ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_RECARGA_C${i}`, nombre: `Proveedor Recarga Carrera ${i}` } });
       const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "R-0002", items: [{ productoId: mp.id, cantidad: 10 }] };
 

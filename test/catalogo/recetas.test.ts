@@ -71,6 +71,23 @@ describe("recetas", () => {
     expect(resultado.ok).toBe(false);
   });
 
+  it("rechaza una MP que no está disponible en NINGUNA sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6)", async () => {
+    const mpSinDisponibilidad = await prisma.producto.create({ data: { codigo: "MP_HUERFANA", nombre: "Sin disponibilidad", tipo: "MP", unidadStockId: unidadKgId } });
+    const resultado = await guardarReceta(pvId, [{ insumoProductoId: mpSinDisponibilidad.id, cantidad: 1, unidadId: unidadKgId }]);
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+    expect(resultado.mensaje).toContain("Sin disponibilidad");
+  });
+
+  it("acepta una MP disponible en OTRA sucursal aunque no en la actual — validarIngredientes es global, no por sucursal (§5.6)", async () => {
+    const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra" } });
+    const mpDeOtraSucursal = await prisma.producto.create({ data: { codigo: "MP_OTRA_SUC", nombre: "Solo en otra sucursal", tipo: "MP", unidadStockId: unidadKgId } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: otraSucursal.id, productoId: mpDeOtraSucursal.id, disponible: true } });
+
+    const resultado = await guardarReceta(pvId, [{ insumoProductoId: mpDeOtraSucursal.id, cantidad: 1, unidadId: unidadKgId }]);
+    expect(resultado.ok, !resultado.ok ? resultado.mensaje : "").toBe(true);
+  });
+
   it("agregarIngredienteAReceta preserva los existentes y rechaza duplicado", async () => {
     await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }]);
 

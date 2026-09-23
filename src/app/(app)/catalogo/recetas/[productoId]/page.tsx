@@ -17,6 +17,7 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
+import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { secuenciaMoviendo } from "@/core/catalogo/pasos-receta";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -94,6 +95,20 @@ export default async function RecetaEditorPage({
   const vigente = await obtenerRecetaVigente(producto.id);
   const volver = `/catalogo/recetas/${producto.id}`;
   const siguienteOrdenPaso = vigente?.pasos.length ? Math.max(...vigente.pasos.map((p) => p.orden)) + 1 : 1;
+
+  // Aviso no bloqueante (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6): la receta es del Catálogo Central —
+  // validarIngredientes solo exige que cada MP esté disponible EN ALGUNA sucursal, nunca en todas. Acá se avisa, sin
+  // impedir nada, en qué sucursales un ingrediente puntual no está disponible: ahí este plato no se va a poder vender.
+  const sucursalesSinIngrediente = new Map<string, string[]>();
+  if (vigente?.ingredientes.length) {
+    await Promise.all(
+      vigente.ingredientes.map(async (ing) => {
+        const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId);
+        const faltantes = porSucursal.filter((s) => !s.disponible).map((s) => s.sucursalNombre);
+        if (faltantes.length) sucursalesSinIngrediente.set(ing.insumoProductoId, faltantes);
+      })
+    );
+  }
 
   return (
     <div className="flex max-w-2xl flex-col gap-8">
@@ -293,7 +308,14 @@ export default async function RecetaEditorPage({
                       </td>
                     ) : (
                       <>
-                        <td className="py-2">{ing.insumoProducto.nombre}</td>
+                        <td className="py-2">
+                          {ing.insumoProducto.nombre}
+                          {sucursalesSinIngrediente.has(ing.insumoProductoId) && (
+                            <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
+                              No disponible en {sucursalesSinIngrediente.get(ing.insumoProductoId)!.join(", ")} — ahí este plato no se va a poder vender.
+                            </p>
+                          )}
+                        </td>
                         <td>{Number(ing.cantidad)}</td>
                         <td>{ing.unidad.nombre}</td>
                         <td>{Number(ing.mermaPorcentaje)}</td>

@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
@@ -33,7 +33,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
 
   async function crearMP(nombre: string, decimales = 2) {
     const unidad = decimales === 2 ? unidadKgId : (await prisma.unidad.create({ data: { nombre: `u_${decimales}dec_${nombre}`, magnitud: "PESO", decimales } })).id;
-    return prisma.producto.create({ data: { codigo: `MP_${nombre.toUpperCase()}`, nombre, tipo: "MP", unidadStockId: unidad, insumoId } });
+    return sembrarProductoDisponible({ codigo: `MP_${nombre.toUpperCase()}`, nombre, tipo: "MP", unidadStockId: unidad, insumoId }, sucursalId);
   }
 
   it("0.1 + 0.2 vía dos COMPRAs separadas: el saldo agregado en Postgres da EXACTO 0.3 (a diferencia de la aritmética float pura de JS, que da 0.30000000000000004)", async () => {
@@ -89,7 +89,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
 
   it("merma porcentual con decimales: consumo de receta con mermaPorcentaje no entero produce el valor exacto esperado, redondeado a la unidad del insumo", async () => {
     const mpInsumo = await crearMP("Levadura", 3); // 3 decimales
-    const pv = await prisma.producto.create({ data: { codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100, seProduce: true } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100, seProduce: true }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.1, unidadId: unidadKgId, mermaPorcentaje: 12.5 }] } },
     });

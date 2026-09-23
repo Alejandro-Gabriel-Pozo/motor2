@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
@@ -28,9 +28,9 @@ describe("generarReporteDiferenciasAjustes", () => {
   });
 
   it("clasifica en grupo a/b según si la MP participa de alguna receta, con estado distinto", async () => {
-    const mpSinReceta = await prisma.producto.create({ data: { codigo: "MP_SIN", nombre: "Sin receta", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const mpConReceta = await prisma.producto.create({ data: { codigo: "MP_CON", nombre: "Con receta", tipo: "MP", unidadStockId: unidadKgId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mpSinReceta = await sembrarProductoDisponible({ codigo: "MP_SIN", nombre: "Sin receta", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const mpConReceta = await sembrarProductoDisponible({ codigo: "MP_CON", nombre: "Con receta", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpConReceta.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
     // Stock previo: un Ajuste negativo valida que haya suficiente para restar.
@@ -46,7 +46,7 @@ describe("generarReporteDiferenciasAjustes", () => {
   });
 
   it("separa la suma de Ajustes manuales de la de Conteos físicos (CONTROL), sin mezclarlas", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1 }] });
@@ -59,7 +59,7 @@ describe("generarReporteDiferenciasAjustes", () => {
   });
 
   it("sin ninguna diferencia real, una MP sin receta queda OK", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     const filas = await generarReporteDiferenciasAjustes(sucursalId);
@@ -68,8 +68,8 @@ describe("generarReporteDiferenciasAjustes", () => {
 
   describe("recetasQueLoUsan / sugerenciaMerma (hallazgo: 'Solo receta' quedaba en ESPERADO sin linkear a la receta ni sugerir nada)", () => {
     async function armarMpConReceta(mermaPorcentaje: number) {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_REC", nombre: "Levadura", tipo: "MP", unidadStockId: unidadKgId } });
-      const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_REC", nombre: "Levadura", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
       await prisma.recetaVersion.create({
         data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId, mermaPorcentaje }] } },
       });
@@ -109,7 +109,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     });
 
     it("una MP sin receta (grupo a) nunca trae recetasQueLoUsan ni sugerenciaMerma", async () => {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_SIN", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_SIN", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
       await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -2 }] });
 
@@ -122,7 +122,7 @@ describe("generarReporteDiferenciasAjustes", () => {
 
   describe("proximaFechaConteo / conteoVencido (sub-plan S6 — la agenda de conteo periódico)", () => {
     it("sin ninguna fila de FrecuenciaConteoProducto, no hay agenda: null, nunca vencido", async () => {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_SIN_AGENDA", nombre: "Sin agenda", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_SIN_AGENDA", nombre: "Sin agenda", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       const filas = await generarReporteDiferenciasAjustes(sucursalId);
       const fila = filas.find((f) => f.productoId === mp.id)!;
       expect(fila.proximaFechaConteo).toBeNull();
@@ -130,7 +130,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     });
 
     it("con agenda y un conteo previo, calcula la próxima fecha y no está vencido si todavía falta", async () => {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_AGENDA_OK", nombre: "Agenda al día", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_AGENDA_OK", nombre: "Agenda al día", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await setFrecuenciaConteo(mp.id, 30);
       // conteoReal distinto del saldo del sistema (10), para que quede un movimiento CONTROL real — con diferencia 0 no se escribe nada.
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
@@ -143,7 +143,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     });
 
     it("con agenda pero sin ningún conteo previo, está vencido sin fecha calculable", async () => {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_AGENDA_NUNCA", nombre: "Agenda sin conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_AGENDA_NUNCA", nombre: "Agenda sin conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await setFrecuenciaConteo(mp.id, 7);
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId);
@@ -153,7 +153,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     });
 
     it("con agenda y un conteo viejo, queda vencido con la fecha calculada en el pasado", async () => {
-      const mp = await prisma.producto.create({ data: { codigo: "MP_AGENDA_VENCIDA", nombre: "Agenda vencida", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_AGENDA_VENCIDA", nombre: "Agenda vencida", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await setFrecuenciaConteo(mp.id, 7);
       const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       await registrarMovimiento({ proceso: "COMPRA", fecha: hace30Dias, seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });

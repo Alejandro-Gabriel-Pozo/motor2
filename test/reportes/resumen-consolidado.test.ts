@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -24,8 +24,8 @@ describe("obtenerResumenConsolidado", () => {
     await prisma.usuarioSucursal.create({ data: { usuarioId: admin.id, sucursalId: sucursal2.id, rolId: base.admin.id, activo: true } });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    const pv1 = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan Central", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 } });
-    const pv2 = await prisma.producto.create({ data: { codigo: "PV_2", nombre: "Pan Norte", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 } });
+    const pv1 = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan Central", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 }, base.sucursal.id);
+    const pv2 = await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Pan Norte", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 }, sucursal2.id);
     // El admin tiene membresía en las dos sucursales — cada venta se
     // registra con esa sucursal como "activa" (mismo mecanismo que
     // cambiarSucursalActiva en producción real), no solo pasando el
