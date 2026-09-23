@@ -61,7 +61,7 @@ export function ConteoFrecuenciaForm({
         <SelectorProducto
           value={productoId}
           onChange={setProductoId}
-          filtro={{ soloActivos: true }}
+          filtro={{ soloDisponibles: true }}
           etiquetaInicial={filaEnEdicion?.productoEtiqueta ?? productoEtiquetaSugerida}
           limpiarSenal={resetCount}
           required

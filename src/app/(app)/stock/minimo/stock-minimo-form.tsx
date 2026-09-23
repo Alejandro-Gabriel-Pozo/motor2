@@ -60,7 +60,7 @@ export function StockMinimoForm({
         <SelectorProducto
           value={productoId}
           onChange={setProductoId}
-          filtro={{ soloActivos: true }}
+          filtro={{ soloDisponibles: true }}
           etiquetaInicial={filaEnEdicion?.productoEtiqueta}
           limpiarSenal={resetCount}
           required

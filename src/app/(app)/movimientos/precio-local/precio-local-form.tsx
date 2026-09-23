@@ -60,7 +60,7 @@ export function PrecioLocalForm() {
 
       <label className="flex flex-col gap-1 text-sm">
         Producto (PV)
-        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloActivos: true }} limpiarSenal={resetCount} required />
+        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloDisponibles: true }} limpiarSenal={resetCount} required />
       </label>
 
       {productoId && precioGlobal !== null && <p className="text-xs text-neutral-500">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</p>}

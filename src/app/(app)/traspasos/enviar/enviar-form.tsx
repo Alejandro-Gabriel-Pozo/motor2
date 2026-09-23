@@ -61,7 +61,7 @@ export function EnviarForm({ sucursales, secciones }: { sucursales: Opcion[]; se
 
       <label className="flex flex-col gap-1 text-sm">
         Producto
-        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloActivos: true }} limpiarSenal={resetCount} required />
+        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloDisponibles: true }} limpiarSenal={resetCount} required />
       </label>
 
       <label className="flex flex-col gap-1 text-sm">

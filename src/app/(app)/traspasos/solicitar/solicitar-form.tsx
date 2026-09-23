@@ -61,7 +61,7 @@ export function SolicitarForm({ sucursales, secciones }: { sucursales: Opcion[];
 
       <label className="flex flex-col gap-1 text-sm">
         Producto
-        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloActivos: true }} limpiarSenal={resetCount} required />
+        <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloDisponibles: true }} limpiarSenal={resetCount} required />
       </label>
 
       <label className="flex flex-col gap-1 text-sm">

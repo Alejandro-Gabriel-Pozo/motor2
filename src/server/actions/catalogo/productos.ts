@@ -8,7 +8,7 @@ import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/g
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
 import { estaDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto";
-import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -32,7 +32,10 @@ const LIMITE_SELECTOR = 20;
  */
 export interface FiltroSelectorProducto {
   tipo?: TipoProducto;
-  soloActivos?: boolean;
+  /** Disponible EN LA SUCURSAL ACTIVA de quien busca (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.2) — la sucursal se toma del contexto del servidor, NUNCA de un parámetro del cliente: si no, cualquiera podría mirar el catálogo disponible de otra sucursal. */
+  soloDisponibles?: boolean;
+  /** El equivalente "central" de `soloDisponibles`: disponible en ALGUNA sucursal (no importa cuál) — para catálogo compartido entre sucursales, como hermanar Insumos (§5.2, call-site 12). */
+  soloDisponiblesEnAlguna?: boolean;
   /** MP, o PV solo si está marcado "Se produce" — mismo criterio que `tieneStockReal` (Conteo Físico, Stock consolidado). */
   soloConStockReal?: boolean;
   /** PV, o MP solo si está marcada "Se produce" — quién puede tener una Receta (`/catalogo/recetas`). Es el criterio inverso a `soloConStockReal`: ahí toda MP entra y el PV es la excepción, acá es al revés. */
@@ -42,11 +45,12 @@ export interface FiltroSelectorProducto {
 }
 
 export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
-  await requerirSesion();
+  const ctx = await requerirSesion();
   const t = texto(termino);
   const condiciones = [
     ...(filtro?.tipo ? [{ tipo: filtro.tipo }] : []),
-    ...(filtro?.soloActivos ? [{ activo: true }] : []),
+    ...(filtro?.soloDisponibles ? [whereDisponibleEn(ctx.sucursalId)] : []),
+    ...(filtro?.soloDisponiblesEnAlguna ? [whereDisponibleEnAlguna()] : []),
     ...(filtro?.soloConStockReal ? [{ OR: [{ tipo: "MP" as const }, { tipo: "PV" as const, seProduce: true }] }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),

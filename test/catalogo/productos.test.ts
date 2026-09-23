@@ -199,7 +199,7 @@ describe("productos", () => {
       await prisma.producto.update({ where: { id: vino.id }, data: { esConsignacion: true, proveedorConsignacionId: proveedor.id } });
       await darDeAltaProducto({ nombre: "Harina normal", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
 
-      const resultado = await buscarProductosSelector("", { soloActivos: true, esConsignacion: true });
+      const resultado = await buscarProductosSelector("", { soloDisponibles: true, esConsignacion: true });
       expect(resultado.map((p) => p.nombre)).toEqual(["Vino en consignación"]);
     });
 
@@ -210,7 +210,7 @@ describe("productos", () => {
       await prisma.producto.update({ where: { id: vino.id }, data: { esConsignacion: true, proveedorConsignacionId: proveedor.id } });
       await darDeAltaProducto({ nombre: "Harina normal", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
 
-      const resultado = await buscarProductosSelector("", { soloActivos: true, esConsignacion: false });
+      const resultado = await buscarProductosSelector("", { soloDisponibles: true, esConsignacion: false });
       expect(resultado.map((p) => p.nombre)).toEqual(["Harina normal"]);
     });
 
@@ -221,7 +221,7 @@ describe("productos", () => {
       await prisma.producto.update({ where: { id: vino.id }, data: { esConsignacion: true, proveedorConsignacionId: proveedor.id } });
       await darDeAltaProducto({ nombre: "Harina normal", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
 
-      const resultado = await buscarProductosSelector("", { soloActivos: true });
+      const resultado = await buscarProductosSelector("", { soloDisponibles: true });
       expect(resultado.map((p) => p.nombre).sort()).toEqual(["Harina normal", "Vino en consignación"]);
     });
   });
@@ -253,9 +253,24 @@ describe("productos", () => {
       expect(await disponibleEn(r.id, otraSucursal.id)).toBe(false);
     });
 
-    // "sin tildar: el producto no aparece en el selector de otra sucursal" — se agrega en P6, cuando
-    // buscarProductosSelector pasa a filtrar por sucursal (soloDisponibles); hoy el selector todavía usa `activo`
-    // global, así que probarlo acá daría un falso rojo por una pieza que todavía no existe, no por este paso.
+    it("sin tildar: el producto no aparece en el selector de otra sucursal (paso P6 — buscarProductosSelector ya filtra por soloDisponibles)", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+      await crearUsuarioConMembresia({ email: "otro@test.com", sucursalId: otraSucursal.id, rolId: rolAdmin.id });
+
+      const r = await darDeAltaProducto({ nombre: "Solo en Central", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, activoEnTodasLasSucursales: false });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+
+      // En "Central" (la sucursal del alta) sí aparece.
+      const resultadoCentral = await buscarProductosSelector("Solo en Central", { soloDisponibles: true });
+      expect(resultadoCentral.map((p) => p.nombre)).toEqual(["Solo en Central"]);
+
+      // En "Norte" no.
+      await mockearUsuarioActual({ id: (await prisma.user.findUniqueOrThrow({ where: { email: "otro@test.com" } })).id, email: "otro@test.com", nombre: null });
+      const resultadoNorte = await buscarProductosSelector("Solo en Central", { soloDisponibles: true });
+      expect(resultadoNorte).toEqual([]);
+    });
 
     it("darDeAltaProductoRapido (sin formulario, sin tilde visible) sigue el mismo default: disponible en todas", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });

@@ -278,7 +278,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
           <SelectorProducto
             value={nuevoProductoId}
             onChange={setNuevoProductoId}
-            filtro={{ soloActivos: true, soloConStockReal: true }}
+            filtro={{ soloDisponibles: true, soloConStockReal: true }}
             limpiarSenal={limpiarSelector}
           />
         </label>

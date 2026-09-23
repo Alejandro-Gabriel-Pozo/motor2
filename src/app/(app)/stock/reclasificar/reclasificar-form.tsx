@@ -124,7 +124,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         </label>
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Producto
-          <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloActivos: true }} required />
+          <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloDisponibles: true }} required />
         </label>
       </div>
 

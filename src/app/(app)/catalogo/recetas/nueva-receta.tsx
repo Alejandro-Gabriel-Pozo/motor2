@@ -28,7 +28,7 @@ export function NuevaReceta({ triggerLabel = "+ Nueva receta" }: { triggerLabel?
               cerrar();
               router.push(`/catalogo/recetas/${id}`);
             }}
-            filtro={{ soloActivos: true, elegibleParaReceta: true }}
+            filtro={{ soloDisponibles: true, elegibleParaReceta: true }}
           />
         </div>
       )}

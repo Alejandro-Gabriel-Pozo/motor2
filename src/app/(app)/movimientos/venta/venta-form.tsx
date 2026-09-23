@@ -115,7 +115,7 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
               <SelectorProducto
                 value={fila.productoId}
                 onChange={(id) => actualizarFila(idx, { productoId: id })}
-                filtro={{ tipo: "PV", soloActivos: true }}
+                filtro={{ tipo: "PV", soloDisponibles: true }}
                 limpiarSenal={resetCount}
                 required
               />

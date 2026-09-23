@@ -74,7 +74,7 @@ export function AsistenteHermanar({
               <SelectorProducto
                 value={siblingId}
                 onChange={elegirSibling}
-                filtro={{ tipo: "MP", soloActivos: true }}
+                filtro={{ tipo: "MP", soloDisponiblesEnAlguna: true }}
                 placeholder="Buscar materia prima existente…"
               />
             </>

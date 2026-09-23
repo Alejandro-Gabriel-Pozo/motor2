@@ -49,7 +49,7 @@ export interface ProcesoUiConfig {
   exigeSeccion: boolean;
   /**
    * Filtro del selector de producto — antes panel-movimiento-form.tsx
-   * hardcodeaba `{ soloActivos: true }` para los 9 procesos por igual, a
+   * hardcodeaba `{ soloDisponibles: true }` para los 9 procesos por igual, a
    * diferencia de Venta/Conteo Físico (que sí filtran), así que se podía
    * elegir p. ej. un PV en Compra o un producto no-consignación en
    * Devolución al consignante, y el error recién aparecía al confirmar el
@@ -63,10 +63,10 @@ export interface ProcesoUiConfig {
 
 /** Espejo de productoValidoParaProceso (transiciones.ts) para el selector — ver el docstring de `filtroProducto`. */
 function filtroProductoDeProceso(proceso: ProcesoUiConfig["proceso"]): FiltroSelectorProducto {
-  if (proceso === "COMPRA") return { soloActivos: true, tipo: "MP" };
-  if (proceso === "DEVOLUCION_CONSIGNACION") return { soloActivos: true, soloConStockReal: true, esConsignacion: true };
-  if (proceso === "DEVOLUCION_PROVEEDOR") return { soloActivos: true, soloConStockReal: true, esConsignacion: false };
-  return { soloActivos: true, soloConStockReal: true };
+  if (proceso === "COMPRA") return { soloDisponibles: true, tipo: "MP" };
+  if (proceso === "DEVOLUCION_CONSIGNACION") return { soloDisponibles: true, soloConStockReal: true, esConsignacion: true };
+  if (proceso === "DEVOLUCION_PROVEEDOR") return { soloDisponibles: true, soloConStockReal: true, esConsignacion: false };
+  return { soloDisponibles: true, soloConStockReal: true };
 }
 
 const PROCESOS_UI_SIN_DERIVADOS: Record<string, Omit<ProcesoUiConfig, "exigeSeccion" | "filtroProducto">> = {
