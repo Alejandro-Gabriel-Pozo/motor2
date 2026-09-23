@@ -58,7 +58,8 @@ export default async function ProductosPage({
               <th className="py-2">Código</th>
               <th>Nombre</th>
               <th>Tipo</th>
-              <th>Activo</th>
+              <th>Disponible acá</th>
+              <th>Sucursales</th>
               <th><span className="sr-only">Acciones</span></th>
             </tr>
           </thead>
@@ -72,7 +73,8 @@ export default async function ProductosPage({
                   </Link>
                 </td>
                 <td>{p.tipo}</td>
-                <td>{p.activo ? "Sí" : "No"}</td>
+                <td>{p.disponibleAca ? "Sí" : "No"}</td>
+                <td>{p.sucursalesDisponibles} de {p.totalSucursales}</td>
                 <td className="py-2">
                   {puedeEditarProducto && (
                     <div className="flex items-start gap-3">
@@ -80,14 +82,11 @@ export default async function ProductosPage({
                         Editar
                       </Link>
                       <ActivarDesactivarFila
-                        activo={p.activo}
-                        aviso="Desactivar lo saca de los selectores de movimientos, del stock consolidado y de la valuación; el historial se conserva. Si algo todavía depende de él (recetas vigentes, saldo), no se deja desactivar."
+                        activo={p.disponibleAca}
+                        aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."
                         accion={async () => {
                           "use server";
-                          // TRANSITORIO (paso P4/15, docs/plan-disponibilidad-por-sucursal-2026-09-23.md): sigue leyendo
-                          // `p.activo` (el espejo global) hasta P10, que reemplaza esta columna por "Disponible acá" con
-                          // el dato real por sucursal (`disponibleAca` batch de listarProductosPagina).
-                          return actualizarDisponibilidadProducto(p.id, !p.activo);
+                          return actualizarDisponibilidadProducto(p.id, !p.disponibleAca);
                         }}
                       />
                     </div>
@@ -97,7 +96,7 @@ export default async function ProductosPage({
             ))}
             {!pagina.items.length && (
               <tr>
-                <td className="py-2 text-neutral-500" colSpan={5}>
+                <td className="py-2 text-neutral-500" colSpan={6}>
                   Sin productos{q ? " que coincidan con la búsqueda" : ""}.
                 </td>
               </tr>

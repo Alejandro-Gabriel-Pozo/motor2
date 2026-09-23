@@ -8,7 +8,7 @@ import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/g
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
 import { estaDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto";
-import { productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { disponibilidadDeProductos, productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -135,7 +135,17 @@ export async function obtenerPrecioVentaProducto(productoId: string): Promise<nu
 }
 
 export interface PaginaProductos {
-  items: { id: string; codigo: string; nombre: string; tipo: TipoProducto; activo: boolean }[];
+  items: {
+    id: string;
+    codigo: string;
+    nombre: string;
+    tipo: TipoProducto;
+    /** Disponible EN LA SUCURSAL ACTIVA de quien mira la lista (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10/P10). */
+    disponibleAca: boolean;
+    /** Cuántas sucursales (de `totalSucursales`) lo tienen disponible — para la columna "Sucursales" ("2 de 4"). */
+    sucursalesDisponibles: number;
+    totalSucursales: number;
+  }[];
   nextCursor: string | null;
 }
 
@@ -143,11 +153,11 @@ const TAMANO_PAGINA_CATALOGO = 50;
 
 /** Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda opcional. */
 export async function listarProductosPagina(cursor?: string, termino?: string): Promise<PaginaProductos> {
-  await requerirSesion();
+  const ctx = await requerirSesion();
   const t = texto(termino ?? "");
   const items = await prisma.producto.findMany({
     where: t ? { OR: [{ nombre: { contains: t, mode: "insensitive" } }, { codigo: { contains: t, mode: "insensitive" } }] } : {},
-    select: { id: true, codigo: true, nombre: true, tipo: true, activo: true },
+    select: { id: true, codigo: true, nombre: true, tipo: true },
     orderBy: [{ nombre: "asc" }, { id: "asc" }],
     take: TAMANO_PAGINA_CATALOGO + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -155,7 +165,29 @@ export async function listarProductosPagina(cursor?: string, termino?: string): 
 
   const hayMas = items.length > TAMANO_PAGINA_CATALOGO;
   const pagina = hayMas ? items.slice(0, TAMANO_PAGINA_CATALOGO) : items;
-  return { items: pagina, nextCursor: hayMas ? pagina[pagina.length - 1].id : null };
+  const ids = pagina.map((p) => p.id);
+
+  // Batch, sin N+1 (una página entera de 50 filas): disponibilidad EN ESTA sucursal + cuántas sucursales en total la
+  // tienen, para "Disponible acá" y "Sucursales" (§10/P10, ver disponibilidad-producto-consulta.ts).
+  const [disponibleAcaPorProducto, conteos, totalSucursales] = await Promise.all([
+    disponibilidadDeProductos(ctx.sucursalId, ids, prisma),
+    prisma.disponibilidadProducto.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, disponible: true }, _count: { productoId: true } }),
+    prisma.sucursal.count({ where: { activo: true } }),
+  ]);
+  const sucursalesDisponiblesPorProducto = new Map(conteos.map((c) => [c.productoId, c._count.productoId]));
+
+  return {
+    items: pagina.map((p) => ({
+      id: p.id,
+      codigo: p.codigo,
+      nombre: p.nombre,
+      tipo: p.tipo,
+      disponibleAca: disponibleAcaPorProducto.get(p.id) === true,
+      sucursalesDisponibles: sucursalesDisponiblesPorProducto.get(p.id) ?? 0,
+      totalSucursales,
+    })),
+    nextCursor: hayMas ? pagina[pagina.length - 1].id : null,
+  };
 }
 
 export interface DatosProducto {

@@ -6,6 +6,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { prisma } from "@/lib/db";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
+import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/disponibilidad-producto-consulta";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -49,10 +50,13 @@ export default async function FichaProductoPage({
 
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
   const productoId = p.id;
-  const activo = p.activo;
 
-  const presentaciones = p.tipo === "MP" ? await listarPresentaciones(p.id) : [];
+  const [presentaciones, disponibilidadPorSucursal] = await Promise.all([
+    p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
+    disponibilidadPorSucursalDeProducto(p.id),
+  ]);
   const tieneReceta = p.tipo === "PV" || p.seProduce;
+  const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -69,21 +73,12 @@ export default async function FichaProductoPage({
           <div>
             <h1 className="text-xl font-semibold">{p.nombre}</h1>
             <p className="text-sm text-neutral-500">
-              {p.codigo} · {p.tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"} · {p.activo ? "Activo" : "Inactivo"}
+              {p.codigo} · {p.tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"} ·{" "}
+              {disponibleAca ? `Disponible en «${ctx.sucursalNombre}»` : `No disponible en «${ctx.sucursalNombre}»`}
             </p>
           </div>
           {puedeEditarProducto && (
             <div className="flex items-start gap-4">
-              <ActivarDesactivarFila
-                activo={p.activo}
-                aviso="Desactivar lo saca de los selectores de movimientos, del stock consolidado y de la valuación; el historial se conserva. Si algo todavía depende de él (recetas vigentes, saldo), no se deja desactivar."
-                accion={async () => {
-                  "use server";
-                  // TRANSITORIO (paso P4/15, docs/plan-disponibilidad-por-sucursal-2026-09-23.md): P10 reemplaza esto por
-                  // la sección "Disponibilidad por sucursal", con el dato real por sucursal.
-                  return actualizarDisponibilidadProducto(productoId, !activo);
-                }}
-              />
               <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
                 Editar
               </Link>
@@ -131,6 +126,42 @@ export default async function FichaProductoPage({
             </div>
           )}
         </dl>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm font-medium">Disponibilidad por sucursal</h2>
+        <div className="overflow-x-auto rounded border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-neutral-500">
+                <th className="py-2 pl-4">Sucursal</th>
+                <th>Disponible</th>
+                <th><span className="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {disponibilidadPorSucursal.map((d) => (
+                <tr key={d.sucursalId} className="border-b last:border-0">
+                  <td className="py-2 pl-4">{d.sucursalNombre}</td>
+                  <td>{d.disponible ? "Sí" : "No"}</td>
+                  <td className="py-2">
+                    {/* Solo la sucursal ACTIVA tiene botón — actualizarDisponibilidadProducto evalúa el gate contra ctx.sucursalId, nunca contra un id que viaje del cliente. */}
+                    {puedeEditarProducto && d.sucursalId === ctx.sucursalId && (
+                      <ActivarDesactivarFila
+                        activo={d.disponible}
+                        aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."
+                        accion={async () => {
+                          "use server";
+                          return actualizarDisponibilidadProducto(productoId, !d.disponible);
+                        }}
+                      />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {presentaciones.length > 0 && (
