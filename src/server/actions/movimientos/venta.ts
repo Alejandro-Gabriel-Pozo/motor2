@@ -19,8 +19,6 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 export interface ItemVentaInput {
   productoId: string;
   cantidadVendida: number;
-  /** Solo tiene sentido si el PV está marcado "Se produce" (tiene lotes propios). */
-  loteVencimiento?: Date | null;
 }
 
 export interface DatosVentaInput {
@@ -97,11 +95,10 @@ async function armarVentaCalculada(
   }
 
   // El PV vendido también puede tener lotes propios si está marcado "Se
-  // produce": si no se cargó uno puntual, se asume el que vence antes.
-  let loteVencimiento = item.loteVencimiento ?? null;
-  if (!loteVencimiento && producto.seProduce) {
-    loteVencimiento = await obtenerLoteMasProximoAVencer(producto.id, seccionId, tx);
-  }
+  // produce" — siempre el que vence antes (FEFO), nunca a elección manual:
+  // mismo criterio que ya usa el consumo de MP vía receta (resolverConsumoPorFamilia),
+  // y el dato ya está en el Kardex desde que se produjo, no hace falta pedírselo a quien vende.
+  const loteVencimiento = producto.seProduce ? await obtenerLoteMasProximoAVencer(producto.id, seccionId, tx) : null;
 
   const precioVenta = await resolverPrecioVenta(sucursalId, producto.id, Number(producto.precioVenta), tx);
   const costoUnitarioAlVender = costoUnitarioPorProducto.get(producto.id) ?? null;

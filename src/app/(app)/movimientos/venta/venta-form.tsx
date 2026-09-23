@@ -10,10 +10,9 @@ import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 interface FilaVenta {
   productoId: string;
   cantidadVendida: string;
-  loteVencimiento: string;
 }
 
-const FILA_VACIA: FilaVenta = { productoId: "", cantidadVendida: "", loteVencimiento: "" };
+const FILA_VACIA: FilaVenta = { productoId: "", cantidadVendida: "" };
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -52,7 +51,6 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
       .map((f) => ({
         productoId: f.productoId,
         cantidadVendida: Number(f.cantidadVendida),
-        loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
       }));
 
     if (!itemsValidos.length) {
@@ -123,15 +121,6 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
             <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
               Cantidad
               <CampoNumero value={fila.cantidadVendida} onChange={(v) => actualizarFila(idx, { cantidadVendida: v })} required tamano="compacto" />
-            </label>
-            <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500">
-              Lote (solo si &quot;Se produce&quot;)
-              <input
-                type="date"
-                value={fila.loteVencimiento}
-                onChange={(e) => actualizarFila(idx, { loteVencimiento: e.target.value })}
-                className="rounded border px-2 py-1.5 text-sm"
-              />
             </label>
             <button
               type="button"
