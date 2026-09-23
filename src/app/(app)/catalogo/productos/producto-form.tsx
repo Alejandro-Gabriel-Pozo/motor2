@@ -29,6 +29,8 @@ export function ProductoForm({
   proveedoresIniciales,
   productoExistente,
   presentacionesIniciales,
+  cantidadSucursales,
+  nombreSucursalActual,
 }: {
   unidades: Opcion[];
   insumosIniciales: Opcion[];
@@ -36,6 +38,9 @@ export function ProductoForm({
   proveedoresIniciales: Opcion[];
   productoExistente?: ProductoExistente;
   presentacionesIniciales?: PresentacionOpcion[];
+  /** Solo para el alta (§4.1, docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — sin esto el tilde no dice nada concreto. */
+  cantidadSucursales?: number;
+  nombreSucursalActual?: string;
 }) {
   const router = useRouter();
   const [insumos, setInsumos] = useState(insumosIniciales);
@@ -48,6 +53,8 @@ export function ProductoForm({
   const [categoriaId, setCategoriaId] = useState(productoExistente?.categoriaId ?? "");
   const [esConsignacion, setEsConsignacion] = useState(productoExistente?.esConsignacion ?? false);
   const [proveedorConsignacionId, setProveedorConsignacionId] = useState(productoExistente?.proveedorConsignacionId ?? "");
+  // Default tildado (decisión 2 del dueño): lo común (insumos/platos compartidos) tiene cero fricción.
+  const [activoEnTodas, setActivoEnTodas] = useState(true);
 
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -74,6 +81,7 @@ export function ProductoForm({
           proveedorConsignacionId: esConsignacion ? proveedorConsignacionId || null : null,
           precioConsignacion: Number(form.get("precioConsignacion") || 0),
           observaciones: texto(form.get("observaciones")) || undefined,
+          activoEnTodasLasSucursales: editando ? undefined : activoEnTodas,
         };
 
         startTransition(async () => {
@@ -225,6 +233,19 @@ export function ProductoForm({
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="seProduce" defaultChecked={productoExistente?.seProduce} /> Se produce (tiene receta propia, se fabrica por lote)
         </label>
+      )}
+
+      {!editando && (
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={activoEnTodas} onChange={(e) => setActivoEnTodas(e.target.checked)} /> Activo en todas las sucursales
+          </label>
+          <AyudaCampo>
+            {activoEnTodas
+              ? `Tildado (lo habitual, para insumos y platos compartidos como harina o sal): queda disponible en las ${cantidadSucursales ?? "?"} sucursales que existen hoy.`
+              : `Sin tildar: solo queda disponible en "${nombreSucursalActual ?? "esta sucursal"}" — en las demás no va a aparecer hasta que un admin de esa sucursal lo active ahí.`}
+          </AyudaCampo>
+        </div>
       )}
 
       <div className="flex flex-col gap-1">

@@ -225,4 +225,46 @@ describe("productos", () => {
       expect(resultado.map((p) => p.nombre).sort()).toEqual(["Harina normal", "Vino en consignación"]);
     });
   });
+
+  describe("el tilde de disponibilidad en el alta (§4, docs/plan-disponibilidad-por-sucursal-2026-09-23.md)", () => {
+    async function disponibleEn(productoId: string, sucursalId: string) {
+      return (await prisma.disponibilidadProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } }))?.disponible ?? false;
+    }
+
+    it("tildado (default, sin pasar el campo): queda disponible en TODAS las sucursales existentes", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const r = await darDeAltaProducto({ nombre: "Harina universal", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1 });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+
+      expect(await disponibleEn(r.id, (await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
+      expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
+      expect((await prisma.producto.findUniqueOrThrow({ where: { id: r.id } })).activo).toBe(true); // espejo transitorio
+    });
+
+    it("sin tildar: queda disponible SOLO en la sucursal desde la que se da de alta", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+      const r = await darDeAltaProducto({ nombre: "Insumo exclusivo de Central", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, activoEnTodasLasSucursales: false });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+
+      expect(await disponibleEn(r.id, central.id)).toBe(true);
+      expect(await disponibleEn(r.id, otraSucursal.id)).toBe(false);
+    });
+
+    // "sin tildar: el producto no aparece en el selector de otra sucursal" — se agrega en P6, cuando
+    // buscarProductosSelector pasa a filtrar por sucursal (soloDisponibles); hoy el selector todavía usa `activo`
+    // global, así que probarlo acá daría un falso rojo por una pieza que todavía no existe, no por este paso.
+
+    it("darDeAltaProductoRapido (sin formulario, sin tilde visible) sigue el mismo default: disponible en todas", async () => {
+      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const r = await darDeAltaProductoRapido("Producto del wizard", unidadKgId);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+
+      expect(await disponibleEn(r.id, (await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
+      expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
+    });
+  });
 });

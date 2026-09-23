@@ -169,6 +169,12 @@ export interface DatosProducto {
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
+  /**
+   * Tilde del alta (decisión 2 del dueño, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §4): `true`/ausente (default) →
+   * activo en TODAS las sucursales que existen hoy — el caso común, cero fricción. `false` explícito → activo SOLO en la
+   * sucursal desde la que se da de alta; las demás lo activan a mano cuando lo necesiten.
+   */
+  activoEnTodasLasSucursales?: boolean;
 }
 
 async function validarComun(datos: DatosProducto, productoIdExcluir?: string): Promise<string | null> {
@@ -240,6 +246,10 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
       const producto = await crearConCodigoAutogenerado("MP", undefined, (codigo) =>
         prisma.producto.create({ data: { codigo, tipo: "MP", nombre: n, unidadStockId, factorConversion: 1 } })
       );
+      // Sin formulario donde poner el tilde de §4.1 — sigue su mismo default: activo en todas las sucursales que existen hoy.
+      const sucursalIds = (await prisma.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
+      await prisma.disponibilidadProducto.createMany({ data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })) });
+      await sincronizarActivoGlobal(producto.id);
       return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
@@ -248,9 +258,18 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
   });
 }
 
-/** Devuelve también el id del producto creado: al guardar, la pantalla lleva a su ficha. */
+/**
+ * Devuelve también el id del producto creado: al guardar, la pantalla lleva a su ficha.
+ *
+ * El `createMany` de disponibilidad va DESPUÉS de crear el producto, fuera de una transacción interactiva con él a propósito
+ * (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §4.2): `crearConCodigoAutogenerado` reintenta hasta 5 veces atrapando el
+ * `P2002` del INSERT, y dentro de una transacción interactiva de Postgres el primer INSERT fallido aborta la transacción
+ * entera, así que los reintentos fallarían todos. Si el `createMany` fallara después de crear el producto, éste queda sin
+ * ninguna fila de disponibilidad ⇒ no disponible en ninguna sucursal ⇒ invisible pero inofensivo (nunca a medias activo en
+ * algunas sucursales sin querer), y se puede arreglar desde `/catalogo/productos`, donde aparece con "0 de N sucursales".
+ */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
-  return conPermiso("alta_producto", async () => {
+  return conPermiso("alta_producto", async (ctx) => {
     const invalido = await validarComun(datos);
     if (invalido) return error(invalido);
 
@@ -258,6 +277,12 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
       const producto = await crearConCodigoAutogenerado(datos.tipo, datos.codigo, (codigo) =>
         prisma.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos) } })
       );
+      const sucursalIds =
+        datos.activoEnTodasLasSucursales !== false ? (await prisma.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [ctx.sucursalId];
+      await prisma.disponibilidadProducto.createMany({
+        data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })),
+      });
+      await sincronizarActivoGlobal(producto.id);
       return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");

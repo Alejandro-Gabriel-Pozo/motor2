@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { listarSucursales } from "@/server/actions/auth/sucursales";
 import { ProductoForm } from "../producto-form";
 import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
 
@@ -16,7 +17,7 @@ export default async function NuevoProductoPage() {
   const gateAlta = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "alta_producto");
   if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
-  const { unidades, insumos, categorias, proveedores } = await cargarOpcionesFormularioProducto();
+  const [{ unidades, insumos, categorias, proveedores }, sucursales] = await Promise.all([cargarOpcionesFormularioProducto(), listarSucursales()]);
 
   return (
     <div className="max-w-xl">
@@ -24,7 +25,14 @@ export default async function NuevoProductoPage() {
         ← Productos
       </Link>
       <h1 className="mb-4 text-xl font-semibold">Nuevo producto</h1>
-      <ProductoForm unidades={unidades} insumosIniciales={insumos} categoriasIniciales={categorias} proveedoresIniciales={proveedores} />
+      <ProductoForm
+        unidades={unidades}
+        insumosIniciales={insumos}
+        categoriasIniciales={categorias}
+        proveedoresIniciales={proveedores}
+        cantidadSucursales={sucursales.length}
+        nombreSucursalActual={ctx.sucursalNombre}
+      />
     </div>
   );
 }
