@@ -7,6 +7,8 @@ import { esNumeroFinito } from "@/core/numero";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
+import { estaDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto";
+import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -317,32 +319,54 @@ function enumerar(items: string[], tope = 4): string {
 }
 
 /**
- * Desactivar saca el producto de los selectores de movimiento, de Stock consolidado y de la Valuación, y si es una MP de la receta vigente de un plato
- * activo ese plato deja de poder venderse. Por eso al DESACTIVAR se BLOQUEA mientras algo dependa de él (recetas vigentes de platos activos, saldo en
- * cualquier sección) y el mensaje dice qué es. Reactivar nunca se bloquea. Ver `dependenciasParaDesactivar`.
+ * Espejo TRANSITORIO (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §2.2/§6.1) mientras `Producto.activo` sigue existiendo
+ * en el schema: `activo = disponible en ALGUNA sucursal`, la misma equivalencia que preservó el backfill de la migración
+ * (decisión 1: "inactivo en todas" ≡ el `activo:false` global de antes). Se borra junto con la columna en P13 — nadie más
+ * debería depender de `Producto.activo` para entonces (verificado con `rg "\bactivo\b" src/ | rg -i producto` al cerrar P11).
  */
-export async function actualizarActivoProducto(productoId: string, activo: boolean): Promise<ResultadoAccion> {
+async function sincronizarActivoGlobal(productoId: string): Promise<void> {
+  const filas = await prisma.disponibilidadProducto.findMany({ where: { productoId }, select: { disponible: true } });
+  await prisma.producto.update({ where: { id: productoId }, data: { activo: estaDisponibleEnAlguna(filas) } });
+}
+
+/**
+ * Disponibilidad de un producto EN LA SUCURSAL ACTIVA (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §6.1) — reemplaza el
+ * `actualizarActivoProducto` global de antes. Desactivarlo acá lo saca de los selectores de movimiento, de Stock consolidado y
+ * de la Valuación DE ESTA SUCURSAL; y si es una MP de la receta vigente de un plato disponible acá, ese plato deja de poder
+ * venderse acá. Por eso al DESACTIVAR se BLOQUEA mientras algo dependa de él EN ESTA SUCURSAL (recetas vigentes de platos
+ * disponibles acá, saldo en alguna sección de esta sucursal) y el mensaje dice qué es. Reactivar nunca se bloquea. Ver
+ * `dependenciasParaDesactivar`.
+ */
+export async function actualizarDisponibilidadProducto(productoId: string, disponible: boolean): Promise<ResultadoAccion> {
   return conPermiso("editar_producto", async (ctx) => {
     const existente = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
-    if (!activo) {
-      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId);
+    if (!disponible) {
+      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, ctx.sucursalId);
       const motivos: string[] = [];
       if (recetasVigentes.length) motivos.push(`está en la receta vigente de ${enumerar(recetasVigentes.map((r) => r.nombre))}: sacalo de esas recetas`);
       if (saldos.length) {
         const donde = enumerar(saldos.map((s) => `${s.sucursalNombre} / ${s.seccionNombre} (${s.saldo})`));
         motivos.push(`tiene saldo en ${donde}: dejalo en cero con un ajuste`);
       }
-      if (motivos.length) return error(`No se puede desactivar "${existente.nombre}": ${motivos.join("; y ")} antes de desactivarlo.`);
+      if (motivos.length) return error(`No se puede desactivar "${existente.nombre}" en "${ctx.sucursalNombre}": ${motivos.join("; y ")} antes de desactivarlo.`);
     }
-    await prisma.producto.update({ where: { id: productoId }, data: { activo } });
+    // El valor anterior se lee ANTES del upsert — registrarCambioAuditado necesita comparar contra el estado previo real, no
+    // contra el que se está por escribir (si no, "repetir el mismo estado no deja registro" dejaría de cumplirse).
+    const anterior = await productoDisponibleEn(ctx.sucursalId, productoId);
+    await prisma.disponibilidadProducto.upsert({
+      where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
+      update: { disponible },
+      create: { sucursalId: ctx.sucursalId, productoId, disponible },
+    });
+    await sincronizarActivoGlobal(productoId);
     // Auditoría administrativa, como el cambio de activo de un rol. No-op si el valor no cambió (registrarCambioAuditado).
     await registrarCambioAuditado(prisma, {
-      entidad: "Producto", entidadId: productoId, campo: "activo",
-      descripcion: `Producto "${existente.nombre}": activo`,
-      valorAnterior: existente.activo, valorNuevo: activo, actorId: ctx.usuarioId,
+      entidad: "DisponibilidadProducto", entidadId: `${ctx.sucursalId}:${productoId}`, campo: "disponible",
+      descripcion: `Producto "${existente.nombre}" en "${ctx.sucursalNombre}": disponible`,
+      valorAnterior: anterior, valorNuevo: disponible, actorId: ctx.usuarioId,
     });
-    return ok(`Producto "${existente.nombre}" ${activo ? "activado" : "desactivado"}.`);
+    return ok(`Producto "${existente.nombre}" ${disponible ? "activado" : "desactivado"} en "${ctx.sucursalNombre}".`);
   });
 }
 

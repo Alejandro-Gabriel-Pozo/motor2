@@ -5,7 +5,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate"
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { prisma } from "@/lib/db";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
-import { actualizarActivoProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
+import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -79,7 +79,9 @@ export default async function FichaProductoPage({
                 aviso="Desactivar lo saca de los selectores de movimientos, del stock consolidado y de la valuación; el historial se conserva. Si algo todavía depende de él (recetas vigentes, saldo), no se deja desactivar."
                 accion={async () => {
                   "use server";
-                  return actualizarActivoProducto(productoId, !activo);
+                  // TRANSITORIO (paso P4/15, docs/plan-disponibilidad-por-sucursal-2026-09-23.md): P10 reemplaza esto por
+                  // la sección "Disponibilidad por sucursal", con el dato real por sucursal.
+                  return actualizarDisponibilidadProducto(productoId, !activo);
                 }}
               />
               <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">

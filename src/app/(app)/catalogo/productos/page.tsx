@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
-import { actualizarActivoProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
+import { actualizarDisponibilidadProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
 
 /**
  * Lista de productos. Ya no comparte pantalla con el formulario: el alta está en `/nuevo`, la ficha (solo lectura) en `/[id]` y la edición en
@@ -84,7 +84,10 @@ export default async function ProductosPage({
                         aviso="Desactivar lo saca de los selectores de movimientos, del stock consolidado y de la valuación; el historial se conserva. Si algo todavía depende de él (recetas vigentes, saldo), no se deja desactivar."
                         accion={async () => {
                           "use server";
-                          return actualizarActivoProducto(p.id, !p.activo);
+                          // TRANSITORIO (paso P4/15, docs/plan-disponibilidad-por-sucursal-2026-09-23.md): sigue leyendo
+                          // `p.activo` (el espejo global) hasta P10, que reemplaza esta columna por "Disponible acá" con
+                          // el dato real por sucursal (`disponibleAca` batch de listarProductosPagina).
+                          return actualizarDisponibilidadProducto(p.id, !p.activo);
                         }}
                       />
                     </div>
