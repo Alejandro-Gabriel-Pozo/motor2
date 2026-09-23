@@ -33,7 +33,7 @@ import { crearSeccion } from "../src/server/actions/movimientos/secciones";
 import { crearCategoriaProducto } from "../src/server/actions/catalogo/categorias-producto";
 import { crearUnidad } from "../src/server/actions/catalogo/unidades";
 import { altaProveedor, actualizarActivaProveedor } from "../src/server/actions/catalogo/proveedores";
-import { crearInsumo } from "../src/server/actions/catalogo/insumos";
+import { crearInsumo, crearOActualizarGrupo, actualizarGrupoDeInsumo } from "../src/server/actions/catalogo/insumos";
 import { darDeAltaProducto, actualizarActivoProducto } from "../src/server/actions/catalogo/productos";
 import { guardarReceta } from "../src/server/actions/catalogo/recetas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
@@ -206,6 +206,35 @@ describe("seed demo pizzería La Cuadra", () => {
       }
       const proveedorPorCodigoSheet = new Map(PROVEEDORES.map((p) => [p.codigo, proveedorIdPorNombre.get(p.nombre)!]));
 
+      // 5b) Grupo "No comestibles" → "Packaging"/"Limpieza", con un Insumo cada uno — para que el food cost
+      // realmente EXCLUYA packaging y limpieza (src/core/catalogo/no-comestibles.ts). Hallazgo real (2026-09-22):
+      // esta demo nunca tuvo ningún Grupo cargado, así que la exclusión nunca se activaba — MP019/MP020 (cajas de
+      // pizza, el ejemplo de manual de "packaging") y OT001/OT002 (detergente/lavandina, "limpieza") entraban de
+      // lleno al food cost como si fueran comida. El mecanismo y sus tests ya existían; faltaban los datos.
+      async function resolverGrupo(nombre: string, padreId: string | null): Promise<string> {
+        const existente = await prisma.grupo.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
+        if (existente) return existente.id;
+        anotarSiFalla(`crearOActualizarGrupo(${nombre})`, await crearOActualizarGrupo(nombre, padreId));
+        return (await prisma.grupo.findFirstOrThrow({ where: { nombre: { equals: nombre, mode: "insensitive" } } })).id;
+      }
+      const grupoNoComestibles = await resolverGrupo("No comestibles", null);
+      const grupoPackaging = await resolverGrupo("Packaging", grupoNoComestibles);
+      const grupoLimpieza = await resolverGrupo("Limpieza", grupoNoComestibles);
+
+      async function resolverInsumoDeGrupo(nombre: string, grupoId: string): Promise<string> {
+        let insumo = await prisma.insumo.findUnique({ where: { nombre } });
+        if (!insumo) {
+          anotarSiFalla(`crearInsumo(${nombre})`, await crearInsumo(nombre));
+          insumo = await prisma.insumo.findUniqueOrThrow({ where: { nombre } });
+        }
+        if (insumo.grupoId !== grupoId) anotarSiFalla(`actualizarGrupoDeInsumo(${nombre})`, await actualizarGrupoDeInsumo(insumo.id, grupoId));
+        return insumo.id;
+      }
+      const insumoPackaging = await resolverInsumoDeGrupo("PACKAGING", grupoPackaging);
+      const insumoLimpieza = await resolverInsumoDeGrupo("LIMPIEZA", grupoLimpieza);
+      // Códigos de PRODUCTOS que van con cada Insumo "no comestible" — el resto sigue con `insumoId: null` salvo MORRON, abajo.
+      const insumoIdPorCodigoNoComestible: Record<string, string> = { MP019: insumoPackaging, MP020: insumoPackaging, OT001: insumoLimpieza, OT002: insumoLimpieza };
+
       // 6) Insumo "MORRON" — el ÚNICO grupo de hermanar de esta demo (ver
       // docstring al final del archivo, sección "Por qué un solo pool de
       // Insumo"): agrupa MP011 (Morrón rojo, proveedor habitual) con un
@@ -235,7 +264,7 @@ describe("seed demo pizzería La Cuadra", () => {
           unidadStockId: idUnidad(p.unidadStock),
           factorConversion: p.factorConversion,
           observaciones: p.observaciones,
-          insumoId: p.codigo === "MP011" ? insumoMorron.id : null,
+          insumoId: p.codigo === "MP011" ? insumoMorron.id : (insumoIdPorCodigoNoComestible[p.codigo] ?? null),
           precioVenta: p.precioVenta,
           seProduce: p.seProduce,
         });

@@ -35,7 +35,7 @@ import { crearSeccion } from "../src/server/actions/movimientos/secciones";
 import { crearCategoriaProducto } from "../src/server/actions/catalogo/categorias-producto";
 import { crearUnidad } from "../src/server/actions/catalogo/unidades";
 import { altaProveedor, actualizarActivaProveedor } from "../src/server/actions/catalogo/proveedores";
-import { crearInsumo } from "../src/server/actions/catalogo/insumos";
+import { crearInsumo, crearOActualizarGrupo, actualizarGrupoDeInsumo } from "../src/server/actions/catalogo/insumos";
 import { darDeAltaProducto, actualizarActivoProducto } from "../src/server/actions/catalogo/productos";
 import { guardarReceta } from "../src/server/actions/catalogo/recetas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
@@ -143,6 +143,32 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       }
       const proveedorIdPorCodigo = new Map(PROVEEDORES.map((p) => [p.codigo, proveedorIdPorNombre.get(p.nombre)!]));
 
+      // --- 5b) Grupo "No comestibles" → "Packaging"/"Limpieza", con un Insumo cada uno (ver el mismo bloque, con
+      // el docstring completo, en seed-demo-pizzeria.ts) — MP019/MP020 (cajas de pizza) y OT001/OT002
+      // (detergente/lavandina) dejan de entrar al food cost como si fueran comida. ---
+      async function resolverGrupo(nombre: string, padreId: string | null): Promise<string> {
+        const existente = await prisma.grupo.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
+        if (existente) return existente.id;
+        anotarSiFalla(`crearOActualizarGrupo(${nombre})`, await crearOActualizarGrupo(nombre, padreId));
+        return (await prisma.grupo.findFirstOrThrow({ where: { nombre: { equals: nombre, mode: "insensitive" } } })).id;
+      }
+      const grupoNoComestibles = await resolverGrupo("No comestibles", null);
+      const grupoPackaging = await resolverGrupo("Packaging", grupoNoComestibles);
+      const grupoLimpieza = await resolverGrupo("Limpieza", grupoNoComestibles);
+
+      async function resolverInsumoDeGrupo(nombre: string, grupoId: string): Promise<string> {
+        let insumo = await prisma.insumo.findUnique({ where: { nombre } });
+        if (!insumo) {
+          anotarSiFalla(`crearInsumo(${nombre})`, await crearInsumo(nombre));
+          insumo = await prisma.insumo.findUniqueOrThrow({ where: { nombre } });
+        }
+        if (insumo.grupoId !== grupoId) anotarSiFalla(`actualizarGrupoDeInsumo(${nombre})`, await actualizarGrupoDeInsumo(insumo.id, grupoId));
+        return insumo.id;
+      }
+      const insumoPackaging = await resolverInsumoDeGrupo("PACKAGING", grupoPackaging);
+      const insumoLimpieza = await resolverInsumoDeGrupo("LIMPIEZA", grupoLimpieza);
+      const insumoIdPorCodigoNoComestible: Record<string, string> = { MP019: insumoPackaging, MP020: insumoPackaging, OT001: insumoLimpieza, OT002: insumoLimpieza };
+
       // --- 6) Insumo "MORRON" (hermana MP011/MP011B). ---
       let insumoMorron = await prisma.insumo.findUnique({ where: { nombre: "MORRON" } });
       if (!insumoMorron) {
@@ -164,7 +190,7 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
           unidadStockId: idUnidad(p.unidadStock),
           factorConversion: p.factorConversion,
           observaciones: p.observaciones,
-          insumoId: p.codigo === "MP011" ? insumoMorron.id : null,
+          insumoId: p.codigo === "MP011" ? insumoMorron.id : (insumoIdPorCodigoNoComestible[p.codigo] ?? null),
           precioVenta: p.precioVenta,
           seProduce: p.seProduce,
         });
