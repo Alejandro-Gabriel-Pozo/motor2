@@ -239,7 +239,6 @@ describe("productos", () => {
 
       expect(await disponibleEn(r.id, (await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
       expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
-      expect((await prisma.producto.findUniqueOrThrow({ where: { id: r.id } })).activo).toBe(true); // espejo transitorio
     });
 
     it("sin tildar: queda disponible SOLO en la sucursal desde la que se da de alta", async () => {

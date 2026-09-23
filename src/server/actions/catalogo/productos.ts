@@ -7,7 +7,6 @@ import { esNumeroFinito } from "@/core/numero";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
-import { estaDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto";
 import { disponibilidadDeProductos, productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
@@ -285,7 +284,6 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
       // Sin formulario donde poner el tilde de §4.1 — sigue su mismo default: activo en todas las sucursales que existen hoy.
       const sucursalIds = (await prisma.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
       await prisma.disponibilidadProducto.createMany({ data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })) });
-      await sincronizarActivoGlobal(producto.id);
       return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
@@ -318,7 +316,6 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
       await prisma.disponibilidadProducto.createMany({
         data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })),
       });
-      await sincronizarActivoGlobal(producto.id);
       return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
@@ -380,17 +377,6 @@ function enumerar(items: string[], tope = 4): string {
 }
 
 /**
- * Espejo TRANSITORIO (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §2.2/§6.1) mientras `Producto.activo` sigue existiendo
- * en el schema: `activo = disponible en ALGUNA sucursal`, la misma equivalencia que preservó el backfill de la migración
- * (decisión 1: "inactivo en todas" ≡ el `activo:false` global de antes). Se borra junto con la columna en P13 — nadie más
- * debería depender de `Producto.activo` para entonces (verificado con `rg "\bactivo\b" src/ | rg -i producto` al cerrar P11).
- */
-async function sincronizarActivoGlobal(productoId: string): Promise<void> {
-  const filas = await prisma.disponibilidadProducto.findMany({ where: { productoId }, select: { disponible: true } });
-  await prisma.producto.update({ where: { id: productoId }, data: { activo: estaDisponibleEnAlguna(filas) } });
-}
-
-/**
  * Disponibilidad de un producto EN LA SUCURSAL ACTIVA (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §6.1) — reemplaza el
  * `actualizarActivoProducto` global de antes. Desactivarlo acá lo saca de los selectores de movimiento, de Stock consolidado y
  * de la Valuación DE ESTA SUCURSAL; y si es una MP de la receta vigente de un plato disponible acá, ese plato deja de poder
@@ -420,7 +406,6 @@ export async function actualizarDisponibilidadProducto(productoId: string, dispo
       update: { disponible },
       create: { sucursalId: ctx.sucursalId, productoId, disponible },
     });
-    await sincronizarActivoGlobal(productoId);
     // Auditoría administrativa, como el cambio de activo de un rol. No-op si el valor no cambió (registrarCambioAuditado).
     await registrarCambioAuditado(prisma, {
       entidad: "DisponibilidadProducto", entidadId: `${ctx.sucursalId}:${productoId}`, campo: "disponible",

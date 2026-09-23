@@ -283,7 +283,6 @@ model Producto {
   /// Unidades de stock por 1 unidad de compra (Catalogo.js:1083/1095): > 0.
   factorConversion Decimal @default(1) @db.Decimal(14, 4)
 
-  activo        Boolean @default(true)
   observaciones String?
 
   /// Solo tiene sentido si tipo=MP (Catalogo.js:951, 1723-1726) — un PV no

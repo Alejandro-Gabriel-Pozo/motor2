@@ -30,7 +30,6 @@ describe("actualizarDisponibilidadProducto", () => {
   });
 
   const disponibleAca = async () => (await prisma.disponibilidadProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } }))?.disponible;
-  const activoGlobal = async () => (await prisma.producto.findUniqueOrThrow({ where: { id: productoId } })).activo;
 
   it("desactiva y vuelve a activar un producto en la sucursal, con un mensaje que lleva su nombre y la sucursal", async () => {
     const baja = await actualizarDisponibilidadProducto(productoId, false);
@@ -78,24 +77,6 @@ describe("actualizarDisponibilidadProducto", () => {
       expect((await actualizarDisponibilidadProducto(productoId, false)).ok).toBe(false); // bloqueado por saldo
       expect((await actualizarDisponibilidadProducto(productoId, true)).ok).toBe(true); // ya estaba disponible
       expect(await registros()).toEqual([]);
-    });
-  });
-
-  describe("espejo transitorio de Producto.activo (sincronizarActivoGlobal, hasta P13)", () => {
-    it("desactivar en la ÚNICA sucursal donde estaba disponible pone activo:false global — equivale al comportamiento de antes", async () => {
-      expect(await activoGlobal()).toBe(true);
-      await actualizarDisponibilidadProducto(productoId, false);
-      expect(await activoGlobal()).toBe(false);
-    });
-
-    it("con 2 sucursales disponibles, desactivar en una sola mantiene activo:true global (sigue disponible en la otra)", async () => {
-      const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-      await prisma.disponibilidadProducto.create({ data: { sucursalId: otraSucursal.id, productoId, disponible: true } });
-
-      await actualizarDisponibilidadProducto(productoId, false); // desactiva en "Central"
-
-      expect(await disponibleAca()).toBe(false);
-      expect(await activoGlobal()).toBe(true); // sigue disponible en "Norte"
     });
   });
 

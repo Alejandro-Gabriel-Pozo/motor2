@@ -212,15 +212,19 @@ testAutenticado("modo oscuro: la página declara color-scheme, para que los cont
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz en modo oscuro").toContain("dark");
 });
 
-testAutenticado("catalogo/productos: la lista, con la confirmación de «Desactivar» abierta y con el bloqueo mostrado, sin violaciones de axe", async ({ paginaAutenticada: page }) => {
-  // Un producto activo y uno inactivo (para que se dibujen los dos estados del botón) y un plato que usa al activo (para que desactivar se bloquee y se
-  // muestre el mensaje de error). `?q=` acota la tabla: no depende de lo que dejen otros specs.
+testAutenticado("catalogo/productos: la lista, con la confirmación de «Desactivar» abierta y con el bloqueo mostrado, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  // Un producto disponible acá y uno no disponible (para que se dibujen los dos estados del botón) y un plato disponible acá que usa al primero (para que
+  // desactivar se bloquee y se muestre el mensaje de error). `?q=` acota la tabla: no depende de lo que dejen otros specs. El "inactivo" queda sin fila de
+  // DisponibilidadProducto a propósito — fila ausente = no disponible (docs/plan-disponibilidad-por-sucursal-2026-09-23.md).
   const marca = Date.now();
   const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
   const insumo = await prisma.insumo.create({ data: { nombre: `E2E A11y Insumo Lista ${marca}` } });
   const activo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LA-${marca}`, nombre: `E2E A11y Lista ${marca} activo`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } });
-  const inactivo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LI-${marca}`, nombre: `E2E A11y Lista ${marca} inactivo`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id, activo: false } });
+  const inactivo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LI-${marca}`, nombre: `E2E A11y Lista ${marca} inactivo`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } });
   const plato = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LP-${marca}`, nombre: `E2E A11y Lista ${marca} plato`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  await prisma.disponibilidadProducto.createMany({
+    data: [activo.id, plato.id].map((productoId) => ({ sucursalId, productoId, disponible: true })),
+  });
   await prisma.recetaVersion.create({ data: { productoId: plato.id, version: 1, ingredientes: { create: [{ insumoProductoId: activo.id, cantidad: 1, unidadId: kg.id }] } } });
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(`E2E A11y Lista ${marca}`)}`);
