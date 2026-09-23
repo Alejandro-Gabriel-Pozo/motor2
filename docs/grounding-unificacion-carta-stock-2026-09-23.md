@@ -273,6 +273,40 @@ todavía:
 Ninguna de las dos decide nada todavía — quedan las dos anotadas para
 cuando el dueño resuelva cuál seguir.
 
+### 6.1 Grounding de infraestructura para la opción B (POS + comandas)
+
+El dueño confirma que el local **ya tiene una PC**, con una **comandera**
+(impresora térmica dedicada de cocina, protocolo ESC/POS — el estándar
+de facto de este tipo de impresoras) **conectada por cable** a esa PC.
+Esto resuelve la duda de infraestructura de la opción B sin comprar nada
+nuevo, pero conviene separar dos problemas que parecen uno solo:
+
+- **"Mesa abierta" NO es un problema de cómputo serverless.** Es una fila
+  en Postgres (`Mesa`/`Comanda`, `estado: ABIERTA`) a la que se le van
+  agregando líneas con el tiempo — el mismo patrón de Server Action +
+  Neon que ya usa todo motor2 hoy. Serverless no necesita mantener nada
+  en memoria entre requests para esto.
+- **Imprimir en la comandera SÍ es un problema de red, no de estado.**
+  Una función serverless en la nube no puede abrir una conexión directa
+  a un dispositivo detrás del router del local (sin IP pública, y exponer
+  el puerto de la impresora a internet sería un agujero de seguridad).
+  Se resuelve con un agente local en esa misma PC:
+  - Un script chico (podría ser Node/TypeScript — mismo lenguaje que ya
+    usa motor2 — con una librería ESC/POS como `node-thermal-printer`/
+    `escpos`) corriendo en la PC, con conexión USB directa a la
+    comandera.
+  - El agente sale por HTTPS hacia motor2 (conexión saliente, no
+    requiere abrir nada de la red del local) a preguntar "¿hay comandas
+    pendientes de imprimir?", las imprime, y le avisa a motor2 que ya se
+    imprimieron (para no duplicar si el script se reinicia).
+
+Dos preguntas operativas quedan abiertas ahí (no de arquitectura, de
+uso diario):
+- Qué pasa si el local se queda sin internet un rato — la comanda no
+  llega hasta que vuelva la conexión.
+- Que el agente/PC se caiga y nadie lo note — conviene que arranque solo
+  con el sistema y quede corriendo siempre.
+
 ## 7. Qué queda abierto
 
 - Decidir el camino de `SiteConfig` (§2.2) — preview en vivo sin migrar,
