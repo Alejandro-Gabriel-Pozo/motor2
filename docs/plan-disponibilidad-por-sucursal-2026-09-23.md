@@ -393,7 +393,7 @@ Detalles fijados por tests existentes:
 
 - **P5 — Alta con el tilde.** `DatosProducto.activoEnTodasLasSucursales`, `darDeAltaProducto`, `darDeAltaProductoRapido`, `producto-form.tsx` + `nuevo/page.tsx`, nota en `quick-crear-producto.tsx`. Tests: tildado ⇒ N filas; sin tildar ⇒ 1 fila; el producto no aparece en el selector de otra sucursal.
 
-- **P5b — (a confirmar antes de este paso, ver §10) Tilde equivalente en alta de sucursal.**
+- **P5b — Alta de sucursal arranca solo con los productos universales (§10, decisión 4 — RESUELTA).** `productosUniversales` (pura, con tests) + `crearSucursalConAdmin` inserta `DisponibilidadProducto` para cada producto disponible en TODAS las sucursales activas de antes (nunca por mayoría). Tests de los 4 casos de §10, incluido el borde de la primera sucursal del sistema.
 
 - **P6 — El selector.** Renombre `soloActivos` → `soloDisponibles` + `soloDisponiblesEnAlguna`; `buscarProductosSelector` con `obtenerContextoUsuario`. `npx tsc --noEmit` enumera los 12 call-sites de §5.2 — corregirlos todos en este commit. Tests: producto disponible solo en A no aparece en el selector de B.
 
@@ -442,21 +442,39 @@ Si cualquiera de los seis falla, el pendiente **no está cerrado**, aunque los o
 
 ---
 
-## 10. La única consecuencia abierta (no reabre ninguna de las 3 decisiones)
+## 10. P5b — decisión 4 (2026-09-23): qué pasa al dar de alta una sucursal — RESUELTA
 
-Las 3 decisiones cubren "qué pasa al dar de alta un producto". **No cubren qué pasa al dar de alta una SUCURSAL.** Con "fila ausente = no disponible", una sucursal nueva arranca con cero productos disponibles — alguien tendría que activar el catálogo entero a mano.
+Las 3 decisiones originales cubren "qué pasa al dar de alta un producto". Faltaba "qué pasa al dar de alta una SUCURSAL": con "fila ausente = no disponible", una sucursal nueva arranca con cero productos disponibles — alguien tendría que activar el catálogo entero a mano.
 
-No es un defecto del diseño: es el precio explícito de materializar filas en vez de usar el modelo opt-in de ERPNext (`restrict_to_companies == 0` ⇒ visible también en Companies futuras). El dueño ya eligió materializar ("todas las sucursales existentes **en ese momento**").
+**Decisión 4 del dueño (2026-09-23): "solo los que sean al 100%".** Una sucursal nueva arranca activa **únicamente** en los productos que hoy están `disponible: true` en **TODAS** las sucursales activas (universales, sin excepción) — nunca en los que son parciales (activos en algunas sí, en otras no), aunque sea en la mayoría. Un producto que ya es sucursal-específico en algún lado no se contagia solo por ser común: la nueva sucursal empieza más acotada que "todo lo que exista en alguna parte", justo lo contrario de mi propuesta original (que activaba con solo estar en UNA sucursal).
 
-**Mitigación propuesta, derivada de la decisión 2 y con su misma lógica**: el alta de sucursal lleva el mismo tilde, con el mismo default:
+Ejemplo del criterio: con 3 sucursales activas hoy (La Cuadra, B, C), un producto disponible en las 3 se activa solo en la nueva; un producto disponible en 2 de las 3 (aunque sea "la mayoría") queda desactivado en la nueva hasta que un admin lo prenda ahí a mano.
 
+**Diseño exacto — sin tilde, es automático** (a diferencia de P5/alta de producto, acá no hay opción, es la regla siempre):
+
+```ts
+// src/core/catalogo/disponibilidad-producto.ts — pura, mismo archivo que el resto de §3
+/** Productos "universales": disponibles en TODAS las sucursales activas dadas (sin excepción). */
+export function productosUniversales(
+  disponibilidadPorProducto: ReadonlyMap<string, readonly { sucursalId: string; disponible: boolean }[]>,
+  sucursalIdsActivas: readonly string[]
+): string[]
 ```
-[x] Empezar con todos los productos del catálogo disponibles en esta sucursal
-```
 
-Tildado ⇒ `createMany` de una fila `disponible: true` por cada producto disponible en alguna sucursal. Sin tildar ⇒ arranca vacía.
+Server, en `crearSucursalConAdmin` (`sucursales.ts:23`), dentro de la misma transacción que crea la sucursal y el admin:
+1. `sucursalIdsActivas = Sucursal.findMany({ where: { activo: true }, select: { id: true } })` (ANTES de crear la nueva — no se incluye a sí misma).
+2. Para cada producto: ¿tiene `disponible: true` en TODAS esas sucursales? → `productosUniversales(...)`.
+3. `disponibilidadProducto.createMany({ data: universales.map(productoId => ({ sucursalId: nueva.id, productoId, disponible: true })) })`. Los NO universales simplemente no se insertan (fila ausente = no disponible, mismo criterio de siempre).
 
-**Es un default de un formulario, no un rediseño**: si se prefiere lo contrario, se cambia un `useState(true)` por `useState(false)`. Queda señalado para confirmar antes de P5, no decidido en este plan. Si se confirma, entra como **P5b**.
+**Caso borde real, cubrir con test**: si hoy no hay ninguna sucursal activa todavía (la primerísima sucursal del sistema), `sucursalIdsActivas` da vacío — `productosUniversales` sobre un conjunto vacío de sucursales-requisito no puede dar "todos" por definición vacía falsa; el test tiene que fijar que en ese caso la nueva sucursal arranca con **cero** productos (no con "todos", que sería el otro sentido posible de una intersección vacía) — es el caso de la primera sucursal real del sistema, donde no hay nada contra qué ser "universal" todavía.
+
+**Tests nuevos obligatorios** (además de los que ya pedía P5):
+- 3 sucursales activas, un producto universal en las 3 → aparece en la 4ta nueva.
+- 3 sucursales activas, un producto disponible en 2 de las 3 (mayoría, no todas) → NO aparece en la 4ta nueva.
+- Una sucursal inactiva (`Sucursal.activo: false`) no cuenta para el cálculo de "todas" — ni como universo total ni truncando el criterio.
+- Primera sucursal del sistema (sin ninguna otra activa antes): arranca con cero productos.
+
+Entra como **P5b**, commit propio después de P5 (que agrega el tilde de alta de producto) y antes de P6.
 
 ---
 
