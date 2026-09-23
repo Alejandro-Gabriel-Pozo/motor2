@@ -108,6 +108,7 @@ model Sucursal {
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
+  disponibilidadesProducto DisponibilidadProducto[]
   promociones          PromocionProducto[]
   traspasosComoOrigen  TraspasoSucursal[]    @relation("TraspasoOrigen")
   traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
@@ -313,11 +314,54 @@ model Producto {
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
+  disponibilidades     DisponibilidadProducto[]
   promociones          PromocionProducto[]
   traspasos            TraspasoSucursal[]
 
   @@index([insumoId])
   @@index([categoriaId])
+}
+
+/// Disponibilidad de un producto del Catálogo Central EN UNA SUCURSAL
+/// (decisión del dueño 2026-09-23): reemplaza el booleano GLOBAL
+/// `Producto.activo`, que sacaba un producto de TODO el negocio de una
+/// vez. El producto en sí (nombre, código, unidad, receta, precio de
+/// lista) sigue siendo central y compartido: lo único que se vuelve
+/// local es "¿se usa acá?".
+///
+/// FILA AUSENTE = NO DISPONIBLE. Es lo contrario al criterio de
+/// PrecioLocalProducto/StockMinimoProducto/FrecuenciaConteoProducto
+/// (donde "no hay fila" = valor por defecto benigno) y es a propósito:
+/// la decisión 2 dice que un producto dado de alta SIN el tilde "Activo
+/// en todas las sucursales" no tiene que aparecer en las demás "hasta
+/// que un admin de ESA sucursal lo active ahí a mano" — eso solo se
+/// cumple si la ausencia significa "no". Por eso el alta materializa
+/// filas (todas las sucursales, o solo la del alta) y la migración
+/// inicial hace backfill: sin backfill, todo el catálogo existente
+/// desaparecería de todas las pantallas al aplicar la migración.
+///
+/// `disponible = false` y "sin fila" significan lo mismo para el
+/// sistema (los colapsa `resolverDisponibilidad`, src/core/catalogo/
+/// disponibilidad-producto.ts — un solo criterio, no dos). Se conserva
+/// la fila en false en vez de borrarla, igual que el resto del catálogo
+/// (activo/habilitado, nunca DELETE): la diferencia solo se usa para el
+/// rastro de auditoría ("nunca se configuró acá" vs. "se apagó acá").
+///
+/// Sin precedente directo en ERPNext ni Dolibarr: los dos tienen la
+/// tabla producto × depósito (Item Reorder / llx_product_warehouse_
+/// properties) y ninguno le puso un booleano de disponibilidad; lo más
+/// cercano es Item.restrict_to_companies + Company Restriction de
+/// ERPNext, un nivel más arriba (Company ≙ Sucursal acá). Ver
+/// docs/grounding-disponibilidad-por-sucursal-2026-09-23.md.
+model DisponibilidadProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  disponible Boolean
+
+  @@unique([sucursalId, productoId])
 }
 
 /// Nombre interno histórico "Familia" (Catalogo.js:180-197) — de cara al
