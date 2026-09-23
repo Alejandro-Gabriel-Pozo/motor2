@@ -129,13 +129,47 @@ Dos caminos discutidos, de menor a mayor esfuerzo:
 editando la sheet) o se va directo a la opción 2 (resuelve de raíz, más
 trabajo, y solo tiene sentido si además se resuelve §2.1).
 
-## 3. Qué queda abierto
+## 3. Decisión tomada (2026-09-23, continuación): módulo `carta` de solo lectura
+
+El dueño confirma el requisito que faltaba de §2.1: el módulo nuevo **no
+tiene una interacción real con stock** — depende de `catalogo`/`stock` en
+un solo sentido (lectura) y el resto es lógica propia. Aplicando el mismo
+molde que ya usa cada dominio de motor2 (`docs/arquitectura-modularidad-server-actions-2026-09-17.md`:
+carpeta propia por capa, pensado para poder desprenderse como servicio
+aparte):
+
+- `src/core/carta/` — lógica pura ("dado `sucursalId`, qué platos se
+  muestran"). Llama a `resolverDisponibilidad` de
+  `src/core/catalogo/disponibilidad-producto.ts` **de lectura**, no la
+  reimplementa ni la modifica.
+- `src/server/actions/carta/` — Server Actions propias (gateadas con
+  `con-permiso.ts` como el resto) solo si hay una pantalla interna para
+  editar descripción/imagen/tags/"especial"/orden. Ninguna toca las
+  actions de `catalogo/` o `stock/`.
+- `src/app/(app)/carta/` — esa pantalla de administración, si se hace.
+- `src/app/api/carta/[sucursal]/route.ts` — el endpoint público de solo
+  lectura que consume restaurant-menu-design (Route Handler, no Server
+  Action, porque lo llama un sitio externo — mismo estilo que
+  `app/api/revalidate` en ese repo).
+- Los campos de presentación de §2.1 (`descripcion`, imagen, `tags`,
+  `especial`, `orden`) van en una tabla **nueva y aditiva**,
+  `ContenidoCartaProducto` (FK a `Producto`), nunca en `Producto` en sí.
+
+**Lo único que toca algo existente:** la migración de Prisma que crea
+esa tabla necesita, del lado de `model Producto`, la línea de relación
+inversa que Prisma exige para que el schema sea válido (una línea
+declarativa, sin lógica de negocio ni cambio de comportamiento). Ninguna
+columna existente cambia, ninguna Server Action de `catalogo`/`stock` se
+toca, ningún test de inventario debería cambiar de resultado por esto.
+
+## 4. Qué queda abierto
 
 - Confirmar el mapeo `categoria`/`titulo_seccion` de la carta contra
   `CategoriaProducto` o `Seccion` de motor2 (son conceptos distintos hoy
   en motor2: `Seccion` es de movimientos de stock, no de menú).
-- Decidir dónde viven los campos de presentación (§2.1).
-- Decidir el camino de `SiteConfig` (§2.2).
+- Decidir el camino de `SiteConfig` (§2.2) — preview en vivo sin migrar,
+  o editor real con persistencia.
 - Ninguna de estas decisiones requiere fusionar los repos en un solo
-  código/deploy: alcanza con que restaurant-menu-design consuma un
-  endpoint de motor2 en vez de Google Sheets.
+  código/deploy: alcanza con que restaurant-menu-design consuma el
+  endpoint `src/app/api/carta/[sucursal]/route.ts` de motor2 en vez de
+  Google Sheets.
