@@ -34,12 +34,13 @@ describe("generarReportePerdidas", () => {
 
     const rep = await generarReportePerdidas(sucursalId, 30);
     expect(rep.mermas).toHaveLength(2);
-    const vencido = rep.mermas.find((m) => m.motivo === "VENCIDO")!;
+    // motivo ya viene resuelto a su nombre legible (perdidas.ts, plan "motivos de Consumo/Merma como catálogo administrable", P4) — no el código crudo del enum.
+    const vencido = rep.mermas.find((m) => m.motivo === "Vencido")!;
     expect(vencido.valor).toBe(20);
     expect(vencido.producto).toBe("Harina");
     expect(vencido.fecha).toBeInstanceOf(Date);
     expect(vencido.idOperacion).toBeTruthy();
-    expect(rep.mermas.find((m) => m.motivo === "ROTO_O_CAIDO")?.valor).toBe(10);
+    expect(rep.mermas.find((m) => m.motivo === "Roto o caído")?.valor).toBe(10);
     expect(rep.totalMerma).toBe(30);
   });
 
@@ -49,7 +50,7 @@ describe("generarReportePerdidas", () => {
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "OTRO", items: [{ productoId: mp.id, cantidad: 2 }] });
 
     const rep = await generarReportePerdidas(sucursalId, 30);
-    const fila = rep.mermas.find((m) => m.motivo === "OTRO")!;
+    const fila = rep.mermas.find((m) => m.motivo === "Otro")!;
     expect(fila.sinPrecio).toBe(true);
     expect(fila.valor).toBe(0);
     expect(rep.hayCostoIncompleto).toBe(true);
@@ -65,7 +66,7 @@ describe("generarReportePerdidas", () => {
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] }); // genera Consumo automático de la receta
 
     const rep = await generarReportePerdidas(sucursalId, 30);
-    expect(rep.consumos.find((c) => c.motivo === "DEGUSTACION_CORTESIA")?.cantidad).toBe(3);
+    expect(rep.consumos.find((c) => c.motivo === "Degustación / cortesía")?.cantidad).toBe(3);
     expect(rep.consumos.find((c) => c.motivo === "(automático por receta)")?.cantidad).toBe(2);
   });
 });

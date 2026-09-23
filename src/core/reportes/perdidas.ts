@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { EQUIVALENCIA_DESTINO_CONSUMO_LEGACY, EQUIVALENCIA_MOTIVO_MERMA_LEGACY } from "@/core/movimientos/motivos-semilla";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
 
 export interface FilaPerdida {
@@ -32,8 +33,15 @@ const SIN_DESTINO = "(automático por receta)";
  * el costeo de recetas). A diferencia del original (el motivo viajaba
  * plegado en texto libre dentro del detalle, "Proceso: Motivo — libre", y
  * había que parsearlo con una regex), acá `Operacion.motivo`/`.destino`
- * son columnas tipadas (`MotivoMerma`/`DestinoConsumo`) — se agrupa
- * directo, sin parsing.
+ * son columnas tipadas — se agrupa directo, sin parsing.
+ *
+ * `FilaPerdida.motivo` ya viene resuelto a su nombre legible (p. ej.
+ * "Vencido", no "VENCIDO") — plan "motivos de Consumo/Merma como catálogo
+ * administrable" (2026-09-23), P4: prioriza `motivoCatalogo`/
+ * `destinoCatalogo` (la fila del catálogo nuevo, cuando `registrarMovimiento`
+ * ya la setee — P5) y cae a `motivoLegacy`/`destinoLegacy` traducido vía
+ * `EQUIVALENCIA_*_LEGACY` mientras tanto. Quien consume este reporte (
+ * `tabla-perdidas.tsx`) ya no necesita su propio Map enum→label.
  *
  * Una fila POR EVENTO (no acumulado por motivo) desde
  * docs/comparativa-ux-erpnext-dolibarr.md §8.4: el acumulado por motivo no
@@ -59,7 +67,15 @@ export async function generarReportePerdidas(sucursalId: string, diasAtras: numb
       cantidad: true,
       productoId: true,
       producto: { select: { nombre: true } },
-      operacion: { select: { fecha: true, motivoLegacy: true, destinoLegacy: true } },
+      operacion: {
+        select: {
+          fecha: true,
+          motivoLegacy: true,
+          destinoLegacy: true,
+          motivoCatalogo: { select: { nombre: true } },
+          destinoCatalogo: { select: { nombre: true } },
+        },
+      },
     },
     orderBy: { operacion: { fecha: "desc" } },
   });
@@ -76,7 +92,14 @@ export async function generarReportePerdidas(sucursalId: string, diasAtras: numb
       idMovimiento: m.id,
       idOperacion: m.operacionId,
       fecha: m.operacion.fecha,
-      motivo: m.proceso === "MERMA" ? (m.operacion.motivoLegacy ?? "OTRO") : (m.operacion.destinoLegacy ?? SIN_DESTINO),
+      motivo:
+        m.proceso === "MERMA"
+          ? (m.operacion.motivoCatalogo?.nombre ??
+            (m.operacion.motivoLegacy ? EQUIVALENCIA_MOTIVO_MERMA_LEGACY[m.operacion.motivoLegacy] : undefined) ??
+            "Otro")
+          : (m.operacion.destinoCatalogo?.nombre ??
+            (m.operacion.destinoLegacy ? EQUIVALENCIA_DESTINO_CONSUMO_LEGACY[m.operacion.destinoLegacy] : undefined) ??
+            SIN_DESTINO),
       producto: m.producto.nombre,
       productoId: m.productoId,
       cantidad: redondearCantidad(cantidad),
