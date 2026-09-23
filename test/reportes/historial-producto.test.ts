@@ -191,14 +191,15 @@ describe("obtenerIngredientesRecetaVigente", () => {
 });
 
 describe("buscarProductoParaHistorial", () => {
-  it("incluye productos inactivos a propósito", async () => {
+  it("incluye productos no disponibles en la sucursal a propósito", async () => {
     await limpiarBaseDeTest();
-    await sembrarBase();
+    const base = await sembrarBase();
     const catalogo = await sembrarCatalogoBase();
-    const inactivo = await prisma.producto.create({ data: { codigo: "MP_VIEJA", nombre: "Descontinuada", tipo: "MP", unidadStockId: catalogo.kg.id, activo: false } });
+    // Sin fila DisponibilidadProducto para esta sucursal: "fila ausente = no disponible" (disponibilidad-producto.ts).
+    const noDisponible = await prisma.producto.create({ data: { codigo: "MP_VIEJA", nombre: "Descontinuada", tipo: "MP", unidadStockId: catalogo.kg.id } });
 
-    const filas = await buscarProductoParaHistorial("Descontinuada");
-    expect(filas.map((f) => f.productoId)).toContain(inactivo.id);
-    expect(filas.find((f) => f.productoId === inactivo.id)?.activo).toBe(false);
+    const filas = await buscarProductoParaHistorial(base.sucursal.id, "Descontinuada");
+    expect(filas.map((f) => f.productoId)).toContain(noDisponible.id);
+    expect(filas.find((f) => f.productoId === noDisponible.id)?.disponible).toBe(false);
   });
 });

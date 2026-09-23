@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "../../src/core/reportes/huecos-catalogo";
@@ -26,22 +26,29 @@ describe("generarReporteHuecosCatalogo", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("detecta un PV activo que nunca se vendió en esta sucursal", async () => {
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Nunca vendido", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+  it("detecta un PV disponible acá que nunca se vendió en esta sucursal", async () => {
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Nunca vendido", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     const rep = await generarReporteHuecosCatalogo(sucursalId);
     expect(rep.pvSinVentaNunca.map((p) => p.productoId)).toContain(pv.id);
   });
 
+  it("un producto no disponible acá no aparece, aunque nunca se haya vendido", async () => {
+    const otraSucursal = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+    const pv = await sembrarProductoDisponible({ codigo: "PV_0", nombre: "Solo en otra", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, otraSucursal);
+    const rep = await generarReporteHuecosCatalogo(sucursalId);
+    expect(rep.pvSinVentaNunca.map((p) => p.productoId)).not.toContain(pv.id);
+  });
+
   it("un PV vendido no aparece en la lista", async () => {
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Vendido", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Vendido", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     const rep = await generarReporteHuecosCatalogo(sucursalId);
     expect(rep.pvSinVentaNunca.map((p) => p.productoId)).not.toContain(pv.id);
   });
 
   it("detecta una MP vinculada a receta pero sin ningún proveedor cargado", async () => {
-    const mp = await prisma.producto.create({ data: { codigo: "MP_1", nombre: "Sin proveedor", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Sin proveedor", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
     const rep = await generarReporteHuecosCatalogo(sucursalId);
@@ -49,10 +56,11 @@ describe("generarReporteHuecosCatalogo", () => {
   });
 
   it("una MP 'Se produce' sin proveedor NO aparece — se fabrica con su propia receta, nunca se compra (§8.7)", async () => {
-    const mpProducida = await prisma.producto.create({
-      data: { codigo: "MP_2", nombre: "Prepizza masa", tipo: "MP", unidadStockId: unidadKgId, insumoId, seProduce: true },
-    });
-    const pv = await prisma.producto.create({ data: { codigo: "PV_2", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+    const mpProducida = await sembrarProductoDisponible(
+      { codigo: "MP_2", nombre: "Prepizza masa", tipo: "MP", unidadStockId: unidadKgId, insumoId, seProduce: true },
+      sucursalId
+    );
+    const pv = await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpProducida.id, cantidad: 1, unidadId: unidadKgId }] } },
     });

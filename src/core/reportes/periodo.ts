@@ -1120,7 +1120,7 @@ export async function generarReporteVentasPorCategoria(sucursalId: string, desde
   }
 
   const pvSinCategoria = Array.from(productos.values())
-    .filter((p) => p.tipo === "PV" && p.activo && !p.categoriaNombre)
+    .filter((p) => p.tipo === "PV" && p.disponible && !p.categoriaNombre)
     .map((p) => p.nombre)
     .sort((a, b) => a.localeCompare(b));
 

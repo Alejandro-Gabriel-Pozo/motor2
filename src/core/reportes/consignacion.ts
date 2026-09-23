@@ -105,7 +105,7 @@ export async function generarReporteConsignacion(
   const saldoPorProducto = new Map(saldos.map((s) => [s.productoId, Number(s._sum.cantidad ?? 0)]));
 
   const stockSinVender = Array.from(productos.values())
-    .filter((p) => p.activo && p.esConsignacion)
+    .filter((p) => p.disponible && p.esConsignacion)
     .map((p) => ({
       productoId: p.id,
       producto: p.nombre,

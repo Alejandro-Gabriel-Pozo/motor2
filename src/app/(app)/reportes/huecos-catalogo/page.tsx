@@ -20,12 +20,12 @@ export default async function HuecosCatalogoPage() {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium">PV activos que nunca se vendieron</h2>
+        <h2 className="mb-2 text-sm font-medium">PV disponibles acá que nunca se vendieron</h2>
         <ul className="list-disc pl-5 text-sm">
           {rep.pvSinVentaNunca.map((p) => (
             <li key={p.productoId}>{p.codigo} — {p.producto}</li>
           ))}
-          {!rep.pvSinVentaNunca.length && <li className="list-none text-neutral-500">Todos los PV activos ya se vendieron alguna vez.</li>}
+          {!rep.pvSinVentaNunca.length && <li className="list-none text-neutral-500">Todos los PV disponibles acá ya se vendieron alguna vez.</li>}
         </ul>
       </div>
 

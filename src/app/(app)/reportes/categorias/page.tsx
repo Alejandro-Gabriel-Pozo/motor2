@@ -38,7 +38,7 @@ export default async function CategoriasPage({ searchParams }: { searchParams: P
 
       {rep.pvSinCategoria.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-600">PV activos sin categoría asignada</h2>
+          <h2 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-600">PV disponibles acá sin categoría asignada</h2>
           <ul className="list-disc pl-5 text-sm">
             {rep.pvSinCategoria.map((p) => (
               <li key={p}>{p}</li>

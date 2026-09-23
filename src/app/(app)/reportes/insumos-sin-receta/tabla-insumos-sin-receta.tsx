@@ -30,7 +30,7 @@ export function TablaInsumosSinReceta({ filas }: { filas: FilaInsumoSinReceta[] 
       columnas={COLUMNAS}
       filas={filas}
       claveFila={(f) => f.productoId}
-      sinFilasTexto="Todas las materias primas activas están vinculadas a alguna receta."
+      sinFilasTexto="Todas las materias primas disponibles acá están vinculadas a alguna receta."
       nombreExport="insumos-sin-receta"
     />
   );

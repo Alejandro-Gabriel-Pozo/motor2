@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { clasificarGruposNoComestibles, type ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
+import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -9,7 +10,12 @@ export interface InfoProductoReporte {
   codigo: string;
   nombre: string;
   tipo: "MP" | "PV";
-  activo: boolean;
+  /**
+   * Disponible EN LA SUCURSAL de `sucursalId` (docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — ya no es el
+   * `Producto.activo` global. Sin `sucursalId` (reportes 100% de Catálogo Central que no lo leen, ver docstring de
+   * `construirMapaProductos`), queda en `true` como placeholder inerte: ningún llamador actual lo consulta en ese caso.
+   */
+  disponible: boolean;
   seProduce: boolean;
   precioVenta: number;
   categoriaNombre: string | null;
@@ -52,6 +58,8 @@ export async function cargarClasificacionNoComestibles(db: Db = prisma): Promise
  * `sucursalId` es opcional: los reportes que son 100% de Catálogo Central
  * (huecos de catálogo, insumos sin receta) no necesitan resolver ningún
  * precio local — pasarlo de largo evita una query que no aporta nada ahí.
+ * Sin él, `InfoProductoReporte.disponible` tampoco se resuelve de verdad
+ * (queda en `true` fijo) — ver su docstring.
  */
 export async function construirMapaProductos(
   sucursalId?: string,
@@ -65,6 +73,9 @@ export async function construirMapaProductos(
     clasificacionCargada ? Promise.resolve(clasificacionCargada) : cargarClasificacionNoComestibles(db),
   ]);
   const precioLocalPorProducto = new Map(preciosLocales.map((pl) => [pl.productoId, Number(pl.precio)]));
+  const disponibilidadPorProducto = sucursalId
+    ? await disponibilidadDeProductos(sucursalId, productos.map((p) => p.id), db)
+    : null;
 
   return new Map(
     productos.map((p) => [
@@ -74,7 +85,7 @@ export async function construirMapaProductos(
         codigo: p.codigo,
         nombre: p.nombre,
         tipo: p.tipo,
-        activo: p.activo,
+        disponible: disponibilidadPorProducto ? disponibilidadPorProducto.get(p.id) === true : true,
         seProduce: p.seProduce,
         precioVenta: precioLocalPorProducto.get(p.id) ?? Number(p.precioVenta),
         categoriaNombre: p.categoria?.nombre ?? null,

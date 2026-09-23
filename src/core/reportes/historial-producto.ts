@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { tieneStockReal } from "@/core/movimientos/transiciones";
+import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { redondearCantidad, type Db } from "./comun";
 
 export interface FilaBusquedaProducto {
@@ -7,23 +8,25 @@ export interface FilaBusquedaProducto {
   codigo: string;
   nombre: string;
   tipo: "MP" | "PV";
-  activo: boolean;
+  /** Disponible EN `sucursalId` (docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — ya no es `Producto.activo` global. */
+  disponible: boolean;
 }
 
 /**
  * Port de buscarProductoParaHistorial (Reportes.js:1217-1230) — a
  * diferencia de otros buscadores del proyecto (compra, conteo, precio
- * local), incluye INACTIVOS a propósito: se puede querer ver el historial
- * de algo que ya se discontinuó.
+ * local), incluye NO DISPONIBLES a propósito: se puede querer ver el
+ * historial de algo que ya se discontinuó en esta sucursal.
  */
-export async function buscarProductoParaHistorial(termino: string, db: Db = prisma): Promise<FilaBusquedaProducto[]> {
+export async function buscarProductoParaHistorial(sucursalId: string, termino: string, db: Db = prisma): Promise<FilaBusquedaProducto[]> {
   const q = termino.trim();
   const productos = await db.producto.findMany({
     where: q ? { OR: [{ nombre: { contains: q, mode: "insensitive" } }, { codigo: { contains: q, mode: "insensitive" } }] } : {},
     take: 20,
     orderBy: { nombre: "asc" },
   });
-  return productos.map((p) => ({ productoId: p.id, codigo: p.codigo, nombre: p.nombre, tipo: p.tipo, activo: p.activo }));
+  const disponibilidad = await disponibilidadDeProductos(sucursalId, productos.map((p) => p.id), db);
+  return productos.map((p) => ({ productoId: p.id, codigo: p.codigo, nombre: p.nombre, tipo: p.tipo, disponible: disponibilidad.get(p.id) === true }));
 }
 
 export interface EventoHistorialProducto {

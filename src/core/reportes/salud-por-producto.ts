@@ -37,7 +37,7 @@ export async function generarReporteSaludPorProducto(sucursalId: string, db: Db 
     calcularStockConsolidado(sucursalId, db),
     calcularAlertasStock(sucursalId, db),
     generarReporteDiferenciasAjustes(sucursalId, db),
-    generarReporteInsumosSinRecetaVinculada(db),
+    generarReporteInsumosSinRecetaVinculada(sucursalId, db),
   ]);
 
   const alertaPorClave = new Map(alertas.map((a) => [`${a.productoId}||${a.seccionId}`, a.estado]));
