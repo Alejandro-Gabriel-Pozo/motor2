@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
+import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/disponibilidad-producto";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -41,6 +42,23 @@ export async function crearSucursalConAdmin(input: {
       return error('No se encontró el rol "admin" (¿corriste el seed?) — no se puede asignar el primer admin.');
     }
 
+    // Decisión 4 del dueño (2026-09-23, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10): la sucursal nueva arranca
+    // SOLO con los productos que ya son "universales" — disponibles en TODAS las sucursales activas de hoy, sin excepción.
+    // Nunca con los que son mayoría pero no unanimidad: un producto sucursal-específico no se contagia solo por ser común.
+    // Se resuelve ANTES de la transacción (lectura pura, no hace falta el aislamiento) y con `sucursalIdsActivas` vacío
+    // (la primerísima sucursal del sistema) `productosUniversales` da siempre `[]` — arranca en cero, no en "todos".
+    const sucursalIdsActivas = (await prisma.sucursal.findMany({ where: { activo: true }, select: { id: true } })).map((s) => s.id);
+    const filasDisponibilidad = sucursalIdsActivas.length
+      ? await prisma.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
+      : [];
+    const disponibilidadPorProducto = new Map<string, FilaDisponibilidadEnSucursal[]>();
+    for (const f of filasDisponibilidad) {
+      const lista = disponibilidadPorProducto.get(f.productoId) ?? [];
+      lista.push(f);
+      disponibilidadPorProducto.set(f.productoId, lista);
+    }
+    const universales = productosUniversales(disponibilidadPorProducto, sucursalIdsActivas);
+
     await prisma.$transaction(async (tx) => {
       const sucursal = await tx.sucursal.create({ data: { nombre } });
       const usuario = await tx.user.upsert({
@@ -56,6 +74,9 @@ export async function crearSucursalConAdmin(input: {
           notas: "Alta automática al crear la sucursal.",
         },
       });
+      if (universales.length) {
+        await tx.disponibilidadProducto.createMany({ data: universales.map((productoId) => ({ sucursalId: sucursal.id, productoId, disponible: true })) });
+      }
     }, { maxWait: 5_000, timeout: 15_000 });
 
     // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).
