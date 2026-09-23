@@ -8,9 +8,15 @@
  * Los eventos referencian productos/proveedores por CÓDIGO (`PRODUCTOS`/`PROVEEDORES` de seed-demo-pizzeria-data.ts), nunca por
  * id: a esta altura (guion puro, sin base) los ids todavía no existen — el ejecutor es quien los resuelve.
  */
-import type { MotivoMermaLegacy } from "@prisma/client";
-
 export type Seccion = "Cocina" | "Barra";
+
+/**
+ * Los mismos 6 valores que tenía el enum `MotivoMerma` viejo (borrado en la migración contract, plan "motivos de
+ * Consumo/Merma como catálogo administrable", 2026-09-23, P8) — el guion sigue identificando un motivo por este
+ * código porque es más corto de escribir que el nombre completo del catálogo; el ejecutor lo resuelve a un motivoId
+ * real vía `EQUIVALENCIA_MOTIVO_MERMA_LEGACY` (motivos-semilla.ts).
+ */
+export type MotivoMermaGuion = "VENCIDO" | "ROTO_O_CAIDO" | "MAL_PREPARADO_O_QUEMADO" | "DEVOLUCION_CLIENTE_NO_REVENDIBLE" | "ROBO_O_FALTANTE" | "OTRO";
 
 export interface ItemCompra {
   productoCodigo: string;
@@ -82,7 +88,7 @@ export interface EventoMerma {
   seccion: Seccion;
   productoCodigo: string;
   cantidad: number;
-  motivo: MotivoMermaLegacy;
+  motivo: MotivoMermaGuion;
   detalleLibre?: string;
 }
 

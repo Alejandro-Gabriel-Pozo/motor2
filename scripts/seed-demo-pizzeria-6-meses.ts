@@ -262,9 +262,10 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       }
 
       const RECETA_POR_PRODUCTO = new Map(RECETAS.map((r) => [r.productoCodigo, r.ingredientes]));
-      // EventoMerma.motivo (guion.ts) sigue viajando en el enum legacy (MotivoMermaLegacy) — se resuelve al id real vía
-      // la misma equivalencia que usó el backfill de la migración expand (P3). El catálogo ya está sembrado por esa
-      // migración en cualquier base con `prisma migrate deploy` corrido, no hace falta sembrarlo acá.
+      // EventoMerma.motivo (guion.ts) sigue viajando con el mismo código corto que tenía el enum viejo (ya borrado,
+      // migración contract P8) — se resuelve al id real vía la misma equivalencia que usó el backfill de las
+      // migraciones expand (P3) y contract (P8). El catálogo ya está sembrado por la migración expand en cualquier
+      // base con `prisma migrate deploy` corrido, no hace falta sembrarlo acá.
       const motivosPorNombre = new Map((await prisma.motivoMerma.findMany()).map((m) => [m.nombre, m.id]));
       const idMotivo = (legacy: string): string => {
         const nombre = EQUIVALENCIA_MOTIVO_MERMA_LEGACY[legacy];

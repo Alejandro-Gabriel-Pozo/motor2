@@ -37,9 +37,11 @@ export const DESTINOS_CONSUMO_SEMILLA: readonly MotivoSemilla[] = [
 ] as const;
 
 /**
- * Valor crudo del enum viejo `MotivoMermaLegacy` → `nombre` de la fila nueva en la tabla `MotivoMerma` — usado por el
- * backfill SQL de la migración expand (P3) y como fallback transitorio en los lectores (`perdidas.ts`) mientras conviven
- * las dos columnas de `Operacion` (P3 a P7). Se borra en P8, cuando se dropean los enums `*Legacy`.
+ * Valor crudo del enum viejo `MotivoMerma` (renombrado `MotivoMermaLegacy` en la migración expand P3, dropeado en la
+ * migración contract P8 — plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23) → `nombre` de la
+ * fila equivalente en la tabla `MotivoMerma`. Usado por el backfill SQL de ambas migraciones (P3 y P8) y, ya sin el
+ * enum, sigue vivo como la tabla de traducción que usa `scripts/seed-demo-pizzeria-6-meses.ts` para resolver
+ * `EventoMerma.motivo` (guion.ts, que sigue identificando un motivo con este mismo código corto) a un motivoId real.
  */
 export const EQUIVALENCIA_MOTIVO_MERMA_LEGACY: Readonly<Record<string, string>> = {
   VENCIDO: "Vencido",
@@ -50,7 +52,11 @@ export const EQUIVALENCIA_MOTIVO_MERMA_LEGACY: Readonly<Record<string, string>> 
   OTRO: "Otro",
 };
 
-/** Igual que `EQUIVALENCIA_MOTIVO_MERMA_LEGACY`, para `DestinoConsumoLegacy` → la tabla `DestinoConsumo`. Transitorio, se borra en P8. */
+/**
+ * Igual que `EQUIVALENCIA_MOTIVO_MERMA_LEGACY`, para el enum viejo `DestinoConsumo` → la tabla `DestinoConsumo`. Sin
+ * consumidor propio hoy (guion.ts no tiene todavía un `EventoConsumo` con destino) — se conserva por simetría con la
+ * de Merma, para cuando lo tenga.
+ */
 export const EQUIVALENCIA_DESTINO_CONSUMO_LEGACY: Readonly<Record<string, string>> = {
   PERSONAL: "Personal",
   DEGUSTACION_CORTESIA: "Degustación / cortesía",
