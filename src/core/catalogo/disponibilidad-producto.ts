@@ -10,8 +10,9 @@
  * la ausencia significa "no". `disponible: false` y "sin fila" significan lo mismo para el sistema: las funciones de acá abajo
  * son el ÚNICO lugar que colapsa esa equivalencia, para que no haya un segundo criterio escrito a mano en otra pantalla.
  *
- * Este módulo es puro (sin Prisma) para poder testearlo sin base — la capa de consulta (P3) vive en el mismo archivo pero se
- * agrega después, sin tocar esto.
+ * Este módulo es puro (sin Prisma) para poder testearlo sin base — 100% a propósito, no un descuido: la capa de consulta vive
+ * en `disponibilidad-producto-consulta.ts`, un archivo APARTE, porque mezclar Prisma acá arrastraría `@/lib/db` al bundle del
+ * cliente en cuanto un "use client" importe un valor de este archivo (ver el docstring de ese otro archivo).
  */
 
 export interface FilaDisponibilidad {
