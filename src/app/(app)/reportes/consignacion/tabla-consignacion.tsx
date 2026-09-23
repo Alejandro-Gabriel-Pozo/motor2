@@ -57,7 +57,7 @@ export function TablaStockSinVenderConsignacion({ filas }: { filas: FilaStockSin
       columnas={COLUMNAS_STOCK}
       filas={filas}
       claveFila={(s) => s.productoId}
-      sinFilasTexto="Ningún producto activo está marcado como consignación."
+      sinFilasTexto="Ningún producto disponible acá está marcado como consignación."
       nombreExport="stock-consignacion"
     />
   );

@@ -1,5 +1,6 @@
 import type { PrismaClient, TipoProducto } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
 
 /**
  * "Uso" (Catalogo.js:1053-1062) ya no se persiste — es 100% derivable de
@@ -12,10 +13,11 @@ export function usoDeTipo(tipo: TipoProducto): "COMPRA" | "VENTA" {
 }
 
 /**
- * Todos los productos ACTIVOS del mismo Insumo tienen que compartir
- * exactamente la misma unidadStock — equivalente de validarUnidadInsumo_
- * (Catalogo.js:4112-4127). Bug real que esto cierra: sumar "Manteca 5kg" en
- * GR + "Manteca x10" en KG daba un total sin sentido sin aviso.
+ * Todos los productos DISPONIBLES (en alguna sucursal — §5.6, catálogo
+ * central) del mismo Insumo tienen que compartir exactamente la misma
+ * unidadStock — equivalente de validarUnidadInsumo_ (Catalogo.js:4112-4127).
+ * Bug real que esto cierra: sumar "Manteca 5kg" en GR + "Manteca x10" en KG
+ * daba un total sin sentido sin aviso.
  *
  * `productoIdExcluir` se usa al editar un producto existente, para no
  * comparar la fila contra sí misma.
@@ -31,7 +33,7 @@ export async function validarUnidadInsumo(
   const otro = await db.producto.findFirst({
     where: {
       insumoId,
-      activo: true,
+      ...whereDisponibleEnAlguna(),
       unidadStockId: { not: unidadStockId },
       ...(productoIdExcluir ? { id: { not: productoIdExcluir } } : {}),
     },
@@ -39,13 +41,13 @@ export async function validarUnidadInsumo(
   });
   if (!otro) return null;
 
-  return `Este Insumo ya tiene productos activos con otra unidad de stock (ej. "${otro.nombre}" en ${otro.unidadStock.nombre}) — todos los productos del mismo Insumo deben compartir la misma unidad de stock.`;
+  return `Este Insumo ya tiene productos disponibles con otra unidad de stock (ej. "${otro.nombre}" en ${otro.unidadStock.nombre}) — todos los productos del mismo Insumo deben compartir la misma unidad de stock.`;
 }
 
 /**
  * Mismo criterio que validarUnidadInsumo, pero para fusionar un Insumo
  * dentro de otro (renombrarOFusionarInsumo): valida CADA unidad de stock
- * distinta que tengan los productos activos del insumo origen contra el
+ * distinta que tengan los productos disponibles del insumo origen contra el
  * destino, antes de mover nada — evita que la fusión mezcle unidades de
  * stock distintas bajo el mismo Insumo (el mismo bug que validarUnidadInsumo
  * evita al editar un producto suelto, pero acá ocurre en masa).
@@ -56,7 +58,7 @@ export async function validarFusionInsumos(
   db: PrismaClient = prisma
 ): Promise<string | null> {
   const unidadesOrigen = await db.producto.findMany({
-    where: { insumoId: insumoOrigenId, activo: true },
+    where: { insumoId: insumoOrigenId, ...whereDisponibleEnAlguna() },
     select: { unidadStockId: true },
     distinct: ["unidadStockId"],
   });

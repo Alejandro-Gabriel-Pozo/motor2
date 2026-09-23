@@ -7,6 +7,7 @@ import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -64,7 +65,10 @@ async function registrarConteoConContexto(ctx: ContextoUsuario, datos: DatosCont
 
   return conTransaccionSerializable(async (tx) => {
     const producto = await tx.producto.findUnique({ where: { id: datos.productoId }, include: { unidadStock: true } });
-    if (!producto || !producto.activo) return error("El producto no existe o no está activo.");
+    if (!producto) return error("El producto no existe.");
+    if (!(await productoDisponibleEn(ctx.sucursalId, producto.id, tx))) {
+      return error(`«${producto.nombre}» no está disponible en «${ctx.sucursalNombre}».`);
+    }
     if (!tieneStockReal(producto.tipo, producto.seProduce)) {
       return error(`El conteo físico es sobre materias primas (MP) o productos "Se produce", no sobre PV comunes.`);
     }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { NuevaReceta } from "./nueva-receta";
 
 /**
@@ -20,7 +21,7 @@ export default async function RecetasPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const conReceta = await prisma.producto.findMany({
-    where: { activo: true, recetaVersiones: { some: {} } },
+    where: { ...whereDisponibleEnAlguna(), recetaVersiones: { some: {} } },
     orderBy: { nombre: "asc" },
     include: {
       recetaVersiones: {

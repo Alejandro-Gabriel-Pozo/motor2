@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { construirIndiceRecetas } from "@/core/reportes/comun";
+import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
@@ -50,7 +51,7 @@ export async function buscarProductoParaPromocion(sucursalId: string, termino: s
   const q = texto(termino).toLowerCase();
   const { recetaPorProducto } = await construirIndiceRecetas(prisma);
   const [productos, marcados] = await Promise.all([
-    prisma.producto.findMany({ where: { tipo: "PV", activo: true } }),
+    prisma.producto.findMany({ where: { tipo: "PV", ...whereDisponibleEn(sucursalId) } }),
     prisma.promocionProducto.findMany({ where: { sucursalId } }),
   ]);
   const marcadoPorProducto = new Map(marcados.map((m) => [m.productoId, m.activa]));

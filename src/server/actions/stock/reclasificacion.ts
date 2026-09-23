@@ -6,6 +6,7 @@ import { esNumeroFinito } from "@/core/numero";
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
+import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conPermiso } from "../con-permiso";
 import { requerirSesion } from "../con-sesion";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -108,7 +109,10 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
       if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
       const producto = await tx.producto.findUnique({ where: { id: datos.productoId }, include: { unidadStock: true } });
-      if (!producto || !producto.activo) return error("El producto no existe o no está activo.");
+      if (!producto) return error("El producto no existe.");
+      if (!(await productoDisponibleEn(ctx.sucursalId, producto.id, tx))) {
+        return error(`«${producto.nombre}» no está disponible en «${ctx.sucursalNombre}».`);
+      }
 
       // El saldo disponible se lee DENTRO de la transacción (Serializable
       // aborta si otra escritura concurrente lo cambia mientras tanto) —

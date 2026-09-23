@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { upsertProveedorPorProducto } from "../../src/server/actions/catalogo/upsert-proveedor-por-producto";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
+  let sucursalId: string;
   let productoId: string;
   let proveedorAId: string;
   let proveedorBId: string;
@@ -17,14 +18,16 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
     await limpiarBaseDeTest();
     // Las lecturas (obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor) exigen una sesión; el upsert es un ayudante interno.
     const base = await sembrarBase();
-    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    sucursalId = base.sucursal.id;
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     const catalogo = await sembrarCatalogoBase();
     unidadCompraId = catalogo.kg.id;
 
-    const producto = await prisma.producto.create({
-      data: { codigo: "MP_TEST", nombre: "Aceite", tipo: "MP", unidadStockId: catalogo.kg.id, insumoId: catalogo.insumo.id },
-    });
+    const producto = await sembrarProductoDisponible(
+      { codigo: "MP_TEST", nombre: "Aceite", tipo: "MP", unidadStockId: catalogo.kg.id, insumoId: catalogo.insumo.id },
+      sucursalId
+    );
     productoId = producto.id;
 
     const [a, b] = await Promise.all([
@@ -92,9 +95,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
   describe("listarProductosDeProveedor", () => {
     it("trae los productos ya comprados a ese proveedor, más recientes primero", async () => {
-      const producto2 = await prisma.producto.create({
-        data: { codigo: "MP_TEST_2", nombre: "Vinagre", tipo: "MP", unidadStockId: unidadCompraId },
-      });
+      const producto2 = await sembrarProductoDisponible({ codigo: "MP_TEST_2", nombre: "Vinagre", tipo: "MP", unidadStockId: unidadCompraId }, sucursalId);
 
       await upsertProveedorPorProducto({
         productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100,
@@ -117,9 +118,9 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect(await listarProductosDeProveedor(proveedorAId)).toEqual([]);
     });
 
-    it("no trae productos inactivos", async () => {
+    it("no trae productos no disponibles en esta sucursal", async () => {
       await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100 });
-      await prisma.producto.update({ where: { id: productoId }, data: { activo: false } });
+      await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId, productoId } }, data: { disponible: false } });
 
       expect(await listarProductosDeProveedor(proveedorAId)).toEqual([]);
     });

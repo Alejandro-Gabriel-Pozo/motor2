@@ -144,7 +144,7 @@ describe("Conteo Físico", () => {
 
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito otra sucursal");
-    const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId }, otraSucursal.id);
     const otroAdmin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } })).id });
     await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
     await registrarConteoFisico({ productoId: otroMp.id, seccionId: otraSeccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });

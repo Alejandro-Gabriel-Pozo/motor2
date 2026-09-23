@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { requerirVer } from "../con-sesion";
 
 export interface ProductoDeProveedor {
@@ -26,9 +27,9 @@ export interface ProductoDeProveedor {
  * que ya se le compra siempre a este proveedor.
  */
 export async function listarProductosDeProveedor(proveedorId: string): Promise<ProductoDeProveedor[]> {
-  await requerirVer("proceso_compra");
+  const ctx = await requerirVer("proceso_compra");
   const filas = await prisma.proveedorPorProducto.findMany({
-    where: { proveedorId, producto: { activo: true } },
+    where: { proveedorId, producto: whereDisponibleEn(ctx.sucursalId) },
     include: { producto: { include: { unidadStock: true } }, unidadCompra: true },
     orderBy: { ultimaCompra: "desc" },
   });

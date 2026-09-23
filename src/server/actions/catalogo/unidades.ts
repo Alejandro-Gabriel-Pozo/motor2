@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso } from "@/core/permisos/gate";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -89,7 +90,7 @@ export async function detectarInsumosConUnidadMezclada(): Promise<
   if (!gate.ok) return { ok: false, mensaje: gate.mensaje };
 
   const insumos = await prisma.insumo.findMany({
-    include: { productos: { where: { activo: true }, include: { unidadStock: true } } },
+    include: { productos: { where: whereDisponibleEnAlguna(), include: { unidadStock: true } } },
   });
 
   const datos = insumos

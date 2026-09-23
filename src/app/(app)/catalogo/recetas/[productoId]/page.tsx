@@ -17,7 +17,7 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
-import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { disponibilidadPorSucursalDeProducto, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { secuenciaMoviendo } from "@/core/catalogo/pasos-receta";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -60,9 +60,9 @@ export default async function RecetaEditorPage({
         : null;
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
-  const [producto, mpActivas, unidades] = await Promise.all([
+  const [producto, mpDisponibles, unidades] = await Promise.all([
     prisma.producto.findUnique({ where: { id: productoId } }),
-    prisma.producto.findMany({ where: { tipo: "MP", activo: true }, orderBy: { nombre: "asc" } }),
+    prisma.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, orderBy: { nombre: "asc" } }),
     listarUnidadesActivas(),
   ]);
 
@@ -362,7 +362,7 @@ export default async function RecetaEditorPage({
           <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
           <select name="insumoProductoId" required className="rounded border px-3 py-2">
             <option value="">Materia prima</option>
-            {mpActivas.map((mp) => (
+            {mpDisponibles.map((mp) => (
               <option key={mp.id} value={mp.id}>
                 {mp.nombre}
               </option>

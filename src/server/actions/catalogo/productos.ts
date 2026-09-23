@@ -230,12 +230,12 @@ async function validarComun(datos: DatosProducto, productoIdExcluir?: string): P
 
   const dup = await prisma.producto.findFirst({
     where: {
-      activo: true,
+      ...whereDisponibleEnAlguna(),
       nombre: { equals: nombre, mode: "insensitive" },
       ...(productoIdExcluir ? { id: { not: productoIdExcluir } } : {}),
     },
   });
-  if (dup) return `Ya existe un producto activo llamado "${nombre}".`;
+  if (dup) return `Ya existe un producto disponible llamado "${nombre}".`;
 
   return validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir);
 }
@@ -275,8 +275,8 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
     if (invalido) return error(invalido);
     if (!unidadStockId) return error("La unidad de stock es obligatoria.");
 
-    const dup = await prisma.producto.findFirst({ where: { activo: true, nombre: { equals: n, mode: "insensitive" } } });
-    if (dup) return error(`Ya existe un producto activo llamado "${n}".`);
+    const dup = await prisma.producto.findFirst({ where: { ...whereDisponibleEnAlguna(), nombre: { equals: n, mode: "insensitive" } } });
+    if (dup) return error(`Ya existe un producto disponible llamado "${n}".`);
 
     try {
       const producto = await crearConCodigoAutogenerado("MP", undefined, (codigo) =>
