@@ -7,9 +7,11 @@ import {
   obtenerCostoActualPorMP,
   type CostoMP,
   type Db,
+  type IndiceRecetas,
   type IngredienteRecetaReporte,
   type InfoProductoReporte,
 } from "./comun";
+import type { ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
 
 export type EstadoCosto = "MARGEN_NEGATIVO" | "FOOD_COST_ALTO" | "COSTO_INCOMPLETO" | "SIN_PRECIO_VENTA" | "SIN_RECETA" | "OK";
 
@@ -132,10 +134,12 @@ export async function calcularCostosYMargenes(
    * todas sus funciones; no lo pasa quien llama desde una transacción (ver `registrarVenta`), donde un mapa traído de afuera sería de
    * otro snapshot.
    */
-  productosCargados?: Map<string, InfoProductoReporte>
+  productosCargados?: Map<string, InfoProductoReporte>,
+  /** El índice de recetas ya cargado, mismo motivo que `productosCargados` — ver `calcularMargenDelPeriodo`/`obtenerReportePorPeriodoConCatalogo`, que lo comparten entre las funciones que lo necesitan. */
+  indiceRecetas?: IndiceRecetas
 ): Promise<FilaCostoProducto[]> {
   const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
-  const { recetaPorProducto } = await construirIndiceRecetas(db);
+  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db));
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   // Compartido entre todos los PV de este cálculo: un mismo intermedio
   // fabricado (ej. la prepizza) suele aparecer en varias recetas — no hace
@@ -339,17 +343,21 @@ export async function calcularImpactoRecetasPorPeriodo(
   desde: Date,
   db: Db = prisma,
   /** El catálogo ya cargado de LA MISMA sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
-  productosCargados?: Map<string, InfoProductoReporte>
+  productosCargados?: Map<string, InfoProductoReporte>,
+  /** El índice de recetas ya cargado, mismo motivo (ver `obtenerReportePorPeriodoConCatalogo`). */
+  indiceRecetas?: IndiceRecetas,
+  /** La clasificación de grupos "No comestibles" ya cargada, mismo motivo. */
+  clasificacion?: ClasificacionNoComestibles
 ): Promise<FilaImpactoRecetaPorPeriodo[]> {
   const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
-  const { recetaPorProducto } = await construirIndiceRecetas(db);
+  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db));
   const costosActuales = await obtenerCostoActualPorMP(sucursalId, db);
   const costosAntesDelPeriodo = await obtenerCostoActualPorMP(sucursalId, db, desde);
 
   const costosParaAntes = new Map(costosActuales);
   for (const [productoId, c] of costosAntesDelPeriodo) costosParaAntes.set(productoId, c);
 
-  const hayNoComestibles = (await cargarClasificacionNoComestibles(db)).existeGrupo;
+  const hayNoComestibles = (clasificacion ?? (await cargarClasificacionNoComestibles(db))).existeGrupo;
 
   const filas: FilaImpactoRecetaPorPeriodo[] = [];
   for (const info of productos.values()) {

@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { construirIndiceRecetas, construirMapaProductos, type CostoMP, type Db, type InfoProductoReporte } from "./comun";
+import { construirIndiceRecetas, construirMapaProductos, type CostoMP, type Db, type IndiceRecetas, type InfoProductoReporte } from "./comun";
 import { resolverCostoRecetaCompleta } from "./costos";
 
 /**
@@ -52,7 +52,9 @@ export async function reconstruirCostosDeVenta(
   ventas: { productoId: string; fecha: Date }[],
   db: Db = prisma,
   /** El catálogo ya cargado de LA MISMA sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
-  productosCargados?: Map<string, InfoProductoReporte>
+  productosCargados?: Map<string, InfoProductoReporte>,
+  /** El índice de recetas ya cargado, mismo motivo (ver `obtenerReportePorPeriodoConCatalogo`). */
+  indiceRecetas?: IndiceRecetas
 ): Promise<Map<string, number | null>> {
   const resultado = new Map<string, number | null>();
   if (!ventas.length) return resultado;
@@ -65,7 +67,7 @@ export async function reconstruirCostosDeVenta(
 
   const [productos, { recetaPorProducto }, comprasEnVentana, semilla] = await Promise.all([
     productosCargados ?? construirMapaProductos(sucursalId, db),
-    construirIndiceRecetas(db),
+    indiceRecetas ? Promise.resolve(indiceRecetas) : construirIndiceRecetas(db),
     // Solo las compras DENTRO del rango pedido — antes traía toda la historia de compras de la sucursal en cada
     // llamada. Lo anterior a `primerDia` lo cubre la "semilla" de abajo: como todo día pedido es >= `primerDia`,
     // la semilla (la compra más reciente de cada insumo antes de `primerDia`) siempre domina en fecha a cualquier

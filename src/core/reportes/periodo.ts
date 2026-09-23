@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import type { Proceso } from "@prisma/client";
 import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
-import { cargarClasificacionNoComestibles, construirMapaProductos, redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
+import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos, redondearCantidad, type Db, type IndiceRecetas, type InfoProductoReporte } from "./comun";
+import type { ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo, type FilaImpactoRecetaPorPeriodo } from "./costos";
 import { claveCostoHistorico, diaUtc, reconstruirCostosDeVenta } from "./costo-historico";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
@@ -164,14 +165,20 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   // Sigue habiendo una carga por sucursal en el Consolidado, y es correcta: `precioVenta` sale resuelto con el Precio Local de CADA
   // sucursal, así que el mapa de una no sirve para otra. Promociones y Categorías toman este mismo mapa del reporte
   // (`obtenerReportePorPeriodoConCatalogo`) en vez de armar el suyo: también 1 por reporte, fijado en el mismo test.
-  const productos = await construirMapaProductos(sucursalId, db);
+  // Mismo criterio para el índice de recetas y la clasificación de "No comestibles": impacto de recetas, ratio Compras/Ventas, margen
+  // nominal y margen Real reconstruido lo necesitaban cada uno por su cuenta (3 `recetaVersion.findMany` + 2 `grupo.findMany` por
+  // reporte) — hallazgo de revisar el pendiente "consultas repetidas en reportes de recetas/grupos" (docs/p2109.md §4, nunca
+  // confirmado hasta ahora). Se cargan acá una sola vez, igual que el catálogo.
+  const clasificacionNoComestibles = await cargarClasificacionNoComestibles(db);
+  const productos = await construirMapaProductos(sucursalId, db, clasificacionNoComestibles);
+  const indiceRecetas = await construirIndiceRecetas(db);
   const ventas = calcularVentasDelPeriodo(items, productos);
   const compras = calcularComprasDelPeriodo(items, productos);
   const gastoPorInsumo = calcularGastoPorInsumoDelPeriodo(items, productos);
-  const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, compras.totalNoComestibles, ventas.totalFacturado, productos, db);
+  const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, compras.totalNoComestibles, ventas.totalFacturado, productos, db, clasificacionNoComestibles);
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
-  const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos);
-  const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos);
+  const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos, indiceRecetas, clasificacionNoComestibles);
+  const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, indiceRecetas);
   const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(desde, hasta, tendenciaPrecios, ventas.porProducto, db);
   const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas);
 
@@ -309,12 +316,14 @@ async function calcularRatioGastoVentas(
   totalNoComestibles: number,
   totalFacturado: number,
   productos: Map<string, InfoProductoReporte>,
-  db: Db
+  db: Db,
+  /** La clasificación de grupos "No comestibles" ya cargada, para no volver a leerla (ver `obtenerReportePorPeriodoConCatalogo`). */
+  clasificacion?: ClasificacionNoComestibles
 ): Promise<RatioGastoVentas> {
   const duracionMs = hasta.getTime() - desde.getTime();
   const hastaAnterior = new Date(desde.getTime() - 1);
   const desdeAnterior = new Date(hastaAnterior.getTime() - duracionMs);
-  const { existeGrupo } = await cargarClasificacionNoComestibles(db);
+  const { existeGrupo } = clasificacion ?? (await cargarClasificacionNoComestibles(db));
 
   // Por producto (no solo por proceso) para poder sacar los no comestibles también del período anterior: los dos porcentajes se
   // comparan entre sí, así que tienen que excluir lo mismo.
@@ -893,9 +902,11 @@ async function calcularMargenDelPeriodo(
   items: ItemPeriodo[],
   ventasDelPeriodo: VentasDelPeriodo,
   db: Db,
-  productos: Map<string, InfoProductoReporte>
+  productos: Map<string, InfoProductoReporte>,
+  /** El índice de recetas ya cargado, para no volver a leerlo — lo necesitan tanto el margen nominal como el Real reconstruido (ver `obtenerReportePorPeriodoConCatalogo`). */
+  indiceRecetas?: IndiceRecetas
 ): Promise<MargenDelPeriodo> {
-  const costos = await calcularCostosYMargenes(sucursalId, db, productos);
+  const costos = await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas);
   const costoPorProducto = new Map(costos.map((c) => [c.productoId, c]));
 
   let costoTotal = 0;
@@ -945,7 +956,7 @@ async function calcularMargenDelPeriodo(
   // Una venta ANULADA tampoco entra: no ocurrió.
   const ventasSinPrecioExcluidas = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal <= 0).length;
   const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal > 0 && it.costoUnitarioVenta === null);
-  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos);
+  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos, indiceRecetas);
   // Mismo bucle línea a línea de arriba, acumulado ADEMÁS por producto — fuente única del margen Real por fila,
   // para que Período y cualquier otro consumidor (Promociones) lean el mismo número (docs/pendientes-*.md, hallazgo
   // "el mismo dato calculado distinto").

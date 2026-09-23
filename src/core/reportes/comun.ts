@@ -53,11 +53,16 @@ export async function cargarClasificacionNoComestibles(db: Db = prisma): Promise
  * (huecos de catálogo, insumos sin receta) no necesitan resolver ningún
  * precio local — pasarlo de largo evita una query que no aporta nada ahí.
  */
-export async function construirMapaProductos(sucursalId?: string, db: Db = prisma): Promise<Map<string, InfoProductoReporte>> {
+export async function construirMapaProductos(
+  sucursalId?: string,
+  db: Db = prisma,
+  /** La clasificación de grupos "No comestibles" ya cargada, para no volver a leerla (ver `obtenerReportePorPeriodoConCatalogo`). */
+  clasificacionCargada?: ClasificacionNoComestibles
+): Promise<Map<string, InfoProductoReporte>> {
   const [productos, preciosLocales, clasificacion] = await Promise.all([
     db.producto.findMany({ include: { categoria: true, insumo: { include: { grupo: true } }, unidadStock: true, proveedorConsignacion: true } }),
     sucursalId ? db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true } }) : Promise.resolve([]),
-    cargarClasificacionNoComestibles(db),
+    clasificacionCargada ? Promise.resolve(clasificacionCargada) : cargarClasificacionNoComestibles(db),
   ]);
   const precioLocalPorProducto = new Map(preciosLocales.map((pl) => [pl.productoId, Number(pl.precio)]));
 
@@ -92,6 +97,11 @@ export interface IngredienteRecetaReporte {
   mermaPorcentaje: number;
 }
 
+export interface IndiceRecetas {
+  recetaPorProducto: Map<string, IngredienteRecetaReporte[]>;
+  mpsEnRecetas: Set<string>;
+}
+
 /**
  * Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente =
  * MAX(version) por producto, derivado — un solo `findMany` ordenado
@@ -99,9 +109,7 @@ export interface IngredienteRecetaReporte {
  * cada producto (misma técnica que obtenerRecetaVigente pero en bloque,
  * para no hacer 1 query por producto).
  */
-export async function construirIndiceRecetas(
-  db: Db = prisma
-): Promise<{ recetaPorProducto: Map<string, IngredienteRecetaReporte[]>; mpsEnRecetas: Set<string> }> {
+export async function construirIndiceRecetas(db: Db = prisma): Promise<IndiceRecetas> {
   const versiones = await db.recetaVersion.findMany({
     orderBy: { version: "asc" },
     include: { ingredientes: { include: { insumoProducto: true, unidad: true } } },

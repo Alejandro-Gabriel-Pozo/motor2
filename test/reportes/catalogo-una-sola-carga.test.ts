@@ -23,6 +23,11 @@ import type { Db } from "../../src/core/reportes/comun";
  *
  * El fixture (duplicado a propósito de ese archivo, para no tocarlo) pasa por las TRES rutas: la harina se compró a $5 antes del período y a
  * $8 dentro (hay impacto de receta), hay un plato vendido con receta y una de las dos ventas se guardó sin costo (margen Real reconstruido).
+ *
+ * Mismo hallazgo, después, con el índice de recetas y la clasificación de "No comestibles" (docs/p2109.md §4, "consultas repetidas en
+ * reportes de recetas/grupos" — quedó anotado como "no confirmado" y sí lo estaba): impacto de recetas, ratio Compras/Ventas, margen nominal
+ * y margen Real reconstruido cada uno volvía a llamar a `construirIndiceRecetas`/`cargarClasificacionNoComestibles` por su cuenta (3
+ * `recetaVersion.findMany` + 2 `grupo.findMany` por reporte). Mismo arreglo, mismo test.
  */
 const d = (iso: string) => new Date(`${iso}T12:00:00Z`);
 
@@ -50,22 +55,35 @@ describe("obtenerReportePorPeriodo — una sola carga del catálogo", () => {
     await prisma.movimientoStock.updateMany({ where: { productoId: pan.id, proceso: "VENTA", operacion: { fecha: d("2026-08-05") } }, data: { costoUnitarioVenta: null } });
   });
 
-  it("una corrida del reporte hace UNA consulta de productos, no una por cada función que lo necesita", async () => {
-    let llamadas = 0;
+  it("una corrida del reporte hace UNA consulta de productos, una de recetas y una de grupos — no una por cada función que las necesita", async () => {
+    let llamadasProducto = 0;
+    let llamadasReceta = 0;
+    let llamadasGrupo = 0;
     // `$extends` devuelve un cliente DERIVADO: solo se cuentan las consultas que pasan por él (las del fixture, hechas arriba con el
     // cliente normal, no).
     const dbContado = prisma.$extends({
       query: {
         producto: {
           findMany({ args, query }) {
-            llamadas++;
+            llamadasProducto++;
+            return query(args);
+          },
+        },
+        recetaVersion: {
+          findMany({ args, query }) {
+            llamadasReceta++;
+            return query(args);
+          },
+        },
+        grupo: {
+          findMany({ args, query }) {
+            llamadasGrupo++;
             return query(args);
           },
         },
       },
     }) as unknown as Db;
 
-    llamadas = 0;
     const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), {}, dbContado);
 
     // Guardianes del fixture: si alguna de las tres rutas no se ejercitara, el contador daría 1 sin probar nada.
@@ -73,7 +91,9 @@ describe("obtenerReportePorPeriodo — una sola carga del catálogo", () => {
     expect(rep.margen.costoTotal, "no corrió el margen nominal").toBeGreaterThan(0);
     expect(rep.margen.ingresoRealReconstruido, "no corrió el margen Real reconstruido").toBeGreaterThan(0);
 
-    expect(llamadas).toBe(1);
+    expect(llamadasProducto, "producto.findMany").toBe(1);
+    expect(llamadasReceta, "recetaVersion.findMany — impacto de recetas + margen nominal + margen Real reconstruido volvían a leerlo cada uno por su cuenta").toBe(1);
+    expect(llamadasGrupo, "grupo.findMany (clasificación No comestibles) — ratio Compras/Ventas + impacto de recetas volvían a leerlo cada uno por su cuenta").toBe(1);
   });
 
   // Promociones y Categorías se apoyan en `obtenerReportePorPeriodo` y necesitan el MISMO catálogo: antes lo leían de nuevo (2 consultas por
