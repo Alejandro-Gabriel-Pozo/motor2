@@ -14,6 +14,7 @@ import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
+import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel } from "../../src/server/actions/movimientos/motivos";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
@@ -48,6 +49,8 @@ const LECTURAS: Fila[] = [
   { nombre: "listarPreciosLocales", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "movimientos/precio-local.ts", llamar: (s) => listarPreciosLocales(s) },
   { nombre: "obtenerPrecioLocalProducto", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "movimientos/precio-local.ts", llamar: (s) => obtenerPrecioLocalProducto(s, "x") },
   { nombre: "listarSeccionesParaPanel", clave: "secciones", pagina: "movimientos/secciones/page.tsx", archivo: "movimientos/secciones.ts", llamar: (s) => listarSeccionesParaPanel(s) },
+  { nombre: "listarMotivosMermaParaPanel", clave: "motivos_movimiento", pagina: "movimientos/motivos/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarMotivosMermaParaPanel() },
+  { nombre: "listarDestinosConsumoParaPanel", clave: "motivos_movimiento", pagina: "movimientos/motivos/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarDestinosConsumoParaPanel() },
   { nombre: "obtenerHistorialConteosFisicos", clave: "proceso_control", pagina: "reportes/conteos/page.tsx", archivo: "movimientos/conteo-fisico.ts", llamar: (s) => obtenerHistorialConteosFisicos(s) },
   { nombre: "obtenerPromocionesHabilitadas", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => obtenerPromocionesHabilitadas(s) },
   { nombre: "buscarProductoParaPromocion", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => buscarProductoParaPromocion(s, "") },

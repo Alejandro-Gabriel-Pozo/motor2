@@ -6,9 +6,9 @@ import { prisma } from "../../src/lib/db";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
- * Promociones), la matriz de permisos y las cinco pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
- * insumos-grupos, capacidades por sucursal, precio local). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
- * necesidad concreta.
+ * Promociones), la matriz de permisos y las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
+ * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo). No es exhaustivo sobre todas las pantallas: se suma
+ * una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -152,6 +152,16 @@ testAutenticado("catalogo/insumos-grupos: sin violaciones de axe", async ({ pagi
     await prisma.insumo.deleteMany({ where: { id: insumo.id } });
     await prisma.grupo.deleteMany({ where: { id: grupo.id } });
   }
+});
+
+testAutenticado("movimientos/motivos: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  // Sin fixture: la migración expand del catálogo (plan "motivos de Consumo/Merma como catálogo administrable", P3) ya
+  // sembró 6 Motivo de Merma + 5 Destino de Consumo en cualquier base migrada — las dos tablas nunca están vacías acá.
+  await page.goto("/movimientos/motivos");
+  await conTitulo(page, /Motivos de Merma/);
+  await expect(page.getByText("Vencido")).toBeVisible();
+  await expect(page.getByText("Personal")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 testAutenticado("administracion/capacidades-sucursal: sin violaciones de axe", async ({ paginaAutenticada: page }) => {

@@ -94,6 +94,7 @@ export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClav
   { href: "/movimientos/conteo-fisico", label: "Conteo físico", accion: "proceso_control" },
   { href: "/movimientos/secciones", label: "Secciones", accion: "secciones" },
   { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local" },
+  { href: "/movimientos/motivos", label: "Motivos de Merma / Consumo", accion: "motivos_movimiento" },
   { href: "/stock/consolidado", label: "Stock →" },
   { href: "/reportes", label: "Reportes →" },
 ];

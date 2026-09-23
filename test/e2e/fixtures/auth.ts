@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test as base, type Page } from "@playwright/test";
 import { prisma } from "../../../src/lib/db";
 import { ACCIONES } from "../../../src/core/permisos/acciones";
+import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
 
 const SUCURSAL_NOMBRE = "Central";
 const SECCION_NOMBRE = "Depósito E2E";
@@ -55,6 +56,17 @@ export async function asegurarBaseSeed() {
   const sucursal = await prisma.sucursal.upsert({ where: { nombre: SUCURSAL_NOMBRE }, update: {}, create: { nombre: SUCURSAL_NOMBRE } });
 
   for (const u of UNIDADES_BASE) await prisma.unidad.upsert({ where: { nombre: u.nombre }, update: {}, create: u });
+
+  // El catálogo Motivo de Merma / Destino de Consumo (plan "motivos de Consumo/Merma como catálogo administrable",
+  // 2026-09-23) SÍ lo siembra la migración expand (P3), pero resetearBaseE2E (base-e2e.ts) trunca TODAS las tablas
+  // antes de cada corrida — sin esto, cualquier spec que registre una Merma/Consumo por UI no encuentra ninguna
+  // opción en el <select>. Mismo dato que sembrarMotivosYDestinos() (test/setup/test-db.ts) para Vitest.
+  for (const m of MOTIVOS_MERMA_SEMILLA) {
+    await prisma.motivoMerma.upsert({ where: { nombre: m.nombre }, update: {}, create: { nombre: m.nombre, descripcion: m.descripcion ?? null } });
+  }
+  for (const d of DESTINOS_CONSUMO_SEMILLA) {
+    await prisma.destinoConsumo.upsert({ where: { nombre: d.nombre }, update: {}, create: { nombre: d.nombre, descripcion: d.descripcion ?? null } });
+  }
 
   let seccion = await prisma.seccion.findFirst({ where: { sucursalId: sucursal.id, nombre: SECCION_NOMBRE } });
   if (!seccion) seccion = await prisma.seccion.create({ data: { sucursalId: sucursal.id, nombre: SECCION_NOMBRE } });
