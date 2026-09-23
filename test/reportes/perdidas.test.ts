@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -13,6 +13,10 @@ describe("generarReportePerdidas", () => {
   let seccionId: string;
   let unidadKgId: string;
   let insumoId: string;
+  let motivoVencidoId: string;
+  let motivoRotoId: string;
+  let motivoOtroId: string;
+  let destinoDegustacionId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -22,6 +26,11 @@ describe("generarReportePerdidas", () => {
     unidadKgId = catalogo.kg.id;
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
+    const { motivos, destinos } = await sembrarMotivosYDestinos();
+    motivoVencidoId = motivos.get("Vencido")!;
+    motivoRotoId = motivos.get("Roto o caído")!;
+    motivoOtroId = motivos.get("Otro")!;
+    destinoDegustacionId = destinos.get("Degustación / cortesía")!;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
@@ -29,8 +38,8 @@ describe("generarReportePerdidas", () => {
   it("una fila por evento (no agrupado), con fecha y producto, valorizada con el costo de reposición", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "VENCIDO", items: [{ productoId: mp.id, cantidad: 2 }] });
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "ROTO_O_CAIDO", items: [{ productoId: mp.id, cantidad: 1 }] });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 2 }] });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 1 }] });
 
     const rep = await generarReportePerdidas(sucursalId, 30);
     expect(rep.mermas).toHaveLength(2);
@@ -47,7 +56,7 @@ describe("generarReportePerdidas", () => {
   it("no inventa el costo cuando no hay compra registrada: marca sinPrecio y no suma al total", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Sin compra", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] }); // stock sin costo de compra
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "OTRO", items: [{ productoId: mp.id, cantidad: 2 }] });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoOtroId, items: [{ productoId: mp.id, cantidad: 2 }] });
 
     const rep = await generarReportePerdidas(sucursalId, 30);
     const fila = rep.mermas.find((m) => m.motivo === "Otro")!;
@@ -62,7 +71,7 @@ describe("generarReportePerdidas", () => {
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, precioTotal: 200 }] }); // $10/kg
 
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, destino: "DEGUSTACION_CORTESIA", items: [{ productoId: mp.id, cantidad: 3 }] });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, destinoId: destinoDegustacionId, items: [{ productoId: mp.id, cantidad: 3 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] }); // genera Consumo automático de la receta
 
     const rep = await generarReportePerdidas(sucursalId, 30);

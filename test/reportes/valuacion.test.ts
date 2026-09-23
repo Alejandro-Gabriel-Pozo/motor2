@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularValuacionInventario } from "../../src/core/reportes/valuacion";
@@ -12,6 +12,7 @@ describe("calcularValuacionInventario", () => {
   let seccionId: string;
   let unidadKgId: string;
   let insumoId: string;
+  let motivoVencidoId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -21,6 +22,7 @@ describe("calcularValuacionInventario", () => {
     unidadKgId = catalogo.kg.id;
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
+    motivoVencidoId = (await sembrarMotivosYDestinos()).motivos.get("Vencido")!;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
@@ -56,7 +58,7 @@ describe("calcularValuacionInventario", () => {
   it("excluye productos sin stock (saldo <= 0)", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] });
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "VENCIDO", items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     const rep = await calcularValuacionInventario(sucursalId);
     expect(rep.filas.find((f) => f.productoId === mp.id)).toBeUndefined();

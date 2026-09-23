@@ -6,21 +6,35 @@ import {
   EQUIVALENCIA_DESTINO_CONSUMO_LEGACY,
 } from "../../src/core/movimientos/motivos-semilla";
 import { RE_TEXTO_CATALOGO, validarLargoTexto } from "../../src/core/texto";
-import { MOTIVOS_MERMA, DESTINOS_CONSUMO } from "../../src/core/movimientos/ui-config";
 
 /**
- * Plan "motivos de Consumo/Merma como catálogo administrable" (2026-09-23), P2 — la semilla no la importa nadie todavía
- * (nace antes que la migración que la va a consumir), así que este archivo solo fija sus propios invariantes: los
- * `nombre` coinciden 1:1 con los labels de HOY (cero cambio visible al migrar) y todo pasa las mismas validaciones que
- * va a exigir el alta del catálogo en P6 (`RE_TEXTO_CATALOGO` para `nombre`, largo máximo para `descripcion`).
+ * Plan "motivos de Consumo/Merma como catálogo administrable" (2026-09-23) — nace en P2, cuando la semilla todavía no
+ * la importaba nadie (ni la migración expand ni el catálogo en base existían), así que este archivo fija sus propios
+ * invariantes: el charset/largo que va a exigir el alta del catálogo en P6, la nota de negocio de BUGFIX A-3, y la
+ * lista exacta de nombres esperada (ex `MOTIVOS_MERMA`/`DESTINOS_CONSUMO` de ui-config.ts — borrados en P5, ahora la
+ * tabla `MotivoMerma`/`DestinoConsumo` de la base es la fuente viva; esta lista es la que USÓ el backfill de P3, no se
+ * recalcula contra nada más).
  */
 describe("motivos-semilla", () => {
-  it("MOTIVOS_MERMA_SEMILLA tiene los mismos 6 nombres, en el mismo orden, que MOTIVOS_MERMA (ui-config.ts) hoy", () => {
-    expect(MOTIVOS_MERMA_SEMILLA.map((m) => m.nombre)).toEqual(MOTIVOS_MERMA.map((m) => m.label));
+  it("MOTIVOS_MERMA_SEMILLA tiene los 6 nombres esperados, en orden", () => {
+    expect(MOTIVOS_MERMA_SEMILLA.map((m) => m.nombre)).toEqual([
+      "Vencido",
+      "Roto o caído",
+      "Mal preparado / quemado",
+      "Devolución de cliente (no revendible)",
+      "Robo o faltante",
+      "Otro",
+    ]);
   });
 
-  it("DESTINOS_CONSUMO_SEMILLA tiene los mismos 5 nombres, en el mismo orden, que DESTINOS_CONSUMO (ui-config.ts) hoy", () => {
-    expect(DESTINOS_CONSUMO_SEMILLA.map((m) => m.nombre)).toEqual(DESTINOS_CONSUMO.map((m) => m.label));
+  it("DESTINOS_CONSUMO_SEMILLA tiene los 5 nombres esperados, en orden", () => {
+    expect(DESTINOS_CONSUMO_SEMILLA.map((m) => m.nombre)).toEqual([
+      "Personal",
+      "Degustación / cortesía",
+      "Evento",
+      "Elaboración interna",
+      "Otro",
+    ]);
   });
 
   it("EQUIVALENCIA_MOTIVO_MERMA_LEGACY cubre exactamente los 6 valores del enum viejo, y cada valor coincide con un nombre de la semilla", () => {

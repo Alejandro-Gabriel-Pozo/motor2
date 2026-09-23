@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { setStockMinimoProducto } from "../../src/server/actions/stock/stock-minimo";
@@ -15,6 +15,7 @@ describe("calcularAlertasStock", () => {
   let unidadKgId: string;
   let insumoId: string;
   let mpId: string;
+  let motivoVencidoId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -25,6 +26,7 @@ describe("calcularAlertasStock", () => {
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId, "Depósito A")).id;
     seccionBId = (await sembrarSeccion(sucursalId, "Depósito B")).id;
+    motivoVencidoId = (await sembrarMotivosYDestinos()).motivos.get("Vencido")!;
 
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
@@ -53,7 +55,7 @@ describe("calcularAlertasStock", () => {
   it("Merma que deja el saldo en 0 dispara CRITICO", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
     await setStockMinimoProducto(mpId, 5);
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "VENCIDO", items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mpId, cantidad: 10 }] });
 
     const alertas = await calcularAlertasStock(sucursalId);
     expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("CRITICO");
@@ -62,7 +64,7 @@ describe("calcularAlertasStock", () => {
   it("mínimo configurado en 0 SÍ alerta si el saldo queda en 0 o negativo — distinto de 'sin mínimo cargado' (hallazgo de la auditoría)", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
     await setStockMinimoProducto(mpId, 0); // "avisame si esto se termina del todo", no "sin mínimo"
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivo: "VENCIDO", items: [{ productoId: mpId, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mpId, cantidad: 5 }] });
 
     const alertas = await calcularAlertasStock(sucursalId);
     expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("CRITICO");

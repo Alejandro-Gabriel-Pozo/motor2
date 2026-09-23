@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
@@ -13,6 +13,7 @@ describe("Reporte de vencimientos", () => {
   let seccionId: string;
   let unidadKgId: string;
   let insumoId: string;
+  let destinoElaboracionId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -22,6 +23,7 @@ describe("Reporte de vencimientos", () => {
     unidadKgId = catalogo.kg.id;
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
+    destinoElaboracionId = (await sembrarMotivosYDestinos()).destinos.get("Elaboración interna")!;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
@@ -53,7 +55,7 @@ describe("Reporte de vencimientos", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }] });
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
 
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destino: "ELABORACION_INTERNA", items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }] });
 
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 
@@ -71,7 +73,7 @@ describe("Reporte de vencimientos", () => {
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
 
     // Solo se consumieron 3 de los 10 — el resto se "perdió" sin dejar rastro.
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destino: "ELABORACION_INTERNA", items: [{ productoId: mp.id, cantidad: 3, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 3, loteVencimiento: lote }] });
 
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 

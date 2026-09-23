@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
@@ -14,6 +14,9 @@ describe("registrarMovimiento", () => {
   let unidadKgId: string;
   let unidadGId: string;
   let insumoId: string;
+  let motivoVencidoId: string;
+  let motivoRotoId: string;
+  let destinoPersonalId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -23,6 +26,10 @@ describe("registrarMovimiento", () => {
     unidadKgId = catalogo.kg.id;
     unidadGId = catalogo.g.id;
     insumoId = catalogo.insumo.id;
+    const { motivos, destinos } = await sembrarMotivosYDestinos();
+    motivoVencidoId = motivos.get("Vencido")!;
+    motivoRotoId = motivos.get("Roto o caído")!;
+    destinoPersonalId = destinos.get("Personal")!;
 
     const seccionA = await sembrarSeccion(sucursalId, "Depósito A");
     const seccionB = await sembrarSeccion(sucursalId, "Depósito B");
@@ -103,11 +110,56 @@ describe("registrarMovimiento", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     const resultado = await registrarMovimiento({
-      proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivo: "VENCIDO",
+      proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
       items: [{ productoId: mp.id, cantidad: 4 }],
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
+  });
+
+  it("Merma rechaza un motivoId que no existe, y uno que existe pero está desactivado — el mensaje no revienta como error 500 crudo", async () => {
+    const mp = await crearMP("Zanahoria");
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    const inexistente = await registrarMovimiento({
+      proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: "no-existe",
+      items: [{ productoId: mp.id, cantidad: 1 }],
+    });
+    expect(inexistente.ok).toBe(false);
+    expect(inexistente.mensaje).toBe("El motivo elegido ya no está disponible.");
+
+    await prisma.motivoMerma.update({ where: { id: motivoVencidoId }, data: { activo: false } });
+    const desactivado = await registrarMovimiento({
+      proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
+      items: [{ productoId: mp.id, cantidad: 1 }],
+    });
+    expect(desactivado.ok).toBe(false);
+    expect(desactivado.mensaje).toBe("El motivo elegido ya no está disponible.");
+
+    // El saldo no se movió: ninguno de los dos rechazos escribió nada.
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+  });
+
+  it("Consumo rechaza un destinoId que no existe o que está desactivado, igual que Merma con motivoId", async () => {
+    const mp = await crearMP("Apio");
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    const inexistente = await registrarMovimiento({
+      proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: "no-existe",
+      items: [{ productoId: mp.id, cantidad: 1 }],
+    });
+    expect(inexistente.ok).toBe(false);
+    expect(inexistente.mensaje).toBe("El destino elegido ya no está disponible.");
+
+    await prisma.destinoConsumo.update({ where: { id: destinoPersonalId }, data: { activo: false } });
+    const desactivado = await registrarMovimiento({
+      proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId,
+      items: [{ productoId: mp.id, cantidad: 1 }],
+    });
+    expect(desactivado.ok).toBe(false);
+    expect(desactivado.mensaje).toBe("El destino elegido ya no está disponible.");
+
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
   });
 
   it("Ajuste: el usuario carga el delta ya con signo, no se multiplica por signoStock", async () => {
@@ -129,7 +181,7 @@ describe("registrarMovimiento", () => {
   it("sección obligatoria: rechaza Consumo/Merma/Ajuste sin sección elegida", async () => {
     const mp = await crearMP("Cebolla");
     const resultado = await registrarMovimiento({
-      proceso: "CONSUMO", fecha: new Date(), seccionId: "", destino: "PERSONAL",
+      proceso: "CONSUMO", fecha: new Date(), seccionId: "", destinoId: destinoPersonalId,
       items: [{ productoId: mp.id, cantidad: 1 }],
     });
     expect(resultado.ok).toBe(false);
@@ -147,7 +199,7 @@ describe("registrarMovimiento", () => {
 
     // Dos líneas de 6 c/u contra un stock de 10: cada una por separado pasaría (6<=10), juntas piden 12 y no alcanza.
     const resultado = await registrarMovimiento({
-      proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivo: "ROTO_O_CAIDO",
+      proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId,
       items: [{ productoId: mp.id, cantidad: 6 }, { productoId: mp.id, cantidad: 6 }],
     });
     expect(resultado.ok).toBe(false);
@@ -161,8 +213,8 @@ describe("registrarMovimiento", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
     const [a, b] = await Promise.all([
-      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivo: "ROTO_O_CAIDO", items: [{ productoId: mp.id, cantidad: 6 }] }),
-      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivo: "ROTO_O_CAIDO", items: [{ productoId: mp.id, cantidad: 6 }] }),
+      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 6 }] }),
     ]);
 
     // Juntas piden 12 sobre un stock de 10: como mucho una de las dos puede haber ganado la carrera.

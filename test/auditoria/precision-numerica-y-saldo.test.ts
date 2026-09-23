@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
@@ -18,6 +18,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
   let seccionId: string;
   let unidadKgId: string; // 2 decimales
   let insumoId: string;
+  let motivoVencidoId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -27,6 +28,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     unidadKgId = catalogo.kg.id; // decimales: 2, ver sembrarCatalogoBase
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
+    motivoVencidoId = (await sembrarMotivosYDestinos()).motivos.get("Vencido")!;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
@@ -109,7 +111,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     const mp = await crearMP("HistorialMixto", 2);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 15.5 }] });
     await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3.25 }] });
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.5 }], motivo: "VENCIDO" });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.5 }], motivoId: motivoVencidoId });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1.75 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2.1 }] });
 

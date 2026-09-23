@@ -6,6 +6,7 @@ import { obtenerConfigProceso } from "@/core/movimientos/ui-config";
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
+import { listarMotivosMermaActivos, listarDestinosConsumoActivos } from "@/server/actions/movimientos/motivos";
 import { prisma } from "@/lib/db";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
 
@@ -31,13 +32,15 @@ export default async function MovimientoPage({
 
   const { productoId } = await searchParams;
 
-  const [secciones, proveedores, unidades, productoInicial] = await Promise.all([
+  const [secciones, proveedores, unidades, motivos, destinos, productoInicial] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
     config.requiereProveedor ? listarProveedores(true) : Promise.resolve([]),
     // Alta rápida de producto inline (solo Compra, ver QuickCrearProducto)
     // — no Devolución a proveedor pese a ser también `esCompraLike`: no
     // tiene sentido devolver algo que nunca se compró.
     config.proceso === "COMPRA" ? listarUnidadesActivas() : Promise.resolve([]),
+    config.pideMotivo ? listarMotivosMermaActivos() : Promise.resolve([]),
+    config.pideDestino ? listarDestinosConsumoActivos() : Promise.resolve([]),
     // Deep-link accionable desde un reporte (ej. "Costo incompleto" ->
     // "cargale precio a este insumo") — resuelto server-side así el form
     // cliente no tiene que pedirlo aparte.
@@ -52,6 +55,8 @@ export default async function MovimientoPage({
         secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
         proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
         unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
+        motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}
+        destinos={destinos.map((d) => ({ id: d.id, nombre: d.nombre }))}
         productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
       />
     </div>

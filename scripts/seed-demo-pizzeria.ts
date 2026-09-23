@@ -634,11 +634,14 @@ describe("seed demo pizzería La Cuadra", () => {
       anotarSiFalla("registrarConteoFisico MP006", rConteo);
 
       const fechaMerma = fechaHace(5, 11);
+      // La migración expand (plan "motivos de Consumo/Merma como catálogo administrable", P3) ya sembró el catálogo en
+      // cualquier base a la que le corrieron `prisma migrate deploy` — no hace falta sembrarlo acá.
+      const motivoRoto = await prisma.motivoMerma.findUniqueOrThrow({ where: { nombre: "Roto o caído" } });
       const rMerma = await registrarMovimiento({
         proceso: "MERMA",
         fecha: fechaMerma,
         seccionId: seccionBarra,
-        motivo: "ROTO_O_CAIDO",
+        motivoId: motivoRoto.id,
         detalleLibre: "Se cayó un six-pack al acomodar la heladera.",
         items: [{ productoId: idProd("MX003"), cantidad: 6 }],
       });

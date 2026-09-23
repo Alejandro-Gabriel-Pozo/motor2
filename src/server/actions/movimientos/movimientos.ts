@@ -1,6 +1,6 @@
 "use server";
 
-import type { DestinoConsumoLegacy, MotivoMermaLegacy, Prisma, Proceso } from "@prisma/client";
+import type { Prisma, Proceso } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
@@ -51,10 +51,10 @@ export interface DatosMovimientoInput {
   seccionDestinoId?: string;
   proveedorId?: string;
   nroFactura?: string;
-  /** Solo Merma. TRANSITORIO — apunta al enum legacy hasta P5 (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23), donde pasa a ser un motivoId contra el catálogo nuevo. */
-  motivo?: MotivoMermaLegacy;
-  /** Solo Consumo. TRANSITORIO — ver el comentario de `motivo`. */
-  destino?: DestinoConsumoLegacy;
+  /** Solo Merma — id de una fila activa de MotivoMerma (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23, P5). */
+  motivoId?: string;
+  /** Solo Consumo — id de una fila activa de DestinoConsumo. */
+  destinoId?: string;
   detalleLibre?: string;
   items: ItemMovimientoInput[];
   /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. Opcional durante el rollout (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.3). */
@@ -245,6 +245,18 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
       return error("No se encontró la sección destino.");
     }
 
+    // Motivo/Destino: catálogos GLOBALES (no por sucursal, a diferencia de Sección) — solo hace falta que la fila
+    // exista y siga activa (un motivo desactivado no puede ELEGIRSE de nuevo, pero las Operacion viejas que ya lo
+    // usaban lo conservan, mismo criterio "nunca DELETE" que el resto de los catálogos).
+    if (datos.motivoId) {
+      const motivo = await prisma.motivoMerma.findUnique({ where: { id: datos.motivoId } });
+      if (!motivo?.activo) return error("El motivo elegido ya no está disponible.");
+    }
+    if (datos.destinoId) {
+      const destino = await prisma.destinoConsumo.findUnique({ where: { id: datos.destinoId } });
+      if (!destino?.activo) return error("El destino elegido ya no está disponible.");
+    }
+
     const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
     if (errorLargoFactura) return error(errorLargoFactura);
 
@@ -328,8 +340,8 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
           proveedorId: datos.proveedorId ?? null,
           nroFactura: texto(datos.nroFactura) || null,
           seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? datos.seccionDestinoId : null,
-          motivoLegacy: datos.motivo ?? null,
-          destinoLegacy: datos.destino ?? null,
+          motivoId: datos.motivoId ?? null,
+          destinoId: datos.destinoId ?? null,
           detalleLibre: texto(datos.detalleLibre) || null,
           usuarioId: ctx.usuarioId,
           claveIdempotencia: datos.claveIdempotencia ?? null,

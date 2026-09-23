@@ -47,6 +47,7 @@ import type { ResultadoAccion } from "../src/server/actions/tipos";
 import { crearGeneradorAleatorio } from "./demo-seed/prng";
 import { generarGuionLaCuadra, necesidadSemanal, construirMultiplicadoresPorPV, MP_POR_PROVEEDOR, CONFIG_LA_CUADRA_DEFAULT } from "./demo-seed/guion-la-cuadra";
 import { validarGuion, calcularTotalesEsperados } from "./demo-seed/guion";
+import { EQUIVALENCIA_MOTIVO_MERMA_LEGACY } from "../src/core/movimientos/motivos-semilla";
 import { verificarBaseVacia, pideRehacer } from "./demo-seed/guardas-destino";
 import { PROVEEDORES, PRODUCTOS, RECETAS } from "./seed-demo-pizzeria-data";
 
@@ -261,6 +262,16 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       }
 
       const RECETA_POR_PRODUCTO = new Map(RECETAS.map((r) => [r.productoCodigo, r.ingredientes]));
+      // EventoMerma.motivo (guion.ts) sigue viajando en el enum legacy (MotivoMermaLegacy) — se resuelve al id real vía
+      // la misma equivalencia que usó el backfill de la migración expand (P3). El catálogo ya está sembrado por esa
+      // migración en cualquier base con `prisma migrate deploy` corrido, no hace falta sembrarlo acá.
+      const motivosPorNombre = new Map((await prisma.motivoMerma.findMany()).map((m) => [m.nombre, m.id]));
+      const idMotivo = (legacy: string): string => {
+        const nombre = EQUIVALENCIA_MOTIVO_MERMA_LEGACY[legacy];
+        const id = nombre ? motivosPorNombre.get(nombre) : undefined;
+        if (!id) throw new Error(`Motivo no resuelto: ${legacy}`);
+        return id;
+      };
       const operacionIdPorRef = new Map<string, string>();
       const inicioEjecucion = Date.now();
       const contadorPorTipo: Record<string, number> = {};
@@ -298,7 +309,7 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
           const r = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId: idSeccion(ev.seccion), items: [{ productoId: idProd(ev.productoCodigo), cantidad: ev.cantidad }] });
           anotarSiFalla(`PRODUCCION ${ev.ref}`, r);
         } else if (ev.tipo === "MERMA") {
-          const r = await registrarMovimiento({ proceso: "MERMA", fecha, seccionId: idSeccion(ev.seccion), motivo: ev.motivo, detalleLibre: ev.detalleLibre, items: [{ productoId: idProd(ev.productoCodigo), cantidad: ev.cantidad }] });
+          const r = await registrarMovimiento({ proceso: "MERMA", fecha, seccionId: idSeccion(ev.seccion), motivoId: idMotivo(ev.motivo), detalleLibre: ev.detalleLibre, items: [{ productoId: idProd(ev.productoCodigo), cantidad: ev.cantidad }] });
           anotarSiFalla(`MERMA ${ev.ref}`, r);
         } else if (ev.tipo === "CONTEO_FISICO") {
           const productoId = idProd(ev.productoCodigo);

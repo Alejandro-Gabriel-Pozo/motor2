@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -20,6 +20,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
   let seccionDestinoId: string;
   let unidadKgId: string;
   let insumoId: string;
+  let motivoVencidoId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -30,6 +31,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId, "Depósito")).id;
     seccionDestinoId = (await sembrarSeccion(sucursalId, "Cocina")).id;
+    motivoVencidoId = (await sembrarMotivosYDestinos()).motivos.get("Vencido")!;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
@@ -99,7 +101,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
 
       const settled = await Promise.allSettled([
         registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
-        registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], motivo: "VENCIDO" }),
+        registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], motivoId: motivoVencidoId }),
       ]);
       console.log("[auditoria] Caso 3a (consumo+merma):", resumen(settled as never));
 

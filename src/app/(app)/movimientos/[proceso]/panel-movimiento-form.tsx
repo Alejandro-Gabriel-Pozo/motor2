@@ -2,12 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import type { DestinoConsumoLegacy, MotivoMermaLegacy } from "@prisma/client";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
-import { MOTIVOS_MERMA, DESTINOS_CONSUMO, type ProcesoUiConfig } from "@/core/movimientos/ui-config";
+import type { ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
@@ -56,6 +55,8 @@ export function PanelMovimientoForm({
   secciones,
   proveedores,
   unidades,
+  motivos,
+  destinos,
   productoInicial,
 }: {
   config: ProcesoUiConfig;
@@ -63,6 +64,10 @@ export function PanelMovimientoForm({
   proveedores: Opcion[];
   /** Solo se usa (y solo se pasa desde la página) en Compra — alta rápida de producto inline, ver QuickCrearProducto. */
   unidades?: Opcion[];
+  /** Solo se usa (y solo se pasa desde la página) en Merma — catálogo MotivoMerma activo (plan "motivos de Consumo/Merma como catálogo administrable", P5). */
+  motivos?: Opcion[];
+  /** Solo se usa (y solo se pasa desde la página) en Consumo — catálogo DestinoConsumo activo. */
+  destinos?: Opcion[];
   /** Deep-link accionable (ej. "Costo incompleto" en Reportes → Costos, "falta precio de este insumo") — precarga la primera fila con este producto en vez de arrancar vacía. */
   productoInicial?: { id: string; etiqueta: string };
 }) {
@@ -77,8 +82,8 @@ export function PanelMovimientoForm({
   const [seccionDestinoId, setSeccionDestinoId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [nroFactura, setNroFactura] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [destino, setDestino] = useState("");
+  const [motivoId, setMotivoId] = useState("");
+  const [destinoId, setDestinoId] = useState("");
   const [detalleLibre, setDetalleLibre] = useState("");
   const [items, setItems] = useState<FilaItem[]>([
     productoInicial ? { ...FILA_VACIA, productoId: productoInicial.id, etiquetaInicial: productoInicial.etiqueta } : { ...FILA_VACIA },
@@ -245,8 +250,8 @@ export function PanelMovimientoForm({
         seccionDestinoId: config.proceso === "TRANSFERENCIA" ? seccionDestinoId : undefined,
         proveedorId: proveedorId || undefined,
         nroFactura: nroFactura || undefined,
-        motivo: config.pideMotivo && motivo ? (motivo as MotivoMermaLegacy) : undefined,
-        destino: config.pideDestino && destino ? (destino as DestinoConsumoLegacy) : undefined,
+        motivoId: config.pideMotivo && motivoId ? motivoId : undefined,
+        destinoId: config.pideDestino && destinoId ? destinoId : undefined,
         detalleLibre: detalleLibre || undefined,
         items: itemsValidos,
         claveIdempotencia,
@@ -325,11 +330,11 @@ export function PanelMovimientoForm({
       {config.pideMotivo && (
         <label className="flex flex-col gap-1 text-sm">
           Motivo
-          <select value={motivo} onChange={(e) => setMotivo(e.target.value)} required className="rounded border px-3 py-2">
+          <select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} required className="rounded border px-3 py-2">
             <option value="">Elegí un motivo</option>
-            {MOTIVOS_MERMA.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
+            {motivos?.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
               </option>
             ))}
           </select>
@@ -339,11 +344,11 @@ export function PanelMovimientoForm({
       {config.pideDestino && (
         <label className="flex flex-col gap-1 text-sm">
           Destino
-          <select value={destino} onChange={(e) => setDestino(e.target.value)} className="rounded border px-3 py-2">
+          <select value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="rounded border px-3 py-2">
             <option value="">Sin destino específico</option>
-            {DESTINOS_CONSUMO.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
+            {destinos?.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nombre}
               </option>
             ))}
           </select>

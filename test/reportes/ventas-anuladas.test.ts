@@ -202,7 +202,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
     it("un ajuste MANUAL sigue contando, con y sin detalle (el filtro no pierde las operaciones sin detalleLibre)", async () => {
       await comprarHarina("2026-08-05");
-      const sinDetalle = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-06"), seccionId, motivo: undefined, items: [{ productoId: harinaId, cantidad: -1 }] });
+      const sinDetalle = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-06"), seccionId, items: [{ productoId: harinaId, cantidad: -1 }] });
       expect(sinDetalle.ok, sinDetalle.mensaje).toBe(true);
       const conDetalle = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-07"), seccionId, detalleLibre: "Se derramó un poco", items: [{ productoId: harinaId, cantidad: -0.5 }] });
       expect(conDetalle.ok, conDetalle.mensaje).toBe(true);

@@ -2,6 +2,7 @@ import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../src/lib/db";
 import { ACCIONES } from "../../src/core/permisos/acciones";
+import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
 export { prisma };
 
@@ -127,4 +128,24 @@ export async function crearUsuarioConMembresia(params: {
 /** Fixtures mínimas de Movimientos: una Sección ("Depósito") en la sucursal dada. */
 export async function sembrarSeccion(sucursalId: string, nombre = "Depósito") {
   return prisma.seccion.create({ data: { sucursalId, nombre } });
+}
+
+/**
+ * Siembra el catálogo Motivo de Merma / Destino de Consumo (motivos-semilla.ts) — necesario para cualquier test que
+ * registre una Merma/Consumo con un motivoId/destinoId real: `limpiarBaseDeTest()` vacía las dos tablas en cada test
+ * (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23, P3/P5), así que no alcanza con lo que
+ * dejó la migración. Devuelve nombre→id para que cada test resuelva el id que necesite sin acoplarse al orden de
+ * inserción (a diferencia del enum viejo, acá no hay una clave fija tipo "VENCIDO" — el nombre ES la clave estable).
+ */
+export async function sembrarMotivosYDestinos() {
+  const motivos = await Promise.all(
+    MOTIVOS_MERMA_SEMILLA.map((m) => prisma.motivoMerma.create({ data: { nombre: m.nombre, descripcion: m.descripcion ?? null } }))
+  );
+  const destinos = await Promise.all(
+    DESTINOS_CONSUMO_SEMILLA.map((d) => prisma.destinoConsumo.create({ data: { nombre: d.nombre, descripcion: d.descripcion ?? null } }))
+  );
+  return {
+    motivos: new Map(motivos.map((m) => [m.nombre, m.id])),
+    destinos: new Map(destinos.map((d) => [d.nombre, d.id])),
+  };
 }
