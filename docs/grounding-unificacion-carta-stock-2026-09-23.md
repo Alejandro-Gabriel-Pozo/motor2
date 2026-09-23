@@ -144,16 +144,16 @@ aparte):
   reimplementa ni la modifica.
 - `src/server/actions/carta/` — Server Actions propias (gateadas con
   `con-permiso.ts` como el resto) solo si hay una pantalla interna para
-  editar descripción/imagen/tags/"especial"/orden. Ninguna toca las
-  actions de `catalogo/` o `stock/`.
+  editar descripción/imagen/tags/"especial"/orden/sección. Ninguna toca
+  las actions de `catalogo/` o `stock/`.
 - `src/app/(app)/carta/` — esa pantalla de administración, si se hace.
 - `src/app/api/carta/[sucursal]/route.ts` — el endpoint público de solo
   lectura que consume restaurant-menu-design (Route Handler, no Server
   Action, porque lo llama un sitio externo — mismo estilo que
   `app/api/revalidate` en ese repo).
 - Los campos de presentación de §2.1 (`descripcion`, imagen, `tags`,
-  `especial`, `orden`) van en una tabla **nueva y aditiva**,
-  `ContenidoCartaProducto` (FK a `Producto`), nunca en `Producto` en sí.
+  `especial`) van en una tabla **nueva y aditiva**, `ContenidoCartaProducto`
+  (FK a `Producto`), nunca en `Producto` en sí.
 
 **Lo único que toca algo existente:** la migración de Prisma que crea
 esa tabla necesita, del lado de `model Producto`, la línea de relación
@@ -162,13 +162,124 @@ declarativa, sin lógica de negocio ni cambio de comportamiento). Ninguna
 columna existente cambia, ninguna Server Action de `catalogo`/`stock` se
 toca, ningún test de inventario debería cambiar de resultado por esto.
 
-## 4. Qué queda abierto
+## 4. Modelo final de agrupamiento y secciones (2026-09-23, continuación)
 
-- Confirmar el mapeo `categoria`/`titulo_seccion` de la carta contra
-  `CategoriaProducto` o `Seccion` de motor2 (son conceptos distintos hoy
-  en motor2: `Seccion` es de movimientos de stock, no de menú).
+Capturas reales de la carta hoy (`restaurant-menu-design`, `iolileotest.vercel.app/carta/...`)
+mostraron dos cosas que corrigieron el diseño inicial:
+
+- La sección **"Platos Principales"** junta Bife a la criolla, Bife de
+  chorizo, Chivo del norte, Pechuga de pollo y Trucha — son platos
+  **distintos entre sí** (no variantes de una misma cosa), cada uno con
+  su propia `CategoriaProducto` de tipo de plato. La sección no es un
+  sinónimo de categoría: es un nivel más arriba que agrupa varias
+  categorías distintas.
+- La sección **"PROMOS"** tiene líneas como *"1 pizza a elección + 1
+  coca 1,5L para llevar — $25.000"* o *"Hamburguesa XXL + Papas Fritas +
+  Saborizada 1,5L (para 4 personas) — $75.000"*: son combos de varios
+  productos con un precio propio. Grounding: lo único parecido que existe
+  en motor2 es `PromocionProducto` (`prisma/schema.prisma:1132`) — un
+  booleano "este producto individual está en promo" por sucursal, **no**
+  un combo de varios productos con precio conjunto. No hay nada para
+  reusar ahí; es un concepto nuevo.
+
+El modelo completo queda en 4 niveles (de más chico a más grande),
+todos de solo lectura hacia `catalogo` salvo los dos marcados "nuevo":
+
+1. **`Producto`** (existente) — el SKU real: "Pizza Napolitana", "Coca
+   1,5L".
+2. **`CategoriaProducto`** (existente) — el tipo de plato/grupo fino:
+   "Pizza", "Bife", "Gaseosa 500cc". Ya es lo que hoy alimenta
+   `generarReporteVentasPorCategoria` (`src/core/reportes/periodo.ts:1108`,
+   ver §5) — "cuántas pizzas vendí" ya funciona a este nivel, sin tocar
+   nada.
+3. **`SeccionCarta`** (nuevo, propio de carta) — el curso de la carta:
+   "Entradas", "Platos Principales", "Bebidas", "Postres", "Promos".
+   Agrupa **varias** `CategoriaProducto` (Bife + Chivo + Pollo + Trucha,
+   todas bajo Platos Principales) vía una tabla puente de solo
+   referencia (`categoriaId` → `seccionCartaId`), sin agregar ninguna
+   columna a `CategoriaProducto`.
+4. **`PromoCarta`** (nuevo, propio de carta) — el combo: título/
+   descripción libre ("1 pizza a elección + 1 coca 1,5L"), precio propio,
+   orden. Por ahora **sin** referencia a los `Producto`/`CategoriaProducto`
+   reales que lo componen — el dueño confirma que el nombre es puramente
+   informativo (ver §6, depende de cómo se termine cargando la venta de
+   promos).
+
+## 5. Reportes por nivel — reusar, no reimplementar
+
+El pedido real detrás de todo el agrupamiento es un drill-down de a 3
+pasos para decidir qué mantener en la carta, con el propio ejemplo del
+dueño:
+
+1. **Por sección:** "de Entradas no sale nada, saquemos toda la sección."
+2. **Por grupo/tipo de plato dentro de la sección:** "en Bebidas lo que
+   más sale son las gaseosas 500cc."
+3. **Por producto puntual dentro del grupo:** "pero esta gaseosa en
+   particular no se vende."
+
+Los niveles 2 y 3 **ya existen, sin cambios**: `generarReporteVentasPorCategoria`
+ya agrupa por `CategoriaProducto` y ya desglosa por producto adentro
+(`porCategoria[].productos`, ordenado por importe). El nivel 1 (por
+`SeccionCarta`) es la única pieza nueva: un reporte chico en `core/carta`
+que **toma el resultado ya calculado** de `generarReporteVentasPorCategoria`
+y lo reagrupa una vuelta más usando la tabla puente `categoriaId` →
+`seccionCartaId` de §4. No se toca `src/core/reportes/periodo.ts` en
+absoluto — es composición, no reimplementación.
+
+## 6. Promociones — pendiente PREVIO, no parte de este alcance
+
+El dueño ya había marcado esto como pendiente aparte: cómo se cargan las
+ventas de una promo — probablemente vía **conciliación** — está sin
+decidir todavía, y **es un prerrequisito**, no parte de la unificación
+carta/stock en sí.
+
+Grounding del problema real que esto resuelve (ejemplo concreto del
+dueño): si un combo tipo "Menú ejecutivo" incluye una milanesa, y hoy la
+venta se registra con el precio real solo en la línea del combo, la
+milanesa que forma parte del combo puede quedar registrada en **$0** en
+el reporte de ventas. Con 10 milanesas vendidas — 5 sueltas a $10.000
+c/u ($50.000) y 5 dentro de "Menú ejecutivo" a $0 — el reporte de
+ventas por producto (§5, nivel 3) promediaría $50.000/10 = $5.000 por
+milanesa, un número que **no representa ningún precio real**: la plata
+de las otras 5 está en la línea de "Menú ejecutivo", no en la de
+milanesa. Resolver esto (con conciliación o el mecanismo que se elija)
+es lo que habilitaría después un análisis de costos/márgenes correcto
+por producto — pero es trabajo previo, separado, y no bloquea el resto
+de este diseño (`PromoCarta` en §4 queda solo informativo hasta que esto
+se resuelva).
+
+Dos caminos mencionados por el dueño para resolverlo, ninguno decidido
+todavía:
+
+- **A. Conciliación.** La venta de un combo se sigue registrando como
+  hoy (probablemente una sola línea "Menú ejecutivo" a precio de combo)
+  y, aparte, un proceso de conciliación reparte ese importe entre los
+  productos reales que lo componen (a mano o con una regla). No requiere
+  cambios en el flujo de venta existente; el costo es que la
+  descomposición es posterior y aproximada.
+- **B. POS interno sin facturación, con comandas.** Transformar motor2
+  en un punto de venta (sin facturación fiscal — no reemplaza ningún
+  sistema de facturación existente) que permita tomar el pedido por
+  producto real (incluida la elección dentro de un combo, ej. "pizza a
+  elección: cuál") y emitir la comanda de cocina. La ventaja: la
+  descomposición de un combo en sus productos reales ocurre **en el
+  momento de la venta**, no después — la milanesa del "Menú ejecutivo"
+  queda registrada con su valor real desde el vamos, y de yapa engancha
+  directo con `src/server/actions/movimientos/venta.ts`/`MovimientoStock`
+  que ya existe. El costo: es un módulo nuevo bastante más grande que
+  todo lo demás de este documento (toma de pedido, comandas, UI de mozo/
+  cocina), no una extensión chica de `carta`.
+
+Ninguna de las dos decide nada todavía — quedan las dos anotadas para
+cuando el dueño resuelva cuál seguir.
+
+## 7. Qué queda abierto
+
 - Decidir el camino de `SiteConfig` (§2.2) — preview en vivo sin migrar,
   o editor real con persistencia.
+- Resolver, como trabajo previo y separado, cómo se cargan/reconcilian
+  las ventas de promos (§6) — recién ahí `PromoCarta` puede pasar de
+  informativo a tener un análisis de costos real por combo.
 - Ninguna de estas decisiones requiere fusionar los repos en un solo
   código/deploy: alcanza con que restaurant-menu-design consuma el
   endpoint `src/app/api/carta/[sucursal]/route.ts` de motor2 en vez de
