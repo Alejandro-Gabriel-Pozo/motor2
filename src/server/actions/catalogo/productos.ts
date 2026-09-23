@@ -37,6 +37,8 @@ export interface FiltroSelectorProducto {
   soloDisponiblesEnAlguna?: boolean;
   /** MP, o PV solo si está marcado "Se produce" — mismo criterio que `tieneStockReal` (Conteo Físico, Stock consolidado). */
   soloConStockReal?: boolean;
+  /** `producto.seProduce === true`, en MP o PV — quién puede ser el RESULTADO de una Producción (distinto de `soloConStockReal`: una MP comprada, no producida, tiene stock real pero no es válida acá). */
+  soloSeProduce?: boolean;
   /** PV, o MP solo si está marcada "Se produce" — quién puede tener una Receta (`/catalogo/recetas`). Es el criterio inverso a `soloConStockReal`: ahí toda MP entra y el PV es la excepción, acá es al revés. */
   elegibleParaReceta?: boolean;
   /** true = solo productos en consignación (Devolución al consignante); false = excluirlos (Devolución a proveedor — nunca se "compró" algo en consignación). Sin definir = sin filtrar. */
@@ -51,6 +53,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.soloDisponibles ? [whereDisponibleEn(ctx.sucursalId)] : []),
     ...(filtro?.soloDisponiblesEnAlguna ? [whereDisponibleEnAlguna()] : []),
     ...(filtro?.soloConStockReal ? [{ OR: [{ tipo: "MP" as const }, { tipo: "PV" as const, seProduce: true }] }] : []),
+    ...(filtro?.soloSeProduce ? [{ seProduce: true }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
     ...(t ? [{ OR: [{ nombre: { contains: t, mode: "insensitive" as const } }, { codigo: { contains: t, mode: "insensitive" as const } }] }] : []),

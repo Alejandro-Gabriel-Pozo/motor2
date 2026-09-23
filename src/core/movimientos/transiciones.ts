@@ -26,8 +26,10 @@ export interface Transicion {
   /**
    * true: solo participan productos con tieneStockReal(tipo, seProduce)
    * true (MP siempre, PV solo si "Se produce" — Movimientos.js:544-566).
-   * Cubre también Producción a propósito: la regla real ahí ("MP siempre
-   * producible, PV solo si Se produce") es exactamente tieneStockReal.
+   * Producción NO usa este flag para decidir qué producto es válido — tiene
+   * su propia regla en `productoValidoParaProceso` (`seProduce`, sin mirar
+   * `tipo`): "requiere stock real" y "es el resultado de una receta" son
+   * preguntas distintas, aunque para el resto de los procesos coincidan.
    */
   requiereStockReal: boolean;
   /** Compra/Devolución a Proveedor: convierte de unidad de Compra a unidad de Stock (factor del producto o de una Presentación alternativa; ver armarLineaMovimiento). */
@@ -98,8 +100,17 @@ export function tieneStockReal(tipo: "MP" | "PV", seProduce: boolean): boolean {
 
 /**
  * Port de productoValidoParaProceso_ (Movimientos.js:568-606), sin
- * filtroUso (ver docstring de Transicion) y sin la rama de Producción por
- * separado (tieneStockReal ya cubre exactamente esa regla).
+ * filtroUso (ver docstring de Transicion).
+ *
+ * Producción tiene su PROPIA regla, separada de `tieneStockReal` (hallazgo
+ * real, 2026-09-23): `tieneStockReal` responde "¿este producto tiene stock
+ * físico real?" (toda MP, sí o sí, la haya producido alguien o la hayas
+ * comprado hecha) — pero Producción pregunta algo distinto, "¿este
+ * producto es el RESULTADO de correr una receta?", que es exactamente
+ * `seProduce`, sin mirar `tipo`. Antes de este fix, `tieneStockReal` dejaba
+ * "producir" cualquier MP comprada (ej. Harina): al no tener receta,
+ * `calcularConsumosProduccion` no consumía nada — un alta de stock
+ * disfrazada de producción.
  */
 export function productoValidoParaProceso(
   proceso: Proceso,
@@ -109,6 +120,8 @@ export function productoValidoParaProceso(
 
   // Uso 1:1 Tipo (porción Catálogo, usoDeTipo): comprar siempre es de una MP.
   if (proceso === "COMPRA" && producto.tipo !== "MP") return false;
+
+  if (proceso === "PRODUCCION") return producto.seProduce;
 
   if (t.requiereStockReal && !tieneStockReal(producto.tipo, producto.seProduce)) return false;
 

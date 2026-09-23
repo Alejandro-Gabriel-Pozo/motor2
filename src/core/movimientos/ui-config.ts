@@ -64,6 +64,7 @@ export interface ProcesoUiConfig {
 /** Espejo de productoValidoParaProceso (transiciones.ts) para el selector — ver el docstring de `filtroProducto`. */
 function filtroProductoDeProceso(proceso: ProcesoUiConfig["proceso"]): FiltroSelectorProducto {
   if (proceso === "COMPRA") return { soloDisponibles: true, tipo: "MP" };
+  if (proceso === "PRODUCCION") return { soloDisponibles: true, soloSeProduce: true };
   if (proceso === "DEVOLUCION_CONSIGNACION") return { soloDisponibles: true, soloConStockReal: true, esConsignacion: true };
   if (proceso === "DEVOLUCION_PROVEEDOR") return { soloDisponibles: true, soloConStockReal: true, esConsignacion: false };
   return { soloDisponibles: true, soloConStockReal: true };

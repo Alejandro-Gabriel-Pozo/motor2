@@ -47,8 +47,12 @@ describe("PROCESOS_UI.filtroProducto (hallazgo de la auditoría: el selector no 
   });
 
   it("el resto de los procesos filtra por soloConStockReal, sin filtrar por consignación", () => {
-    for (const slug of ["produccion", "consumo", "ajuste", "transferencia", "merma", "devolucion-cliente"]) {
+    for (const slug of ["consumo", "ajuste", "transferencia", "merma", "devolucion-cliente"]) {
       expect(obtenerConfigProceso(slug)?.filtroProducto).toEqual({ soloDisponibles: true, soloConStockReal: true });
     }
+  });
+
+  it("Producción filtra por soloSeProduce, no por soloConStockReal (hallazgo real 2026-09-23: antes dejaba \"producir\" cualquier MP comprada, sin receta que consumir)", () => {
+    expect(obtenerConfigProceso("produccion")?.filtroProducto).toEqual({ soloDisponibles: true, soloSeProduce: true });
   });
 });

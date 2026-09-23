@@ -226,6 +226,18 @@ describe("productos", () => {
     });
   });
 
+  describe("buscarProductosSelector — filtro soloSeProduce (Producción, hallazgo real 2026-09-23: dejaba \"producir\" cualquier MP)", () => {
+    it("trae MP y PV marcados \"Se produce\", excluye los que no", async () => {
+      await darDeAltaProducto({ nombre: "Harina comprada", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId });
+      await darDeAltaProducto({ nombre: "Prepizza masa", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId, seProduce: true });
+      await darDeAltaProducto({ nombre: "Gaseosa comprada", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1 });
+      await darDeAltaProducto({ nombre: "Pizza al corte", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, seProduce: true });
+
+      const resultado = await buscarProductosSelector("", { soloDisponibles: true, soloSeProduce: true });
+      expect(resultado.map((p) => p.nombre).sort()).toEqual(["Pizza al corte", "Prepizza masa"]);
+    });
+  });
+
   describe("el tilde de disponibilidad en el alta (§4, docs/plan-disponibilidad-por-sucursal-2026-09-23.md)", () => {
     async function disponibleEn(productoId: string, sucursalId: string) {
       return (await prisma.disponibilidadProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } }))?.disponible ?? false;

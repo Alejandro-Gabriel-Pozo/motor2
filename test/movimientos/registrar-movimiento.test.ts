@@ -260,6 +260,16 @@ describe("registrarMovimiento", () => {
     expect(await calcularSaldoTotal(mp.id, seccionAId)).toBeCloseTo(0.5); // 500 * 0.001 kg
   });
 
+  it("Producción rechaza una MP que no está marcada \"Se produce\" (hallazgo real 2026-09-23: antes dejaba \"producir\" cualquier MP comprada, sin consumir ninguna receta)", async () => {
+    const harinaComprada = await crearMP("Harina de bolsa"); // seProduce: false por default
+    const resultado = await registrarMovimiento({
+      proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
+      items: [{ productoId: harinaComprada.id, cantidad: 10 }],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(await calcularSaldoTotal(harinaComprada.id, seccionAId)).toBe(0); // no se escribió nada
+  });
+
   it("Producción reparte el consumo de receta entre \"hermanos\" del mismo Insumo cuando el puntual no alcanza", async () => {
     const insumoCompartido = await prisma.insumo.create({ data: { nombre: "Harina compartida" } });
     const mpA = await crearMP("Harina Proveedor A", { insumoId: insumoCompartido.id });
