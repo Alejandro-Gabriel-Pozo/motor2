@@ -681,31 +681,54 @@ enum Proceso {
   REINGRESO_TRANSFERENCIA_SUCURSAL
 }
 
-/// MOTIVOS_MERMA (Movimientos.js:56). En Apps Script esto se guardaba
-/// plegado como texto dentro de "Movimiento detalle" ("no hace falta
-/// cambiar el esquema" — el motivo real de esa limitación); acá hay schema
-/// real, así que es una columna tipada de Operacion en vez de texto a
-/// parsear para poder agrupar (Reportes.js: generarReportePerdidas_).
-enum MotivoMerma {
+/// LEGACY (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23, P3): reemplazado por el modelo
+/// `MotivoMerma` (tabla, administrable desde la UI) — este enum queda solo mientras conviven `Operacion.motivoLegacy`
+/// (la columna vieja) y `Operacion.motivoId` (la FK nueva), P3 a P7. Se borra en P8 junto con `motivoLegacy`.
+/// Renombrado desde `MotivoMerma` (antes `enum`, ahora el nombre lo tiene el `model`) — mismo criterio expand/contract
+/// que ya usó `docs/plan-disponibilidad-por-sucursal-2026-09-23.md`.
+enum MotivoMermaLegacy {
   VENCIDO
   ROTO_O_CAIDO
   MAL_PREPARADO_O_QUEMADO
   /// Nombre aclarado a propósito en v-actual de Apps Script (BUGFIX A-3,
   /// AUDITORIA-movimientos.md): devuelto pero NO revendible → resta stock
   /// de verdad. Si es revendible, es DEVOLUCION_CLIENTE (proceso propio,
-  /// signoStock +1), nunca este motivo.
+  /// signoStock +1), nunca este motivo. Esta nota sobrevive en
+  /// `MotivoMerma.descripcion` de la fila "Devolución de cliente (no
+  /// revendible)" — ver src/core/movimientos/motivos-semilla.ts.
   DEVOLUCION_CLIENTE_NO_REVENDIBLE
   ROBO_O_FALTANTE
   OTRO
 }
 
-/// DESTINOS_CONSUMO (Movimientos.js:59) — mismo criterio que MotivoMerma.
-enum DestinoConsumo {
+/// LEGACY — ver el docstring de `MotivoMermaLegacy`. Reemplazado por el modelo `DestinoConsumo` (tabla).
+enum DestinoConsumoLegacy {
   PERSONAL
   DEGUSTACION_CORTESIA
   EVENTO
   ELABORACION_INTERNA
   OTRO
+}
+
+/// Catálogo administrable de motivos de Merma (plan "motivos de Consumo/Merma como catálogo administrable",
+/// 2026-09-23) — reemplaza al enum fijo `MotivoMermaLegacy`: antes, agregar un motivo nuevo pedía código + migración;
+/// ahora es un alta más, con el permiso `motivos_movimiento`. Mismo patrón que `CategoriaProducto`/`Insumo`/`Grupo`:
+/// nunca DELETE — desactivar lo saca del selector de Merma, pero un movimiento histórico sigue mostrando su motivo.
+model MotivoMerma {
+  id          String      @id @default(cuid())
+  nombre      String      @unique
+  descripcion String?
+  activo      Boolean     @default(true)
+  operaciones Operacion[]
+}
+
+/// Catálogo administrable de destinos de Consumo — ver el docstring de `MotivoMerma`, mismo patrón.
+model DestinoConsumo {
+  id          String      @id @default(cuid())
+  nombre      String      @unique
+  descripcion String?
+  activo      Boolean     @default(true)
+  operaciones Operacion[]
 }
 
 /// ACCIONES_CONTEO_FISICO (Stock.js:1066-1088).
@@ -805,8 +828,22 @@ model Operacion {
   /// cualquier otro proceso, validado en la capa de aplicación (mismo
   /// criterio no-bloqueante-por-constraint que el resto del proyecto usa
   /// para reglas condicionadas por otro campo, ej. Producto.insumoId).
-  motivo       MotivoMerma?
-  destino      DestinoConsumo?
+  ///
+  /// TRANSITORIO (plan "motivos de Consumo/Merma como catálogo
+  /// administrable", 2026-09-23, P3 a P7): `motivoLegacy`/`destinoLegacy`
+  /// son las columnas VIEJAS (el enum fijo, `@map` a los nombres de
+  /// columna originales `motivo`/`destino` — nadie más las escribe desde
+  /// P5, quedan de solo lectura para el fallback de `perdidas.ts` mientras
+  /// existan operaciones viejas sin backfillear). `motivoId`/`destinoId`
+  /// son la FK nueva, la única que escribe la aplicación desde P5. Se
+  /// borran en P8, junto con los enums `*Legacy`.
+  motivoLegacy  MotivoMermaLegacy?    @map("motivo")
+  destinoLegacy DestinoConsumoLegacy? @map("destino")
+
+  motivoId        String?
+  motivoCatalogo  MotivoMerma?    @relation(fields: [motivoId], references: [id])
+  destinoId       String?
+  destinoCatalogo DestinoConsumo? @relation(fields: [destinoId], references: [id])
   /// Texto libre adicional (ctx.detalleLibre, Movimientos.js:767) — en
   /// Apps Script terminaba plegado dentro de "Movimiento detalle" de cada
   /// fila; acá queda en su propia columna, una vez por operación.

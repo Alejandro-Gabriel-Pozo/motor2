@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import type { DestinoConsumo, MotivoMerma } from "@prisma/client";
+import type { DestinoConsumoLegacy, MotivoMermaLegacy } from "@prisma/client";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
@@ -245,8 +245,8 @@ export function PanelMovimientoForm({
         seccionDestinoId: config.proceso === "TRANSFERENCIA" ? seccionDestinoId : undefined,
         proveedorId: proveedorId || undefined,
         nroFactura: nroFactura || undefined,
-        motivo: config.pideMotivo && motivo ? (motivo as MotivoMerma) : undefined,
-        destino: config.pideDestino && destino ? (destino as DestinoConsumo) : undefined,
+        motivo: config.pideMotivo && motivo ? (motivo as MotivoMermaLegacy) : undefined,
+        destino: config.pideDestino && destino ? (destino as DestinoConsumoLegacy) : undefined,
         detalleLibre: detalleLibre || undefined,
         items: itemsValidos,
         claveIdempotencia,

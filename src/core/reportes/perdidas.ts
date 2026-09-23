@@ -59,7 +59,7 @@ export async function generarReportePerdidas(sucursalId: string, diasAtras: numb
       cantidad: true,
       productoId: true,
       producto: { select: { nombre: true } },
-      operacion: { select: { fecha: true, motivo: true, destino: true } },
+      operacion: { select: { fecha: true, motivoLegacy: true, destinoLegacy: true } },
     },
     orderBy: { operacion: { fecha: "desc" } },
   });
@@ -76,7 +76,7 @@ export async function generarReportePerdidas(sucursalId: string, diasAtras: numb
       idMovimiento: m.id,
       idOperacion: m.operacionId,
       fecha: m.operacion.fecha,
-      motivo: m.proceso === "MERMA" ? (m.operacion.motivo ?? "OTRO") : (m.operacion.destino ?? SIN_DESTINO),
+      motivo: m.proceso === "MERMA" ? (m.operacion.motivoLegacy ?? "OTRO") : (m.operacion.destinoLegacy ?? SIN_DESTINO),
       producto: m.producto.nombre,
       productoId: m.productoId,
       cantidad: redondearCantidad(cantidad),

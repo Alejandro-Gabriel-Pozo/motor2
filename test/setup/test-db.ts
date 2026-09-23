@@ -13,6 +13,10 @@ export async function limpiarBaseDeTest() {
   await prisma.movimientoStock.deleteMany();
   await prisma.conteoFisico.deleteMany();
   await prisma.operacion.deleteMany();
+  // DESPUÉS de operacion.deleteMany() — Operacion.motivoId/destinoId referencian estas dos con ON DELETE RESTRICT
+  // (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23, P3).
+  await prisma.motivoMerma.deleteMany();
+  await prisma.destinoConsumo.deleteMany();
   await prisma.pagoConsignante.deleteMany();
   await prisma.precioLocalProducto.deleteMany();
   await prisma.stockMinimoProducto.deleteMany();

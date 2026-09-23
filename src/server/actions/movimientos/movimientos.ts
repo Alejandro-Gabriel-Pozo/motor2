@@ -1,6 +1,6 @@
 "use server";
 
-import type { DestinoConsumo, MotivoMerma, Prisma, Proceso } from "@prisma/client";
+import type { DestinoConsumoLegacy, MotivoMermaLegacy, Prisma, Proceso } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
@@ -51,10 +51,10 @@ export interface DatosMovimientoInput {
   seccionDestinoId?: string;
   proveedorId?: string;
   nroFactura?: string;
-  /** Solo Merma. */
-  motivo?: MotivoMerma;
-  /** Solo Consumo. */
-  destino?: DestinoConsumo;
+  /** Solo Merma. TRANSITORIO — apunta al enum legacy hasta P5 (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23), donde pasa a ser un motivoId contra el catálogo nuevo. */
+  motivo?: MotivoMermaLegacy;
+  /** Solo Consumo. TRANSITORIO — ver el comentario de `motivo`. */
+  destino?: DestinoConsumoLegacy;
   detalleLibre?: string;
   items: ItemMovimientoInput[];
   /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. Opcional durante el rollout (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.3). */
@@ -328,8 +328,8 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
           proveedorId: datos.proveedorId ?? null,
           nroFactura: texto(datos.nroFactura) || null,
           seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? datos.seccionDestinoId : null,
-          motivo: datos.motivo ?? null,
-          destino: datos.destino ?? null,
+          motivoLegacy: datos.motivo ?? null,
+          destinoLegacy: datos.destino ?? null,
           detalleLibre: texto(datos.detalleLibre) || null,
           usuarioId: ctx.usuarioId,
           claveIdempotencia: datos.claveIdempotencia ?? null,

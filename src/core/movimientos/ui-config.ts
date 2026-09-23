@@ -1,10 +1,15 @@
-import type { DestinoConsumo, MotivoMerma, Proceso } from "@prisma/client";
+import type { DestinoConsumoLegacy, MotivoMermaLegacy, Proceso } from "@prisma/client";
 import { TRANSICIONES } from "./transiciones";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { FiltroSelectorProducto } from "@/server/actions/catalogo/productos";
 
-/** Etiquetas de MOTIVOS_MERMA (Movimientos.js:56) — import type-only de @prisma/client, no arrastra el cliente de Prisma al bundle del navegador. */
-export const MOTIVOS_MERMA: { value: MotivoMerma; label: string }[] = [
+/**
+ * TRANSITORIO (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23, P3 a P4): estos dos arrays se
+ * borran en P5, reemplazados por una consulta a las tablas `MotivoMerma`/`DestinoConsumo` — quedan acá solo hasta que
+ * el selector de `panel-movimiento-form.tsx` deje de leerlos (P5). `MotivoMermaLegacy`/`DestinoConsumoLegacy` son los
+ * enums viejos, renombrados en P3 (antes `MotivoMerma`/`DestinoConsumo` — esos nombres ahora los tienen las tablas).
+ */
+export const MOTIVOS_MERMA: { value: MotivoMermaLegacy; label: string }[] = [
   { value: "VENCIDO", label: "Vencido" },
   { value: "ROTO_O_CAIDO", label: "Roto o caído" },
   { value: "MAL_PREPARADO_O_QUEMADO", label: "Mal preparado / quemado" },
@@ -13,8 +18,8 @@ export const MOTIVOS_MERMA: { value: MotivoMerma; label: string }[] = [
   { value: "OTRO", label: "Otro" },
 ];
 
-/** Etiquetas de DESTINOS_CONSUMO (Movimientos.js:59). */
-export const DESTINOS_CONSUMO: { value: DestinoConsumo; label: string }[] = [
+/** Etiquetas de DESTINOS_CONSUMO (Movimientos.js:59). TRANSITORIO — ver el docstring de `MOTIVOS_MERMA`. */
+export const DESTINOS_CONSUMO: { value: DestinoConsumoLegacy; label: string }[] = [
   { value: "PERSONAL", label: "Personal" },
   { value: "DEGUSTACION_CORTESIA", label: "Degustación / cortesía" },
   { value: "EVENTO", label: "Evento" },
