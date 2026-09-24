@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
  * catálogo. Ni la lógica de la carta (`src/core/carta/**`) ni el endpoint que la sirve (`src/app/api/carta/**`, que lo llama
  * un sitio externo con un token de servicio) pueden escribir en la base. Si alguna vez hiciera falta, la escritura va en una
  * Server Action con `conPermiso` (`src/server/actions/carta/`), nunca en el camino público — y esas acciones, a su vez, solo
- * pueden escribir en las 5 tablas de carta (SeccionCarta, CategoriaSeccionCarta, ContenidoCartaProducto, PromoCarta y
- * SucursalPublica, el registro de tenants del portal): el catálogo, los precios, la disponibilidad y las sucursales en sí se
- * siguen editando donde siempre.
+ * pueden escribir en las 6 tablas de carta (SeccionCarta, CategoriaSeccionCarta, ContenidoCartaProducto, PromoCarta,
+ * SucursalPublica, el registro de tenants del portal, y TemaCartaSucursal, el tema visual): el catálogo, los precios, la
+ * disponibilidad y las sucursales en sí se siguen editando donde siempre.
  *
  * Cómo se controla: ningún archivo de esas dos carpetas puede contener, fuera de un comentario, una llamada de escritura de
  * Prisma sobre un modelo (`x.modelo.create(`, `.createMany(`, `.update(`, `.updateMany(`, `.upsert(`, `.delete(`,
@@ -62,9 +62,10 @@ describe("carta: solo lectura", () => {
     expect(problemas, `La carta pública es de solo lectura; estas líneas escriben:\n${problemas.join("\n")}`).toEqual([]);
   });
 
-  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 5 tablas de carta", () => {
+  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 6 tablas de carta", () => {
     // `sucursalPublica`: el registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6).
-    const TABLAS_DE_CARTA = new Set(["seccionCarta", "categoriaSeccionCarta", "contenidoCartaProducto", "promoCarta", "sucursalPublica"]);
+    // `temaCartaSucursal`: el tema visual de la carta (docs/plan-tema-carta-2026-09-24.md, M8).
+    const TABLAS_DE_CARTA = new Set(["seccionCarta", "categoriaSeccionCarta", "contenidoCartaProducto", "promoCarta", "sucursalPublica", "temaCartaSucursal"]);
     const acciones = archivos(join(SRC, "server/actions/carta"));
     expect(acciones.length, "no se encontraron las acciones de la carta").toBeGreaterThan(0);
     const problemas = acciones.flatMap((ruta) =>
