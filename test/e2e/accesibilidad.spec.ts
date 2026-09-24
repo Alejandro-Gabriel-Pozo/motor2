@@ -727,6 +727,50 @@ testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abierto
   }
 });
 
+testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem abierto, el aviso ámbar de precios distintos y los selects", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-agrupacion-items-carta-2026-09-24.md, M7. Un ítem agrupado con dos opciones de distinto precio (el drift posterior de D5,
+  // sembrado directo: la acción de agregar lo bloquearía) dibuja el aviso ámbar; se abre su <details> para exponer el formulario del ítem,
+  // las opciones (orden y quitar) y el select "Agregar producto" (hay un PV suelto disponible para listar).
+  const marca = `${Date.now()}`;
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Agrupado Cat ${marca}` } });
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Agrupado Sección ${marca}` } });
+  await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
+  const productos = await Promise.all(
+    [
+      ["Coca", 5000],
+      ["Sprite", 5500],
+      ["Suelta", 5000],
+    ].map(([q, precioVenta]) =>
+      prisma.producto.create({
+        data: { codigo: `E2E-A11Y-AGR-${q}-${marca}`, nombre: `E2E A11y Agrupado ${q} ${marca}`, tipo: "PV", categoriaId: categoria.id, unidadStockId: unidad.id, precioVenta: Number(precioVenta) },
+      })
+    )
+  );
+  const ids = productos.map((p) => p.id);
+  await prisma.disponibilidadProducto.createMany({ data: ids.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
+  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, categoriaId: categoria.id, especial: true, tags: ["Sin alcohol"] } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: ids.slice(0, 2).map((productoId, orden) => ({ itemAgrupadoCartaId: item.id, productoId, orden })) });
+  try {
+    await page.goto("/catalogo/carta/agrupados");
+    await expect(page.getByRole("heading", { name: "Ítems agrupados de la carta", level: 1 })).toBeVisible();
+    const fila = page.locator(`[data-item-agrupado="${item.nombre}"]`);
+    await expect(fila.getByText(/no cuestan lo mismo/)).toBeVisible();
+    await fila.locator("summary").click();
+    await expect(fila.getByLabel(`Agregar producto a «${item.nombre}»`)).toBeVisible();
+    await expect(fila.getByLabel(/^Categoría/)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: item.id } });
+    await prisma.itemAgrupadoCarta.deleteMany({ where: { id: item.id } });
+    await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
+    await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: ids } } });
+    await prisma.producto.deleteMany({ where: { id: { in: ids } } });
+    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+  }
+});
+
 testAutenticado("catalogo/carta/portal: sin violaciones de axe, con una sucursal sin agregar y el formulario de otra abierto", async ({ paginaAutenticada: page }) => {
   // docs/plan-registro-tenants-2026-09-24.md, M7. Una sucursal fuera del portal (botón «Agregar») y otra dentro, publicada y con posición, con su
   // <details> desplegado: cerrado, un <details> no expone sus campos (los dos fieldset, los checkbox y el botón de quitar).

@@ -45,6 +45,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia" },
       { href: "/catalogo/categorias", label: "Categorías", accion: "categorias" },
       { href: "/catalogo/carta", label: "Carta pública", accion: "carta" },
+      { href: "/catalogo/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta" },
       { href: "/catalogo/carta/portal", label: "Portal de sucursales", accion: "carta" },
       { href: "/catalogo/carta/tema", label: "Tema de la carta", accion: "carta" },
       { href: "/catalogo/unidades", label: "Unidades", accion: "unidades" },

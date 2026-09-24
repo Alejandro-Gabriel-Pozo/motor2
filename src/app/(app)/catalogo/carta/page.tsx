@@ -353,15 +353,14 @@ function CamposPromo({
 
 function ContenidoProducto({ producto: p }: { producto: ProductoCartaAdmin }) {
   const productoId = p.id;
-  const estadoPropio = !p.contenido ? "sin contenido" : p.contenido.visibleEnCarta ? (p.seccionCarta ? "se muestra" : "visible, sin sección") : "oculto";
   // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
-  const estado = p.agrupadoEn ? (
-    <Link href="/catalogo/carta/agrupados" className="underline">
-      en «{p.agrupadoEn}»
-    </Link>
-  ) : (
-    estadoPropio
-  );
+  const estado = p.agrupadoEn
+    ? `en «${p.agrupadoEn}»`
+    : !p.contenido
+      ? "sin contenido"
+      : p.contenido.visibleEnCarta
+        ? (p.seccionCarta ? "se muestra" : "visible, sin sección")
+        : "oculto";
   return (
     <li className="rounded border p-3" data-contenido-carta={p.nombre}>
       <details>
@@ -370,6 +369,15 @@ function ContenidoProducto({ producto: p }: { producto: ProductoCartaAdmin }) {
           {estado}
           {p.contenido?.especial ? " · ★" : ""}
         </summary>
+        {p.agrupadoEn && (
+          <p className="mt-2 text-sm text-neutral-500">
+            Sale en la carta dentro de «{p.agrupadoEn}» (
+            <Link href="/catalogo/carta/agrupados" className="underline">
+              Ítems agrupados de la carta
+            </Link>
+            ): mientras esté agrupado, el contenido de acá no se usa.
+          </p>
+        )}
         <FormConResultado
           accion={async (fd: FormData) => {
             "use server";

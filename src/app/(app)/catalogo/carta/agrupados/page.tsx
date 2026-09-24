@@ -1,0 +1,317 @@
+import Link from "next/link";
+import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { requierePermisoVer } from "@/core/permisos/gate";
+import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin } from "@/core/carta/admin-consulta";
+import {
+  actualizarActivoItemAgrupadoCarta,
+  actualizarOrdenOpcionItemAgrupadoCarta,
+  agregarOpcionItemAgrupadoCarta,
+  guardarItemAgrupadoCarta,
+  quitarOpcionItemAgrupadoCarta,
+} from "@/server/actions/carta/items-agrupados";
+import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
+import type { ResultadoAccion } from "@/server/actions/tipos";
+import { FormConResultado } from "@/components/form-con-resultado";
+import { EnlaceInterno } from "@/components/enlace-interno";
+
+/**
+ * Ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M7): un renglón visible ("Gaseosa 500 CC") que
+ * agrupa varios productos de venta reales y distintos (Coca-Cola, Sprite, Fanta 500cc), con su propia descripción, tags y ★.
+ * Globales (Catálogo Central); lo que se ve acá de cada opción (disponible o no, y su precio) es de la sucursal ACTIVA.
+ *
+ * Mismo estilo que /catalogo/carta: las mutaciones pasan por las Server Actions de src/server/actions/carta/items-agrupados.ts
+ * (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
+ * closure "use server" viaja al cliente. Si agregar una opción se rechaza por precio (D5), el error de la acción se muestra tal
+ * cual en el resultado del formulario.
+ */
+const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
+const refrescarSiOk = (r: ResultadoAccion) => {
+  if (r.ok) refrescarVistaSiHaceFalta();
+  return r;
+};
+const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+
+const CLASE_INPUT = "rounded border px-2 py-1";
+const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
+const CLASE_AVISO = "rounded border border-amber-300 p-3 text-sm dark:border-amber-700";
+
+type Categoria = { id: string; nombre: string; activo: boolean };
+type ProductoSinGrupo = { id: string; nombre: string; precioAca: number };
+
+export default async function ItemsAgrupadosPage() {
+  const ctx = await obtenerContextoUsuario();
+  if (!ctx) return null;
+
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta");
+  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+
+  const datos = await cargarAdminItemsAgrupados(ctx.sucursalId);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="mb-1 text-xl font-semibold">Ítems agrupados de la carta</h1>
+        <p className="text-sm text-neutral-500">
+          Un ítem agrupado es un solo renglón de la carta («Gaseosa 500 CC») que agrupa varios productos de venta reales («Coca-Cola 500cc», «Sprite
+          500cc»…), con su propia descripción, tags y ★. Se ubica en la carta por su categoría, igual que un producto. Un producto agrupado sale solo dentro
+          de su ítem, nunca suelto. Lo que se ve de cada opción (si está disponible y su precio) es de esta sucursal, {ctx.sucursalNombre}. Volver a{" "}
+          <Link href="/catalogo/carta" className="underline">
+            Carta pública
+          </Link>
+          .
+        </p>
+        <p className="mt-2 text-sm text-neutral-500">
+          Solo se pueden agrupar productos del mismo precio (acá). Si el precio de uno cambia después en Catálogo, la carta lo va a mostrar por el mayor, con
+          aviso, hasta que se corrija.
+        </p>
+      </div>
+
+      <ul className="flex flex-col gap-3">
+        {datos.items.map((it) => (
+          <ItemAgrupado key={it.id} item={it} categorias={datos.categorias} productosSinGrupo={datos.productosSinGrupo} />
+        ))}
+        {!datos.items.length && <li className="text-sm text-neutral-500">Todavía no hay ítems agrupados.</li>}
+      </ul>
+
+      {datos.categorias.length > 0 ? (
+        <FormConResultado
+          accion={async (fd: FormData) => {
+            "use server";
+            return refrescarSiOk(await guardarItemAgrupadoCarta(datosDelFormulario(fd)));
+          }}
+          className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
+        >
+          <h2 className="text-sm font-medium sm:col-span-2">Nuevo ítem agrupado</h2>
+          <CamposItem categorias={datos.categorias} />
+          <div className="sm:col-span-2">
+            <button type="submit" className={CLASE_BOTON}>
+              Crear ítem agrupado
+            </button>
+          </div>
+        </FormConResultado>
+      ) : (
+        <p className="text-sm text-neutral-500">Para crear un ítem agrupado hace falta al menos una categoría en el catálogo.</p>
+      )}
+    </div>
+  );
+}
+
+function datosDelFormulario(fd: FormData) {
+  return {
+    nombre: campo(fd, "nombre"),
+    categoriaId: campo(fd, "categoriaId"),
+    descripcion: campo(fd, "descripcion"),
+    imagenUrl: campo(fd, "imagenUrl"),
+    tags: campo(fd, "tags"),
+    especial: fd.get("especial") === "on",
+    orden: campo(fd, "orden"),
+  };
+}
+
+function resumenPrecio(it: ItemAgrupadoAdmin): string {
+  if (!it.precio) return "sin precio acá";
+  return it.precio.minimo === it.precio.maximo ? pesos(it.precio.minimo) : `${pesos(it.precio.minimo)}–${pesos(it.precio.maximo)}`;
+}
+
+function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemAgrupadoAdmin; categorias: Categoria[]; productosSinGrupo: ProductoSinGrupo[] }) {
+  const id = it.id;
+  const activo = it.activo;
+  const preciosDistintos = it.avisos.preciosDistintos;
+  return (
+    <li className="rounded border p-3" data-item-agrupado={it.nombre}>
+      <details>
+        <summary className="cursor-pointer text-sm">
+          <span className="font-medium">{it.nombre}</span> · {it.categoria} · {it.seccionCarta ?? "sin sección de carta"} · {it.disponiblesAca} de{" "}
+          {it.opciones.length} opciones disponibles acá · {resumenPrecio(it)} · {it.activo ? "activo" : "apagado"}
+          {it.especial ? " · ★" : ""}
+        </summary>
+
+        <FormConResultado
+          accion={async (fd: FormData) => {
+            "use server";
+            return refrescarSiOk(await guardarItemAgrupadoCarta({ id, ...datosDelFormulario(fd) }));
+          }}
+          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+        >
+          <CamposItem categorias={categorias} valores={it} />
+          <div className="sm:col-span-2">
+            <button type="submit" className={CLASE_BOTON}>
+              Guardar «{it.nombre}»
+            </button>
+          </div>
+        </FormConResultado>
+
+        <h2 className="mt-4 text-sm font-medium">Opciones de «{it.nombre}»</h2>
+        <ul className="mt-1 flex flex-col gap-2">
+          {it.opciones.map((o) => {
+            const opcionId = o.id;
+            return (
+              <li key={o.id} className="flex flex-col gap-1 rounded border p-2 text-sm" data-opcion-agrupada={o.nombre}>
+                <div className="flex flex-wrap items-end gap-2">
+                  <span className="min-w-40 py-1">
+                    <EnlaceInterno href={`/catalogo/productos/${o.productoId}/editar`} className="font-medium underline">
+                      {o.nombre}
+                    </EnlaceInterno>{" "}
+                    · {o.categoria ?? "sin categoría"} · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"}
+                  </span>
+                  <FormConResultado
+                    accion={async (fd: FormData) => {
+                      "use server";
+                      return refrescarSiOk(await actualizarOrdenOpcionItemAgrupadoCarta(opcionId, campo(fd, "orden")));
+                    }}
+                    className="flex items-end gap-2"
+                  >
+                    <label className="flex flex-col gap-1">
+                      Orden de «{o.nombre}»
+                      <input name="orden" type="number" step={1} defaultValue={o.orden} className={`${CLASE_INPUT} w-20`} />
+                    </label>
+                    <button type="submit" className={CLASE_BOTON}>
+                      Guardar orden
+                    </button>
+                  </FormConResultado>
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return refrescarSiOk(await quitarOpcionItemAgrupadoCarta(opcionId));
+                    }}
+                  >
+                    <button type="submit" className="py-1 underline">
+                      Quitar «{o.nombre}»
+                    </button>
+                  </FormConResultado>
+                </div>
+                {o.otraSeccion && (
+                  <p className="text-amber-700 dark:text-amber-600">
+                    Su categoría ({o.categoria ?? "sin categoría"}) cae en {o.seccionCarta ? `la sección de carta «${o.seccionCarta}»` : "ninguna sección de carta"}, no
+                    en la de «{it.nombre}»: en «Ventas por sección de carta» sus ventas se cuentan ahí.
+                  </p>
+                )}
+              </li>
+            );
+          })}
+          {!it.opciones.length && <li className="text-sm text-neutral-500">Todavía no tiene opciones.</li>}
+        </ul>
+
+        {productosSinGrupo.length > 0 ? (
+          <FormConResultado
+            accion={async (fd: FormData) => {
+              "use server";
+              return refrescarSiOk(await agregarOpcionItemAgrupadoCarta(id, campo(fd, "productoId")));
+            }}
+            className="mt-3 flex flex-wrap items-end gap-2 text-sm"
+          >
+            <label className="flex flex-col gap-1">
+              Agregar producto a «{it.nombre}»
+              <select name="productoId" required defaultValue="" className={CLASE_INPUT}>
+                <option value="">— elegí un producto —</option>
+                {productosSinGrupo.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} ({pesos(p.precioAca)} acá)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className={CLASE_BOTON}>
+              Agregar
+            </button>
+          </FormConResultado>
+        ) : (
+          <p className="mt-3 text-sm text-neutral-500">No quedan productos de venta disponibles acá fuera de un ítem agrupado.</p>
+        )}
+      </details>
+
+      {preciosDistintos && (
+        <div className={`mt-2 ${CLASE_AVISO}`}>
+          <p className="font-medium text-amber-700 dark:text-amber-600">
+            En esta sucursal las opciones no cuestan lo mismo ({pesos(preciosDistintos.minimo)} a {pesos(preciosDistintos.maximo)}): la carta muestra{" "}
+            {pesos(preciosDistintos.mostrado)}. Igualalas en Catálogo o en el precio local.
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {it.opciones
+              .filter((o) => o.disponibleAca)
+              .map((o) => (
+                <li key={o.id}>
+                  <EnlaceInterno href={`/catalogo/productos/${o.productoId}/editar`} className="underline">
+                    {o.nombre}
+                  </EnlaceInterno>
+                  : {pesos(o.precioAca)}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+      {it.avisos.sinOpcionesAca && (
+        <div className={`mt-2 ${CLASE_AVISO}`}>
+          <p className="text-amber-700 dark:text-amber-600">Sin opciones disponibles acá: «{it.nombre}» no sale en la carta de esta sucursal.</p>
+        </div>
+      )}
+      {it.avisos.sinSeccion && (
+        <div className={`mt-2 ${CLASE_AVISO}`}>
+          <p className="text-amber-700 dark:text-amber-600">
+            Sin sección de carta: su categoría «{it.categoria}» no está en ninguna sección de carta activa, así que «{it.nombre}» no sale en la carta.
+          </p>
+        </div>
+      )}
+
+      <FormConResultado
+        accion={async () => {
+          "use server";
+          return refrescarSiOk(await actualizarActivoItemAgrupadoCarta(id, !activo));
+        }}
+        className="mt-2"
+      >
+        <button type="submit" className="text-sm underline">
+          {it.activo ? `Apagar «${it.nombre}»` : `Prender «${it.nombre}»`}
+        </button>
+      </FormConResultado>
+    </li>
+  );
+}
+
+function CamposItem({
+  categorias,
+  valores,
+}: {
+  categorias: Categoria[];
+  valores?: { nombre: string; categoriaId: string; descripcion: string | null; imagenUrl: string | null; tags: string[]; especial: boolean; orden: number };
+}) {
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-sm">
+        Nombre
+        <input name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Gaseosa 500 CC" className={CLASE_INPUT} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Categoría
+        <select name="categoriaId" required defaultValue={valores?.categoriaId ?? ""} className={CLASE_INPUT}>
+          {!valores && <option value="">— elegí una —</option>}
+          {categorias.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+              {c.activo ? "" : " (inactiva)"}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+        Descripción (opcional)
+        <textarea name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} className={CLASE_INPUT} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Tags (separados por coma)
+        <input name="tags" defaultValue={valores?.tags.join(", ") ?? ""} placeholder="Sin alcohol" className={CLASE_INPUT} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Orden dentro de su categoría
+        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} className={CLASE_INPUT} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Imagen (URL https, opcional)
+        <input name="imagenUrl" type="url" defaultValue={valores?.imagenUrl ?? ""} placeholder="https://…" className={CLASE_INPUT} />
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input name="especial" type="checkbox" defaultChecked={valores?.especial ?? false} /> Especial (★)
+      </label>
+    </>
+  );
+}
