@@ -6,8 +6,8 @@ import { prisma } from "../../src/lib/db";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
- * Promociones), la matriz de permisos y las cinco pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
- * insumos-grupos, capacidades por sucursal, precio local). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
+ * Promociones), la matriz de permisos, las cinco pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
+ * insumos-grupos, capacidades por sucursal, precio local) y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
  * necesidad concreta.
  */
 
@@ -647,6 +647,46 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "administracion/usuarios").toEqual([]);
     } finally {
       await prisma.sucursal.deleteMany({ where: { nombre: `E2E A11y Sucursal ${marca}` } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas: el mapa con los tres estados, con el diálogo de «Nueva mesa» abierto y con el sistema en modo oscuro, sin violaciones de axe (confirma los contrastes aprobados)",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // Plan docs/plan-mapa-de-mesas-2026-09-24.md §A.3: --ink-faint #76726A («MESA», rótulos de métricas, nota al pie), la etiqueta «Libre» en
+    // --mesa-libre-ink y «En pedido» en --mesa-draft-ink. Hacen falta las tres tarjetas: sin una mesa en pedido no se dibuja la etiqueta ámbar,
+    // y sin datos no hay nada que auditar. (Axe ignora los botones deshabilitados: «Continuar pedido» se corrigió igual, para cuando se habilite.)
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-POS-${marca}`, nombre: `E2E A11y Plato Salón ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 1000 } });
+    const mesas = await Promise.all([801, 802, 803].map((numero) => prisma.mesa.create({ data: { sucursalId, numero } })));
+    await prisma.cuenta.create({ data: { mesaId: mesas[1].id, abiertaPorId: admin.id, items: { create: [{ productoId: producto.id, cantidad: 2, precioUnitario: 1000 }] } } });
+    await prisma.cuenta.create({ data: { mesaId: mesas[2].id, abiertaPorId: admin.id, items: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1 }] } } });
+    try {
+      await page.goto("/mesas");
+      await conTitulo(page, "Mapa de mesas");
+      await expect(page.locator('li[data-mesa="801"]').getByText("Libre", { exact: true })).toBeVisible();
+      await expect(page.locator('li[data-mesa="802"]').getByText("En pedido", { exact: true })).toBeVisible();
+      await expect(page.locator('li[data-mesa="803"]').getByRole("button", { name: "Facturar" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "mapa en reposo").toEqual([]);
+
+      await page.getByRole("button", { name: "Nueva mesa" }).click();
+      await expect(page.getByRole("dialog", { name: "Nueva mesa" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo de «Nueva mesa» abierto").toEqual([]);
+
+      // El salón no tiene modo oscuro: con el sistema en oscuro tiene que seguir claro y legible (tokens en .pos-shell, no en :root).
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto("/mesas");
+      await conTitulo(page, "Mapa de mesas");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    } finally {
+      const mesaIds = mesas.map((m) => m.id);
+      await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
+      await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
     }
   }
 );

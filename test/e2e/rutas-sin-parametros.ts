@@ -18,6 +18,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/catalogo/proveedores/comparativa",
   "/catalogo/recetas",
   "/catalogo/unidades",
+  "/mesas",
   "/movimientos/conteo-fisico",
   "/movimientos/precio-local",
   "/movimientos/secciones",
