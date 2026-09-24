@@ -181,6 +181,11 @@ describe("catálogo CLAVES_TEMA_V1", () => {
     expect(CLAVES_FIJAS_DEL_SISTEMA).toEqual({ precio_locale: "es-AR", precio_simbolo: "$", precio_posicion: "izquierda" });
   });
 
+  it("las etiquetas no se repiten (son el nombre del campo en el formulario y en los mensajes de error)", () => {
+    const etiquetas = CLAVES_TEMA_V1.map((d) => d.etiqueta as string);
+    expect(etiquetas.filter((e, i) => etiquetas.indexOf(e) !== i)).toEqual([]);
+  });
+
   it("ninguna clave precio_* en el catálogo", () => {
     expect(claves.filter((c) => c.startsWith("precio_"))).toEqual([]);
   });

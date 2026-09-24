@@ -105,46 +105,46 @@ export const CLAVES_TEMA_V1 = [
 
   // Colores generales
   { clave: "color_marca", bloque: "B", zona: "Colores generales", etiqueta: "Color de marca (acento)", defaultCarta: "", ...COLOR },
-  { clave: "color_fondo_dia", bloque: "B", zona: "Colores generales", etiqueta: "Fondo de la carta", defaultCarta: "", ...COLOR },
+  { clave: "color_fondo_dia", bloque: "B", zona: "Colores generales", etiqueta: "Color de fondo de la carta", defaultCarta: "", ...COLOR },
   { clave: "hero_color_fondo", bloque: "B", zona: "Colores generales", etiqueta: "Fondo de la portada (hex #rrggbb)", defaultCarta: "", tipo: "colorHex" },
   { clave: "hero_ink", bloque: "B", zona: "Colores generales", etiqueta: "Texto de la portada (claro, oscuro o un color)", defaultCarta: "", tipo: "colorHeroInk" },
-  { clave: "color_portada_textos", bloque: "B", zona: "Colores generales", etiqueta: "Textos de la portada", defaultCarta: "", ...COLOR },
-  { clave: "color_portada_cta", bloque: "B", zona: "Colores generales", etiqueta: "CTA de la portada", defaultCarta: "", ...COLOR },
+  { clave: "color_portada_textos", bloque: "B", zona: "Colores generales", etiqueta: "Color de los textos de la portada", defaultCarta: "", ...COLOR },
+  { clave: "color_portada_cta", bloque: "B", zona: "Colores generales", etiqueta: "Color del CTA de la portada", defaultCarta: "", ...COLOR },
 
   // Índice
-  { clave: "color_indice_titulo", bloque: "B", zona: "Índice", etiqueta: "Título del índice", defaultCarta: "", ...COLOR },
-  { clave: "color_indice_numeros", bloque: "B", zona: "Índice", etiqueta: "Números del índice", defaultCarta: "", ...COLOR },
-  { clave: "color_indice_titulos", bloque: "B", zona: "Índice", etiqueta: "Secciones del índice", defaultCarta: "", ...COLOR },
+  { clave: "color_indice_titulo", bloque: "B", zona: "Índice", etiqueta: "Color del título del índice", defaultCarta: "", ...COLOR },
+  { clave: "color_indice_numeros", bloque: "B", zona: "Índice", etiqueta: "Color de los números del índice", defaultCarta: "", ...COLOR },
+  { clave: "color_indice_titulos", bloque: "B", zona: "Índice", etiqueta: "Color de las secciones del índice", defaultCarta: "", ...COLOR },
 
   // Banda de sección
-  { clave: "color_banda_etiqueta", bloque: "B", zona: "Banda de sección", etiqueta: "Etiqueta de la banda", defaultCarta: "", ...COLOR },
-  { clave: "color_banda_titulo", bloque: "B", zona: "Banda de sección", etiqueta: "Título de la banda", defaultCarta: "", ...COLOR },
-  { clave: "color_banda_descripcion", bloque: "B", zona: "Banda de sección", etiqueta: "Descripción de la banda", defaultCarta: "", ...COLOR },
+  { clave: "color_banda_etiqueta", bloque: "B", zona: "Banda de sección", etiqueta: "Color de la etiqueta de la banda", defaultCarta: "", ...COLOR },
+  { clave: "color_banda_titulo", bloque: "B", zona: "Banda de sección", etiqueta: "Color del título de la banda", defaultCarta: "", ...COLOR },
+  { clave: "color_banda_descripcion", bloque: "B", zona: "Banda de sección", etiqueta: "Color de la descripción de la banda", defaultCarta: "", ...COLOR },
 
   // Ítems
-  { clave: "color_item_nombre", bloque: "B", zona: "Ítems", etiqueta: "Nombre del ítem", defaultCarta: "", ...COLOR },
-  { clave: "color_item_precio", bloque: "B", zona: "Ítems", etiqueta: "Precio del ítem", defaultCarta: "", ...COLOR },
-  { clave: "color_item_descripcion", bloque: "B", zona: "Ítems", etiqueta: "Descripción del ítem", defaultCarta: "", ...COLOR },
-  { clave: "color_item_tags", bloque: "B", zona: "Ítems", etiqueta: "Tags del ítem", defaultCarta: "", ...COLOR },
+  { clave: "color_item_nombre", bloque: "B", zona: "Ítems", etiqueta: "Color del nombre del ítem", defaultCarta: "", ...COLOR },
+  { clave: "color_item_precio", bloque: "B", zona: "Ítems", etiqueta: "Color del precio del ítem", defaultCarta: "", ...COLOR },
+  { clave: "color_item_descripcion", bloque: "B", zona: "Ítems", etiqueta: "Color de la descripción del ítem", defaultCarta: "", ...COLOR },
+  { clave: "color_item_tags", bloque: "B", zona: "Ítems", etiqueta: "Color de los tags del ítem", defaultCarta: "", ...COLOR },
 
   // Ítems especiales
-  { clave: "color_especial_item_nombre", bloque: "B", zona: "Ítems especiales", etiqueta: "Nombre del ítem especial", defaultCarta: "", ...COLOR },
-  { clave: "color_especial_item_precio", bloque: "B", zona: "Ítems especiales", etiqueta: "Precio del ítem especial", defaultCarta: "", ...COLOR },
-  { clave: "color_especial_item_descripcion", bloque: "B", zona: "Ítems especiales", etiqueta: "Descripción del ítem especial", defaultCarta: "", ...COLOR },
-  { clave: "color_especial_item_tags", bloque: "B", zona: "Ítems especiales", etiqueta: "Tags del ítem especial", defaultCarta: "", ...COLOR },
+  { clave: "color_especial_item_nombre", bloque: "B", zona: "Ítems especiales", etiqueta: "Color del nombre del ítem especial", defaultCarta: "", ...COLOR },
+  { clave: "color_especial_item_precio", bloque: "B", zona: "Ítems especiales", etiqueta: "Color del precio del ítem especial", defaultCarta: "", ...COLOR },
+  { clave: "color_especial_item_descripcion", bloque: "B", zona: "Ítems especiales", etiqueta: "Color de la descripción del ítem especial", defaultCarta: "", ...COLOR },
+  { clave: "color_especial_item_tags", bloque: "B", zona: "Ítems especiales", etiqueta: "Color de los tags del ítem especial", defaultCarta: "", ...COLOR },
 
   // Navegación y barra superior
-  { clave: "color_nav_flechas", bloque: "B", zona: "Navegación y barra superior", etiqueta: "Flechas de la navegación", defaultCarta: "", ...COLOR },
-  { clave: "color_nav_iconos", bloque: "B", zona: "Navegación y barra superior", etiqueta: "Íconos de redes en la navegación", defaultCarta: "", ...COLOR },
+  { clave: "color_nav_flechas", bloque: "B", zona: "Navegación y barra superior", etiqueta: "Color de las flechas de la navegación", defaultCarta: "", ...COLOR },
+  { clave: "color_nav_iconos", bloque: "B", zona: "Navegación y barra superior", etiqueta: "Color de los íconos de redes", defaultCarta: "", ...COLOR },
   { clave: "topbar_back_label", bloque: "C", zona: "Navegación y barra superior", etiqueta: "Texto del botón para volver", defaultCarta: "← Menú", ...texto(40) },
   { clave: "topbar_back_color", bloque: "B", zona: "Navegación y barra superior", etiqueta: "Color del botón para volver", defaultCarta: "", ...COLOR },
   { clave: "topbar_back_size", bloque: "D", zona: "Navegación y barra superior", etiqueta: "Tamaño del botón para volver", defaultCarta: "12px", ...FUENTE },
 
   // Textos fijos
-  { clave: "carta_texto_portada_separador", bloque: "C", zona: "Textos fijos", etiqueta: "Separador de la portada", defaultCarta: "", ...texto(10) },
+  { clave: "carta_texto_portada_separador", bloque: "C", zona: "Textos fijos", etiqueta: "Texto del separador de la portada", defaultCarta: "", ...texto(10) },
   { clave: "carta_texto_portada_cta", bloque: "C", zona: "Textos fijos", etiqueta: "Texto del CTA de la portada", defaultCarta: "", ...texto(60) },
-  { clave: "carta_texto_indice_etiqueta", bloque: "C", zona: "Textos fijos", etiqueta: "Etiqueta del índice", defaultCarta: "", ...texto(60) },
-  { clave: "carta_texto_indice_titulo", bloque: "C", zona: "Textos fijos", etiqueta: "Título del índice", defaultCarta: "", ...texto(120) },
+  { clave: "carta_texto_indice_etiqueta", bloque: "C", zona: "Textos fijos", etiqueta: "Texto de la etiqueta del índice", defaultCarta: "", ...texto(60) },
+  { clave: "carta_texto_indice_titulo", bloque: "C", zona: "Textos fijos", etiqueta: "Texto del título del índice", defaultCarta: "", ...texto(120) },
 
   // Contacto
   { clave: "restaurante_instagram", bloque: "C", zona: "Contacto", etiqueta: "Instagram (usuario o URL)", defaultCarta: "", tipo: "redSocial", red: "instagram" },
@@ -153,29 +153,29 @@ export const CLAVES_TEMA_V1 = [
   { clave: "restaurante_footer_maps_url", bloque: "C", zona: "Contacto", etiqueta: "Link de Google Maps", defaultCarta: "", tipo: "urlHttps" },
 
   // Tipografía de portada
-  { clave: "carta_fuente_portada_etiqueta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Etiqueta de la portada", defaultCarta: "0.58rem", ...FUENTE },
-  { clave: "carta_fuente_portada_nombre", bloque: "D", zona: "Tipografía de portada", etiqueta: "Nombre en la portada", defaultCarta: "clamp(1.7rem, 7vw, 2.1rem)", ...FUENTE },
-  { clave: "carta_fuente_portada_subtitulo", bloque: "D", zona: "Tipografía de portada", etiqueta: "Subtítulo de la portada", defaultCarta: "0.6rem", ...FUENTE },
-  { clave: "carta_fuente_portada_descripcion", bloque: "D", zona: "Tipografía de portada", etiqueta: "Descripción de la portada", defaultCarta: "0.75rem", ...FUENTE },
-  { clave: "carta_fuente_portada_cta", bloque: "D", zona: "Tipografía de portada", etiqueta: "CTA de la portada", defaultCarta: "0.5rem", ...FUENTE },
+  { clave: "carta_fuente_portada_etiqueta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la etiqueta de la portada", defaultCarta: "0.58rem", ...FUENTE },
+  { clave: "carta_fuente_portada_nombre", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del nombre en la portada", defaultCarta: "clamp(1.7rem, 7vw, 2.1rem)", ...FUENTE },
+  { clave: "carta_fuente_portada_subtitulo", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del subtítulo de la portada", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_portada_descripcion", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la descripción de la portada", defaultCarta: "0.75rem", ...FUENTE },
+  { clave: "carta_fuente_portada_cta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del CTA de la portada", defaultCarta: "0.5rem", ...FUENTE },
 
   // Tipografía de índice
-  { clave: "carta_fuente_indice_etiqueta", bloque: "D", zona: "Tipografía de índice", etiqueta: "Etiqueta del índice", defaultCarta: "0.5rem", ...FUENTE },
-  { clave: "carta_fuente_indice_titulo", bloque: "D", zona: "Tipografía de índice", etiqueta: "Título del índice", defaultCarta: "clamp(1.2rem, 4vw, 1.75rem)", ...FUENTE },
-  { clave: "carta_fuente_indice_numero", bloque: "D", zona: "Tipografía de índice", etiqueta: "Números del índice", defaultCarta: "0.6rem", ...FUENTE },
-  { clave: "carta_fuente_indice_categoria", bloque: "D", zona: "Tipografía de índice", etiqueta: "Categoría en el índice", defaultCarta: "0.58rem", ...FUENTE },
-  { clave: "carta_fuente_indice_item", bloque: "D", zona: "Tipografía de índice", etiqueta: "Secciones del índice", defaultCarta: "clamp(0.82rem, 2.5vw, 0.95rem)", ...FUENTE },
+  { clave: "carta_fuente_indice_etiqueta", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la etiqueta del índice", defaultCarta: "0.5rem", ...FUENTE },
+  { clave: "carta_fuente_indice_titulo", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño del título del índice", defaultCarta: "clamp(1.2rem, 4vw, 1.75rem)", ...FUENTE },
+  { clave: "carta_fuente_indice_numero", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de los números del índice", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_indice_categoria", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la categoría en el índice", defaultCarta: "0.58rem", ...FUENTE },
+  { clave: "carta_fuente_indice_item", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de las secciones del índice", defaultCarta: "clamp(0.82rem, 2.5vw, 0.95rem)", ...FUENTE },
 
   // Tipografía de banda
-  { clave: "carta_fuente_banda_etiqueta", bloque: "D", zona: "Tipografía de banda", etiqueta: "Etiqueta de la banda", defaultCarta: "0.55rem", ...FUENTE },
-  { clave: "carta_fuente_banda_titulo", bloque: "D", zona: "Tipografía de banda", etiqueta: "Título de la banda", defaultCarta: "0.95rem", ...FUENTE },
-  { clave: "carta_fuente_banda_descripcion", bloque: "D", zona: "Tipografía de banda", etiqueta: "Descripción de la banda", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_banda_etiqueta", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la etiqueta de la banda", defaultCarta: "0.55rem", ...FUENTE },
+  { clave: "carta_fuente_banda_titulo", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño del título de la banda", defaultCarta: "0.95rem", ...FUENTE },
+  { clave: "carta_fuente_banda_descripcion", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la descripción de la banda", defaultCarta: "0.6rem", ...FUENTE },
 
   // Tipografía de ítems
-  { clave: "carta_fuente_item_nombre", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Nombre del ítem", defaultCarta: "0.88rem", ...FUENTE },
-  { clave: "carta_fuente_item_precio", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Precio del ítem", defaultCarta: "0.88rem", ...FUENTE },
-  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Descripción del ítem", defaultCarta: "0.68rem", ...FUENTE },
-  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tags del ítem", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_item_nombre", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del nombre del ítem", defaultCarta: "0.88rem", ...FUENTE },
+  { clave: "carta_fuente_item_precio", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del precio del ítem", defaultCarta: "0.88rem", ...FUENTE },
+  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de la descripción del ítem", defaultCarta: "0.68rem", ...FUENTE },
+  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de los tags del ítem", defaultCarta: "0.6rem", ...FUENTE },
 
   // Banda e imagen de sección
   { clave: "carta_banda_alto_mobile", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la banda en mobile", defaultCarta: "90", tipo: "altoBandaMobile" },

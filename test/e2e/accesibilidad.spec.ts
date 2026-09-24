@@ -7,7 +7,7 @@ import { prisma } from "../../src/lib/db";
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las cinco pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
- * insumos-grupos, capacidades por sucursal, precio local), el admin de la carta y su portal de sucursales, y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
+ * insumos-grupos, capacidades por sucursal, precio local), el admin de la carta, su portal de sucursales y su tema, y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
  * necesidad concreta.
  */
 
@@ -745,6 +745,28 @@ testAutenticado("catalogo/carta/portal: sin violaciones de axe, con una sucursal
   } finally {
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId: { in: [fuera.id, dentro.id] } } });
     await prisma.sucursal.deleteMany({ where: { id: { in: [fuera.id, dentro.id] } } });
+  }
+});
+
+testAutenticado("catalogo/carta/tema: sin violaciones de axe, con zonas del editor abiertas (color, select, número) y un campo inválido", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-tema-carta-2026-09-24.md, M9. Un tema con valores (uno inválido, cargado a mano: dibuja el aviso rojo del campo) y tres <details>
+  // desplegados además del primero: "Colores generales" (selectores de color con su etiqueta propia), "Banda e imagen de sección" (los
+  // <select> y los <input type="number">) e "Ítems" (el campo inválido). Cerrado, un <details> no expone sus campos.
+  //
+  // Se EXCLUYE [data-vista-previa-tema]: la vista previa dibuja la carta con sus propios colores, y con los defaults de la carta (ámbar
+  // oklch(0.76 0.14 80) sobre casi blanco) no cumple color-contrast. Es un problema conocido de la carta pública (restaurant-menu-design), fuera
+  // de este plan: acá solo se simula, y lo que se audita es el editor de motor2.
+  await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+  await prisma.temaCartaSucursal.create({ data: { sucursalId, valores: { color_marca: "#8b4513", hero_ink: "claro", carta_imagen_modo: "miniatura", carta_imagen_opacidad: "60", color_item_precio: "red;x" } } });
+  try {
+    await page.goto("/catalogo/carta/tema");
+    await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
+    for (const zona of ["Colores generales", "Banda e imagen de sección", "Ítems"]) await page.locator(`[data-zona-tema="${zona}"] summary`).click();
+    await expect(page.locator('select[name="carta_imagen_modo"]')).toBeVisible();
+    await expect(page.locator('[data-campo-tema="color_item_precio"]')).toContainText("No es válido");
+    expect((await new AxeBuilder({ page }).exclude("[data-vista-previa-tema]").analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   }
 });
 
