@@ -85,6 +85,10 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "ver_reportes_control", descripcion: "Ver los reportes de control: pérdidas y consumo interno, devoluciones y diferencias de ajuste", rolesEditarSemilla: ["admin"] },
   { clave: "ver_reportes_operativos", descripcion: "Ver los reportes operativos: vencimientos, salud por producto, historial de un producto y trazabilidad", rolesEditarSemilla: ["admin"] },
   { clave: "ver_reportes_catalogo", descripcion: "Ver los reportes de calidad del catálogo: insumos sin receta y ventas sin receta", rolesEditarSemilla: ["admin"] },
+  // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): Ver = abrir el mapa de mesas; Editar = dar de alta mesas. Ninguna acción existente
+  // servía (reusar `proceso_venta` daría de más). El operador de fábrica queda sin asignar, igual que `anular_compra`; el rol «mozo» NO se
+  // crea en código: se crea desde /administracion/roles y se le da esta acción desde la matriz de permisos.
+  { clave: "pos_mesas", descripcion: "Ver el mapa de mesas del salón y dar de alta mesas (POS)", rolesEditarSemilla: ["admin"] },
 ] as const;
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];
