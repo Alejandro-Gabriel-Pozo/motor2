@@ -7,6 +7,8 @@
  * Qué decide este módulo (y ningún otro):
  *  - el PRECIO que muestra la carta: el mismo que se cobra (`precioDeCarta`, paridad con `resolverPrecioVenta`);
  *  - cómo se agrupan los PV en secciones de carta (a través de la tabla puente categoría → sección);
+ *  - cómo se arma un ÍTEM AGRUPADO ("Gaseosa 500cc" → Coca-Cola, Sprite, Fanta; docs/plan-agrupacion-items-carta-2026-09-24.md):
+ *    su precio (el de sus opciones; si difieren, el MAYOR, D5) y que un producto agrupado nunca salga suelto (D3);
  *  - el ORDEN de secciones, ítems y promos;
  *  - qué `imagenUrl` es segura para la carta (`urlImagenSegura`).
  *
@@ -29,6 +31,22 @@ export interface ItemCartaV1 {
   tags: string[];
   especial: boolean;
   imagenUrl: string | null;
+  /**
+   * SOLO en un ítem AGRUPADO (docs/plan-agrupacion-items-carta-2026-09-24.md, D6): los PV reales que agrupa, disponibles en la
+   * sucursal y en su orden. En un ítem agrupado, `productoId` es el id del ítem agrupado (no de un Producto), `nombre`,
+   * `descripcion`, `tags`, `especial` e `imagenUrl` son los del ítem agrupado, y `precio` es el de sus opciones (el mayor, si
+   * llegaran a diferir). Un ítem SIN agrupar no lleva esta clave (ni siquiera vacía): su JSON queda igual que antes. Campo aditivo
+   * de la v1: `version` no cambia.
+   */
+  opciones?: OpcionItemCartaV1[];
+}
+
+/** Una opción (un PV real) dentro de un ítem agrupado de la carta. */
+export interface OpcionItemCartaV1 {
+  productoId: string;
+  nombre: string;
+  /** Precio final en pesos, con la misma regla que un ítem suelto (`precioDeCarta`). */
+  precio: number;
 }
 
 export interface PromoCartaV1 {
@@ -118,6 +136,26 @@ export interface EntradaArmarMenu {
   preciosLocales: readonly PrecioLocalEntrada[];
   /** Promos activas de la sucursal. */
   promos: readonly PromoCartaEntrada[];
+  /** Ítems agrupados ACTIVOS (opcional: sin agrupados, la carta sale exactamente igual que antes). */
+  agrupados?: readonly ItemAgrupadoEntrada[];
+}
+
+export interface OpcionAgrupadoEntrada {
+  productoId: string;
+  nombre: string;
+  precioVenta: number;
+  orden: number;
+}
+
+export interface ItemAgrupadoEntrada {
+  id: string;
+  nombre: string;
+  categoriaId: string;
+  categoriaNombre: string;
+  /** Lo de cara al cliente del ítem agrupado (misma forma que el contenido de un PV). */
+  contenido: ContenidoCartaEntrada;
+  /** Ya filtradas: solo PV disponibles en la sucursal. */
+  opciones: readonly OpcionAgrupadoEntrada[];
 }
 
 export interface ProductoSinSeccion {
@@ -126,12 +164,34 @@ export interface ProductoSinSeccion {
   categoria: string | null;
 }
 
+export interface AgrupadoSinSeccion {
+  id: string;
+  nombre: string;
+  categoria: string;
+}
+
+export interface AgrupadoConPreciosDistintos {
+  id: string;
+  nombre: string;
+  minimo: number;
+  maximo: number;
+}
+
 export interface MenuArmado {
   carta: CartaV1;
   /** Solo para uso interno (admin/logs): el endpoint NO lo expone. */
   diagnostico: {
     /** PV disponibles y visibles que no aparecen porque su categoría no está en ninguna sección de carta activa. */
     visiblesSinSeccion: ProductoSinSeccion[];
+    /** Ítems agrupados con opciones que no salen porque su categoría no está en ninguna sección de carta activa. */
+    agrupadosSinSeccion: AgrupadoSinSeccion[];
+    /** Ítems agrupados sin ninguna opción disponible en la sucursal (no salen). */
+    agrupadosSinOpciones: { id: string; nombre: string }[];
+    /**
+     * Ítems agrupados cuyas opciones NO cuestan lo mismo en la sucursal (D5): la carta muestra el máximo. En el camino normal no
+     * pasa (agregar una opción de otro precio se bloquea); es la red de seguridad para un cambio de precio posterior en Catálogo.
+     */
+    agrupadosConPreciosDistintos: AgrupadoConPreciosDistintos[];
   };
 }
 
@@ -201,8 +261,14 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   type ItemConOrden = { item: ItemCartaV1; ordenCategoria: number; ordenContenido: number };
   const itemsPorSeccion = new Map<string, ItemConOrden[]>();
   const visiblesSinSeccion: ProductoSinSeccion[] = [];
+  const agrupados = entrada.agrupados ?? [];
+
+  // D3 (defensa): un producto que es opción de un ítem agrupado sale SOLO dentro del grupo, aunque venga también como suelto
+  // (la consulta ya lo excluye; esto cubre cualquier entrada que no lo haga).
+  const productosAgrupados = new Set(agrupados.flatMap((ag) => ag.opciones.map((o) => o.productoId)));
 
   for (const p of entrada.productos) {
+    if (productosAgrupados.has(p.id)) continue;
     const ubicacion = p.categoriaId ? ubicacionPorCategoria.get(p.categoriaId) : undefined;
     if (!ubicacion || !p.categoriaNombre) {
       visiblesSinSeccion.push({ productoId: p.id, nombre: p.nombre, categoria: p.categoriaNombre });
@@ -220,6 +286,45 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
     };
     const lista = itemsPorSeccion.get(ubicacion.seccionId) ?? [];
     lista.push({ item, ordenCategoria: ubicacion.ordenCategoria, ordenContenido: p.contenido.orden });
+    itemsPorSeccion.set(ubicacion.seccionId, lista);
+  }
+
+  const agrupadosSinSeccion: AgrupadoSinSeccion[] = [];
+  const agrupadosSinOpciones: { id: string; nombre: string }[] = [];
+  const agrupadosConPreciosDistintos: AgrupadoConPreciosDistintos[] = [];
+
+  for (const ag of agrupados) {
+    if (ag.opciones.length === 0) {
+      agrupadosSinOpciones.push({ id: ag.id, nombre: ag.nombre });
+      continue;
+    }
+    const ubicacion = ubicacionPorCategoria.get(ag.categoriaId);
+    if (!ubicacion) {
+      agrupadosSinSeccion.push({ id: ag.id, nombre: ag.nombre, categoria: ag.categoriaNombre });
+      continue;
+    }
+    const opciones: OpcionItemCartaV1[] = [...ag.opciones]
+      .sort((a, b) => a.orden - b.orden || comparar(a.nombre, b.nombre))
+      .map((o) => ({ productoId: o.productoId, nombre: o.nombre, precio: precioDeCarta(o.precioVenta, precioLocalPorProducto.get(o.productoId)) }));
+    const precios = opciones.map((o) => o.precio);
+    const minimo = Math.min(...precios);
+    const maximo = Math.max(...precios);
+    // D5: en el camino normal no difieren (agregar una opción de otro precio se bloquea). Si un precio cambió DESPUÉS en Catálogo,
+    // se muestra el MAYOR (nadie paga más de lo que vio en la carta) y el admin lo avisa.
+    if (minimo !== maximo) agrupadosConPreciosDistintos.push({ id: ag.id, nombre: ag.nombre, minimo, maximo });
+    const item: ItemCartaV1 = {
+      productoId: ag.id,
+      nombre: ag.nombre,
+      categoria: ag.categoriaNombre,
+      descripcion: textoONull(ag.contenido.descripcion),
+      precio: maximo,
+      tags: limpiarTags(ag.contenido.tags),
+      especial: ag.contenido.especial,
+      imagenUrl: urlImagenSegura(ag.contenido.imagenUrl),
+      opciones,
+    };
+    const lista = itemsPorSeccion.get(ubicacion.seccionId) ?? [];
+    lista.push({ item, ordenCategoria: ubicacion.ordenCategoria, ordenContenido: ag.contenido.orden });
     itemsPorSeccion.set(ubicacion.seccionId, lista);
   }
 
@@ -264,6 +369,11 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
       sucursal: { id: entrada.sucursal.id, nombre: entrada.sucursal.nombre },
       secciones,
     },
-    diagnostico: { visiblesSinSeccion: visiblesSinSeccion.sort((a, b) => comparar(a.nombre, b.nombre)) },
+    diagnostico: {
+      visiblesSinSeccion: visiblesSinSeccion.sort((a, b) => comparar(a.nombre, b.nombre)),
+      agrupadosSinSeccion: agrupadosSinSeccion.sort((a, b) => comparar(a.nombre, b.nombre)),
+      agrupadosSinOpciones: agrupadosSinOpciones.sort((a, b) => comparar(a.nombre, b.nombre)),
+      agrupadosConPreciosDistintos: agrupadosConPreciosDistintos.sort((a, b) => comparar(a.nombre, b.nombre)),
+    },
   };
 }
