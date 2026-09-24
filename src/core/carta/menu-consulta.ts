@@ -16,7 +16,10 @@ type Db = PrismaClient | Prisma.TransactionClient;
  *  - y con `ContenidoCartaProducto.visibleEnCarta` en true (sin fila de contenido = no se muestra, decisión D3);
  *  - con el precio local habilitado de la sucursal si lo hay (la regla la aplica `precioDeCarta`);
  *  - agrupados por las secciones de carta ACTIVAS;
- *  - más las promos activas de ESTA sucursal.
+ *  - más las promos activas de ESTA sucursal;
+ *  - más los ítems AGRUPADOS activos (docs/plan-agrupacion-items-carta-2026-09-24.md, M3), cada uno con sus opciones PV
+ *    disponibles acá. Un producto que es opción de un ítem agrupado NO entra como suelto (D3), esté prendido o apagado su
+ *    grupo: apagar "Gaseosa 500cc" no hace aparecer tres gaseosas sueltas.
  *
  * Una sucursal inexistente o inactiva da `null` (el endpoint responde 404 igual en los dos casos, para no revelar cuál).
  */
@@ -24,9 +27,9 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
   const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true, activo: true } });
   if (!sucursal || !sucursal.activo) return null;
 
-  const [productos, secciones, promos] = await Promise.all([
+  const [productos, secciones, promos, agrupados] = await Promise.all([
     db.producto.findMany({
-      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), contenidoCarta: { is: { visibleEnCarta: true } } },
+      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), contenidoCarta: { is: { visibleEnCarta: true } }, opcionItemAgrupadoCarta: { is: null } },
       select: {
         id: true,
         nombre: true,
@@ -52,13 +55,32 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
       where: { sucursalId, activa: true },
       select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true },
     }),
+    db.itemAgrupadoCarta.findMany({
+      where: { activo: true },
+      select: {
+        id: true,
+        nombre: true,
+        categoriaId: true,
+        categoria: { select: { nombre: true } },
+        descripcion: true,
+        imagenUrl: true,
+        tags: true,
+        especial: true,
+        orden: true,
+        opciones: {
+          where: { producto: { tipo: "PV", ...whereDisponibleEn(sucursalId) } },
+          select: { orden: true, producto: { select: { id: true, nombre: true, precioVenta: true } } },
+        },
+      },
+    }),
   ]);
 
+  const idsConPrecio = [...new Set([...productos.map((p) => p.id), ...agrupados.flatMap((ag) => ag.opciones.map((o) => o.producto.id))])];
   const preciosLocales =
-    productos.length === 0
+    idsConPrecio.length === 0
       ? []
       : await db.precioLocalProducto.findMany({
-          where: { sucursalId, habilitado: true, productoId: { in: productos.map((p) => p.id) } },
+          where: { sucursalId, habilitado: true, productoId: { in: idsConPrecio } },
           select: { productoId: true, precio: true, habilitado: true },
         });
 
@@ -83,6 +105,14 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
     ),
     preciosLocales: preciosLocales.map((pl) => ({ productoId: pl.productoId, precio: Number(pl.precio), habilitado: pl.habilitado })),
     promos: promos.map((pr) => ({ ...pr, precio: Number(pr.precio) })),
+    agrupados: agrupados.map((ag) => ({
+      id: ag.id,
+      nombre: ag.nombre,
+      categoriaId: ag.categoriaId,
+      categoriaNombre: ag.categoria.nombre,
+      contenido: { descripcion: ag.descripcion, imagenUrl: ag.imagenUrl, tags: ag.tags, especial: ag.especial, orden: ag.orden },
+      opciones: ag.opciones.map((o) => ({ productoId: o.producto.id, nombre: o.producto.nombre, precioVenta: Number(o.producto.precioVenta), orden: o.orden })),
+    })),
   });
 }
 
