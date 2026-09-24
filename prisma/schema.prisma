@@ -117,6 +117,7 @@ model Sucursal {
   registrosAuditoria   RegistroAuditoria[]
   promosCarta          PromoCarta[]
   publica              SucursalPublica?
+  temaCarta            TemaCartaSucursal?
   mesas                Mesa[]
 }
 
@@ -1419,6 +1420,22 @@ model SucursalPublica {
   /// TRANSICIÓN: tab del menú en esa sheet; solo importa con menuDesdeMotor2 = false.
   sheetMenuNombre String   @default("Menu")
   actualizadoEn   DateTime @updatedAt
+}
+
+/// Tema visual de la carta pública de una sucursal: lo que hoy es la tab "Config" de la sheet de cada tenant de
+/// restaurant-menu-design (las 67 claves por tenant del catálogo CLAVES_TEMA_V1 de src/core/carta/tema.ts; los precios
+/// son convención fija del sistema y no están acá). FILA AUSENTE = la carta sigue con la tab Config (opt-in; sin backfill).
+/// 1:1 con Sucursal y no con SucursalPublica (docs/plan-tema-carta-2026-09-24.md, D1): el tema se puede preparar antes de
+/// agregar la sucursal al portal, y "Quitar del portal" no lo borra. Sin onDelete: RESTRICT (las sucursales nunca se borran).
+model TemaCartaSucursal {
+  id             String   @id @default(cuid())
+  sucursalId     String   @unique
+  sucursal       Sucursal @relation(fields: [sucursalId], references: [id])
+  /// clave de SiteConfig → valor ya validado. Claves fuera del catálogo se ignoran al servir.
+  valores        Json     @default("{}")
+  /// false = borrador (se edita y previsualiza en motor2; la carta sigue con la sheet). true = la carta usa este tema.
+  aplicarEnCarta Boolean  @default(false)
+  actualizadoEn  DateTime @updatedAt
 }
 
 // ===================================================================
