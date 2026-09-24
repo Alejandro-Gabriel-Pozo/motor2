@@ -5,8 +5,9 @@ import { reportarErrorUnaVez } from "@/lib/reportar-error";
 export const SIN_CACHE = { "Cache-Control": "no-store" } as const;
 
 /**
- * Preámbulo de autenticación de servicio de los endpoints que lee restaurant-menu-design (`GET /api/carta/[sucursal]` y
- * `GET /api/carta/tenants`; docs/plan-registro-tenants-2026-09-24.md, M4, D5): `Authorization: Bearer <CARTA_API_TOKEN>`,
+ * Preámbulo de autenticación de servicio de los endpoints que lee restaurant-menu-design (`GET /api/carta/[sucursal]`,
+ * `GET /api/carta/tenants` y `GET /api/carta/[sucursal]/tema`; docs/plan-registro-tenants-2026-09-24.md, M4, D5, y
+ * docs/plan-tema-carta-2026-09-24.md, M5): `Authorization: Bearer <CARTA_API_TOKEN>`,
  * comparado con `tokenDeServicioValido`. Devuelve la respuesta 401 lista para devolver, o `null` si quien llama está autorizado.
  *
  * Sin la variable responde 401 siempre y se avisa a Sentry UNA sola vez (la clave es la misma para los dos endpoints: es un

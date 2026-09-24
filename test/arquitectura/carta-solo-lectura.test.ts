@@ -52,6 +52,9 @@ describe("carta: solo lectura", () => {
     // Registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M4).
     expect(nombres).toContain("app/api/carta/tenants/route.ts");
     expect(nombres).toContain("core/carta/registro-consulta.ts");
+    // Tema visual de la carta (docs/plan-tema-carta-2026-09-24.md, M5).
+    expect(nombres).toContain("app/api/carta/[sucursal]/tema/route.ts");
+    expect(nombres).toContain("core/carta/tema-consulta.ts");
   });
 
   it("ningún archivo de src/core/carta ni src/app/api/carta escribe en la base", () => {
