@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
  * Regla de arquitectura (docs/plan-carta-catalogo-2026-09-24.md, M5): la carta pública es un espejo de SOLO LECTURA del
  * catálogo. Ni la lógica de la carta (`src/core/carta/**`) ni el endpoint que la sirve (`src/app/api/carta/**`, que lo llama
  * un sitio externo con un token de servicio) pueden escribir en la base. Si alguna vez hiciera falta, la escritura va en una
- * Server Action con `conPermiso` (`src/server/actions/carta/`, fuera de este chequeo a propósito), nunca en el camino público.
+ * Server Action con `conPermiso` (`src/server/actions/carta/`), nunca en el camino público — y esas acciones, a su vez, solo
+ * pueden escribir en las 4 tablas de carta (SeccionCarta, CategoriaSeccionCarta, ContenidoCartaProducto, PromoCarta): el
+ * catálogo, los precios y la disponibilidad se siguen editando donde siempre.
  *
  * Cómo se controla: ningún archivo de esas dos carpetas puede contener, fuera de un comentario, una llamada de escritura de
  * Prisma sobre un modelo (`x.modelo.create(`, `.createMany(`, `.update(`, `.updateMany(`, `.upsert(`, `.delete(`,
@@ -15,6 +17,8 @@ import { describe, expect, it } from "vitest";
  */
 const SRC = join(__dirname, "../../src");
 const CARPETAS = ["core/carta", "app/api/carta"];
+/** Captura el modelo de una escritura `cliente.modelo.op(`. */
+const ESCRITURA_POR_MODELO = /\w\s*\.\s*(\w+)\s*\.\s*(?:create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(/;
 const ESCRITURA = /\w\s*\.\s*\w+\s*\.\s*(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(|\$executeRaw/;
 
 function archivos(dir: string): string[] {
@@ -49,6 +53,25 @@ describe("carta: solo lectura", () => {
   it("ningún archivo de src/core/carta ni src/app/api/carta escribe en la base", () => {
     const problemas = rutas.flatMap((ruta) => lineasQueEscriben(readFileSync(ruta, "utf8")).map((l) => `${relative(SRC, ruta).split(sep).join("/")}:${l}`));
     expect(problemas, `La carta pública es de solo lectura; estas líneas escriben:\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 4 tablas de carta", () => {
+    const TABLAS_DE_CARTA = new Set(["seccionCarta", "categoriaSeccionCarta", "contenidoCartaProducto", "promoCarta"]);
+    const acciones = archivos(join(SRC, "server/actions/carta"));
+    expect(acciones.length, "no se encontraron las acciones de la carta").toBeGreaterThan(0);
+    const problemas = acciones.flatMap((ruta) =>
+      readFileSync(ruta, "utf8")
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .flatMap((linea, i) => {
+          if (esComentario(linea)) return [];
+          const modelos = [...linea.matchAll(new RegExp(ESCRITURA_POR_MODELO, "g"))].map((m) => m[1]);
+          const ajenos = modelos.filter((m) => !TABLAS_DE_CARTA.has(m));
+          const raw = /\$executeRaw/.test(linea);
+          return ajenos.length || raw ? [`${relative(SRC, ruta).split(sep).join("/")}:${i + 1} ${raw ? "$executeRaw" : ajenos.join(", ")}`] : [];
+        })
+    );
+    expect(problemas, `Las acciones de la carta escriben fuera de sus tablas:\n${problemas.join("\n")}`).toEqual([]);
   });
 
   describe("el detector (con fuentes sintéticas)", () => {
