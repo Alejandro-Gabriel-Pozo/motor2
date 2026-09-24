@@ -116,6 +116,7 @@ model Sucursal {
   pagosConsignante     PagoConsignante[]
   registrosAuditoria   RegistroAuditoria[]
   promosCarta          PromoCarta[]
+  publica              SucursalPublica?
   mesas                Mesa[]
 }
 
@@ -1386,6 +1387,38 @@ model PromoCarta {
 
   @@index([sucursalId, activa])
   @@index([seccionCartaId])
+}
+
+/// Registro público de una sucursal en el portal/carta (lo que hoy es una fila de la tab "tenant" de la sheet maestra de
+/// restaurant-menu-design; docs/plan-registro-tenants-2026-09-24.md). FILA AUSENTE = esta sucursal no está en el registro de
+/// motor2 (opt-in; sin backfill). Lo lee GET /api/carta/tenants; se carga en /catalogo/carta/portal. Sin onDelete: RESTRICT
+/// (las sucursales nunca se borran, se desactivan).
+model SucursalPublica {
+  id              String   @id @default(cuid())
+  sucursalId      String   @unique
+  sucursal        Sucursal @relation(fields: [sucursalId], references: [id])
+  /// tenant_id / URL /carta/<slug>. Se genera UNA vez desde Sucursal.nombre (slugTenant) y se puede editar; nunca se recalcula.
+  slug            String   @unique
+  /// null = se usa Sucursal.nombre.
+  etiqueta        String?
+  /// Host desnudo, sin esquema ni puerto (hecho externo, manual). NULL no choca con el @unique en Postgres.
+  dominio         String?  @unique
+  /// Público: subtítulo de la tarjeta del portal (restaurant-menu-design lo dibuja como `notas`).
+  subtituloPortal String?
+  /// Posición en el mapa del portal, % 0-100 (centro). x/y/w van juntos; h opcional (la carta usa 5).
+  posX            Decimal? @db.Decimal(5, 2)
+  posY            Decimal? @db.Decimal(5, 2)
+  posW            Decimal? @db.Decimal(5, 2)
+  posH            Decimal? @db.Decimal(5, 2)
+  orden           Int      @default(0)
+  publicada       Boolean  @default(false)
+  /// true = el menú sale de GET /api/carta/[sucursal] (se emite motor2_sucursal_id); false = de la tab `sheetMenuNombre`.
+  menuDesdeMotor2 Boolean  @default(false)
+  /// TRANSICIÓN: spreadsheet del tenant. Hace falta mientras SiteConfig (tab Config) viva en la sheet — para TODOS los tenants.
+  sheetId         String?
+  /// TRANSICIÓN: tab del menú en esa sheet; solo importa con menuDesdeMotor2 = false.
+  sheetMenuNombre String   @default("Menu")
+  actualizadoEn   DateTime @updatedAt
 }
 
 // ===================================================================
