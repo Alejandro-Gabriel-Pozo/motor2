@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
@@ -352,7 +353,15 @@ function CamposPromo({
 
 function ContenidoProducto({ producto: p }: { producto: ProductoCartaAdmin }) {
   const productoId = p.id;
-  const estado = !p.contenido ? "sin contenido" : p.contenido.visibleEnCarta ? (p.seccionCarta ? "se muestra" : "visible, sin sección") : "oculto";
+  const estadoPropio = !p.contenido ? "sin contenido" : p.contenido.visibleEnCarta ? (p.seccionCarta ? "se muestra" : "visible, sin sección") : "oculto";
+  // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
+  const estado = p.agrupadoEn ? (
+    <Link href="/catalogo/carta/agrupados" className="underline">
+      en «{p.agrupadoEn}»
+    </Link>
+  ) : (
+    estadoPropio
+  );
   return (
     <li className="rounded border p-3" data-contenido-carta={p.nombre}>
       <details>

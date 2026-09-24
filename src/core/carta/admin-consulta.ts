@@ -1,8 +1,8 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
-import type { ProductoSinSeccion } from "./armar-menu";
+import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
 import { esClaveTema } from "./tema";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -40,6 +40,8 @@ export interface ProductoCartaAdmin {
   seccionCarta: string | null;
   precio: number;
   contenido: { visibleEnCarta: boolean; descripcion: string | null; imagenUrl: string | null; tags: string[]; especial: boolean; orden: number } | null;
+  /** Nombre del ítem agrupado donde está (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), o null: si está, sale solo ahí. */
+  agrupadoEn: string | null;
 }
 
 export interface PromoCartaAdmin {
@@ -58,7 +60,10 @@ export interface DatosAdminCarta {
   categorias: CategoriaAdmin[];
   /** PV disponibles en la sucursal (los únicos que pueden salir en su carta). */
   productos: ProductoCartaAdmin[];
-  /** Lo que se le avisa al admin para que no pase desapercibido (D3): disponibles acá SIN fila de contenido de carta. */
+  /**
+   * Lo que se le avisa al admin para que no pase desapercibido (D3): disponibles acá SIN fila de contenido de carta. No incluye a
+   * los que están en un ítem agrupado: esos salen en la carta a través del grupo, sin contenido propio.
+   */
   sinContenido: ProductoCartaAdmin[];
   /** Visibles y disponibles que igual no salen porque su categoría no está en ninguna sección de carta activa. */
   visiblesSinSeccion: ProductoSinSeccion[];
@@ -77,6 +82,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
         precioVenta: true,
         categoria: { select: { nombre: true, seccionCarta: { select: { seccionCarta: { select: { nombre: true, activa: true } } } } } },
         contenidoCarta: { select: { visibleEnCarta: true, descripcion: true, imagenUrl: true, tags: true, especial: true, orden: true } },
+        opcionItemAgrupadoCarta: { select: { itemAgrupadoCarta: { select: { nombre: true } } } },
       },
       orderBy: { nombre: "asc" },
     }),
@@ -93,6 +99,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
       seccionCarta: seccion?.activa ? seccion.nombre : null,
       precio: Number(p.precioVenta),
       contenido: p.contenidoCarta,
+      agrupadoEn: p.opcionItemAgrupadoCarta?.itemAgrupadoCarta.nombre ?? null,
     };
   });
 
@@ -109,7 +116,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
     })),
     categorias: categorias.map((c) => ({ id: c.id, nombre: c.nombre, activo: c.activo, seccionCartaId: c.seccionCarta?.seccionCartaId ?? null, orden: c.seccionCarta?.orden ?? 0 })),
     productos: productosAdmin,
-    sinContenido: productosAdmin.filter((p) => !p.contenido),
+    sinContenido: productosAdmin.filter((p) => !p.contenido && !p.agrupadoEn),
     visiblesSinSeccion: armado?.diagnostico.visiblesSinSeccion ?? [],
     promos: promos.map((pr) => ({
       id: pr.id,
@@ -121,6 +128,170 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
       orden: pr.orden,
       activa: pr.activa,
     })),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Ítems agrupados de la carta (/catalogo/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M6/M7)
+// ---------------------------------------------------------------------------------------------------------------------------
+
+export interface OpcionItemAgrupadoAdmin {
+  /** Id de la fila de opción (para reordenar o quitar). */
+  id: string;
+  productoId: string;
+  nombre: string;
+  orden: number;
+  categoria: string | null;
+  /** Sección de carta ACTIVA de la categoría del producto, o null. */
+  seccionCarta: string | null;
+  disponibleAca: boolean;
+  /** Precio en esta sucursal, con la regla de la carta (`precioDeCarta`). */
+  precioAca: number;
+  /** Aviso D4: la categoría de la opción cae en otra sección de carta (o en ninguna) que la del ítem agrupado. */
+  otraSeccion: boolean;
+}
+
+export interface ItemAgrupadoAdmin {
+  id: string;
+  nombre: string;
+  categoriaId: string;
+  categoria: string;
+  /** Sección de carta ACTIVA de su categoría, o null (entonces no sale). */
+  seccionCarta: string | null;
+  descripcion: string | null;
+  imagenUrl: string | null;
+  tags: string[];
+  especial: boolean;
+  orden: number;
+  activo: boolean;
+  opciones: OpcionItemAgrupadoAdmin[];
+  /** Cuántas opciones están disponibles en esta sucursal. */
+  disponiblesAca: number;
+  /** Rango de precios de las opciones disponibles acá (null si no hay ninguna). */
+  precio: { minimo: number; maximo: number } | null;
+  avisos: {
+    /** D5 (red de seguridad): las opciones disponibles acá no cuestan lo mismo; la carta muestra `mostrado` (el mayor). */
+    preciosDistintos: { minimo: number; maximo: number; mostrado: number } | null;
+    /** Ninguna opción disponible acá: el ítem no sale en la carta de esta sucursal. */
+    sinOpcionesAca: boolean;
+    /** Su categoría no está en ninguna sección de carta activa: el ítem no sale. */
+    sinSeccion: boolean;
+    /** D4: alguna opción cae en otra sección de carta (sus ventas se cuentan ahí). */
+    opcionesEnOtraSeccion: boolean;
+  };
+}
+
+export interface DatosAdminItemsAgrupados {
+  items: ItemAgrupadoAdmin[];
+  categorias: { id: string; nombre: string; activo: boolean }[];
+  /** PV disponibles acá que no están en ningún ítem agrupado (para el select "Agregar producto"). */
+  productosSinGrupo: { id: string; nombre: string; precioAca: number }[];
+  diagnostico: Pick<MenuArmado["diagnostico"], "agrupadosSinSeccion" | "agrupadosSinOpciones" | "agrupadosConPreciosDistintos">;
+}
+
+/** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. */
+export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = prisma): Promise<DatosAdminItemsAgrupados> {
+  const seccionDeCategoria = { select: { seccionCarta: { select: { nombre: true, activa: true } } } } as const;
+  const [items, categorias, sinGrupo, armado] = await Promise.all([
+    db.itemAgrupadoCarta.findMany({
+      select: {
+        id: true,
+        nombre: true,
+        categoriaId: true,
+        categoria: { select: { nombre: true, seccionCarta: seccionDeCategoria } },
+        descripcion: true,
+        imagenUrl: true,
+        tags: true,
+        especial: true,
+        orden: true,
+        activo: true,
+        opciones: {
+          select: {
+            id: true,
+            orden: true,
+            producto: { select: { id: true, nombre: true, tipo: true, precioVenta: true, categoria: { select: { nombre: true, seccionCarta: seccionDeCategoria } } } },
+          },
+        },
+      },
+      orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }],
+    }),
+    db.categoriaProducto.findMany({ select: { id: true, nombre: true, activo: true }, orderBy: { nombre: "asc" } }),
+    db.producto.findMany({
+      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), opcionItemAgrupadoCarta: { is: null } },
+      select: { id: true, nombre: true, precioVenta: true },
+      orderBy: { nombre: "asc" },
+    }),
+    resolverMenuCartaConDiagnostico(sucursalId, db),
+  ]);
+
+  const idsOpciones = items.flatMap((it) => it.opciones.map((o) => o.producto.id));
+  const idsConPrecio = [...new Set([...idsOpciones, ...sinGrupo.map((p) => p.id)])];
+  const [disponibilidad, locales] = await Promise.all([
+    disponibilidadDeProductos(sucursalId, idsOpciones, db),
+    idsConPrecio.length === 0
+      ? Promise.resolve([])
+      : db.precioLocalProducto.findMany({ where: { sucursalId, productoId: { in: idsConPrecio } }, select: { productoId: true, precio: true, habilitado: true } }),
+  ]);
+  const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
+  const precioAca = (productoId: string, precioVenta: { toString(): string }) => precioDeCarta(Number(precioVenta), localPorProducto.get(productoId));
+  const seccionActiva = (c: { seccionCarta: { seccionCarta: { nombre: string; activa: boolean } } | null } | null | undefined) => {
+    const s = c?.seccionCarta?.seccionCarta;
+    return s?.activa ? s.nombre : null;
+  };
+  const comparar = (a: string, b: string) => a.localeCompare(b, "es");
+
+  return {
+    items: items.map((it) => {
+      const seccionCarta = seccionActiva(it.categoria);
+      const opciones: OpcionItemAgrupadoAdmin[] = it.opciones
+        .map((o) => {
+          const seccionOpcion = seccionActiva(o.producto.categoria);
+          return {
+            id: o.id,
+            productoId: o.producto.id,
+            nombre: o.producto.nombre,
+            orden: o.orden,
+            categoria: o.producto.categoria?.nombre ?? null,
+            seccionCarta: seccionOpcion,
+            // Mismo criterio que la carta (menu-consulta.ts): solo un PV disponible acá cuenta.
+            disponibleAca: o.producto.tipo === "PV" && disponibilidad.get(o.producto.id) === true,
+            precioAca: precioAca(o.producto.id, o.producto.precioVenta),
+            otraSeccion: seccionOpcion !== seccionCarta,
+          };
+        })
+        .sort((a, b) => a.orden - b.orden || comparar(a.nombre, b.nombre));
+      const precios = opciones.filter((o) => o.disponibleAca).map((o) => o.precioAca);
+      const precio = precios.length ? { minimo: Math.min(...precios), maximo: Math.max(...precios) } : null;
+      return {
+        id: it.id,
+        nombre: it.nombre,
+        categoriaId: it.categoriaId,
+        categoria: it.categoria.nombre,
+        seccionCarta,
+        descripcion: it.descripcion,
+        imagenUrl: it.imagenUrl,
+        tags: it.tags,
+        especial: it.especial,
+        orden: it.orden,
+        activo: it.activo,
+        opciones,
+        disponiblesAca: precios.length,
+        precio,
+        avisos: {
+          preciosDistintos: precio && precio.minimo !== precio.maximo ? { ...precio, mostrado: precio.maximo } : null,
+          sinOpcionesAca: precios.length === 0,
+          sinSeccion: seccionCarta === null,
+          opcionesEnOtraSeccion: opciones.some((o) => o.otraSeccion),
+        },
+      };
+    }),
+    categorias,
+    productosSinGrupo: sinGrupo.map((p) => ({ id: p.id, nombre: p.nombre, precioAca: precioAca(p.id, p.precioVenta) })),
+    diagnostico: {
+      agrupadosSinSeccion: armado?.diagnostico.agrupadosSinSeccion ?? [],
+      agrupadosSinOpciones: armado?.diagnostico.agrupadosSinOpciones ?? [],
+      agrupadosConPreciosDistintos: armado?.diagnostico.agrupadosConPreciosDistintos ?? [],
+    },
   };
 }
 
