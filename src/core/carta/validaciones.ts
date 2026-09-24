@@ -15,7 +15,8 @@ export const LARGO_MAXIMO_TAG_CARTA = 30;
 /** Letras, números, espacio y poca puntuación: los tags se muestran como chips y filtros en la carta. */
 const RE_TAG = /^[\p{L}\p{N} \-.&/+'!]+$/u;
 
-type Resultado<T> = { ok: true; valor: T } | { ok: false; mensaje: string };
+/** Resultado de un validador de la carta: el valor normalizado o el mensaje listo para mostrar (lo usan también css-valores.ts y tema.ts). */
+export type Resultado<T> = { ok: true; valor: T } | { ok: false; mensaje: string };
 
 /** Vacío → null (sin imagen). Si hay algo, tiene que ser `https://` sin espacios, comillas ni paréntesis. */
 export function validarImagenUrlCarta(valor: unknown, etiqueta = "La URL de la imagen"): Resultado<string | null> {
