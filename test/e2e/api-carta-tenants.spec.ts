@@ -49,6 +49,7 @@ test.describe("API del registro de tenants del portal", () => {
           activo: true,
           sucursalId: sucursal.id,
           menuDesdeMotor2: true,
+          temaDesdeMotor2: false,
           sheetId: SHEET,
           sheetMenuNombre: "Menu",
         },

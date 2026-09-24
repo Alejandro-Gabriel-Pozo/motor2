@@ -62,6 +62,7 @@ test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", as
       activo: true,
       sucursalId: a.id,
       menuDesdeMotor2: false,
+      temaDesdeMotor2: false,
       sheetId: SHEET,
       sheetMenuNombre: "Menu",
     });
