@@ -371,12 +371,12 @@ son roles nuevos, no un sistema de auth nuevo.
 Con el mismo molde de carpeta-propia-por-dominio (§3,
 `docs/arquitectura-modularidad-server-actions-2026-09-17.md`):
 
-- `src/core/pos/` — dominio de `Mesa`/`Comanda` (abrir mesa, agregar
+- `src/core/pos/` — dominio de `Mesa`/`Cuenta` (abrir mesa, agregar
   ítem, cerrar). Lee `catalogo` (`Producto`, `CategoriaProducto`,
   `DisponibilidadProducto`) igual que `carta`, pero además **escribe**
   en `movimientos` al confirmar una venta — reusando `venta.ts`, sin
   reimplementar el descuento de stock ni el cálculo de receta.
-- `src/server/actions/pos/` — `abrirMesa`, `agregarItemComanda`,
+- `src/server/actions/pos/` — `abrirMesa`, `agregarItemCuenta`,
   `confirmarVenta` (llama a la lógica existente de venta),
   `cerrarMesa`, `marcarComandaImpresa` (la que consulta el agente local
   de §6.1). Gateadas con `con-permiso.ts` como el resto.
@@ -393,9 +393,10 @@ Con el mismo molde de carpeta-propia-por-dominio (§3,
   endpoints que consulta el agente local de §6.1 (token de servicio
   propio, no sesión de usuario — mismo motivo que el endpoint de
   `carta` en §3).
-- Prisma: tablas nuevas y aditivas (`Mesa`, `Comanda`, `ComandaItem` o
-  el nombre que se termine usando) con FKs de solo lectura hacia
-  `Producto`/`Sucursal`. La escritura real hacia `Operacion`/
+- Prisma: tablas nuevas y aditivas (`Mesa`, `Cuenta`, `CuentaItem` —
+  nombres confirmados en §7.2/grounding del 2026-09-24, reemplazan
+  `Comanda`/`ComandaItem` del plan original) con FKs de solo lectura
+  hacia `Producto`/`Sucursal`. La escritura real hacia `Operacion`/
   `MovimientoStock` sigue pasando por la función de venta que ya existe
   — no se reimplementa el Kardex.
 
@@ -412,11 +413,40 @@ no se le escape un ítem (ej. un vino incluido que alguien olvida
 cargar).
 
 Esto **no toca ni reabre los dos planes ya entregados** (§3-§5 carta,
-`Mesa`/`Comanda` de Mapa de Mesas): en el plan de Mapa de Mesas, "la
+`Mesa`/`Cuenta` de Mapa de Mesas): en el plan de Mapa de Mesas, "la
 elección dentro de un combo" ya quedó marcada explícitamente afuera del
-alcance de `ComandaItem` (columnas aditivas a sumar cuando se diseñe
+alcance de `CuentaItem` (columnas aditivas a sumar cuando se diseñe
 "tomar pedido"). Esta nota es insumo para ESE pendiente futuro, cuando
 se planifique — no antes.
+
+### 7.2 Grounding y decisiones cerradas para Mapa de Mesas (2026-09-24)
+
+Ver `docs/grounding-pos-mesas-comandas-2026-09-24.md` — investigación
+contra 5 POS de referencia públicos (`satisfecho/pos`,
+`Shahzaib-Awann/Foodya-Restaurant`, `ahmedali5530/restaurant-pos`,
+`ury-erp/ury`, `FreeOpenSourcePOS/FloCafe`) para las 4 preguntas que
+quedaron abiertas al recibir el plan de Mapa de Mesas. Resuelto:
+
+1. **Nombre:** `Comanda`/`ComandaItem` → **`Cuenta`/`CuentaItem`** (la
+   cuenta abierta de la mesa; "Comanda"/KOT queda reservado para la
+   entidad real de ticket de cocina, que se construye en el pendiente
+   futuro "tomar pedido", no ahora — `numeroEnvio: Int?` en
+   `CuentaItem` sigue siendo el placeholder liviano de eso).
+2. **Duración/timeout:** ninguno — confirmado contra los 5 repos
+   (0/5 cierra automáticamente una mesa/cuenta por inactividad).
+   "Hace 42 min" en la tarjeta es puramente informativo.
+3. **Regla de "segunda ronda vuelve a en_pedido":** aceptada tal como
+   la propuso el plan — alineada con cómo trackean estado los repos
+   más maduros (por ítem, no por mesa entera).
+4. **Alcance de la migración:** `Mesa` + `Cuenta` + `CuentaItem` ahora;
+   la entidad de comanda/KOT con su lógica de anulación (motivo
+   obligatorio recién cuando el ítem ya está "en preparación", permiso/
+   PIN elevado a partir de ahí, nunca `DELETE`) queda para "tomar
+   pedido" — ver también §5 de ese grounding, que documenta el mismo
+   patrón de anulación como insumo para esa nota de diseño (§7.1).
+
+El contraste de colores (pendiente aparte, no resuelto por este
+grounding) sigue esperando el OK del dueño sobre la paleta.
 
 ## 8. Qué queda abierto
 
