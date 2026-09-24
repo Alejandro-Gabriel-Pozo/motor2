@@ -28,7 +28,8 @@ export async function resolverRegistroTenants(db: Db = prisma, ahora: Date = new
       menuDesdeMotor2: true,
       sheetId: true,
       sheetMenuNombre: true,
-      sucursal: { select: { id: true, nombre: true, activo: true } },
+      // El tema aplicado (temaDesdeMotor2, docs/plan-tema-carta-2026-09-24.md, M6) viaja en el mismo select: sigue siendo UNA consulta.
+      sucursal: { select: { id: true, nombre: true, activo: true, temaCarta: { select: { aplicarEnCarta: true } } } },
     },
   });
   return armarRegistroTenants(filas, ahora);

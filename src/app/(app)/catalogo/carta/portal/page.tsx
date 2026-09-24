@@ -70,6 +70,12 @@ function SucursalEnPortal({ sucursal: s }: { sucursal: SucursalPortalAdmin }) {
         <span className="font-medium">{s.nombre}</span>
         {!s.activo && <span className="text-neutral-500"> (inactiva)</span>} · {estadoEnPortal(s)}
       </p>
+      {p && (
+        // Solo lectura (docs/plan-tema-carta-2026-09-24.md, M6): de dónde saca la carta los colores y textos de esta sucursal.
+        <p className="text-sm text-neutral-500">
+          Tema: {s.temaDesdeMotor2 ? "motor2 (aplicado en Tema de la carta)" : "sheet (tab Config)"}
+        </p>
+      )}
 
       {!p ? (
         <FormConResultado

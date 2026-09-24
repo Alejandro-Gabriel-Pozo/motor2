@@ -150,12 +150,14 @@ export interface SucursalPortalAdmin {
   activo: boolean;
   /** null = la sucursal no está en el registro de motor2 (la carta sigue con la fila de la sheet, si la hay). */
   publica: RegistroPublicoAdmin | null;
+  /** true = tiene un tema aplicado en motor2 (/catalogo/carta/tema): el registro emite `temaDesdeMotor2` (docs/plan-tema-carta-2026-09-24.md, M6). */
+  temaDesdeMotor2: boolean;
 }
 
 /** TODAS las sucursales (el mapa del portal es entre sucursales, no depende de la activa), activas primero, con su fila si la tienen. */
 export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortalAdmin[]> {
   const sucursales = await db.sucursal.findMany({
-    select: { id: true, nombre: true, activo: true, publica: true },
+    select: { id: true, nombre: true, activo: true, publica: true, temaCarta: { select: { aplicarEnCarta: true } } },
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
   });
   const num = (v: { toString(): string } | null) => (v === null ? null : Number(v));
@@ -178,6 +180,7 @@ export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortal
       sheetId: s.publica.sheetId,
       sheetMenuNombre: s.publica.sheetMenuNombre,
     },
+    temaDesdeMotor2: s.temaCarta?.aplicarEnCarta === true,
   }));
 }
 

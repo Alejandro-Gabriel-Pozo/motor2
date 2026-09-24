@@ -94,6 +94,7 @@ describe("Server Actions del registro público", () => {
         activo: true,
         sucursalId: centralId,
         menuDesdeMotor2: true,
+        temaDesdeMotor2: false,
         sheetId: SHEET,
         sheetMenuNombre: "Menu",
       },

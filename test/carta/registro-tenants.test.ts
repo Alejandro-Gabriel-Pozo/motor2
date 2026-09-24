@@ -143,11 +143,22 @@ describe("filaATenantV1 / armarRegistroTenants", () => {
       activo: true,
       sucursalId: "suc-1",
       menuDesdeMotor2: false,
+      temaDesdeMotor2: false,
       sheetId: SHEET,
       sheetMenuNombre: "Menu",
     });
     const t = filaATenantV1(fila({ etiqueta: "Hostería Central", subtituloPortal: "Frente al lago", dominio: "carta.central.com", menuDesdeMotor2: true, sheetMenuNombre: "Menu2" }));
     expect(t).toMatchObject({ etiqueta: "Hostería Central", subtitulo: "Frente al lago", dominio: "carta.central.com", menuDesdeMotor2: true, sheetMenuNombre: "Menu2" });
+  });
+
+  it("temaDesdeMotor2 (docs/plan-tema-carta-2026-09-24.md, D5): true solo con un tema APLICADO; sin fila, en borrador o sin el dato → false", () => {
+    const suc = (temaCarta?: { aplicarEnCarta: boolean } | null) => ({ id: "suc-1", nombre: "Central", activo: true, ...(temaCarta === undefined ? {} : { temaCarta }) });
+    expect(filaATenantV1(fila({ sucursal: suc({ aplicarEnCarta: true }) }))?.temaDesdeMotor2).toBe(true);
+    expect(filaATenantV1(fila({ sucursal: suc({ aplicarEnCarta: false }) }))?.temaDesdeMotor2).toBe(false);
+    expect(filaATenantV1(fila({ sucursal: suc(null) }))?.temaDesdeMotor2).toBe(false);
+    expect(filaATenantV1(fila({ sucursal: suc() }))?.temaDesdeMotor2).toBe(false);
+    // No depende de publicada ni de menuDesdeMotor2: la carta decide qué hacer con un tenant inactivo.
+    expect(filaATenantV1(fila({ publicada: false, sucursal: suc({ aplicarEnCarta: true }) }))).toMatchObject({ activo: false, temaDesdeMotor2: true, menuDesdeMotor2: false });
   });
 
   it("posición: Decimal → número; parcial → null; alto opcional", () => {

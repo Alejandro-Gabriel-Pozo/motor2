@@ -84,6 +84,11 @@ export interface TenantV1 {
   sucursalId: string;
   /** true = el menú sale de GET /api/carta/[sucursal]; false = de la tab `sheetMenuNombre` de la sheet. */
   menuDesdeMotor2: boolean;
+  /**
+   * ADITIVO (sin subir `version`; docs/plan-tema-carta-2026-09-24.md, D5): true = el tema visual sale de
+   * GET /api/carta/[sucursal]/tema (la sucursal tiene un tema aplicado en motor2); false = de la tab Config de la sheet.
+   */
+  temaDesdeMotor2: boolean;
   /** TRANSICIÓN: spreadsheet del tenant (tab Config y, si no hay menú de motor2, también el menú). */
   sheetId: string | null;
   /** TRANSICIÓN: tab del menú en esa sheet. */
@@ -118,7 +123,8 @@ export interface FilaRegistroTenant {
   menuDesdeMotor2: boolean;
   sheetId: string | null;
   sheetMenuNombre: string;
-  sucursal: { id: string; nombre: string; activo: boolean };
+  /** `temaCarta` es opcional para no obligar a los fixtures puros a traerlo: sin él, o sin fila de tema, `temaDesdeMotor2` es false. */
+  sucursal: { id: string; nombre: string; activo: boolean; temaCarta?: { aplicarEnCarta: boolean } | null };
 }
 
 const aNumero = (v: ValorDecimal | null): number | null => (v === null || v === undefined ? null : Number(v));
@@ -153,6 +159,7 @@ export function filaATenantV1(f: FilaRegistroTenant): TenantV1 | null {
     activo: f.publicada && f.sucursal.activo,
     sucursalId: f.sucursal.id,
     menuDesdeMotor2: f.menuDesdeMotor2,
+    temaDesdeMotor2: f.sucursal.temaCarta?.aplicarEnCarta === true,
     sheetId: sheetId.ok ? sheetId.valor : null,
     sheetMenuNombre: tab.ok ? tab.valor : TAB_MENU_POR_DEFECTO,
   };

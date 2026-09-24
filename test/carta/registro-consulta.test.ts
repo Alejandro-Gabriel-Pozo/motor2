@@ -62,9 +62,28 @@ describe("resolverRegistroTenants", () => {
         activo: true,
         sucursalId: central,
         menuDesdeMotor2: true,
+        temaDesdeMotor2: false,
         sheetId: SHEET,
         sheetMenuNombre: "Menu",
       },
+    ]);
+  });
+
+  it("temaDesdeMotor2 (docs/plan-tema-carta-2026-09-24.md, M6): true con el tema aplicado, false en borrador o sin tema", async () => {
+    await prisma.sucursalPublica.createMany({
+      data: [
+        { sucursalId: central, slug: "central", publicada: true, sheetId: SHEET, orden: 1 },
+        { sucursalId: norte, slug: "norte", publicada: true, sheetId: SHEET, orden: 2 },
+        { sucursalId: cerrada, slug: "cerrada", publicada: true, sheetId: SHEET, orden: 3 },
+      ],
+    });
+    await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: true, valores: { color_marca: "red" } } });
+    await prisma.temaCartaSucursal.create({ data: { sucursalId: norte, aplicarEnCarta: false, valores: { color_marca: "blue" } } });
+    const { tenants } = await resolverRegistroTenants();
+    expect(tenants.map((t) => [t.slug, t.temaDesdeMotor2])).toEqual([
+      ["central", true],
+      ["norte", false],
+      ["cerrada", false],
     ]);
   });
 
@@ -75,6 +94,8 @@ describe("resolverRegistroTenants", () => {
         { sucursalId: norte, slug: "norte" },
       ],
     });
+    // Con un tema aplicado: el select anidado de temaCarta tampoco suma consultas.
+    await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: true } });
     const operaciones: string[] = [];
     const contador = prisma.$extends({
       query: {
@@ -88,6 +109,7 @@ describe("resolverRegistroTenants", () => {
     }) as unknown as PrismaClient;
     const r = await resolverRegistroTenants(contador);
     expect(r.tenants).toHaveLength(2);
+    expect(r.tenants.map((t) => t.temaDesdeMotor2)).toEqual([true, false]);
     expect(operaciones).toEqual(["SucursalPublica.findMany"]);
   });
 });
