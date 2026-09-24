@@ -96,6 +96,10 @@ describe("a dónde se manda al entrar", () => {
     expect(elegirPantallaDeInicio(menu)).toBe("/movimientos/venta");
   });
 
+  it("con solo pos_mesas (un rol «mozo» armado desde la matriz), directo al mapa de mesas", () => {
+    expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["pos_mesas"])))).toBe("/mesas");
+  });
+
   it("y si no tiene ninguna, a la pantalla que lo explica (no a un mensaje de «no tenés permiso» de una página)", () => {
     expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>()))).toBe(RUTA_SIN_PANTALLAS);
   });
@@ -117,6 +121,21 @@ describe("pantallaDeInicio (con la base)", () => {
     const destino = await pantallaDeInicio(ctxDe(operador));
     expect(destino).not.toBe("/reportes");
     expect(destino).not.toBe(RUTA_SIN_PANTALLAS); // el operador de fábrica tiene varias pantallas
+  });
+
+  it("un rol con solo pos_mesas va a /mesas; admin y operador de fábrica siguen entrando por donde entraban", async () => {
+    const base = await sembrarBase();
+    const mozo = await prisma.rol.create({ data: { nombre: "mozo" } });
+    await prisma.permisoRol.create({ data: { rolId: mozo.id, accionClave: "pos_mesas", puedeVer: true, puedeEditar: true } });
+    const usuario = await crearUsuarioConMembresia({ email: "mozo@test.com", sucursalId: base.sucursal.id, rolId: mozo.id });
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [] });
+
+    expect(await pantallaDeInicio(ctxDe(usuario))).toBe("/mesas");
+    expect(await pantallaDeInicio(ctxDe(admin))).toBe("/reportes");
+    // El operador de fábrica no tiene pos_mesas (queda sin asignar): su pantalla de inicio no cambia.
+    expect(await pantallaDeInicio(ctxDe(operador))).not.toBe("/mesas");
   });
 
   it("un rol sin ningún permiso va a la pantalla que lo explica", async () => {
