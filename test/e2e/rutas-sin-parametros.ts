@@ -11,6 +11,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/administracion/roles",
   "/administracion/sucursales",
   "/administracion/usuarios",
+  "/catalogo/carta",
   "/catalogo/categorias",
   "/catalogo/insumos-grupos",
   "/catalogo/productos",

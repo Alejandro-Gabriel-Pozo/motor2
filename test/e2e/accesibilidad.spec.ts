@@ -690,3 +690,39 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abiertos y el aviso en ámbar de PV sin contenido", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los cuatro bloques (sección, categoría asignada, un PV con contenido y otro
+  // sin él —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos.
+  const marca = `${Date.now()}`;
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Carta Cat ${marca}` } });
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Carta Sección ${marca}`, titulo: "Del fuego", orden: 1 } });
+  await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
+  const [conContenido, sinContenido] = await Promise.all(
+    ["Con", "Sin"].map((q) =>
+      prisma.producto.create({ data: { codigo: `E2E-A11Y-CARTA-${q}-${marca}`, nombre: `E2E A11y Carta ${q} ${marca}`, tipo: "PV", categoriaId: categoria.id, unidadStockId: unidad.id, precioVenta: 100 } })
+    )
+  );
+  await prisma.disponibilidadProducto.createMany({ data: [conContenido, sinContenido].map((p) => ({ sucursalId, productoId: p.id, disponible: true })) });
+  await prisma.contenidoCartaProducto.create({ data: { productoId: conContenido.id, visibleEnCarta: true, tags: ["Regional"], especial: true } });
+  const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
+  try {
+    await page.goto("/catalogo/carta");
+    await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
+    await page.locator(`[data-seccion-carta="${seccion.nombre}"] summary`).click();
+    await page.locator(`[data-contenido-carta="${conContenido.nombre}"] summary`).click();
+    await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
+    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel("Especial (★)")).toBeChecked();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
+    await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
+    await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
+    await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
+    await prisma.producto.deleteMany({ where: { id: { in: [conContenido.id, sinContenido.id] } } });
+    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+  }
+});
