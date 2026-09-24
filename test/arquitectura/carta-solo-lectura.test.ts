@@ -48,6 +48,9 @@ describe("carta: solo lectura", () => {
     const nombres = rutas.map((r) => relative(SRC, r).split(sep).join("/"));
     expect(nombres).toContain("core/carta/menu-consulta.ts");
     expect(nombres).toContain("app/api/carta/[sucursal]/route.ts");
+    // Registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M4).
+    expect(nombres).toContain("app/api/carta/tenants/route.ts");
+    expect(nombres).toContain("core/carta/registro-consulta.ts");
   });
 
   it("ningún archivo de src/core/carta ni src/app/api/carta escribe en la base", () => {

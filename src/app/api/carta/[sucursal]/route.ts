@@ -1,6 +1,6 @@
 import { resolverMenuCarta } from "@/core/carta/menu-consulta";
-import { tokenDeServicioValido } from "@/core/carta/token-servicio";
-import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
+import { autorizarServicioCarta, SIN_CACHE } from "@/core/carta/autorizar-servicio";
+import { reportarError } from "@/lib/reportar-error";
 
 /**
  * La carta pública de una sucursal, para restaurant-menu-design (docs/plan-carta-catalogo-2026-09-24.md, M5). Solo lectura: el
@@ -8,25 +8,17 @@ import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
  * (src/core/carta/armar-menu.ts), versionada con `version: 1`.
  *
  * `[sucursal]` es `Sucursal.id` (decisión D1). Autenticación de servicio con `Authorization: Bearer <CARTA_API_TOKEN>`, mismo
- * patrón que los crons (`src/app/api/cron/*`): sin la variable responde 401 siempre y se avisa a Sentry una sola vez. `/api` ya
- * queda fuera de `src/proxy.ts`. Solo se exporta GET: los demás métodos responden 405 solos.
+ * patrón que los crons (`src/app/api/cron/*`): sin la variable responde 401 siempre y se avisa a Sentry una sola vez. El
+ * preámbulo vive en `autorizarServicioCarta` (src/core/carta/autorizar-servicio.ts), compartido con GET /api/carta/tenants. `/api`
+ * ya queda fuera de `src/proxy.ts`. Solo se exporta GET: los demás métodos responden 405 solos.
  *
  * Firma según la doc de Next 16.3.5 (node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/route.md): el
  * segundo argumento trae `params` como PROMESA. Se tipa a mano en vez de con el helper global `RouteContext<...>` porque ese
  * helper solo existe después de `next build`/`next typegen`, y un `tsc --noEmit` en un checkout limpio fallaría por eso.
  */
-const SIN_CACHE = { "Cache-Control": "no-store" } as const;
-
 export async function GET(request: Request, ctx: { params: Promise<{ sucursal: string }> }): Promise<Response> {
-  const esperado = process.env.CARTA_API_TOKEN;
-  // Un proyecto sin CARTA_API_TOKEN deja a la carta pública sin datos (cae a su menú de respaldo) y en silencio: se avisa.
-  if (!esperado?.trim()) {
-    await reportarErrorUnaVez("carta-api-sin-token", new Error("CARTA_API_TOKEN no está configurada: la carta pública no puede leer el catálogo"), "carta-api");
-    return Response.json({ error: "No autorizado" }, { status: 401, headers: SIN_CACHE });
-  }
-  if (!tokenDeServicioValido(request.headers.get("authorization"), esperado)) {
-    return Response.json({ error: "No autorizado" }, { status: 401, headers: SIN_CACHE });
-  }
+  const noAutorizado = await autorizarServicioCarta(request);
+  if (noAutorizado) return noAutorizado;
 
   try {
     const { sucursal } = await ctx.params;
