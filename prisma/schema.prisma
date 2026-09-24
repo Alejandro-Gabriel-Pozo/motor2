@@ -322,6 +322,7 @@ model Producto {
   promociones          PromocionProducto[]
   traspasos            TraspasoSucursal[]
   contenidoCarta       ContenidoCartaProducto?
+  opcionItemAgrupadoCarta OpcionItemAgrupadoCarta?
   cuentaItems          CuentaItem[]
 
   @@index([insumoId])
@@ -415,6 +416,7 @@ model CategoriaProducto {
   activo       Boolean                @default(true)
   productos    Producto[]
   seccionCarta CategoriaSeccionCarta?
+  itemsAgrupadosCarta ItemAgrupadoCarta[]
 }
 
 /// Catálogo cerrado (Catalogo.js:2634-2810). `magnitud` es solo
@@ -1365,6 +1367,47 @@ model ContenidoCartaProducto {
   /// Orden dentro de su categoría (después del orden de la categoría).
   orden          Int      @default(0)
   actualizadoEn  DateTime @updatedAt
+}
+
+/// Ítem AGRUPADO de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md): un solo renglón visible ("Gaseosa 500cc") que
+/// agrupa varios PV reales y distintos (Coca-Cola 500cc, Sprite 500cc…). Lleva lo de cara al cliente (como ContenidoCartaProducto).
+/// SIN precio propio (D5): el precio es el de sus opciones, que tienen que coincidir; si no, la carta muestra el mayor y el
+/// admin avisa. Global (Catálogo Central). Se ubica por su categoría → sección de carta, igual que un PV. Un solo nivel, sin
+/// árbol (no es Grupo). Nunca se borra: se apaga.
+model ItemAgrupadoCarta {
+  id            String                    @id @default(cuid())
+  nombre        String                    @unique
+  categoriaId   String
+  categoria     CategoriaProducto         @relation(fields: [categoriaId], references: [id])
+  descripcion   String?
+  imagenUrl     String?
+  tags          String[]                  @default([])
+  especial      Boolean                   @default(false)
+  /// Orden dentro de su categoría (misma escala que ContenidoCartaProducto.orden).
+  orden         Int                       @default(0)
+  activo        Boolean                   @default(true)
+  creadoEn      DateTime                  @default(now())
+  actualizadoEn DateTime                  @updatedAt
+  opciones      OpcionItemAgrupadoCarta[]
+
+  @@index([categoriaId])
+  @@index([activo])
+}
+
+/// Un PV real dentro de un ítem agrupado. `productoId @unique`: un producto está en a lo sumo UN ítem agrupado (D2). Un producto
+/// agrupado nunca sale suelto en la carta, aunque tenga ContenidoCartaProducto visible (D3). Quitarlo = borrar esta fila (es
+/// solo una referencia, como CategoriaSeccionCarta).
+model OpcionItemAgrupadoCarta {
+  id                  String            @id @default(cuid())
+  itemAgrupadoCartaId String
+  itemAgrupadoCarta   ItemAgrupadoCarta @relation(fields: [itemAgrupadoCartaId], references: [id])
+  productoId          String            @unique
+  producto            Producto          @relation(fields: [productoId], references: [id])
+  /// Orden de la opción dentro del ítem agrupado.
+  orden               Int               @default(0)
+  creadoEn            DateTime          @default(now())
+
+  @@index([itemAgrupadoCartaId])
 }
 
 /// Promo INFORMATIVA de una sucursal dentro de una sección de carta

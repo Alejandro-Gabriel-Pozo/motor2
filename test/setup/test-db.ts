@@ -7,7 +7,10 @@ export { prisma };
 
 /** Borra todo (orden respetando FKs) — se llama en beforeEach de cada test file. */
 export async function limpiarBaseDeTest() {
-  // Carta antes que nada: sus 6 tablas referencian Producto, CategoriaProducto y Sucursal (RESTRICT), que se borran más abajo.
+  // Carta antes que nada: sus 8 tablas referencian Producto, CategoriaProducto y Sucursal (RESTRICT), que se borran más abajo.
+  // Las opciones de un ítem agrupado primero: referencian al ítem agrupado (RESTRICT) y a Producto.
+  await prisma.opcionItemAgrupadoCarta.deleteMany();
+  await prisma.itemAgrupadoCarta.deleteMany();
   await prisma.temaCartaSucursal.deleteMany();
   await prisma.sucursalPublica.deleteMany();
   await prisma.promoCarta.deleteMany();
