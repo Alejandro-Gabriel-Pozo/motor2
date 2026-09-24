@@ -38,6 +38,7 @@ model User {
   traspasosCerrados         TraspasoSucursal[] @relation("TraspasoCerradoPor")
   pagosConsignante          PagoConsignante[]
   registrosAuditoria        RegistroAuditoria[]
+  cuentasAbiertas           Cuenta[]           @relation("CuentaAbiertaPor")
 }
 
 model Account {
@@ -114,6 +115,7 @@ model Sucursal {
   traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
   pagosConsignante     PagoConsignante[]
   registrosAuditoria   RegistroAuditoria[]
+  mesas                Mesa[]
 }
 
 model Rol {
@@ -316,6 +318,7 @@ model Producto {
   disponibilidades     DisponibilidadProducto[]
   promociones          PromocionProducto[]
   traspasos            TraspasoSucursal[]
+  cuentaItems          CuentaItem[]
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -1280,4 +1283,59 @@ model CotizacionDolar {
   creadoEn DateTime @default(now())
 
   @@unique([fecha, fuente])
+}
+
+// ===================================================================
+// POS: mapa de mesas del salón (docs/plan-mapa-de-mesas-2026-09-24.md).
+//
+// Tres entidades: la mesa física, la CUENTA abierta de esa mesa y sus
+// ítems. La comanda/KOT real (ticket a cocina, con anulación, motivo y
+// permiso elevado) NO se modela todavía: `CuentaItem.numeroEnvio` es un
+// marcador liviano hasta el pendiente «tomar pedido»
+// (docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6).
+// ===================================================================
+
+/// Mesa física del salón. El estado (libre/en_pedido/ocupada) NO se persiste: se deriva de su Cuenta abierta (src/core/pos/mesas.ts).
+model Mesa {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  numero     Int
+  creadoEn   DateTime @default(now())
+  cuentas    Cuenta[]
+
+  @@unique([sucursalId, numero])
+}
+
+/// La CUENTA abierta de una mesa (no la comanda/KOT: ver docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§6).
+/// cerradaEn null = abierta. A lo sumo UNA abierta por mesa (índice único parcial manual "Cuenta_una_abierta_por_mesa_key",
+/// en la migración pos_mesas_cuentas: Prisma no sabe declarar un índice con WHERE). Sin vencimiento automático (§2).
+model Cuenta {
+  id           String       @id @default(cuid())
+  mesaId       String
+  mesa         Mesa         @relation(fields: [mesaId], references: [id])
+  abiertaPorId String
+  abiertaPor   User         @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
+  abiertaEn    DateTime     @default(now())
+  cerradaEn    DateTime?
+  items        CuentaItem[]
+
+  @@index([mesaId])
+}
+
+model CuentaItem {
+  id             String   @id @default(cuid())
+  cuentaId       String
+  cuenta         Cuenta   @relation(fields: [cuentaId], references: [id])
+  productoId     String
+  producto       Producto @relation(fields: [productoId], references: [id])
+  /// Mismo tipo que MovimientoStock.cantidad: desemboca en registrarVenta al facturar.
+  cantidad       Decimal  @db.Decimal(14, 4)
+  /// Precio al agregar el ítem (lo resuelve «tomar pedido»).
+  precioUnitario Decimal  @db.Decimal(14, 2)
+  /// null = sin enviar a cocina; 1..n = en qué envío salió. Marcador liviano hasta la entidad comanda/KOT real (pendiente «tomar pedido»).
+  numeroEnvio    Int?
+  creadoEn       DateTime @default(now())
+
+  @@index([cuentaId])
 }
