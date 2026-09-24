@@ -399,6 +399,25 @@ Con el mismo molde de carpeta-propia-por-dominio (§3,
   `MovimientoStock` sigue pasando por la función de venta que ya existe
   — no se reimplementa el Kardex.
 
+### 7.1 Nota de diseño para el pendiente futuro "tomar pedido" (todavía sin planificar)
+
+El dueño propone, para cuando se diseñe el flujo de armar una comanda
+con una promo: en vez de que `PromoCarta` sea puramente informativa (o
+en vez de reconciliar después), la promo tiene su propia composición
+explícita — se "adjuntan" los productos reales que entran (ej. "Menú
+ejecutivo $25.000" con plato + bebida adjuntos a costo $0, y cualquier
+extra se tilda y toma el precio real de la carta en vez de $0). El
+objetivo es operativo, no solo de reporte: que al armar/vender la promo
+no se le escape un ítem (ej. un vino incluido que alguien olvida
+cargar).
+
+Esto **no toca ni reabre los dos planes ya entregados** (§3-§5 carta,
+`Mesa`/`Comanda` de Mapa de Mesas): en el plan de Mapa de Mesas, "la
+elección dentro de un combo" ya quedó marcada explícitamente afuera del
+alcance de `ComandaItem` (columnas aditivas a sumar cuando se diseñe
+"tomar pedido"). Esta nota es insumo para ESE pendiente futuro, cuando
+se planifique — no antes.
+
 ## 8. Qué queda abierto
 
 - Decidir el camino de `SiteConfig` (§2.2) — preview en vivo sin migrar,
