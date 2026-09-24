@@ -353,7 +353,53 @@ Son dos aplicaciones separadas, no dos pantallas de lo mismo: si al
 comensal se le corta la conexión mirando el menú no se pierde nada
 crítico, así que la carta no necesita nada de lo de esta sección.
 
-## 7. Qué queda abierto
+## 7. Decisión tomada: POS/comandas vive en el mismo repo que motor2
+
+A diferencia de `carta` (§3, solo lectura hacia `catalogo`/`stock`),
+POS/comandas necesita **escribir** ventas reales: cuando se confirma un
+pedido tiene que generar una `Operacion`/`MovimientoStock` de verdad
+(descontar insumos según receta, mismo Kardex que usa todo lo demás).
+Esa escritura ya existe en `src/server/actions/movimientos/venta.ts` —
+partirlo en un repo/deploy aparte obligaría a exponerla por API entre
+dos sistemas, con el riesgo real de que la venta se registre pero el
+descuento de stock falle a mitad de camino (un problema de consistencia
+distribuida que hoy no existe). En el mismo repo/deploy es una sola
+transacción de Postgres. Motivo adicional: el mecanismo de permisos por
+sucursal (`con-permiso.ts`, `CapacidadSucursal`) ya existe — mozo/cocina
+son roles nuevos, no un sistema de auth nuevo.
+
+Con el mismo molde de carpeta-propia-por-dominio (§3,
+`docs/arquitectura-modularidad-server-actions-2026-09-17.md`):
+
+- `src/core/pos/` — dominio de `Mesa`/`Comanda` (abrir mesa, agregar
+  ítem, cerrar). Lee `catalogo` (`Producto`, `CategoriaProducto`,
+  `DisponibilidadProducto`) igual que `carta`, pero además **escribe**
+  en `movimientos` al confirmar una venta — reusando `venta.ts`, sin
+  reimplementar el descuento de stock ni el cálculo de receta.
+- `src/server/actions/pos/` — `abrirMesa`, `agregarItemComanda`,
+  `confirmarVenta` (llama a la lógica existente de venta),
+  `cerrarMesa`, `marcarComandaImpresa` (la que consulta el agente local
+  de §6.1). Gateadas con `con-permiso.ts` como el resto.
+- `src/app/(pos)/` — **route group propio, no `(app)`.** `(app)/layout.tsx`
+  hoy envuelve todo en `AppShell` (nav de escritorio pensado para
+  administración); mozo/cocina en una tablet necesitan otra interfaz
+  (táctil, pantalla grande, sin el menú de administración). Mismo
+  patrón de Next.js App Router que ya separa `(app)` — un route group
+  hermano con su propio layout (`PosShell`), reusando
+  `obtenerContextoUsuario`/`irAlLogin` para la auth pero sin compartir
+  el shell visual. Pantallas: `mesas/`, `cocina/`.
+- `src/app/api/pos/comandas/pendientes/route.ts` y
+  `src/app/api/pos/comandas/[id]/marcar-impresa/route.ts` — los
+  endpoints que consulta el agente local de §6.1 (token de servicio
+  propio, no sesión de usuario — mismo motivo que el endpoint de
+  `carta` en §3).
+- Prisma: tablas nuevas y aditivas (`Mesa`, `Comanda`, `ComandaItem` o
+  el nombre que se termine usando) con FKs de solo lectura hacia
+  `Producto`/`Sucursal`. La escritura real hacia `Operacion`/
+  `MovimientoStock` sigue pasando por la función de venta que ya existe
+  — no se reimplementa el Kardex.
+
+## 8. Qué queda abierto
 
 - Decidir el camino de `SiteConfig` (§2.2) — preview en vivo sin migrar,
   o editor real con persistencia.
