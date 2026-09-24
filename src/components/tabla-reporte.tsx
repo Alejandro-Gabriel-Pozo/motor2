@@ -122,50 +122,52 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
           )}
         </div>
       )}
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-neutral-500">
-            {columnas.map((c) => (
-              <th
-                key={c.clave}
-                onClick={() => alHacerClicEncabezado(c.clave, Boolean(c.valor))}
-                className={`px-2 py-1 first:pl-0 ${c.valor ? "cursor-pointer select-none hover:text-neutral-900" : ""} ${c.alinear === "derecha" ? "text-right" : ""}`}
-              >
-                {/* Una columna sin etiqueta (ej. "acción"/"ver", un link o botón fijo sin texto de encabezado propio) deja un <th> vacío —
-                    invisible para un lector de pantalla, no solo visualmente (axe empty-table-header). Encontrado corriendo el proyecto
-                    Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo 5) con datos reales: el guardián
-                    estático (test/arquitectura/encabezados-de-tabla.test.ts) no lo detecta porque la fuente SÍ tiene contenido (`{c.etiqueta}`),
-                    la vaciedad es de runtime, no del JSX. */}
-                {c.etiqueta || <span className="sr-only">Acciones</span>}
-                {ordenPor === c.clave ? (direccion === "asc" ? " ▲" : " ▼") : ""}
-                {c.ayuda && (
-                  <span onClick={(e) => e.stopPropagation()}>
-                    <AyudaIcono texto={c.ayuda} />
-                  </span>
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {filasOrdenadas.map((f, i) => (
-            <tr key={claveFila(f, i)} className={`border-b ${claseFila?.(f) ?? ""}`}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-neutral-500">
               {columnas.map((c) => (
-                <td key={c.clave} className={`px-2 py-1 first:pl-0 ${c.alinear === "derecha" ? "text-right" : ""}`}>
-                  {c.render(f)}
-                </td>
+                <th
+                  key={c.clave}
+                  onClick={() => alHacerClicEncabezado(c.clave, Boolean(c.valor))}
+                  className={`px-2 py-1 first:pl-0 ${c.valor ? "cursor-pointer select-none hover:text-neutral-900" : ""} ${c.alinear === "derecha" ? "text-right" : ""}`}
+                >
+                  {/* Una columna sin etiqueta (ej. "acción"/"ver", un link o botón fijo sin texto de encabezado propio) deja un <th> vacío —
+                      invisible para un lector de pantalla, no solo visualmente (axe empty-table-header). Encontrado corriendo el proyecto
+                      Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo 5) con datos reales: el guardián
+                      estático (test/arquitectura/encabezados-de-tabla.test.ts) no lo detecta porque la fuente SÍ tiene contenido (`{c.etiqueta}`),
+                      la vaciedad es de runtime, no del JSX. */}
+                  {c.etiqueta || <span className="sr-only">Acciones</span>}
+                  {ordenPor === c.clave ? (direccion === "asc" ? " ▲" : " ▼") : ""}
+                  {c.ayuda && (
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <AyudaIcono texto={c.ayuda} />
+                    </span>
+                  )}
+                </th>
               ))}
             </tr>
-          ))}
-          {!filasOrdenadas.length && (
-            <tr>
-              <td className="py-1 text-neutral-500" colSpan={columnas.length}>
-                {sinFilasTexto}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filasOrdenadas.map((f, i) => (
+              <tr key={claveFila(f, i)} className={`border-b ${claseFila?.(f) ?? ""}`}>
+                {columnas.map((c) => (
+                  <td key={c.clave} className={`px-2 py-1 first:pl-0 ${c.alinear === "derecha" ? "text-right" : ""}`}>
+                    {c.render(f)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {!filasOrdenadas.length && (
+              <tr>
+                <td className="py-1 text-neutral-500" colSpan={columnas.length}>
+                  {sinFilasTexto}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
