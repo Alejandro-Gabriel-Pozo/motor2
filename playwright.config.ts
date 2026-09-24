@@ -95,7 +95,7 @@ export default defineConfig({
       // (@auth/core/lib/utils/env.js: trustHost ??= !!(AUTH_URL ?? AUTH_TRUST_HOST ?? VERCEL ?? NODE_ENV !== "production")). Sin esto cada auth() devuelve
       // UntrustedHost y se cae toda la suite autenticada. En `dev` no cambia nada. El nombre de la cookie de sesión tampoco cambia (http → sin prefijo __Secure-).
       AUTH_TRUST_HOST: "1",
-      // Token de servicio del endpoint de la carta pública (GET /api/carta/[sucursal]); lo usa test/e2e/api-carta.spec.ts.
+      // Token de servicio de los endpoints de la carta pública (GET /api/carta/[sucursal] y /api/carta/tenants); lo usan test/e2e/api-carta*.spec.ts.
       CARTA_API_TOKEN: TOKEN_CARTA_E2E,
     },
     url: URL_BASE,
