@@ -77,6 +77,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/consolidado", label: "Consolidado (mis sucursales)", accion: "ver_reportes_dinero" },
       { href: "/reportes/periodo", label: "Período", accion: "ver_reportes_dinero" },
       { href: "/reportes/categorias", label: "Por categoría", accion: "ver_reportes_dinero" },
+      { href: "/reportes/ventas-por-seccion", label: "Por sección de carta", accion: "ver_reportes_dinero" },
       { href: "/reportes/costos", label: "Costos y márgenes", accion: "ver_reportes_dinero" },
       { href: "/reportes/compras", label: "Compras registradas", accion: "ver_reportes_dinero" },
       { href: "/reportes/rendimiento-recetas", label: "Rendimiento real de recetas", accion: "ver_reportes_dinero" },

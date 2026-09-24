@@ -650,3 +650,43 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado(
+  "reportes/ventas-por-seccion: sin violaciones de axe, contraste incluido (con una sección con ventas y una categoría sin sección en ámbar)",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    // docs/plan-carta-catalogo-2026-09-24.md, M7. Dos ventas: una de una categoría que está en una sección de carta (tabla) y otra de una
+    // categoría que no está en ninguna (aviso en ámbar): sin las dos, la pantalla no dibuja todo lo que se quiere auditar.
+    const marca = `${Date.now()}`;
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const conSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Carta ${marca}` } });
+    const sinSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Suelta ${marca}` } });
+    const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección Carta ${marca}`, orden: 1 } });
+    await prisma.categoriaSeccionCarta.create({ data: { categoriaId: conSeccion.id, seccionCartaId: seccionCarta.id } });
+    const pvs = await Promise.all(
+      [conSeccion, sinSeccion].map((c, i) =>
+        prisma.producto.create({ data: { codigo: `E2E-A11Y-SEC-${i}-${marca}`, nombre: `E2E A11y Plato ${i} ${marca}`, tipo: "PV", categoriaId: c.id, unidadStockId: unidad.id, precioVenta: 100 } })
+      )
+    );
+    const op = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date("2026-08-04T12:00:00Z"), usuarioId: admin.id } });
+    for (const pv of pvs) {
+      await prisma.movimientoStock.create({
+        data: { operacionId: op.id, productoId: pv.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 100, precioPorUnidadStock: 100 },
+      });
+    }
+    try {
+      await page.goto("/reportes/ventas-por-seccion?desde=2026-08-01&hasta=2026-08-10");
+      await expect(page.getByRole("heading", { name: "Ventas por sección de carta" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: new RegExp(`E2E A11y Sección Carta ${marca}`) })).toBeVisible();
+      await expect(page.getByRole("listitem").filter({ hasText: sinSeccion.nombre }), "la categoría sin sección tiene que aparecer en el aviso").toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    } finally {
+      await prisma.movimientoStock.deleteMany({ where: { operacionId: op.id } });
+      await prisma.operacion.deleteMany({ where: { id: op.id } });
+      await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccionCarta.id } });
+      await prisma.seccionCarta.deleteMany({ where: { id: seccionCarta.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: pvs.map((p) => p.id) } } });
+      await prisma.categoriaProducto.deleteMany({ where: { id: { in: [conSeccion.id, sinSeccion.id] } } });
+    }
+  }
+);

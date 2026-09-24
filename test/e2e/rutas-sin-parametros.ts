@@ -43,6 +43,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/reportes/trazabilidad",
   "/reportes/valuacion",
   "/reportes/vencimientos",
+  "/reportes/ventas-por-seccion",
   "/stock/alertas",
   "/stock/consolidado",
   "/stock/conteo-frecuencia",
