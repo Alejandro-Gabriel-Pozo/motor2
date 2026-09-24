@@ -3,13 +3,14 @@ import { prisma } from "@/lib/db";
 import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import type { ProductoSinSeccion } from "./armar-menu";
+import { esClaveTema } from "./tema";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Lectura de las pantallas de admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10, y
- * /catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7). Solo lectura (la
- * fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer(..., "carta")`. No es una
+ * /catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7, y /catalogo/carta/tema, docs/plan-tema-carta-2026-09-24.md,
+ * M9). Solo lectura (la fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer(..., "carta")`. No es una
  * Server Action a propósito: así no queda expuesta como endpoint.
  */
 export interface SeccionCartaAdmin {
@@ -178,4 +179,52 @@ export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortal
       sheetMenuNombre: s.publica.sheetMenuNombre,
     },
   }));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Tema de la carta (/catalogo/carta/tema, docs/plan-tema-carta-2026-09-24.md, M4/M9)
+// ---------------------------------------------------------------------------------------------------------------------------
+
+export interface TemaAdmin {
+  sucursalId: string;
+  nombre: string;
+  /** null = la sucursal todavía no tiene tema en motor2 (la carta usa la tab Config de su sheet). */
+  tema: {
+    /**
+     * Lo guardado TAL CUAL (sin volver a validar), solo las claves del catálogo con valor de texto: si alguien cargó algo inválido
+     * por `db:studio`, el formulario lo muestra para corregirlo (el endpoint, en cambio, lo emite como null).
+     */
+    valores: Record<string, string>;
+    aplicarEnCarta: boolean;
+    actualizadoEn: Date;
+  } | null;
+  /** null = la sucursal no está en el portal: el tema se puede preparar igual, pero no tiene efecto hasta agregarla. */
+  publica: { slug: string; publicada: boolean } | null;
+}
+
+/** El tema de la sucursal (la activa de quien llama) y su lugar en el portal, en una sola consulta. */
+export async function cargarTemaAdmin(sucursalId: string, db: Db = prisma): Promise<TemaAdmin | null> {
+  const s = await db.sucursal.findUnique({
+    where: { id: sucursalId },
+    select: {
+      id: true,
+      nombre: true,
+      temaCarta: { select: { valores: true, aplicarEnCarta: true, actualizadoEn: true } },
+      publica: { select: { slug: true, publicada: true } },
+    },
+  });
+  if (!s) return null;
+  const json = s.temaCarta?.valores;
+  const obj: Record<string, unknown> = typeof json === "object" && json !== null && !Array.isArray(json) ? (json as Record<string, unknown>) : {};
+  const valores: Record<string, string> = {};
+  for (const clave of Object.keys(obj)) {
+    const v = obj[clave];
+    if (esClaveTema(clave) && typeof v === "string") valores[clave] = v;
+  }
+  return {
+    sucursalId: s.id,
+    nombre: s.nombre,
+    tema: s.temaCarta && { valores, aplicarEnCarta: s.temaCarta.aplicarEnCarta, actualizadoEn: s.temaCarta.actualizadoEn },
+    publica: s.publica,
+  };
 }
