@@ -25,6 +25,10 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "unidades", descripcion: "Administrar el catálogo de Unidades de medida", rolesEditarSemilla: ["admin"] },
   { clave: "proveedores", descripcion: "Administrar el catálogo de Proveedores (activar/desactivar)", rolesEditarSemilla: ["admin"] },
   { clave: "categorias", descripcion: "Administrar el catálogo de Categorías", rolesEditarSemilla: ["admin"] },
+  // Nueva (docs/plan-carta-catalogo-2026-09-24.md, M8): administrar lo que la carta pública (restaurant-menu-design) lee de acá —
+  // las secciones de carta, qué categoría cae en cada una, el contenido de cara al cliente de cada PV y las promos de la sucursal.
+  // Solo admin: es lo que ve el público.
+  { clave: "carta", descripcion: "Administrar la carta pública: secciones de carta, contenido de cada producto de venta y promos de la sucursal", rolesEditarSemilla: ["admin"] },
   { clave: "stock_minimo", descripcion: "Fijar Stock Mínimo (global o por sección)", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, porción Stock):
   // calcularStockConsolidado_/calcularStockPorFamilia_/calcularAlertasStock_
