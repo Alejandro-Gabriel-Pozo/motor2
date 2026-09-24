@@ -114,6 +114,7 @@ model Sucursal {
   traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
   pagosConsignante     PagoConsignante[]
   registrosAuditoria   RegistroAuditoria[]
+  promosCarta          PromoCarta[]
 }
 
 model Rol {
@@ -316,6 +317,7 @@ model Producto {
   disponibilidades     DisponibilidadProducto[]
   promociones          PromocionProducto[]
   traspasos            TraspasoSucursal[]
+  contenidoCarta       ContenidoCartaProducto?
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -403,10 +405,11 @@ model Grupo {
 /// aplica a CUALQUIER producto (MP o PV). Sin jerarquía, sin relación con
 /// el árbol de Grupo (ese agrupa Insumos, no productos de venta).
 model CategoriaProducto {
-  id        String     @id @default(cuid())
-  nombre    String     @unique
-  activo    Boolean    @default(true)
-  productos Producto[]
+  id           String                 @id @default(cuid())
+  nombre       String                 @unique
+  activo       Boolean                @default(true)
+  productos    Producto[]
+  seccionCarta CategoriaSeccionCarta?
 }
 
 /// Catálogo cerrado (Catalogo.js:2634-2810). `magnitud` es solo
@@ -1280,4 +1283,104 @@ model CotizacionDolar {
   creadoEn DateTime @default(now())
 
   @@unique([fecha, fuente])
+}
+
+// ===================================================================
+// CARTA: el contenido de la carta pública (restaurant-menu-design la lee
+// por GET /api/carta/[sucursal], de solo lectura — ver
+// docs/plan-carta-catalogo-2026-09-24.md y
+// docs/grounding-unificacion-carta-stock-2026-09-23.md).
+//
+// Nada de acá cambia el catálogo: el QUÉ se vende (Producto PV), el
+// precio (precioVenta / PrecioLocalProducto) y el DÓNDE
+// (DisponibilidadProducto) siguen viniendo de donde ya vienen. Estas
+// tablas solo agregan lo que la carta necesita y el catálogo no tiene:
+// las secciones visuales de la carta, el texto de cara al cliente de cada
+// PV y las promos informativas de cada sucursal.
+//
+// OJO con el nombre: `Seccion` (arriba, MOVIMIENTOS) es la sección de
+// STOCK de una sucursal (depósito, cocina…). `SeccionCarta` es la sección
+// de la carta ("Platos Principales"); en código y UI decir siempre
+// "sección de carta".
+// ===================================================================
+
+/// Sección visual de la carta pública (en restaurant-menu-design,
+/// `MenuCategory`). Global — Catálogo Central, como CategoriaProducto —
+/// por decisión D4 del plan: si hiciera falta un título o imagen distinto
+/// por sucursal, se agrega después un override aditivo.
+model SeccionCarta {
+  id          String                  @id @default(cuid())
+  /// "Platos Principales" → MenuCategory.label.
+  nombre      String                  @unique
+  /// "Del fuego" → titulo_seccion (null = se usa `nombre`).
+  titulo      String?
+  descripcion String?
+  /// Solo `https://` sin espacios, comillas ni paréntesis: la carta la mete
+  /// en `backgroundImage: url(...)` (ver src/core/carta/armar-menu.ts).
+  imagenUrl   String?
+  orden       Int                     @default(0)
+  /// Nunca se borra una sección: se apaga (mismo patrón que el catálogo).
+  activa      Boolean                 @default(true)
+  categorias  CategoriaSeccionCarta[]
+  promos      PromoCarta[]
+
+  @@index([activa, orden])
+}
+
+/// Tabla puente CategoriaProducto → SeccionCarta, SOLO de referencia: no
+/// toca la categoría (que siguen usando los reportes). Una categoría cae
+/// en a lo sumo una sección de carta (`categoriaId` único); una categoría
+/// sin fila acá no aparece en la carta.
+model CategoriaSeccionCarta {
+  id             String            @id @default(cuid())
+  categoriaId    String            @unique
+  categoria      CategoriaProducto @relation(fields: [categoriaId], references: [id])
+  seccionCartaId String
+  seccionCarta   SeccionCarta      @relation(fields: [seccionCartaId], references: [id])
+  /// Orden de la categoría dentro de su sección de carta.
+  orden          Int               @default(0)
+
+  @@index([seccionCartaId])
+}
+
+/// El texto de cara al cliente de un PV. FILA AUSENTE = NO SE MUESTRA
+/// (decisión D3, opt-in — mismo criterio que DisponibilidadProducto): nada
+/// interno aparece en la carta pública sin que alguien lo marque. Por eso
+/// la migración NO hace backfill.
+model ContenidoCartaProducto {
+  id             String   @id @default(cuid())
+  productoId     String   @unique
+  producto       Producto @relation(fields: [productoId], references: [id])
+  visibleEnCarta Boolean  @default(false)
+  descripcion    String?
+  imagenUrl      String?
+  tags           String[] @default([])
+  /// ★ "especial" de la carta.
+  especial       Boolean  @default(false)
+  /// Orden dentro de su categoría (después del orden de la categoría).
+  orden          Int      @default(0)
+  actualizadoEn  DateTime @updatedAt
+}
+
+/// Promo INFORMATIVA de una sucursal dentro de una sección de carta
+/// (título, descripción, precio). No referencia a Producto ni mueve stock:
+/// la composición real de una promo queda para el pendiente "tomar
+/// pedido" (docs/grounding-unificacion-carta-stock-2026-09-23.md §7.1).
+/// Distinta de PromocionProducto (REPORTES), que marca qué PV cuenta como
+/// promoción para el reporte de promociones.
+model PromoCarta {
+  id             String       @id @default(cuid())
+  sucursalId     String
+  sucursal       Sucursal     @relation(fields: [sucursalId], references: [id])
+  seccionCartaId String
+  seccionCarta   SeccionCarta @relation(fields: [seccionCartaId], references: [id])
+  titulo         String
+  descripcion    String?
+  precio         Decimal      @db.Decimal(14, 2)
+  orden          Int          @default(0)
+  activa         Boolean      @default(true)
+  creadoEn       DateTime     @default(now())
+
+  @@index([sucursalId, activa])
+  @@index([seccionCartaId])
 }
