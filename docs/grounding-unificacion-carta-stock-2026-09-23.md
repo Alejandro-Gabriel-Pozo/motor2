@@ -307,6 +307,52 @@ uso diario):
 - Que el agente/PC se caiga y nadie lo note — conviene que arranque solo
   con el sistema y quede corriendo siempre.
 
+### 6.2 Resiliencia offline del POS/comandas (no de la carta)
+
+Sobre qué pasa si se corta internet durante el servicio, se refinó el
+diseño de la opción B (todavía sin decidir si se implementa):
+
+- **La impresión no debería depender de internet en absoluto.** En vez
+  de que el agente local le pregunte a motor2 (en la nube) "¿hay
+  comandas pendientes?", el dispositivo donde se toma el pedido le habla
+  **directo al agente por la red local** (LAN, sin salir a internet) —
+  imprime siempre, haya o no conexión. El registro en motor2 (stock,
+  reportes) se encola aparte y se sincroniza cuando vuelve la señal:
+  eso sí tolera esperar, la cocina no.
+- **La pantalla de toma de pedido necesitaría ser una PWA con caché
+  offline** para poder seguir abriendo y tomando pedidos sin conexión.
+  Estructura (nada de esto existe hoy en ningún repo — `restaurant-menu-design/app/manifest.ts`
+  es el único precedente, y es solo el manifest de la carta pública, sin
+  Service Worker ni caché):
+  1. **Web App Manifest** propio de esta pantalla (mismo patrón que
+     `manifest.ts`, pero para el POS, no para la carta).
+  2. **Service Worker** — cachea el app shell la primera vez que carga
+     con internet, y sirve esa versión cacheada sin conexión.
+  3. **IndexedDB** — guarda la copia del catálogo/precios para poder
+     armar el pedido offline, y la cola de pedidos pendientes de
+     sincronizar (con estado `pendiente`/`sincronizado`, para no
+     duplicar al reintentar).
+  4. **Background Sync (o un fallback manual de "reintentar al detectar
+     `online`")** — manda sola la cola pendiente apenas vuelve la
+     conexión.
+  5. **Indicador visible de "sin conexión"** en la UI, para que el
+     mozo sepa que está operando offline.
+- **Esto reduce el riesgo, no lo elimina.** Mientras dura el corte: el
+  catálogo/precios que ve el dispositivo quedan congelados en lo último
+  cacheado; si dos mozos tocan la misma mesa sin poder verse entre sí
+  puede haber que reconciliar a mano al reconectar; y el caché offline
+  del navegador depende del dispositivo (puede fallar por poco espacio,
+  la app en segundo plano, etc.). Cortes cortos, esto lo tapa bien;
+  cortes largos, no lo elimina del todo.
+
+**Aclaración importante de alcance:** todo esto (impresión por LAN, PWA
+offline, IndexedDB, sync) es exclusivo del lado **POS/comandera/mesas**
+(staff, con login, con escritura) — **no aplica a la carta pública**
+(`restaurant-menu-design`, de cara al cliente, sin login, solo lectura).
+Son dos aplicaciones separadas, no dos pantallas de lo mismo: si al
+comensal se le corta la conexión mirando el menú no se pierde nada
+crítico, así que la carta no necesita nada de lo de esta sección.
+
 ## 7. Qué queda abierto
 
 - Decidir el camino de `SiteConfig` (§2.2) — preview en vivo sin migrar,
@@ -314,6 +360,12 @@ uso diario):
 - Resolver, como trabajo previo y separado, cómo se cargan/reconcilian
   las ventas de promos (§6) — recién ahí `PromoCarta` puede pasar de
   informativo a tener un análisis de costos real por combo.
+- Si se sigue el camino B de promos (POS/comandas), decidir si se
+  construye la resiliencia offline de §6.2 desde el principio o se
+  arranca sin ella (dependiente de internet) y se suma después.
+- Recordar que POS/comandas (§6, §6.1, §6.2) es una aplicación separada
+  de la carta pública — ninguna decisión de esa parte bloquea ni
+  necesita tocar `restaurant-menu-design`.
 - Ninguna de estas decisiones requiere fusionar los repos en un solo
   código/deploy: alcanza con que restaurant-menu-design consuma el
   endpoint `src/app/api/carta/[sucursal]/route.ts` de motor2 en vez de
