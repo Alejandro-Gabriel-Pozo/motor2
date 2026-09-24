@@ -7,7 +7,8 @@ import type { ProductoSinSeccion } from "./armar-menu";
 type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
- * Lectura de la pantalla de admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10). Solo lectura (la
+ * Lectura de las pantallas de admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10, y
+ * /catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7). Solo lectura (la
  * fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer(..., "carta")`. No es una
  * Server Action a propósito: así no queda expuesta como endpoint.
  */
@@ -120,4 +121,61 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
       activa: pr.activa,
     })),
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Portal de sucursales (/catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7)
+// ---------------------------------------------------------------------------------------------------------------------------
+
+export interface RegistroPublicoAdmin {
+  slug: string;
+  etiqueta: string | null;
+  dominio: string | null;
+  subtituloPortal: string | null;
+  posX: number | null;
+  posY: number | null;
+  posW: number | null;
+  posH: number | null;
+  orden: number;
+  publicada: boolean;
+  menuDesdeMotor2: boolean;
+  sheetId: string | null;
+  sheetMenuNombre: string;
+}
+
+export interface SucursalPortalAdmin {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  /** null = la sucursal no está en el registro de motor2 (la carta sigue con la fila de la sheet, si la hay). */
+  publica: RegistroPublicoAdmin | null;
+}
+
+/** TODAS las sucursales (el mapa del portal es entre sucursales, no depende de la activa), activas primero, con su fila si la tienen. */
+export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortalAdmin[]> {
+  const sucursales = await db.sucursal.findMany({
+    select: { id: true, nombre: true, activo: true, publica: true },
+    orderBy: [{ activo: "desc" }, { nombre: "asc" }],
+  });
+  const num = (v: { toString(): string } | null) => (v === null ? null : Number(v));
+  return sucursales.map((s) => ({
+    id: s.id,
+    nombre: s.nombre,
+    activo: s.activo,
+    publica: s.publica && {
+      slug: s.publica.slug,
+      etiqueta: s.publica.etiqueta,
+      dominio: s.publica.dominio,
+      subtituloPortal: s.publica.subtituloPortal,
+      posX: num(s.publica.posX),
+      posY: num(s.publica.posY),
+      posW: num(s.publica.posW),
+      posH: num(s.publica.posH),
+      orden: s.publica.orden,
+      publicada: s.publica.publicada,
+      menuDesdeMotor2: s.publica.menuDesdeMotor2,
+      sheetId: s.publica.sheetId,
+      sheetMenuNombre: s.publica.sheetMenuNombre,
+    },
+  }));
 }

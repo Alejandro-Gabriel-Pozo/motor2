@@ -7,7 +7,7 @@ import { prisma } from "../../src/lib/db";
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las cinco pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
- * insumos-grupos, capacidades por sucursal, precio local) y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
+ * insumos-grupos, capacidades por sucursal, precio local), el admin de la carta y su portal de sucursales, y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una
  * necesidad concreta.
  */
 
@@ -724,6 +724,27 @@ testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abierto
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
     await prisma.producto.deleteMany({ where: { id: { in: [conContenido.id, sinContenido.id] } } });
     await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+  }
+});
+
+testAutenticado("catalogo/carta/portal: sin violaciones de axe, con una sucursal sin agregar y el formulario de otra abierto", async ({ paginaAutenticada: page }) => {
+  // docs/plan-registro-tenants-2026-09-24.md, M7. Una sucursal fuera del portal (botón «Agregar») y otra dentro, publicada y con posición, con su
+  // <details> desplegado: cerrado, un <details> no expone sus campos (los dos fieldset, los checkbox y el botón de quitar).
+  const marca = `${Date.now()}`;
+  const [fuera, dentro] = await Promise.all(["Fuera", "Dentro"].map((q) => prisma.sucursal.create({ data: { nombre: `E2E A11y Portal ${q} ${marca}` } })));
+  await prisma.sucursalPublica.create({
+    data: { sucursalId: dentro.id, slug: `e2e-a11y-portal-${marca}`, publicada: true, sheetId: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-a11y", posX: 10, posY: 20, posW: 5, subtituloPortal: "Frente al lago" },
+  });
+  try {
+    await page.goto("/catalogo/carta/portal");
+    await expect(page.getByRole("heading", { name: "Portal de sucursales", level: 1 })).toBeVisible();
+    await expect(page.locator(`[data-sucursal-portal="${fuera.nombre}"]`).getByRole("button", { name: /^Agregar/ })).toBeVisible();
+    await page.locator(`[data-sucursal-portal="${dentro.nombre}"] summary`).click();
+    await expect(page.locator(`[data-sucursal-portal="${dentro.nombre}"]`).getByLabel("Publicada en el portal")).toBeChecked();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId: { in: [fuera.id, dentro.id] } } });
+    await prisma.sucursal.deleteMany({ where: { id: { in: [fuera.id, dentro.id] } } });
   }
 });
 
