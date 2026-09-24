@@ -31,6 +31,39 @@
   }
 }
 
+/* Salón (módulo POS, route group `(pos)`): tokens de color del mapa de mesas, aplicados por `PosShell` en `.pos-shell` y NUNCA en
+   `:root`. Dos razones: (1) `:root` declara `color-scheme: light dark` y en modo oscuro pinta texto casi blanco (#ededed), pero las
+   tarjetas del salón son blancas fijas: el número de mesa y los totales quedarían ilegibles; (2) nombres genéricos como `--border` o
+   `--ink-soft` ensuciarían el namespace de toda la administración. El salón no tiene modo oscuro todavía: `color-scheme: light` hace
+   que el navegador dibuje claros también sus controles (el <select> de sucursal, los scrollbars).
+   Contraste (plan §A.3, ajuste aprobado por el dueño): `--ink-faint` pasó de #A8A49C (2,48:1) a #76726A (4,79:1 sobre blanco,
+   4,58:1 sobre papel), y los textos de estado usan `--mesa-libre-ink`/`--mesa-draft-ink` en vez del color de estado. Barras, puntos
+   y fondos de estado quedan exactamente como en el diseño. */
+.pos-shell {
+  color-scheme: light;
+  --paper: #FAFAF8;
+  --ink: #1C1B19;
+  --brand: #A8431F;
+  --brand-hover: #8A3618;
+  --border: #E8E5DF;
+  --ink-soft: #6B6862;
+  --ink-faint: #76726A;
+
+  --mesa-libre: #3F7A5C;
+  --mesa-libre-tint: #EBF3EE;
+  --mesa-libre-ink: #356A4F;
+
+  --mesa-draft: #B8860B;
+  --mesa-draft-tint: #FBF3DE;
+  --mesa-draft-ink: #7A5A07;
+
+  --mesa-ocupada: #A63D3D;
+  --mesa-ocupada-tint: #FAEBEB;
+
+  background: var(--paper);
+  color: var(--ink);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

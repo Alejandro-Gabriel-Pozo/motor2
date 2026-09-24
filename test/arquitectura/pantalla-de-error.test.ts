@@ -4,11 +4,12 @@ import { describe, expect, it } from "vitest";
 
 /**
  * La aplicación tiene pantalla de error propia. Sin `error.tsx`, un fallo al armar una pantalla mostraba la página de error
- * genérica de Next (sin menú ni salida); `global-error.tsx` cubre la caída del layout raíz. Next 16 les pasa `retry` (reemplaza
- * a `reset`) y los dos tienen que ser componentes de cliente. Que el error se ve de verdad se comprueba en el navegador (e2e).
+ * genérica de Next (sin menú ni salida); hay una por route group (`(app)`, la administración, y `(pos)`, el salón) y
+ * `global-error.tsx` cubre la caída del layout raíz. Next 16 les pasa `retry` (reemplaza a `reset`) y todas tienen que ser
+ * componentes de cliente. Que el error se ve de verdad se comprueba en el navegador (e2e).
  */
 const RAIZ = join(__dirname, "../../src/app");
-const PANTALLAS = ["(app)/error.tsx", "global-error.tsx"];
+const PANTALLAS = ["(app)/error.tsx", "(pos)/error.tsx", "global-error.tsx"];
 
 describe.each(PANTALLAS)("src/app/%s", (archivo) => {
   it("existe y es un componente de cliente con «Reintentar» (retry)", () => {

@@ -11,12 +11,13 @@ import { ACCION_POR_PROCESO } from "../../src/core/movimientos/transiciones";
  * elige el primer ítem visible) llevaría a un mensaje de «no tenés permiso». Cubre todo el menú; los reportes tienen además su
  * propio test (reportes-con-permiso.test.ts).
  */
-const RAIZ = join(__dirname, "../../src/app/(app)");
+// Las pantallas viven en dos route groups: `(app)` (la administración, con el menú lateral) y `(pos)` (el salón, con su propio shell).
+const RAICES = ["(app)", "(pos)"].map((grupo) => join(__dirname, "../../src/app", grupo));
 
 /** La acción con la que se protege una ruta: la literal de su `page.tsx`, o la del proceso si es la ruta dinámica /movimientos/[proceso]. */
 function accionDeLaPagina(href: string): string | undefined {
-  const archivo = join(RAIZ, ...href.split("/").filter(Boolean), "page.tsx");
-  if (existsSync(archivo)) return readFileSync(archivo, "utf8").match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
+  const archivo = RAICES.map((raiz) => join(raiz, ...href.split("/").filter(Boolean), "page.tsx")).find((ruta) => existsSync(ruta));
+  if (archivo) return readFileSync(archivo, "utf8").match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
 
   const slug = href.match(/^\/movimientos\/([^/]+)$/)?.[1];
   const config = slug ? obtenerConfigProceso(slug) : null;

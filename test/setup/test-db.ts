@@ -13,6 +13,11 @@ export async function limpiarBaseDeTest() {
   await prisma.categoriaSeccionCarta.deleteMany();
   await prisma.seccionCarta.deleteMany();
 
+  // POS antes que nada: CuentaItem referencia Cuenta y Producto; Cuenta referencia Mesa y User; Mesa referencia Sucursal.
+  await prisma.cuentaItem.deleteMany();
+  await prisma.cuenta.deleteMany();
+  await prisma.mesa.deleteMany();
+
   // Movimientos primero: Operacion/ConteoFisico referencian User/Sucursal/
   // Proveedor, que se borran más abajo — y MovimientoStock referencia a
   // los tres (Operacion/ConteoFisico incluidos).

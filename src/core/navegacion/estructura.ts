@@ -107,6 +107,14 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/traspasos/enviar", label: "Enviar directo", accion: "proceso_transferencia_sucursal" },
     ],
   },
+  {
+    // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): la pantalla vive en el route group `(pos)`, con su propio shell y sin
+    // este menú. El ítem va AL FINAL a propósito: quien tiene /reportes sigue entrando por ahí, y a quien solo tiene salón (el rol
+    // «mozo» armado desde la matriz) la pantalla de inicio lo manda directo a /mesas.
+    id: "pos",
+    label: "Salón",
+    items: [{ href: "/mesas", label: "Mapa de mesas", accion: "pos_mesas" }],
+  },
 ];
 
 /**
