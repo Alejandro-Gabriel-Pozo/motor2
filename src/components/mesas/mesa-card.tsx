@@ -19,7 +19,11 @@ export interface MesaCardProps {
   mesero?: string;
   tiempoAbierta?: string; // ej. "hace 42 min"
   pedidosEnviados?: number;
-  /** Un botón sin callback se dibuja deshabilitado: nunca un botón habilitado que no hace nada. */
+  /**
+   * CORTE DE ALCANCE (plan, paso 5): los cuatro callbacks son el punto de enganche del pendiente futuro «tomar pedido /
+   * comanda-KOT / facturar» (insumos en docs/grounding-pos-mesas-comandas-2026-09-24.md §3/§4). Hoy el mapa no pasa ninguno, y
+   * un botón sin callback se dibuja DESHABILITADO: nunca un botón habilitado que no hace nada, ni una ruta placeholder.
+   */
   onTomarPedido?: () => void;
   onVerPedidos?: () => void;
   onFacturar?: () => void;
