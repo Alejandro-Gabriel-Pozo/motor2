@@ -4,9 +4,7 @@ import type { Prisma, Proceso } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
-import { validarCantidad } from "@/core/datos/cantidad";
-import { validarImporte } from "@/core/datos/importe";
-import { validarNroFactura } from "@/core/datos/nro-factura";
+import { guardLineaCompra, guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import {
   ACCION_POR_PROCESO,
   TRANSICIONES,
@@ -142,20 +140,16 @@ async function armarLineaMovimiento(
   let precioEntrada: number;
   let pesoReal: number | null = null;
   if (transicion.aplicaFactorConversion) {
-    // Compra y Devolución a proveedor (docs/plan-validacion-de-datos-2026-09-25.md, Paso C1): cada dato de entrada se valida con
-    // src/core/datos y un dato inválido RECHAZA el movimiento entero con un mensaje. Antes: una cantidad basura o 0 salteaba la
-    // línea en silencio, un precio NaN o negativo se guardaba como 0, un peso real inválido se ignoraba y 2,5 en una unidad entera
-    // se redondeaba a 3.
+    // Compra y Devolución a proveedor (docs/plan-validacion-de-datos-2026-09-25.md, Paso C1; guard de la feature en
+    // src/core/features/compras/compra.guard.ts): un dato inválido RECHAZA el movimiento entero con un mensaje. Antes: una cantidad
+    // basura o 0 salteaba la línea en silencio, un precio NaN o negativo se guardaba como 0, un peso real inválido se ignoraba y 2,5
+    // en una unidad entera se redondeaba a 3.
     const unidadDeCompra = presentacion?.unidadCompra ?? producto.unidadCompra ?? producto.unidadStock;
-    const cantidad = validarCantidad(item.cantidad, unidadDeCompra, { etiqueta: `La cantidad de "${producto.nombre}"`, obligatorio: true });
-    if (!cantidad.ok) return { ok: false, mensaje: cantidad.mensaje };
-    const precio = validarImporte(item.precioTotal, { etiqueta: `El precio de "${producto.nombre}"` });
-    if (!precio.ok) return { ok: false, mensaje: precio.mensaje };
-    const peso = validarCantidad(item.pesoReal, producto.unidadStock, { etiqueta: `El peso real de "${producto.nombre}"`, obligatorio: false });
-    if (!peso.ok) return { ok: false, mensaje: peso.mensaje };
-    numCant = cantidad.valor!; // obligatoria: nunca null
-    precioEntrada = precio.valor ?? 0; // compra sin precio: sigue permitida, se guarda 0
-    pesoReal = peso.valor;
+    const validada = guardLineaCompra(producto.nombre, { cantidad: item.cantidad, precioTotal: item.precioTotal, pesoReal: item.pesoReal }, unidadDeCompra, producto.unidadStock);
+    if (!validada.ok) return { ok: false, mensaje: validada.mensaje };
+    numCant = validada.valor.cantidad;
+    precioEntrada = validada.valor.precioTotal;
+    pesoReal = validada.valor.pesoReal;
   } else {
     let cant: number | null = item.cantidad;
     if (transicion.permiteCero) {
@@ -287,7 +281,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
     }
 
     // El N.º de factura solo se carga en Compra y Devolución a proveedor (los procesos con proveedor): mismo validador que la corrección.
-    const factura = validarNroFactura(datos.nroFactura);
+    const factura = guardNroFacturaCompra(datos.nroFactura);
     if (!factura.ok) return error(factura.mensaje);
     const nroFactura = factura.valor;
 
