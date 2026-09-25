@@ -107,3 +107,8 @@ Combos/promos, notas/modificadores de ítem, impresión y agente local, pantalla
 > navegador, ver `docs/plan-imprimir-comanda-y-boleta-2026-09-25.md`. El agente local sigue sin hacer falta (una sola PC que ve las
 > dos impresoras). `enviarACocina` devuelve además `numeroEnvio`/`envioNuevo` (`ResultadoEnvioACocina`) para imprimir solo el
 > envío que creó cada llamada.
+
+> **Actualización 2026-09-25 — selector por sección de carta:** «Agregar al pedido» ya no es solo el buscador por texto: si la
+> sucursal tiene carta, se navega por sus secciones (más «Fuera de carta» para lo que la carta no muestra) y un ítem agrupado se
+> despliega para elegir la opción concreta. El buscador sigue igual, al lado, y sin ninguna sección de carta la pantalla queda como
+> antes. `agregarItems` no cambió. Ver `docs/plan-selector-carta-pos-2026-09-25.md`.
