@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { anularItemEnviado, cerrarCuenta, liberarMesa } from "../../src/server/actions/pos/cuenta";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
-import { BOLETAS_RECIENTES_POR_MESA, obtenerBoletasRecientes } from "../../src/core/pos/boleta";
+import { BOLETAS_RECIENTES_POR_MESA, armarBoleta, obtenerBoletasRecientes } from "../../src/core/pos/boleta";
 
 /**
  * Boleta de cierre (src/core/pos/boleta.ts, docs/plan-imprimir-comanda-y-boleta-2026-09-25.md B5/B8): derivada de la cuenta cerrada con
@@ -96,5 +96,14 @@ describe("obtenerBoletasRecientes", () => {
 
     const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
     expect(boleta).toMatchObject({ cuentaId: cuenta.id, ventaAnulada: true });
+  });
+});
+
+/** Precisión de montos (plan 2026-09-25, Paso 5): 0,3 kg × $1.234,55 = 370,365 exacto; en float 370.36499999999995 redondeaba a 370,36. */
+describe("armarBoleta — importes exactos", () => {
+  it("una línea de 0,3 kg × $1.234,55: subtotal y total 370,37", () => {
+    const boleta = armarBoleta([{ productoId: "p1", productoNombre: "Jamón crudo por kg", cantidad: 0.3, precioUnitario: 1234.55 }]);
+    expect.soft(boleta.lineas).toEqual([{ producto: "Jamón crudo por kg", cantidad: 0.3, precioUnitario: 1234.55, subtotal: 370.37 }]);
+    expect.soft(boleta.total).toBe(370.37);
   });
 });

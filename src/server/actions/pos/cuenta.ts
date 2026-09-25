@@ -3,6 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { totalDeLineas } from "@/core/moneda";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -315,7 +316,7 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
       }
       await cerrar();
 
-      const total = redondearMoneda(lineas.reduce((suma, l) => suma + l.cantidad * l.precioUnitario, 0));
+      const total = totalDeLineas(lineas);
       const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}.`;
       if (!venta.avisosStockNegativo.length) return ok(mensaje);
 

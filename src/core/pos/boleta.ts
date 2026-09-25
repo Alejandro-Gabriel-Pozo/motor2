@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { importeDeLinea, totalDeLineas } from "@/core/moneda";
 import { lineasDeVenta } from "./cuenta";
 import { nombreDelMesero } from "./mesas";
 
@@ -47,9 +47,9 @@ export function armarBoleta(items: readonly { productoId: string; productoNombre
       producto: nombres.get(`${l.productoId}|${l.precioUnitario}`) ?? "",
       cantidad: l.cantidad,
       precioUnitario: l.precioUnitario,
-      subtotal: redondearMoneda(l.cantidad * l.precioUnitario),
+      subtotal: importeDeLinea(l.cantidad, l.precioUnitario),
     })),
-    total: redondearMoneda(netas.reduce((suma, l) => suma + l.cantidad * l.precioUnitario, 0)),
+    total: totalDeLineas(netas),
   };
 }
 
