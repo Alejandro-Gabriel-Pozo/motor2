@@ -11,7 +11,7 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
  *
  * Siembra en «Central» dos PV sin receta y un PV con receta de una MP SIN stock (para ejercitar B6bis de verdad), todos disponibles
  * en la sucursal. Cada caso limpia lo suyo en `finally`, en el orden que exigen las claves foráneas: filas espejo → ítems →
- * movimientos/operaciones (y su auditoría) → cuentas → mesas → productos.
+ * movimientos/operaciones (y su auditoría) → ejemplares de la boleta (correcciones primero) → cuentas → mesas → productos.
  */
 
 const SECCION = "Depósito E2E";
@@ -45,6 +45,9 @@ async function sembrarCatalogo(sucursalId: string) {
       await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: operacionIds } } });
       await prisma.movimientoStock.deleteMany({ where: { OR: [{ operacionId: { in: operacionIds } }, { productoId: { in: productoIds } }] } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
+      // Los ejemplares de la boleta referencian la cuenta (RESTRICT) y las correcciones a su ejemplar A (RESTRICT): correcciones → resto → cuentas.
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, corrigeAId: { not: null } } });
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.recetaIngrediente.deleteMany({ where: { recetaVersion: { productoId: pizza.id } } });
