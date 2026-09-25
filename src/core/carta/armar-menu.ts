@@ -6,11 +6,13 @@
  *
  * Qué decide este módulo (y ningún otro):
  *  - el PRECIO que muestra la carta: el mismo que se cobra (`precioDeCarta`, paridad con `resolverPrecioVenta`);
- *  - cómo se agrupan los PV en secciones de carta (a través de la tabla puente categoría → sección);
+ *  - cómo se ubican los PV y los ítems agrupados en las secciones de carta: DIRECTO, cada uno por su `seccionCartaId`
+ *    (docs/plan-carta-seccion-directa-2026-09-25.md) — la Categoría de producto no tiene ningún papel en la carta;
  *  - cómo se arma un ÍTEM AGRUPADO ("Gaseosa 500cc" → Coca-Cola, Sprite, Fanta; docs/plan-agrupacion-items-carta-2026-09-24.md):
  *    su precio (el de sus opciones; si difieren, el MAYOR, D5) y que un producto agrupado nunca salga suelto (D3);
- *  - el ORDEN de secciones, ítems y promos;
- *  - qué `imagenUrl` es segura para la carta (`urlImagenSegura`).
+ *  - el ORDEN de secciones, ítems y promos (dentro de una sección: `orden` → nombre, sueltos y agrupados en la misma escala);
+ *  - qué `imagenUrl` de SECCIÓN es segura para la carta (`urlImagenSegura`). Un ítem no tiene imagen propia: la carta pública
+ *    solo dibuja la de la sección, así que `ItemCartaV1.imagenUrl` sale siempre `null`.
  *
  * Qué NO decide: qué PV están disponibles en la sucursal ni cuáles son visibles en la carta — eso ya viene filtrado desde la
  * consulta (`whereDisponibleEn` + `ContenidoCartaProducto.visibleEnCarta`).
@@ -23,18 +25,25 @@
 export interface ItemCartaV1 {
   productoId: string;
   nombre: string;
-  /** Nombre de la CategoriaProducto del PV (p. ej. "Bife"). */
+  /**
+   * Informativo (restaurant-menu-design no lo dibuja; solo exige un texto no vacío): de un PV suelto, el nombre de su
+   * CategoriaProducto (p. ej. "Bife"), o el de su sección si no tiene categoría; de un ítem agrupado, el nombre de su sección.
+   */
   categoria: string;
   descripcion: string | null;
   /** Precio final en pesos, numérico: el local habilitado de la sucursal o, si no, el precio de venta global. */
   precio: number;
   tags: string[];
   especial: boolean;
-  imagenUrl: string | null;
+  /**
+   * SIEMPRE `null` (docs/plan-carta-seccion-directa-2026-09-25.md): un ítem no tiene imagen propia, la carta pública solo usa la
+   * de la sección. La clave se mantiene porque la guardia de forma de restaurant-menu-design la exige.
+   */
+  imagenUrl: null;
   /**
    * SOLO en un ítem AGRUPADO (docs/plan-agrupacion-items-carta-2026-09-24.md, D6): los PV reales que agrupa, disponibles en la
    * sucursal y en su orden. En un ítem agrupado, `productoId` es el id del ítem agrupado (no de un Producto), `nombre`,
-   * `descripcion`, `tags`, `especial` e `imagenUrl` son los del ítem agrupado, y `precio` es el de sus opciones (el mayor, si
+   * `descripcion`, `tags` y `especial` son los del ítem agrupado, y `precio` es el de sus opciones (el mayor, si
    * llegaran a diferir). Un ítem SIN agrupar no lleva esta clave (ni siquiera vacía): su JSON queda igual que antes. Campo aditivo
    * de la v1: `version` no cambia.
    */
@@ -89,13 +98,10 @@ export interface SeccionCartaEntrada {
   descripcion: string | null;
   imagenUrl: string | null;
   orden: number;
-  /** Filas de la tabla puente: qué categorías caen en esta sección y en qué orden. */
-  categorias: ReadonlyArray<{ categoriaId: string; orden: number }>;
 }
 
 export interface ContenidoCartaEntrada {
   descripcion: string | null;
-  imagenUrl: string | null;
   tags: readonly string[];
   especial: boolean;
   orden: number;
@@ -105,8 +111,10 @@ export interface ProductoCartaEntrada {
   id: string;
   nombre: string;
   precioVenta: number;
-  categoriaId: string | null;
+  /** Solo informativo (`ItemCartaV1.categoria`): no ubica nada. */
   categoriaNombre: string | null;
+  /** La sección de carta donde se ubica (la de su ContenidoCartaProducto), o null. */
+  seccionCartaId: string | null;
   contenido: ContenidoCartaEntrada;
 }
 
@@ -150,8 +158,8 @@ export interface OpcionAgrupadoEntrada {
 export interface ItemAgrupadoEntrada {
   id: string;
   nombre: string;
-  categoriaId: string;
-  categoriaNombre: string;
+  /** La sección de carta donde se ubica, directo. */
+  seccionCartaId: string;
   /** Lo de cara al cliente del ítem agrupado (misma forma que el contenido de un PV). */
   contenido: ContenidoCartaEntrada;
   /** Ya filtradas: solo PV disponibles en la sucursal. */
@@ -161,13 +169,11 @@ export interface ItemAgrupadoEntrada {
 export interface ProductoSinSeccion {
   productoId: string;
   nombre: string;
-  categoria: string | null;
 }
 
 export interface AgrupadoSinSeccion {
   id: string;
   nombre: string;
-  categoria: string;
 }
 
 export interface AgrupadoConPreciosDistintos {
@@ -181,9 +187,9 @@ export interface MenuArmado {
   carta: CartaV1;
   /** Solo para uso interno (admin/logs): el endpoint NO lo expone. */
   diagnostico: {
-    /** PV disponibles y visibles que no aparecen porque su categoría no está en ninguna sección de carta activa. */
+    /** PV disponibles y visibles que no aparecen porque no tienen sección de carta, o la suya está apagada. */
     visiblesSinSeccion: ProductoSinSeccion[];
-    /** Ítems agrupados con opciones que no salen porque su categoría no está en ninguna sección de carta activa. */
+    /** Ítems agrupados con opciones que no salen porque su sección de carta está apagada. */
     agrupadosSinSeccion: AgrupadoSinSeccion[];
     /** Ítems agrupados sin ninguna opción disponible en la sucursal (no salen). */
     agrupadosSinOpciones: { id: string; nombre: string }[];
@@ -251,15 +257,16 @@ const comparar = (a: string, b: string) => a.localeCompare(b, "es");
 
 export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   const precioLocalPorProducto = new Map(entrada.preciosLocales.map((pl) => [pl.productoId, pl]));
+  // Solo llegan las secciones ACTIVAS: un seccionCartaId que no está acá es de una sección apagada (o no tiene).
+  const nombreDeSeccion = new Map(entrada.secciones.map((s) => [s.id, s.nombre]));
 
-  // categoría → (sección de carta, orden de la categoría dentro de la sección)
-  const ubicacionPorCategoria = new Map<string, { seccionId: string; ordenCategoria: number }>();
-  for (const s of entrada.secciones) {
-    for (const c of s.categorias) ubicacionPorCategoria.set(c.categoriaId, { seccionId: s.id, ordenCategoria: c.orden });
-  }
-
-  type ItemConOrden = { item: ItemCartaV1; ordenCategoria: number; ordenContenido: number };
+  type ItemConOrden = { item: ItemCartaV1; orden: number };
   const itemsPorSeccion = new Map<string, ItemConOrden[]>();
+  const ubicar = (seccionId: string, item: ItemCartaV1, orden: number) => {
+    const lista = itemsPorSeccion.get(seccionId) ?? [];
+    lista.push({ item, orden });
+    itemsPorSeccion.set(seccionId, lista);
+  };
   const visiblesSinSeccion: ProductoSinSeccion[] = [];
   const agrupados = entrada.agrupados ?? [];
 
@@ -269,24 +276,25 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
 
   for (const p of entrada.productos) {
     if (productosAgrupados.has(p.id)) continue;
-    const ubicacion = p.categoriaId ? ubicacionPorCategoria.get(p.categoriaId) : undefined;
-    if (!ubicacion || !p.categoriaNombre) {
-      visiblesSinSeccion.push({ productoId: p.id, nombre: p.nombre, categoria: p.categoriaNombre });
+    const seccionNombre = p.seccionCartaId ? nombreDeSeccion.get(p.seccionCartaId) : undefined;
+    if (!p.seccionCartaId || seccionNombre === undefined) {
+      visiblesSinSeccion.push({ productoId: p.id, nombre: p.nombre });
       continue;
     }
-    const item: ItemCartaV1 = {
-      productoId: p.id,
-      nombre: p.nombre,
-      categoria: p.categoriaNombre,
-      descripcion: textoONull(p.contenido.descripcion),
-      precio: precioDeCarta(p.precioVenta, precioLocalPorProducto.get(p.id)),
-      tags: limpiarTags(p.contenido.tags),
-      especial: p.contenido.especial,
-      imagenUrl: urlImagenSegura(p.contenido.imagenUrl),
-    };
-    const lista = itemsPorSeccion.get(ubicacion.seccionId) ?? [];
-    lista.push({ item, ordenCategoria: ubicacion.ordenCategoria, ordenContenido: p.contenido.orden });
-    itemsPorSeccion.set(ubicacion.seccionId, lista);
+    ubicar(
+      p.seccionCartaId,
+      {
+        productoId: p.id,
+        nombre: p.nombre,
+        categoria: textoONull(p.categoriaNombre) ?? seccionNombre,
+        descripcion: textoONull(p.contenido.descripcion),
+        precio: precioDeCarta(p.precioVenta, precioLocalPorProducto.get(p.id)),
+        tags: limpiarTags(p.contenido.tags),
+        especial: p.contenido.especial,
+        imagenUrl: null,
+      },
+      p.contenido.orden
+    );
   }
 
   const agrupadosSinSeccion: AgrupadoSinSeccion[] = [];
@@ -298,9 +306,9 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
       agrupadosSinOpciones.push({ id: ag.id, nombre: ag.nombre });
       continue;
     }
-    const ubicacion = ubicacionPorCategoria.get(ag.categoriaId);
-    if (!ubicacion) {
-      agrupadosSinSeccion.push({ id: ag.id, nombre: ag.nombre, categoria: ag.categoriaNombre });
+    const seccionNombre = nombreDeSeccion.get(ag.seccionCartaId);
+    if (seccionNombre === undefined) {
+      agrupadosSinSeccion.push({ id: ag.id, nombre: ag.nombre });
       continue;
     }
     const opciones: OpcionItemCartaV1[] = [...ag.opciones]
@@ -312,20 +320,22 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
     // D5: en el camino normal no difieren (agregar una opción de otro precio se bloquea). Si un precio cambió DESPUÉS en Catálogo,
     // se muestra el MAYOR (nadie paga más de lo que vio en la carta) y el admin lo avisa.
     if (minimo !== maximo) agrupadosConPreciosDistintos.push({ id: ag.id, nombre: ag.nombre, minimo, maximo });
-    const item: ItemCartaV1 = {
-      productoId: ag.id,
-      nombre: ag.nombre,
-      categoria: ag.categoriaNombre,
-      descripcion: textoONull(ag.contenido.descripcion),
-      precio: maximo,
-      tags: limpiarTags(ag.contenido.tags),
-      especial: ag.contenido.especial,
-      imagenUrl: urlImagenSegura(ag.contenido.imagenUrl),
-      opciones,
-    };
-    const lista = itemsPorSeccion.get(ubicacion.seccionId) ?? [];
-    lista.push({ item, ordenCategoria: ubicacion.ordenCategoria, ordenContenido: ag.contenido.orden });
-    itemsPorSeccion.set(ubicacion.seccionId, lista);
+    ubicar(
+      ag.seccionCartaId,
+      {
+        productoId: ag.id,
+        nombre: ag.nombre,
+        // Un ítem agrupado no tiene categoría: lleva el nombre de su sección (texto no vacío, lo que exige la guardia de forma).
+        categoria: seccionNombre,
+        descripcion: textoONull(ag.contenido.descripcion),
+        precio: maximo,
+        tags: limpiarTags(ag.contenido.tags),
+        especial: ag.contenido.especial,
+        imagenUrl: null,
+        opciones,
+      },
+      ag.contenido.orden
+    );
   }
 
   const promosPorSeccion = new Map<string, PromoCartaV1[]>();
@@ -338,16 +348,8 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   const secciones: SeccionCartaV1[] = [...entrada.secciones]
     .sort((a, b) => a.orden - b.orden || comparar(a.nombre, b.nombre))
     .map((s) => {
-      const items = (itemsPorSeccion.get(s.id) ?? [])
-        .sort(
-          (a, b) =>
-            a.ordenCategoria - b.ordenCategoria ||
-            // Dos categorías con el mismo orden en la sección: que sus ítems no se intercalen.
-            comparar(a.item.categoria, b.item.categoria) ||
-            a.ordenContenido - b.ordenContenido ||
-            comparar(a.item.nombre, b.item.nombre)
-        )
-        .map((x) => x.item);
+      // Sueltos y agrupados comparten la misma escala de orden dentro de la sección: `orden` → nombre.
+      const items = (itemsPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.item.nombre, b.item.nombre)).map((x) => x.item);
       const promos = (promosPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.titulo, b.titulo));
       return {
         id: s.id,
