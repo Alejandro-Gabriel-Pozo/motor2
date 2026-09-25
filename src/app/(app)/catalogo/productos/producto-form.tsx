@@ -7,7 +7,9 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
-import { darDeAltaProducto, actualizarProducto, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
+import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
 import { crearCategoriaProducto } from "@/server/actions/catalogo/categorias-producto";
 import { altaProveedor } from "@/server/actions/catalogo/proveedores";
@@ -58,8 +60,12 @@ export function ProductoForm({
 
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // D11/M8 (docs/plan-agrupacion-items-carta-2026-09-24.md): si el producto está en un ítem agrupado de la carta y sus hermanos quedaron a
+  // otro precio, en vez de volver enseguida a la ficha se ofrece aplicarles el mismo precio (un bloque aparte; el cambio ya está guardado).
+  const [sincronizable, setSincronizable] = useState<SincronizablePrecioGrupo | null>(null);
 
   const editando = Boolean(productoExistente);
+  const irALaFicha = (id: string | null) => router.push(id ? `/catalogo/productos/${id}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
 
   return (
     <form
@@ -89,10 +95,15 @@ export function ProductoForm({
             ? await actualizarProducto(productoExistente!.id, datos)
             : await darDeAltaProducto(datos);
           setMensaje(resultado.mensaje);
+          setSincronizable(null);
           // Al guardar se vuelve a la ficha del producto, que muestra el aviso de que se guardó (antes se volvía a la lista y el cartel se perdía).
           if (resultado.ok) {
+            if ("sincronizable" in resultado && resultado.sincronizable) {
+              setSincronizable(resultado.sincronizable);
+              return;
+            }
             const idFicha = editando ? productoExistente!.id : "id" in resultado ? resultado.id : null;
-            router.push(idFicha ? `/catalogo/productos/${idFicha}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
+            irALaFicha(idFicha);
           }
         });
       }}
@@ -301,6 +312,10 @@ export function ProductoForm({
       <textarea name="observaciones" placeholder="Observaciones" aria-label="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} className="rounded border px-3 py-2" />
 
       {mensaje && <p className={mensaje.startsWith("Producto") ? "text-sm text-green-700" : "text-sm text-red-600"}>{mensaje}</p>}
+
+      {sincronizable && productoExistente && (
+        <SincronizarPrecioGrupo sincronizable={sincronizable} aplicar={sincronizarPrecioGrupoCarta} alTerminar={() => irALaFicha(productoExistente.id)} />
+      )}
 
       <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
         {pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}

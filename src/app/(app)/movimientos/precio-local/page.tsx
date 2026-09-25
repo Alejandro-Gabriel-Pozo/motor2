@@ -69,7 +69,7 @@ export default async function PrecioLocalPage() {
       </div>
 
       <div>
-        <PrecioLocalForm />
+        <PrecioLocalForm sucursalId={ctx.sucursalId} />
       </div>
     </div>
   );
