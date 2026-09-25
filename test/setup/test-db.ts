@@ -18,7 +18,9 @@ export async function limpiarBaseDeTest() {
   await prisma.contenidoCartaProducto.deleteMany();
   await prisma.seccionCarta.deleteMany();
 
-  // POS antes que nada: CuentaItem referencia Cuenta y Producto; Cuenta referencia Mesa y User; Mesa referencia Sucursal.
+  // POS antes que nada: CuentaItem referencia Cuenta, Producto, User y Operacion; Cuenta referencia Mesa y User; Mesa referencia
+  // Sucursal. Las filas espejo (anulaciones) primero: referencian a su ítem original con ON DELETE RESTRICT.
+  await prisma.cuentaItem.deleteMany({ where: { anulaAItemId: { not: null } } });
   await prisma.cuentaItem.deleteMany();
   await prisma.cuenta.deleteMany();
   await prisma.mesa.deleteMany();
