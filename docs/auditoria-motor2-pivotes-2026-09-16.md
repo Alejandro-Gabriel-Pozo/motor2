@@ -547,6 +547,36 @@ Cambio de arquitectura: no justificado (no se encontró evidencia para
 |---|---|---|---|---|---|---|
 | 4. Precisión numérica | VERIFICADO_EN_CODIGO (casos base) + umbral cero-tolerancia | Costos acumulados, redondearMoneda, reversiones, clasificación de 147 conversiones, round-trip de receta, reparto por familia, PRODUCCIÓN vs VENTA | 1 FALLO_CONFIRMADO (PRODUCCIÓN sin redondear) + VERIFICADO_EN_CODIGO en el resto | **CERRADO CON CAMBIO — N3** | Agregar `redondearACantidadDeUnidad` en `movimientos.ts` (consumosReceta de PRODUCCIÓN) — 1 línea | **IMPLEMENTADO** (commit `5c0fd96`, 2026-09-17) |
 
+### Nota posterior (2026-09-25) — `redondearMoneda` sí tenía una falla: empates de medio centavo
+
+**Por qué el punto 3 de arriba no la vio.** El caso de «borde exacto de redondeo» (`test/auditoria/precision-costos-precios-reversiones.test.ts`) probó 2,5 × 4,05 = 10,125, que es **exacto en binario** (81/8): justo el empate que `Math.round(n * 100) / 100` resuelve bien. Además, el test calculaba el valor esperado con la misma fórmula `Math.round(x * 100) / 100`, así que no era un oráculo independiente.
+
+**Cuál era la falla real.** `redondearMoneda` (`src/core/movimientos/transiciones.ts`) era `Math.round(n * 100) / 100`:
+
+1. Redondeaba para abajo los empates x,xx5 que no son exactos en binario (`128.045 * 100` = `12804.499999999998`): 128,045 → 128,04 en vez de 128,05. Contra `round(v::numeric, 2)` de Postgres, 104 de 2.000 empates positivos al azar daban distinto.
+2. Si cantidad × precio se multiplicaba en float antes de redondear, el producto podía quedar apenas debajo del empate: 0,3 × 1.234,55 = `370.36499999999995` → 370,36; 0,045 × 509 = `22.904999999999998` → 22,90.
+3. Devolvía `-0` con restos negativos mínimos (`0.3 - (0.1 + 0.2)`), que `Intl` es-AR muestra como «-$ 0,00».
+4. Con negativos desempataba hacia +∞ (-128,045 → -128,04); `NUMERIC` se aleja del cero (-128,05). 477 de 500 empates negativos daban distinto de Postgres.
+
+El error siempre es de exactamente 1 centavo. Se guardaba en `MovimientoStock.costoUnitarioVenta` (factura de $1.024,36 por 8 latas → 128,045 por lata), en la línea `LIQUIDACION_CONSIGNACION` (lo que se le debe al consignante) y en el `precioTotal` de la VENTA (venta por peso), y se mostraba en Costos y márgenes, Valuación y los totales del POS.
+
+**Cuál es el fix** (rama `feat/precision-decimal-moneda`). Sin cambio de schema ni dependencias, y el core sigue trabajando con `number`:
+
+- `src/core/moneda.ts` (nuevo): `redondearMoneda` exacto con el `Decimal` (decimal.js) que ya trae Prisma, desde `@prisma/client/runtime/index-browser` (apto para el bundle del cliente), `ROUND_HALF_UP` — igual que `round(v::numeric, 2)` —, sin `-0`; `importeDeLinea(cantidad, precio)` (producto exacto y un solo redondeo); `totalDeLineas(lineas)` (suma exacta y un solo redondeo). `transiciones.ts` reexporta `redondearMoneda`, así que sus 19 importadores no cambian.
+- `importeDeLinea` en la liquidación de consignación (venta y PRODUCCIÓN) y en el importe de la VENTA (`registrarVentaEnTx`); totales del POS (detalle de la mesa, mapa, boleta) con `importeDeLinea`/`totalDeLineas`.
+- Decisión del dueño: el total de la boleta y el del mensaje de cierre de la cuenta son la suma de los importes de cada línea registrada (Σ `importeDeLinea`), no la suma cruda re-redondeada, para que coincidan centavo a centavo con lo que se registró.
+- Oráculo independiente: `test/auditoria/precision-medio-centavo.test.ts` compara contra Postgres y cubre los casos de punta a punta; `test/core/moneda.test.ts` y `test/core/redondear-moneda.test.ts`, los casos puros.
+
+**Queda fuera de este fix (planes aparte):**
+
+- **F-A — cantidades:** `redondearACantidadDeUnidad` y las copias de `redondearCantidad` (Kardex, validación de stock) tienen el mismo defecto de `Math.round` en empates.
+- **F-B — porcentajes:** `Math.round(x * 1000) / 10` (margen %, food cost %).
+- **F-C — costeo de recetas con Decimal:** no se recomienda sin evidencia de que haga falta (medido: 0 diferencias en 300.000 recetas al azar).
+- **F-D — `costoUnitarioVenta` con 4 decimales:** hoy se guarda con 2 aunque la columna admite 4; es una decisión de negocio.
+- **F-E — redondeos de `scripts/demo-seed/*`.**
+- `promociones.ts` redondea `cantidadConsumida` con la función de moneda (semánticamente incorrecto).
+- Los reportes que multiplican cantidad × precio en float y después llaman a `redondearMoneda` (ej. `valuacion.ts`: `saldo * precioPorUnidadStock`; `costos.ts`: `costoLinea`) no pasaron a `importeDeLinea`: ahí un producto que en float queda apenas debajo de un empate sigue pudiendo dar 1 centavo menos (ej. 7 × 128,045 = `896.3149999999999` → 896,31). Solo se muestra, no se guarda.
+
 ---
 
 ## 10. Matriz de decisión final (2026-09-17)
