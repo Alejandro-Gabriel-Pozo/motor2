@@ -69,3 +69,95 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Impresión desde la pantalla de la mesa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B9): la comanda de cocina y la boleta
+   del cliente se montan en un portal directo en <body> con `data-imprimible` (src/app/(pos)/mesas/[mesaId]/imprimir.tsx) y se imprimen
+   con `window.print()` y el diálogo nativo, que deja elegir la térmica (58/80 mm) o la impresora común.
+   - En pantalla NUNCA se ven (fuera del árbol de accesibilidad también).
+   - Al imprimir, si hay un documento montado, se oculta todo lo demás; sin documento (Ctrl+P en cualquier otra pantalla) no cambia nada.
+   - Página con nombre y márgenes chicos, SIN `size`: el tamaño del papel lo decide el driver/diálogo. Ancho: todo el útil hasta 76 mm
+     (en un rollo ocupa el ancho; en A4/carta sale una columna legible arriba a la izquierda).
+   - Negro sobre blanco explícito, sin fondos (las térmicas no los imprimen), tamaños en pt, montos con cifras tabulares. */
+@media screen {
+  [data-imprimible] {
+    display: none;
+  }
+}
+
+@media print {
+  body:has(> [data-imprimible]) {
+    background: #fff;
+    color: #000;
+  }
+  body:has(> [data-imprimible]) > :not([data-imprimible]) {
+    display: none !important;
+  }
+}
+
+@page ticket {
+  margin: 2mm 3mm;
+}
+
+[data-imprimible] {
+  page: ticket;
+  color-scheme: light;
+  width: 100%;
+  max-width: 76mm;
+  color: #000;
+  background: #fff;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 10pt;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+[data-imprimible] .ticket-encabezado {
+  font-size: 10pt;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+[data-imprimible] .ticket-titulo {
+  font-size: 20pt;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+[data-imprimible] .ticket-dato {
+  font-size: 10pt;
+}
+
+[data-imprimible] .ticket-item {
+  font-size: 13pt;
+  font-weight: 700;
+}
+
+[data-imprimible] .ticket-separador {
+  margin-top: 2mm;
+  padding-top: 2mm;
+  border-top: 1px dashed #000;
+}
+
+[data-imprimible] .ticket-linea + .ticket-linea {
+  margin-top: 1mm;
+}
+
+[data-imprimible] .ticket-monto {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 3mm;
+  font-size: 10pt;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-imprimible] .ticket-total {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 2mm;
+  font-size: 16pt;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

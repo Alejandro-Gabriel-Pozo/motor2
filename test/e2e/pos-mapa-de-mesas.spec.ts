@@ -1,12 +1,12 @@
-import { randomUUID } from "node:crypto";
-import type { Browser, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { abrirComoRol } from "./fixtures/rol-pos";
 
 /**
- * Mapa de mesas del salón (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md). Hasta el pendiente «tomar pedido» nadie escribe
- * cuentas desde la aplicación: los estados `en_pedido`/`ocupada` se prueban con filas sembradas acá. Cada caso limpia lo suyo en
- * `finally` (el número de mesa es único por sucursal y otros casos cuentan las mesas).
+ * Mapa de mesas del salón (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md). Los estados `en_pedido`/`ocupada` se prueban acá con
+ * filas sembradas (el circuito real de tomar pedido está en pos-tomar-pedido.spec.ts). Cada caso limpia lo suyo en `finally` (el
+ * número de mesa es único por sucursal y otros casos cuentan las mesas).
  */
 
 type ConMarca = { __sinRecargar?: boolean };
@@ -51,31 +51,6 @@ async function sembrarTresMesas(sucursalId: string, numeros: [number, number, nu
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });
-    },
-  };
-}
-
-/** Una página con la sesión de un usuario nuevo con un rol propio: `pos` = null (sin fila de pos_mesas), "ver" o "editar". */
-async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, pos: null | "ver" | "editar") {
-  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const rol = await prisma.rol.create({ data: { nombre: `e2e-pos-${pos ?? "sin"}-${marca}` } });
-  if (pos) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "pos_mesas", puedeVer: true, puedeEditar: pos === "editar" } });
-  const usuario = await prisma.user.create({ data: { email: `e2e-pos-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
-  const sessionToken = randomUUID();
-  await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
-  const contexto = await browser.newContext();
-  await contexto.addCookies([{ name: "authjs.session-token", value: sessionToken, domain: new URL(baseURL ?? "http://localhost:3000").hostname, path: "/", httpOnly: true, sameSite: "Lax" }]);
-  const page = await contexto.newPage();
-  return {
-    page,
-    limpiar: async () => {
-      await contexto.close();
-      await prisma.session.deleteMany({ where: { userId: usuario.id } });
-      await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
-      await prisma.user.deleteMany({ where: { id: usuario.id } });
-      await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
-      await prisma.rol.deleteMany({ where: { id: rol.id } });
     },
   };
 }
@@ -128,16 +103,18 @@ test("el mapa muestra las mesas con sus datos reales: métricas, tarjetas de los
   }
 });
 
-test("corte de alcance: tomar pedido, continuar, ver pedidos, facturar y opciones de mesa están deshabilitados, y el salón no muestra el menú de administración", async ({ paginaAutenticada: page, sucursalId }) => {
-  const { limpiar } = await sembrarTresMesas(sucursalId, [911, 912, 913]);
+test("las acciones de cada tarjeta llevan a la pantalla de la mesa; «Opciones de mesa» sigue deshabilitado, y el salón no muestra el menú de administración", async ({ paginaAutenticada: page, sucursalId }) => {
+  const { libre, enPedido, ocupada, limpiar } = await sembrarTresMesas(sucursalId, [911, 912, 913]);
   try {
     await page.goto("/mesas");
-    await expect(tarjeta(page, 911).getByRole("button", { name: "Tomar pedido" })).toBeDisabled();
-    await expect(tarjeta(page, 912).getByRole("button", { name: "Continuar pedido" })).toBeDisabled();
-    await expect(tarjeta(page, 913).getByRole("button", { name: "Ver pedidos" })).toBeDisabled();
-    await expect(tarjeta(page, 913).getByRole("button", { name: "Facturar" })).toBeDisabled();
+    await expect(tarjeta(page, 911).getByRole("link", { name: "Tomar pedido" })).toHaveAttribute("href", `/mesas/${libre.id}`);
+    await expect(tarjeta(page, 912).getByRole("link", { name: "Continuar pedido" })).toHaveAttribute("href", `/mesas/${enPedido.id}`);
+    await expect(tarjeta(page, 913).getByRole("link", { name: "Ver pedidos" })).toHaveAttribute("href", `/mesas/${ocupada.id}`);
+    await expect(tarjeta(page, 913).getByRole("link", { name: "Facturar" })).toHaveAttribute("href", `/mesas/${ocupada.id}`);
     await expect(tarjeta(page, 913).getByRole("button", { name: "Opciones de mesa" })).toBeDisabled();
-    await expect(page.getByText("Tomar pedido, ver pedidos y facturar todavía no están habilitados en esta versión.")).toBeVisible();
+    // Ya no queda ningún botón de acción deshabilitado por corte de alcance, ni la nota del pie que lo explicaba.
+    await expect(page.getByRole("button", { name: /Tomar pedido|Continuar pedido|Ver pedidos|Facturar/ })).toHaveCount(0);
+    await expect(page.getByText("todavía no están habilitados en esta versión")).toHaveCount(0);
 
     // Sin el menú lateral de la administración (ni su botón de ocultar, ni sus enlaces); sí el enlace de vuelta para el admin.
     await expect(page.getByRole("button", { name: /menú/ })).toHaveCount(0);
@@ -181,8 +158,8 @@ test("«Nueva mesa» crea la mesa sin recargar la página, con el número siguie
 });
 
 test("permisos: con Ver sin Editar se ve el mapa con «Nueva mesa» deshabilitado; sin pos_mesas, el aviso de permiso y nada del mapa", async ({ browser, baseURL, sucursalId }) => {
-  const soloVe = await abrirComoRol(browser, baseURL, sucursalId, "ver");
-  const sinPermiso = await abrirComoRol(browser, baseURL, sucursalId, null);
+  const soloVe = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver" });
+  const sinPermiso = await abrirComoRol(browser, baseURL, sucursalId, {});
   try {
     await soloVe.page.goto("/mesas");
     await expect(soloVe.page.getByRole("heading", { level: 1, name: "Mapa de mesas" })).toBeVisible();
@@ -199,7 +176,7 @@ test("permisos: con Ver sin Editar se ve el mapa con «Nueva mesa» deshabilitad
 });
 
 test("un rol con solo pos_mesas (el «mozo», creado desde la matriz) entra directo al mapa y no ve el enlace a la administración", async ({ browser, baseURL, sucursalId }) => {
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, "editar");
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "editar" });
   try {
     await mozo.page.goto("/");
     await mozo.page.waitForURL(/\/mesas$/);

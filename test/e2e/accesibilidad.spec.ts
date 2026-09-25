@@ -3,12 +3,13 @@ import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
  * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), el admin de la carta, su portal de sucursales y su
- * tema, y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
+ * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas»). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -830,7 +831,8 @@ testAutenticado(
   async ({ paginaAutenticada: page, sucursalId }) => {
     // Plan docs/plan-mapa-de-mesas-2026-09-24.md §A.3: --ink-faint #76726A («MESA», rótulos de métricas, nota al pie), la etiqueta «Libre» en
     // --mesa-libre-ink y «En pedido» en --mesa-draft-ink. Hacen falta las tres tarjetas: sin una mesa en pedido no se dibuja la etiqueta ámbar,
-    // y sin datos no hay nada que auditar. (Axe ignora los botones deshabilitados: «Continuar pedido» se corrigió igual, para cuando se habilite.)
+    // y sin datos no hay nada que auditar. Desde «tomar pedido» «Tomar pedido»/«Continuar pedido»/«Facturar» son enlaces HABILITADOS: axe ya
+    // mide su contraste (antes los ignoraba por deshabilitados).
     const marca = Date.now();
     const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
@@ -843,7 +845,7 @@ testAutenticado(
       await conTitulo(page, "Mapa de mesas");
       await expect(page.locator('li[data-mesa="801"]').getByText("Libre", { exact: true })).toBeVisible();
       await expect(page.locator('li[data-mesa="802"]').getByText("En pedido", { exact: true })).toBeVisible();
-      await expect(page.locator('li[data-mesa="803"]').getByRole("button", { name: "Facturar" })).toBeVisible();
+      await expect(page.locator('li[data-mesa="803"]').getByRole("link", { name: "Facturar" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "mapa en reposo").toEqual([]);
 
       await page.getByRole("button", { name: "Nueva mesa" }).click();
@@ -860,6 +862,115 @@ testAutenticado(
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: la pantalla de la mesa en reposo (sin enviar, dos envíos y una anulación), con «Anular» abierto y su error, con «Cerrar cuenta» abierto y en modo oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // Pendiente «tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, paso 9). Hacen falta todos los estados de la lista para que axe audite algo:
+    // un ítem sin enviar (con «Quitar»), dos envíos a cocina y una anulación tachada (texto en --ink-soft con line-through).
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-TP-${marca}`, nombre: `E2E A11y Plato ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 804 } });
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
+    const original = await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: 3, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: admin.id } });
+    await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: 1, precioUnitario: 1000, numeroEnvio: 2, creadoPorId: admin.id } });
+    await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: 2, precioUnitario: 1000, creadoPorId: admin.id } });
+    await prisma.cuentaItem.create({
+      data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: -1, precioUnitario: 1000, numeroEnvio: 1, anulaAItemId: original.id, motivoAnulacion: "Pidió una menos", creadoPorId: admin.id },
+    });
+    try {
+      // «Enviar a cocina» imprime la comanda: sin reemplazar `window.print()` se abriría el diálogo nativo.
+      await interceptarImpresion(page);
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 804");
+      await expect(page.getByRole("heading", { name: "Envío 2 · en cocina" })).toBeVisible();
+      await expect(page.locator("[data-anulacion]")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "pantalla en reposo").toEqual([]);
+
+      await page.getByRole("button", { name: `Anular ${producto.nombre}` }).first().click();
+      const anular = page.getByRole("dialog", { name: `Anular «${producto.nombre}»` });
+      await anular.getByRole("button", { name: "Anular" }).click();
+      await expect(anular.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Anular» abierto con el error del motivo").toEqual([]);
+      await anular.getByRole("button", { name: "Cancelar" }).click();
+
+      // Con un ítem sin enviar «Cerrar cuenta» está deshabilitado (y lo explica): se envía para poder abrir el diálogo.
+      await expect(page.getByText("Hay 1 ítem sin enviar: envialo o quitalo antes de cerrar la cuenta.")).toBeVisible();
+      await page.getByRole("button", { name: "Enviar a cocina" }).click();
+      await expect(page.getByRole("heading", { name: "Envío 3 · en cocina" })).toBeVisible();
+      // El documento impreso queda montado pero nunca se ve en pantalla (fuera del árbol de accesibilidad: sin caso axe propio).
+      await expect.poll(async () => (await impresiones(page)).length).toBe(1);
+      await expect(page.locator("[data-imprimible]")).toBeHidden();
+      await page.getByRole("button", { name: "Cerrar cuenta" }).click();
+      await expect(page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 804" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Cerrar cuenta» abierto").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 804");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id, anulaAItemId: { not: null } } });
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: mesa libre con «Cuentas cerradas» (una boleta reimprimible y una de venta anulada), en modo claro y oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B10: la sección nueva con sus dos estados de fila (botón habilitado; «Venta anulada»
+    // con el botón deshabilitado). Los documentos impresos no llevan caso propio: en pantalla son display:none.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-BOL-${marca}`, nombre: `E2E A11y Plato Boleta ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 975 } });
+    const operacionIds: string[] = [];
+    for (const [horasAtras, anulada] of [[1, false], [2, true]] as const) {
+      const cerradaEn = new Date(Date.now() - horasAtras * 60 * 60_000);
+      const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, anuladaEn: anulada ? new Date() : null } });
+      operacionIds.push(venta.id);
+      await prisma.cuenta.create({
+        data: {
+          mesaId: mesa.id,
+          abiertaPorId: admin.id,
+          cerradaEn,
+          cerradaPorId: admin.id,
+          items: { create: [{ productoId: producto.id, cantidad: 2, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: admin.id, operacionId: venta.id }] },
+        },
+      });
+    }
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 975");
+      await expect(page.getByText("La mesa está libre.")).toBeVisible();
+      await expect(page.locator("[data-cuenta-cerrada]")).toHaveCount(2);
+      await expect(page.getByText("Venta anulada")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Cuentas cerradas» en modo claro").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 975");
+      await expect(page.locator("[data-cuenta-cerrada]")).toHaveCount(2);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Cuentas cerradas» en modo oscuro emulado").toEqual([]);
+    } finally {
+      // Mismo orden que `limpiar` de pos-tomar-pedido.spec.ts: ítems → operaciones (y lo que cuelga de ellas) → cuentas → mesa → producto.
+      await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: mesa.id } } });
+      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: operacionIds } } });
+      await prisma.movimientoStock.deleteMany({ where: { operacionId: { in: operacionIds } } });
+      await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
+      await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });
     }
   }

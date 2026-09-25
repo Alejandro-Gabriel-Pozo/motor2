@@ -2,15 +2,10 @@
 
 import type { Prisma } from "@prisma/client";
 import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
-import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
-import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
-import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
-import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
-import { calcularCostosYMargenes } from "@/core/reportes/costos";
+import { obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
-import { crearCacheProducto } from "@/core/movimientos/producto-cache";
+import { registrarVentaEnTx } from "@/core/movimientos/registrar-venta";
 import { detalleReversionDeVenta } from "@/core/movimientos/anulaciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
@@ -32,91 +27,15 @@ export interface DatosVentaInput {
   claveIdempotencia?: string;
 }
 
-interface ConsumoCalculado {
-  productoId: string;
-  cantidad: number;
-  loteVencimiento: Date | null;
-}
-
-interface VentaCalculada {
-  productoId: string;
-  cantidadVendida: number;
-  loteVencimiento: Date | null;
-  precioVenta: number;
-  /** Costo de receta resuelto AL MOMENTO de esta venta (docstring en schema.prisma, MovimientoStock.costoUnitarioVenta) — null si el costeo estaba incompleto ese día. */
-  costoUnitarioAlVender: number | null;
-  consumos: ConsumoCalculado[];
-}
-
 /**
- * Port de armarPreviaVentaDesdeItems_ (Movimientos.js:1682-1775) para UNA
- * línea. Sesión "eliminar COMPRA+VENTA": lo único vendible es un PV
- * (vinculado por receta a la MP que consume, aunque sea una receta 1:1 sin
- * merma) — ya no existe la venta directa de una MP.
- */
-async function armarVentaCalculada(
-  item: ItemVentaInput,
-  seccionId: string,
-  sucursalId: string,
-  sucursalNombre: string,
-  tx: Prisma.TransactionClient,
-  obtenerProducto: ReturnType<typeof crearCacheProducto>,
-  costoUnitarioPorProducto: Map<string, number | null>
-): Promise<{ ok: true; venta: VentaCalculada | null } | { ok: false; mensaje: string }> {
-  const cantidad = Number(item.cantidadVendida || 0);
-  if (!(cantidad > 0)) return { ok: true, venta: null };
-  if (!esNumeroFinito(cantidad)) return { ok: false, mensaje: "La cantidad vendida no es un número válido." };
-
-  const producto = await obtenerProducto(item.productoId);
-  if (!producto) return { ok: false, mensaje: `El producto no existe.` };
-  if (!(await productoDisponibleEn(sucursalId, producto.id, tx))) {
-    return { ok: false, mensaje: `«${producto.nombre}» no está disponible en «${sucursalNombre}».` };
-  }
-  if (producto.tipo !== "PV") {
-    return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para venta: solo se puede vender un PV (vinculado por receta a la materia prima que consume).` };
-  }
-
-  const consumos: ConsumoCalculado[] = [];
-  if (!producto.seProduce) {
-    // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
-    const receta = await tx.recetaVersion.findFirst({ where: { productoId: producto.id }, orderBy: { version: "desc" }, include: { ingredientes: true } });
-    for (const ing of receta?.ingredientes ?? []) {
-      const mp = await obtenerProducto(ing.insumoProductoId);
-      if (!mp || mp.tipo !== "MP") {
-        return { ok: false, mensaje: `La materia prima de la receta de "${producto.nombre}" no está marcada como MP.` };
-      }
-      if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) {
-        return { ok: false, mensaje: `La receta de «${producto.nombre}» usa «${mp.nombre}», que no está disponible en «${sucursalNombre}»: activala acá o cambiá la receta.` };
-      }
-      const cantidadSalida = cantidad * Number(ing.cantidad) * (1 + Number(ing.mermaPorcentaje) / 100);
-      const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx, obtenerProducto);
-      consumos.push(...reparto);
-    }
-  }
-
-  // El PV vendido también puede tener lotes propios si está marcado "Se
-  // produce" — siempre el que vence antes (FEFO), nunca a elección manual:
-  // mismo criterio que ya usa el consumo de MP vía receta (resolverConsumoPorFamilia),
-  // y el dato ya está en el Kardex desde que se produjo, no hace falta pedírselo a quien vende.
-  const loteVencimiento = producto.seProduce ? await obtenerLoteMasProximoAVencer(producto.id, seccionId, tx) : null;
-
-  const precioVenta = await resolverPrecioVenta(sucursalId, producto.id, Number(producto.precioVenta), tx);
-  const costoUnitarioAlVender = costoUnitarioPorProducto.get(producto.id) ?? null;
-
-  return {
-    ok: true,
-    venta: { productoId: producto.id, cantidadVendida: cantidad, loteVencimiento, precioVenta, costoUnitarioAlVender, consumos },
-  };
-}
-
-/**
- * Port de confirmarRegistrarVenta_ConLock_ (Movimientos.js:1154-1332).
- * A diferencia del resto de los procesos, cada venta individual del lote
- * es su propia Operacion (idOperacionVenta propio en Apps Script) — para
- * poder reconstruir "qué consumió esta venta puntual" (con su Liquidación
- * de consignación si aplica) sin mezclarse con las demás ventas
- * confirmadas en el mismo lote. La validación de stock, en cambio, se hace
- * UNA vez sobre TODO el payload junto (mismo bugfix C-1 que registrarMovimiento).
+ * Port de confirmarRegistrarVenta_ConLock_ (Movimientos.js:1154-1332): la validación y la escritura viven en el núcleo
+ * `registrarVentaEnTx` (src/core/movimientos/registrar-venta.ts, compartido con el cierre de cuenta del salón); acá quedan el
+ * permiso, las validaciones de entrada, la idempotencia (I3) y la transacción serializable.
+ *
+ * Cada línea se mapea A MANO a `{ productoId, cantidadVendida }`: el núcleo acepta además un `precioUnitario` interno (override de
+ * precio, solo para `cerrarCuenta`) que un POST crudo a esta Server Action NUNCA tiene que poder fijar
+ * (test/movimientos/venta-en-tx.test.ts, «un precioUnitario colado en el payload se ignora»). Tampoco se pasa `permitirStockNegativo`: la
+ * venta de mostrador sigue rechazando por stock insuficiente.
  */
 export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoAccion> {
   return conPermiso("proceso_venta", async (ctx) => {
@@ -132,7 +51,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
     const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
     if (errorLargoFactura) return error(errorLargoFactura);
 
-    const resultado = await conTransaccionSerializable(async (tx) => {
+    const resultado = await conTransaccionSerializable(async (tx): Promise<ResultadoAccion> => {
       // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
       // A diferencia de registrarMovimiento, este lote escribe UNA
       // Operacion por venta individual (ver el docstring de la función) —
@@ -146,104 +65,20 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
       if (chequeo.estado === "duplicado") return ok(chequeo.mensaje);
       if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
-      const obtenerProducto = crearCacheProducto(tx);
-      // Una sola resolución de costos para todo el lote (no por línea) —
-      // calcularCostosYMargenes ya recorre el catálogo entero, repetirla
-      // por ítem sería trabajo redundante dentro de la misma transacción.
-      const costosDeHoy = await calcularCostosYMargenes(ctx.sucursalId, tx);
-      const costoUnitarioPorProducto = new Map(costosDeHoy.map((c) => [c.productoId, c.costoIncompleto ? null : c.costo]));
-      const ventas: VentaCalculada[] = [];
-      for (const item of datos.ventas) {
-        const armado = await armarVentaCalculada(item, datos.seccionId, ctx.sucursalId, ctx.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto);
-        if (!armado.ok) return error(armado.mensaje);
-        if (armado.venta) ventas.push(armado.venta);
-      }
-      if (!ventas.length) return error("Ninguna línea tiene una cantidad válida.");
-
-      // Validación de stock agregada: cada consumo de receta descuenta
-      // stock real — el producto vendido en sí nunca descuenta su propio
-      // stock (solo lo que consume su receta), mismo criterio que Apps
-      // Script desde "eliminar COMPRA+VENTA".
-      const requeridoPorClave = new Map<string, { productoId: string; cantidad: number }>();
-      for (const venta of ventas) {
-        for (const c of venta.consumos) {
-          const key = c.productoId;
-          const previo = requeridoPorClave.get(key);
-          requeridoPorClave.set(key, { productoId: c.productoId, cantidad: (previo?.cantidad ?? 0) + c.cantidad });
-        }
-      }
-      for (const { productoId, cantidad } of requeridoPorClave.values()) {
-        const chequeo = await validarStockSuficiente(productoId, datos.seccionId, cantidad, tx);
-        if (!chequeo.ok) {
-          const producto = await obtenerProducto(productoId);
-          const pista = await seccionesConStock(productoId, ctx.sucursalId, tx);
-          const detallePista = pista.length ? ` Tiene stock en: ${pista.join(", ")}.` : "";
-          return error(
-            `Stock insuficiente para "${producto?.nombre ?? productoId}". Actual: ${chequeo.actual}, requerido: ${chequeo.requerido}.${detallePista}`
-          );
-        }
-      }
-
-      const filas: Prisma.MovimientoStockCreateManyInput[] = [];
-      let primeraOperacionId: string | null = null;
-      for (const venta of ventas) {
-        const producto = await obtenerProducto(venta.productoId);
-        const esPrimera: boolean = primeraOperacionId === null;
-        const operacion: { id: string } = await tx.operacion.create({
-          data: {
-            sucursalId: ctx.sucursalId,
-            proceso: "VENTA",
-            fecha: datos.fecha,
-            proveedorId: datos.proveedorId ?? null,
-            nroFactura: texto(datos.nroFactura) || null,
-            detalleLibre: texto(datos.detalle) || null,
-            usuarioId: ctx.usuarioId,
-            claveIdempotencia: esPrimera && datos.claveIdempotencia ? datos.claveIdempotencia : null,
-            payloadHash: esPrimera && datos.claveIdempotencia ? payloadHash : null,
-          },
-        });
-        if (primeraOperacionId === null) primeraOperacionId = operacion.id;
-
-        for (const c of venta.consumos) {
-          const consumido = await obtenerProducto(c.productoId);
-          const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
-          filas.push({
-            operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "CONSUMO",
-            cantidad: -cantidadRedondeada, loteVencimiento: c.loteVencimiento,
-            detalle: `Consumo por venta de "${producto?.nombre ?? venta.productoId}".`, precioTotal: 0, precioPorUnidadStock: 0,
-          });
-
-          if (consumido?.esConsignacion) {
-            filas.push({
-              operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "LIQUIDACION_CONSIGNACION",
-              cantidad: 0, loteVencimiento: null,
-              detalle: `Liquidación consignación por venta de "${producto?.nombre ?? venta.productoId}".`,
-              precioTotal: redondearMoneda(cantidadRedondeada * Number(consumido.precioConsignacion ?? 0)),
-              precioPorUnidadStock: redondearMoneda(Number(consumido.precioConsignacion ?? 0)),
-            });
-          }
-        }
-
-        // El PV vendido en sí: signoStock -1 (Movimientos.js:190-205) — si
-        // no tiene stock real (no "Se produce"), este saldo negativo es un
-        // artefacto contable de las ventas, mismo criterio que hoy.
-        const importeVenta = redondearMoneda(venta.cantidadVendida * venta.precioVenta);
-        filas.push({
-          operacionId: operacion.id, productoId: venta.productoId, seccionId: datos.seccionId, proceso: "VENTA",
-          cantidad: -venta.cantidadVendida, loteVencimiento: venta.loteVencimiento,
-          detalle: texto(datos.detalle) || "Venta", precioTotal: importeVenta, precioPorUnidadStock: redondearMoneda(venta.precioVenta),
-          costoUnitarioVenta: venta.costoUnitarioAlVender !== null ? redondearMoneda(venta.costoUnitarioAlVender) : null,
-        });
-      }
-
-      await tx.movimientoStock.createMany({ data: filas });
-      const mensaje = `Se registraron ${ventas.length} venta(s) correctamente.`;
-
-      if (datos.claveIdempotencia && primeraOperacionId) {
-        await tx.operacion.update({ where: { id: primeraOperacionId }, data: { resultadoMensaje: mensaje } });
-      }
-
-      return ok(mensaje);
+      const venta = await registrarVentaEnTx(
+        tx,
+        { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
+        {
+          fecha: datos.fecha,
+          seccionId: datos.seccionId,
+          proveedorId: datos.proveedorId,
+          nroFactura: datos.nroFactura,
+          detalle: datos.detalle,
+          lineas: datos.ventas.map((item) => ({ productoId: item.productoId, cantidadVendida: item.cantidadVendida })),
+        },
+        datos.claveIdempotencia ? { idempotencia: { clave: datos.claveIdempotencia, payloadHash } } : {}
+      );
+      return venta.ok ? ok(venta.mensaje) : error(venta.mensaje);
     });
 
     return resultado;

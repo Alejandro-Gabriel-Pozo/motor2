@@ -194,3 +194,14 @@ referencia mínima.
 4. **Alcance de la migración:** se confirma `Mesa` + `Cuenta` +
    `CuentaItem` ahora; la entidad de comanda/KOT con su lógica de
    anulación queda para "tomar pedido".
+
+> **Actualización 2026-09-25 — pendiente «tomar pedido»:** lo que acá quedaba «para cuando se planifique tomar pedido» (comanda/KOT,
+> anulación con motivo y permiso elevado) ya está diseñado e implementado: ver `docs/plan-tomar-pedido-2026-09-25.md`. En corto: el
+> KOT se deriva de `numeroEnvio` (sin tabla propia), la anulación de un ítem enviado es una fila espejo negativa con motivo y
+> auditoría, y el permiso elevado es una clave propia (`pos_anular_item`), sin PIN de supervisor.
+
+> **Actualización 2026-09-25 — impresión:** la premisa de un agente local de impresión con cola de «ya impresa» (§1 arriba y
+> `docs/grounding-unificacion-carta-stock-2026-09-23.md` §6.1) no aplica a esta instalación: hay una sola PC en el local que ve las dos
+> impresoras (térmica y común) con los drivers del sistema operativo, así que la comanda y la boleta se imprimen con `window.print()`
+> y el diálogo nativo, sin tabla de lotes de impresión; si algo no sale, «Reimprimir». Ver
+> `docs/plan-imprimir-comanda-y-boleta-2026-09-25.md`.

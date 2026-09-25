@@ -97,6 +97,11 @@ export const ACCIONES: readonly AccionSemilla[] = [
   // servía (reusar `proceso_venta` daría de más). El operador de fábrica queda sin asignar, igual que `anular_compra`; el rol «mozo» NO se
   // crea en código: se crea desde /administracion/roles y se le da esta acción desde la matriz de permisos.
   { clave: "pos_mesas", descripcion: "Ver el mapa de mesas del salón y dar de alta mesas (POS)", rolesEditarSemilla: ["admin"] },
+  // «Tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, B4): tres claves separadas para poder armar un rol «mozo» que toma pedidos
+  // (con `pos_mesas` Ver + `pos_tomar_pedido` Editar) sin poder anular lo que ya salió a cocina ni cobrar. Todas arrancan solo en admin.
+  { clave: "pos_tomar_pedido", descripcion: "Tomar pedidos en el salón: abrir la cuenta de una mesa, agregar y quitar ítems sin enviar, enviarlos a cocina y liberar una mesa sin consumo (POS)", rolesEditarSemilla: ["admin"] },
+  { clave: "pos_anular_item", descripcion: "Anular un ítem de una cuenta que ya se envió a cocina, con motivo (POS)", rolesEditarSemilla: ["admin"] },
+  { clave: "pos_cerrar_cuenta", descripcion: "Cerrar la cuenta de una mesa: registra la venta en el stock y libera la mesa (POS)", rolesEditarSemilla: ["admin"] },
 ] as const;
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];

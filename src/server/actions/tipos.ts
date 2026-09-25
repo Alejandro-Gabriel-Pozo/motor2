@@ -13,6 +13,16 @@ export type { SincronizablePrecioGrupo };
  */
 export type ResultadoConSincronizable = { ok: true; mensaje: string; sincronizable?: SincronizablePrecioGrupo } | { ok: false; mensaje: string };
 
+/**
+ * Resultado de `enviarACocina` (src/server/actions/pos/cuenta.ts): como ResultadoAccion y, al salir bien, además el envío que le tocó
+ * a ESTA llamada — así la pantalla de la mesa imprime la comanda que el servidor confirmó y no la que infiere de lo que ve
+ * (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B2):
+ * - `numeroEnvio`: el envío nuevo que creó o, si esos ítems ya estaban enviados, el envío en el que salieron (null si ninguno de los
+ *   ids está enviado en esta cuenta: otra cuenta, o se quitaron);
+ * - `envioNuevo`: true solo si esta llamada creó el envío. Una pestaña vieja recibe el envío de otro con `envioNuevo: false`.
+ */
+export type ResultadoEnvioACocina = { ok: true; mensaje: string; numeroEnvio: number | null; envioNuevo: boolean } | { ok: false; mensaje: string };
+
 export function ok(mensaje: string): ResultadoAccion {
   return { ok: true, mensaje };
 }

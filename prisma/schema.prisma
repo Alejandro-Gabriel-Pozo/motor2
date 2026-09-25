@@ -39,6 +39,8 @@ model User {
   pagosConsignante          PagoConsignante[]
   registrosAuditoria        RegistroAuditoria[]
   cuentasAbiertas           Cuenta[]           @relation("CuentaAbiertaPor")
+  cuentasCerradas           Cuenta[]           @relation("CuentaCerradaPor")
+  cuentaItemsCreados        CuentaItem[]       @relation("CuentaItemCreadoPor")
 }
 
 model Account {
@@ -867,6 +869,8 @@ model Operacion {
   resultadoMensaje String?
 
   movimientos MovimientoStock[]
+  /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
+  cuentaItems CuentaItem[]
 
   @@index([sucursalId, proceso, fecha])
   @@unique([claveIdempotencia])
@@ -1474,13 +1478,20 @@ model TemaCartaSucursal {
 }
 
 // ===================================================================
-// POS: mapa de mesas del salón (docs/plan-mapa-de-mesas-2026-09-24.md).
+// POS: mapa de mesas del salón (docs/plan-mapa-de-mesas-2026-09-24.md) y toma de pedido (docs/plan-tomar-pedido-2026-09-25.md).
 //
-// Tres entidades: la mesa física, la CUENTA abierta de esa mesa y sus
-// ítems. La comanda/KOT real (ticket a cocina, con anulación, motivo y
-// permiso elevado) NO se modela todavía: `CuentaItem.numeroEnvio` es un
-// marcador liviano hasta el pendiente «tomar pedido»
-// (docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6).
+// Tres entidades: la mesa física, la CUENTA abierta de esa mesa y sus ítems. Sin tabla de comanda/KOT propia:
+// - KOT DERIVADO: «Enviar a cocina» le pone `numeroEnvio = max(numeroEnvio) + 1` de la cuenta a los ítems elegidos que seguían
+//   sin enviar (transacción serializable). El «ticket» del envío n son los ítems con ese número. No cierra la puerta a una tabla
+//   `EnvioCocina` futura (impresión, pantalla de cocina, ruteo por estación).
+// - ANULACIÓN = FILA ESPEJO: un ítem ya enviado NUNCA se edita ni se borra. Anularlo (total o parcial) escribe un CuentaItem
+//   NUEVO con cantidad NEGATIVA, el mismo producto/precio/numeroEnvio, `anulaAItemId` apuntando al original, `motivoAnulacion` y
+//   quién lo hizo (más una fila de RegistroAuditoria). Lo que queda se calcula: restante = cantidad + Σ espejos. Mismo criterio
+//   append-only que anularVenta/anularCompra (líneas inversas).
+// - Un ítem SIN enviar (`numeroEnvio` null) es un borrador: se quita con DELETE físico, sin motivo ni auditoría.
+// Invariantes validadas en la APLICACIÓN (src/server/actions/pos/cuenta.ts), no en la base: espejo ⇒ cantidad < 0, mismo
+// numeroEnvio que su original y motivoAnulacion no vacío; original (anulaAItemId null) ⇒ cantidad > 0.
+// Grounding: docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6.
 // ===================================================================
 
 /// Mesa física del salón. El estado (libre/en_pedido/ocupada) NO se persiste: se deriva de su Cuenta abierta (src/core/pos/mesas.ts).
@@ -1498,6 +1509,7 @@ model Mesa {
 /// La CUENTA abierta de una mesa (no la comanda/KOT: ver docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§6).
 /// cerradaEn null = abierta. A lo sumo UNA abierta por mesa (índice único parcial manual "Cuenta_una_abierta_por_mesa_key",
 /// en la migración pos_mesas_cuentas: Prisma no sabe declarar un índice con WHERE). Sin vencimiento automático (§2).
+/// Se cierra con `cerrarCuenta` (registra la venta) o `liberarMesa` (cuenta sin ningún ítem, sin venta).
 model Cuenta {
   id           String       @id @default(cuid())
   mesaId       String
@@ -1506,24 +1518,40 @@ model Cuenta {
   abiertaPor   User         @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
   abiertaEn    DateTime     @default(now())
   cerradaEn    DateTime?
+  cerradaPorId String?
+  cerradaPor   User?        @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
   items        CuentaItem[]
 
   @@index([mesaId])
 }
 
 model CuentaItem {
-  id             String   @id @default(cuid())
-  cuentaId       String
-  cuenta         Cuenta   @relation(fields: [cuentaId], references: [id])
-  productoId     String
-  producto       Producto @relation(fields: [productoId], references: [id])
-  /// Mismo tipo que MovimientoStock.cantidad: desemboca en registrarVenta al facturar.
-  cantidad       Decimal  @db.Decimal(14, 4)
-  /// Precio al agregar el ítem (lo resuelve «tomar pedido»).
-  precioUnitario Decimal  @db.Decimal(14, 2)
-  /// null = sin enviar a cocina; 1..n = en qué envío salió. Marcador liviano hasta la entidad comanda/KOT real (pendiente «tomar pedido»).
-  numeroEnvio    Int?
-  creadoEn       DateTime @default(now())
+  id              String       @id @default(cuid())
+  cuentaId        String
+  cuenta          Cuenta       @relation(fields: [cuentaId], references: [id])
+  productoId      String
+  producto        Producto     @relation(fields: [productoId], references: [id])
+  /// Mismo tipo que MovimientoStock.cantidad: desemboca en la venta al cerrar la cuenta. Negativa SOLO en una fila espejo (anulación).
+  cantidad        Decimal      @db.Decimal(14, 4)
+  /// Precio CONGELADO al agregar el ítem (Precio Local o global de ese momento); es el que se cobra al cerrar la cuenta.
+  precioUnitario  Decimal      @db.Decimal(14, 2)
+  /// null = sin enviar a cocina (borrador); 1..n = en qué envío salió (KOT derivado, ver el bloque de arriba).
+  numeroEnvio     Int?
+  creadoEn        DateTime     @default(now())
+  /// Quién cargó el ítem (o quién anuló, en una fila espejo). Null en filas anteriores a «tomar pedido».
+  creadoPorId     String?
+  creadoPor       User?        @relation("CuentaItemCreadoPor", fields: [creadoPorId], references: [id])
+  /// No nulo = esta fila es un ESPEJO que anula (parcial o totalmente) al ítem original indicado. RESTRICT: el original no se borra.
+  anulaAItemId    String?
+  anulaAItem      CuentaItem?  @relation("CuentaItemAnulacion", fields: [anulaAItemId], references: [id], onDelete: Restrict)
+  anulaciones     CuentaItem[] @relation("CuentaItemAnulacion")
+  /// Obligatorio en una fila espejo (validado en la aplicación).
+  motivoAnulacion String?
+  /// La Operacion VENTA que registró este ítem al cerrar la cuenta (una por línea neta producto+precio). RESTRICT: no se borra.
+  operacionId     String?
+  operacion       Operacion?   @relation(fields: [operacionId], references: [id], onDelete: Restrict)
 
   @@index([cuentaId])
+  @@index([anulaAItemId])
+  @@index([operacionId])
 }

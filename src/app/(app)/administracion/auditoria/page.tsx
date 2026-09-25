@@ -4,7 +4,7 @@ import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarRegistrosAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
 
-const ENTIDADES: CambioAuditable["entidad"][] = ["Producto", "PrecioLocalProducto", "PermisoRol", "CapacidadSucursal", "Rol", "Operacion"];
+const ENTIDADES: CambioAuditable["entidad"][] = ["Producto", "PrecioLocalProducto", "PermisoRol", "CapacidadSucursal", "Rol", "Operacion", "CuentaItem"];
 
 export default async function AuditoriaPage({
   searchParams,
