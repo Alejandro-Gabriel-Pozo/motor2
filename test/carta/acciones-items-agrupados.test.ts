@@ -215,6 +215,75 @@ describe("Server Actions de ítems agrupados", () => {
     });
   });
 
+  describe("alta con productos (DA7)", () => {
+    const opcionesDe = async (itemId: string) =>
+      (await prisma.opcionItemAgrupadoCarta.findMany({ where: { itemAgrupadoCartaId: itemId }, orderBy: { orden: "asc" }, select: { productoId: true, orden: true } })).map((o) => [
+        o.productoId,
+        o.orden,
+      ]);
+
+    it("tres productos del mismo precio: entran los tres, en ese orden, en un solo mensaje", async () => {
+      await prisma.producto.update({ where: { id: ids.fanta }, data: { precioVenta: 5000 } });
+      const r = await guardarItemAgrupadoCarta({ nombre: "Gaseosa 500 CC", seccionCartaId: sBebidas, productoIds: [ids.coca, ids.sprite, ids.fanta] });
+      expect(r).toEqual({ ok: true, mensaje: 'Ítem agrupado "Gaseosa 500 CC" creado con 3 de 3 productos.', id: expect.any(String), nombre: "Gaseosa 500 CC" });
+      expect(await opcionesDe(r.ok ? r.id : "")).toEqual([
+        [ids.coca, 0],
+        [ids.sprite, 1],
+        [ids.fanta, 2],
+      ]);
+    });
+
+    it("uno de otro precio: entran los otros dos y el mensaje dice cuál no entró y por qué (bloqueo D5)", async () => {
+      const r = await guardarItemAgrupadoCarta({ nombre: "Gaseosa 500 CC", seccionCartaId: sBebidas, productoIds: [ids.coca, ids.fanta, ids.sprite] });
+      expect(r.ok).toBe(true);
+      expect(r.mensaje).toBe(
+        'Ítem agrupado "Gaseosa 500 CC" creado con 2 de 3 productos. No entró: «Fanta 500cc» cuesta $5.500 acá y «Gaseosa 500 CC» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.'
+      );
+      expect(await opcionesDe(r.ok ? r.id : "")).toEqual([
+        [ids.coca, 0],
+        [ids.sprite, 1],
+      ]);
+      expect(await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId: ids.fanta } })).toBeNull();
+    });
+
+    it("uno ya agrupado en otro ítem: no entra (mismo criterio que «Agregar producto») y el mensaje lo nombra", async () => {
+      const otro = await crearGaseosa("Gaseosa 1,5L");
+      expect((await agregarOpcionItemAgrupadoCarta(otro, ids.sprite)).ok).toBe(true);
+      const r = await guardarItemAgrupadoCarta({ nombre: "Gaseosa 500 CC", seccionCartaId: sBebidas, productoIds: [ids.coca, ids.sprite, "no-existe", ids.mp] });
+      expect(r.ok).toBe(true);
+      expect(r.mensaje).toBe(
+        'Ítem agrupado "Gaseosa 500 CC" creado con 1 de 4 productos. No entraron: «Sprite 500cc» ya está en «Gaseosa 1,5L»: quitalo de ahí primero. No se encontró el producto. Solo un producto de venta (PV) puede ir en la carta.'
+      );
+      expect(await opcionesDe(r.ok ? r.id : "")).toEqual([[ids.coca, 0]]);
+      // Sprite sigue en su grupo.
+      expect((await prisma.opcionItemAgrupadoCarta.findUniqueOrThrow({ where: { productoId: ids.sprite } })).itemAgrupadoCartaId).toBe(otro);
+    });
+
+    it("sin productos (o lista vacía/repetidos) = alta de siempre; al editar, productoIds se ignora; un alta rechazada no agrega nada", async () => {
+      const r = await guardarItemAgrupadoCarta({ nombre: "Gaseosa 500 CC", seccionCartaId: sBebidas, productoIds: [] });
+      expect(r.mensaje).toBe('Ítem agrupado "Gaseosa 500 CC" creado.');
+      const id = r.ok ? r.id : "";
+      expect((await guardarItemAgrupadoCarta({ id, nombre: "Gaseosa 500 CC", seccionCartaId: sBebidas, productoIds: [ids.coca] })).mensaje).toBe('Ítem agrupado "Gaseosa 500 CC" guardado.');
+      expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(0);
+
+      const repetidos = await guardarItemAgrupadoCarta({ nombre: "Otra", seccionCartaId: sBebidas, productoIds: [ids.coca, ids.coca, " "] });
+      expect(repetidos.mensaje).toBe('Ítem agrupado "Otra" creado con 1 de 1 producto.');
+
+      // Nombre repetido: no se crea el ítem y no se agrega ninguna opción.
+      expect(await guardarItemAgrupadoCarta({ nombre: "gaseosa 500 cc", seccionCartaId: sBebidas, productoIds: [ids.sprite] })).toMatchObject({ ok: false });
+      expect(await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId: ids.sprite } })).toBeNull();
+    });
+
+    it("sin el permiso `carta` no crea el ítem ni agrega productos", async () => {
+      const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: operadorRolId });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+      const r = await guardarItemAgrupadoCarta({ nombre: "Gaseosa 500 CC", seccionCartaId: sBebidas, productoIds: [ids.coca] });
+      expect(r.ok).toBe(false);
+      expect(await prisma.itemAgrupadoCarta.count()).toBe(0);
+      expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(0);
+    });
+  });
+
   it("apagar y prender: la fila sigue existiendo", async () => {
     const agId = await crearGaseosa();
     expect(await actualizarActivoItemAgrupadoCarta(agId, false)).toEqual({ ok: true, mensaje: 'Ítem agrupado "Gaseosa 500 CC" apagado.' });

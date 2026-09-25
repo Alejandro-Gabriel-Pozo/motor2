@@ -84,12 +84,26 @@ export default async function ItemsAgrupadosPage() {
         <FormConResultado
           accion={async (fd: FormData) => {
             "use server";
-            return refrescarSiOk(await guardarItemAgrupadoCarta(datosDelFormulario(fd)));
+            // DA7: los productos elegidos en el alta entran con la misma validación que "Agregar producto".
+            return refrescarSiOk(await guardarItemAgrupadoCarta({ ...datosDelFormulario(fd), productoIds: fd.getAll("productoIds").map(String) }));
           }}
           className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
         >
           <h2 className="text-sm font-medium sm:col-span-2">Nuevo ítem agrupado</h2>
           <CamposItem ubicacion={ubicacion} />
+          {datos.productosSinGrupo.length > 0 && (
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+              Productos del ítem (opcional; Ctrl o ⌘ + clic para elegir varios)
+              <select name="productoIds" multiple size={Math.min(8, datos.productosSinGrupo.length)} className={CLASE_INPUT}>
+                {datos.productosSinGrupo.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} ({pesos(p.precioAca)} acá)
+                  </option>
+                ))}
+              </select>
+              <span className="text-neutral-500">Solo entran los del mismo precio; después se pueden sumar más con «Agregar producto».</span>
+            </label>
+          )}
           <div className="sm:col-span-2">
             <button type="submit" className={CLASE_BOTON}>
               Crear ítem agrupado

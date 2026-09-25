@@ -39,12 +39,19 @@ export interface DatosItemAgrupadoCarta {
   tags?: readonly string[] | string | null;
   especial?: boolean;
   orden?: number | string | null;
+  /**
+   * SOLO en el alta (DA7, docs/plan-carta-seccion-directa-2026-09-25.md): productos a agregar como opciones apenas se crea el ítem,
+   * en este orden y con la MISMA validación que `agregarOpcionItemAgrupadoCarta` (PV, que no esté en otro grupo, mismo precio D5).
+   * Los que no entran no frenan el alta: el mensaje final dice cuáles y por qué. Al editar se ignora (para sumar opciones a un
+   * ítem existente está "Agregar producto").
+   */
+  productoIds?: readonly string[] | null;
 }
 
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
 export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("carta", async () => {
+  return conPermiso<ResultadoConId>("carta", async (ctx) => {
     const nombre = validarNombreItemAgrupadoCarta(datos.nombre);
     if (!nombre.ok) return error(nombre.mensaje);
     const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
@@ -71,19 +78,34 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
       especial: datos.especial === true,
       orden: orden.valor,
     };
+    let it: { id: string; nombre: string };
     try {
       if (datos.id) {
         const existente = await prisma.itemAgrupadoCarta.findUnique({ where: { id: datos.id } });
         if (!existente) return error("No se encontró el ítem agrupado.");
-        const it = await prisma.itemAgrupadoCarta.update({ where: { id: datos.id }, data });
-        return okConId(`Ítem agrupado "${it.nombre}" guardado.`, it.id, it.nombre);
+        const editado = await prisma.itemAgrupadoCarta.update({ where: { id: datos.id }, data });
+        return okConId(`Ítem agrupado "${editado.nombre}" guardado.`, editado.id, editado.nombre);
       }
-      const it = await prisma.itemAgrupadoCarta.create({ data });
-      return okConId(`Ítem agrupado "${it.nombre}" creado.`, it.id, it.nombre);
+      it = await prisma.itemAgrupadoCarta.create({ data });
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error(`Ya existe el ítem agrupado "${nombre.valor}".`);
       throw e;
     }
+
+    const productoIds = [...new Set((datos.productoIds ?? []).map((id) => id.trim()).filter(Boolean))];
+    if (productoIds.length === 0) return okConId(`Ítem agrupado "${it.nombre}" creado.`, it.id, it.nombre);
+
+    // DA7: de a uno, en el orden recibido, con la misma validación que "Agregar producto" (cada uno se compara con los que ya
+    // entraron). Un rechazo no frena a los demás ni deshace el alta: se junta todo en un solo mensaje.
+    const rechazos: string[] = [];
+    for (const productoId of productoIds) {
+      const r = await agregarOpcion(ctx.sucursalId, it.id, productoId, null);
+      if (!r.ok) rechazos.push(r.mensaje);
+    }
+    const entraron = productoIds.length - rechazos.length;
+    const resumen = `Ítem agrupado "${it.nombre}" creado con ${entraron} de ${productoIds.length} producto${productoIds.length === 1 ? "" : "s"}.`;
+    const detalle = rechazos.length ? ` ${rechazos.length === 1 ? "No entró" : "No entraron"}: ${rechazos.join(" ")}` : "";
+    return okConId(`${resumen}${detalle}`, it.id, it.nombre);
   });
 }
 
@@ -111,59 +133,65 @@ async function mensajeYaAgrupado(productoId: string, productoNombre: string, ite
  * La categoría del producto no importa: la opción sale (y sus ventas se cuentan) en la sección del ítem agrupado.
  */
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
-    const item = await prisma.itemAgrupadoCarta.findUnique({
-      where: { id: itemAgrupadoCartaId },
-      select: {
-        id: true,
-        nombre: true,
-        opciones: { select: { orden: true, producto: { select: { id: true, nombre: true, precioVenta: true } } } },
-      },
-    });
-    if (!item) return error("No se encontró el ítem agrupado.");
-    if (!productoId) return error("Elegí el producto a agregar.");
-    const producto = await prisma.producto.findUnique({
-      where: { id: productoId },
-      select: { id: true, nombre: true, tipo: true, precioVenta: true },
-    });
-    if (!producto) return error("No se encontró el producto.");
-    if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
+  return conPermiso("carta", (ctx) => agregarOpcion(ctx.sucursalId, itemAgrupadoCartaId, productoId, orden));
+}
 
-    const yaAgrupado = await mensajeYaAgrupado(producto.id, producto.nombre, item.id);
-    if (yaAgrupado) return error(yaAgrupado);
-
-    const o = validarOrdenCarta(orden ?? item.opciones.length);
-    if (!o.ok) return error(o.mensaje);
-
-    // D5: mismo precio que las opciones ya cargadas, en la sucursal activa de quien administra (con su precio local, si lo hay).
-    if (item.opciones.length > 0) {
-      const idsAComparar = [producto.id, ...item.opciones.map((op) => op.producto.id)];
-      const locales = await prisma.precioLocalProducto.findMany({
-        where: { sucursalId: ctx.sucursalId, productoId: { in: idsAComparar } },
-        select: { productoId: true, precio: true, habilitado: true },
-      });
-      const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
-      const precioCandidato = precioDeCarta(Number(producto.precioVenta), localPorProducto.get(producto.id));
-      const preciosGrupo = item.opciones.map((op) => precioDeCarta(Number(op.producto.precioVenta), localPorProducto.get(op.producto.id)));
-      if (preciosGrupo.some((p) => p !== precioCandidato)) {
-        const minimo = Math.min(...preciosGrupo);
-        const maximo = Math.max(...preciosGrupo);
-        const delGrupo = minimo === maximo ? pesos(minimo) : `${pesos(minimo)} a ${pesos(maximo)}`;
-        return error(
-          `«${producto.nombre}» cuesta ${pesos(precioCandidato)} acá y «${item.nombre}» ya tiene opciones a ${delGrupo}: agrupá solo productos del mismo precio, o dejala aparte.`
-        );
-      }
-    }
-
-    try {
-      await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor } });
-    } catch (e) {
-      // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
-      if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
-      throw e;
-    }
-    return ok(`«${producto.nombre}» agregado a «${item.nombre}».`);
+/**
+ * El cuerpo de `agregarOpcionItemAgrupadoCarta`, SIN el gate (lo pone quien llama: esa acción, o `guardarItemAgrupadoCarta` en el
+ * alta con productos, DA7). No se exporta: en un archivo "use server" todo lo exportado es un endpoint.
+ */
+async function agregarOpcion(sucursalId: string, itemAgrupadoCartaId: string, productoId: string, orden: number | string | null): Promise<ResultadoAccion> {
+  const item = await prisma.itemAgrupadoCarta.findUnique({
+    where: { id: itemAgrupadoCartaId },
+    select: {
+      id: true,
+      nombre: true,
+      opciones: { select: { orden: true, producto: { select: { id: true, nombre: true, precioVenta: true } } } },
+    },
   });
+  if (!item) return error("No se encontró el ítem agrupado.");
+  if (!productoId) return error("Elegí el producto a agregar.");
+  const producto = await prisma.producto.findUnique({
+    where: { id: productoId },
+    select: { id: true, nombre: true, tipo: true, precioVenta: true },
+  });
+  if (!producto) return error("No se encontró el producto.");
+  if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
+
+  const yaAgrupado = await mensajeYaAgrupado(producto.id, producto.nombre, item.id);
+  if (yaAgrupado) return error(yaAgrupado);
+
+  const o = validarOrdenCarta(orden ?? item.opciones.length);
+  if (!o.ok) return error(o.mensaje);
+
+  // D5: mismo precio que las opciones ya cargadas, en la sucursal activa de quien administra (con su precio local, si lo hay).
+  if (item.opciones.length > 0) {
+    const idsAComparar = [producto.id, ...item.opciones.map((op) => op.producto.id)];
+    const locales = await prisma.precioLocalProducto.findMany({
+      where: { sucursalId, productoId: { in: idsAComparar } },
+      select: { productoId: true, precio: true, habilitado: true },
+    });
+    const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
+    const precioCandidato = precioDeCarta(Number(producto.precioVenta), localPorProducto.get(producto.id));
+    const preciosGrupo = item.opciones.map((op) => precioDeCarta(Number(op.producto.precioVenta), localPorProducto.get(op.producto.id)));
+    if (preciosGrupo.some((p) => p !== precioCandidato)) {
+      const minimo = Math.min(...preciosGrupo);
+      const maximo = Math.max(...preciosGrupo);
+      const delGrupo = minimo === maximo ? pesos(minimo) : `${pesos(minimo)} a ${pesos(maximo)}`;
+      return error(
+        `«${producto.nombre}» cuesta ${pesos(precioCandidato)} acá y «${item.nombre}» ya tiene opciones a ${delGrupo}: agrupá solo productos del mismo precio, o dejala aparte.`
+      );
+    }
+  }
+
+  try {
+    await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor } });
+  } catch (e) {
+    // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
+    if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
+    throw e;
+  }
+  return ok(`«${producto.nombre}» agregado a «${item.nombre}».`);
 }
 
 export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, orden: number | string | null): Promise<ResultadoAccion> {

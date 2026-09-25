@@ -106,3 +106,53 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
     await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
   }
 });
+
+/**
+ * DA7 (docs/plan-carta-seccion-directa-2026-09-25.md, M9): elegir los productos del ítem agrupado en el mismo alta. Los tres del
+ * mismo precio entran; uno de otro precio no entra y el mensaje (uno solo) dice cuál y por qué. La carta muestra un renglón.
+ */
+test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del mismo precio, y el mensaje dice cuál no", async ({ paginaAutenticada: page, sucursalId, request }) => {
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const nombreItem = `E2E Alta con productos ${marca}`;
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Alta Bebidas ${marca}`, orden: 1 } });
+  const crear = (q: string, precioVenta: number) =>
+    prisma.producto.create({ data: { codigo: `E2E_AGR_ALTA_${q}_${marca}`, nombre: `E2E Alta ${q} 500cc ${marca}`, tipo: "PV", precioVenta, unidadStockId: unidad.id } });
+  const [coca, fanta, sprite, tonica] = await Promise.all([crear("Coca", 5000), crear("Fanta", 5000), crear("Sprite", 5000), crear("Tonica", 5500)]);
+  const productoIds = [coca, fanta, sprite, tonica].map((p) => p.id);
+  await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
+
+  try {
+    await page.goto("/catalogo/carta/agrupados");
+    const nuevo = page.locator("form", { has: page.getByRole("heading", { name: "Nuevo ítem agrupado" }) });
+    await nuevo.getByLabel("Nombre", { exact: true }).fill(nombreItem);
+    await nuevo.getByLabel(/^Sección de carta/).selectOption({ label: seccion.nombre });
+    await nuevo.getByLabel(/^Productos del ítem/).selectOption([coca.id, fanta.id, sprite.id, tonica.id]);
+    await nuevo.getByRole("button", { name: "Crear ítem agrupado" }).click();
+    await expect(nuevo.getByRole("status")).toHaveText(
+      `Ítem agrupado "${nombreItem}" creado con 3 de 4 productos. No entró: «${tonica.nombre}» cuesta $5.500 acá y «${nombreItem}» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.`
+    );
+
+    const fila = page.locator(`[data-item-agrupado="${nombreItem}"]`);
+    await expect(fila.locator("[data-opcion-agrupada]")).toHaveCount(3);
+    // La tónica sigue disponible para agregar en otro lado (no quedó en ningún grupo).
+    await expect(nuevo.getByLabel(/^Productos del ítem/).locator(`option[value="${tonica.id}"]`)).toHaveCount(1);
+    await expect(nuevo.getByLabel(/^Productos del ítem/).locator(`option[value="${coca.id}"]`)).toHaveCount(0);
+
+    const item = await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { nombre: nombreItem } });
+    const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
+    expect(r.status()).toBe(200);
+    const s = (await r.json()).secciones.find((x: { id: string }) => x.id === seccion.id);
+    expect(s.items).toHaveLength(1);
+    // El orden de las opciones es el de la lista del select (alfabético por nombre).
+    expect(s.items[0]).toMatchObject({ productoId: item.id, nombre: nombreItem, categoria: seccion.nombre, precio: 5000, imagenUrl: null });
+    expect(s.items[0].opciones).toEqual([coca, fanta, sprite].map((p) => ({ productoId: p.id, nombre: p.nombre, precio: 5000 })));
+  } finally {
+    const items = await prisma.itemAgrupadoCarta.findMany({ where: { seccionCartaId: seccion.id }, select: { id: true } });
+    await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { OR: [{ productoId: { in: productoIds } }, { itemAgrupadoCartaId: { in: items.map((i) => i.id) } }] } });
+    await prisma.itemAgrupadoCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
+    await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+    await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
+  }
+});
