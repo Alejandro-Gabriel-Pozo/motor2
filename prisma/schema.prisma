@@ -411,12 +411,10 @@ model Grupo {
 /// aplica a CUALQUIER producto (MP o PV). Sin jerarquía, sin relación con
 /// el árbol de Grupo (ese agrupa Insumos, no productos de venta).
 model CategoriaProducto {
-  id           String                 @id @default(cuid())
-  nombre       String                 @unique
-  activo       Boolean                @default(true)
-  productos    Producto[]
-  seccionCarta CategoriaSeccionCarta?
-  itemsAgrupadosCarta ItemAgrupadoCarta[]
+  id        String     @id @default(cuid())
+  nombre    String     @unique
+  activo    Boolean    @default(true)
+  productos Producto[]
 }
 
 /// Catálogo cerrado (Catalogo.js:2634-2810). `magnitud` es solo
@@ -1316,87 +1314,80 @@ model CotizacionDolar {
 /// por decisión D4 del plan: si hiciera falta un título o imagen distinto
 /// por sucursal, se agrega después un override aditivo.
 model SeccionCarta {
-  id          String                  @id @default(cuid())
+  id          String                   @id @default(cuid())
   /// "Platos Principales" → MenuCategory.label.
-  nombre      String                  @unique
+  nombre      String                   @unique
   /// "Del fuego" → titulo_seccion (null = se usa `nombre`).
   titulo      String?
   descripcion String?
   /// Solo `https://` sin espacios, comillas ni paréntesis: la carta la mete
   /// en `backgroundImage: url(...)` (ver src/core/carta/armar-menu.ts).
   imagenUrl   String?
-  orden       Int                     @default(0)
+  orden       Int                      @default(0)
   /// Nunca se borra una sección: se apaga (mismo patrón que el catálogo).
-  activa      Boolean                 @default(true)
-  categorias  CategoriaSeccionCarta[]
+  activa      Boolean                  @default(true)
+  /// Lo que se ubica en esta sección, DIRECTO (docs/plan-carta-seccion-directa-2026-09-25.md): productos sueltos e ítems agrupados.
+  contenidos  ContenidoCartaProducto[]
+  agrupados   ItemAgrupadoCarta[]
   promos      PromoCarta[]
 
   @@index([activa, orden])
-}
-
-/// Tabla puente CategoriaProducto → SeccionCarta, SOLO de referencia: no
-/// toca la categoría (que siguen usando los reportes). Una categoría cae
-/// en a lo sumo una sección de carta (`categoriaId` único); una categoría
-/// sin fila acá no aparece en la carta.
-model CategoriaSeccionCarta {
-  id             String            @id @default(cuid())
-  categoriaId    String            @unique
-  categoria      CategoriaProducto @relation(fields: [categoriaId], references: [id])
-  seccionCartaId String
-  seccionCarta   SeccionCarta      @relation(fields: [seccionCartaId], references: [id])
-  /// Orden de la categoría dentro de su sección de carta.
-  orden          Int               @default(0)
-
-  @@index([seccionCartaId])
 }
 
 /// El texto de cara al cliente de un PV. FILA AUSENTE = NO SE MUESTRA
 /// (decisión D3, opt-in — mismo criterio que DisponibilidadProducto): nada
 /// interno aparece en la carta pública sin que alguien lo marque. Por eso
 /// la migración NO hace backfill.
+///
+/// Se ubica DIRECTO en su sección de carta (docs/plan-carta-seccion-directa-2026-09-25.md): la Categoría de producto no
+/// tiene ningún papel en la carta. Sin imagen propia: la carta pública solo dibuja la imagen de la SECCIÓN.
 model ContenidoCartaProducto {
-  id             String   @id @default(cuid())
-  productoId     String   @unique
-  producto       Producto @relation(fields: [productoId], references: [id])
-  visibleEnCarta Boolean  @default(false)
+  id             String        @id @default(cuid())
+  productoId     String        @unique
+  producto       Producto      @relation(fields: [productoId], references: [id])
+  visibleEnCarta Boolean       @default(false)
+  /// Obligatoria si `visibleEnCarta` (lo exige la Server Action, DA2); null solo en un contenido oculto.
+  seccionCartaId String?
+  seccionCarta   SeccionCarta? @relation(fields: [seccionCartaId], references: [id])
   descripcion    String?
-  imagenUrl      String?
-  tags           String[] @default([])
+  tags           String[]      @default([])
   /// ★ "especial" de la carta.
-  especial       Boolean  @default(false)
-  /// Orden dentro de su categoría (después del orden de la categoría).
-  orden          Int      @default(0)
-  actualizadoEn  DateTime @updatedAt
+  especial       Boolean       @default(false)
+  /// Orden dentro de su sección de carta (misma escala que ItemAgrupadoCarta.orden).
+  orden          Int           @default(0)
+  actualizadoEn  DateTime      @updatedAt
+
+  @@index([seccionCartaId])
 }
 
 /// Ítem AGRUPADO de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md): un solo renglón visible ("Gaseosa 500cc") que
 /// agrupa varios PV reales y distintos (Coca-Cola 500cc, Sprite 500cc…). Lleva lo de cara al cliente (como ContenidoCartaProducto).
 /// SIN precio propio (D5): el precio es el de sus opciones, que tienen que coincidir; si no, la carta muestra el mayor y el
-/// admin avisa. Global (Catálogo Central). Se ubica por su categoría → sección de carta, igual que un PV. Un solo nivel, sin
-/// árbol (no es Grupo). Nunca se borra: se apaga.
+/// admin avisa. Global (Catálogo Central). Se ubica DIRECTO en su sección de carta, igual que un PV suelto
+/// (docs/plan-carta-seccion-directa-2026-09-25.md). Sin imagen propia. Un solo nivel, sin árbol (no es Grupo). Nunca se borra:
+/// se apaga.
 model ItemAgrupadoCarta {
-  id            String                    @id @default(cuid())
-  nombre        String                    @unique
-  categoriaId   String
-  categoria     CategoriaProducto         @relation(fields: [categoriaId], references: [id])
-  descripcion   String?
-  imagenUrl     String?
-  tags          String[]                  @default([])
-  especial      Boolean                   @default(false)
-  /// Orden dentro de su categoría (misma escala que ContenidoCartaProducto.orden).
-  orden         Int                       @default(0)
-  activo        Boolean                   @default(true)
-  creadoEn      DateTime                  @default(now())
-  actualizadoEn DateTime                  @updatedAt
-  opciones      OpcionItemAgrupadoCarta[]
+  id             String                    @id @default(cuid())
+  nombre         String                    @unique
+  seccionCartaId String
+  seccionCarta   SeccionCarta              @relation(fields: [seccionCartaId], references: [id])
+  descripcion    String?
+  tags           String[]                  @default([])
+  especial       Boolean                   @default(false)
+  /// Orden dentro de su sección de carta (misma escala que ContenidoCartaProducto.orden).
+  orden          Int                       @default(0)
+  activo         Boolean                   @default(true)
+  creadoEn       DateTime                  @default(now())
+  actualizadoEn  DateTime                  @updatedAt
+  opciones       OpcionItemAgrupadoCarta[]
 
-  @@index([categoriaId])
+  @@index([seccionCartaId])
   @@index([activo])
 }
 
 /// Un PV real dentro de un ítem agrupado. `productoId @unique`: un producto está en a lo sumo UN ítem agrupado (D2). Un producto
 /// agrupado nunca sale suelto en la carta, aunque tenga ContenidoCartaProducto visible (D3). Quitarlo = borrar esta fila (es
-/// solo una referencia, como CategoriaSeccionCarta).
+/// solo una referencia).
 model OpcionItemAgrupadoCarta {
   id                  String            @id @default(cuid())
   itemAgrupadoCartaId String
