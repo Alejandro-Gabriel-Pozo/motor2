@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { importeDeLinea, totalDeLineas } from "@/core/moneda";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { lineasDeVenta } from "./cuenta";
 import { nombreDelMesero } from "./mesas";
 
@@ -41,16 +41,15 @@ export interface BoletaDeCuenta {
 /** Líneas netas y total de la boleta, a partir de TODOS los ítems de la cuenta (originales y anulaciones), igual que `cerrarCuenta`. */
 export function armarBoleta(items: readonly { productoId: string; productoNombre: string; cantidad: number; precioUnitario: number }[]): { lineas: LineaDeBoleta[]; total: number } {
   const nombres = new Map(items.map((i) => [`${i.productoId}|${i.precioUnitario}`, i.productoNombre]));
-  const netas = lineasDeVenta(items);
-  return {
-    lineas: netas.map((l) => ({
-      producto: nombres.get(`${l.productoId}|${l.precioUnitario}`) ?? "",
-      cantidad: l.cantidad,
-      precioUnitario: l.precioUnitario,
-      subtotal: importeDeLinea(l.cantidad, l.precioUnitario),
-    })),
-    total: totalDeLineas(netas),
-  };
+  const lineas = lineasDeVenta(items).map((l) => ({
+    producto: nombres.get(`${l.productoId}|${l.precioUnitario}`) ?? "",
+    cantidad: l.cantidad,
+    precioUnitario: l.precioUnitario,
+    subtotal: importeDeLinea(l.cantidad, l.precioUnitario),
+  }));
+  // El total es la suma de los subtotales — el mismo importe por línea que `cerrarCuenta` registra en cada VENTA —, no la suma cruda
+  // re-redondeada: así coincide centavo a centavo con lo registrado. redondearMoneda solo limpia el ruido de sumar centavos en float.
+  return { lineas, total: redondearMoneda(lineas.reduce((suma, l) => suma + l.subtotal, 0)) };
 }
 
 /**

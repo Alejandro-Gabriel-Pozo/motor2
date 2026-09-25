@@ -12,6 +12,7 @@ import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/core
 import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
 import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
 import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
+import { obtenerBoletasRecientes } from "../../src/core/pos/boleta";
 
 /**
  * Cierre de cuenta (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 6): registra la venta con el núcleo
@@ -246,5 +247,27 @@ describe("cerrarCuenta (server action)", () => {
     expect.soft(r.mensaje).toContain(MONEDA.format(370.37));
     const [venta] = await ventasDeLaMesa();
     expect.soft(Number(venta.movimientos.find((m) => m.proceso === "VENTA")!.precioTotal)).toBe(370.37);
+  });
+
+  it("el total del mensaje de cierre y de la boleta es la suma de las líneas VENTA registradas, centavo a centavo (Paso 6)", async () => {
+    const jamon = await sembrarProductoDisponible({ codigo: "PV_JAMON", nombre: "Jamón crudo por kg", tipo: "PV", unidadStockId: s.kg.id, precioVenta: 1234.55 }, s.sucursalId);
+    const queso = await sembrarProductoDisponible({ codigo: "PV_QUESO", nombre: "Queso por kg", tipo: "PV", unidadStockId: s.kg.id, precioVenta: 1234.57 }, s.sucursalId);
+    for (const pv of [jamon, queso]) {
+      await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: s.muzzarella.id, cantidad: 1, unidadId: s.kg.id }] } } });
+    }
+    await comprar(s.muzzarella.id, 10);
+    // 0,3 × 1234,55 = 370,365 → 370,37 y 0,5 × 1234,57 = 617,285 → 617,29: registradas suman 987,66; la suma cruda redondeada, 987,65.
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [
+      { productoId: jamon.id, cantidad: 0.3, precioUnitario: 1234.55, numeroEnvio: 1 },
+      { productoId: queso.id, cantidad: 0.5, precioUnitario: 1234.57, numeroEnvio: 1 },
+    ]);
+
+    const r = await cerrarCuenta(cuenta.id, s.seccion.id);
+    const registrado = (await ventasDeLaMesa()).flatMap((v) => v.movimientos).filter((m) => m.proceso === "VENTA").map((m) => Number(m.precioTotal));
+    expect(registrado.sort((a, b) => a - b)).toEqual([370.37, 617.29]);
+    const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    expect.soft(r.mensaje).toContain(MONEDA.format(987.66));
+    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    expect.soft(boleta.total).toBe(987.66);
   });
 });

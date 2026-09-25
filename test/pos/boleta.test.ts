@@ -106,4 +106,15 @@ describe("armarBoleta — importes exactos", () => {
     expect.soft(boleta.lineas).toEqual([{ producto: "Jamón crudo por kg", cantidad: 0.3, precioUnitario: 1234.55, subtotal: 370.37 }]);
     expect.soft(boleta.total).toBe(370.37);
   });
+
+  it("dos líneas fraccionarias en medio centavo: el total es la suma de los subtotales, lo mismo que se registra (Paso 6)", () => {
+    // 0,3 × 1234,55 = 370,365 → 370,37 y 0,5 × 1234,57 = 617,285 → 617,29. Redondear la suma cruda (987,65) no coincide con las
+    // líneas VENTA que registra cerrarCuenta (370,37 + 617,29 = 987,66).
+    const boleta = armarBoleta([
+      { productoId: "p1", productoNombre: "Jamón crudo por kg", cantidad: 0.3, precioUnitario: 1234.55 },
+      { productoId: "p2", productoNombre: "Queso por kg", cantidad: 0.5, precioUnitario: 1234.57 },
+    ]);
+    expect(boleta.lineas.map((l) => l.subtotal)).toEqual([370.37, 617.29]);
+    expect(boleta.total).toBe(987.66);
+  });
 });
