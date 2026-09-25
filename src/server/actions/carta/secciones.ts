@@ -6,9 +6,9 @@ import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 
 /**
- * Secciones de carta y la tabla puente categoría → sección (docs/plan-carta-catalogo-2026-09-24.md, M9). Globales (Catálogo
- * Central, decisión D4). Solo escriben en las tablas de carta (`SeccionCarta`, `CategoriaSeccionCarta`): la categoría en sí
- * no se toca. Gate: `carta` (solo admin en la semilla).
+ * Secciones de carta (docs/plan-carta-catalogo-2026-09-24.md, M9). Globales (Catálogo Central, decisión D4). Solo escriben en
+ * `SeccionCarta`. Cada producto suelto y cada ítem agrupado elige su sección directo (docs/plan-carta-seccion-directa-2026-09-25.md):
+ * la Categoría de producto no ubica nada en la carta. Gate: `carta` (solo admin en la semilla).
  */
 
 export interface DatosSeccionCarta {
@@ -58,33 +58,5 @@ export async function actualizarActivaSeccionCarta(seccionCartaId: string, activ
     if (!existente) return error("No se encontró la sección de carta.");
     await prisma.seccionCarta.update({ where: { id: seccionCartaId }, data: { activa } });
     return ok(`Sección de carta "${existente.nombre}" ${activa ? "activada" : "desactivada"}.`);
-  });
-}
-
-/**
- * Pone una categoría en una sección de carta (o la cambia de sección), con su orden dentro de ella. `seccionCartaId` null la
- * saca de la carta: se borra la fila puente, que es solo una referencia (la categoría y sus productos no cambian).
- */
-export async function asignarCategoriaASeccionCarta(categoriaId: string, seccionCartaId: string | null, orden: number | string | null = 0): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const categoria = await prisma.categoriaProducto.findUnique({ where: { id: categoriaId } });
-    if (!categoria) return error("No se encontró la categoría.");
-
-    if (!seccionCartaId) {
-      await prisma.categoriaSeccionCarta.deleteMany({ where: { categoriaId } });
-      return ok(`La categoría "${categoria.nombre}" ya no está en ninguna sección de carta.`);
-    }
-
-    const o = validarOrdenCarta(orden);
-    if (!o.ok) return error(o.mensaje);
-    const seccion = await prisma.seccionCarta.findUnique({ where: { id: seccionCartaId } });
-    if (!seccion) return error("No se encontró la sección de carta.");
-
-    await prisma.categoriaSeccionCarta.upsert({
-      where: { categoriaId },
-      update: { seccionCartaId, orden: o.valor },
-      create: { categoriaId, seccionCartaId, orden: o.valor },
-    });
-    return ok(`La categoría "${categoria.nombre}" va en la sección de carta "${seccion.nombre}".`);
   });
 }
