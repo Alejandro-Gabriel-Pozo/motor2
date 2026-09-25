@@ -28,7 +28,8 @@ describe("resolverGrupoDeProducto", () => {
       fanta: await pv("GPC_FANTA", "Fanta 500cc", 5000),
       suelto: await pv("GPC_SUELTO", "Tónica 500cc", 5000),
     };
-    agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", categoriaId: cat } })).id;
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } });
+    agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
       data: [ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ itemAgrupadoCartaId: agId, productoId, orden })),
     });

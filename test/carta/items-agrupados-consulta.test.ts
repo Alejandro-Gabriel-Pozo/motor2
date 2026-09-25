@@ -6,13 +6,13 @@ import type { CartaV1 } from "../../src/core/carta/armar-menu";
 /**
  * Ítems agrupados en `resolverMenuCarta`, contra Postgres real (docs/plan-agrupacion-items-carta-2026-09-24.md, M3): qué
  * opciones entran (disponibles en la sucursal, solo PV), que un producto agrupado nunca sale suelto (D3) y el precio por
- * sucursal. `menu-consulta.test.ts` queda idéntico.
+ * sucursal. Desde docs/plan-carta-seccion-directa-2026-09-25.md el ítem agrupado y cada PV suelto eligen su sección directo.
  */
 describe("resolverMenuCarta — ítems agrupados", () => {
   const AHORA = new Date("2026-09-24T10:00:00.000Z");
   let central: string;
   let otra: string;
-  let cGas: string;
+  let bebidasId: string;
   let ids: Record<string, string>;
 
   beforeEach(async () => {
@@ -21,16 +21,11 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     central = (await prisma.sucursal.create({ data: { nombre: "Central" } })).id;
     otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
 
-    cGas = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
+    const cGas = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
     const cBife = (await prisma.categoriaProducto.create({ data: { nombre: "Bife" } })).id;
     const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol", orden: 1 } });
     const platos = await prisma.seccionCarta.create({ data: { nombre: "Platos Principales", orden: 2 } });
-    await prisma.categoriaSeccionCarta.createMany({
-      data: [
-        { categoriaId: cGas, seccionCartaId: bebidas.id },
-        { categoriaId: cBife, seccionCartaId: platos.id },
-      ],
-    });
+    bebidasId = bebidas.id;
 
     let n = 0;
     const pv = async (nombre: string, categoriaId: string, precioVenta: number, sucursales: string[], tipo: "PV" | "MP" = "PV") => {
@@ -49,8 +44,8 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     // El fixture "de hoy": el bife y Sprite (con contenido previo propio) salen sueltos.
     await prisma.contenidoCartaProducto.createMany({
       data: [
-        { productoId: ids.bife, visibleEnCarta: true },
-        { productoId: ids.sprite, visibleEnCarta: true, descripcion: "Lima-limón", tags: ["Sin azúcar"], orden: 3 },
+        { productoId: ids.bife, visibleEnCarta: true, seccionCartaId: platos.id },
+        { productoId: ids.sprite, visibleEnCarta: true, seccionCartaId: bebidas.id, descripcion: "Lima-limón", tags: ["Sin azúcar"], orden: 3 },
       ],
     });
   });
@@ -58,7 +53,7 @@ describe("resolverMenuCarta — ítems agrupados", () => {
   /** El ítem agrupado «Gaseosa 500 CC» con las opciones dadas (en ese orden). */
   async function crearGaseosa(opciones: string[], extra: { activo?: boolean } = {}) {
     const ag = await prisma.itemAgrupadoCarta.create({
-      data: { nombre: "Gaseosa 500 CC", categoriaId: cGas, descripcion: "Bien fría", tags: ["Sin alcohol"], especial: true, ...extra },
+      data: { nombre: "Gaseosa 500 CC", seccionCartaId: bebidasId, descripcion: "Bien fría", tags: ["Sin alcohol"], especial: true, ...extra },
     });
     await prisma.opcionItemAgrupadoCarta.createMany({ data: opciones.map((productoId, orden) => ({ itemAgrupadoCartaId: ag.id, productoId, orden })) });
     return ag.id;
@@ -70,7 +65,7 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     const antes = await resolverMenuCarta(central, undefined, AHORA);
     expect(todos(antes).map((i) => i.nombre).sort()).toEqual(["Bife de chorizo", "Sprite 500cc"]);
 
-    await prisma.itemAgrupadoCarta.create({ data: { nombre: "Vacío", categoriaId: cGas } });
+    await prisma.itemAgrupadoCarta.create({ data: { nombre: "Vacío", seccionCartaId: bebidasId } });
     await crearGaseosa([ids.pepsi]);
     const despues = await resolverMenuCarta(central, undefined, AHORA);
     expect(despues).toEqual(antes);
@@ -100,7 +95,8 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     expect(items.find((i) => i.productoId === agId)).toEqual({
       productoId: agId,
       nombre: "Gaseosa 500 CC",
-      categoria: "Gaseosa 500 CC",
+      // Un ítem agrupado no tiene categoría: lleva el nombre de su sección.
+      categoria: "Bebidas sin alcohol",
       descripcion: "Bien fría",
       precio: 5000,
       tags: ["Sin alcohol"],
@@ -154,12 +150,11 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     expect(enOtra!.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
   });
 
-  it("7. no escribe: las 8 tablas de carta, producto y disponibilidadProducto quedan igual", async () => {
+  it("7. no escribe: las 7 tablas de carta, producto y disponibilidadProducto quedan igual", async () => {
     await crearGaseosa([ids.coca, ids.sprite, ids.fanta]);
     const contar = () =>
       Promise.all([
         prisma.seccionCarta.count(),
-        prisma.categoriaSeccionCarta.count(),
         prisma.contenidoCartaProducto.count(),
         prisma.promoCarta.count(),
         prisma.sucursalPublica.count(),

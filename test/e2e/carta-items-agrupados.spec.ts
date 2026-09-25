@@ -6,7 +6,8 @@ import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
  * Ítems agrupados de la carta (/catalogo/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M7) de punta a punta,
  * caso «Los Miches» (A.13): se crea «Gaseosa 500 CC» desde la pantalla y se le agregan tres gaseosas a $5000; una cuarta a $5500
  * se RECHAZA (D5: solo se agrupan productos del mismo precio) y sigue suelta; el endpoint público muestra un solo renglón a $5000
- * con las tres opciones. Después se quita una opción y se apaga el ítem (sus opciones no salen sueltas, D3).
+ * con las tres opciones. Después se quita una opción y se apaga el ítem (sus opciones no salen sueltas, D3). El ítem elige su
+ * sección de carta directo, sin categoría ni imagen (docs/plan-carta-seccion-directa-2026-09-25.md).
  */
 test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo en /api/carta/[sucursal]", async ({ paginaAutenticada: page, sucursalId, request }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -14,14 +15,13 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
   const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Gaseosa 500 CC Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas sin alcohol ${marca}`, orden: 1 } });
-  await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
   const crear = (q: string, precioVenta: number) =>
     prisma.producto.create({ data: { codigo: `E2E_AGR_UI_${q}_${marca}`, nombre: `E2E ${q} 500cc ${marca}`, tipo: "PV", categoriaId: categoria.id, precioVenta, unidadStockId: unidad.id } });
   const [coca, sprite, pomelo, fanta] = await Promise.all([crear("Coca", 5000), crear("Sprite", 5000), crear("Pomelo", 5000), crear("Fanta", 5500)]);
   const productoIds = [coca, sprite, pomelo, fanta].map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
   // Fanta ya sale suelta en la carta (con su contenido): el bloqueo la deja así.
-  await prisma.contenidoCartaProducto.create({ data: { productoId: fanta.id, visibleEnCarta: true } });
+  await prisma.contenidoCartaProducto.create({ data: { productoId: fanta.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
 
   const leerSeccion = async () => {
     const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
@@ -39,7 +39,8 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
     // 1. Nuevo ítem agrupado, con descripción y ★.
     const nuevo = page.locator("form", { has: page.getByRole("heading", { name: "Nuevo ítem agrupado" }) });
     await nuevo.getByLabel("Nombre", { exact: true }).fill(nombreItem);
-    await nuevo.getByLabel(/^Categoría/).selectOption({ label: categoria.nombre });
+    await nuevo.getByLabel(/^Sección de carta/).selectOption({ label: seccion.nombre });
+    await expect(nuevo.getByLabel(/^Imagen/)).toHaveCount(0);
     await nuevo.getByLabel("Descripción (opcional)").fill("Bien fría");
     await nuevo.getByLabel("Especial (★)").check();
     await nuevo.getByRole("button", { name: "Crear ítem agrupado" }).click();
@@ -94,12 +95,11 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
     s = await leerSeccion();
     expect(s!.items.map((i) => i.productoId)).toEqual([fanta.id]);
   } finally {
-    // Orden RESTRICT: opciones → agrupado → contenido → puente → sección → disponibilidad → productos → categoría.
-    const items = await prisma.itemAgrupadoCarta.findMany({ where: { categoriaId: categoria.id }, select: { id: true } });
+    // Orden RESTRICT: opciones → agrupado → contenido → sección → disponibilidad → productos → categoría.
+    const items = await prisma.itemAgrupadoCarta.findMany({ where: { seccionCartaId: seccion.id }, select: { id: true } });
     await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { OR: [{ productoId: { in: productoIds } }, { itemAgrupadoCartaId: { in: items.map((i) => i.id) } }] } });
-    await prisma.itemAgrupadoCarta.deleteMany({ where: { categoriaId: categoria.id } });
+    await prisma.itemAgrupadoCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
-    await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
     await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });

@@ -47,8 +47,7 @@ test.describe("API de la carta pública", () => {
     });
     try {
       await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal.id, productoId: producto.id, disponible: true } });
-      await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
-      await prisma.contenidoCartaProducto.create({ data: { productoId: producto.id, visibleEnCarta: true, tags: ["Regional"], especial: true } });
+      await prisma.contenidoCartaProducto.create({ data: { productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
       await prisma.promoCarta.create({ data: { sucursalId: sucursal.id, seccionCartaId: seccion.id, titulo: `E2E Promo ${marca}`, precio: 25000 } });
 
       const r = await request.get(`/api/carta/${sucursal.id}`, { headers: auth });
@@ -71,7 +70,6 @@ test.describe("API de la carta pública", () => {
       // Las filas de carta primero: referencian producto/categoría/sucursal con RESTRICT.
       await prisma.promoCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
-      await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
       await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });

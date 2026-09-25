@@ -6,7 +6,8 @@ import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 /**
  * GET /api/carta/[sucursal] con un ítem agrupado, contra el build de producción (docs/plan-agrupacion-items-carta-2026-09-24.md,
  * M4): un solo renglón con `opciones`, y la red de seguridad de D5 — si el precio de una opción cambia DESPUÉS (acá, directo en
- * la base, como lo haría Catálogo), la carta muestra el mayor.
+ * la base, como lo haría Catálogo), la carta muestra el mayor. El ítem se ubica directo en su sección (sin categoría) y lleva en
+ * `categoria` el nombre de esa sección (docs/plan-carta-seccion-directa-2026-09-25.md).
  */
 const auth = { Authorization: `Bearer ${TOKEN_CARTA_E2E}` };
 
@@ -25,8 +26,7 @@ test("un ítem agrupado sale como un solo renglón con sus opciones; si una opci
   let agrupadoId: string | null = null;
   try {
     await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId: sucursal.id, productoId, disponible: true })) });
-    await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
-    const agrupado = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Gaseosa 500 CC ${marca}`, categoriaId: categoria.id, especial: true } });
+    const agrupado = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Gaseosa 500 CC ${marca}`, seccionCartaId: seccion.id, especial: true } });
     agrupadoId = agrupado.id;
     await prisma.opcionItemAgrupadoCarta.createMany({ data: productoIds.map((productoId, orden) => ({ itemAgrupadoCartaId: agrupado.id, productoId, orden })) });
 
@@ -44,7 +44,7 @@ test("un ítem agrupado sale como un solo renglón con sus opciones; si una opci
       {
         productoId: agrupado.id,
         nombre: agrupado.nombre,
-        categoria: categoria.nombre,
+        categoria: seccion.nombre,
         descripcion: null,
         precio: 5000,
         tags: [],
@@ -63,10 +63,9 @@ test("un ítem agrupado sale como un solo renglón con sus opciones; si una opci
       { productoId: productos[1].id, nombre: productos[1].nombre, precio: 5500 },
     ]);
   } finally {
-    // Orden RESTRICT: opciones → agrupado → puente → sección → disponibilidad → productos → categoría.
+    // Orden RESTRICT: opciones → agrupado → sección → disponibilidad → productos → categoría.
     if (agrupadoId) await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: agrupadoId } });
-    await prisma.itemAgrupadoCarta.deleteMany({ where: { categoriaId: categoria.id } });
-    await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
+    await prisma.itemAgrupadoCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
     await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });

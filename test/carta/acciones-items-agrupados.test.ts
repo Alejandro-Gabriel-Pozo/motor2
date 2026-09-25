@@ -17,13 +17,14 @@ import { validarNombreItemAgrupadoCarta } from "../../src/core/carta/validacione
 /**
  * Server Actions de los ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): exigen `carta`,
  * validan lo que termina en la carta pública, solo escriben en ItemAgrupadoCarta / OpcionItemAgrupadoCarta, y BLOQUEAN
- * agrupar productos de distinto precio (D5, decisión del dueño; caso «Los Miches»).
+ * agrupar productos de distinto precio (D5, decisión del dueño; caso «Los Miches»). Desde
+ * docs/plan-carta-seccion-directa-2026-09-25.md el ítem agrupado elige su sección de carta directo y no tiene imagen.
  */
 describe("Server Actions de ítems agrupados", () => {
   let sucursalId: string;
   let operadorRolId: string;
-  let cGas: string;
-  let cAgua: string;
+  let sBebidas: string;
+  let sOtras: string;
   let unidadId: string;
   let ids: Record<string, string>;
 
@@ -36,16 +37,10 @@ describe("Server Actions de ítems agrupados", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
-    cGas = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
-    cAgua = (await prisma.categoriaProducto.create({ data: { nombre: "Aguas" } })).id;
-    const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } });
-    const otras = await prisma.seccionCarta.create({ data: { nombre: "Otras bebidas" } });
-    await prisma.categoriaSeccionCarta.createMany({
-      data: [
-        { categoriaId: cGas, seccionCartaId: bebidas.id },
-        { categoriaId: cAgua, seccionCartaId: otras.id },
-      ],
-    });
+    const cGas = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
+    const cAgua = (await prisma.categoriaProducto.create({ data: { nombre: "Aguas" } })).id;
+    sBebidas = (await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } })).id;
+    sOtras = (await prisma.seccionCarta.create({ data: { nombre: "Otras bebidas" } })).id;
     const pv = async (codigo: string, nombre: string, precioVenta: number, categoriaId = cGas) =>
       (await sembrarProductoDisponible({ codigo, nombre, tipo: "PV", categoriaId, precioVenta, unidadStockId: unidadId }, sucursalId)).id;
     ids = {
@@ -58,7 +53,7 @@ describe("Server Actions de ítems agrupados", () => {
   });
 
   const crearGaseosa = async (nombre = "Gaseosa 500 CC") => {
-    const r = await guardarItemAgrupadoCarta({ nombre, categoriaId: cGas, descripcion: "Bien fría", tags: "Sin alcohol", especial: true });
+    const r = await guardarItemAgrupadoCarta({ nombre, seccionCartaId: sBebidas, descripcion: "Bien fría", tags: "Sin alcohol", especial: true });
     expect(r.ok, r.mensaje).toBe(true);
     return r.ok ? r.id : "";
   };
@@ -71,8 +66,8 @@ describe("Server Actions de ítems agrupados", () => {
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: operadorRolId });
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
     const resultados = await Promise.all([
-      guardarItemAgrupadoCarta({ nombre: "Otra", categoriaId: cGas }),
-      guardarItemAgrupadoCarta({ id: agId, nombre: "Renombrada", categoriaId: cGas }),
+      guardarItemAgrupadoCarta({ nombre: "Otra", seccionCartaId: sBebidas }),
+      guardarItemAgrupadoCarta({ id: agId, nombre: "Renombrada", seccionCartaId: sBebidas }),
       actualizarActivoItemAgrupadoCarta(agId, false),
       agregarOpcionItemAgrupadoCarta(agId, ids.sprite),
       actualizarOrdenOpcionItemAgrupadoCarta(opcionId, 7),
@@ -90,44 +85,44 @@ describe("Server Actions de ítems agrupados", () => {
     const agId = await crearGaseosa();
     expect(await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { id: agId } })).toMatchObject({
       nombre: "Gaseosa 500 CC",
-      categoriaId: cGas,
+      seccionCartaId: sBebidas,
       descripcion: "Bien fría",
       tags: ["Sin alcohol"],
       especial: true,
       orden: 0,
       activo: true,
-      imagenUrl: null,
     });
-    expect(await guardarItemAgrupadoCarta({ nombre: "gaseosa 500 cc", categoriaId: cGas })).toEqual({ ok: false, mensaje: 'Ya existe el ítem agrupado "Gaseosa 500 CC".' });
+    // Sin imagen propia: la carta solo dibuja la de la sección.
+    expect(await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { id: agId } })).not.toHaveProperty("imagenUrl");
+    expect(await guardarItemAgrupadoCarta({ nombre: "gaseosa 500 cc", seccionCartaId: sBebidas })).toEqual({ ok: false, mensaje: 'Ya existe el ítem agrupado "Gaseosa 500 CC".' });
 
-    const e = await guardarItemAgrupadoCarta({ id: agId, nombre: "Gaseosa 500 CC", categoriaId: cAgua, descripcion: "", tags: ["Fría", "fría"], imagenUrl: "https://cdn.x.com/g.jpg", orden: "3" });
+    const e = await guardarItemAgrupadoCarta({ id: agId, nombre: "Gaseosa 500 CC", seccionCartaId: sOtras, descripcion: "", tags: ["Fría", "fría"], orden: "3" });
     expect(e.ok).toBe(true);
     expect(await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { id: agId } })).toMatchObject({
-      categoriaId: cAgua,
+      seccionCartaId: sOtras,
       descripcion: null,
       tags: ["Fría"],
       especial: false,
-      imagenUrl: "https://cdn.x.com/g.jpg",
       orden: 3,
     });
-    expect(await guardarItemAgrupadoCarta({ id: "no-existe", nombre: "X", categoriaId: cGas })).toEqual({ ok: false, mensaje: "No se encontró el ítem agrupado." });
+    expect(await guardarItemAgrupadoCarta({ id: "no-existe", nombre: "X", seccionCartaId: sBebidas })).toEqual({ ok: false, mensaje: "No se encontró el ítem agrupado." });
     expect(await prisma.itemAgrupadoCarta.count()).toBe(1);
   });
 
-  it("validaciones: nombre vacío, imagen insegura, tags, descripción larga, orden no entero, categoría inexistente → no escribe", async () => {
+  it("validaciones: nombre vacío, tags, descripción larga, orden no entero, sección vacía o inexistente → no escribe", async () => {
     expect(validarNombreItemAgrupadoCarta("  ").ok).toBe(false);
     const casos = [
-      { nombre: "  ", categoriaId: cGas },
-      { nombre: "Gaseosa", categoriaId: cGas, imagenUrl: "javascript:alert(1)" },
-      { nombre: "Gaseosa", categoriaId: cGas, imagenUrl: "https://cdn.x.com/a.jpg);background:red" },
-      { nombre: "Gaseosa", categoriaId: cGas, tags: "<script>" },
-      { nombre: "Gaseosa", categoriaId: cGas, tags: "1,2,3,4,5,6,7,8,9" },
-      { nombre: "Gaseosa", categoriaId: cGas, descripcion: "x".repeat(501) },
-      { nombre: "Gaseosa", categoriaId: cGas, orden: "1.5" },
-      { nombre: "Gaseosa", categoriaId: "no-existe" },
-      { nombre: "Gaseosa", categoriaId: "" },
+      { nombre: "  ", seccionCartaId: sBebidas },
+      { nombre: "Gaseosa", seccionCartaId: sBebidas, tags: "<script>" },
+      { nombre: "Gaseosa", seccionCartaId: sBebidas, tags: "1,2,3,4,5,6,7,8,9" },
+      { nombre: "Gaseosa", seccionCartaId: sBebidas, descripcion: "x".repeat(501) },
+      { nombre: "Gaseosa", seccionCartaId: sBebidas, orden: "1.5" },
+      { nombre: "Gaseosa", seccionCartaId: "no-existe" },
+      { nombre: "Gaseosa", seccionCartaId: "" },
     ];
     for (const datos of casos) expect((await guardarItemAgrupadoCarta(datos)).ok, JSON.stringify(datos).slice(0, 80)).toBe(false);
+    expect(await guardarItemAgrupadoCarta({ nombre: "Gaseosa", seccionCartaId: "no-existe" })).toEqual({ ok: false, mensaje: "No se encontró la sección de carta." });
+    expect(await guardarItemAgrupadoCarta({ nombre: "Gaseosa", seccionCartaId: "" })).toEqual({ ok: false, mensaje: "Elegí la sección de carta del ítem agrupado." });
     expect(await prisma.itemAgrupadoCarta.count()).toBe(0);
   });
 
@@ -210,13 +205,13 @@ describe("Server Actions de ítems agrupados", () => {
       expect(await quitarOpcionItemAgrupadoCarta(spriteOpcion)).toEqual({ ok: false, mensaje: "No se encontró la opción." });
     });
 
-    it("aviso D4 (no bloquea): una opción cuya categoría cae en otra sección de carta se agrega igual, con aviso", async () => {
+    it("la categoría de la opción no importa (sin aviso D4): una de otra categoría se agrega igual y sale en la sección del ítem", async () => {
       const agId = await crearGaseosa();
-      const r = await agregarOpcionItemAgrupadoCarta(agId, ids.agua);
-      expect(r.ok).toBe(true);
-      expect(r.mensaje).toBe(
-        '«Agua saborizada 500cc» agregado a «Gaseosa 500 CC». Ojo: su categoría «Aguas» cae en la sección de carta «Otras bebidas», no en la de «Gaseosa 500 CC»: en "Ventas por sección de carta" sus ventas se cuentan ahí.'
-      );
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
+      expect(await agregarOpcionItemAgrupadoCarta(agId, ids.agua)).toEqual({ ok: true, mensaje: "«Agua saborizada 500cc» agregado a «Gaseosa 500 CC»." });
+      const [seccion] = (await resolverMenuCarta(sucursalId))!.secciones;
+      expect(seccion.nombre).toBe("Bebidas sin alcohol");
+      expect(seccion.items.find((i) => i.productoId === agId)!.opciones!.map((o) => o.productoId)).toEqual([ids.coca, ids.agua]);
     });
   });
 
@@ -255,7 +250,7 @@ describe("Server Actions de ítems agrupados", () => {
       {
         productoId: agId,
         nombre: "Gaseosa 500 CC",
-        categoria: "Gaseosa 500 CC",
+        categoria: "Bebidas sin alcohol",
         descripcion: "Bien fría",
         precio: 5000,
         tags: ["Sin alcohol"],

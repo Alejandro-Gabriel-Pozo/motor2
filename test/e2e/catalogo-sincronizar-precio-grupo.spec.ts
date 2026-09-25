@@ -13,7 +13,6 @@ test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y
   const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Sync Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sync Sección ${marca}` } });
-  await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
   const [coca, sprite, fanta] = await Promise.all(
     ["Coca", "Sprite", "Fanta"].map((q) =>
       prisma.producto.create({ data: { codigo: `E2E_SYNC_${q}_${marca}`, nombre: `E2E Sync ${q} ${marca}`, tipo: "PV", categoriaId: categoria.id, precioVenta: 5000, unidadStockId: unidad.id } })
@@ -21,7 +20,7 @@ test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y
   );
   const productoIds = [coca, sprite, fanta].map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
-  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Sync Gaseosa ${marca}`, categoriaId: categoria.id } });
+  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Sync Gaseosa ${marca}`, seccionCartaId: seccion.id } });
   await prisma.opcionItemAgrupadoCarta.createMany({ data: productoIds.map((productoId, orden) => ({ itemAgrupadoCartaId: item.id, productoId, orden })) });
 
   try {
@@ -54,7 +53,6 @@ test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y
   } finally {
     await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: item.id } });
     await prisma.itemAgrupadoCarta.deleteMany({ where: { id: item.id } });
-    await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
     await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });

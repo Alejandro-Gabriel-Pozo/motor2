@@ -11,7 +11,6 @@ import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 
 const contenido = (extra: Partial<ProductoCartaEntrada["contenido"]> = {}): ProductoCartaEntrada["contenido"] => ({
   descripcion: null,
-  imagenUrl: null,
   tags: [],
   especial: false,
   orden: 0,
@@ -23,12 +22,12 @@ function entradaBase(extra: Partial<EntradaArmarMenu> = {}): EntradaArmarMenu {
     sucursal: { id: "suc1", nombre: "Central" },
     generadoEn: new Date("2026-09-24T12:00:00.000Z"),
     secciones: [
-      { id: "sP", nombre: "Platos Principales", titulo: "Del fuego", descripcion: "Brasas", imagenUrl: null, orden: 2, categorias: [{ categoriaId: "cBife", orden: 0 }] },
-      { id: "sE", nombre: "Entradas", titulo: null, descripcion: null, imagenUrl: null, orden: 1, categorias: [{ categoriaId: "cEmp", orden: 0 }] },
+      { id: "sP", nombre: "Platos Principales", titulo: "Del fuego", descripcion: "Brasas", imagenUrl: null, orden: 2 },
+      { id: "sE", nombre: "Entradas", titulo: null, descripcion: null, imagenUrl: null, orden: 1 },
     ],
     productos: [
-      { id: "p1", nombre: "Bife de chorizo", precioVenta: 34000, categoriaId: "cBife", categoriaNombre: "Bife", contenido: contenido({ especial: true, tags: ["Regional"] }) },
-      { id: "p2", nombre: "Empanada", precioVenta: 2500, categoriaId: "cEmp", categoriaNombre: "Empanadas", contenido: contenido() },
+      { id: "p1", nombre: "Bife de chorizo", precioVenta: 34000, categoriaNombre: "Bife", seccionCartaId: "sP", contenido: contenido({ especial: true, tags: ["Regional"] }) },
+      { id: "p2", nombre: "Empanada", precioVenta: 2500, categoriaNombre: "Empanadas", seccionCartaId: "sE", contenido: contenido() },
     ],
     preciosLocales: [],
     promos: [],
@@ -125,13 +124,27 @@ describe("armarMenuCarta", () => {
     expect(precios).toEqual({ p1: 36000, p2: 2500 });
   });
 
-  it("un PV cuya categoría no está en ninguna sección de carta NO aparece y va al diagnóstico (igual que uno sin categoría)", () => {
+  it("cada PV va a la sección de SU contenido, sin importar su categoría: dos de la misma categoría pueden ir a secciones distintas", () => {
+    const { carta } = armarMenuCarta(
+      entradaBase({
+        productos: [
+          ...entradaBase().productos,
+          // Misma categoría que el bife ("Bife"), pero ubicado en Entradas.
+          { id: "p3", nombre: "Bife chico", precioVenta: 20000, categoriaNombre: "Bife", seccionCartaId: "sE", contenido: contenido() },
+        ],
+      })
+    );
+    const porSeccion = Object.fromEntries(carta.secciones.map((s) => [s.id, s.items.map((i) => i.productoId)]));
+    expect(porSeccion).toEqual({ sE: ["p3", "p2"], sP: ["p1"] });
+  });
+
+  it("un PV sin sección, o con la sección apagada (no llega entre las activas), NO aparece y va al diagnóstico", () => {
     const { carta, diagnostico } = armarMenuCarta(
       entradaBase({
         productos: [
           ...entradaBase().productos,
-          { id: "p3", nombre: "Postre suelto", precioVenta: 1, categoriaId: "cPostre", categoriaNombre: "Postres", contenido: contenido() },
-          { id: "p4", nombre: "Agua", precioVenta: 1, categoriaId: null, categoriaNombre: null, contenido: contenido() },
+          { id: "p3", nombre: "Postre suelto", precioVenta: 1, categoriaNombre: "Postres", seccionCartaId: "sApagada", contenido: contenido() },
+          { id: "p4", nombre: "Agua", precioVenta: 1, categoriaNombre: null, seccionCartaId: null, contenido: contenido() },
         ],
       })
     );
@@ -139,9 +152,17 @@ describe("armarMenuCarta", () => {
     expect(ids).not.toContain("p3");
     expect(ids).not.toContain("p4");
     expect(diagnostico.visiblesSinSeccion).toEqual([
-      { productoId: "p4", nombre: "Agua", categoria: null },
-      { productoId: "p3", nombre: "Postre suelto", categoria: "Postres" },
+      { productoId: "p4", nombre: "Agua" },
+      { productoId: "p3", nombre: "Postre suelto" },
     ]);
+  });
+
+  it("un PV sin categoría pero con sección SÍ sale: `categoria` lleva el nombre de su sección (texto no vacío)", () => {
+    const { carta, diagnostico } = armarMenuCarta(
+      entradaBase({ productos: [{ id: "p4", nombre: "Agua", precioVenta: 900, categoriaNombre: null, seccionCartaId: "sE", contenido: contenido() }] })
+    );
+    expect(carta.secciones[0].items).toEqual([{ productoId: "p4", nombre: "Agua", categoria: "Entradas", descripcion: null, precio: 900, tags: [], especial: false, imagenUrl: null }]);
+    expect(diagnostico.visiblesSinSeccion).toEqual([]);
   });
 
   it("descarta las secciones vacías (sin ítems ni promos), pero una sección solo con promos se muestra", () => {
@@ -149,8 +170,8 @@ describe("armarMenuCarta", () => {
       entradaBase({
         secciones: [
           ...entradaBase().secciones,
-          { id: "sV", nombre: "Vacía", titulo: null, descripcion: null, imagenUrl: null, orden: 0, categorias: [{ categoriaId: "cNada", orden: 0 }] },
-          { id: "sPr", nombre: "Promos", titulo: null, descripcion: null, imagenUrl: null, orden: 9, categorias: [] },
+          { id: "sV", nombre: "Vacía", titulo: null, descripcion: null, imagenUrl: null, orden: 0 },
+          { id: "sPr", nombre: "Promos", titulo: null, descripcion: null, imagenUrl: null, orden: 9 },
         ],
         promos: [{ id: "pr1", seccionCartaId: "sPr", titulo: "1 pizza + coca 1,5L", descripcion: "  ", precio: 25000, orden: 1 }],
       })
@@ -160,21 +181,21 @@ describe("armarMenuCarta", () => {
     expect(carta.secciones[2].items).toEqual([]);
   });
 
-  it("ordena secciones por orden y nombre, ítems por orden de categoría → orden de contenido → nombre, promos por orden y título", () => {
+  it("ordena secciones por orden y nombre, ítems por orden → nombre (sin categoría de por medio), promos por orden y título", () => {
     const { carta } = armarMenuCarta({
       sucursal: { id: "s", nombre: "S" },
       generadoEn: new Date(0),
       secciones: [
-        { id: "B", nombre: "Bebidas", titulo: null, descripcion: null, imagenUrl: null, orden: 1, categorias: [] },
-        { id: "A", nombre: "Álbum", titulo: null, descripcion: null, imagenUrl: null, orden: 1, categorias: [{ categoriaId: "c2", orden: 2 }, { categoriaId: "c1", orden: 1 }] },
-        { id: "Z", nombre: "Zeta", titulo: null, descripcion: null, imagenUrl: null, orden: 0, categorias: [{ categoriaId: "c3", orden: 0 }] },
+        { id: "B", nombre: "Bebidas", titulo: null, descripcion: null, imagenUrl: null, orden: 1 },
+        { id: "A", nombre: "Álbum", titulo: null, descripcion: null, imagenUrl: null, orden: 1 },
+        { id: "Z", nombre: "Zeta", titulo: null, descripcion: null, imagenUrl: null, orden: 0 },
       ],
       productos: [
-        { id: "x1", nombre: "Ñoquis", precioVenta: 1, categoriaId: "c2", categoriaNombre: "Pastas", contenido: contenido({ orden: 0 }) },
-        { id: "x2", nombre: "Canelones", precioVenta: 1, categoriaId: "c2", categoriaNombre: "Pastas", contenido: contenido({ orden: 0 }) },
-        { id: "x3", nombre: "Zzz primero", precioVenta: 1, categoriaId: "c2", categoriaNombre: "Pastas", contenido: contenido({ orden: -1 }) },
-        { id: "x4", nombre: "Milanesa", precioVenta: 1, categoriaId: "c1", categoriaNombre: "Carnes", contenido: contenido({ orden: 5 }) },
-        { id: "x5", nombre: "Agua", precioVenta: 1, categoriaId: "c3", categoriaNombre: "Bebidas", contenido: contenido() },
+        { id: "x1", nombre: "Ñoquis", precioVenta: 1, categoriaNombre: "Pastas", seccionCartaId: "A", contenido: contenido({ orden: 0 }) },
+        { id: "x2", nombre: "Canelones", precioVenta: 1, categoriaNombre: "Pastas", seccionCartaId: "A", contenido: contenido({ orden: 0 }) },
+        { id: "x3", nombre: "Zzz primero", precioVenta: 1, categoriaNombre: "Pastas", seccionCartaId: "A", contenido: contenido({ orden: -1 }) },
+        { id: "x4", nombre: "Milanesa", precioVenta: 1, categoriaNombre: "Carnes", seccionCartaId: "A", contenido: contenido({ orden: 5 }) },
+        { id: "x5", nombre: "Agua", precioVenta: 1, categoriaNombre: "Bebidas", seccionCartaId: "Z", contenido: contenido() },
       ],
       preciosLocales: [],
       promos: [
@@ -184,35 +205,36 @@ describe("armarMenuCarta", () => {
       ],
     });
     expect(carta.secciones.map((s) => s.id)).toEqual(["Z", "A", "B"]);
-    expect(carta.secciones[1].items.map((i) => i.productoId)).toEqual(["x4", "x3", "x2", "x1"]);
+    // Antes la categoría "Carnes" (orden 1 en la sección) iba antes que "Pastas": ahora solo cuenta el orden de cada ítem.
+    expect(carta.secciones[1].items.map((i) => i.productoId)).toEqual(["x3", "x2", "x1", "x4"]);
     expect(carta.secciones[2].promos.map((p) => p.id)).toEqual(["q0", "q1", "q2"]);
   });
 
-  it("dos categorías con el mismo orden dentro de la sección no intercalan sus ítems", () => {
+  it("con el mismo orden, los ítems de categorías distintas se ordenan por nombre (la categoría no agrupa nada)", () => {
     const { carta } = armarMenuCarta({
       ...entradaBase(),
-      secciones: [{ id: "s", nombre: "S", titulo: null, descripcion: null, imagenUrl: null, orden: 0, categorias: [{ categoriaId: "a", orden: 0 }, { categoriaId: "b", orden: 0 }] }],
+      secciones: [{ id: "s", nombre: "S", titulo: null, descripcion: null, imagenUrl: null, orden: 0 }],
       productos: [
-        { id: "1", nombre: "A", precioVenta: 1, categoriaId: "b", categoriaNombre: "Vinos", contenido: contenido() },
-        { id: "2", nombre: "B", precioVenta: 1, categoriaId: "a", categoriaNombre: "Cervezas", contenido: contenido() },
-        { id: "3", nombre: "C", precioVenta: 1, categoriaId: "b", categoriaNombre: "Vinos", contenido: contenido() },
+        { id: "1", nombre: "C", precioVenta: 1, categoriaNombre: "Vinos", seccionCartaId: "s", contenido: contenido() },
+        { id: "2", nombre: "B", precioVenta: 1, categoriaNombre: "Cervezas", seccionCartaId: "s", contenido: contenido() },
+        { id: "3", nombre: "A", precioVenta: 1, categoriaNombre: "Vinos", seccionCartaId: "s", contenido: contenido() },
       ],
     });
-    expect(carta.secciones[0].items.map((i) => i.categoria)).toEqual(["Cervezas", "Vinos", "Vinos"]);
+    expect(carta.secciones[0].items.map((i) => i.nombre)).toEqual(["A", "B", "C"]);
   });
 
-  it("limpia textos y tags, y descarta imagenUrl inseguras (de sección y de ítem)", () => {
+  it("limpia textos y tags, descarta la imagenUrl insegura de la sección y el ítem sale SIEMPRE con imagenUrl null", () => {
     const { carta } = armarMenuCarta(
       entradaBase({
-        secciones: [{ id: "sE", nombre: "Entradas", titulo: "  ", descripcion: " Para picar ", imagenUrl: "https://x.com/a b.jpg", orden: 1, categorias: [{ categoriaId: "cEmp", orden: 0 }] }],
+        secciones: [{ id: "sE", nombre: "Entradas", titulo: "  ", descripcion: " Para picar ", imagenUrl: "https://x.com/a b.jpg", orden: 1 }],
         productos: [
           {
             id: "p2",
             nombre: "Empanada",
             precioVenta: 2500,
-            categoriaId: "cEmp",
             categoriaNombre: "Empanadas",
-            contenido: contenido({ descripcion: "  ", tags: [" Veggie ", "", "Veggie", "Picante"], imagenUrl: "https://cdn.x.com/emp.jpg" }),
+            seccionCartaId: "sE",
+            contenido: contenido({ descripcion: "  ", tags: [" Veggie ", "", "Veggie", "Picante"] }),
           },
         ],
       })
@@ -223,7 +245,14 @@ describe("armarMenuCarta", () => {
     expect(s.imagenUrl).toBeNull();
     expect(s.items[0].descripcion).toBeNull();
     expect(s.items[0].tags).toEqual(["Veggie", "Picante"]);
-    expect(s.items[0].imagenUrl).toBe("https://cdn.x.com/emp.jpg");
+    expect(s.items[0]).toHaveProperty("imagenUrl", null);
+  });
+
+  it("la imagen segura de la SECCIÓN sí viaja", () => {
+    const { carta } = armarMenuCarta(
+      entradaBase({ secciones: [{ id: "sE", nombre: "Entradas", titulo: null, descripcion: null, imagenUrl: "https://cdn.x.com/entradas.jpg", orden: 1 }] })
+    );
+    expect(carta.secciones[0].imagenUrl).toBe("https://cdn.x.com/entradas.jpg");
   });
 
   it("sin nada que mostrar: secciones vacías, no error", () => {

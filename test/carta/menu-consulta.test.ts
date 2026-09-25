@@ -5,7 +5,8 @@ import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/co
 /**
  * resolverMenuCarta contra Postgres real (docs/plan-carta-catalogo-2026-09-24.md, M3): qué PV entran a la carta pública de
  * una sucursal y con qué precio. El criterio de "disponible" es el de `whereDisponibleEn` (fila ausente = no disponible) y el
- * de "visible" es opt-in (sin fila de ContenidoCartaProducto = no se muestra, D3).
+ * de "visible" es opt-in (sin fila de ContenidoCartaProducto = no se muestra, D3). Cada contenido elige su sección de carta
+ * DIRECTO (docs/plan-carta-seccion-directa-2026-09-25.md): la categoría del producto no ubica nada.
  */
 describe("resolverMenuCarta", () => {
   let central: string;
@@ -21,21 +22,14 @@ describe("resolverMenuCarta", () => {
     inactiva = (await prisma.sucursal.create({ data: { nombre: "Cerrada", activo: false } })).id;
 
     const cat = async (nombre: string) => (await prisma.categoriaProducto.create({ data: { nombre } })).id;
-    const [cBife, cEmp, cSuelta, cTragos, cVacia] = await Promise.all([cat("Bife"), cat("Empanadas"), cat("Suelta"), cat("Tragos"), cat("Vacía")]);
+    const [cBife, cEmp, cSuelta, cTragos] = await Promise.all([cat("Bife"), cat("Empanadas"), cat("Suelta"), cat("Tragos")]);
 
     const entradas = await prisma.seccionCarta.create({ data: { nombre: "Entradas", orden: 1 } });
     const platos = await prisma.seccionCarta.create({ data: { nombre: "Platos Principales", titulo: "Del fuego", descripcion: "A las brasas", orden: 2 } });
     const promos = await prisma.seccionCarta.create({ data: { nombre: "Promos", orden: 3 } });
     const apagada = await prisma.seccionCarta.create({ data: { nombre: "Barra", orden: 0, activa: false } });
-    const sinNada = await prisma.seccionCarta.create({ data: { nombre: "Sin nada", orden: 0 } });
-    await prisma.categoriaSeccionCarta.createMany({
-      data: [
-        { categoriaId: cBife, seccionCartaId: platos.id },
-        { categoriaId: cEmp, seccionCartaId: entradas.id },
-        { categoriaId: cTragos, seccionCartaId: apagada.id },
-        { categoriaId: cVacia, seccionCartaId: sinNada.id },
-      ],
-    });
+    // Una sección activa sin nada ubicado: no sale.
+    await prisma.seccionCarta.create({ data: { nombre: "Sin nada", orden: 0 } });
 
     let n = 0;
     const pv = async (nombre: string, categoriaId: string | null, precioVenta: number, opciones: { sucursal?: string | null; tipo?: "PV" | "MP" } = {}) => {
@@ -61,11 +55,24 @@ describe("resolverMenuCarta", () => {
     };
     await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId: central, productoId: ids.noDisponible } }, data: { disponible: false } });
 
-    const visibles = ["bife", "ojo", "empanada", "empanadaLocalOff", "noDisponible", "sinFilaDisponibilidad", "mp", "soloOtra", "suelto", "sinCategoria", "trago"];
+    // Dónde se ve cada uno (null = sin sección: no sale, va al diagnóstico). "Fernet" está en una sección apagada.
+    const seccionDe: Record<string, string | null> = {
+      bife: platos.id,
+      ojo: platos.id,
+      empanada: entradas.id,
+      empanadaLocalOff: entradas.id,
+      noDisponible: platos.id,
+      sinFilaDisponibilidad: platos.id,
+      mp: platos.id,
+      soloOtra: platos.id,
+      suelto: null,
+      sinCategoria: null,
+      trago: apagada.id,
+    };
     await prisma.contenidoCartaProducto.createMany({
       data: [
-        ...visibles.map((k) => ({ productoId: ids[k], visibleEnCarta: true })),
-        { productoId: ids.oculto, visibleEnCarta: false },
+        ...Object.entries(seccionDe).map(([k, seccionCartaId]) => ({ productoId: ids[k], visibleEnCarta: true, seccionCartaId })),
+        { productoId: ids.oculto, visibleEnCarta: false, seccionCartaId: platos.id },
       ],
     });
     await prisma.contenidoCartaProducto.update({
@@ -128,7 +135,7 @@ describe("resolverMenuCarta", () => {
     for (const v of Object.values(precio)) expect(typeof v).toBe("number");
   });
 
-  it("contenido de carta: descripción, tags, especial; orden por ContenidoCartaProducto.orden dentro de la categoría", async () => {
+  it("contenido de carta: descripción, tags, especial; orden por ContenidoCartaProducto.orden dentro de la sección", async () => {
     const carta = (await resolverMenuCarta(central))!;
     const platos = carta.secciones.find((s) => s.nombre === "Platos Principales")!;
     expect(platos.titulo).toBe("Del fuego");
@@ -152,10 +159,34 @@ describe("resolverMenuCarta", () => {
     expect(promos).toEqual([{ id: expect.any(String), titulo: "1 pizza + coca 1,5L", descripcion: null, precio: 25000, orden: 1 }]);
   });
 
-  it("diagnóstico: los PV visibles cuya categoría no tiene sección de carta activa (no se exponen en la carta)", async () => {
+  it("diagnóstico: los PV visibles sin sección de carta, o con la suya apagada (no se exponen en la carta)", async () => {
     const armado = (await resolverMenuCartaConDiagnostico(central))!;
     expect(armado.diagnostico.visiblesSinSeccion.map((p) => p.nombre)).toEqual(["Fernet", "Plato suelto", "Sin categoría"]);
     expect(JSON.stringify(armado.carta)).not.toContain("visiblesSinSeccion");
+  });
+
+  it("la categoría no ubica nada: un PV sin categoría con sección sale (con `categoria` = su sección), y uno de «Bife» puede ir a Entradas", async () => {
+    const entradas = await prisma.seccionCarta.findUniqueOrThrow({ where: { nombre: "Entradas" } });
+    await prisma.contenidoCartaProducto.update({ where: { productoId: ids.sinCategoria }, data: { seccionCartaId: entradas.id } });
+    await prisma.contenidoCartaProducto.update({ where: { productoId: ids.ojo }, data: { seccionCartaId: entradas.id } });
+    const carta = (await resolverMenuCarta(central))!;
+    const seccionEntradas = carta.secciones.find((s) => s.nombre === "Entradas")!;
+    expect(seccionEntradas.items.map((i) => [i.nombre, i.categoria])).toEqual([
+      ["Empanada de carne", "Empanadas"],
+      ["Empanada de verdura", "Empanadas"],
+      ["Sin categoría", "Entradas"],
+      // orden 1 (los demás, 0): el orden de cada ítem manda, no su categoría.
+      ["Ojo de bife", "Bife"],
+    ]);
+    expect(carta.secciones.find((s) => s.nombre === "Platos Principales")!.items.map((i) => i.nombre)).toEqual(["Bife de chorizo"]);
+  });
+
+  it("imagen: la de la sección sale; ningún ítem tiene imagen propia (imagenUrl siempre null)", async () => {
+    await prisma.seccionCarta.update({ where: { nombre: "Platos Principales" }, data: { imagenUrl: "https://cdn.ejemplo.com/platos.jpg" } });
+    const carta = (await resolverMenuCarta(central))!;
+    const platos = carta.secciones.find((s) => s.nombre === "Platos Principales")!;
+    expect(platos.imagenUrl).toBe("https://cdn.ejemplo.com/platos.jpg");
+    for (const i of carta.secciones.flatMap((s) => s.items)) expect(i).toHaveProperty("imagenUrl", null);
   });
 
   it("apagar la disponibilidad saca el PV de la carta en la próxima lectura", async () => {
@@ -166,7 +197,7 @@ describe("resolverMenuCarta", () => {
 
   it("no escribe nada: la cantidad de filas de las tablas de carta y catálogo no cambia", async () => {
     const contar = async () =>
-      Promise.all([prisma.seccionCarta.count(), prisma.categoriaSeccionCarta.count(), prisma.contenidoCartaProducto.count(), prisma.promoCarta.count(), prisma.producto.count(), prisma.disponibilidadProducto.count()]);
+      Promise.all([prisma.seccionCarta.count(), prisma.contenidoCartaProducto.count(), prisma.promoCarta.count(), prisma.producto.count(), prisma.disponibilidadProducto.count()]);
     const antes = await contar();
     await resolverMenuCarta(central);
     await resolverMenuCarta(otra);

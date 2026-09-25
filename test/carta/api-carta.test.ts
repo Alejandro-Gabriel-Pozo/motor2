@@ -65,12 +65,11 @@ describe("GET /api/carta/[sucursal]", () => {
     cerrada = (await prisma.sucursal.create({ data: { nombre: "Cerrada", activo: false } })).id;
     const cat = await prisma.categoriaProducto.create({ data: { nombre: "Bife" } });
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Platos Principales", titulo: "Del fuego", orden: 2 } });
-    await prisma.categoriaSeccionCarta.create({ data: { categoriaId: cat.id, seccionCartaId: seccion.id } });
     const bife = await sembrarProductoDisponible(
       { codigo: "PV_SECRETO_123", nombre: "Bife de chorizo", tipo: "PV", categoriaId: cat.id, precioVenta: 34000, observaciones: "nota interna", unidadStockId: u.id },
       central
     );
-    await prisma.contenidoCartaProducto.create({ data: { productoId: bife.id, visibleEnCarta: true, tags: ["Regional"], especial: true } });
+    await prisma.contenidoCartaProducto.create({ data: { productoId: bife.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
     await prisma.promoCarta.create({ data: { sucursalId: central, seccionCartaId: seccion.id, titulo: "Bife + vino", precio: 40000 } });
   });
 

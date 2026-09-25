@@ -9,13 +9,13 @@ import {
 
 /**
  * Ítems AGRUPADOS de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M2): lógica pura de `armarMenuCarta`. Un
- * "Gaseosa 500 CC" agrupa varios PV reales (Coca-Cola, Sprite, Fanta 500cc) bajo un solo renglón. `armar-menu.test.ts` queda
- * idéntico: acá se prueba lo nuevo y, explícitamente, que un ítem sin agrupar sale exactamente como antes (D3, D6).
+ * "Gaseosa 500 CC" agrupa varios PV reales (Coca-Cola, Sprite, Fanta 500cc) bajo un solo renglón. Acá se prueba lo del grupo y,
+ * explícitamente, que un ítem sin agrupar sale exactamente como sin grupos (D3, D6). Desde
+ * docs/plan-carta-seccion-directa-2026-09-25.md el ítem agrupado elige su sección DIRECTO (sin categoría) y no tiene imagen.
  */
 
 const contenido = (extra: Partial<ContenidoCartaEntrada> = {}): ContenidoCartaEntrada => ({
   descripcion: null,
-  imagenUrl: null,
   tags: [],
   especial: false,
   orden: 0,
@@ -27,24 +27,13 @@ function entradaBase(extra: Partial<EntradaArmarMenu> = {}): EntradaArmarMenu {
     sucursal: { id: "suc1", nombre: "Central" },
     generadoEn: new Date("2026-09-24T12:00:00.000Z"),
     secciones: [
-      {
-        id: "sB",
-        nombre: "Bebidas sin alcohol",
-        titulo: null,
-        descripcion: null,
-        imagenUrl: null,
-        orden: 1,
-        categorias: [
-          { categoriaId: "cGas", orden: 0 },
-          { categoriaId: "cAgua", orden: 1 },
-        ],
-      },
-      { id: "sP", nombre: "Platos Principales", titulo: null, descripcion: null, imagenUrl: null, orden: 2, categorias: [{ categoriaId: "cBife", orden: 0 }] },
+      { id: "sB", nombre: "Bebidas sin alcohol", titulo: null, descripcion: null, imagenUrl: "https://cdn.x.com/bebidas.jpg", orden: 1 },
+      { id: "sP", nombre: "Platos Principales", titulo: null, descripcion: null, imagenUrl: null, orden: 2 },
     ],
     productos: [
-      { id: "p1", nombre: "Bife de chorizo", precioVenta: 34000, categoriaId: "cBife", categoriaNombre: "Bife", contenido: contenido({ especial: true, tags: ["Regional"] }) },
-      { id: "pAgua", nombre: "Agua saborizada 500 CC", precioVenta: 5000, categoriaId: "cAgua", categoriaNombre: "Aguas", contenido: contenido() },
-      { id: "pTonica", nombre: "Tónica 500cc", precioVenta: 5000, categoriaId: "cGas", categoriaNombre: "Gaseosa 500 CC", contenido: contenido({ orden: 5 }) },
+      { id: "p1", nombre: "Bife de chorizo", precioVenta: 34000, categoriaNombre: "Bife", seccionCartaId: "sP", contenido: contenido({ especial: true, tags: ["Regional"] }) },
+      { id: "pAgua", nombre: "Agua saborizada 500 CC", precioVenta: 5000, categoriaNombre: "Aguas", seccionCartaId: "sB", contenido: contenido({ orden: 9 }) },
+      { id: "pTonica", nombre: "Tónica 500cc", precioVenta: 5000, categoriaNombre: "Gaseosa 500 CC", seccionCartaId: "sB", contenido: contenido({ orden: 5 }) },
     ],
     preciosLocales: [],
     promos: [],
@@ -57,8 +46,7 @@ function gaseosa(extra: Partial<ItemAgrupadoEntrada> = {}): ItemAgrupadoEntrada 
   return {
     id: "ag1",
     nombre: "Gaseosa 500 CC",
-    categoriaId: "cGas",
-    categoriaNombre: "Gaseosa 500 CC",
+    seccionCartaId: "sB",
     contenido: contenido({ descripcion: "  Bien fría  ", tags: ["Sin alcohol"], especial: true, orden: 1 }),
     opciones: [
       { productoId: "pFanta", nombre: "Fanta 500cc", precioVenta: 5000, orden: 2 },
@@ -75,11 +63,11 @@ describe("armarMenuCarta — ítems agrupados", () => {
   it("1. sin agrupar = como hoy: sin `agrupados`, con `agrupados: []` y con agrupados que no emiten, la carta es idéntica", () => {
     const hoy = armarMenuCarta(entradaBase()).carta;
     const conVacio = armarMenuCarta(entradaBase({ agrupados: [] })).carta;
-    // Un agrupado sin opciones disponibles y otro cuya categoría no está en ninguna sección: ninguno de los dos emite nada,
-    // y ningún producto de la entrada es miembro de ellos.
+    // Un agrupado sin opciones disponibles y otro cuya sección está apagada: ninguno de los dos emite nada, y ningún producto de
+    // la entrada es miembro de ellos.
     const conAgrupadosQueNoEmiten = armarMenuCarta(
       entradaBase({
-        agrupados: [gaseosa({ opciones: [] }), gaseosa({ id: "ag2", nombre: "Otra", categoriaId: "cSinSeccion", categoriaNombre: "Sin sección" })],
+        agrupados: [gaseosa({ opciones: [] }), gaseosa({ id: "ag2", nombre: "Otra", seccionCartaId: "sApagada" })],
       })
     ).carta;
     for (const otra of [conVacio, conAgrupadosQueNoEmiten]) {
@@ -97,14 +85,15 @@ describe("armarMenuCarta — ítems agrupados", () => {
     }
   });
 
-  it("2. forma del ítem agrupado: id del agrupado, lo de cara al cliente del agrupado, opciones en orden → nombre; versión 1", () => {
+  it("2. forma del ítem agrupado: id del agrupado, lo de cara al cliente del agrupado, `categoria` = su sección, sin imagen, opciones en orden → nombre; versión 1", () => {
     const { carta } = armarMenuCarta(entradaBase({ agrupados: [gaseosa()] }));
     expect(carta.version).toBe(1);
+    expect(carta.secciones[0].imagenUrl).toBe("https://cdn.x.com/bebidas.jpg");
     const item = carta.secciones[0].items.find((i) => i.productoId === "ag1");
     expect(item).toEqual({
       productoId: "ag1",
       nombre: "Gaseosa 500 CC",
-      categoria: "Gaseosa 500 CC",
+      categoria: "Bebidas sin alcohol",
       descripcion: "Bien fría",
       precio: 5000,
       tags: ["Sin alcohol"],
@@ -136,7 +125,7 @@ describe("armarMenuCarta — ítems agrupados", () => {
   it("3. un producto presente como suelto Y como opción sale SOLO dentro del grupo (D3)", () => {
     const base = entradaBase();
     const entrada = entradaBase({
-      productos: [...base.productos, { id: "pSprite", nombre: "Sprite 500cc", precioVenta: 5000, categoriaId: "cGas", categoriaNombre: "Gaseosa 500 CC", contenido: contenido() }],
+      productos: [...base.productos, { id: "pSprite", nombre: "Sprite 500cc", precioVenta: 5000, categoriaNombre: "Gaseosa 500 CC", seccionCartaId: "sB", contenido: contenido() }],
       agrupados: [gaseosa()],
     });
     const todos = items(entrada);
@@ -190,27 +179,27 @@ describe("armarMenuCarta — ítems agrupados", () => {
     });
   });
 
-  it("5. orden: se intercala con los PV sueltos de su categoría por orden y nombre, y respeta el orden de la categoría", () => {
+  it("5. orden: se intercala con los PV sueltos de su SECCIÓN por orden y nombre (misma escala, sin categoría de por medio)", () => {
     const { carta } = armarMenuCarta(
       entradaBase({
         productos: [
           ...entradaBase().productos,
-          { id: "pPomelo", nombre: "Pomelo 500cc", precioVenta: 5000, categoriaId: "cGas", categoriaNombre: "Gaseosa 500 CC", contenido: contenido({ orden: 1 }) },
-          { id: "pCero", nombre: "Agua tónica cero", precioVenta: 5000, categoriaId: "cGas", categoriaNombre: "Gaseosa 500 CC", contenido: contenido({ orden: 0 }) },
+          { id: "pPomelo", nombre: "Pomelo 500cc", precioVenta: 5000, categoriaNombre: "Gaseosa 500 CC", seccionCartaId: "sB", contenido: contenido({ orden: 1 }) },
+          { id: "pCero", nombre: "Agua tónica cero", precioVenta: 5000, categoriaNombre: "Gaseosa 500 CC", seccionCartaId: "sB", contenido: contenido({ orden: 0 }) },
         ],
         agrupados: [gaseosa()],
       })
     );
-    // cGas (orden 0) antes que cAgua (orden 1); dentro de cGas: orden 0 → "Agua tónica cero"; orden 1 → "Gaseosa 500 CC" y
-    // "Pomelo 500cc" (por nombre); orden 5 → "Tónica 500cc".
+    // Orden 0 → "Agua tónica cero"; orden 1 → "Gaseosa 500 CC" y "Pomelo 500cc" (por nombre); orden 5 → "Tónica 500cc"; orden 9 →
+    // "Agua saborizada 500 CC" (de otra categoría, "Aguas": la categoría no agrupa nada).
     expect(carta.secciones[0].items.map((i) => i.nombre)).toEqual(["Agua tónica cero", "Gaseosa 500 CC", "Pomelo 500cc", "Tónica 500cc", "Agua saborizada 500 CC"]);
   });
 
   it("6. sin opciones: no se emite, va al diagnóstico, y una sección que solo tenía ese agrupado desaparece", () => {
     const soloGrupo = entradaBase({
-      secciones: [{ id: "sG", nombre: "Solo gaseosas", titulo: null, descripcion: null, imagenUrl: null, orden: 0, categorias: [{ categoriaId: "cGas", orden: 0 }] }],
+      secciones: [{ id: "sG", nombre: "Solo gaseosas", titulo: null, descripcion: null, imagenUrl: null, orden: 0 }],
       productos: [],
-      agrupados: [gaseosa({ opciones: [] })],
+      agrupados: [gaseosa({ seccionCartaId: "sG", opciones: [] })],
     });
     const { carta, diagnostico } = armarMenuCarta(soloGrupo);
     expect(carta.secciones).toEqual([]);
@@ -218,22 +207,17 @@ describe("armarMenuCarta — ítems agrupados", () => {
     expect(diagnostico.agrupadosSinSeccion).toEqual([]);
   });
 
-  it("7. categoría sin sección activa: no se emite y va a agrupadosSinSeccion", () => {
-    const { carta, diagnostico } = armarMenuCarta(entradaBase({ agrupados: [gaseosa({ categoriaId: "cOtra", categoriaNombre: "Otra categoría" })] }));
+  it("7. sección apagada (no llega entre las activas): no se emite y va a agrupadosSinSeccion", () => {
+    const { carta, diagnostico } = armarMenuCarta(entradaBase({ agrupados: [gaseosa({ seccionCartaId: "sApagada" })] }));
     expect(carta.secciones.flatMap((s) => s.items).map((i) => i.productoId)).not.toContain("ag1");
-    expect(diagnostico.agrupadosSinSeccion).toEqual([{ id: "ag1", nombre: "Gaseosa 500 CC", categoria: "Otra categoría" }]);
+    expect(diagnostico.agrupadosSinSeccion).toEqual([{ id: "ag1", nombre: "Gaseosa 500 CC" }]);
     // Sus opciones tampoco salen sueltas.
     expect(carta.secciones.flatMap((s) => s.items).map((i) => i.nombre)).not.toContain("Coca-Cola 500cc");
   });
 
-  it("8. imagenUrl insegura del agrupado → null; tags limpios y sin repetidos", () => {
-    const item = items(
-      entradaBase({ agrupados: [gaseosa({ contenido: contenido({ imagenUrl: "https://cdn.x.com/a.png);background:red", tags: [" Fría ", "Fría", "", "Sin TACC"] }) })] })
-    ).find((i) => i.productoId === "ag1")!;
-    expect(item.imagenUrl).toBeNull();
+  it("8. el agrupado sale siempre con imagenUrl null (la imagen es de la sección); tags limpios y sin repetidos", () => {
+    const item = items(entradaBase({ agrupados: [gaseosa({ contenido: contenido({ tags: [" Fría ", "Fría", "", "Sin TACC"] }) })] })).find((i) => i.productoId === "ag1")!;
+    expect(item).toHaveProperty("imagenUrl", null);
     expect(item.tags).toEqual(["Fría", "Sin TACC"]);
-
-    const segura = items(entradaBase({ agrupados: [gaseosa({ contenido: contenido({ imagenUrl: "https://cdn.x.com/gaseosa.jpg" }) })] })).find((i) => i.productoId === "ag1")!;
-    expect(segura.imagenUrl).toBe("https://cdn.x.com/gaseosa.jpg");
   });
 });

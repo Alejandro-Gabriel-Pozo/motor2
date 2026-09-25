@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProductoDisponible, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { actualizarActivaSeccionCarta, asignarCategoriaASeccionCarta, guardarSeccionCarta } from "../../src/server/actions/carta/secciones";
+import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "../../src/server/actions/carta/secciones";
 import { actualizarVisibleEnCarta, guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
 import { actualizarActivaPromoCarta, guardarPromoCarta } from "../../src/server/actions/carta/promos";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
@@ -13,7 +13,8 @@ import { normalizarTagsCarta, validarImagenUrlCarta, validarOrdenCarta, validarP
 /**
  * Admin de la carta (docs/plan-carta-catalogo-2026-09-24.md, M9): las Server Actions de `src/server/actions/carta/` validan lo
  * que termina en la carta pública, solo escriben en las tablas de carta, exigen el permiso `carta` y las promos quedan
- * atadas a la sucursal activa.
+ * atadas a la sucursal activa. Desde docs/plan-carta-seccion-directa-2026-09-25.md el contenido de un PV elige su sección de carta
+ * directo (obligatoria si se muestra, DA2) y no tiene imagen propia.
  */
 
 describe("validaciones de la carta (puras)", () => {
@@ -98,51 +99,62 @@ describe("Server Actions de la carta", () => {
       expect((await prisma.seccionCarta.findUniqueOrThrow({ where: { id } })).activa).toBe(true);
       expect(await actualizarActivaSeccionCarta("no-existe", true)).toMatchObject({ ok: false });
     });
-
-    it("asigna una categoría a una sección, la cambia de sección y la saca (sin tocar la categoría)", async () => {
-      const a = await guardarSeccionCarta({ nombre: "A" });
-      const b = await guardarSeccionCarta({ nombre: "B" });
-      const idA = a.ok ? a.id : "";
-      const idB = b.ok ? b.id : "";
-
-      expect((await asignarCategoriaASeccionCarta(categoriaId, idA, 3)).ok).toBe(true);
-      expect(await prisma.categoriaSeccionCarta.findUniqueOrThrow({ where: { categoriaId } })).toMatchObject({ seccionCartaId: idA, orden: 3 });
-
-      expect((await asignarCategoriaASeccionCarta(categoriaId, idB)).ok).toBe(true);
-      expect(await prisma.categoriaSeccionCarta.findUniqueOrThrow({ where: { categoriaId } })).toMatchObject({ seccionCartaId: idB, orden: 0 });
-      expect(await prisma.categoriaSeccionCarta.count()).toBe(1);
-
-      expect((await asignarCategoriaASeccionCarta(categoriaId, null)).ok).toBe(true);
-      expect(await prisma.categoriaSeccionCarta.count()).toBe(0);
-      expect(await prisma.categoriaProducto.findUniqueOrThrow({ where: { id: categoriaId } })).toMatchObject({ nombre: "Bife", activo: true });
-
-      expect(await asignarCategoriaASeccionCarta(categoriaId, "no-existe")).toMatchObject({ ok: false, mensaje: "No se encontró la sección de carta." });
-      expect(await asignarCategoriaASeccionCarta("no-existe", idA)).toMatchObject({ ok: false, mensaje: "No se encontró la categoría." });
-    });
   });
 
   describe("contenido de carta de un PV", () => {
-    it("guardar el contenido hace aparecer al PV en la carta (con tags normalizados); ocultarlo lo saca", async () => {
+    it("guardar el contenido (con su sección) hace aparecer al PV en la carta (con tags normalizados); ocultarlo lo saca", async () => {
       const s = await guardarSeccionCarta({ nombre: "Platos" });
-      await asignarCategoriaASeccionCarta(categoriaId, s.ok ? s.id : "");
+      const seccionCartaId = s.ok ? s.id : "";
       expect((await resolverMenuCarta(sucursalId))!.secciones).toEqual([]);
 
-      const r = await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, descripcion: " 400 g ", tags: "Regional, regional,Sin TACC", especial: true, orden: 1 });
+      const r = await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, seccionCartaId, descripcion: " 400 g ", tags: "Regional, regional,Sin TACC", especial: true, orden: 1 });
       expect(r.ok).toBe(true);
-      const item = (await resolverMenuCarta(sucursalId))!.secciones[0].items[0];
-      expect(item).toMatchObject({ nombre: "Bife de chorizo", descripcion: "400 g", tags: ["Regional", "Sin TACC"], especial: true, precio: 34000 });
+      const seccion = (await resolverMenuCarta(sucursalId))!.secciones[0];
+      expect(seccion.nombre).toBe("Platos");
+      expect(seccion.items[0]).toMatchObject({ nombre: "Bife de chorizo", descripcion: "400 g", tags: ["Regional", "Sin TACC"], especial: true, precio: 34000, imagenUrl: null });
 
       expect((await actualizarVisibleEnCarta(pvId, false)).ok).toBe(true);
       expect((await resolverMenuCarta(sucursalId))!.secciones).toEqual([]);
       // Ocultar no borra lo cargado.
-      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).toMatchObject({ descripcion: "400 g", especial: true });
+      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).toMatchObject({ descripcion: "400 g", especial: true, seccionCartaId });
+      // Y volver a mostrarlo con el atajo funciona: ya tiene sección.
+      expect((await actualizarVisibleEnCarta(pvId, true)).ok).toBe(true);
+      expect((await resolverMenuCarta(sucursalId))!.secciones[0].items.map((i) => i.productoId)).toEqual([pvId]);
     });
 
-    it("solo PV; valida imagen y tags; no toca el producto", async () => {
-      expect(await guardarContenidoCartaProducto(mpId, { visibleEnCarta: true })).toMatchObject({ ok: false, mensaje: "Solo un producto de venta (PV) puede ir en la carta." });
+    it("DA2: visible exige sección; oculto se guarda sin ella; una sección inexistente se rechaza", async () => {
+      const falta = "Elegí la sección de carta donde se muestra (sin sección no puede salir en la carta).";
+      expect(await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true })).toMatchObject({ ok: false, mensaje: falta });
+      expect(await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, seccionCartaId: "  " })).toMatchObject({ ok: false, mensaje: falta });
+      expect(await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, seccionCartaId: "no-existe" })).toMatchObject({ ok: false, mensaje: "No se encontró la sección de carta." });
+      expect(await prisma.contenidoCartaProducto.count()).toBe(0);
+
+      // Oculto, sin sección: se guarda (por si se vuelve a mostrar después).
+      expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: false, descripcion: "Para después" })).ok).toBe(true);
+      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).toMatchObject({ visibleEnCarta: false, seccionCartaId: null, descripcion: "Para después" });
+      // Mostrarlo con el atajo, sin sección: se rechaza y sigue oculto.
+      expect(await actualizarVisibleEnCarta(pvId, true)).toMatchObject({ ok: false, mensaje: falta });
+      expect((await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).visibleEnCarta).toBe(false);
+      // Sin fila todavía, tampoco se puede mostrar con el atajo.
+      await prisma.contenidoCartaProducto.deleteMany();
+      expect(await actualizarVisibleEnCarta(pvId, true)).toMatchObject({ ok: false, mensaje: falta });
+      expect(await prisma.contenidoCartaProducto.count()).toBe(0);
+    });
+
+    it("la categoría del producto no importa: un PV sin categoría sale en la sección elegida", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Bebidas" });
+      await prisma.producto.update({ where: { id: pvId }, data: { categoriaId: null } });
+      expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, seccionCartaId: s.ok ? s.id : "" })).ok).toBe(true);
+      const [seccion] = (await resolverMenuCarta(sucursalId))!.secciones;
+      expect(seccion.items).toEqual([expect.objectContaining({ productoId: pvId, categoria: "Bebidas" })]);
+    });
+
+    it("solo PV; valida tags; no toca el producto", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Platos" });
+      const seccionCartaId = s.ok ? s.id : "";
+      expect(await guardarContenidoCartaProducto(mpId, { visibleEnCarta: true, seccionCartaId })).toMatchObject({ ok: false, mensaje: "Solo un producto de venta (PV) puede ir en la carta." });
       expect(await actualizarVisibleEnCarta(mpId, true)).toMatchObject({ ok: false });
-      expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, imagenUrl: "https://x.com/a b.jpg" })).ok).toBe(false);
-      expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, tags: ["<b>"] })).ok).toBe(false);
+      expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, seccionCartaId, tags: ["<b>"] })).ok).toBe(false);
       expect(await guardarContenidoCartaProducto("no-existe", { visibleEnCarta: true })).toMatchObject({ ok: false, mensaje: "No se encontró el producto." });
       expect(await prisma.contenidoCartaProducto.count()).toBe(0);
       expect(await prisma.producto.findUniqueOrThrow({ where: { id: pvId } })).toMatchObject({ nombre: "Bife de chorizo", categoriaId });
@@ -189,9 +201,8 @@ describe("Server Actions de la carta", () => {
 
     const resultados = await Promise.all([
       guardarSeccionCarta({ nombre: "Entradas" }),
-      guardarContenidoCartaProducto(pvId, { visibleEnCarta: true }),
-      actualizarVisibleEnCarta(pvId, true),
-      asignarCategoriaASeccionCarta(categoriaId, null),
+      guardarContenidoCartaProducto(pvId, { visibleEnCarta: false }),
+      actualizarVisibleEnCarta(pvId, false),
     ]);
     for (const r of resultados) {
       expect(r.ok).toBe(false);

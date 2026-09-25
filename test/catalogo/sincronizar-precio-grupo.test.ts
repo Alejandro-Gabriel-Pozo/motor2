@@ -38,7 +38,6 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
     const cat = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } });
-    await prisma.categoriaSeccionCarta.create({ data: { categoriaId: cat, seccionCartaId: seccion.id } });
     const pv = async (codigo: string, nombre: string, precioVenta: number) =>
       (await sembrarProductoDisponible({ codigo, nombre, tipo: "PV", categoriaId: cat, precioVenta, unidadStockId: unidadId }, sucursalId)).id;
     ids = {
@@ -48,8 +47,8 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       coca15: await pv("SPG_COCA15", "Coca-Cola 1,5L", 9000),
       suelto: await pv("SPG_SUELTO", "Tónica 500cc", 5000),
     };
-    agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", categoriaId: cat } })).id;
-    otroAgId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 1,5L", categoriaId: cat } })).id;
+    agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
+    otroAgId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 1,5L", seccionCartaId: seccion.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
       data: [
         ...[ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ itemAgrupadoCartaId: agId, productoId, orden })),

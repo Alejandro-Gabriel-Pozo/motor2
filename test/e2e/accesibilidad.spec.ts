@@ -652,22 +652,24 @@ testAutenticado(
 );
 
 testAutenticado(
-  "reportes/ventas-por-seccion: sin violaciones de axe, contraste incluido (con una sección con ventas y una categoría sin sección en ámbar)",
+  "reportes/ventas-por-seccion: sin violaciones de axe, contraste incluido (con una sección con ventas y un producto sin sección en ámbar)",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
-    // docs/plan-carta-catalogo-2026-09-24.md, M7. Dos ventas: una de una categoría que está en una sección de carta (tabla) y otra de una
-    // categoría que no está en ninguna (aviso en ámbar): sin las dos, la pantalla no dibuja todo lo que se quiere auditar.
+    // docs/plan-carta-catalogo-2026-09-24.md, M7 (a nivel de producto desde docs/plan-carta-seccion-directa-2026-09-25.md, M5). Dos ventas: una
+    // de un producto que se ve en una sección de carta (tabla) y otra de uno sin contenido de carta (aviso en ámbar): sin las dos, la pantalla
+    // no dibuja todo lo que se quiere auditar.
     const marca = `${Date.now()}`;
     const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const conSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Carta ${marca}` } });
     const sinSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Suelta ${marca}` } });
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección Carta ${marca}`, orden: 1 } });
-    await prisma.categoriaSeccionCarta.create({ data: { categoriaId: conSeccion.id, seccionCartaId: seccionCarta.id } });
     const pvs = await Promise.all(
       [conSeccion, sinSeccion].map((c, i) =>
         prisma.producto.create({ data: { codigo: `E2E-A11Y-SEC-${i}-${marca}`, nombre: `E2E A11y Plato ${i} ${marca}`, tipo: "PV", categoriaId: c.id, unidadStockId: unidad.id, precioVenta: 100 } })
       )
     );
+    // El primero se ve en la sección de carta; el segundo no tiene contenido de carta → "Sin sección" y el aviso ámbar.
+    await prisma.contenidoCartaProducto.create({ data: { productoId: pvs[0].id, visibleEnCarta: true, seccionCartaId: seccionCarta.id } });
     const op = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date("2026-08-04T12:00:00Z"), usuarioId: admin.id } });
     for (const pv of pvs) {
       await prisma.movimientoStock.create({
@@ -678,12 +680,13 @@ testAutenticado(
       await page.goto("/reportes/ventas-por-seccion?desde=2026-08-01&hasta=2026-08-10");
       await expect(page.getByRole("heading", { name: "Ventas por sección de carta" })).toBeVisible();
       await expect(page.getByRole("heading", { name: new RegExp(`E2E A11y Sección Carta ${marca}`) })).toBeVisible();
-      await expect(page.getByRole("listitem").filter({ hasText: sinSeccion.nombre }), "la categoría sin sección tiene que aparecer en el aviso").toBeVisible();
+      await expect(page.getByRole("heading", { name: "Productos con ventas que no se ven en ninguna sección de carta" })).toBeVisible();
+      await expect(page.getByRole("listitem").filter({ hasText: pvs[1].nombre }), "el producto sin sección tiene que aparecer en el aviso").toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     } finally {
       await prisma.movimientoStock.deleteMany({ where: { operacionId: op.id } });
       await prisma.operacion.deleteMany({ where: { id: op.id } });
-      await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccionCarta.id } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: pvs.map((p) => p.id) } } });
       await prisma.seccionCarta.deleteMany({ where: { id: seccionCarta.id } });
       await prisma.producto.deleteMany({ where: { id: { in: pvs.map((p) => p.id) } } });
       await prisma.categoriaProducto.deleteMany({ where: { id: { in: [conSeccion.id, sinSeccion.id] } } });
@@ -692,20 +695,20 @@ testAutenticado(
 );
 
 testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abiertos y el aviso en ámbar de PV sin contenido", async ({ paginaAutenticada: page, sucursalId }) => {
-  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los cuatro bloques (sección, categoría asignada, un PV con contenido y otro
-  // sin él —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos.
+  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los tres bloques (sección, un PV con contenido en esa sección y otro sin él
+  // —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
+  // ellos el select "Sección de carta" del contenido, docs/plan-carta-seccion-directa-2026-09-25.md).
   const marca = `${Date.now()}`;
   const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Carta Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Carta Sección ${marca}`, titulo: "Del fuego", orden: 1 } });
-  await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
   const [conContenido, sinContenido] = await Promise.all(
     ["Con", "Sin"].map((q) =>
       prisma.producto.create({ data: { codigo: `E2E-A11Y-CARTA-${q}-${marca}`, nombre: `E2E A11y Carta ${q} ${marca}`, tipo: "PV", categoriaId: categoria.id, unidadStockId: unidad.id, precioVenta: 100 } })
     )
   );
   await prisma.disponibilidadProducto.createMany({ data: [conContenido, sinContenido].map((p) => ({ sucursalId, productoId: p.id, disponible: true })) });
-  await prisma.contenidoCartaProducto.create({ data: { productoId: conContenido.id, visibleEnCarta: true, tags: ["Regional"], especial: true } });
+  await prisma.contenidoCartaProducto.create({ data: { productoId: conContenido.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
   const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
   try {
     await page.goto("/catalogo/carta");
@@ -715,11 +718,11 @@ testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abierto
     await page.locator(`[data-contenido-carta="${conContenido.nombre}"] summary`).click();
     await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
     await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel("Especial (★)")).toBeChecked();
+    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
-    await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
     await prisma.producto.deleteMany({ where: { id: { in: [conContenido.id, sinContenido.id] } } });
@@ -735,7 +738,6 @@ testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem 
   const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Agrupado Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Agrupado Sección ${marca}` } });
-  await prisma.categoriaSeccionCarta.create({ data: { categoriaId: categoria.id, seccionCartaId: seccion.id } });
   const productos = await Promise.all(
     [
       ["Coca", 5000],
@@ -749,7 +751,7 @@ testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem 
   );
   const ids = productos.map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: ids.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
-  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, categoriaId: categoria.id, especial: true, tags: ["Sin alcohol"] } });
+  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, especial: true, tags: ["Sin alcohol"] } });
   await prisma.opcionItemAgrupadoCarta.createMany({ data: ids.slice(0, 2).map((productoId, orden) => ({ itemAgrupadoCartaId: item.id, productoId, orden })) });
   try {
     await page.goto("/catalogo/carta/agrupados");
@@ -758,12 +760,11 @@ testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem 
     await expect(fila.getByText(/no cuestan lo mismo/)).toBeVisible();
     await fila.locator("summary").click();
     await expect(fila.getByLabel(`Agregar producto a «${item.nombre}»`)).toBeVisible();
-    await expect(fila.getByLabel(/^Categoría/)).toBeVisible();
+    await expect(fila.getByLabel(/^Sección de carta/)).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: item.id } });
     await prisma.itemAgrupadoCarta.deleteMany({ where: { id: item.id } });
-    await prisma.categoriaSeccionCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: ids } } });
     await prisma.producto.deleteMany({ where: { id: { in: ids } } });

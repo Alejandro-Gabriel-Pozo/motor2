@@ -4,8 +4,9 @@ import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 
 /**
  * Admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10) de punta a punta: lo que se carga en la
- * pantalla (sección de carta, categoría → sección, contenido del PV y una promo) es lo que devuelve el endpoint público
- * GET /api/carta/[sucursal] — con el precio que se cobra, los tags normalizados y el ★.
+ * pantalla (sección de carta, contenido del PV con su sección elegida DIRECTO —docs/plan-carta-seccion-directa-2026-09-25.md— y
+ * una promo) es lo que devuelve el endpoint público GET /api/carta/[sucursal] — con el precio que se cobra, los tags normalizados
+ * y el ★.
  */
 test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async ({ paginaAutenticada: page, sucursalId, request }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -33,15 +34,17 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await nuevaSeccion.getByRole("button", { name: "Crear sección" }).click();
     await expect(nuevaSeccion.getByRole("status")).toHaveText(`Sección de carta "${nombreSeccion}" creada.`);
 
-    // 2. La categoría del PV va en esa sección.
-    const filaCategoria = page.locator(`[data-categoria-carta="${categoria.nombre}"]`);
-    await filaCategoria.getByLabel("Sección de carta").selectOption({ label: nombreSeccion });
-    await filaCategoria.getByRole("button", { name: "Guardar" }).click();
-    await expect(filaCategoria.getByRole("status")).toContainText(`va en la sección de carta "${nombreSeccion}"`);
+    // Ya no existe el bloque "Qué categoría va en cada sección": la categoría no ubica nada en la carta.
+    await expect(page.getByRole("heading", { name: "Qué categoría va en cada sección" })).toHaveCount(0);
 
-    // 3. Contenido de carta del PV.
+    // 2. Contenido de carta del PV, con su sección elegida directo. Sin imagen propia (solo la sección tiene imagen).
     const filaProducto = page.locator(`[data-contenido-carta="${producto.nombre}"]`);
     await filaProducto.locator("summary").click();
+    await expect(filaProducto.getByLabel(/^Imagen/)).toHaveCount(0);
+    // Visible sin sección: la acción lo rechaza (DA2) y el formulario no se limpia.
+    await filaProducto.getByRole("button", { name: `Guardar contenido de «${producto.nombre}»` }).click();
+    await expect(filaProducto.getByRole("alert")).toHaveText("Elegí la sección de carta donde se muestra (sin sección no puede salir en la carta).");
+    await filaProducto.getByLabel(/^Sección de carta/).selectOption({ label: nombreSeccion });
     await filaProducto.getByLabel("Descripción (opcional)").fill("400 g a las brasas");
     await filaProducto.getByLabel("Tags (separados por coma)").fill("Regional, regional, Sin TACC");
     await filaProducto.getByLabel("Especial (★)").check();
@@ -49,7 +52,7 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await filaProducto.getByRole("button", { name: `Guardar contenido de «${producto.nombre}»` }).click();
     await expect(filaProducto.getByRole("status")).toHaveText(`Carta: "${producto.nombre}" se muestra.`);
 
-    // 4. Una promo de la sucursal en esa sección.
+    // 3. Una promo de la sucursal en esa sección.
     const nuevaPromo = page.locator("form", { has: page.getByRole("heading", { name: "Nueva promo" }) });
     await nuevaPromo.getByLabel("Título", { exact: true }).fill(nombrePromo);
     await nuevaPromo.getByLabel("Sección de carta").selectOption({ label: nombreSeccion });
@@ -73,7 +76,6 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     const seccionIds = secciones.map((s) => s.id);
     await prisma.promoCarta.deleteMany({ where: { seccionCartaId: { in: seccionIds } } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
-    await prisma.categoriaSeccionCarta.deleteMany({ where: { categoriaId: categoria.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: { in: seccionIds } } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
