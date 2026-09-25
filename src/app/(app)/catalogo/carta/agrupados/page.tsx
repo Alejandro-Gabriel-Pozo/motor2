@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin } from "@/core/carta/admin-consulta";
 import {
   actualizarActivoItemAgrupadoCarta,
@@ -14,6 +14,7 @@ import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
+import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 
 /**
  * Ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M7): un renglón visible ("Gaseosa 500 CC") que
@@ -25,6 +26,9 @@ import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
  * (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
  * closure "use server" viaja al cliente. Si agregar una opción se rechaza por precio (D5), el error de la acción se muestra tal
  * cual en el resultado del formulario.
+ *
+ * Ver ≠ editar, igual que /catalogo/carta: sin «Editar» de "carta" no se dibujan formularios, altas ni botones (agregar, quitar,
+ * reordenar, apagar/prender); cada ítem muestra sus datos y sus opciones como texto.
  */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
 const refrescarSiOk = (r: ResultadoAccion) => {
@@ -47,6 +51,7 @@ export default async function ItemsAgrupadosPage() {
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta");
 
   const datos = await cargarAdminItemsAgrupados(ctx.sucursalId);
   const ubicacion: UbicacionEnCarta = {
@@ -71,16 +76,17 @@ export default async function ItemsAgrupadosPage() {
           Solo se pueden agrupar productos del mismo precio (acá). Si el precio de uno cambia después en Catálogo, la carta lo va a mostrar por el mayor, con
           aviso, hasta que se corrija.
         </p>
+        {!puedeEditarCarta && <AvisoSoloLectura />}
       </div>
 
       <ul className="flex flex-col gap-3">
         {datos.items.map((it) => (
-          <ItemAgrupado key={it.id} item={it} ubicacion={ubicacion} productosSinGrupo={datos.productosSinGrupo} />
+          <ItemAgrupado key={it.id} item={it} ubicacion={ubicacion} productosSinGrupo={datos.productosSinGrupo} puedeEditar={puedeEditarCarta} />
         ))}
         {!datos.items.length && <li className="text-sm text-neutral-500">Todavía no hay ítems agrupados.</li>}
       </ul>
 
-      {datos.secciones.length > 0 ? (
+      {!puedeEditarCarta ? null : datos.secciones.length > 0 ? (
         <FormConResultado
           accion={async (fd: FormData) => {
             "use server";
@@ -139,7 +145,17 @@ function resumenPrecio(it: ItemAgrupadoAdmin): string {
   return it.precio.minimo === it.precio.maximo ? pesos(it.precio.minimo) : `${pesos(it.precio.minimo)}–${pesos(it.precio.maximo)}`;
 }
 
-function ItemAgrupado({ item: it, ubicacion, productosSinGrupo }: { item: ItemAgrupadoAdmin; ubicacion: UbicacionEnCarta; productosSinGrupo: ProductoSinGrupo[] }) {
+function ItemAgrupado({
+  item: it,
+  ubicacion,
+  productosSinGrupo,
+  puedeEditar,
+}: {
+  item: ItemAgrupadoAdmin;
+  ubicacion: UbicacionEnCarta;
+  productosSinGrupo: ProductoSinGrupo[];
+  puedeEditar: boolean;
+}) {
   const id = it.id;
   const activo = it.activo;
   const preciosDistintos = it.avisos.preciosDistintos;
@@ -152,91 +168,97 @@ function ItemAgrupado({ item: it, ubicacion, productosSinGrupo }: { item: ItemAg
           {it.especial ? " · ★" : ""}
         </summary>
 
-        <FormConResultado
-          accion={async (fd: FormData) => {
-            "use server";
-            return refrescarSiOk(await guardarItemAgrupadoCarta({ id, ...datosDelFormulario(fd) }));
-          }}
-          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
-        >
-          <CamposItem ubicacion={ubicacion} valores={it} />
-          <div className="sm:col-span-2">
-            <button type="submit" className={CLASE_BOTON}>
-              Guardar «{it.nombre}»
-            </button>
-          </div>
-        </FormConResultado>
-
-        <h2 className="mt-4 text-sm font-medium">Opciones de «{it.nombre}»</h2>
-        <ul className="mt-1 flex flex-col gap-2">
-          {it.opciones.map((o) => {
-            const opcionId = o.id;
-            return (
-              <li key={o.id} className="flex flex-col gap-1 rounded border p-2 text-sm" data-opcion-agrupada={o.nombre}>
-                <div className="flex flex-wrap items-end gap-2">
-                  <span className="min-w-40 py-1">
-                    <EnlaceInterno href={`/catalogo/productos/${o.productoId}/editar`} className="font-medium underline">
-                      {o.nombre}
-                    </EnlaceInterno>{" "}
-                    · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"}
-                  </span>
-                  <FormConResultado
-                    accion={async (fd: FormData) => {
-                      "use server";
-                      return refrescarSiOk(await actualizarOrdenOpcionItemAgrupadoCarta(opcionId, campo(fd, "orden")));
-                    }}
-                    className="flex items-end gap-2"
-                  >
-                    <label className="flex flex-col gap-1">
-                      Orden de «{o.nombre}»
-                      <input name="orden" type="number" step={1} defaultValue={o.orden} className={`${CLASE_INPUT} w-20`} />
-                    </label>
-                    <button type="submit" className={CLASE_BOTON}>
-                      Guardar orden
-                    </button>
-                  </FormConResultado>
-                  <FormConResultado
-                    accion={async () => {
-                      "use server";
-                      return refrescarSiOk(await quitarOpcionItemAgrupadoCarta(opcionId));
-                    }}
-                  >
-                    <button type="submit" className="py-1 underline">
-                      Quitar «{o.nombre}»
-                    </button>
-                  </FormConResultado>
-                </div>
-              </li>
-            );
-          })}
-          {!it.opciones.length && <li className="text-sm text-neutral-500">Todavía no tiene opciones.</li>}
-        </ul>
-
-        {productosSinGrupo.length > 0 ? (
+        {!puedeEditar ? (
+          <ItemSoloLectura item={it} ubicacion={ubicacion} />
+        ) : (
+          <>
           <FormConResultado
             accion={async (fd: FormData) => {
               "use server";
-              return refrescarSiOk(await agregarOpcionItemAgrupadoCarta(id, campo(fd, "productoId")));
+              return refrescarSiOk(await guardarItemAgrupadoCarta({ id, ...datosDelFormulario(fd) }));
             }}
-            className="mt-3 flex flex-wrap items-end gap-2 text-sm"
+            className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
           >
-            <label className="flex flex-col gap-1">
-              Agregar producto a «{it.nombre}»
-              <select name="productoId" required defaultValue="" className={CLASE_INPUT}>
-                <option value="">— elegí un producto —</option>
-                {productosSinGrupo.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre} ({pesos(p.precioAca)} acá)
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="submit" className={CLASE_BOTON}>
-              Agregar
-            </button>
+            <CamposItem ubicacion={ubicacion} valores={it} />
+            <div className="sm:col-span-2">
+              <button type="submit" className={CLASE_BOTON}>
+                Guardar «{it.nombre}»
+              </button>
+            </div>
           </FormConResultado>
-        ) : (
-          <p className="mt-3 text-sm text-neutral-500">No quedan productos de venta disponibles acá fuera de un ítem agrupado.</p>
+
+          <h2 className="mt-4 text-sm font-medium">Opciones de «{it.nombre}»</h2>
+          <ul className="mt-1 flex flex-col gap-2">
+            {it.opciones.map((o) => {
+              const opcionId = o.id;
+              return (
+                <li key={o.id} className="flex flex-col gap-1 rounded border p-2 text-sm" data-opcion-agrupada={o.nombre}>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <span className="min-w-40 py-1">
+                      <EnlaceInterno href={`/catalogo/productos/${o.productoId}/editar`} className="font-medium underline">
+                        {o.nombre}
+                      </EnlaceInterno>{" "}
+                      · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"}
+                    </span>
+                    <FormConResultado
+                      accion={async (fd: FormData) => {
+                        "use server";
+                        return refrescarSiOk(await actualizarOrdenOpcionItemAgrupadoCarta(opcionId, campo(fd, "orden")));
+                      }}
+                      className="flex items-end gap-2"
+                    >
+                      <label className="flex flex-col gap-1">
+                        Orden de «{o.nombre}»
+                        <input name="orden" type="number" step={1} defaultValue={o.orden} className={`${CLASE_INPUT} w-20`} />
+                      </label>
+                      <button type="submit" className={CLASE_BOTON}>
+                        Guardar orden
+                      </button>
+                    </FormConResultado>
+                    <FormConResultado
+                      accion={async () => {
+                        "use server";
+                        return refrescarSiOk(await quitarOpcionItemAgrupadoCarta(opcionId));
+                      }}
+                    >
+                      <button type="submit" className="py-1 underline">
+                        Quitar «{o.nombre}»
+                      </button>
+                    </FormConResultado>
+                  </div>
+                </li>
+              );
+            })}
+            {!it.opciones.length && <li className="text-sm text-neutral-500">Todavía no tiene opciones.</li>}
+          </ul>
+
+          {productosSinGrupo.length > 0 ? (
+            <FormConResultado
+              accion={async (fd: FormData) => {
+                "use server";
+                return refrescarSiOk(await agregarOpcionItemAgrupadoCarta(id, campo(fd, "productoId")));
+              }}
+              className="mt-3 flex flex-wrap items-end gap-2 text-sm"
+            >
+              <label className="flex flex-col gap-1">
+                Agregar producto a «{it.nombre}»
+                <select name="productoId" required defaultValue="" className={CLASE_INPUT}>
+                  <option value="">— elegí un producto —</option>
+                  {productosSinGrupo.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre} ({pesos(p.precioAca)} acá)
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" className={CLASE_BOTON}>
+                Agregar
+              </button>
+            </FormConResultado>
+          ) : (
+            <p className="mt-3 text-sm text-neutral-500">No quedan productos de venta disponibles acá fuera de un ítem agrupado.</p>
+          )}
+          </>
         )}
       </details>
 
@@ -273,18 +295,55 @@ function ItemAgrupado({ item: it, ubicacion, productosSinGrupo }: { item: ItemAg
         </div>
       )}
 
-      <FormConResultado
-        accion={async () => {
-          "use server";
-          return refrescarSiOk(await actualizarActivoItemAgrupadoCarta(id, !activo));
-        }}
-        className="mt-2"
-      >
-        <button type="submit" className="text-sm underline">
-          {it.activo ? `Apagar «${it.nombre}»` : `Prender «${it.nombre}»`}
-        </button>
-      </FormConResultado>
+      {puedeEditar && (
+        <FormConResultado
+          accion={async () => {
+            "use server";
+            return refrescarSiOk(await actualizarActivoItemAgrupadoCarta(id, !activo));
+          }}
+          className="mt-2"
+        >
+          <button type="submit" className="text-sm underline">
+            {it.activo ? `Apagar «${it.nombre}»` : `Prender «${it.nombre}»`}
+          </button>
+        </FormConResultado>
+      )}
     </li>
+  );
+}
+
+/** Los datos del ítem y sus opciones como texto, para quien puede ver la carta pero no editarla. */
+function ItemSoloLectura({ item: it, ubicacion }: { item: ItemAgrupadoAdmin; ubicacion: UbicacionEnCarta }) {
+  const seccion = ubicacion.secciones.find((s) => s.id === it.seccionCartaId);
+  return (
+    <>
+      <DatosSoloLectura className="mt-3">
+        <Dato etiqueta="Nombre">{it.nombre}</Dato>
+        <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
+        <Dato etiqueta="Orden">{it.orden}</Dato>
+        <Dato etiqueta="Especial (★)">{it.especial ? "Sí" : "No"}</Dato>
+        <Dato etiqueta="Tags" ancho>
+          {it.tags.join(", ")}
+        </Dato>
+        <Dato etiqueta="Descripción" ancho>
+          {it.descripcion}
+        </Dato>
+      </DatosSoloLectura>
+
+      <h2 className="mt-4 text-sm font-medium">Opciones de «{it.nombre}»</h2>
+      <ul className="mt-1 flex flex-col gap-1 text-sm">
+        {it.opciones.map((o) => (
+          <li key={o.id} className="rounded border p-2" data-opcion-agrupada={o.nombre}>
+            {/* A la ficha (solo lectura), no a /editar: quien solo ve la carta no tiene por qué poder editar el producto. */}
+            <EnlaceInterno href={`/catalogo/productos/${o.productoId}`} className="font-medium underline">
+              {o.nombre}
+            </EnlaceInterno>{" "}
+            · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"} · orden {o.orden}
+          </li>
+        ))}
+        {!it.opciones.length && <li className="text-sm text-neutral-500">Todavía no tiene opciones.</li>}
+      </ul>
+    </>
   );
 }
 

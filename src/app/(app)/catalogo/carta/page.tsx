@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
@@ -9,6 +9,7 @@ import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
+import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 
 /**
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que restaurant-menu-design lee de motor2 por
@@ -20,6 +21,10 @@ import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
  * Todas las mutaciones pasan por las Server Actions de src/server/actions/carta (conPermiso("carta")); el refresco lo piden los
  * closures de acá (ver refrescar.ts). Los closures capturan solo ids (texto): lo que captura un closure "use server" viaja al
  * cliente.
+ *
+ * Ver ≠ editar (docs/grounding-lista-ver-editar-2026-09-18.md, §7.4: catálogo chico, queda inline): entrar pide «Ver» de "carta";
+ * los formularios, las altas y los botones de apagar/prender se dibujan solo con «Editar». Sin «Editar», cada bloque muestra los
+ * mismos datos como texto (DatosSoloLectura). Es cortesía de la interfaz, no barrera: la acción sigue exigiendo el permiso.
  */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
 const refrescarSiOk = (r: ResultadoAccion) => {
@@ -40,6 +45,7 @@ export default async function CartaPage() {
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta");
 
   const datos = await cargarAdminCarta(ctx.sucursalId);
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
@@ -56,6 +62,7 @@ export default async function CartaPage() {
           Lo que la carta pública de la sucursal muestra: secciones, contenido de cada producto de venta y promos. El nombre, el precio y la disponibilidad
           se editan en Catálogo.
         </p>
+        {!puedeEditarCarta && <AvisoSoloLectura />}
       </div>
 
       {/* 1. Secciones de carta */}
@@ -74,58 +81,74 @@ export default async function CartaPage() {
                     <span className="font-medium">{s.nombre}</span>
                     {s.titulo ? ` — «${s.titulo}»` : ""} · orden {s.orden} · {s.cantidadItems} ítem(s) · {s.activa ? "activa" : "apagada"}
                   </summary>
-                  <FormConResultado
-                    accion={async (fd: FormData) => {
-                      "use server";
-                      return refrescarSiOk(
-                        await guardarSeccionCarta({ id, nombre: campo(fd, "nombre"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), imagenUrl: campo(fd, "imagenUrl"), orden: campo(fd, "orden") })
-                      );
-                    }}
-                    className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
-                  >
-                    <CamposSeccion valores={s} />
-                    <div className="sm:col-span-2">
-                      <button type="submit" className={CLASE_BOTON}>
-                        Guardar sección
-                      </button>
-                    </div>
-                  </FormConResultado>
+                  {puedeEditarCarta ? (
+                    <FormConResultado
+                      accion={async (fd: FormData) => {
+                        "use server";
+                        return refrescarSiOk(
+                          await guardarSeccionCarta({ id, nombre: campo(fd, "nombre"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), imagenUrl: campo(fd, "imagenUrl"), orden: campo(fd, "orden") })
+                        );
+                      }}
+                      className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+                    >
+                      <CamposSeccion valores={s} />
+                      <div className="sm:col-span-2">
+                        <button type="submit" className={CLASE_BOTON}>
+                          Guardar sección
+                        </button>
+                      </div>
+                    </FormConResultado>
+                  ) : (
+                    <DatosSoloLectura className="mt-3">
+                      <Dato etiqueta="Nombre">{s.nombre}</Dato>
+                      <Dato etiqueta="Título">{s.titulo}</Dato>
+                      <Dato etiqueta="Descripción" ancho>
+                        {s.descripcion}
+                      </Dato>
+                      <Dato etiqueta="Imagen">{s.imagenUrl}</Dato>
+                      <Dato etiqueta="Orden">{s.orden}</Dato>
+                    </DatosSoloLectura>
+                  )}
                 </details>
-                <FormConResultado
-                  accion={async () => {
-                    "use server";
-                    return refrescarSiOk(await actualizarActivaSeccionCarta(id, !activa));
-                  }}
-                  className="mt-2"
-                >
-                  <button type="submit" className="text-sm underline">
-                    {s.activa ? `Apagar «${s.nombre}»` : `Prender «${s.nombre}»`}
-                  </button>
-                </FormConResultado>
+                {puedeEditarCarta && (
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return refrescarSiOk(await actualizarActivaSeccionCarta(id, !activa));
+                    }}
+                    className="mt-2"
+                  >
+                    <button type="submit" className="text-sm underline">
+                      {s.activa ? `Apagar «${s.nombre}»` : `Prender «${s.nombre}»`}
+                    </button>
+                  </FormConResultado>
+                )}
               </li>
             );
           })}
           {!datos.secciones.length && <li className="text-sm text-neutral-500">Todavía no hay secciones de carta.</li>}
         </ul>
 
-        <FormConResultado
-          accion={async (fd: FormData) => {
-            "use server";
-            return refrescarSiOk(
-              await guardarSeccionCarta({ nombre: campo(fd, "nombre"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), imagenUrl: campo(fd, "imagenUrl"), orden: campo(fd, "orden") })
-            );
-          }}
-          className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
-        >
-          <h3 className="text-sm font-medium sm:col-span-2">Nueva sección de carta</h3>
-          {/* DA5: una sección nueva cae al final por defecto (orden = cuántas hay). */}
-          <CamposSeccion ordenSugerido={datos.secciones.length} />
-          <div className="sm:col-span-2">
-            <button type="submit" className={CLASE_BOTON}>
-              Crear sección
-            </button>
-          </div>
-        </FormConResultado>
+        {puedeEditarCarta && (
+          <FormConResultado
+            accion={async (fd: FormData) => {
+              "use server";
+              return refrescarSiOk(
+                await guardarSeccionCarta({ nombre: campo(fd, "nombre"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), imagenUrl: campo(fd, "imagenUrl"), orden: campo(fd, "orden") })
+              );
+            }}
+            className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
+          >
+            <h3 className="text-sm font-medium sm:col-span-2">Nueva sección de carta</h3>
+            {/* DA5: una sección nueva cae al final por defecto (orden = cuántas hay). */}
+            <CamposSeccion ordenSugerido={datos.secciones.length} />
+            <div className="sm:col-span-2">
+              <button type="submit" className={CLASE_BOTON}>
+                Crear sección
+              </button>
+            </div>
+          </FormConResultado>
+        )}
       </section>
 
       {/* 2. Contenido de carta por PV */}
@@ -161,7 +184,7 @@ export default async function CartaPage() {
 
         <ul className="flex flex-col gap-2">
           {datos.productos.map((p) => (
-            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} />
+            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarCarta} />
           ))}
           {!datos.productos.length && <li className="text-sm text-neutral-500">No hay productos de venta disponibles en esta sucursal.</li>}
         </ul>
@@ -183,41 +206,55 @@ export default async function CartaPage() {
                   <summary className="cursor-pointer text-sm">
                     <span className="font-medium">{pr.titulo}</span> · ${pr.precio.toLocaleString("es-AR")} · {pr.seccionCarta} · {pr.activa ? "activa" : "apagada"}
                   </summary>
-                  <FormConResultado
-                    accion={async (fd: FormData) => {
-                      "use server";
-                      return refrescarSiOk(
-                        await guardarPromoCarta({ id, seccionCartaId: campo(fd, "seccionCartaId"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), precio: campo(fd, "precio"), orden: campo(fd, "orden") })
-                      );
-                    }}
-                    className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
-                  >
-                    <CamposPromo secciones={datos.secciones} valores={pr} />
-                    <div className="sm:col-span-2">
-                      <button type="submit" className={CLASE_BOTON}>
-                        Guardar promo
-                      </button>
-                    </div>
-                  </FormConResultado>
+                  {puedeEditarCarta ? (
+                    <FormConResultado
+                      accion={async (fd: FormData) => {
+                        "use server";
+                        return refrescarSiOk(
+                          await guardarPromoCarta({ id, seccionCartaId: campo(fd, "seccionCartaId"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), precio: campo(fd, "precio"), orden: campo(fd, "orden") })
+                        );
+                      }}
+                      className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+                    >
+                      <CamposPromo secciones={datos.secciones} valores={pr} />
+                      <div className="sm:col-span-2">
+                        <button type="submit" className={CLASE_BOTON}>
+                          Guardar promo
+                        </button>
+                      </div>
+                    </FormConResultado>
+                  ) : (
+                    <DatosSoloLectura className="mt-3">
+                      <Dato etiqueta="Título">{pr.titulo}</Dato>
+                      <Dato etiqueta="Sección de carta">{pr.seccionCarta}</Dato>
+                      <Dato etiqueta="Descripción" ancho>
+                        {pr.descripcion}
+                      </Dato>
+                      <Dato etiqueta="Precio">${pr.precio.toLocaleString("es-AR")}</Dato>
+                      <Dato etiqueta="Orden">{pr.orden}</Dato>
+                    </DatosSoloLectura>
+                  )}
                 </details>
-                <FormConResultado
-                  accion={async () => {
-                    "use server";
-                    return refrescarSiOk(await actualizarActivaPromoCarta(id, !activa));
-                  }}
-                  className="mt-2"
-                >
-                  <button type="submit" className="text-sm underline">
-                    {pr.activa ? `Apagar «${pr.titulo}»` : `Prender «${pr.titulo}»`}
-                  </button>
-                </FormConResultado>
+                {puedeEditarCarta && (
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return refrescarSiOk(await actualizarActivaPromoCarta(id, !activa));
+                    }}
+                    className="mt-2"
+                  >
+                    <button type="submit" className="text-sm underline">
+                      {pr.activa ? `Apagar «${pr.titulo}»` : `Prender «${pr.titulo}»`}
+                    </button>
+                  </FormConResultado>
+                )}
               </li>
             );
           })}
           {!datos.promos.length && <li className="text-sm text-neutral-500">Esta sucursal no tiene promos en la carta.</li>}
         </ul>
 
-        {seccionesActivas.length > 0 ? (
+        {!puedeEditarCarta ? null : seccionesActivas.length > 0 ? (
           <FormConResultado
             accion={async (fd: FormData) => {
               "use server";
@@ -318,7 +355,7 @@ function CamposPromo({
   );
 }
 
-function ContenidoProducto({ producto: p, ubicacion }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta }) {
+function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta; puedeEditar: boolean }) {
   const productoId = p.id;
   // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
   const estado = p.agrupadoEn
@@ -345,49 +382,74 @@ function ContenidoProducto({ producto: p, ubicacion }: { producto: ProductoCarta
             ): mientras esté agrupado, el contenido de acá no se usa.
           </p>
         )}
-        <FormConResultado
-          accion={async (fd: FormData) => {
-            "use server";
-            return refrescarSiOk(
-              await guardarContenidoCartaProducto(productoId, {
-                visibleEnCarta: fd.get("visibleEnCarta") === "on",
-                seccionCartaId: campo(fd, "seccionCartaId") || null,
-                descripcion: campo(fd, "descripcion"),
-                tags: campo(fd, "tags"),
-                especial: fd.get("especial") === "on",
-                orden: campo(fd, "orden"),
-              })
-            );
-          }}
-          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
-        >
-          <label className="flex items-center gap-2 text-sm">
-            <input name="visibleEnCarta" type="checkbox" defaultChecked={p.contenido?.visibleEnCarta ?? true} /> Se muestra en la carta
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input name="especial" type="checkbox" defaultChecked={p.contenido?.especial ?? false} /> Especial (★)
-          </label>
-          <SeccionYOrden
-            secciones={ubicacion.secciones}
-            cantidadPorSeccion={ubicacion.cantidadPorSeccion}
-            guardado={p.contenido && { seccionCartaId: p.contenido.seccionCartaId, orden: p.contenido.orden }}
-            etiquetaSeccion="Sección de carta (obligatoria si se muestra)"
-          />
-          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            Descripción (opcional)
-            <textarea name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} className={CLASE_INPUT} />
-          </label>
-          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            Tags (separados por coma)
-            <input name="tags" defaultValue={p.contenido?.tags.join(", ") ?? ""} placeholder="Regional, Sin TACC" className={CLASE_INPUT} />
-          </label>
-          <div className="sm:col-span-2">
-            <button type="submit" className={CLASE_BOTON}>
-              Guardar contenido de «{p.nombre}»
-            </button>
-          </div>
-        </FormConResultado>
+        {!puedeEditar ? (
+          <ContenidoSoloLectura producto={p} ubicacion={ubicacion} />
+        ) : (
+          <FormConResultado
+            accion={async (fd: FormData) => {
+              "use server";
+              return refrescarSiOk(
+                await guardarContenidoCartaProducto(productoId, {
+                  visibleEnCarta: fd.get("visibleEnCarta") === "on",
+                  seccionCartaId: campo(fd, "seccionCartaId") || null,
+                  descripcion: campo(fd, "descripcion"),
+                  tags: campo(fd, "tags"),
+                  especial: fd.get("especial") === "on",
+                  orden: campo(fd, "orden"),
+                })
+              );
+            }}
+            className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+          >
+            <label className="flex items-center gap-2 text-sm">
+              <input name="visibleEnCarta" type="checkbox" defaultChecked={p.contenido?.visibleEnCarta ?? true} /> Se muestra en la carta
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input name="especial" type="checkbox" defaultChecked={p.contenido?.especial ?? false} /> Especial (★)
+            </label>
+            <SeccionYOrden
+              secciones={ubicacion.secciones}
+              cantidadPorSeccion={ubicacion.cantidadPorSeccion}
+              guardado={p.contenido && { seccionCartaId: p.contenido.seccionCartaId, orden: p.contenido.orden }}
+              etiquetaSeccion="Sección de carta (obligatoria si se muestra)"
+            />
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+              Descripción (opcional)
+              <textarea name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} className={CLASE_INPUT} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+              Tags (separados por coma)
+              <input name="tags" defaultValue={p.contenido?.tags.join(", ") ?? ""} placeholder="Regional, Sin TACC" className={CLASE_INPUT} />
+            </label>
+            <div className="sm:col-span-2">
+              <button type="submit" className={CLASE_BOTON}>
+                Guardar contenido de «{p.nombre}»
+              </button>
+            </div>
+          </FormConResultado>
+        )}
       </details>
     </li>
+  );
+}
+
+/** El contenido de carta de un PV como texto, para quien puede ver la carta pero no editarla. */
+function ContenidoSoloLectura({ producto: p, ubicacion }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta }) {
+  const c = p.contenido;
+  if (!c) return <p className="mt-3 text-sm text-neutral-500">Todavía no tiene contenido de carta.</p>;
+  const seccion = ubicacion.secciones.find((s) => s.id === c.seccionCartaId);
+  return (
+    <DatosSoloLectura className="mt-3">
+      <Dato etiqueta="Se muestra en la carta">{c.visibleEnCarta ? "Sí" : "No"}</Dato>
+      <Dato etiqueta="Especial (★)">{c.especial ? "Sí" : "No"}</Dato>
+      <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
+      <Dato etiqueta="Orden">{c.orden}</Dato>
+      <Dato etiqueta="Descripción" ancho>
+        {c.descripcion}
+      </Dato>
+      <Dato etiqueta="Tags" ancho>
+        {c.tags.join(", ")}
+      </Dato>
+    </DatosSoloLectura>
   );
 }
