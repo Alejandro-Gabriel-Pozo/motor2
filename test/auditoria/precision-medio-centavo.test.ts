@@ -18,6 +18,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
 import { calcularValuacionInventario } from "../../src/core/reportes/valuacion";
+import { generarReporteConsignacion } from "../../src/core/reportes/consignacion";
 
 /** Generador determinista (LCG) — la muestra es siempre la misma, así una diferencia se puede reproducir. */
 function* centavosAlAzar(cuantos: number, semilla: number): Generator<number> {
@@ -99,5 +100,55 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
     const valuacion = await calcularValuacionInventario(sucursalId);
     const filaLata = valuacion.filas.find((f) => f.productoId === lata.id)!;
     expect.soft(filaLata.costoUnitario).toBe(128.05);
+  });
+
+  describe("caso B: liquidación de consignación — 0,045 kg de un insumo a $509/kg = 22,905 → 22,91 (en float 22.904999999999998)", () => {
+    /** Insumo en consignación a $509/kg (kg con 3 decimales: 0,045 no se redondea al consumir) y su recepción sin costo. */
+    async function armarInsumoEnConsignacion() {
+      const kg3 = await prisma.unidad.create({ data: { nombre: "kg_3_decimales", magnitud: "PESO", decimales: 3 } });
+      const consignante = await prisma.proveedor.create({ data: { codigo: "PRV_QUESOS", nombre: "Quesos del Valle" } });
+      const queso = await sembrarProductoDisponible(
+        {
+          codigo: "MP_QUESO", nombre: "Queso azul en consignación", tipo: "MP", unidadStockId: kg3.id, insumoId,
+          esConsignacion: true, proveedorConsignacionId: consignante.id, precioConsignacion: 509,
+        },
+        sucursalId
+      );
+      const recepcion = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: queso.id, cantidad: 5 }] });
+      expect(recepcion.ok, recepcion.mensaje).toBe(true);
+      return { kg3, consignante, queso };
+    }
+
+    async function liquidacionDe(quesoId: string) {
+      const liquidacion = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: quesoId, proceso: "LIQUIDACION_CONSIGNACION" } });
+      const reporte = await generarReporteConsignacion(sucursalId);
+      return { precioTotal: Number(liquidacion.precioTotal), liquidado: reporte.debidoPorConsignante.find((d) => d.proveedor === "Quesos del Valle")?.liquidado };
+    }
+
+    it("B1 — venta: la línea LIQUIDACION_CONSIGNACION y el liquidado del reporte dan 22,91", async () => {
+      const { kg3, queso } = await armarInsumoEnConsignacion();
+      const pv = await sembrarProductoDisponible({ codigo: "PV_TABLA", nombre: "Tabla de quesos", tipo: "PV", unidadStockId: kg3.id, precioVenta: 6000 }, sucursalId);
+      await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: queso.id, cantidad: 0.045, unidadId: kg3.id }] } } });
+
+      const venta = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+      expect(venta.ok, venta.mensaje).toBe(true);
+
+      const { precioTotal, liquidado } = await liquidacionDe(queso.id);
+      expect.soft(precioTotal).toBe(22.91);
+      expect.soft(liquidado).toBe(22.91);
+    });
+
+    it("B2 — producción: la línea LIQUIDACION_CONSIGNACION y el liquidado del reporte dan 22,91", async () => {
+      const { kg3, queso } = await armarInsumoEnConsignacion();
+      const salsa = await sembrarProductoDisponible({ codigo: "PV_SALSA", nombre: "Salsa de queso azul", tipo: "PV", unidadStockId: kg3.id, precioVenta: 6000, seProduce: true }, sucursalId);
+      await prisma.recetaVersion.create({ data: { productoId: salsa.id, version: 1, ingredientes: { create: [{ insumoProductoId: queso.id, cantidad: 0.045, unidadId: kg3.id }] } } });
+
+      const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: salsa.id, cantidad: 1 }] });
+      expect(produccion.ok, produccion.mensaje).toBe(true);
+
+      const { precioTotal, liquidado } = await liquidacionDe(queso.id);
+      expect.soft(precioTotal).toBe(22.91);
+      expect.soft(liquidado).toBe(22.91);
+    });
   });
 });
