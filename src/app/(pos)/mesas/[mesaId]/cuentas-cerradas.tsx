@@ -1,6 +1,7 @@
 "use client";
 
 import type { BoletaDeCuenta } from "@/core/pos/boleta";
+import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { BOTON_CHICO } from "./estilos";
 import { formatearHora, formatearMonto } from "./formato";
 import { useImpresion } from "./imprimir";
@@ -9,7 +10,8 @@ import { useImpresion } from "./imprimir";
  * «Cuentas cerradas» (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B8): al pie de la pantalla de la mesa, libre o con cuenta
  * abierta, las últimas cuentas cerradas CON VENTA de la mesa, de la más nueva a la más vieja, con «Reimprimir boleta» (la copia sale
  * marcada REIMPRESIÓN). Sin `pos_cerrar_cuenta` Editar el botón queda deshabilitado; si la venta se anuló, también, y lo dice: no se
- * imprime el comprobante de una venta revertida. Sin ninguna cuenta cerrada con venta, la sección no aparece.
+ * imprime el comprobante de una venta revertida. Sin ninguna cuenta cerrada con venta, la sección no aparece. Cada fila empieza por el
+ * número de su boleta («N.º 566-A · …», docs/plan-numeracion-boleta-2026-09-25.md), salvo las cerradas antes de la numeración.
  */
 export function CuentasCerradas({ boletas, puede }: { boletas: BoletaDeCuenta[]; puede: boolean }) {
   const { reimprimirBoleta } = useImpresion();
@@ -31,7 +33,7 @@ export function CuentasCerradas({ boletas, puede }: { boletas: BoletaDeCuenta[];
           return (
             <li key={b.cuentaId} data-cuenta-cerrada={hora} className="flex flex-wrap items-center justify-between gap-3 py-2 text-[14px]">
               <span>
-                Cerrada {hora} · Atendió {b.mesero} · <span className="tabular-nums">{formatearMonto(b.total)}</span>
+                {b.numero && `N.º ${formatearNumeroBoleta(b.numero)} · `}Cerrada {hora} · Atendió {b.mesero} · <span className="tabular-nums">{formatearMonto(b.total)}</span>
               </span>
               <span className="flex items-center gap-3">
                 {b.ventaAnulada && <span className="text-[12.5px] font-semibold text-[var(--mesa-ocupada)]">Venta anulada</span>}

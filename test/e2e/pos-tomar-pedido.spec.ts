@@ -469,18 +469,27 @@ test("reimprimir la boleta de una cuenta cerrada: «Cuentas cerradas» la lista 
 
     const cerrada = await prisma.cuenta.findFirstOrThrow({ where: { mesaId: mesa.id } });
     const hora = HORA_AR.format(cerrada.cerradaEn!);
+    // El número lo asigna cerrarCuenta (max + 1 de la sucursal: depende de lo que hayan cerrado otros specs): se lee de la base.
+    const ejemplares = () => prisma.ejemplarBoleta.findMany({ where: { cuentaId: cerrada.id } });
+    const [ejemplarA] = await ejemplares();
+    expect(ejemplarA.ejemplar).toBe(1);
+    const numero = `${ejemplarA.numero}-A`;
     const seccion = page.getByRole("region", { name: "Cuentas cerradas" });
     await expect(seccion.locator("[data-cuenta-cerrada]")).toHaveCount(1);
-    await expect(seccion.locator("[data-cuenta-cerrada]")).toContainText(`Cerrada ${hora} · Atendió e2e-admin · ${total}`);
+    await expect(seccion.locator("[data-cuenta-cerrada]")).toContainText(`N.º ${numero} · Cerrada ${hora} · Atendió e2e-admin · ${total}`);
 
     await seccion.getByRole("button", { name: `Reimprimir la boleta de la cuenta cerrada a las ${hora}` }).click();
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta", "boleta-reimpresion"]);
-    const copia = (await impresiones(page))[1];
-    expect((await impresiones(page))[0].texto).not.toContain("REIMPRESIÓN");
+    const [original, copia] = await impresiones(page);
+    expect(original.texto).not.toContain("REIMPRESIÓN");
+    expect(original.texto).toContain(`Boleta N.º ${numero}`);
+    // Reimprimir no consume número ni ejemplar: la copia lleva el mismo número y no se escribe ninguna fila nueva.
+    expect(await ejemplares()).toEqual([ejemplarA]);
     for (const texto of [
       "REIMPRESIÓN",
       "Central",
       "Mesa 972",
+      `Boleta N.º ${numero}`,
       "Atendió: e2e-admin",
       `2 × ${cat.milanesa.nombre}`,
       `${MONEDA.format(9000)} c/u ${MONEDA.format(18000)}`,
@@ -519,6 +528,8 @@ test("guardas de la reimpresión de la boleta: sin pos_cerrar_cuenta queda desha
     await expect(reimprimir(page, anuladaEn)).toBeDisabled();
     await expect(page.locator(`[data-cuenta-cerrada="${HORA_AR.format(anuladaEn)}"]`)).toContainText("Venta anulada");
     await expect(page.locator(`[data-cuenta-cerrada="${HORA_AR.format(vigenteEn)}"]`)).not.toContainText("Venta anulada");
+    // Cuentas cerradas antes de la numeración (sembradas sin ejemplar): ni número ni prefijo «N.º» (compatibilidad hacia atrás).
+    for (const fila of await page.locator("[data-cuenta-cerrada]").all()) await expect(fila).not.toContainText("N.º");
 
     await mozo.page.goto(`/mesas/${mesa.id}`);
     await expect(mozo.page.locator("[data-cuenta-cerrada]")).toHaveCount(2);
