@@ -10,6 +10,7 @@ import type { ProcesoUiConfig } from "@/core/movimientos/ui-config";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { QuickCrearProducto } from "@/components/catalogo/quick-crear-producto";
 
@@ -228,10 +229,11 @@ export function PanelMovimientoForm({
       .filter((f) => f.productoId && f.cantidad !== "")
       .map((f) => ({
         productoId: f.productoId,
-        cantidad: Number(f.cantidad),
+        // numeroDelCampo: vacío → undefined, texto inválido → NaN (el servidor lo rechaza); nunca el 0 que daba convertir un texto vacío.
+        cantidad: numeroDelCampo(f.cantidad) ?? Number.NaN,
         loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
-        precioTotal: f.precioTotal ? Number(f.precioTotal) : undefined,
-        pesoReal: f.pesoReal ? Number(f.pesoReal) : null,
+        precioTotal: numeroDelCampo(f.precioTotal),
+        pesoReal: numeroDelCampo(f.pesoReal) ?? null,
         unidadCompraId: config.esCompraLike && f.unidadCompraId ? f.unidadCompraId : undefined,
         referenciaProveedor: precargaPorProveedor ? f.referenciaProveedor || undefined : undefined,
       }));
@@ -409,7 +411,14 @@ export function PanelMovimientoForm({
               <>
                 <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
                   Precio total
-                  <CampoNumero value={fila.precioTotal} onChange={(v) => actualizarFila(idx, { precioTotal: v })} prefijo="$" tamano="compacto" />
+                  <CampoNumero
+                    value={fila.precioTotal}
+                    onChange={(v) => actualizarFila(idx, { precioTotal: v })}
+                    prefijo="$"
+                    tamano="compacto"
+                    tipo="importe"
+                    etiqueta="El precio total"
+                  />
                 </label>
                 <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
                   Peso real

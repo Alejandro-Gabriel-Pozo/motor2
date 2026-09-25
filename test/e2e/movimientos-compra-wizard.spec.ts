@@ -178,3 +178,45 @@ test("un fallo tardío de un proveedor anterior no pisa al proveedor elegido des
   await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
   await expect(selectorProveedor).toHaveValue(proveedorB.id);
 });
+
+/**
+ * Validación de datos (docs/plan-validacion-de-datos-2026-09-25.md, Paso C3): el precio total pasa por el parser central. Antes,
+ * "...,.,.,..." y "1.000.000" daban NaN y la compra se guardaba con precio 0 sin ningún aviso.
+ */
+async function prepararCompraDeUnProducto(page: Page, sucursalId: string, seccionId: string) {
+  const ahora = Date.now();
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-VD-${ahora}`, nombre: `E2E Producto Precio ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+
+  await page.goto("/movimientos/compra");
+  await elegirSelectPorOpcion(page, seccion.nombre);
+  await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
+  await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
+  await page.locator("label:has-text('Cantidad') input").first().fill("10");
+  return producto;
+}
+
+test("un precio '...,.,.,...' no se guarda como 0: el campo lo marca y no se registra nada", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const producto = await prepararCompraDeUnProducto(page, sucursalId, seccionId);
+  const precio = page.locator("label:has-text('Precio total') input").first();
+  await precio.fill("...,.,.,...");
+  await page.getByRole("button", { name: "Confirmar" }).click();
+
+  expect(await precio.evaluate((e: HTMLInputElement) => e.validity.customError), "el precio tiene que quedar inválido").toBe(true);
+  expect(await precio.evaluate((e: HTMLInputElement) => e.validationMessage)).toBe("El precio total no es un número válido.");
+  await page.waitForTimeout(500); // margen para que un envío que no debió salir llegue a la base
+  expect(await prisma.movimientoStock.count({ where: { productoId: producto.id } }), "no tenía que registrarse ninguna compra").toBe(0);
+});
+
+test("un precio '1.000.000' (miles en es-AR) se guarda como 1000000", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const producto = await prepararCompraDeUnProducto(page, sucursalId, seccionId);
+  await page.locator("label:has-text('Precio total') input").first().fill("1.000.000");
+  await page.getByRole("button", { name: "Confirmar" }).click();
+
+  await expect(page.getByText(/Se guardaron \d+ movimiento/)).toBeVisible();
+  const movimiento = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: producto.id, seccionId } });
+  expect(Number(movimiento.cantidad)).toBe(10);
+  expect(Number(movimiento.precioTotal)).toBe(1_000_000);
+});
