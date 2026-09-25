@@ -42,8 +42,12 @@ function Mensaje({ mensaje, ok }: { mensaje: string | null; ok: boolean }) {
   return <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>;
 }
 
+/** Estilo de los «Rechazar» de la bandeja (el disparador de BotonConConfirmacion va en una columna flex: `self-start` evita que se estire). */
+const CLASE_RECHAZAR = "self-start rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50";
+
 function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Opcion[] }) {
   const router = useRouter();
+  const producto = `${fila.productoCodigo} — ${fila.productoNombre}`;
   const [seccionOrigenId, setSeccionOrigenId] = useState("");
   const [motivo, setMotivo] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -58,14 +62,6 @@ function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
     }
     startTransition(async () => {
       const r = await aprobarYEnviarTransferencia(fila.id, seccionOrigenId);
-      setMensaje(r.mensaje);
-      setOk(r.ok);
-      if (r.ok) router.refresh();
-    });
-  };
-  const rechazar = () => {
-    startTransition(async () => {
-      const r = await rechazarSolicitudTransferencia(fila.id, motivo || undefined);
       setMensaje(r.mensaje);
       setOk(r.ok);
       if (r.ok) router.refresh();
@@ -100,9 +96,19 @@ function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
           Motivo de rechazo (opcional)
           <input value={motivo} onChange={(e) => setMotivo(e.target.value)} className="rounded border px-2 py-1.5 text-sm" />
         </label>
-        <button type="button" disabled={pending} onClick={rechazar} className="rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50">
-          Rechazar
-        </button>
+        {/* Rechazar no se deshace: pide confirmación. Lee el motivo vigente al CONFIRMAR; mientras «Aprobar y enviar» está en curso queda
+            deshabilitado (la carrera inversa la cierra el servidor: los dos pasan por una transacción serializable). */}
+        <BotonConConfirmacion
+          etiqueta="Rechazar"
+          etiquetaAccesible={`Rechazar la solicitud de ${fila.cantidad} ${fila.unidadNombre} de ${producto} de ${fila.otraSucursalNombre}`}
+          aviso={`¿Rechazar la solicitud de ${fila.cantidad} ${fila.unidadNombre} de ${producto} de ${fila.otraSucursalNombre}? No se puede deshacer: ${fila.otraSucursalNombre} tendrá que pedirla de nuevo.`}
+          etiquetaConfirmar="Sí, rechazar la solicitud"
+          etiquetaEnCurso="Rechazando…"
+          etiquetaVolver="Volver"
+          accion={() => rechazarSolicitudTransferencia(fila.id, motivo || undefined)}
+          deshabilitado={pending}
+          claseDisparador={CLASE_RECHAZAR}
+        />
       </div>
       <Mensaje mensaje={mensaje} ok={ok} />
     </div>
@@ -111,6 +117,7 @@ function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
 
 function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Opcion[] }) {
   const router = useRouter();
+  const producto = `${fila.productoCodigo} — ${fila.productoNombre}`;
   const [seccionDestinoId, setSeccionDestinoId] = useState("");
   const [motivo, setMotivo] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -131,14 +138,6 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
     }
     startTransition(async () => {
       const r = await aceptarTransferencia(fila.id, seccionDestinoId, claveIdempotencia);
-      setMensaje(r.mensaje);
-      setOk(r.ok);
-      if (r.ok) router.refresh();
-    });
-  };
-  const rechazar = () => {
-    startTransition(async () => {
-      const r = await rechazarTransferencia(fila.id, motivo || undefined);
       setMensaje(r.mensaje);
       setOk(r.ok);
       if (r.ok) router.refresh();
@@ -173,9 +172,18 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
           Motivo de rechazo (opcional)
           <input value={motivo} onChange={(e) => setMotivo(e.target.value)} className="rounded border px-2 py-1.5 text-sm" />
         </label>
-        <button type="button" disabled={pending} onClick={rechazar} className="rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50">
-          Rechazar
-        </button>
+        {/* Mismo criterio que en FilaParaAprobar: confirmación, motivo leído al confirmar, deshabilitado mientras «Aceptar» está en curso. */}
+        <BotonConConfirmacion
+          etiqueta="Rechazar"
+          etiquetaAccesible={`Rechazar el envío de ${fila.cantidad} ${fila.unidadNombre} de ${producto} de ${fila.otraSucursalNombre}`}
+          aviso={`¿Rechazar el envío de ${fila.cantidad} ${fila.unidadNombre} de ${producto} que te mandó ${fila.otraSucursalNombre}? No entra a tu stock y ${fila.otraSucursalNombre} tiene que confirmar el reingreso.`}
+          etiquetaConfirmar="Sí, rechazar el envío"
+          etiquetaEnCurso="Rechazando…"
+          etiquetaVolver="Volver"
+          accion={() => rechazarTransferencia(fila.id, motivo || undefined)}
+          deshabilitado={pending}
+          claseDisparador={CLASE_RECHAZAR}
+        />
       </div>
       <Mensaje mensaje={mensaje} ok={ok} />
     </div>
