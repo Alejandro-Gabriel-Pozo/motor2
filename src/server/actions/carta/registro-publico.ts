@@ -78,9 +78,9 @@ export interface DatosSucursalPublica {
 
 /**
  * Guarda el registro público de una sucursal que ya está en el portal. Valida todo con los validadores de M2 (los mismos con los
- * que el endpoint sanea la salida). Publicar exige `sheetId`: mientras el theming (tab Config) viva en las sheets, la carta lo
- * necesita para CUALQUIER tenant, también los que leen el menú de motor2. Slug o dominio ya usados por otra sucursal → error con
- * su nombre.
+ * que el endpoint sanea la salida). `sheetId` queda como transición: restaurant-menu-design ya no lee ninguna sheet (todo tenant
+ * activo sale de motor2), así que publicar NO lo exige — se conserva el campo solo por si algún día vuelve a hacer falta un dato
+ * de la sheet para algo que motor2 todavía no cubra. Slug o dominio ya usados por otra sucursal → error con su nombre.
  */
 export async function guardarSucursalPublica(sucursalId: string, datos: DatosSucursalPublica): Promise<ResultadoAccion> {
   return conPermiso("carta", async () => {
@@ -100,7 +100,6 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
     if (!sheetId.ok) return error(sheetId.mensaje);
     const tab = validarNombreTabSheet(datos.sheetMenuNombre);
     if (!tab.ok) return error(tab.mensaje);
-    if (datos.publicada && !sheetId.valor) return error("Para publicar hace falta el id de la sheet: la carta todavía lee de ahí los colores y textos (tab Config).");
 
     const existente = await prisma.sucursalPublica.findUnique({ where: { sucursalId }, select: { id: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal: agregala primero.");

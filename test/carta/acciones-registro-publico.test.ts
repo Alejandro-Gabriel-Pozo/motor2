@@ -9,8 +9,8 @@ import { resolverRegistroTenants } from "../../src/core/carta/registro-consulta"
 
 /**
  * Server Actions del registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6): permiso `carta`, slug
- * derivado del nombre y desambiguado, edición manual del slug, validaciones (dominio, sheetId, posición), publicar exige
- * sheetId, y "Quitar del portal" borra la fila.
+ * derivado del nombre y desambiguado, edición manual del slug, validaciones (dominio, sheetId, posición) y "Quitar del portal"
+ * borra la fila. `sheetId` es transición (restaurant-menu-design ya no lee ninguna sheet): no lo exige para publicar.
  */
 const SHEET = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abc";
 
@@ -134,14 +134,11 @@ describe("Server Actions del registro público", () => {
     expect(await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } })).toEqual(antes);
   });
 
-  it("publicar sin sheetId → error (la carta todavía lee el theming de la sheet)", async () => {
+  it("publicar sin sheetId → ok (restaurant-menu-design ya no lee ninguna sheet)", async () => {
     await agregarSucursalAlPortal(centralId);
     const r = await guardarSucursalPublica(centralId, datos({ publicada: true, menuDesdeMotor2: true }));
-    expect(r.ok).toBe(false);
-    expect(r.mensaje).toMatch(/id de la sheet/);
-    expect((await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } })).publicada).toBe(false);
-    // Sin publicar, sí se puede guardar sin sheetId.
-    expect(await guardarSucursalPublica(centralId, datos({ publicada: false }))).toMatchObject({ ok: true, mensaje: 'Portal: "Central" guardada (sin publicar).' });
+    expect(r).toMatchObject({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
+    expect((await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } })).publicada).toBe(true);
   });
 
   it("guardar una sucursal que no está en el portal → error", async () => {
