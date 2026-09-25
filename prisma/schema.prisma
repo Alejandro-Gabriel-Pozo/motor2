@@ -1493,6 +1493,10 @@ model TemaCartaSucursal {
 // - Un ítem SIN enviar (`numeroEnvio` null) es un borrador: se quita con DELETE físico, sin motivo ni auditoría.
 // Invariantes validadas en la APLICACIÓN (src/server/actions/pos/cuenta.ts), no en la base: espejo ⇒ cantidad < 0, mismo
 // numeroEnvio que su original y motivoAnulacion no vacío; original (anulaAItemId null) ⇒ cantidad > 0.
+// - NUMERACIÓN DE LA BOLETA (docs/plan-numeracion-boleta-2026-09-25.md): cada papel impreso de la boleta de cierre es una fila de
+//   `EjemplarBoleta` (control interno, no fiscal). Número base por sucursal = max + 1 dentro de la tx serializable de `cerrarCuenta`
+//   (solo con venta, después de validarla), ejemplar 1 = A. Corrección (`emitirBoletaCorregida`, tras anular una línea con
+//   anularVenta) = fila NUEVA con el mismo número, el ejemplar siguiente, `corrigeAId` → el A y el motivo. Nunca se edita ni se borra.
 // Grounding: docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6.
 // ===================================================================
 

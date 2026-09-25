@@ -205,3 +205,8 @@ referencia mínima.
 > impresoras (térmica y común) con los drivers del sistema operativo, así que la comanda y la boleta se imprimen con `window.print()`
 > y el diálogo nativo, sin tabla de lotes de impresión; si algo no sale, «Reimprimir». Ver
 > `docs/plan-imprimir-comanda-y-boleta-2026-09-25.md`.
+
+> **Actualización 2026-09-25 — numeración de la boleta:** la boleta de cierre tiene número de control interno (guest check control, no
+> fiscal): secuencial por sucursal y sin huecos (`max + 1` en la transacción serializable de `cerrarCuenta`), más un ejemplar por papel
+> impreso (566-A el original; 566-B la corrección que se emite cuando, ya impresa, se anula una línea de la venta desde Trazabilidad).
+> Tabla `EjemplarBoleta`. Ver `docs/plan-numeracion-boleta-2026-09-25.md`.
