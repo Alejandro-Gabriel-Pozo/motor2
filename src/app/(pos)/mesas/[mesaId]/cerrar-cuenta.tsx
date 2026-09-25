@@ -102,7 +102,7 @@ export function CerrarCuenta({
                 </span>
               </div>
               {haySecciones ? (
-                <p className="text-[13px] text-[var(--ink-soft)]">Cada insumo se descuenta de una sección con stock: primero de la que vence antes.</p>
+                <p className="text-[13px] text-[var(--ink-soft)]">Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.</p>
               ) : (
                 <p className="text-[13px] text-red-700">
                   Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.
