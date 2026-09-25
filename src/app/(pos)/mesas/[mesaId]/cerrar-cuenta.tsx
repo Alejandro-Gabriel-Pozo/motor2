@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { cerrarCuenta } from "@/server/actions/pos/cuenta";
 import { BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
 import { formatearMonto } from "./formato";
+import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 
 /**
@@ -11,6 +12,10 @@ import { useAccionMesa } from "./usar-accion";
  * ni cobro aparte). Se elige la sección de la que sale la mercadería (la primera activa, preseleccionada). Con ítems sin enviar el
  * botón queda deshabilitado y se dice por qué; sin `pos_cerrar_cuenta`, también. Si el cierre dejó algún insumo en negativo, el
  * mensaje de éxito lo nombra (aviso de la pantalla, en ámbar).
+ *
+ * Con total > 0, al salir bien pide imprimir la boleta para el cliente: la de esta cuenta, en cuanto el refresco la trae en «Cuentas
+ * cerradas» (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B6). Sin navegar a otra pantalla, para no perder el aviso. Con total
+ * 0 (todo anulado) no hay venta ni boleta.
  */
 export function CerrarCuenta({
   cuentaId,
@@ -28,6 +33,7 @@ export function CerrarCuenta({
   puede: boolean;
 }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();
+  const { pedir } = useImpresion();
   const [abierto, setAbierto] = useState(false);
   const [seccionId, setSeccionId] = useState(secciones[0]?.id ?? "");
   const base = useId();
@@ -79,7 +85,13 @@ export function CerrarCuenta({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                ejecutar(() => cerrarCuenta(cuentaId, seccionId), () => setAbierto(false));
+                ejecutar(
+                  () => cerrarCuenta(cuentaId, seccionId),
+                  () => {
+                    setAbierto(false);
+                    if (total > 0) pedir({ tipo: "boleta", cuentaId });
+                  }
+                );
               }}
               className="flex flex-col gap-3"
             >

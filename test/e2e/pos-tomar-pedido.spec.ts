@@ -125,6 +125,11 @@ test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con moti
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
     await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 961 cerrada: se registró la venta por \$\s?12\.000\.$/);
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
+    // La boleta del cliente sale sola: el consumo final (lo anulado ya no está), con el total cobrado.
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "anulacion", "boleta"]);
+    const boleta = (await impresiones(page))[2].texto;
+    expect(boleta).toContain(`TOTAL ${MONEDA.format(12000)}`);
+    expect(boleta).not.toContain("Anulado");
 
     const ventas = await prisma.operacion.findMany({ where: { proceso: "VENTA", detalleLibre: "Mesa 961", sucursalId }, include: { movimientos: true } });
     expect(ventas).toHaveLength(2);
@@ -171,6 +176,7 @@ test("cerrar con stock insuficiente (B6bis): la cuenta se cierra igual, el mensa
     data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.pizza.id, cantidad: 2, precioUnitario: 12000, numeroEnvio: 1, creadoPorId: admin.id }] } },
   });
   try {
+    await interceptarImpresion(page);
     await page.goto(`/mesas/${mesa.id}`);
     await page.getByRole("button", { name: "Cerrar cuenta" }).click();
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 963" });
@@ -180,6 +186,13 @@ test("cerrar con stock insuficiente (B6bis): la cuenta se cierra igual, el mensa
     await expect(aviso(page)).toContainText("Cuenta de la mesa 963 cerrada: se registró la venta por");
     await expect(aviso(page)).toContainText(`⚠ Quedó stock negativo: "${cat.muzzarella.nombre}" (tenía 0, se consumió 0,5, quedó en -0,5). Corregilo con un Conteo Físico o un Ajuste.`);
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
+
+    // La boleta del cliente sale igual, pero SIN el aviso de stock negativo (información interna: queda en pantalla y en la auditoría).
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta"]);
+    const [boleta] = await impresiones(page);
+    expect(boleta.texto).toContain(`2 × ${cat.pizza.nombre}`);
+    for (const interno of ["⚠", "stock", "negativo"]) expect(boleta.texto.toLowerCase()).not.toContain(interno);
+    await expect(aviso(page)).toContainText("⚠ Quedó stock negativo");
 
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 963", sucursalId } });
@@ -449,7 +462,7 @@ test("reimprimir la boleta de una cuenta cerrada: «Cuentas cerradas» la lista 
     await cierre.getByLabel("Sección de la que sale la mercadería").selectOption({ label: SECCION });
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
-    expect(await impresiones(page)).toEqual([]);
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta"]);
 
     const cerrada = await prisma.cuenta.findFirstOrThrow({ where: { mesaId: mesa.id } });
     const hora = HORA_AR.format(cerrada.cerradaEn!);
@@ -458,8 +471,9 @@ test("reimprimir la boleta de una cuenta cerrada: «Cuentas cerradas» la lista 
     await expect(seccion.locator("[data-cuenta-cerrada]")).toContainText(`Cerrada ${hora} · Atendió e2e-admin · ${total}`);
 
     await seccion.getByRole("button", { name: `Reimprimir la boleta de la cuenta cerrada a las ${hora}` }).click();
-    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta-reimpresion"]);
-    const [copia] = await impresiones(page);
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta", "boleta-reimpresion"]);
+    const copia = (await impresiones(page))[1];
+    expect((await impresiones(page))[0].texto).not.toContain("REIMPRESIÓN");
     for (const texto of [
       "REIMPRESIÓN",
       "Central",
@@ -510,6 +524,31 @@ test("guardas de la reimpresión de la boleta: sin pos_cerrar_cuenta queda desha
   } finally {
     await cat.limpiar([mesa.id]);
     await mozo.limpiar();
+  }
+});
+
+test("cerrar una cuenta sin venta (todo anulado) no imprime boleta", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 974 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
+  const original = await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1, creadoPorId: admin.id } });
+  await prisma.cuentaItem.create({
+    data: { cuentaId: cuenta.id, productoId: cat.flan.id, cantidad: -1, precioUnitario: 3000, numeroEnvio: 1, anulaAItemId: original.id, motivoAnulacion: "Se fueron", creadoPorId: admin.id },
+  });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: "Cerrar cuenta" }).click();
+    const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 974" });
+    await expect(cierre.locator("[data-total-cierre]")).toHaveText(MONEDA.format(0));
+    await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
+    await expect(aviso(page)).toHaveText("Cuenta de la mesa 974 cerrada sin venta: no quedó nada por cobrar.");
+    await expect(page.getByText("La mesa está libre.")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Cuentas cerradas" })).toHaveCount(0);
+    expect((await impresiones(page)).filter((i) => i.tipo === "boleta")).toEqual([]);
+  } finally {
+    await cat.limpiar([mesa.id]);
   }
 });
 
