@@ -115,6 +115,7 @@ test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con moti
     await expect(anulacion).toHaveText("−1 · Pidió una menos · por e2e-admin");
     await expect(anulacion).toHaveCSS("text-decoration-line", "line-through");
     await expect(page.locator("[data-total-cuenta]")).toContainText(/12\.000/);
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "anulacion"]);
 
     // Cerrar la cuenta: se elige la sección y se registra la venta.
     await page.getByRole("button", { name: "Cerrar cuenta" }).click();
@@ -371,6 +372,35 @@ test("una pestaña vieja no reimprime un envío ya hecho: «Esos ítems ya estab
   } finally {
     await cat.limpiar([mesa.id]);
     await mozo.limpiar();
+  }
+});
+
+test("anular un ítem enviado imprime el aviso para cocina: ANULACIÓN · NO PREPARAR, con motivo, quién y cuánto queda, sin precios", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 971 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  await prisma.cuenta.create({
+    data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1, creadoPorId: admin.id }] } },
+  });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: `Anular ${cat.milanesa.nombre}` }).click();
+    const dialogo = page.getByRole("dialog", { name: `Anular «${cat.milanesa.nombre}»` });
+    await dialogo.getByLabel("Cantidad a anular").fill("1");
+    await dialogo.getByLabel("Motivo (obligatorio)").fill("Se cayó al piso");
+    await dialogo.getByRole("button", { name: "Anular" }).click();
+    await expect(aviso(page)).toHaveText(`Se anuló 1 × «${cat.milanesa.nombre}» de la mesa 971.`);
+
+    await expect.poll(async () => (await impresiones(page)).length).toBe(1);
+    const [anulacion] = await impresiones(page);
+    expect(anulacion.tipo).toBe("anulacion");
+    for (const texto of ["ANULACIÓN", "NO PREPARAR", "Mesa 971", "Envío 1", `1 × ${cat.milanesa.nombre}`, "Motivo: Se cayó al piso", "Quedan: 1", "Anuló: e2e-admin"]) {
+      expect(anulacion.texto).toContain(texto);
+    }
+    expect(anulacion.texto).not.toContain("$");
+  } finally {
+    await cat.limpiar([mesa.id]);
   }
 });
 

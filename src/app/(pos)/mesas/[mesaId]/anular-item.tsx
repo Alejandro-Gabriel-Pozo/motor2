@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { anularItemEnviado } from "@/server/actions/pos/cuenta";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
 import { formatearCantidad } from "./formato";
+import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 
 /**
@@ -11,9 +12,13 @@ import { useAccionMesa } from "./usar-accion";
  * además lo que quedaba al abrir el diálogo (`restanteVisto`): si otro lo anuló mientras tanto, el servidor rechaza en vez de anular
  * sobre un número viejo. El motivo no lleva `required` nativo a propósito: el que valida es el servidor, y su mensaje se muestra acá
  * (`role="alert"`). Sin `pos_anular_item`, el botón queda deshabilitado.
+ *
+ * Al salir bien pide imprimir el aviso para cocina («ANULACIÓN · NO PREPARAR»): la anulación nueva del ítem, la que no estaba entre
+ * las que tenía al confirmar (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B4). Quitar un ítem SIN enviar no imprime nada.
  */
 export function AnularItem({ item, puede }: { item: { id: string; productoNombre: string; restante: number }; puede: boolean }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();
+  const { pedir, anulacionesDe } = useImpresion();
   const [abierto, setAbierto] = useState(false);
   const [cantidad, setCantidad] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -33,7 +38,14 @@ export function AnularItem({ item, puede }: { item: { id: string; productoNombre
   const enviar = (e: React.FormEvent) => {
     e.preventDefault();
     const n = Number(cantidad.trim().replace(",", ".") || Number.NaN);
-    ejecutar(() => anularItemEnviado(item.id, n, motivo, restanteVisto), () => setAbierto(false));
+    const espejosAntes = anulacionesDe(item.id);
+    ejecutar(
+      () => anularItemEnviado(item.id, n, motivo, restanteVisto),
+      () => {
+        setAbierto(false);
+        pedir({ tipo: "anulacion", itemId: item.id, espejosAntes });
+      }
+    );
   };
 
   return (
