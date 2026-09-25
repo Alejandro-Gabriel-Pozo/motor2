@@ -9,28 +9,16 @@ function comanda(numero: number, itemIds: string[], anulaciones: ComandaDeEnvio[
 }
 
 describe("resolverImpresion: envío a cocina", () => {
-  it("el envío nuevo (número mayor a `despuesDe`) con los ids pedidos se imprime como comanda", () => {
+  it("el envío que el servidor confirmó como nuevo (`numeroEnvio`) se imprime como comanda", () => {
     const envio2 = comanda(2, ["b", "c"]);
-    expect(resolverImpresion({ comandas: [comanda(1, ["a"]), envio2] }, { tipo: "envio", itemIds: ["b", "c"], despuesDe: 1 })).toEqual({
+    expect(resolverImpresion({ comandas: [comanda(1, ["a"]), envio2] }, { tipo: "envio", numero: 2 })).toEqual({
       accion: "imprimir",
       documento: { tipo: "comanda", comanda: envio2 },
     });
   });
 
-  it("antes del refresco (los ids todavía no están en ningún envío) espera", () => {
-    expect(resolverImpresion({ comandas: [comanda(1, ["a"])] }, { tipo: "envio", itemIds: ["b"], despuesDe: 1 })).toEqual({ accion: "esperar" });
-  });
-
-  it("si todos los ids ya estaban en envíos conocidos antes del clic (≤ `despuesDe`), descarta: no reimprime un envío viejo", () => {
-    expect(resolverImpresion({ comandas: [comanda(1, ["a"]), comanda(2, ["b"])] }, { tipo: "envio", itemIds: ["a", "b"], despuesDe: 2 })).toEqual({ accion: "descartar" });
-  });
-
-  it("un envío parcial (solo algunos de los ids salieron en el envío nuevo) se imprime igual", () => {
-    const envio2 = comanda(2, ["b"]);
-    expect(resolverImpresion({ comandas: [comanda(1, ["a"]), envio2] }, { tipo: "envio", itemIds: ["a", "b"], despuesDe: 1 })).toEqual({
-      accion: "imprimir",
-      documento: { tipo: "comanda", comanda: envio2 },
-    });
+  it("antes del refresco (el envío todavía no está en pantalla) espera", () => {
+    expect(resolverImpresion({ comandas: [comanda(1, ["a"])] }, { tipo: "envio", numero: 2 })).toEqual({ accion: "esperar" });
   });
 });
 

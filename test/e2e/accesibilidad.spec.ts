@@ -3,6 +3,7 @@ import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
@@ -884,6 +885,8 @@ testAutenticado(
       data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: -1, precioUnitario: 1000, numeroEnvio: 1, anulaAItemId: original.id, motivoAnulacion: "Pidió una menos", creadoPorId: admin.id },
     });
     try {
+      // «Enviar a cocina» imprime la comanda: sin reemplazar `window.print()` se abriría el diálogo nativo.
+      await interceptarImpresion(page);
       await page.goto(`/mesas/${mesa.id}`);
       await conTitulo(page, "Mesa 804");
       await expect(page.getByRole("heading", { name: "Envío 2 · en cocina" })).toBeVisible();
@@ -901,6 +904,9 @@ testAutenticado(
       await expect(page.getByText("Hay 1 ítem sin enviar: envialo o quitalo antes de cerrar la cuenta.")).toBeVisible();
       await page.getByRole("button", { name: "Enviar a cocina" }).click();
       await expect(page.getByRole("heading", { name: "Envío 3 · en cocina" })).toBeVisible();
+      // El documento impreso queda montado pero nunca se ve en pantalla (fuera del árbol de accesibilidad: sin caso axe propio).
+      await expect.poll(async () => (await impresiones(page)).length).toBe(1);
+      await expect(page.locator("[data-imprimible]")).toBeHidden();
       await page.getByRole("button", { name: "Cerrar cuenta" }).click();
       await expect(page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 804" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "«Cerrar cuenta» abierto").toEqual([]);

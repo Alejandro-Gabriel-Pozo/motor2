@@ -11,7 +11,7 @@ import { lineasDeVenta, restanteDe, validarCantidadPedido, validarMotivoAnulacio
 import { registrarVentaEnTx, type AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
 
 /**
  * Toma de pedido en el salón (módulo POS, docs/plan-tomar-pedido-2026-09-25.md). Todas las escrituras corren en una transacción
@@ -126,8 +126,11 @@ export async function quitarItemSinEnviar(cuentaItemId: string): Promise<Resulta
  * «Enviar a cocina»: los ítems pedidos que sigan sin enviar pasan al envío `n = max(numeroEnvio) + 1` de la cuenta (KOT derivado, plan
  * B1). Solo los ids dados (los que el mozo tenía en pantalla): un ítem que otro agregó mientras tanto no sale sin que lo vea.
  * Idempotente: si ninguno seguía sin enviar (doble clic, otro mozo se adelantó), no crea un envío vacío.
+ *
+ * Además de `{ ok, mensaje }` devuelve `numeroEnvio` y `envioNuevo` (`ResultadoEnvioACocina`): la pantalla imprime la comanda solo del
+ * envío que creó esta llamada; en el caso idempotente informa el envío en el que ya habían salido, con `envioNuevo: false`.
  */
-export async function enviarACocina(cuentaId: string, itemIds: string[]): Promise<ResultadoAccion> {
+export async function enviarACocina(cuentaId: string, itemIds: string[]): Promise<ResultadoEnvioACocina> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
     if (!Array.isArray(itemIds) || itemIds.length === 0 || itemIds.some((id) => typeof id !== "string")) return error("No hay ítems para enviar.");
     if (itemIds.length > MAXIMO_ITEMS_POR_ENVIO) return error(`No se pueden enviar más de ${MAXIMO_ITEMS_POR_ENVIO} ítems de una vez.`);
@@ -142,8 +145,18 @@ export async function enviarACocina(cuentaId: string, itemIds: string[]): Promis
         where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id, numeroEnvio: null, anulaAItemId: null },
         data: { numeroEnvio },
       });
-      if (enviados.count === 0) return ok("Esos ítems ya estaban enviados.");
-      return ok(`Envío ${numeroEnvio} a cocina: ${enviados.count === 1 ? "1 ítem" : `${enviados.count} ítems`} de la mesa ${abierta.cuenta.mesa.numero}.`);
+      if (enviados.count === 0) {
+        const previo = await tx.cuentaItem.aggregate({
+          where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id, anulaAItemId: null, numeroEnvio: { not: null } },
+          _max: { numeroEnvio: true },
+        });
+        return { ...ok("Esos ítems ya estaban enviados."), numeroEnvio: previo._max.numeroEnvio, envioNuevo: false };
+      }
+      return {
+        ...ok(`Envío ${numeroEnvio} a cocina: ${enviados.count === 1 ? "1 ítem" : `${enviados.count} ítems`} de la mesa ${abierta.cuenta.mesa.numero}.`),
+        numeroEnvio,
+        envioNuevo: true,
+      };
     });
   });
 }

@@ -70,6 +70,8 @@ test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con moti
   const cat = await sembrarCatalogo(sucursalId);
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 961 } });
   try {
+    // Enviar, anular y cerrar imprimen solos: `window.print()` se reemplaza para contar las impresiones sin abrir el diálogo nativo.
+    await interceptarImpresion(page);
     await page.goto("/mesas");
     await tarjeta(page, 961).getByRole("link", { name: "Tomar pedido" }).click();
     await page.waitForURL(`/mesas/${mesa.id}`);
@@ -89,6 +91,7 @@ test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con moti
     await expect(aviso(page)).toHaveText("Envío 1 a cocina: 2 ítems de la mesa 961.");
     await expect(page.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Sin enviar · 0" })).toBeVisible();
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda"]);
 
     // El mapa ya la muestra ocupada, con un pedido enviado.
     await page.goto("/mesas");
@@ -204,6 +207,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
   const sinPermiso = await abrirComoRol(browser, baseURL, sucursalId, {});
   try {
     const m = mozo.page;
+    await interceptarImpresion(m);
     await m.goto(`/mesas/${mesaMozo.id}`);
     await m.getByRole("button", { name: "Abrir cuenta" }).click();
     await expect(aviso(m)).toHaveText("Cuenta de la mesa 964 abierta.");
@@ -211,6 +215,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
     await expect(aviso(m)).toHaveText("Se agregó 1 ítem a la mesa 964.");
     await m.getByRole("button", { name: "Enviar a cocina" }).click();
     await expect(aviso(m)).toHaveText("Envío 1 a cocina: 1 ítem de la mesa 964.");
+    await expect.poll(async () => (await impresiones(m)).map((i) => i.tipo)).toEqual(["comanda"]);
     await expect(m.getByRole("button", { name: `Anular ${cat.flan.nombre}` })).toBeDisabled();
     await expect(m.getByRole("button", { name: "Cerrar cuenta" })).toBeDisabled();
     await expect(m.getByRole("button", { name: "Reimprimir la comanda del envío 1" })).toBeEnabled();
@@ -297,6 +302,75 @@ test("reimprimir un envío: la comanda sale de nuevo marcada REIMPRESIÓN, con l
   } finally {
     await cat.limpiar([mesa.id]);
     await prisma.producto.deleteMany({ where: { id: largo.id } });
+  }
+});
+
+test("enviar a cocina imprime la comanda del envío: sin precios, y el segundo envío solo con lo nuevo", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 969 } });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: "Abrir cuenta" }).click();
+    await expect(aviso(page)).toHaveText("Cuenta de la mesa 969 abierta.");
+    await agregar(page, cat.milanesa.nombre, "2");
+    await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 969.");
+    await agregar(page, cat.flan.nombre, "1");
+    await expect(page.getByRole("heading", { name: "Sin enviar · 2" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Enviar a cocina" }).click();
+    await expect(page.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
+    await expect.poll(async () => (await impresiones(page)).length).toBe(1);
+    const [primera] = await impresiones(page);
+    expect(primera.tipo).toBe("comanda");
+    for (const texto of ["COMANDA · COCINA", "Mesa 969", "Envío 1", "Tomó: e2e-admin", `2 × ${cat.milanesa.nombre}`, `1 × ${cat.flan.nombre}`]) expect(primera.texto).toContain(texto);
+    expect(primera.texto).not.toContain("$");
+
+    await agregar(page, cat.pizza.nombre, "1");
+    await expect(page.getByRole("heading", { name: "Sin enviar · 1" })).toBeVisible();
+    await page.getByRole("button", { name: "Enviar a cocina" }).click();
+    await expect(page.getByRole("heading", { name: "Envío 2 · en cocina" })).toBeVisible();
+    await expect.poll(async () => (await impresiones(page)).length).toBe(2);
+    const segunda = (await impresiones(page))[1];
+    expect(segunda.tipo).toBe("comanda");
+    expect(segunda.texto).toContain("Envío 2");
+    expect(segunda.texto).toContain(`1 × ${cat.pizza.nombre}`);
+    expect(segunda.texto).not.toContain(cat.milanesa.nombre);
+    expect(segunda.texto).not.toContain(cat.flan.nombre);
+    expect(segunda.texto).not.toContain("$");
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("una pestaña vieja no reimprime un envío ya hecho: «Esos ítems ya estaban enviados.» no imprime nada", async ({ browser, baseURL, paginaAutenticada: a, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 970 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, creadoPorId: admin.id }] } } });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  const b = mozo.page;
+  try {
+    await interceptarImpresion(a);
+    await interceptarImpresion(b);
+    await a.goto(`/mesas/${mesa.id}`);
+    await b.goto(`/mesas/${mesa.id}`);
+    await expect(b.locator(`[data-item-sin-enviar="${cat.flan.nombre}"]`)).toBeVisible();
+
+    await a.getByRole("button", { name: "Enviar a cocina" }).click();
+    await expect(a.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
+    await expect.poll(async () => (await impresiones(a)).length).toBe(1);
+
+    // B todavía muestra el ítem sin enviar: al apretar «Enviar», el servidor no crea otro envío y le contesta el envío 1 de A con
+    // `envioNuevo: false`. B solo imprime automáticamente un envío que haya creado su propia llamada: no imprime nada.
+    await b.getByRole("button", { name: "Enviar a cocina" }).click();
+    await expect(aviso(b)).toHaveText("Esos ítems ya estaban enviados.");
+    await expect(b.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
+    await expect(b.getByRole("heading", { name: "Sin enviar · 0" })).toBeVisible();
+    expect(await impresiones(b)).toEqual([]);
+  } finally {
+    await cat.limpiar([mesa.id]);
+    await mozo.limpiar();
   }
 });
 

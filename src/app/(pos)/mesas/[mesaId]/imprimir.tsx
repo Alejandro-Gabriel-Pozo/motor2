@@ -15,22 +15,20 @@ import { TicketCocina } from "./ticket-cocina";
  * - Vive en la CIMA de la página (por encima de «mesa libre» y «cuenta abierta»): así sobrevive a que la acción que pidió imprimir
  *   haga desaparecer su botón después de `router.refresh()` (que conserva el estado de los componentes de cliente).
  * - Un único pedido pendiente (se imprime una cosa a la vez): la acción lo deja al salir bien (`pedir`) y `resolverImpresion` decide,
- *   con los datos que trajo el refresco, si imprime, si espera o si lo descarta.
+ *   con los datos que trajo el refresco, si ya imprime o si espera.
  * - El documento se monta en un portal directo en `document.body`, con `data-imprimible` y `data-tipo`: en pantalla nunca se ve, y al
  *   imprimir es lo único que se ve (CSS en src/app/globals.css). Un efecto sobre su `id` anota UNA VEZ `afterprint` (lo desmonta) y
  *   llama a `window.print()`; una ref con el último id impreso evita la doble impresión del modo estricto de React en desarrollo.
  */
 
 interface ApiImpresion {
-  /** El mayor número de envío que se ve en pantalla (0 si todavía no hay ninguno). */
-  ultimoEnvio: number;
   /** Ids de las anulaciones que el ítem tiene hoy. */
   anulacionesDe: (itemId: string) => string[];
   pedir: (pedido: PedidoImpresion) => void;
   reimprimirEnvio: (numero: number) => void;
 }
 
-const ImpresionContexto = createContext<ApiImpresion>({ ultimoEnvio: 0, anulacionesDe: () => [], pedir: () => {}, reimprimirEnvio: () => {} });
+const ImpresionContexto = createContext<ApiImpresion>({ anulacionesDe: () => [], pedir: () => {}, reimprimirEnvio: () => {} });
 
 export function useImpresion() {
   return useContext(ImpresionContexto);
@@ -54,12 +52,12 @@ export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; 
   };
 
   // Con cada render (el refresco trae datos nuevos) se vuelve a mirar el pedido pendiente: el estado se ajusta durante el render, sin
-  // efecto, igual que «guardar información de renders anteriores» (react.dev). Deja de ser pendiente en cuanto se imprime o se descarta.
+  // efecto, igual que «guardar información de renders anteriores» (react.dev). Deja de ser pendiente en cuanto se imprime.
   if (pedido) {
     const resolucion = resolverImpresion({ comandas }, pedido);
-    if (resolucion.accion !== "esperar") {
+    if (resolucion.accion === "imprimir") {
       setPedido(null);
-      if (resolucion.accion === "imprimir") mostrar(resolucion.documento);
+      mostrar(resolucion.documento);
     }
   }
 
@@ -72,7 +70,6 @@ export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; 
   }, [id]);
 
   const api: ApiImpresion = {
-    ultimoEnvio: comandas.reduce((mayor, c) => Math.max(mayor, c.numero), 0),
     anulacionesDe: (itemId) => comandas.flatMap((c) => c.anulaciones.filter((a) => a.itemId === itemId).map((a) => a.id)),
     pedir: setPedido,
     reimprimirEnvio: (numero) => {

@@ -66,6 +66,8 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     const resultados = await Promise.all([enviarACocina(cuenta.id, ids), enviarACocina(cuenta.id, ids)]);
     expect(resultados.every((r) => r.ok)).toBe(true);
     expect(resultados.filter((r) => r.mensaje === "Esos ítems ya estaban enviados.")).toHaveLength(1);
+    // Solo una de las dos llamadas creó el envío (la que imprime la comanda); las dos informan el mismo número.
+    expect(resultados.map((r) => (r.ok ? [r.numeroEnvio, r.envioNuevo] : null)).sort()).toEqual([[1, false], [1, true]]);
     const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
     expect(new Set(items.map((i) => i.numeroEnvio))).toEqual(new Set([1]));
   });

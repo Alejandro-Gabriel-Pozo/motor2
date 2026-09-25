@@ -139,13 +139,14 @@ describe("tomar pedido (server actions)", () => {
       ]);
       const [mila, flan] = cuenta.items;
 
-      expect(await enviarACocina(cuenta.id, [mila.id])).toEqual({ ok: true, mensaje: "Envío 1 a cocina: 1 ítem de la mesa 4." });
-      expect(await enviarACocina(cuenta.id, [mila.id])).toEqual({ ok: true, mensaje: "Esos ítems ya estaban enviados." });
+      expect(await enviarACocina(cuenta.id, [mila.id])).toEqual({ ok: true, mensaje: "Envío 1 a cocina: 1 ítem de la mesa 4.", numeroEnvio: 1, envioNuevo: true });
+      // Repetir informa el envío en el que ya salieron, pero no como nuevo: la pantalla no vuelve a imprimirlo.
+      expect(await enviarACocina(cuenta.id, [mila.id])).toEqual({ ok: true, mensaje: "Esos ítems ya estaban enviados.", numeroEnvio: 1, envioNuevo: false });
       expect((await itemsDe(cuenta.id)).map((i) => i.numeroEnvio)).toEqual([1, null]);
 
       await agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }]);
       const nuevo = (await itemsDe(cuenta.id)).find((i) => i.numeroEnvio === null && i.id !== flan.id)!;
-      expect(await enviarACocina(cuenta.id, [flan.id, nuevo.id])).toEqual({ ok: true, mensaje: "Envío 2 a cocina: 2 ítems de la mesa 4." });
+      expect(await enviarACocina(cuenta.id, [flan.id, nuevo.id])).toEqual({ ok: true, mensaje: "Envío 2 a cocina: 2 ítems de la mesa 4.", numeroEnvio: 2, envioNuevo: true });
       expect((await itemsDe(cuenta.id)).map((i) => i.numeroEnvio)).toEqual([1, 2, 2]);
 
       const [m] = (await obtenerMapaDeMesas(s.sucursalId)).mesas;
@@ -156,7 +157,7 @@ describe("tomar pedido (server actions)", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
       const otraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
       const otra = await sembrarCuenta(otraMesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
-      expect(await enviarACocina(cuenta.id, [otra.items[0].id])).toEqual({ ok: true, mensaje: "Esos ítems ya estaban enviados." });
+      expect(await enviarACocina(cuenta.id, [otra.items[0].id])).toEqual({ ok: true, mensaje: "Esos ítems ya estaban enviados.", numeroEnvio: null, envioNuevo: false });
       expect((await itemsDe(otra.id))[0].numeroEnvio).toBeNull();
       expect(await enviarACocina(cuenta.id, [])).toEqual({ ok: false, mensaje: "No hay ítems para enviar." });
     });
