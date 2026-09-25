@@ -1100,6 +1100,42 @@ export interface FilaCategoriaVenta {
   productos: { producto: string; cantidad: number; importe: number }[];
 }
 
+/** Una venta del período ya con el nombre de su categoría (null = sin categoría). */
+export interface VentaConCategoria {
+  producto: string;
+  categoria: string | null;
+  cantidad: number;
+  importe: number;
+}
+
+/**
+ * Pura: agrupa ventas por producto en filas de categoría (los PV sin categoría, en "Sin categoría"), con sus totales redondeados y
+ * todo por importe descendente. La usan «Ventas por categoría» y «Ventas por sección de carta» (src/core/carta/reporte-secciones.ts,
+ * que la aplica a las ventas de CADA sección), para que las dos agrupen igual.
+ */
+export function agruparVentasPorCategoria(ventas: readonly VentaConCategoria[]): FilaCategoriaVenta[] {
+  const porCategoria = new Map<string, { cantidad: number; importe: number; productos: { producto: string; cantidad: number; importe: number }[] }>();
+  for (const v of ventas) {
+    const categoria = v.categoria ?? "Sin categoría";
+    if (!porCategoria.has(categoria)) porCategoria.set(categoria, { cantidad: 0, importe: 0, productos: [] });
+    const acc = porCategoria.get(categoria)!;
+    acc.cantidad += v.cantidad;
+    acc.importe += v.importe;
+    acc.productos.push({ producto: v.producto, cantidad: v.cantidad, importe: v.importe });
+  }
+  return Array.from(porCategoria.entries())
+    .map(([categoria, c]) => ({ categoria, cantidad: redondearCantidad(c.cantidad), importe: redondearMoneda(c.importe), productos: c.productos.sort((a, b) => b.importe - a.importe) }))
+    .sort((a, b) => b.importe - a.importe);
+}
+
+/** Los PV disponibles en la sucursal sin categoría asignada (nombres, orden alfabético). */
+export function pvSinCategoriaDe(productos: ReadonlyMap<string, InfoProductoReporte>): string[] {
+  return Array.from(productos.values())
+    .filter((p) => p.tipo === "PV" && p.disponible && !p.categoriaNombre)
+    .map((p) => p.nombre)
+    .sort((a, b) => a.localeCompare(b));
+}
+
 /**
  * Port de generarReporteVentasPorCategoria (Reportes.js:243-283) — reusa
  * calcularVentasDelPeriodo (vía obtenerReportePorPeriodo) en vez de
@@ -1109,30 +1145,13 @@ export async function generarReporteVentasPorCategoria(sucursalId: string, desde
   // El catálogo sale del propio reporte (ya lo cargó): no se lee de nuevo. Las ventas anuladas las descarta `calcularVentasDelPeriodo` (`r.anulada`).
   const { reporte: rep, productos } = await obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, { proceso: "VENTA" }, db);
 
-  const porCategoria = new Map<string, { cantidad: number; importe: number; productos: { producto: string; cantidad: number; importe: number }[] }>();
-  for (const v of rep.ventas.porProducto) {
-    const categoria = productos.get(v.productoId)?.categoriaNombre ?? "Sin categoría";
-    if (!porCategoria.has(categoria)) porCategoria.set(categoria, { cantidad: 0, importe: 0, productos: [] });
-    const acc = porCategoria.get(categoria)!;
-    acc.cantidad += v.cantidad;
-    acc.importe += v.importe;
-    acc.productos.push({ producto: v.producto, cantidad: v.cantidad, importe: v.importe });
-  }
-
-  const pvSinCategoria = Array.from(productos.values())
-    .filter((p) => p.tipo === "PV" && p.disponible && !p.categoriaNombre)
-    .map((p) => p.nombre)
-    .sort((a, b) => a.localeCompare(b));
-
   return {
     desde: rep.desde,
     hasta: rep.hasta,
     totalFacturado: rep.ventas.totalFacturado,
     aviso: rep.ventas.aviso,
-    porCategoria: Array.from(porCategoria.entries())
-      .map(([categoria, c]) => ({ categoria, cantidad: redondearCantidad(c.cantidad), importe: redondearMoneda(c.importe), productos: c.productos.sort((a, b) => b.importe - a.importe) }))
-      .sort((a, b) => b.importe - a.importe),
-    pvSinCategoria,
+    porCategoria: agruparVentasPorCategoria(rep.ventas.porProducto.map((v) => ({ ...v, categoria: productos.get(v.productoId)?.categoriaNombre ?? null }))),
+    pvSinCategoria: pvSinCategoriaDe(productos),
   };
 }
 

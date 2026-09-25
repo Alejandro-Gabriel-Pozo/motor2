@@ -6,9 +6,9 @@ import { prisma } from "../../src/lib/db";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
- * Promociones), la matriz de permisos y las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
- * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo). No es exhaustivo sobre todas las pantallas: se suma
- * una cuando aparece una necesidad concreta.
+ * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
+ * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), el admin de la carta, su portal de sucursales y su
+ * tema, y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -657,6 +657,210 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "administracion/usuarios").toEqual([]);
     } finally {
       await prisma.sucursal.deleteMany({ where: { nombre: `E2E A11y Sucursal ${marca}` } });
+    }
+  }
+);
+
+testAutenticado(
+  "reportes/ventas-por-seccion: sin violaciones de axe, contraste incluido (con una sección con ventas y un producto sin sección en ámbar)",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    // docs/plan-carta-catalogo-2026-09-24.md, M7 (a nivel de producto desde docs/plan-carta-seccion-directa-2026-09-25.md, M5). Dos ventas: una
+    // de un producto que se ve en una sección de carta (tabla) y otra de uno sin contenido de carta (aviso en ámbar): sin las dos, la pantalla
+    // no dibuja todo lo que se quiere auditar.
+    const marca = `${Date.now()}`;
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const conSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Carta ${marca}` } });
+    const sinSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Suelta ${marca}` } });
+    const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección Carta ${marca}`, orden: 1 } });
+    const pvs = await Promise.all(
+      [conSeccion, sinSeccion].map((c, i) =>
+        prisma.producto.create({ data: { codigo: `E2E-A11Y-SEC-${i}-${marca}`, nombre: `E2E A11y Plato ${i} ${marca}`, tipo: "PV", categoriaId: c.id, unidadStockId: unidad.id, precioVenta: 100 } })
+      )
+    );
+    // El primero se ve en la sección de carta; el segundo no tiene contenido de carta → "Sin sección" y el aviso ámbar.
+    await prisma.contenidoCartaProducto.create({ data: { productoId: pvs[0].id, visibleEnCarta: true, seccionCartaId: seccionCarta.id } });
+    const op = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date("2026-08-04T12:00:00Z"), usuarioId: admin.id } });
+    for (const pv of pvs) {
+      await prisma.movimientoStock.create({
+        data: { operacionId: op.id, productoId: pv.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 100, precioPorUnidadStock: 100 },
+      });
+    }
+    try {
+      await page.goto("/reportes/ventas-por-seccion?desde=2026-08-01&hasta=2026-08-10");
+      await expect(page.getByRole("heading", { name: "Ventas por sección de carta" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: new RegExp(`E2E A11y Sección Carta ${marca}`) })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Productos con ventas que no se ven en ninguna sección de carta" })).toBeVisible();
+      await expect(page.getByRole("listitem").filter({ hasText: pvs[1].nombre }), "el producto sin sección tiene que aparecer en el aviso").toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    } finally {
+      await prisma.movimientoStock.deleteMany({ where: { operacionId: op.id } });
+      await prisma.operacion.deleteMany({ where: { id: op.id } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: pvs.map((p) => p.id) } } });
+      await prisma.seccionCarta.deleteMany({ where: { id: seccionCarta.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: pvs.map((p) => p.id) } } });
+      await prisma.categoriaProducto.deleteMany({ where: { id: { in: [conSeccion.id, sinSeccion.id] } } });
+    }
+  }
+);
+
+testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abiertos y el aviso en ámbar de PV sin contenido", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los tres bloques (sección, un PV con contenido en esa sección y otro sin él
+  // —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
+  // ellos el select "Sección de carta" del contenido, docs/plan-carta-seccion-directa-2026-09-25.md).
+  const marca = `${Date.now()}`;
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Carta Cat ${marca}` } });
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Carta Sección ${marca}`, titulo: "Del fuego", orden: 1 } });
+  const [conContenido, sinContenido] = await Promise.all(
+    ["Con", "Sin"].map((q) =>
+      prisma.producto.create({ data: { codigo: `E2E-A11Y-CARTA-${q}-${marca}`, nombre: `E2E A11y Carta ${q} ${marca}`, tipo: "PV", categoriaId: categoria.id, unidadStockId: unidad.id, precioVenta: 100 } })
+    )
+  );
+  await prisma.disponibilidadProducto.createMany({ data: [conContenido, sinContenido].map((p) => ({ sucursalId, productoId: p.id, disponible: true })) });
+  await prisma.contenidoCartaProducto.create({ data: { productoId: conContenido.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
+  const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
+  try {
+    await page.goto("/catalogo/carta");
+    await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
+    await page.locator(`[data-seccion-carta="${seccion.nombre}"] summary`).click();
+    await page.locator(`[data-contenido-carta="${conContenido.nombre}"] summary`).click();
+    await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
+    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel("Especial (★)")).toBeChecked();
+    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
+    await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
+    await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
+    await prisma.producto.deleteMany({ where: { id: { in: [conContenido.id, sinContenido.id] } } });
+    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+  }
+});
+
+testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem abierto, el aviso ámbar de precios distintos y los selects", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-agrupacion-items-carta-2026-09-24.md, M7. Un ítem agrupado con dos opciones de distinto precio (el drift posterior de D5,
+  // sembrado directo: la acción de agregar lo bloquearía) dibuja el aviso ámbar; se abre su <details> para exponer el formulario del ítem,
+  // las opciones (orden y quitar) y el select "Agregar producto" (hay un PV suelto disponible para listar).
+  const marca = `${Date.now()}`;
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Agrupado Cat ${marca}` } });
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Agrupado Sección ${marca}` } });
+  const productos = await Promise.all(
+    [
+      ["Coca", 5000],
+      ["Sprite", 5500],
+      ["Suelta", 5000],
+    ].map(([q, precioVenta]) =>
+      prisma.producto.create({
+        data: { codigo: `E2E-A11Y-AGR-${q}-${marca}`, nombre: `E2E A11y Agrupado ${q} ${marca}`, tipo: "PV", categoriaId: categoria.id, unidadStockId: unidad.id, precioVenta: Number(precioVenta) },
+      })
+    )
+  );
+  const ids = productos.map((p) => p.id);
+  await prisma.disponibilidadProducto.createMany({ data: ids.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
+  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, especial: true, tags: ["Sin alcohol"] } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: ids.slice(0, 2).map((productoId, orden) => ({ itemAgrupadoCartaId: item.id, productoId, orden })) });
+  try {
+    await page.goto("/catalogo/carta/agrupados");
+    await expect(page.getByRole("heading", { name: "Ítems agrupados de la carta", level: 1 })).toBeVisible();
+    const fila = page.locator(`[data-item-agrupado="${item.nombre}"]`);
+    await expect(fila.getByText(/no cuestan lo mismo/)).toBeVisible();
+    await fila.locator("summary").click();
+    await expect(fila.getByLabel(`Agregar producto a «${item.nombre}»`)).toBeVisible();
+    await expect(fila.getByLabel(/^Sección de carta/)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: item.id } });
+    await prisma.itemAgrupadoCarta.deleteMany({ where: { id: item.id } });
+    await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: ids } } });
+    await prisma.producto.deleteMany({ where: { id: { in: ids } } });
+    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+  }
+});
+
+testAutenticado("catalogo/carta/portal: sin violaciones de axe, con una sucursal sin agregar y el formulario de otra abierto", async ({ paginaAutenticada: page }) => {
+  // docs/plan-registro-tenants-2026-09-24.md, M7. Una sucursal fuera del portal (botón «Agregar») y otra dentro, publicada y con posición, con su
+  // <details> desplegado: cerrado, un <details> no expone sus campos (los dos fieldset, los checkbox y el botón de quitar).
+  const marca = `${Date.now()}`;
+  const [fuera, dentro] = await Promise.all(["Fuera", "Dentro"].map((q) => prisma.sucursal.create({ data: { nombre: `E2E A11y Portal ${q} ${marca}` } })));
+  await prisma.sucursalPublica.create({
+    data: { sucursalId: dentro.id, slug: `e2e-a11y-portal-${marca}`, publicada: true, sheetId: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-a11y", posX: 10, posY: 20, posW: 5, subtituloPortal: "Frente al lago" },
+  });
+  try {
+    await page.goto("/catalogo/carta/portal");
+    await expect(page.getByRole("heading", { name: "Portal de sucursales", level: 1 })).toBeVisible();
+    await expect(page.locator(`[data-sucursal-portal="${fuera.nombre}"]`).getByRole("button", { name: /^Agregar/ })).toBeVisible();
+    await page.locator(`[data-sucursal-portal="${dentro.nombre}"] summary`).click();
+    await expect(page.locator(`[data-sucursal-portal="${dentro.nombre}"]`).getByLabel("Publicada en el portal")).toBeChecked();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId: { in: [fuera.id, dentro.id] } } });
+    await prisma.sucursal.deleteMany({ where: { id: { in: [fuera.id, dentro.id] } } });
+  }
+});
+
+testAutenticado("catalogo/carta/tema: sin violaciones de axe, con zonas del editor abiertas (color, select, número) y un campo inválido", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-tema-carta-2026-09-24.md, M9. Un tema con valores (uno inválido, cargado a mano: dibuja el aviso rojo del campo) y tres <details>
+  // desplegados además del primero: "Colores generales" (selectores de color con su etiqueta propia), "Banda e imagen de sección" (los
+  // <select> y los <input type="number">) e "Ítems" (el campo inválido). Cerrado, un <details> no expone sus campos.
+  //
+  // Se EXCLUYE [data-vista-previa-tema]: la vista previa dibuja la carta con sus propios colores, y con los defaults de la carta (ámbar
+  // oklch(0.76 0.14 80) sobre casi blanco) no cumple color-contrast. Es un problema conocido de la carta pública (restaurant-menu-design), fuera
+  // de este plan: acá solo se simula, y lo que se audita es el editor de motor2.
+  await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+  await prisma.temaCartaSucursal.create({ data: { sucursalId, valores: { color_marca: "#8b4513", hero_ink: "claro", carta_imagen_modo: "miniatura", carta_imagen_opacidad: "60", color_item_precio: "red;x" } } });
+  try {
+    await page.goto("/catalogo/carta/tema");
+    await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
+    for (const zona of ["Colores generales", "Banda e imagen de sección", "Ítems"]) await page.locator(`[data-zona-tema="${zona}"] summary`).click();
+    await expect(page.locator('select[name="carta_imagen_modo"]')).toBeVisible();
+    await expect(page.locator('[data-campo-tema="color_item_precio"]')).toContainText("No es válido");
+    expect((await new AxeBuilder({ page }).exclude("[data-vista-previa-tema]").analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+  }
+});
+
+testAutenticado(
+  "pos/mesas: el mapa con los tres estados, con el diálogo de «Nueva mesa» abierto y con el sistema en modo oscuro, sin violaciones de axe (confirma los contrastes aprobados)",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // Plan docs/plan-mapa-de-mesas-2026-09-24.md §A.3: --ink-faint #76726A («MESA», rótulos de métricas, nota al pie), la etiqueta «Libre» en
+    // --mesa-libre-ink y «En pedido» en --mesa-draft-ink. Hacen falta las tres tarjetas: sin una mesa en pedido no se dibuja la etiqueta ámbar,
+    // y sin datos no hay nada que auditar. (Axe ignora los botones deshabilitados: «Continuar pedido» se corrigió igual, para cuando se habilite.)
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-POS-${marca}`, nombre: `E2E A11y Plato Salón ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 1000 } });
+    const mesas = await Promise.all([801, 802, 803].map((numero) => prisma.mesa.create({ data: { sucursalId, numero } })));
+    await prisma.cuenta.create({ data: { mesaId: mesas[1].id, abiertaPorId: admin.id, items: { create: [{ productoId: producto.id, cantidad: 2, precioUnitario: 1000 }] } } });
+    await prisma.cuenta.create({ data: { mesaId: mesas[2].id, abiertaPorId: admin.id, items: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1 }] } } });
+    try {
+      await page.goto("/mesas");
+      await conTitulo(page, "Mapa de mesas");
+      await expect(page.locator('li[data-mesa="801"]').getByText("Libre", { exact: true })).toBeVisible();
+      await expect(page.locator('li[data-mesa="802"]').getByText("En pedido", { exact: true })).toBeVisible();
+      await expect(page.locator('li[data-mesa="803"]').getByRole("button", { name: "Facturar" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "mapa en reposo").toEqual([]);
+
+      await page.getByRole("button", { name: "Nueva mesa" }).click();
+      await expect(page.getByRole("dialog", { name: "Nueva mesa" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo de «Nueva mesa» abierto").toEqual([]);
+
+      // El salón no tiene modo oscuro: con el sistema en oscuro tiene que seguir claro y legible (tokens en .pos-shell, no en :root).
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto("/mesas");
+      await conTitulo(page, "Mapa de mesas");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    } finally {
+      const mesaIds = mesas.map((m) => m.id);
+      await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
+      await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
     }
   }
 );

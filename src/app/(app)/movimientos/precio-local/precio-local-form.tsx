@@ -2,13 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { setPrecioLocalProducto } from "@/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "@/server/actions/movimientos/precio-local";
 import { obtenerPrecioVentaProducto } from "@/server/actions/catalogo/productos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
+import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 
-export function PrecioLocalForm() {
+/** `sucursalId`: la sucursal activa que ve la pantalla (la acción de sincronizar la vuelve a comparar con la del servidor). */
+export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
   const router = useRouter();
   const [productoId, setProductoId] = useState("");
   const [precio, setPrecio] = useState("");
@@ -18,6 +21,8 @@ export function PrecioLocalForm() {
   const [pending, startTransition] = useTransition();
   const [resetCount, setResetCount] = useState(0);
   const [precioGlobal, setPrecioGlobal] = useState<number | null>(null);
+  // D11/M8 (docs/plan-agrupacion-items-carta-2026-09-24.md): hermanos del ítem agrupado de la carta que quedaron a otro precio acá.
+  const [sincronizable, setSincronizable] = useState<SincronizablePrecioGrupo | null>(null);
   const leer = useLeerServidor();
 
   useEffect(() => {
@@ -46,6 +51,7 @@ export function PrecioLocalForm() {
           const resultado = await setPrecioLocalProducto(productoId, Number(precio), habilitado);
           setMensaje(resultado.mensaje);
           setOk(resultado.ok);
+          setSincronizable(resultado.ok ? (resultado.sincronizable ?? null) : null);
           if (resultado.ok) {
             setProductoId("");
             setPrecio("");
@@ -75,6 +81,25 @@ export function PrecioLocalForm() {
       </label>
 
       {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+
+      {sincronizable && (
+        <SincronizarPrecioGrupo
+          sincronizable={sincronizable}
+          aplicar={async (productoIds, precioNuevo) => {
+            const r = await sincronizarPrecioLocalGrupoCarta(sucursalId, productoIds, precioNuevo, true);
+            // Bien: el bloque se cierra y su resultado pasa al mensaje del formulario (si no, se perdería al cerrarlo).
+            if (r.ok) {
+              setMensaje(r.mensaje);
+              setOk(true);
+            }
+            return r;
+          }}
+          alTerminar={(aplicado) => {
+            setSincronizable(null);
+            if (aplicado) router.refresh();
+          }}
+        />
+      )}
 
       <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
         {pending ? "Guardando..." : "Guardar"}

@@ -44,6 +44,10 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta" },
       { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia" },
       { href: "/catalogo/categorias", label: "Categorías", accion: "categorias" },
+      { href: "/catalogo/carta", label: "Carta pública", accion: "carta" },
+      { href: "/catalogo/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta" },
+      { href: "/catalogo/carta/portal", label: "Portal de sucursales", accion: "carta" },
+      { href: "/catalogo/carta/tema", label: "Tema de la carta", accion: "carta" },
       { href: "/catalogo/unidades", label: "Unidades", accion: "unidades" },
     ],
   },
@@ -77,6 +81,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/consolidado", label: "Consolidado (mis sucursales)", accion: "ver_reportes_dinero" },
       { href: "/reportes/periodo", label: "Período", accion: "ver_reportes_dinero" },
       { href: "/reportes/categorias", label: "Por categoría", accion: "ver_reportes_dinero" },
+      { href: "/reportes/ventas-por-seccion", label: "Por sección de carta", accion: "ver_reportes_dinero" },
       { href: "/reportes/costos", label: "Costos y márgenes", accion: "ver_reportes_dinero" },
       { href: "/reportes/compras", label: "Compras registradas", accion: "ver_reportes_dinero" },
       { href: "/reportes/rendimiento-recetas", label: "Rendimiento real de recetas", accion: "ver_reportes_dinero" },
@@ -104,6 +109,14 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/traspasos/solicitar", label: "Solicitar (a otra sucursal)", accion: "proceso_transferencia_sucursal" },
       { href: "/traspasos/enviar", label: "Enviar directo", accion: "proceso_transferencia_sucursal" },
     ],
+  },
+  {
+    // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): la pantalla vive en el route group `(pos)`, con su propio shell y sin
+    // este menú. El ítem va AL FINAL a propósito: quien tiene /reportes sigue entrando por ahí, y a quien solo tiene salón (el rol
+    // «mozo» armado desde la matriz) la pantalla de inicio lo manda directo a /mesas.
+    id: "pos",
+    label: "Salón",
+    items: [{ href: "/mesas", label: "Mapa de mesas", accion: "pos_mesas" }],
   },
 ];
 

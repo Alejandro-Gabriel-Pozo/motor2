@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { defineConfig } from "@playwright/test";
 import { resolverUrlE2E } from "./test/e2e/fixtures/base-e2e";
+import { TOKEN_CARTA_E2E } from "./test/e2e/fixtures/carta-token";
 
 /**
  * E2E real: navegador de verdad contra el servidor de producción (`next build` + `next start`, ver `MOTOR2_E2E_SERVIDOR` más abajo) + Postgres real — ver
@@ -94,6 +95,8 @@ export default defineConfig({
       // (@auth/core/lib/utils/env.js: trustHost ??= !!(AUTH_URL ?? AUTH_TRUST_HOST ?? VERCEL ?? NODE_ENV !== "production")). Sin esto cada auth() devuelve
       // UntrustedHost y se cae toda la suite autenticada. En `dev` no cambia nada. El nombre de la cookie de sesión tampoco cambia (http → sin prefijo __Secure-).
       AUTH_TRUST_HOST: "1",
+      // Token de servicio de los endpoints de la carta pública (GET /api/carta/[sucursal] y /api/carta/tenants); lo usan test/e2e/api-carta*.spec.ts.
+      CARTA_API_TOKEN: TOKEN_CARTA_E2E,
     },
     url: URL_BASE,
     reuseExistingServer: false,

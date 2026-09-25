@@ -9,8 +9,9 @@ import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
 import { disponibilidadDeProductos, productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
 import { conPermiso } from "../con-permiso";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
 export interface ProductoOpcion {
@@ -332,9 +333,13 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * 1270-1314), acá el nombre es un campo más: Receta/Presentación/
  * ProveedorPorProducto referencian por `productoId` (FK real), no por
  * nombre — no hace falta reescribir nada más al renombrar.
+ *
+ * Si cambió el precio de venta de un producto que está en un ítem agrupado de la carta y sus hermanos del grupo quedaron a OTRO
+ * precio, el resultado trae además `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): la pantalla ofrece
+ * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
  */
-export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async (ctx) => {
+export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoConSincronizable> {
+  return conPermiso<ResultadoConSincronizable>("editar_producto", async (ctx) => {
     const existente = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
@@ -367,7 +372,42 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       valorAnterior: Number(existente.precioConsignacion), valorNuevo: Number(nuevos.precioConsignacion), actorId: ctx.usuarioId,
     });
 
-    return ok(`Producto "${nombreActual}" actualizado.`);
+    const mensaje = `Producto "${nombreActual}" actualizado.`;
+    const precioNuevo = Number(nuevos.precioVenta);
+    if (precioNuevo !== Number(existente.precioVenta)) {
+      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId), precioNuevo, "global");
+      if (sincronizable) return { ok: true, mensaje, sincronizable };
+    }
+    return ok(mensaje);
+  });
+}
+
+/**
+ * Aplica el mismo precio de venta GLOBAL a varios productos de UN mismo ítem agrupado de la carta (el paso que ofrece
+ * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Mismo permiso y misma auditoría
+ * que editar el precio de cada uno a mano. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
+ */
+export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number): Promise<ResultadoAccion> {
+  return conPermiso("editar_producto", async (ctx) => {
+    if (!esNumeroFinito(precio)) return error("El precio de venta no es un número válido.");
+    if (!(precio >= 0)) return error("El precio de venta no puede ser negativo.");
+    const ids = [...new Set(productoIds)];
+    if (!ids.length) return error("No hay productos para actualizar.");
+
+    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId);
+    const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
+    if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
+
+    const productos = await prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true } });
+    for (const p of productos) {
+      await prisma.producto.update({ where: { id: p.id }, data: { precioVenta: precio } });
+      await registrarCambioAuditado(prisma, {
+        entidad: "Producto", entidadId: p.id, campo: "precioVenta",
+        descripcion: `Producto "${p.nombre}": precio de venta`,
+        valorAnterior: Number(p.precioVenta), valorNuevo: precio, actorId: ctx.usuarioId,
+      });
+    }
+    return ok(`Precio de venta de ${productos.map((p) => `"${p.nombre}"`).join(", ")} actualizado a $${precio.toLocaleString("es-AR")} («${grupo.nombreItem}»).`);
   });
 }
 
