@@ -11,6 +11,7 @@ import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { lineasDeVenta, restanteDe, validarCantidadPedido, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { registrarVentaEnTx, type AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
 
@@ -307,6 +308,14 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
       // El núcleo valida todo antes de escribir: un rechazo no dejó nada escrito y la cuenta sigue abierta.
       if (!venta.ok) return error(venta.mensaje);
       if (venta.operacionIds.length !== lineas.length) throw new Error("cerrarCuenta: la venta no devolvió una Operacion por línea.");
+
+      // Número de la boleta (docs/plan-numeracion-boleta-2026-09-25.md): max + 1 de la sucursal, ejemplar A. Recién DESPUÉS de que la venta
+      // salió bien — devolver `error(...)` desde acá CONFIRMA la transacción, así que numerar antes gastaría un número en un cierre
+      // rechazado. Dos cierres simultáneos de la misma sucursal chocan (índice único + SERIALIZABLE) y uno reintenta: sin huecos ni repetidos.
+      const { _max } = await tx.ejemplarBoleta.aggregate({ where: { sucursalId: ctx.sucursalId }, _max: { numero: true } });
+      await tx.ejemplarBoleta.create({
+        data: { sucursalId: ctx.sucursalId, cuentaId: cuenta.id, numero: siguienteNumeroBoleta(_max.numero), ejemplar: 1, emitidoEn: ahora, emitidoPorId: ctx.usuarioId },
+      });
 
       for (const [i, linea] of lineas.entries()) {
         await tx.cuentaItem.updateMany({

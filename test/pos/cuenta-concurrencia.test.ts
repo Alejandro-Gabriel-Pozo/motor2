@@ -31,7 +31,26 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     expect(resultados.filter((r) => r.mensaje === "La cuenta de la mesa 4 ya estaba cerrada.")).toHaveLength(1);
     expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(2);
     expect(await prisma.movimientoStock.count({ where: { proceso: "VENTA" } })).toBe(2);
+    // Una sola boleta numerada: el cierre que perdió la carrera no emite otro ejemplar.
+    expect(await prisma.ejemplarBoleta.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
   });
+
+  for (const cuantas of [2, 3]) {
+    it(`${cuantas} cierres de mesas distintas de la misma sucursal a la vez: números 1..${cuantas}, sin repetir ni saltear (docs/plan-numeracion-boleta-2026-09-25.md)`, async () => {
+      const cuentas = [];
+      for (let i = 0; i < cuantas; i++) {
+        const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 200 + i } });
+        cuentas.push(await sembrarCuenta(mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]));
+      }
+      const resultados = await Promise.all(cuentas.map((c) => cerrarCuenta(c.id, s.seccion.id)));
+      expect(resultados.map((r) => r.ok), resultados.map((r) => r.mensaje).join(" / ")).toEqual(cuentas.map(() => true));
+
+      const ejemplares = await prisma.ejemplarBoleta.findMany({ where: { sucursalId: s.sucursalId } });
+      expect(ejemplares.map((e) => e.numero).sort((a, b) => a - b)).toEqual(Array.from({ length: cuantas }, (_, i) => i + 1));
+      expect(ejemplares.every((e) => e.ejemplar === 1)).toBe(true);
+      expect(new Set(ejemplares.map((e) => e.cuentaId))).toEqual(new Set(cuentas.map((c) => c.id)));
+    });
+  }
 
   it("agregarItems contra cerrarCuenta: nunca queda un ítem sin enviar en una cuenta cerrada", async () => {
     for (let vuelta = 0; vuelta < 3; vuelta++) {
