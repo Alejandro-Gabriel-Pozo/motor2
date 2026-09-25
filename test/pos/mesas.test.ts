@@ -143,6 +143,22 @@ describe("obtenerMapaDeMesas (contra la base)", () => {
     expect(m).toMatchObject({ numero: 1, estado: "en_pedido", productosSinEnviar: 3.5, total: 19500.15, mesero: "Rocío", tiempoAbierta: "hace 15 min", pedidosEnviados: 0 });
   });
 
+  it("el total del mapa ya coincide centavo a centavo con lo que registraría un cierre (Σ importeDeLinea, no la suma cruda redondeada)", async () => {
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
+    // 0,3 × 1234,55 = 370,365 → 370,37 y 0,5 × 1234,57 = 617,285 → 617,29: por línea suman 987,66; la suma cruda redondeada da 987,65
+    // (mismo caso que test/pos/boleta.test.ts, test/pos/cerrar-cuenta-action.test.ts y test/pos/cuenta.test.ts).
+    await prisma.cuenta.create({
+      data: {
+        mesaId: mesa.id,
+        abiertaPorId: mozoId,
+        items: { create: [{ productoId, cantidad: 0.3, precioUnitario: 1234.55 }, { productoId, cantidad: 0.5, precioUnitario: 1234.57 }] },
+      },
+    });
+
+    const [m] = (await obtenerMapaDeMesas(sucursalId, prisma, ahora)).mesas;
+    expect(m.total).toBe(987.66);
+  });
+
   it("ocupada: pedidos enviados = envíos distintos (1 y 2); un mozo sin nombre se muestra por la parte local del email", async () => {
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 4 } });
     await prisma.cuenta.create({

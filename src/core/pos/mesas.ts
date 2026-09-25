@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { totalDeLineas } from "@/core/moneda";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 
 /**
  * Mapa de mesas del salón (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md).
@@ -141,7 +141,8 @@ export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient = 
       estado: resolverEstadoMesa(cuenta),
       // Redondeo a los 4 decimales de la columna (Decimal(14, 4)): la suma en coma flotante no deja «2,0000000001 productos».
       productosSinEnviar: Math.round(items.filter((i) => i.numeroEnvio === null).reduce((suma, i) => suma + Number(i.cantidad), 0) * 10_000) / 10_000,
-      total: totalDeLineas(items.map((i) => ({ cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario) }))),
+      // Mismo criterio que obtenerDetalleDeMesa/boleta/cerrarCuenta: Σ importeDeLinea, no la suma cruda re-redondeada.
+      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(Number(i.cantidad), Number(i.precioUnitario)), 0)),
       mesero: cuenta ? nombreDelMesero(cuenta.abiertaPor) : null,
       tiempoAbierta: cuenta ? tiempoDesde(cuenta.abiertaEn, ahora) : null,
       pedidosEnviados: new Set(items.flatMap((i) => (i.numeroEnvio === null ? [] : [i.numeroEnvio]))).size,

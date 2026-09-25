@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
-import { totalDeLineas } from "@/core/moneda";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { nombreDelMesero, tiempoDesde } from "./mesas";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -205,7 +205,9 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
       abiertaEn: fila.abiertaEn,
       mesero: nombreDelMesero(fila.abiertaPor),
       tiempoAbierta: tiempoDesde(fila.abiertaEn, ahora),
-      total: totalDeLineas(items),
+      // Σ del importe de cada línea (importeDeLinea), no la suma cruda re-redondeada: así el total en pantalla nunca difiere del que
+      // registraría un cierre inmediato (boleta y cerrarCuenta usan el mismo criterio). redondearMoneda solo limpia el ruido del float.
+      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, i.precioUnitario), 0)),
       sinEnviar,
       envios,
       itemsTotales: items.length,
