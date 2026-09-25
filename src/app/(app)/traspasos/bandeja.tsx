@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { BotonConConfirmacion } from "@/components/boton-con-confirmacion";
 import {
   aprobarYEnviarTransferencia,
   rechazarSolicitudTransferencia,
@@ -72,7 +73,7 @@ function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
   };
 
   return (
-    <div className="rounded border p-3">
+    <div data-traspaso={fila.id} className="rounded border p-3">
       <p className="text-sm">
         <strong>{fila.otraSucursalNombre}</strong> pide {fila.cantidad} {fila.unidadNombre} de{" "}
         <strong>
@@ -145,7 +146,7 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
   };
 
   return (
-    <div className="rounded border p-3">
+    <div data-traspaso={fila.id} className="rounded border p-3">
       <p className="text-sm">
         <strong>{fila.otraSucursalNombre}</strong> te envía {fila.cantidad} {fila.unidadNombre} de{" "}
         <strong>
@@ -201,7 +202,7 @@ function FilaParaReingreso({ fila }: { fila: FilaBandeja }) {
   };
 
   return (
-    <div className="rounded border p-3">
+    <div data-traspaso={fila.id} className="rounded border p-3">
       <p className="text-sm">
         <strong>{fila.otraSucursalNombre}</strong> rechazó {fila.cantidad} {fila.unidadNombre} de{" "}
         <strong>
@@ -219,23 +220,15 @@ function FilaParaReingreso({ fila }: { fila: FilaBandeja }) {
   );
 }
 
+/**
+ * Lo que ESTA sucursal inició y sigue esperando a la otra. Cancelar la solicitud propia no se deshace (la otra sucursal deja de verla y
+ * hay que pedirla de nuevo), así que pide confirmación en el mismo lugar con `BotonConConfirmacion`
+ * (docs/plan-mutaciones-controladas-2026-09-25.md, Paso 6a).
+ */
 function FilaEsperando({ fila }: { fila: FilaBandeja }) {
-  const router = useRouter();
-  const [mensaje, setMensaje] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  const cancelar = () => {
-    startTransition(async () => {
-      const r = await cancelarSolicitudTransferencia(fila.id);
-      setMensaje(r.mensaje);
-      setOk(r.ok);
-      if (r.ok) router.refresh();
-    });
-  };
-
+  const producto = `${fila.productoCodigo} — ${fila.productoNombre}`;
   return (
-    <div className="rounded border p-3">
+    <div data-traspaso={fila.id} className="rounded border p-3">
       <p className="text-sm text-neutral-500">
         {fila.esMiSolicitudCancelable ? (
           <>
@@ -254,12 +247,18 @@ function FilaEsperando({ fila }: { fila: FilaBandeja }) {
       </p>
       {fila.esMiSolicitudCancelable && (
         <div className="mt-2">
-          <button type="button" disabled={pending} onClick={cancelar} className="rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50">
-            Cancelar solicitud
-          </button>
+          <BotonConConfirmacion
+            etiqueta="Cancelar solicitud"
+            etiquetaAccesible={`Cancelar solicitud de ${fila.cantidad} ${fila.unidadNombre} de ${producto} a ${fila.otraSucursalNombre}`}
+            aviso={`¿Cancelar tu solicitud de ${fila.cantidad} ${fila.unidadNombre} de ${producto} a ${fila.otraSucursalNombre}? ${fila.otraSucursalNombre} ya no la va a ver para aprobar. No se puede deshacer: si la necesitás, vas a tener que pedirla de nuevo.`}
+            etiquetaConfirmar="Sí, cancelar la solicitud"
+            etiquetaEnCurso="Cancelando…"
+            etiquetaVolver="Volver"
+            accion={() => cancelarSolicitudTransferencia(fila.id)}
+            claseDisparador="self-start rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50"
+          />
         </div>
       )}
-      <Mensaje mensaje={mensaje} ok={ok} />
     </div>
   );
 }
@@ -338,7 +337,7 @@ export function Bandeja({
           </thead>
           <tbody>
             {historial.map((f) => (
-              <tr key={f.id} className="border-b">
+              <tr key={f.id} data-traspaso={f.id} className="border-b">
                 <td className="py-1 align-top">{f.fecha}</td>
                 <td className="align-top">
                   {f.productoCodigo} — {f.productoNombre}
