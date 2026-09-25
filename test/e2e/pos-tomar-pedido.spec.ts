@@ -1,0 +1,286 @@
+import type { Page } from "@playwright/test";
+import { test, expect } from "./fixtures/auth";
+import { prisma } from "../../src/lib/db";
+import { abrirComoRol } from "./fixtures/rol-pos";
+
+/**
+ * Tomar pedido en el salón (docs/plan-tomar-pedido-2026-09-25.md): la pantalla de la mesa (/mesas/<id>) con el circuito completo —
+ * abrir la cuenta, agregar, quitar, enviar a cocina, anular con motivo y cerrar la cuenta (venta) —, el cierre con stock insuficiente
+ * (B6bis: se cierra igual, con aviso y auditoría), los permisos por rol y el acceso sin sesión.
+ *
+ * Siembra en «Central» dos PV sin receta y un PV con receta de una MP SIN stock (para ejercitar B6bis de verdad), todos disponibles
+ * en la sucursal. Cada caso limpia lo suyo en `finally`, en el orden que exigen las claves foráneas: filas espejo → ítems →
+ * movimientos/operaciones (y su auditoría) → cuentas → mesas → productos.
+ */
+
+const SECCION = "Depósito E2E";
+
+async function sembrarCatalogo(sucursalId: string) {
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+  const [unidad, kg] = await Promise.all([prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } }), prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } })]);
+  const crear = async (data: Parameters<typeof prisma.producto.create>[0]["data"]) => {
+    const p = await prisma.producto.create({ data });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
+    return p;
+  };
+  const milanesa = await crear({ codigo: `E2E-TP-MILA-${marca}`, nombre: `E2E Milanesa ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 9000 });
+  const flan = await crear({ codigo: `E2E-TP-FLAN-${marca}`, nombre: `E2E Flan ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 3000 });
+  const muzzarella = await crear({ codigo: `E2E-TP-MUZZA-${marca}`, nombre: `E2E Muzzarella ${marca}`, tipo: "MP", unidadStockId: kg.id });
+  const pizza = await crear({ codigo: `E2E-TP-PIZZA-${marca}`, nombre: `E2E Pizza ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000 });
+  await prisma.recetaVersion.create({ data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: muzzarella.id, cantidad: 0.25, unidadId: kg.id }] } } });
+  const productoIds = [milanesa.id, flan.id, muzzarella.id, pizza.id];
+
+  return {
+    milanesa,
+    flan,
+    muzzarella,
+    pizza,
+    /** Borra todo lo que tocó cualquier cuenta de estas mesas, y después las mesas y el catálogo sembrado. */
+    limpiar: async (mesaIds: string[]) => {
+      const items = await prisma.cuentaItem.findMany({ where: { cuenta: { mesaId: { in: mesaIds } } }, select: { operacionId: true } });
+      const operacionIds = [...new Set(items.flatMap((i) => (i.operacionId ? [i.operacionId] : [])))];
+      await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, anulaAItemId: { not: null } } });
+      await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: operacionIds } } });
+      await prisma.movimientoStock.deleteMany({ where: { OR: [{ operacionId: { in: operacionIds } }, { productoId: { in: productoIds } }] } });
+      await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
+      await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
+      await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
+      await prisma.recetaIngrediente.deleteMany({ where: { recetaVersion: { productoId: pizza.id } } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pizza.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
+    },
+  };
+}
+
+const tarjeta = (page: Page, numero: number) => page.locator(`li[data-mesa="${numero}"]`);
+const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
+
+async function agregar(page: Page, nombre: string, cantidad: string) {
+  const combo = page.getByRole("combobox", { name: "Producto" });
+  await combo.fill(nombre);
+  await page.getByRole("option", { name: new RegExp(nombre) }).click();
+  await page.getByLabel("Cantidad", { exact: true }).fill(cantidad);
+  await page.getByRole("button", { name: "Agregar", exact: true }).click();
+}
+
+test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con motivo y cerrar la cuenta registra la venta y libera la mesa", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 961 } });
+  try {
+    await page.goto("/mesas");
+    await tarjeta(page, 961).getByRole("link", { name: "Tomar pedido" }).click();
+    await page.waitForURL(`/mesas/${mesa.id}`);
+    await expect(page.locator("main h1")).toHaveText("Mesa 961");
+    await expect(page.getByText("La mesa está libre.")).toBeVisible();
+
+    await page.getByRole("button", { name: "Abrir cuenta" }).click();
+    await expect(aviso(page)).toHaveText("Cuenta de la mesa 961 abierta.");
+
+    await agregar(page, cat.milanesa.nombre, "2");
+    await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 961.");
+    await agregar(page, cat.flan.nombre, "1");
+    await expect(page.getByRole("heading", { name: "Sin enviar · 2" })).toBeVisible();
+    await expect(page.locator("[data-total-cuenta]")).toContainText(/21\.000/);
+
+    await page.getByRole("button", { name: "Enviar a cocina" }).click();
+    await expect(aviso(page)).toHaveText("Envío 1 a cocina: 2 ítems de la mesa 961.");
+    await expect(page.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sin enviar · 0" })).toBeVisible();
+
+    // El mapa ya la muestra ocupada, con un pedido enviado.
+    await page.goto("/mesas");
+    await expect(tarjeta(page, 961)).toContainText("1 pedido enviado");
+    await expect(tarjeta(page, 961).getByRole("link", { name: "Facturar" })).toBeVisible();
+    await tarjeta(page, 961).getByRole("link", { name: "Ver pedidos" }).click();
+    await page.waitForURL(`/mesas/${mesa.id}`);
+
+    // Anular sin motivo: el servidor lo rechaza y el diálogo lo dice. Con motivo: queda tachado y el total baja.
+    await page.getByRole("button", { name: `Anular ${cat.milanesa.nombre}` }).click();
+    const dialogo = page.getByRole("dialog", { name: `Anular «${cat.milanesa.nombre}»` });
+    await expect(dialogo.getByLabel("Cantidad a anular")).toHaveValue("2");
+    await dialogo.getByLabel("Cantidad a anular").fill("1");
+    await dialogo.getByRole("button", { name: "Anular" }).click();
+    await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+    await dialogo.getByLabel("Motivo (obligatorio)").fill("Pidió una menos");
+    await dialogo.getByRole("button", { name: "Anular" }).click();
+    await expect(dialogo).toHaveCount(0);
+    await expect(aviso(page)).toHaveText(`Se anuló 1 × «${cat.milanesa.nombre}» de la mesa 961.`);
+    const anulacion = page.locator("[data-anulacion]");
+    await expect(anulacion).toHaveText("−1 · Pidió una menos · por e2e-admin");
+    await expect(anulacion).toHaveCSS("text-decoration-line", "line-through");
+    await expect(page.locator("[data-total-cuenta]")).toContainText(/12\.000/);
+
+    // Cerrar la cuenta: se elige la sección y se registra la venta.
+    await page.getByRole("button", { name: "Cerrar cuenta" }).click();
+    const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 961" });
+    await expect(cierre.locator("[data-total-cierre]")).toContainText(/12\.000/);
+    await cierre.getByLabel("Sección de la que sale la mercadería").selectOption({ label: SECCION });
+    await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
+    await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 961 cerrada: se registró la venta por \$\s?12\.000\.$/);
+    await expect(page.getByText("La mesa está libre.")).toBeVisible();
+
+    const ventas = await prisma.operacion.findMany({ where: { proceso: "VENTA", detalleLibre: "Mesa 961", sucursalId }, include: { movimientos: true } });
+    expect(ventas).toHaveLength(2);
+    const lineas = ventas.flatMap((v) => v.movimientos.filter((m) => m.proceso === "VENTA")).map((m) => [m.productoId, Number(m.cantidad), Number(m.precioTotal)]);
+    expect(lineas).toEqual(expect.arrayContaining([[cat.milanesa.id, -1, 9000], [cat.flan.id, -1, 3000]]));
+
+    await page.goto("/mesas");
+    await expect(tarjeta(page, 961)).toContainText("Libre");
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("quitar un ítem sin enviar no pide motivo: se borra y listo", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 962 } });
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: "Abrir cuenta" }).click();
+    await expect(aviso(page)).toHaveText("Cuenta de la mesa 962 abierta.");
+    await agregar(page, cat.flan.nombre, "1");
+    await expect(page.locator(`[data-item-sin-enviar="${cat.flan.nombre}"]`)).toBeVisible();
+
+    await page.getByRole("button", { name: `Quitar ${cat.flan.nombre}` }).click();
+    await expect(aviso(page)).toHaveText(`Se quitó «${cat.flan.nombre}» de la mesa 962.`);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator("[data-item-sin-enviar]")).toHaveCount(0);
+    expect(await prisma.cuentaItem.count({ where: { cuenta: { mesaId: mesa.id } } })).toBe(0);
+
+    // Sin ningún ítem, la mesa se puede liberar sin venta.
+    await page.getByRole("button", { name: "Liberar mesa" }).click();
+    await expect(aviso(page)).toHaveText("Mesa 962 liberada.");
+    await expect(page.getByText("La mesa está libre.")).toBeVisible();
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("cerrar con stock insuficiente (B6bis): la cuenta se cierra igual, el mensaje avisa el stock negativo y queda auditado", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 963 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const cuenta = await prisma.cuenta.create({
+    data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.pizza.id, cantidad: 2, precioUnitario: 12000, numeroEnvio: 1, creadoPorId: admin.id }] } },
+  });
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: "Cerrar cuenta" }).click();
+    const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 963" });
+    await cierre.getByLabel("Sección de la que sale la mercadería").selectOption({ label: SECCION });
+    await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
+
+    await expect(aviso(page)).toContainText("Cuenta de la mesa 963 cerrada: se registró la venta por");
+    await expect(aviso(page)).toContainText(`⚠ Quedó stock negativo: "${cat.muzzarella.nombre}" (tenía 0, se consumió 0,5, quedó en -0,5). Corregilo con un Conteo Físico o un Ajuste.`);
+    await expect(page.getByText("La mesa está libre.")).toBeVisible();
+
+    expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
+    const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 963", sucursalId } });
+    const auditoria = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion", entidadId: venta.id } });
+    expect(auditoria).toHaveLength(1);
+    expect(auditoria[0]).toMatchObject({ campo: "saldoStock", valorAnterior: "0", valorNuevo: "-0.5", actorId: admin.id });
+    expect(auditoria[0].descripcion).toContain(`Mesa 963: al cerrar la cuenta (e2e-admin@local.test) el stock de "${cat.muzzarella.nombre}" en «${SECCION}» quedó en negativo`);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_mesas es de solo lectura; sin pos_mesas, el aviso de permiso", async ({ browser, baseURL, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const [mesaMozo, mesaLectura] = await Promise.all([964, 965].map((numero) => prisma.mesa.create({ data: { sucursalId, numero } })));
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  await prisma.cuenta.create({
+    data: {
+      mesaId: mesaLectura.id,
+      abiertaPorId: admin.id,
+      items: { create: [{ productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }, { productoId: cat.milanesa.id, cantidad: 1, precioUnitario: 9000 }] },
+    },
+  });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  const soloVe = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver" });
+  const sinPermiso = await abrirComoRol(browser, baseURL, sucursalId, {});
+  try {
+    const m = mozo.page;
+    await m.goto(`/mesas/${mesaMozo.id}`);
+    await m.getByRole("button", { name: "Abrir cuenta" }).click();
+    await expect(aviso(m)).toHaveText("Cuenta de la mesa 964 abierta.");
+    await agregar(m, cat.flan.nombre, "1");
+    await expect(aviso(m)).toHaveText("Se agregó 1 ítem a la mesa 964.");
+    await m.getByRole("button", { name: "Enviar a cocina" }).click();
+    await expect(aviso(m)).toHaveText("Envío 1 a cocina: 1 ítem de la mesa 964.");
+    await expect(m.getByRole("button", { name: `Anular ${cat.flan.nombre}` })).toBeDisabled();
+    await expect(m.getByRole("button", { name: "Cerrar cuenta" })).toBeDisabled();
+
+    const v = soloVe.page;
+    await v.goto(`/mesas/${mesaLectura.id}`);
+    await expect(v.locator("main h1")).toHaveText("Mesa 965");
+    await expect(v.getByRole("button", { name: "Agregar", exact: true })).toBeDisabled();
+    await expect(v.getByRole("combobox", { name: "Producto" })).toBeDisabled();
+    await expect(v.getByRole("button", { name: `Quitar ${cat.milanesa.nombre}` })).toBeDisabled();
+    await expect(v.getByRole("button", { name: "Enviar a cocina" })).toBeDisabled();
+    await expect(v.getByRole("button", { name: `Anular ${cat.flan.nombre}` })).toBeDisabled();
+    await expect(v.getByRole("button", { name: "Cerrar cuenta" })).toBeDisabled();
+
+    await sinPermiso.page.goto(`/mesas/${mesaLectura.id}`);
+    await expect(sinPermiso.page.getByText(/No tenés permiso para ver esta sección/)).toBeVisible();
+    await expect(sinPermiso.page.locator("main h1")).toHaveCount(0);
+  } finally {
+    // Las cuentas del mozo lo referencian (abiertaPor/creadoPor): se borran antes que el usuario.
+    await cat.limpiar([mesaMozo.id, mesaLectura.id]);
+    await mozo.limpiar();
+    await soloVe.limpiar();
+    await sinPermiso.limpiar();
+  }
+});
+
+test("sin sesión, la pantalla de la mesa lleva al login recordando la ruta", async ({ browser, baseURL, sucursalId }) => {
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 966 } });
+  const contexto = await browser.newContext();
+  try {
+    const page = await contexto.newPage();
+    await page.goto(`${baseURL}/mesas/${mesa.id}`);
+    await page.waitForURL(new RegExp(`/login\\?volver=%2Fmesas%2F${mesa.id}$`));
+    await expect(page.getByRole("button", { name: "Ingresar con Google" })).toBeVisible();
+  } finally {
+    await contexto.close();
+    await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+  }
+});
+
+test("una mesa de otra sucursal (o inexistente) no se muestra", async ({ paginaAutenticada: page }) => {
+  const otra = await prisma.sucursal.create({ data: { nombre: `E2E Otra ${Date.now()}` } });
+  const ajena = await prisma.mesa.create({ data: { sucursalId: otra.id, numero: 1 } });
+  try {
+    await page.goto(`/mesas/${ajena.id}`);
+    await expect(page.getByText("No se encontró esa mesa en esta sucursal.")).toBeVisible();
+    await page.goto("/mesas/no-existe");
+    await expect(page.getByText("No se encontró esa mesa en esta sucursal.")).toBeVisible();
+  } finally {
+    await prisma.mesa.deleteMany({ where: { id: ajena.id } });
+    await prisma.sucursal.deleteMany({ where: { id: otra.id } });
+  }
+});
+
+test("a 1024px no hay scroll horizontal y el título de la mesa está en main h1", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 967 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  await prisma.cuenta.create({
+    data: {
+      mesaId: mesa.id,
+      abiertaPorId: admin.id,
+      items: { create: [{ productoId: cat.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 }, { productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000 }] },
+    },
+  });
+  try {
+    await page.setViewportSize({ width: 1024, height: 800 });
+    await page.goto(`/mesas/${mesa.id}`);
+    await expect(page.locator("main h1")).toHaveText("Mesa 967");
+    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(desborde).toBeLessThanOrEqual(0);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});

@@ -8,7 +8,7 @@ import { prisma } from "../../src/lib/db";
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
  * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), el admin de la carta, su portal de sucursales y su
- * tema, y el mapa de mesas del salón. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
+ * tema, el mapa de mesas del salón y la pantalla de una mesa. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -861,6 +861,59 @@ testAutenticado(
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: la pantalla de la mesa en reposo (sin enviar, dos envíos y una anulación), con «Anular» abierto y su error, con «Cerrar cuenta» abierto y en modo oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // Pendiente «tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, paso 9). Hacen falta todos los estados de la lista para que axe audite algo:
+    // un ítem sin enviar (con «Quitar»), dos envíos a cocina y una anulación tachada (texto en --ink-soft con line-through).
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-TP-${marca}`, nombre: `E2E A11y Plato ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 804 } });
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
+    const original = await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: 3, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: admin.id } });
+    await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: 1, precioUnitario: 1000, numeroEnvio: 2, creadoPorId: admin.id } });
+    await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: 2, precioUnitario: 1000, creadoPorId: admin.id } });
+    await prisma.cuentaItem.create({
+      data: { cuentaId: cuenta.id, productoId: producto.id, cantidad: -1, precioUnitario: 1000, numeroEnvio: 1, anulaAItemId: original.id, motivoAnulacion: "Pidió una menos", creadoPorId: admin.id },
+    });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 804");
+      await expect(page.getByRole("heading", { name: "Envío 2 · en cocina" })).toBeVisible();
+      await expect(page.locator("[data-anulacion]")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "pantalla en reposo").toEqual([]);
+
+      await page.getByRole("button", { name: `Anular ${producto.nombre}` }).first().click();
+      const anular = page.getByRole("dialog", { name: `Anular «${producto.nombre}»` });
+      await anular.getByRole("button", { name: "Anular" }).click();
+      await expect(anular.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Anular» abierto con el error del motivo").toEqual([]);
+      await anular.getByRole("button", { name: "Cancelar" }).click();
+
+      // Con un ítem sin enviar «Cerrar cuenta» está deshabilitado (y lo explica): se envía para poder abrir el diálogo.
+      await expect(page.getByText("Hay 1 ítem sin enviar: envialo o quitalo antes de cerrar la cuenta.")).toBeVisible();
+      await page.getByRole("button", { name: "Enviar a cocina" }).click();
+      await expect(page.getByRole("heading", { name: "Envío 3 · en cocina" })).toBeVisible();
+      await page.getByRole("button", { name: "Cerrar cuenta" }).click();
+      await expect(page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 804" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Cerrar cuenta» abierto").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 804");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id, anulaAItemId: { not: null } } });
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });
     }
   }
