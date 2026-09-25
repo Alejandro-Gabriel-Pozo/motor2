@@ -160,7 +160,8 @@ export function redondearACantidadDeUnidad(cantidad: number, decimales: number):
   return Math.round(cantidad * factor) / factor;
 }
 
-/** Port de redondearMoneda_ — 2 decimales fijos, para precios/importes. */
-export function redondearMoneda(n: number): number {
-  return Math.round(n * 100) / 100;
-}
+/**
+ * Port de redondearMoneda_ — 2 decimales fijos, para precios/importes. Vive en src/core/moneda.ts (aritmética decimal exacta: empates
+ * alejándose del cero como `NUMERIC` de Postgres, sin -0); se reexporta acá para no tocar a sus importadores.
+ */
+export { redondearMoneda } from "@/core/moneda";
