@@ -42,7 +42,8 @@ async function sembrarCatalogo(sucursalId: string) {
       const operacionIds = [...new Set(items.flatMap((i) => (i.operacionId ? [i.operacionId] : [])))];
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, anulaAItemId: { not: null } } });
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
-      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: operacionIds } } });
+      const cuentaIds = (await prisma.cuenta.findMany({ where: { mesaId: { in: mesaIds } }, select: { id: true } })).map((c) => c.id);
+      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: [...operacionIds, ...cuentaIds] } } });
       await prisma.movimientoStock.deleteMany({ where: { OR: [{ operacionId: { in: operacionIds } }, { productoId: { in: productoIds } }] } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       // Los ejemplares de la boleta referencian la cuenta (RESTRICT) y las correcciones a su ejemplar A (RESTRICT): correcciones → resto → cuentas.
@@ -538,6 +539,91 @@ test("guardas de la reimpresión de la boleta: sin pos_cerrar_cuenta queda desha
   } finally {
     await cat.limpiar([mesa.id]);
     await mozo.limpiar();
+  }
+});
+
+test("boleta corregida: anulada una línea después de imprimir, se emite el ejemplar B (mismo número, solo lo vigente, «Reemplaza a» el A) y después se reimprime el B", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-numeracion-boleta-2026-09-25.md, Fase 2. La mesa comió 2 milanesas y 1 flan (una Operacion VENTA por línea, boleta A
+  // impresa al cerrar); después se anuló SOLO la venta del flan (Trazabilidad): la boleta A quedó desactualizada.
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 976 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const cerradaEn = new Date(Date.now() - 30 * 60_000);
+  const [ventaMilanesa, ventaFlan] = await Promise.all(
+    [null, new Date()].map((anuladaEn) => prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, detalleLibre: "Mesa 976", anuladaEn } }))
+  );
+  const cuenta = await prisma.cuenta.create({
+    data: {
+      mesaId: mesa.id,
+      abiertaPorId: admin.id,
+      cerradaEn,
+      cerradaPorId: admin.id,
+      items: {
+        create: [
+          { productoId: cat.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1, creadoPorId: admin.id, operacionId: ventaMilanesa.id },
+          { productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1, creadoPorId: admin.id, operacionId: ventaFlan.id },
+        ],
+      },
+    },
+  });
+  // El A, con el número que le toca a la sucursal en este momento (otros specs de la corrida también cierran cuentas en «Central»).
+  const { _max } = await prisma.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
+  const n = (_max.numero ?? 0) + 1;
+  const ejemplarA = await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero: n, emitidoEn: cerradaEn, emitidoPorId: admin.id } });
+  const hora = HORA_AR.format(cerradaEn);
+  const fila = page.locator(`[data-cuenta-cerrada="${hora}"]`);
+  const reimprimir = page.getByRole("button", { name: `Reimprimir la boleta de la cuenta cerrada a las ${hora}` });
+  const emitir = page.getByRole("button", { name: `Emitir la boleta corregida de la cuenta cerrada a las ${hora}` });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    await expect(fila).toContainText(`N.º ${n}-A · Cerrada ${hora}`);
+    // Desactualizada: la A ya no se reimprime; se emite la corregida.
+    await expect(reimprimir).toBeDisabled();
+    await expect(emitir).toBeEnabled();
+
+    await emitir.click();
+    const dialogo = page.getByRole("dialog", { name: `Emitir boleta corregida · N.º ${n}-A` });
+    await expect(dialogo).toContainText(MONEDA.format(18000));
+    await dialogo.getByRole("button", { name: "Emitir e imprimir" }).click();
+    await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+    await dialogo.getByLabel("Motivo (obligatorio)").fill("No quiso el flan");
+    await dialogo.getByRole("button", { name: "Emitir e imprimir" }).click();
+    await expect(dialogo).toHaveCount(0);
+    await expect(aviso(page)).toHaveText(`Boleta N.º ${n}-B emitida: reemplaza a N.º ${n}-A.`);
+
+    // Sale sola la corrección: el mismo número con la letra siguiente, solo lo vigente, el total nuevo y la referencia al A (sin el motivo).
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta-correccion"]);
+    const [correccion] = await impresiones(page);
+    for (const texto of ["CORRECCIÓN", "Mesa 976", `Boleta N.º ${n}-B`, `Reemplaza a N.º ${n}-A`, `2 × ${cat.milanesa.nombre}`, `TOTAL ${MONEDA.format(18000)}`, "No válido como factura"]) {
+      expect(correccion.texto).toContain(texto);
+    }
+    for (const ausente of [cat.flan.nombre, "No quiso el flan", "REIMPRESIÓN"]) expect(correccion.texto).not.toContain(ausente);
+
+    const ejemplares = await prisma.ejemplarBoleta.findMany({ where: { cuentaId: cuenta.id }, orderBy: { ejemplar: "asc" } });
+    expect(ejemplares.map((e) => [e.numero, e.ejemplar, e.corrigeAId, e.motivo])).toEqual([
+      [n, 1, null, null],
+      [n, 2, ejemplarA.id, "No quiso el flan"],
+    ]);
+
+    // La fila pasa al B, vigente: se reimprime (marcada REIMPRESIÓN, con el B y su referencia) y ya no hay nada que corregir.
+    await expect(fila).toContainText(`N.º ${n}-B · Cerrada ${hora}`);
+    await expect(fila).toContainText(MONEDA.format(18000));
+    await expect(emitir).toBeDisabled();
+    await expect(reimprimir).toBeEnabled();
+    await reimprimir.click();
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta-correccion", "boleta-reimpresion"]);
+    const copia = (await impresiones(page))[1];
+    for (const texto of ["REIMPRESIÓN", `Boleta N.º ${n}-B`, `Reemplaza a N.º ${n}-A`, `TOTAL ${MONEDA.format(18000)}`]) expect(copia.texto).toContain(texto);
+    expect(copia.texto).not.toContain(cat.flan.nombre);
+    expect(await prisma.ejemplarBoleta.count({ where: { cuentaId: cuenta.id } })).toBe(2);
+
+    await page.emulateMedia({ media: "print" });
+    await page.setViewportSize({ width: 220, height: 800 });
+    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(desborde).toBeLessThanOrEqual(0);
+  } finally {
+    await cat.limpiar([mesa.id]);
   }
 });
 

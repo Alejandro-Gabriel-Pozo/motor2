@@ -65,3 +65,35 @@ describe("resolverImpresion: boleta de cierre", () => {
     expect(resolverImpresion({ comandas: [], boletas: [boleta("c1", true)] }, { tipo: "boleta", cuentaId: "c1" })).toEqual({ accion: "descartar" });
   });
 });
+
+/** Ejemplar de corrección (docs/plan-numeracion-boleta-2026-09-25.md, paso 8): imprime el ejemplar que emitió `emitirBoletaCorregida`. */
+describe("resolverImpresion: boleta corregida", () => {
+  const boleta = (ejemplar: number, estado: BoletaDeCuenta["estado"] = "vigente"): BoletaDeCuenta => ({
+    cuentaId: "c1",
+    cerradaEn: new Date("2026-09-25T18:10:00Z"),
+    mesero: "Juan",
+    lineas: [{ producto: "Milanesa", cantidad: 2, precioUnitario: 9000, subtotal: 18000 }],
+    total: 18000,
+    ventaAnulada: true,
+    numero: { numero: 566, ejemplar },
+    corrigeA: ejemplar > 1 ? { numero: 566, ejemplar: 1 } : null,
+    estado,
+  });
+  const pedido = { tipo: "boleta-correccion", cuentaId: "c1", ejemplar: 2 } as const;
+
+  it("cuando el refresco trae el ejemplar emitido (566-B, vigente): se imprime como corrección", () => {
+    const b = boleta(2);
+    expect(resolverImpresion({ comandas: [], boletas: [b] }, pedido)).toEqual({ accion: "imprimir", documento: { tipo: "boleta-correccion", boleta: b } });
+  });
+
+  it("antes del refresco (la cuenta todavía muestra el 566-A, o no aparece): espera", () => {
+    expect(resolverImpresion({ comandas: [], boletas: [boleta(1, "desactualizada")] }, pedido)).toEqual({ accion: "esperar" });
+    expect(resolverImpresion({ comandas: [], boletas: [] }, pedido)).toEqual({ accion: "esperar" });
+  });
+
+  it("si ya hay un ejemplar posterior, o el emitido dejó de estar vigente (otra anulación en el medio): descarta", () => {
+    expect(resolverImpresion({ comandas: [], boletas: [boleta(3)] }, pedido)).toEqual({ accion: "descartar" });
+    expect(resolverImpresion({ comandas: [], boletas: [boleta(2, "desactualizada")] }, pedido)).toEqual({ accion: "descartar" });
+    expect(resolverImpresion({ comandas: [], boletas: [boleta(2, "anulada")] }, pedido)).toEqual({ accion: "descartar" });
+  });
+});

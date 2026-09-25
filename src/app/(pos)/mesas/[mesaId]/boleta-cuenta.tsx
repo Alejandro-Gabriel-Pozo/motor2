@@ -10,13 +10,16 @@ type DocumentoDeBoleta = Extract<DocumentoImprimible, { boleta: unknown }>;
  * ni propina (no existen en el modelo) y sin el aviso de stock negativo (información interna). Estilos de papel en src/app/globals.css.
  *
  * «Boleta N.º 566-A» en su propio renglón, debajo de la mesa (docs/plan-numeracion-boleta-2026-09-25.md): control interno, no número
- * fiscal. Una cuenta cerrada antes de la numeración no tiene número y no lleva el renglón.
+ * fiscal. Una cuenta cerrada antes de la numeración no tiene número y no lleva el renglón. Un ejemplar de corrección (566-B, emitido
+ * después de anular parte de la venta) sale encabezado «CORRECCIÓN» y con «Reemplaza a N.º 566-A»; su reimpresión conserva esa referencia.
+ * El motivo de la corrección no se imprime (queda en pantalla y en la auditoría).
  */
 export function BoletaCuenta({ documento, mesa, sucursal }: { documento: DocumentoDeBoleta; mesa: string; sucursal: string }) {
   const { boleta } = documento;
   return (
     <div className="ticket">
       {documento.tipo === "boleta-reimpresion" && <p className="ticket-encabezado">REIMPRESIÓN</p>}
+      {documento.tipo === "boleta-correccion" && <p className="ticket-encabezado">CORRECCIÓN</p>}
       <p className="ticket-encabezado">{sucursal}</p>
       <p className="ticket-titulo">{mesa}</p>
       {boleta.numero && (
@@ -24,6 +27,7 @@ export function BoletaCuenta({ documento, mesa, sucursal }: { documento: Documen
           Boleta N.º {formatearNumeroBoleta(boleta.numero)}
         </p>
       )}
+      {boleta.corrigeA && <p className="ticket-dato">Reemplaza a N.º {formatearNumeroBoleta(boleta.corrigeA)}</p>}
       <p className="ticket-dato">Cerrada: {formatearFechaHora(boleta.cerradaEn)}</p>
       <p className="ticket-dato">Atendió: {boleta.mesero}</p>
       <ul className="ticket-separador">
