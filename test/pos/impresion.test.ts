@@ -47,6 +47,7 @@ describe("resolverImpresion: boleta de cierre", () => {
     lineas: [{ producto: "Milanesa", cantidad: 2, precioUnitario: 9000, subtotal: 18000 }],
     total: 18000,
     ventaAnulada,
+    numero: null,
   });
 
   it("presente en «Cuentas cerradas»: se imprime", () => {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { lineasDeVenta } from "./cuenta";
 import { nombreDelMesero } from "./mesas";
+import type { NumeroDeBoleta } from "./numeracion-boleta";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -13,8 +14,9 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * Derivada, sin tabla ni campo nuevo: una cuenta cerrada ya no cambia (`anularItemEnviado`/`quitarItemSinEnviar` la rechazan), así que
  * volver a armar `lineasDeVenta` sobre sus ítems da exactamente las líneas que `cerrarCuenta` registró como venta (una Operacion VENTA
  * por línea neta producto + precio congelado; las líneas con neto ≤ 0 no se venden y no aparecen), y el total, el mismo cálculo.
- * Sin forma de pago, propina ni número de comprobante (no existen en el modelo) y sin el aviso de stock negativo (es información
- * interna del Kardex: queda en el aviso de la pantalla y en la auditoría).
+ * Sin forma de pago ni propina (no existen en el modelo) y sin el aviso de stock negativo (es información interna del Kardex: queda en
+ * el aviso de la pantalla y en la auditoría). El NÚMERO de la boleta sí es una fila propia, `EjemplarBoleta`, que emite `cerrarCuenta`
+ * (docs/plan-numeracion-boleta-2026-09-25.md): control interno de comandas, no comprobante fiscal.
  */
 
 /** Cuántas cuentas cerradas con venta lista «Cuentas cerradas» en la pantalla de la mesa. */
@@ -36,6 +38,8 @@ export interface BoletaDeCuenta {
   total: number;
   /** Alguna Operacion VENTA de la cuenta se anuló (`anularVenta`): la boleta ya no vale y no se reimprime. */
   ventaAnulada: boolean;
+  /** El último ejemplar impreso («566-A»); null en una cuenta cerrada antes de la numeración (sin backfill). */
+  numero: NumeroDeBoleta | null;
 }
 
 /** Líneas netas y total de la boleta, a partir de TODOS los ítems de la cuenta (originales y anulaciones), igual que `cerrarCuenta`. */
@@ -67,6 +71,7 @@ export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string
         orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
         include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } } },
       },
+      ejemplaresBoleta: { orderBy: { ejemplar: "desc" }, take: 1, select: { numero: true, ejemplar: true } },
     },
   });
 
@@ -81,6 +86,7 @@ export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string
       lineas,
       total,
       ventaAnulada: cuenta.items.some((i) => i.operacion?.anuladaEn != null),
+      numero: cuenta.ejemplaresBoleta[0] ?? null,
     };
   });
 }
