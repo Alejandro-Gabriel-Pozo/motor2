@@ -140,3 +140,32 @@ inválido como `NaN` en vez de `""`/0; se cubre cuando se migre cada circuito.
   conteo, traspasos ×2, presentaciones, pago a consignante): hoy solo reciben el parser, sin `tipo`.
 - **Pasar los `decimales` de la unidad a `CampoNumero` en la compra** (hoy la regla por unidad la aplica solo el servidor).
 - **Ampliar las firmas de las Server Actions a `number | string`** para importaciones.
+
+## 7. Convención nueva (2026-09-25, decisión del dueño): guard por feature
+
+A partir de este plan, la regla es: **cada feature que recibe o modifica datos tiene su propio guard, que USA las funciones
+comunes de `src/core/datos/` en vez de reemplazarlas.**
+
+```text
+src/core/datos/            src/core/features/
+├── importe.ts             ├── compras/
+├── cantidad.ts             │   ├── compra.schema.ts   (tipos: entrada sin validar, salida validada)
+├── nro-factura.ts          │   └── compra.guard.ts     (formato + normalización, puro)
+├── nombre-catalogo.ts      ├── ventas/…
+└── numero-tecleado.ts      └── …
+```
+
+El guard NO hace de todo: cubre formato (vía `src/core/datos/`) y normalización de lo que se tecleó, ANTES de que la Server Action
+calcule o toque la base. Las reglas que necesitan Prisma (producto existe, factura duplicada, stock alcanza) siguen en la Server
+Action, que resuelve lo que hace falta de la base y le pasa al guard los datos YA resueltos (ver `guardLineaCompra`: recibe la
+unidad de compra efectiva ya calculada, no la busca ella misma) — mismo principio que ya usa el resto de `src/core/` en este
+proyecto: puro, sin Prisma ni permisos.
+
+**Retrofit de este plan** (Paso C1, hecho ANTES de mergear, sin cambio de comportamiento — los 91 tests de
+`registrar-movimiento`/`compras-correccion`/`compras-corregir`/la guarda de arquitectura siguieron en verde sin tocarlos):
+`src/core/features/compras/compra.guard.ts` con `guardLineaCompra` (cantidad + precio total + peso real de una línea) y
+`guardNroFacturaCompra` (mismo validador en la carga y en la corrección). `registrarMovimiento` y `core/compras/correccion.ts`
+llaman al guard en vez de a `validarCantidad`/`validarImporte`/`validarNroFactura` directamente.
+
+**Fases futuras**: cuando se migre Ventas, Precios, Ajuste de stock, etc. (sección 6), cada una arma su propio
+`src/core/features/<feature>/<feature>.guard.ts` con el mismo patrón — no un guard genérico para todas.
