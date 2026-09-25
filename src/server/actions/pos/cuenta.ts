@@ -7,7 +7,8 @@ import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
-import { restanteDe, validarCantidadPedido, validarMotivoAnulacion } from "@/core/pos/cuenta";
+import { lineasDeVenta, restanteDe, validarCantidadPedido, validarMotivoAnulacion } from "@/core/pos/cuenta";
+import { registrarVentaEnTx, type AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -29,6 +30,13 @@ const MAXIMO_ITEMS_POR_ENVIO = 200;
 /** Cantidad legible («1», «0,5»), para mensajes y descripciones de auditoría. */
 function formatearCantidad(n: number): string {
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 }).format(n);
+}
+
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 });
+
+/** «"Muzzarella" (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
+function describirAviso(aviso: AvisoStockNegativo): string {
+  return `"${aviso.nombre}" (tenía ${formatearCantidad(aviso.actual)}, se consumió ${formatearCantidad(aviso.requerido)}, quedó en ${formatearCantidad(aviso.resultante)})`;
 }
 
 type CuentaAbierta = { id: string; mesa: { id: string; numero: number } };
@@ -224,6 +232,102 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
         sucursalId: ctx.sucursalId,
       });
       return ok(`Se anuló ${formatearCantidad(aAnular.cantidad)} × «${item.producto.nombre}» de la mesa ${mesa}.`);
+    });
+  });
+}
+
+/**
+ * Cierra la cuenta de una mesa y registra su venta — pagar y cerrar son UNA sola acción atómica (plan B5: motor2 no tiene entidad de
+ * caja ni de pago). En una transacción serializable:
+ * 1. arma las líneas NETAS por (producto, precio congelado) sumando originales y espejos (`lineasDeVenta`); una línea anulada entera no
+ *    se vende;
+ * 2. registra la venta con el MISMO núcleo que la venta de mostrador (`registrarVentaEnTx`): una Operacion VENTA por línea, con
+ *    `detalle` «Mesa N», sin cliente, la sección elegida (validada contra la sucursal dentro del núcleo) y el precio congelado de cada
+ *    línea;
+ * 3. enlaza cada ítem con su Operacion (`CuentaItem.operacionId`) y cierra la cuenta (`cerradaEn`/`cerradaPorId`): la mesa queda libre.
+ *
+ * STOCK INSUFICIENTE NO BLOQUEA (plan B6bis, decisión del dueño): la mesa ya comió, así que la venta se registra igual
+ * (`permitirStockNegativo`) y cada insumo que quedó en negativo sale EXPLÍCITO en el mensaje y deja una fila en el registro de auditoría
+ * (entidad `Operacion` — la venta que lo consumió —, campo `saldoStock`, con la mesa, el insumo, el déficit y quién cerró). Se corrige
+ * después con las herramientas de siempre (Conteo Físico o Ajuste), sin ningún caso especial.
+ *
+ * Bloquea si queda algún ítem sin enviar (hay que enviarlo o quitarlo: lo que no salió a cocina no se cobra). Con neto cero (todo
+ * anulado) cierra sin venta. Idempotente: una cuenta ya cerrada devuelve ok sin volver a vender (la transacción serializable arbitra el
+ * doble clic: el segundo reintenta, la ve cerrada y no escribe nada).
+ */
+export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise<ResultadoAccion> {
+  return conPermiso("pos_cerrar_cuenta", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const cuenta =
+        typeof cuentaId === "string"
+          ? await tx.cuenta.findFirst({ where: { id: cuentaId, mesa: { sucursalId: ctx.sucursalId } }, include: { mesa: { select: { numero: true } }, items: true } })
+          : null;
+      if (!cuenta) return error("No se encontró esa cuenta en esta sucursal.");
+      const mesa = cuenta.mesa.numero;
+      if (cuenta.cerradaEn) return ok(`La cuenta de la mesa ${mesa} ya estaba cerrada.`);
+
+      const sinEnviar = cuenta.items.filter((i) => i.numeroEnvio === null).length;
+      if (sinEnviar > 0) return error(sinEnviar === 1 ? "Hay 1 ítem sin enviar: envialo o quitalo." : `Hay ${sinEnviar} ítems sin enviar: envialos o quitalos.`);
+
+      const ahora = new Date();
+      const cerrar = () => tx.cuenta.update({ where: { id: cuenta.id }, data: { cerradaEn: ahora, cerradaPorId: ctx.usuarioId } });
+      const lineas = lineasDeVenta(cuenta.items.map((i) => ({ productoId: i.productoId, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario) })));
+      if (!lineas.length) {
+        await cerrar();
+        return ok(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`);
+      }
+      if (typeof seccionId !== "string" || !seccionId.trim()) return error("Elegí la sección de la que sale la mercadería.");
+
+      const venta = await registrarVentaEnTx(
+        tx,
+        { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
+        {
+          fecha: ahora,
+          seccionId,
+          proveedorId: null,
+          detalle: `Mesa ${mesa}`,
+          lineas: lineas.map((l) => ({ productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: l.precioUnitario })),
+        },
+        { permitirStockNegativo: true }
+      );
+      // El núcleo valida todo antes de escribir: un rechazo no dejó nada escrito y la cuenta sigue abierta.
+      if (!venta.ok) return error(venta.mensaje);
+      if (venta.operacionIds.length !== lineas.length) throw new Error("cerrarCuenta: la venta no devolvió una Operacion por línea.");
+
+      for (const [i, linea] of lineas.entries()) {
+        await tx.cuentaItem.updateMany({
+          where: { cuentaId: cuenta.id, productoId: linea.productoId, precioUnitario: linea.precioUnitario },
+          data: { operacionId: venta.operacionIds[i] },
+        });
+      }
+      await cerrar();
+
+      const total = redondearMoneda(lineas.reduce((suma, l) => suma + l.cantidad * l.precioUnitario, 0));
+      const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}.`;
+      if (!venta.avisosStockNegativo.length) return ok(mensaje);
+
+      const seccion = await tx.seccion.findUniqueOrThrow({ where: { id: seccionId }, select: { nombre: true } });
+      for (const aviso of venta.avisosStockNegativo) {
+        const consumo = await tx.movimientoStock.findFirst({
+          where: { operacionId: { in: venta.operacionIds }, productoId: aviso.productoId, proceso: "CONSUMO" },
+          select: { operacionId: true },
+          orderBy: { creadoEn: "asc" },
+        });
+        await registrarCambioAuditado(tx, {
+          entidad: "Operacion",
+          entidadId: consumo?.operacionId ?? venta.operacionIds[0],
+          descripcion:
+            `Mesa ${mesa}: al cerrar la cuenta (${ctx.email}) el stock de "${aviso.nombre}" en «${seccion.nombre}» quedó en negativo — ` +
+            `tenía ${formatearCantidad(aviso.actual)}, la venta consumió ${formatearCantidad(aviso.requerido)}, faltaron ${formatearCantidad(aviso.requerido - Math.max(aviso.actual, 0))}. ` +
+            "La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste.",
+          campo: "saldoStock",
+          valorAnterior: aviso.actual,
+          valorNuevo: aviso.resultante,
+          actorId: ctx.usuarioId,
+          sucursalId: ctx.sucursalId,
+        });
+      }
+      return ok(`${mensaje} ⚠ Quedó stock negativo: ${venta.avisosStockNegativo.map(describirAviso).join(", ")}. Corregilo con un Conteo Físico o un Ajuste.`);
     });
   });
 }
