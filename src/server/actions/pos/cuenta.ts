@@ -35,9 +35,9 @@ function formatearCantidad(n: number): string {
 
 const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-/** «"Muzzarella" (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
+/** «"Muzzarella" en «Cocina» (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
 function describirAviso(aviso: AvisoStockNegativo): string {
-  return `"${aviso.nombre}" (tenía ${formatearCantidad(aviso.actual)}, se consumió ${formatearCantidad(aviso.requerido)}, quedó en ${formatearCantidad(aviso.resultante)})`;
+  return `"${aviso.nombre}" en «${aviso.seccionNombre}» (tenía ${formatearCantidad(aviso.actual)}, se consumió ${formatearCantidad(aviso.requerido)}, quedó en ${formatearCantidad(aviso.resultante)})`;
 }
 
 type CuentaAbierta = { id: string; mesa: { id: string; numero: number } };
@@ -256,20 +256,22 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
  * 1. arma las líneas NETAS por (producto, precio congelado) sumando originales y espejos (`lineasDeVenta`); una línea anulada entera no
  *    se vende;
  * 2. registra la venta con el MISMO núcleo que la venta de mostrador (`registrarVentaEnTx`): una Operacion VENTA por línea, con
- *    `detalle` «Mesa N», sin cliente, la sección elegida (validada contra la sucursal dentro del núcleo) y el precio congelado de cada
- *    línea;
+ *    `detalle` «Mesa N», sin cliente y el precio congelado de cada línea. La sección NO se elige (docs/plan-seccion-habitual-stock-
+ *    2026-09-25.md): el núcleo resuelve, insumo por insumo, de qué sección activa sale (`origen: { tipo: "automatico" }`, por
+ *    vencimiento); sin ninguna sección activa, se rechaza sin escribir nada;
  * 3. enlaza cada ítem con su Operacion (`CuentaItem.operacionId`) y cierra la cuenta (`cerradaEn`/`cerradaPorId`): la mesa queda libre.
  *
  * STOCK INSUFICIENTE NO BLOQUEA (plan B6bis, decisión del dueño): la mesa ya comió, así que la venta se registra igual
  * (`permitirStockNegativo`) y cada insumo que quedó en negativo sale EXPLÍCITO en el mensaje y deja una fila en el registro de auditoría
- * (entidad `Operacion` — la venta que lo consumió —, campo `saldoStock`, con la mesa, el insumo, el déficit y quién cerró). Se corrige
+ * (entidad `Operacion` — la venta que lo consumió en ESA sección —, campo `saldoStock`, con la mesa, el insumo, la sección, el déficit y
+ * quién cerró). Se corrige
  * después con las herramientas de siempre (Conteo Físico o Ajuste), sin ningún caso especial.
  *
  * Bloquea si queda algún ítem sin enviar (hay que enviarlo o quitarlo: lo que no salió a cocina no se cobra). Con neto cero (todo
  * anulado) cierra sin venta. Idempotente: una cuenta ya cerrada devuelve ok sin volver a vender (la transacción serializable arbitra el
  * doble clic: el segundo reintenta, la ve cerrada y no escribe nada).
  */
-export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise<ResultadoAccion> {
+export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_cerrar_cuenta", async (ctx) => {
     return conTransaccionSerializable(async (tx) => {
       const cuenta =
@@ -290,14 +292,13 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
         await cerrar();
         return ok(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`);
       }
-      if (typeof seccionId !== "string" || !seccionId.trim()) return error("Elegí la sección de la que sale la mercadería.");
 
       const venta = await registrarVentaEnTx(
         tx,
         { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
         {
           fecha: ahora,
-          origen: { tipo: "seccion", seccionId },
+          origen: { tipo: "automatico" },
           proveedorId: null,
           detalle: `Mesa ${mesa}`,
           lineas: lineas.map((l) => ({ productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: l.precioUnitario })),
@@ -322,10 +323,9 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
       const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}.`;
       if (!venta.avisosStockNegativo.length) return ok(mensaje);
 
-      const seccion = await tx.seccion.findUniqueOrThrow({ where: { id: seccionId }, select: { nombre: true } });
       for (const aviso of venta.avisosStockNegativo) {
         const consumo = await tx.movimientoStock.findFirst({
-          where: { operacionId: { in: venta.operacionIds }, productoId: aviso.productoId, proceso: "CONSUMO" },
+          where: { operacionId: { in: venta.operacionIds }, productoId: aviso.productoId, seccionId: aviso.seccionId, proceso: "CONSUMO" },
           select: { operacionId: true },
           orderBy: { creadoEn: "asc" },
         });
@@ -333,7 +333,7 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
           entidad: "Operacion",
           entidadId: consumo?.operacionId ?? venta.operacionIds[0],
           descripcion:
-            `Mesa ${mesa}: al cerrar la cuenta (${ctx.email}) el stock de "${aviso.nombre}" en «${seccion.nombre}» quedó en negativo — ` +
+            `Mesa ${mesa}: al cerrar la cuenta (${ctx.email}) el stock de "${aviso.nombre}" en «${aviso.seccionNombre}» quedó en negativo — ` +
             `tenía ${formatearCantidad(aviso.actual)}, la venta consumió ${formatearCantidad(aviso.requerido)}, faltaron ${formatearCantidad(aviso.requerido - Math.max(aviso.actual, 0))}. ` +
             "La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste.",
           campo: "saldoStock",

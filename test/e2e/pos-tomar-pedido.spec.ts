@@ -14,8 +14,6 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
  * movimientos/operaciones (y su auditoría) → cuentas → mesas → productos.
  */
 
-const SECCION = "Depósito E2E";
-
 async function sembrarCatalogo(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const [unidad, kg] = await Promise.all([prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } }), prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } })]);
@@ -117,11 +115,12 @@ test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con moti
     await expect(page.locator("[data-total-cuenta]")).toContainText(/12\.000/);
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "anulacion"]);
 
-    // Cerrar la cuenta: se elige la sección y se registra la venta.
+    // Cerrar la cuenta: la sección no se elige (sale sola, docs/plan-seccion-habitual-stock-2026-09-25.md) y se registra la venta.
     await page.getByRole("button", { name: "Cerrar cuenta" }).click();
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 961" });
     await expect(cierre.locator("[data-total-cierre]")).toContainText(/12\.000/);
-    await cierre.getByLabel("Sección de la que sale la mercadería").selectOption({ label: SECCION });
+    await expect(cierre.getByRole("combobox")).toHaveCount(0);
+    await expect(cierre.getByRole("button", { name: "Cerrar y registrar la venta" })).toBeFocused();
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
     await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 961 cerrada: se registró la venta por \$\s?12\.000\.$/);
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
@@ -175,16 +174,18 @@ test("cerrar con stock insuficiente (B6bis): la cuenta se cierra igual, el mensa
   const cuenta = await prisma.cuenta.create({
     data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.pizza.id, cantidad: 2, precioUnitario: 12000, numeroEnvio: 1, creadoPorId: admin.id }] } },
   });
+  // Muzza y pizza sin ningún movimiento previo: el faltante va a la primera sección activa de la sucursal por nombre.
+  const activas = await prisma.seccion.findMany({ where: { sucursalId, activa: true }, select: { nombre: true } });
+  const seccionDelFaltante = activas.map((x) => x.nombre).sort((x, y) => x.localeCompare(y, "es"))[0];
   try {
     await interceptarImpresion(page);
     await page.goto(`/mesas/${mesa.id}`);
     await page.getByRole("button", { name: "Cerrar cuenta" }).click();
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 963" });
-    await cierre.getByLabel("Sección de la que sale la mercadería").selectOption({ label: SECCION });
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
 
     await expect(aviso(page)).toContainText("Cuenta de la mesa 963 cerrada: se registró la venta por");
-    await expect(aviso(page)).toContainText(`⚠ Quedó stock negativo: "${cat.muzzarella.nombre}" (tenía 0, se consumió 0,5, quedó en -0,5). Corregilo con un Conteo Físico o un Ajuste.`);
+    await expect(aviso(page)).toContainText(`⚠ Quedó stock negativo: "${cat.muzzarella.nombre}" en «${seccionDelFaltante}» (tenía 0, se consumió 0,5, quedó en -0,5). Corregilo con un Conteo Físico o un Ajuste.`);
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
 
     // La boleta del cliente sale igual, pero SIN el aviso de stock negativo (información interna: queda en pantalla y en la auditoría).
@@ -199,7 +200,7 @@ test("cerrar con stock insuficiente (B6bis): la cuenta se cierra igual, el mensa
     const auditoria = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion", entidadId: venta.id } });
     expect(auditoria).toHaveLength(1);
     expect(auditoria[0]).toMatchObject({ campo: "saldoStock", valorAnterior: "0", valorNuevo: "-0.5", actorId: admin.id });
-    expect(auditoria[0].descripcion).toContain(`Mesa 963: al cerrar la cuenta (e2e-admin@local.test) el stock de "${cat.muzzarella.nombre}" en «${SECCION}» quedó en negativo`);
+    expect(auditoria[0].descripcion).toContain(`Mesa 963: al cerrar la cuenta (e2e-admin@local.test) el stock de "${cat.muzzarella.nombre}" en «${seccionDelFaltante}» quedó en negativo`);
   } finally {
     await cat.limpiar([mesa.id]);
   }
@@ -459,7 +460,6 @@ test("reimprimir la boleta de una cuenta cerrada: «Cuentas cerradas» la lista 
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 972" });
     const total = (await cierre.locator("[data-total-cierre]").textContent())?.trim() ?? "";
     expect(total).toBe(MONEDA.format(21000));
-    await cierre.getByLabel("Sección de la que sale la mercadería").selectOption({ label: SECCION });
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta"]);

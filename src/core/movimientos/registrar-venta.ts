@@ -193,7 +193,8 @@ export async function registrarVentaEnTx(
   // De qué sección y lote sale cada cosa: todo con UN libro para la venta entera, en el orden de las líneas y de sus ingredientes.
   const mpIds = Array.from(new Set(lineas.flatMap((l) => l.pedidos.map((p) => p.productoId))));
   const pvQueSeProducenIds = Array.from(new Set(lineas.filter((l) => l.seProduce).map((l) => l.productoId)));
-  const origenDatos = await cargarDatosDeOrigen(tx, actor.sucursalId, origen, { mpIds, pvQueSeProducenIds });
+  const pvIds = Array.from(new Set(lineas.map((l) => l.productoId)));
+  const origenDatos = await cargarDatosDeOrigen(tx, actor.sucursalId, origen, { pvIds, mpIds, pvQueSeProducenIds });
   const { libro, respaldos, seccionPorDefectoId } = origenDatos;
   const ventas: VentaCalculada[] = lineas.map((linea) => {
     const habitual = origenDatos.habitualDe(linea.productoId);

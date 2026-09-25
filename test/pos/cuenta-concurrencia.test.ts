@@ -26,7 +26,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
       { productoId: s.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 },
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
     ]);
-    const resultados = await Promise.all([cerrarCuenta(cuenta.id, s.seccion.id), cerrarCuenta(cuenta.id, s.seccion.id)]);
+    const resultados = await Promise.all([cerrarCuenta(cuenta.id), cerrarCuenta(cuenta.id)]);
     expect(resultados.every((r) => r.ok)).toBe(true);
     expect(resultados.filter((r) => r.mensaje === "La cuenta de la mesa 4 ya estaba cerrada.")).toHaveLength(1);
     expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(2);
@@ -37,7 +37,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     for (let vuelta = 0; vuelta < 3; vuelta++) {
       const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 100 + vuelta } });
       const cuenta = await sembrarCuenta(mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
-      const [agregado, cierre] = await Promise.all([agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }]), cerrarCuenta(cuenta.id, s.seccion.id)]);
+      const [agregado, cierre] = await Promise.all([agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }]), cerrarCuenta(cuenta.id)]);
 
       const final = await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id }, include: { items: true } });
       const sinEnviar = final.items.filter((i) => i.numeroEnvio === null);

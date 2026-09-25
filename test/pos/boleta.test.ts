@@ -26,7 +26,7 @@ describe("obtenerBoletasRecientes", () => {
   /** Una cuenta enviada a cocina y cerrada con venta en la mesa 4. */
   async function cerrarUna(cantidad: number) {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad, precioUnitario: 3000, numeroEnvio: 1 }]);
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     return cuenta;
   }
 
@@ -40,7 +40,7 @@ describe("obtenerBoletasRecientes", () => {
     expect((await anularItemEnviado(mila.id, 1, "Una menos", 3)).ok).toBe(true);
     expect((await anularItemEnviado(flan.id, 1, "No quiso postre", 1)).ok).toBe(true);
 
-    const cierre = await cerrarCuenta(cuenta.id, s.seccion.id);
+    const cierre = await cerrarCuenta(cuenta.id);
     expect(cierre.ok).toBe(true);
 
     const [boleta, ...otras] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
@@ -67,7 +67,7 @@ describe("obtenerBoletasRecientes", () => {
     expect((await liberarMesa(vacia.id)).ok).toBe(true);
     const anulada = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
     expect((await anularItemEnviado(anulada.items[0].id, 1, "Se fue", 1)).ok).toBe(true);
-    expect(await cerrarCuenta(anulada.id, s.seccion.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar." });
+    expect(await cerrarCuenta(anulada.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar." });
 
     expect(await obtenerBoletasRecientes(s.sucursalId, s.mesa.id)).toEqual([]);
   });
