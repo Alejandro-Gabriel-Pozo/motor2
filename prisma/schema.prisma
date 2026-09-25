@@ -110,6 +110,7 @@ model Sucursal {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  seccionesHabituales  SeccionHabitualProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
   promociones          PromocionProducto[]
@@ -319,6 +320,7 @@ model Producto {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  seccionesHabituales  SeccionHabitualProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
   disponibilidades     DisponibilidadProducto[]
   promociones          PromocionProducto[]
@@ -745,6 +747,7 @@ model Seccion {
   movimientos                     MovimientoStock[]
   conteosFisicos                  ConteoFisico[]
   stockMinimos                    StockMinimoProducto[]
+  seccionesHabituales             SeccionHabitualProducto[]
   traspasosComoSeccionOrigen      TraspasoSucursal[]    @relation("TraspasoSeccionOrigen")
   traspasosComoSeccionDestino     TraspasoSucursal[]    @relation("TraspasoSeccionDestino")
 
@@ -1122,6 +1125,22 @@ model StockMinimoProducto {
   minimo     Decimal  @db.Decimal(14, 4)
 
   @@unique([productoId, seccionId])
+}
+
+/// Sección HABITUAL de la que sale un producto de venta (PV) en una sucursal — `Seccion` de STOCK (Barra/Cocina/Depósito),
+/// NO `SeccionCarta` (categoría del menú). Fila ausente = sin preferencia: el cierre del POS resuelve solo, por vencimiento.
+/// Es una preferencia, no una restricción: si ahí no alcanza, se busca en las secciones marcadas como respaldo
+/// (docs/plan-seccion-habitual-stock-2026-09-25.md). Se usa aunque la sección no sirva de respaldo (Seccion.sirveDeRespaldoEnVentas).
+model SeccionHabitualProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  seccionId  String
+  seccion    Seccion  @relation(fields: [seccionId], references: [id])
+
+  @@unique([sucursalId, productoId])
 }
 
 // ===================================================================

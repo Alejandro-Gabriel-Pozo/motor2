@@ -38,6 +38,7 @@ export async function limpiarBaseDeTest() {
   await prisma.pagoConsignante.deleteMany();
   await prisma.precioLocalProducto.deleteMany();
   await prisma.stockMinimoProducto.deleteMany();
+  await prisma.seccionHabitualProducto.deleteMany();
   await prisma.frecuenciaConteoProducto.deleteMany();
   await prisma.disponibilidadProducto.deleteMany();
   await prisma.promocionProducto.deleteMany();
