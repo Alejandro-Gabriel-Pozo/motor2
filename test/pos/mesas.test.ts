@@ -198,4 +198,29 @@ describe("obtenerMapaDeMesas (contra la base)", () => {
     expect(mapa.mesas[0]).toMatchObject({ productosSinEnviar: 1, pedidosEnviados: 1, total: 200 });
     expect(mapa.metricas).toEqual({ total: 2, libres: 1, enPedido: 1, ocupadas: 0 });
   });
+
+  // «Tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, paso 2): una anulación es una fila ESPEJO (cantidad negativa, mismo
+  // numeroEnvio que el original). El mapa no se tocó para eso: estos casos confirman que ya la trata bien.
+  it("una anulación (fila espejo) baja el total, no cuenta como producto sin enviar ni como envío nuevo, y la mesa sigue ocupada", async () => {
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 5 } });
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: mozoId } });
+    const original = await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId, cantidad: 3, precioUnitario: 9000, numeroEnvio: 1 } });
+    await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId, cantidad: 1, precioUnitario: 1000, numeroEnvio: 2 } });
+    await prisma.cuentaItem.create({
+      data: { cuentaId: cuenta.id, productoId, cantidad: -2, precioUnitario: 9000, numeroEnvio: 1, anulaAItemId: original.id, motivoAnulacion: "Pidió menos" },
+    });
+
+    const [m] = (await obtenerMapaDeMesas(sucursalId, prisma, ahora)).mesas;
+    expect(m).toMatchObject({ estado: "ocupada", productosSinEnviar: 0, pedidosEnviados: 2, total: 3 * 9000 - 2 * 9000 + 1000 });
+  });
+
+  it("anulado todo lo enviado: total 0 y la mesa sigue ocupada (la cuenta sigue abierta hasta cerrarla)", async () => {
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 6 } });
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: mozoId } });
+    const original = await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId, cantidad: 1, precioUnitario: 9000, numeroEnvio: 1 } });
+    await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId, cantidad: -1, precioUnitario: 9000, numeroEnvio: 1, anulaAItemId: original.id, motivoAnulacion: "Se fue" } });
+
+    const [m] = (await obtenerMapaDeMesas(sucursalId, prisma, ahora)).mesas;
+    expect(m).toMatchObject({ estado: "ocupada", total: 0, pedidosEnviados: 1, productosSinEnviar: 0 });
+  });
 });

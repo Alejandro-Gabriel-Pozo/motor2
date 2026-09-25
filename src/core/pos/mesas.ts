@@ -98,7 +98,8 @@ export function filtrarMesas<T extends Pick<MesaEnMapa, "numero" | "estado" | "m
   });
 }
 
-function nombreDelMesero(usuario: { name: string | null; email: string }): string {
+/** Nombre visible de un usuario del salón: su nombre, o la parte local del email si no tiene (lo reusa src/core/pos/cuenta.ts). */
+export function nombreDelMesero(usuario: { name: string | null; email: string }): string {
   const nombre = usuario.name?.trim();
   return nombre || usuario.email.split("@")[0];
 }

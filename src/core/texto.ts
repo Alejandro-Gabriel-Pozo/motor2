@@ -48,6 +48,13 @@ export function validarLargoTexto(valor: unknown, etiquetaCampo: string, maximo:
 export const LARGO_MAXIMO_NRO_FACTURA = 60;
 
 /**
+ * Motivo de la anulación de un ítem de cuenta ya enviado a cocina (módulo POS, docs/plan-tomar-pedido-2026-09-25.md): texto
+ * libre y obligatorio («el cliente cambió de idea», «salió mal de cocina»…). 200 alcanza para una frase explicativa sin
+ * convertirlo en un campo de notas.
+ */
+export const LARGO_MAXIMO_MOTIVO_ANULACION = 200;
+
+/**
  * null si `valor` es válido como nombre de catálogo, o el mensaje de error
  * listo para mostrar. No reemplaza el chequeo de "obligatorio" — un valor
  * vacío no es asunto de este validador (mismo criterio que Core.js:685).
