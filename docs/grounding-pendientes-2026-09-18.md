@@ -229,6 +229,11 @@ La librería se carga con `import()` recién al hacer clic en "Exportar Excel", 
 
 ### 7.5 Reglas de entrada de datos que hay hoy (verificado en `origin/main`)
 
+> **Actualización 2026-09-25**: hay un módulo central de validación de datos (`src/core/datos/`), aplicado en una primera fase a
+> Compra, Devolución a proveedor, corrección de compra y precio local, y `CampoNumero` ya no borra caracteres en silencio. Reglas,
+> tabla de compatibilidad del parser, decisiones y lo que queda para fases siguientes: `docs/plan-validacion-de-datos-2026-09-25.md`.
+> Lo que sigue en esta sección describe el estado ANTERIOR y sigue valiendo para los circuitos todavía no migrados.
+
 El usuario recordaba una regla general de datos ("solo coma", "2 decimales") y que los nombres no admitían ciertos caracteres. Lo que hay:
 
 **Números**
