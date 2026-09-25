@@ -89,6 +89,9 @@ export async function obtenerSeccionPropia(seccionId: string, sucursalId: string
  * salida no especifica de qué lote sale. A propósito NO reparte entre
  * varios lotes si el elegido no alcanza — asigna todo el movimiento a ese
  * único lote, misma simplificación deliberada que Apps Script.
+ *
+ * Ya no lo usa la VENTA (mostrador ni cierre del POS): ahí el lote lo elige el libro de `origen-venta.ts`, que descuenta lo ya asignado
+ * entre líneas de la misma venta (docs/plan-seccion-habitual-stock-2026-09-25.md). Lo siguen usando Producción y el Consumo manual.
  */
 export async function obtenerLoteMasProximoAVencer(productoId: string, seccionId: string, db: Db = prisma): Promise<Date | null> {
   const grupos = await db.movimientoStock.groupBy({
@@ -180,8 +183,13 @@ export interface ParteConsumo {
  * camino de siempre: todo el consumo contra el producto pedido, para que
  * el "no alcanza" downstream de validarStockSuficiente bloquee igual que
  * hoy) ni entre secciones distintas ni fuera de un producto sin Insumo.
- * Alcance a propósito acotado a consumo DE RECETA (Producción/Venta) — el
+ * Alcance a propósito acotado a consumo DE RECETA — el
  * llamador de Consumo/Merma/Ajuste manuales nunca pasa por acá.
+ *
+ * Hoy lo usa SOLO Producción: la venta (mostrador y cierre del POS) asigna con el libro de `origen-venta.ts`
+ * (docs/plan-seccion-habitual-stock-2026-09-25.md). BUG CONOCIDO, anterior y separado (H9 en Producción, no arreglado): lee el saldo
+ * de la base en cada llamada, así que dos ingredientes/líneas de la misma producción que consumen la misma familia no ven lo que tomó
+ * el anterior y pueden pedir el mismo lote dos veces.
  */
 export async function resolverConsumoPorFamilia(
   productoId: string,

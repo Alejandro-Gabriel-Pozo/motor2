@@ -70,7 +70,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
         { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
         {
           fecha: datos.fecha,
-          seccionId: datos.seccionId,
+          origen: { tipo: "seccion", seccionId: datos.seccionId },
           proveedorId: datos.proveedorId,
           nroFactura: datos.nroFactura,
           detalle: datos.detalle,

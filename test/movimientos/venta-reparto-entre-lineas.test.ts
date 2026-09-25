@@ -17,8 +17,8 @@ import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
  * Datos: Muzza A (0,3 kg, vence 2026-10-01) y Muzza B (0,3 kg, vence 2026-11-01), mismo insumo; Pizza y Fugazzeta usan 0,25 kg de
  * A cada una. El insumo tiene 0,6 kg combinados y la venta pide 0,5: alcanza siempre.
  *
- * Los dos casos `it.fails` reproducen el bug TAL COMO ES HOY (rechazo falso en mostrador, aviso falso en −0,2 en el POS): pasan a `it`
- * cuando la venta asigna los consumos con el libro de origen-venta.ts.
+ * Antes del arreglo, los dos casos de dos líneas fallaban (rechazo falso en mostrador, aviso falso en −0,2 en el POS); la venta ahora
+ * asigna los consumos con el libro de origen-venta.ts, que descuenta lo ya asignado a las líneas anteriores.
  */
 describe("H9: reparto por familia entre líneas de la misma venta", () => {
   let sucursalId: string;
@@ -67,19 +67,19 @@ describe("H9: reparto por familia entre líneas de la misma venta", () => {
     expect(await calcularSaldoTotal(muzzaB, seccionId)).toBe(0.1);
   });
 
-  it.fails("mostrador: Pizza y Fugazzeta en DOS líneas se venden (el insumo alcanza) y reparten igual que en una sola línea", async () => {
+  it("mostrador: Pizza y Fugazzeta en DOS líneas se venden (el insumo alcanza) y reparten igual que en una sola línea", async () => {
     const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pizza, cantidadVendida: 1 }, { productoId: fugazzeta, cantidadVendida: 1 }] });
     expect(r).toEqual({ ok: true, mensaje: "Se registraron 2 venta(s) correctamente." });
     expect(await calcularSaldoTotal(muzzaA, seccionId)).toBe(0);
     expect(await calcularSaldoTotal(muzzaB, seccionId)).toBe(0.1);
   });
 
-  it.fails("POS (permitirStockNegativo): las mismas dos líneas no dejan ningún lote en negativo ni avisan", async () => {
+  it("POS (permitirStockNegativo): las mismas dos líneas no dejan ningún lote en negativo ni avisan", async () => {
     const r = await prisma.$transaction((tx) =>
       registrarVentaEnTx(
         tx,
         actor,
-        { fecha: new Date(), seccionId, lineas: [{ productoId: pizza, cantidadVendida: 1 }, { productoId: fugazzeta, cantidadVendida: 1 }] },
+        { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pizza, cantidadVendida: 1 }, { productoId: fugazzeta, cantidadVendida: 1 }] },
         { permitirStockNegativo: true }
       )
     );

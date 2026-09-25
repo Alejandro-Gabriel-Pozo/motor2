@@ -297,7 +297,7 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
         { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
         {
           fecha: ahora,
-          seccionId,
+          origen: { tipo: "seccion", seccionId },
           proveedorId: null,
           detalle: `Mesa ${mesa}`,
           lineas: lineas.map((l) => ({ productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: l.precioUnitario })),
