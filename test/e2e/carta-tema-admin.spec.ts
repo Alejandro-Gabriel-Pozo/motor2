@@ -76,3 +76,56 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
     await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   }
 });
+
+test("la vista previa del tema se recorre de a una página, como la carta: portada → índice → sección, en círculo", async ({ paginaAutenticada: page, sucursalId }) => {
+  // Sin tema: la portada muestra el nombre por defecto de la vista previa.
+  await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+  await page.goto("/catalogo/carta/tema");
+  const vista = page.locator("[data-vista-previa-tema]");
+  const pagina = (nombre: string) => vista.locator(`[data-vista-previa-pagina="${nombre}"]`);
+  const indicador = vista.locator("[data-vista-previa-indicador]");
+  const siguiente = vista.getByRole("button", { name: "Página siguiente de la vista previa" });
+  const anterior = vista.getByRole("button", { name: "Página anterior de la vista previa" });
+  const visibles = (texto: string) => vista.getByText(texto).filter({ visible: true });
+
+  // Arranca en la portada: se ve el nombre del restaurante y NO el índice («Cocina»).
+  await expect(pagina("portada")).toBeVisible();
+  await expect(pagina("indice")).toBeHidden();
+  await expect(pagina("seccion")).toBeHidden();
+  await expect(indicador).toHaveText("1 / 3");
+  await expect(visibles("Nombre del restaurante")).toHaveCount(1);
+  await expect(visibles("Cocina")).toHaveCount(0);
+  // Las barras superior e inferior son fijas.
+  await expect(vista.locator('[data-preview="topbar"]')).toBeVisible();
+
+  // › pasa al índice: se ve «Cocina» y ya no el nombre del restaurante.
+  await siguiente.click();
+  await expect(pagina("indice")).toBeVisible();
+  await expect(pagina("portada")).toBeHidden();
+  await expect(indicador).toHaveText("2 / 3");
+  await expect(visibles("Cocina")).toHaveCount(2);
+  await expect(visibles("Nombre del restaurante")).toHaveCount(0);
+  await expect(vista.locator('[data-preview="topbar"]')).toBeVisible();
+
+  // › pasa a la sección: la banda y los ítems de ejemplo.
+  await siguiente.click();
+  await expect(pagina("seccion")).toBeVisible();
+  await expect(pagina("indice")).toBeHidden();
+  await expect(indicador).toHaveText("3 / 3");
+  await expect(vista.locator('[data-preview="item-nombre"]')).toHaveText("Bife de chorizo");
+  await expect(vista.locator('[data-preview="item-nombre"]')).toBeVisible();
+  await expect(vista.locator('[data-preview="banda"]')).toBeVisible();
+
+  // Circular: › desde la sección vuelve a la portada, y ‹ desde la portada va a la sección.
+  await siguiente.click();
+  await expect(pagina("portada")).toBeVisible();
+  await expect(indicador).toHaveText("1 / 3");
+  await anterior.click();
+  await expect(pagina("seccion")).toBeVisible();
+  await anterior.click();
+  await expect(pagina("indice")).toBeVisible();
+  await expect(indicador).toHaveText("2 / 3");
+
+  // Las flechas no envían el formulario del tema (son type="button"): nada se guardó.
+  expect(await prisma.temaCartaSucursal.count({ where: { sucursalId } })).toBe(0);
+});

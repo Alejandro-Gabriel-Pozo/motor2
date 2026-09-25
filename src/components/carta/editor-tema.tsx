@@ -112,8 +112,9 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
           </h2>
           <VistaPreviaTema valores={valores} />
           <p className="text-xs text-neutral-500">
-            Aproximada: no simula los modos, anchos, posiciones, degradé ni opacidad de la imagen de sección. Los precios usan la convención del sistema (es-AR,
-            $ a la izquierda).
+            Aproximada: se recorre como la carta, de a una página (portada, índice y una sección de ejemplo) con las flechas ‹ ›, pero no simula el
+            deslizamiento entre páginas ni la vista de escritorio, ni los modos, anchos, posiciones, degradé ni opacidad de la imagen de sección. Los precios
+            usan la convención del sistema (es-AR, $ a la izquierda).
           </p>
         </section>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { resolveHeroInk, sanitizeCssColor } from "@/core/carta/color-css";
 import { CLAVES_FIJAS_DEL_SISTEMA, CLAVES_TEMA_V1, validarValorTema, type ClaveTema } from "@/core/carta/tema";
 
@@ -10,6 +10,13 @@ import { CLAVES_FIJAS_DEL_SISTEMA, CLAVES_TEMA_V1, validarValorTema, type ClaveT
  * portada (colores, textos, tamaños, separador, CTA y la posición del bloque y del CTA), índice, banda (colores, tamaños y alto
  * mobile), un ítem común y uno especial, y las barras superior e inferior. NO simula los modos, anchos, posiciones, overlay ni
  * opacidad de la imagen de sección (lo dice en una nota).
+ *
+ * Paginada como la carta real (carta-view.tsx + carta-controls/carta-nav.tsx): la carta es un libro de páginas a pantalla completa
+ * (`data-page` "portada", "indice-0" y una por sección) que se recorren con las flechas; nunca se ven la portada y el índice a la
+ * vez. Acá hay tres páginas fijas — portada, índice y UNA sección de ejemplo (banda + dos ítems) — y las flechas de la barra
+ * inferior las recorren en círculo. Como en la carta, las tres están en el DOM y solo la activa se ve (`hidden` en las otras): así
+ * los estilos calculados de cada una siguen disponibles aunque no sea la visible. La barra superior y la inferior son fijas: se
+ * ven en todas las páginas. `data-vista-previa-pagina` marca cada página (lo usa el E2E para saber cuál está a la vista).
  *
  * Cada valor se resuelve como en la carta: si pasa la validación del catálogo se usa normalizado; si está vacío o es inválido, el
  * default de la carta. Los precios usan la convención fija del sistema (es-AR, "$" a la izquierda).
@@ -49,7 +56,15 @@ export function valoresEfectivos(valores: Readonly<Record<string, string>>): Rec
 
 const conAlfa = (variable: string, alfa: number) => `oklch(from var(${variable}) l c h / ${alfa})`;
 
+/** Las páginas de la vista previa, en el orden de la carta. */
+const PAGINAS = ["portada", "indice", "seccion"] as const;
+type PaginaVistaPrevia = (typeof PAGINAS)[number];
+
 export function VistaPreviaTema({ valores }: { valores: Readonly<Record<string, string>> }) {
+  const [pagina, setPagina] = useState<PaginaVistaPrevia>("portada");
+  const indice = PAGINAS.indexOf(pagina);
+  // Circular: después de la sección vuelve a la portada (y al revés).
+  const irA = (paso: 1 | -1) => setPagina(PAGINAS[(indice + paso + PAGINAS.length) % PAGINAS.length]);
   const t = valoresEfectivos(valores);
   const color = (c: string) => (c ? sanitizeCssColor(c) : null);
 
@@ -92,151 +107,175 @@ export function VistaPreviaTema({ valores }: { valores: Readonly<Record<string, 
         <span aria-hidden style={{ color: conAlfa("--foreground", 0.4) }}>⎙</span>
       </div>
 
-      {/* Portada (carta-view.tsx, portada mobile) */}
-      <div
-        data-preview="portada"
-        className="relative isolate overflow-hidden"
-        style={{
-          height: 260,
-          backgroundColor: !bgUrl && acento ? acento : "var(--background)",
-          ...(bgUrl ? { backgroundImage: `url("${bgUrl}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
-        }}
-      >
-        {bgUrl && acento && <div className="absolute inset-0" style={{ backgroundColor: `${acento}BF` }} aria-hidden />}
-        <div className="absolute z-10 flex w-3/4 flex-col items-center text-center" style={{ top: `${t.carta_pos_bloque || "50"}%`, left: "50%", transform: "translate(-50%, -50%)" }}>
-          {t.restaurante_logo_url && (
-            // eslint-disable-next-line @next/next/no-img-element -- URL externa ya validada (https, sin comillas ni paréntesis); la carta usa <img> igual.
-            <img src={t.restaurante_logo_url} alt="" className="mb-2 h-10 w-10 object-contain" />
-          )}
-          {t.hero_etiqueta_superior && (
-            <p className="font-light uppercase tracking-[0.45em]" style={{ fontSize: normFuente(t.carta_fuente_portada_etiqueta), color: textosAlfa(0.6) }}>
-              {t.hero_etiqueta_superior}
+      {/* Página 1 — Portada (carta-view.tsx, portada mobile) */}
+      <div data-vista-previa-pagina="portada" hidden={pagina !== "portada"}>
+        <div
+          data-preview="portada"
+          className="relative isolate overflow-hidden"
+          style={{
+            height: 260,
+            backgroundColor: !bgUrl && acento ? acento : "var(--background)",
+            ...(bgUrl ? { backgroundImage: `url("${bgUrl}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
+          }}
+        >
+          {bgUrl && acento && <div className="absolute inset-0" style={{ backgroundColor: `${acento}BF` }} aria-hidden />}
+          <div className="absolute z-10 flex w-3/4 flex-col items-center text-center" style={{ top: `${t.carta_pos_bloque || "50"}%`, left: "50%", transform: "translate(-50%, -50%)" }}>
+            {t.restaurante_logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element -- URL externa ya validada (https, sin comillas ni paréntesis); la carta usa <img> igual.
+              <img src={t.restaurante_logo_url} alt="" className="mb-2 h-10 w-10 object-contain" />
+            )}
+            {t.hero_etiqueta_superior && (
+              <p className="font-light uppercase tracking-[0.45em]" style={{ fontSize: normFuente(t.carta_fuente_portada_etiqueta), color: textosAlfa(0.6) }}>
+                {t.hero_etiqueta_superior}
+              </p>
+            )}
+            <p data-preview="portada-nombre" className="font-serif font-medium leading-tight" style={{ fontSize: normFuente(t.carta_fuente_portada_nombre), color: textos }}>
+              {t.restaurante_nombre || "Nombre del restaurante"}
             </p>
-          )}
-          <p data-preview="portada-nombre" className="font-serif font-medium leading-tight" style={{ fontSize: normFuente(t.carta_fuente_portada_nombre), color: textos }}>
-            {t.restaurante_nombre || "Nombre del restaurante"}
-          </p>
-          {t.restaurante_subtitulo && (
-            <p className="mt-0.5 font-light uppercase tracking-[0.22em]" style={{ fontSize: normFuente(t.carta_fuente_portada_subtitulo), color: textosAlfa(0.55) }}>
-              {t.restaurante_subtitulo}
+            {t.restaurante_subtitulo && (
+              <p className="mt-0.5 font-light uppercase tracking-[0.22em]" style={{ fontSize: normFuente(t.carta_fuente_portada_subtitulo), color: textosAlfa(0.55) }}>
+                {t.restaurante_subtitulo}
+              </p>
+            )}
+            {t.restaurante_descripcion && (
+              <p className="mt-1 font-light leading-snug" style={{ fontSize: normFuente(t.carta_fuente_portada_descripcion), color: textosAlfa(0.7) }}>
+                {t.restaurante_descripcion}
+              </p>
+            )}
+            {t.carta_texto_portada_separador && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="block h-px w-8" style={{ backgroundColor: textosAlfa(0.18) }} />
+                <span style={{ fontSize: "7px", color: textosAlfa(0.25) }}>{t.carta_texto_portada_separador}</span>
+                <span className="block h-px w-8" style={{ backgroundColor: textosAlfa(0.18) }} />
+              </div>
+            )}
+          </div>
+          {t.carta_texto_portada_cta && (
+            <p
+              data-preview="portada-cta"
+              className="absolute z-10 whitespace-nowrap font-light uppercase tracking-[0.35em]"
+              style={{ left: "50%", transform: "translateX(-50%)", bottom: `${t.carta_pos_cta || "18"}%`, fontSize: normFuente(t.carta_fuente_portada_cta), color: `oklch(from var(--portada-cta, var(--hero-ink)) l c h / 0.45)` }}
+            >
+              {t.carta_texto_portada_cta}
             </p>
-          )}
-          {t.restaurante_descripcion && (
-            <p className="mt-1 font-light leading-snug" style={{ fontSize: normFuente(t.carta_fuente_portada_descripcion), color: textosAlfa(0.7) }}>
-              {t.restaurante_descripcion}
-            </p>
-          )}
-          {t.carta_texto_portada_separador && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="block h-px w-8" style={{ backgroundColor: textosAlfa(0.18) }} />
-              <span style={{ fontSize: "7px", color: textosAlfa(0.25) }}>{t.carta_texto_portada_separador}</span>
-              <span className="block h-px w-8" style={{ backgroundColor: textosAlfa(0.18) }} />
-            </div>
           )}
         </div>
-        {t.carta_texto_portada_cta && (
-          <p
-            data-preview="portada-cta"
-            className="absolute z-10 whitespace-nowrap font-light uppercase tracking-[0.35em]"
-            style={{ left: "50%", transform: "translateX(-50%)", bottom: `${t.carta_pos_cta || "18"}%`, fontSize: normFuente(t.carta_fuente_portada_cta), color: `oklch(from var(--portada-cta, var(--hero-ink)) l c h / 0.45)` }}
-          >
-            {t.carta_texto_portada_cta}
-          </p>
-        )}
       </div>
 
-      {/* Índice */}
-      <div className="px-4 py-3" style={{ borderTop: `1px solid ${conAlfa("--border", 0.4)}` }}>
-        {t.carta_texto_indice_etiqueta && (
-          <p className="font-light uppercase tracking-[0.5em]" style={{ fontSize: normFuente(t.carta_fuente_indice_etiqueta), color: "var(--primary)" }}>
-            {t.carta_texto_indice_etiqueta}
-          </p>
-        )}
-        {t.carta_texto_indice_titulo && (
-          <p className="font-serif font-medium" style={{ fontSize: normFuente(t.carta_fuente_indice_titulo), color: color(t.color_indice_titulo) ?? "var(--foreground)" }}>
-            {t.carta_texto_indice_titulo}
-          </p>
-        )}
-        <ol className="mt-1">
-          {["Entradas", "Del fuego"].map((seccion, i) => (
-            <li key={seccion} className="flex items-baseline gap-2.5 py-1.5" style={{ borderBottom: `1px dotted ${conAlfa("--border", 0.4)}` }}>
-              <span className="w-5 font-light" style={{ fontSize: normFuente(t.carta_fuente_indice_numero), color: color(t.color_indice_numeros) ?? "var(--primary)" }}>
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span className="flex-1">
-                <span className="block font-light uppercase tracking-widest" style={{ fontSize: normFuente(t.carta_fuente_indice_categoria), color: "var(--muted-foreground)" }}>
-                  Cocina
+      {/* Página 2 — Índice */}
+      <div data-vista-previa-pagina="indice" hidden={pagina !== "indice"} style={{ minHeight: 260 }}>
+        <div className="px-4 py-3">
+          {t.carta_texto_indice_etiqueta && (
+            <p className="font-light uppercase tracking-[0.5em]" style={{ fontSize: normFuente(t.carta_fuente_indice_etiqueta), color: "var(--primary)" }}>
+              {t.carta_texto_indice_etiqueta}
+            </p>
+          )}
+          {t.carta_texto_indice_titulo && (
+            <p className="font-serif font-medium" style={{ fontSize: normFuente(t.carta_fuente_indice_titulo), color: color(t.color_indice_titulo) ?? "var(--foreground)" }}>
+              {t.carta_texto_indice_titulo}
+            </p>
+          )}
+          <ol className="mt-1">
+            {["Entradas", "Del fuego"].map((seccion, i) => (
+              <li key={seccion} className="flex items-baseline gap-2.5 py-1.5" style={{ borderBottom: `1px dotted ${conAlfa("--border", 0.4)}` }}>
+                <span className="w-5 font-light" style={{ fontSize: normFuente(t.carta_fuente_indice_numero), color: color(t.color_indice_numeros) ?? "var(--primary)" }}>
+                  {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="block font-serif font-medium leading-snug" style={{ fontSize: normFuente(t.carta_fuente_indice_item), color: color(t.color_indice_titulos) ?? "var(--foreground)" }}>
-                  {seccion}
+                <span className="flex-1">
+                  <span className="block font-light uppercase tracking-widest" style={{ fontSize: normFuente(t.carta_fuente_indice_categoria), color: "var(--muted-foreground)" }}>
+                    Cocina
+                  </span>
+                  <span className="block font-serif font-medium leading-snug" style={{ fontSize: normFuente(t.carta_fuente_indice_item), color: color(t.color_indice_titulos) ?? "var(--foreground)" }}>
+                    {seccion}
+                  </span>
                 </span>
-              </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+
+      {/* Página 3 — Una sección de ejemplo: banda (alto mobile) + ítems */}
+      <div data-vista-previa-pagina="seccion" hidden={pagina !== "seccion"} style={{ minHeight: 260 }}>
+        <div data-preview="banda" className="relative overflow-hidden" style={{ height: bandaAlto, borderBottom: `1px solid ${conAlfa("--primary", 0.2)}` }}>
+          <div className="absolute inset-0 flex flex-col justify-end overflow-hidden px-4 pb-2 pt-2">
+            <p className="overflow-hidden font-light uppercase tracking-[0.4em]" style={{ fontSize: normFuente(t.carta_fuente_banda_etiqueta), lineHeight: 1.3, color: color(t.color_banda_etiqueta) ?? "var(--primary)" }}>
+              Cocina · 02 / 02
+            </p>
+            <p className="shrink-0 font-serif font-medium leading-tight tracking-tight" style={{ fontSize: normFuente(t.carta_fuente_banda_titulo), color: color(t.color_banda_titulo) ?? "var(--foreground)" }}>
+              Del fuego
+            </p>
+            <p className="overflow-hidden font-light leading-snug" style={{ fontSize: normFuente(t.carta_fuente_banda_descripcion), lineHeight: 1.35, color: color(t.color_banda_descripcion) ?? "var(--muted-foreground)" }}>
+              A la parrilla y al horno de barro
+            </p>
+          </div>
+        </div>
+
+        {/* Ítems: uno común y uno especial */}
+        <ul className="px-4">
+          {[
+            { nombre: "Bife de chorizo", descripcion: "Con papas rústicas", precio: 12500, tags: ["Sin TACC"], esp: false, c: comun },
+            { nombre: "Cordero patagónico", descripcion: "Al asador, para compartir", precio: 38900.5, tags: ["Regional"], esp: true, c: especial },
+          ].map((item) => (
+            <li key={item.nombre} className="py-2.5" style={{ borderBottom: `1px dotted ${conAlfa("--border", 0.4)}` }} data-preview={item.esp ? "item-especial" : "item"}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span data-preview={item.esp ? "item-especial-nombre" : "item-nombre"} className="min-w-0 flex-1 font-serif font-semibold leading-tight" style={{ fontSize: normFuente(t.carta_fuente_item_nombre), color: item.c.nombre }}>
+                  {item.nombre}
+                  {item.esp && <span className="ml-1 text-[8px]"> ★</span>}
+                </span>
+                <span data-preview={item.esp ? "item-especial-precio" : "item-precio"} className="shrink-0 font-serif font-semibold" style={{ fontSize: normFuente(t.carta_fuente_item_precio), color: item.c.precio }}>
+                  {formatoPrecio(item.precio)}
+                </span>
+              </div>
+              <p className="mt-0.5 font-light leading-snug" style={{ fontSize: normFuente(t.carta_fuente_item_descripcion), color: item.c.descripcion }}>
+                {item.descripcion}
+              </p>
+              <div className="mt-1 flex gap-1.5">
+                {item.tags.map((tag) => (
+                  <span key={tag} className="font-light uppercase tracking-wider" style={{ fontSize: normFuente(t.carta_fuente_item_tags), color: item.c.tags }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </li>
           ))}
-        </ol>
+        </ul>
       </div>
 
-      {/* Banda de sección (alto mobile) */}
-      <div data-preview="banda" className="relative overflow-hidden" style={{ height: bandaAlto, borderBottom: `1px solid ${conAlfa("--primary", 0.2)}` }}>
-        <div className="absolute inset-0 flex flex-col justify-end overflow-hidden px-4 pb-2 pt-2">
-          <p className="overflow-hidden font-light uppercase tracking-[0.4em]" style={{ fontSize: normFuente(t.carta_fuente_banda_etiqueta), lineHeight: 1.3, color: color(t.color_banda_etiqueta) ?? "var(--primary)" }}>
-            Cocina · 02 / 02
-          </p>
-          <p className="shrink-0 font-serif font-medium leading-tight tracking-tight" style={{ fontSize: normFuente(t.carta_fuente_banda_titulo), color: color(t.color_banda_titulo) ?? "var(--foreground)" }}>
-            Del fuego
-          </p>
-          <p className="overflow-hidden font-light leading-snug" style={{ fontSize: normFuente(t.carta_fuente_banda_descripcion), lineHeight: 1.35, color: color(t.color_banda_descripcion) ?? "var(--muted-foreground)" }}>
-            A la parrilla y al horno de barro
-          </p>
-        </div>
-      </div>
-
-      {/* Ítems: uno común y uno especial */}
-      <ul className="px-4">
-        {[
-          { nombre: "Bife de chorizo", descripcion: "Con papas rústicas", precio: 12500, tags: ["Sin TACC"], esp: false, c: comun },
-          { nombre: "Cordero patagónico", descripcion: "Al asador, para compartir", precio: 38900.5, tags: ["Regional"], esp: true, c: especial },
-        ].map((item) => (
-          <li key={item.nombre} className="py-2.5" style={{ borderBottom: `1px dotted ${conAlfa("--border", 0.4)}` }} data-preview={item.esp ? "item-especial" : "item"}>
-            <div className="flex items-baseline justify-between gap-3">
-              <span data-preview={item.esp ? "item-especial-nombre" : "item-nombre"} className="min-w-0 flex-1 font-serif font-semibold leading-tight" style={{ fontSize: normFuente(t.carta_fuente_item_nombre), color: item.c.nombre }}>
-                {item.nombre}
-                {item.esp && <span className="ml-1 text-[8px]"> ★</span>}
-              </span>
-              <span data-preview={item.esp ? "item-especial-precio" : "item-precio"} className="shrink-0 font-serif font-semibold" style={{ fontSize: normFuente(t.carta_fuente_item_precio), color: item.c.precio }}>
-                {formatoPrecio(item.precio)}
-              </span>
-            </div>
-            <p className="mt-0.5 font-light leading-snug" style={{ fontSize: normFuente(t.carta_fuente_item_descripcion), color: item.c.descripcion }}>
-              {item.descripcion}
-            </p>
-            <div className="mt-1 flex gap-1.5">
-              {item.tags.map((tag) => (
-                <span key={tag} className="font-light uppercase tracking-wider" style={{ fontSize: normFuente(t.carta_fuente_item_tags), color: item.c.tags }}>
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Barra de navegación inferior (carta-nav.tsx) */}
-      <div className="flex h-12 items-center justify-between px-3" style={{ borderTop: `1px solid ${conAlfa("--border", 0.4)}` }}>
-        <span data-preview="nav-flecha" aria-hidden style={{ color: color(t.color_nav_flechas) ?? conAlfa("--foreground", 0.6) }}>
+      {/* Barra de navegación inferior (carta-nav.tsx): fija en todas las páginas; las flechas cambian de página. */}
+      <nav aria-label="Páginas de la vista previa" className="flex h-12 items-center justify-between px-3" style={{ borderTop: `1px solid ${conAlfa("--border", 0.4)}` }}>
+        <button
+          type="button"
+          onClick={() => irA(-1)}
+          aria-label="Página anterior de la vista previa"
+          data-preview="nav-flecha"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-lg"
+          style={{ color: color(t.color_nav_flechas) ?? conAlfa("--foreground", 0.6) }}
+        >
           ‹
+        </button>
+        <span className="flex flex-col items-center gap-0.5">
+          <span className="flex gap-3 text-xs">
+            {redes.map((r) => (
+              <span key={r.sigla} title={r.etiqueta} data-preview="nav-icono" style={{ color: color(t.color_nav_iconos) ?? conAlfa("--foreground", 0.55) }}>
+                {r.sigla}
+              </span>
+            ))}
+          </span>
+          <span data-vista-previa-indicador className="text-[10px] font-light" style={{ color: "var(--muted-foreground)" }}>
+            {indice + 1} / {PAGINAS.length}
+          </span>
         </span>
-        <span className="flex gap-3 text-xs">
-          {redes.map((r) => (
-            <span key={r.sigla} title={r.etiqueta} data-preview="nav-icono" style={{ color: color(t.color_nav_iconos) ?? conAlfa("--foreground", 0.55) }}>
-              {r.sigla}
-            </span>
-          ))}
-        </span>
-        <span aria-hidden style={{ color: color(t.color_nav_flechas) ?? conAlfa("--foreground", 0.6) }}>
+        <button
+          type="button"
+          onClick={() => irA(1)}
+          aria-label="Página siguiente de la vista previa"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-lg"
+          style={{ color: color(t.color_nav_flechas) ?? conAlfa("--foreground", 0.6) }}
+        >
           ›
-        </span>
-      </div>
+        </button>
+      </nav>
     </div>
   );
 }
