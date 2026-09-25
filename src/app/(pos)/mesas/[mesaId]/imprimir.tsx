@@ -15,7 +15,7 @@ import { TicketCocina } from "./ticket-cocina";
  * - Vive en la CIMA de la página (por encima de «mesa libre» y «cuenta abierta»): así sobrevive a que la acción que pidió imprimir
  *   haga desaparecer su botón después de `router.refresh()` (que conserva el estado de los componentes de cliente).
  * - Un único pedido pendiente (se imprime una cosa a la vez): la acción lo deja al salir bien (`pedir`) y `resolverImpresion` decide,
- *   con los datos que trajo el refresco, si ya imprime o si espera.
+ *   con los datos que trajo el refresco, si imprime, si espera o si lo descarta.
  * - El documento se monta en un portal directo en `document.body`, con `data-imprimible` y `data-tipo`: en pantalla nunca se ve, y al
  *   imprimir es lo único que se ve (CSS en src/app/globals.css). Un efecto sobre su `id` anota UNA VEZ `afterprint` (lo desmonta) y
  *   llama a `window.print()`; una ref con el último id impreso evita la doble impresión del modo estricto de React en desarrollo.
@@ -52,12 +52,12 @@ export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; 
   };
 
   // Con cada render (el refresco trae datos nuevos) se vuelve a mirar el pedido pendiente: el estado se ajusta durante el render, sin
-  // efecto, igual que «guardar información de renders anteriores» (react.dev). Deja de ser pendiente en cuanto se imprime.
+  // efecto, igual que «guardar información de renders anteriores» (react.dev). Deja de ser pendiente en cuanto se imprime o se descarta.
   if (pedido) {
-    const resolucion = resolverImpresion({ comandas }, pedido);
-    if (resolucion.accion === "imprimir") {
+    const resolucion = resolverImpresion({ comandas, boletas: [] }, pedido);
+    if (resolucion.accion !== "esperar") {
       setPedido(null);
-      mostrar(resolucion.documento);
+      if (resolucion.accion === "imprimir") mostrar(resolucion.documento);
     }
   }
 
@@ -84,7 +84,7 @@ export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; 
       {enCurso &&
         createPortal(
           <div data-imprimible data-tipo={enCurso.documento.tipo}>
-            <TicketCocina documento={enCurso.documento} mesa={mesa} impresoEn={enCurso.impresoEn} />
+            {"comanda" in enCurso.documento && <TicketCocina documento={enCurso.documento} mesa={mesa} impresoEn={enCurso.impresoEn} />}
           </div>,
           document.body
         )}
