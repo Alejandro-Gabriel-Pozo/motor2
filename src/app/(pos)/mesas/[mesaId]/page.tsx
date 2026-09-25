@@ -2,8 +2,10 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerDetalleDeMesa, type ItemDeCuenta, type ItemEnEnvio } from "@/core/pos/cuenta";
+import { armarComandas } from "@/core/pos/comanda";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { AvisoMesaProvider } from "./aviso-mesa";
+import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
 import { AbrirCuenta } from "./abrir-cuenta";
 import { AgregarItems } from "./agregar-items";
 import { SinEnviar } from "./sin-enviar";
@@ -20,6 +22,9 @@ import { formatearCantidad, formatearMonto, nombreDeMesa } from "./formato";
  * Cada acción tiene su permiso (el servidor lo vuelve a verificar igual): `pos_tomar_pedido` abre la cuenta, agrega/quita/envía y
  * libera la mesa; `pos_anular_item` anula lo que ya salió a cocina; `pos_cerrar_cuenta` cierra la cuenta y registra la venta. Sin el
  * permiso, el botón queda deshabilitado con un `title` que lo explica. Un rol con solo Ver de `pos_mesas` ve la mesa de solo lectura.
+ *
+ * Impresión (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md): la comanda de cada envío se arma ACÁ, en el servidor y sin precios
+ * (`armarComandas`), y va al proveedor de impresión, que envuelve las dos ramas (mesa libre y cuenta abierta).
  *
  * Ruta dinámica: no va en RUTAS_SIN_PARAMETROS ni en el menú. `params` es una Promise en esta versión de Next
  * (node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md).
@@ -52,6 +57,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   ]);
   const { mesa, cuenta } = detalle;
   const titulo = nombreDeMesa(mesa.numero);
+  const comandas = cuenta ? armarComandas(cuenta.envios, cuenta.mesero) : [];
 
   return (
     <div>
@@ -77,52 +83,57 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
       </header>
 
       <AvisoMesaProvider>
-        {!cuenta ? (
-          <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
-            <p className="mb-4 font-semibold">La mesa está libre.</p>
-            <AbrirCuenta mesaId={mesa.id} puede={tomarPedido.editar} />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            <section aria-labelledby="agregar-titulo" className="rounded-[14px] border border-[var(--border)] bg-white p-4">
-              <h2 id="agregar-titulo" className="mb-3 text-[15px] font-bold">
-                Agregar al pedido
-              </h2>
-              <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} />
-            </section>
-
-            <SinEnviar
-              cuentaId={cuenta.id}
-              items={cuenta.sinEnviar.map((i) => ({ id: i.id, productoNombre: i.productoNombre, cantidad: i.cantidad, precioUnitario: i.precioUnitario }))}
-              puede={tomarPedido.editar}
-            />
-
-            {cuenta.envios.map((envio) => (
-              <section key={envio.numero} aria-labelledby={`envio-${envio.numero}`} data-envio={envio.numero} className="rounded-[14px] border border-[var(--border)] bg-white p-4">
-                <h2 id={`envio-${envio.numero}`} className="mb-3 text-[15px] font-bold">
-                  Envío {envio.numero} · en cocina
-                </h2>
-                <ul className="divide-y divide-[var(--border)]">
-                  {envio.items.map((item) => (
-                    <ItemEnviado key={item.id} item={item} puedeAnular={anularItem.editar} />
-                  ))}
-                </ul>
-              </section>
-            ))}
-
-            <div className="flex flex-wrap items-start gap-4 border-t border-[var(--border)] pt-5">
-              <CerrarCuenta
-                cuentaId={cuenta.id}
-                titulo={titulo}
-                total={cuenta.total}
-                sinEnviar={cuenta.sinEnviar.length}
-                secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
-                puede={cerrarCuenta.editar}
-              />
-              {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={tomarPedido.editar} />}
+        <ImpresionProvider mesa={titulo} comandas={comandas}>
+          {!cuenta ? (
+            <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
+              <p className="mb-4 font-semibold">La mesa está libre.</p>
+              <AbrirCuenta mesaId={mesa.id} puede={tomarPedido.editar} />
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col gap-5">
+              <section aria-labelledby="agregar-titulo" className="rounded-[14px] border border-[var(--border)] bg-white p-4">
+                <h2 id="agregar-titulo" className="mb-3 text-[15px] font-bold">
+                  Agregar al pedido
+                </h2>
+                <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} />
+              </section>
+
+              <SinEnviar
+                cuentaId={cuenta.id}
+                items={cuenta.sinEnviar.map((i) => ({ id: i.id, productoNombre: i.productoNombre, cantidad: i.cantidad, precioUnitario: i.precioUnitario }))}
+                puede={tomarPedido.editar}
+              />
+
+              {cuenta.envios.map((envio) => (
+                <section key={envio.numero} aria-labelledby={`envio-${envio.numero}`} data-envio={envio.numero} className="rounded-[14px] border border-[var(--border)] bg-white p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h2 id={`envio-${envio.numero}`} className="text-[15px] font-bold">
+                      Envío {envio.numero} · en cocina
+                    </h2>
+                    <ReimprimirEnvio numero={envio.numero} puede={tomarPedido.editar} />
+                  </div>
+                  <ul className="divide-y divide-[var(--border)]">
+                    {envio.items.map((item) => (
+                      <ItemEnviado key={item.id} item={item} puedeAnular={anularItem.editar} />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+
+              <div className="flex flex-wrap items-start gap-4 border-t border-[var(--border)] pt-5">
+                <CerrarCuenta
+                  cuentaId={cuenta.id}
+                  titulo={titulo}
+                  total={cuenta.total}
+                  sinEnviar={cuenta.sinEnviar.length}
+                  secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+                  puede={cerrarCuenta.editar}
+                />
+                {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={tomarPedido.editar} />}
+              </div>
+            </div>
+          )}
+        </ImpresionProvider>
       </AvisoMesaProvider>
     </div>
   );

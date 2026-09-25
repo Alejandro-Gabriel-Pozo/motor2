@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { abrirComoRol } from "./fixtures/rol-pos";
+import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 
 /**
  * Tomar pedido en el salón (docs/plan-tomar-pedido-2026-09-25.md): la pantalla de la mesa (/mesas/<id>) con el circuito completo —
@@ -212,6 +213,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
     await expect(aviso(m)).toHaveText("Envío 1 a cocina: 1 ítem de la mesa 964.");
     await expect(m.getByRole("button", { name: `Anular ${cat.flan.nombre}` })).toBeDisabled();
     await expect(m.getByRole("button", { name: "Cerrar cuenta" })).toBeDisabled();
+    await expect(m.getByRole("button", { name: "Reimprimir la comanda del envío 1" })).toBeEnabled();
 
     const v = soloVe.page;
     await v.goto(`/mesas/${mesaLectura.id}`);
@@ -222,6 +224,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
     await expect(v.getByRole("button", { name: "Enviar a cocina" })).toBeDisabled();
     await expect(v.getByRole("button", { name: `Anular ${cat.flan.nombre}` })).toBeDisabled();
     await expect(v.getByRole("button", { name: "Cerrar cuenta" })).toBeDisabled();
+    await expect(v.getByRole("button", { name: "Reimprimir la comanda del envío 1" })).toBeDisabled();
 
     await sinPermiso.page.goto(`/mesas/${mesaLectura.id}`);
     await expect(sinPermiso.page.getByText(/No tenés permiso para ver esta sección/)).toBeVisible();
@@ -232,6 +235,68 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
     await mozo.limpiar();
     await soloVe.limpiar();
     await sinPermiso.limpiar();
+  }
+});
+
+test("reimprimir un envío: la comanda sale de nuevo marcada REIMPRESIÓN, con lo vigente y lo anulado, sin precios y sin tocar la base", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+  // Nombre largo a propósito: en un rollo de 58 mm tiene que cortar línea, no desbordar.
+  const largo = await prisma.producto.create({
+    data: { codigo: `E2E-TP-LARGO-${marca}`, nombre: `E2E Milanesa napolitana con papas fritas y dos huevos a caballo ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 15000 },
+  });
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 968 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
+  const original = await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: largo.id, cantidad: 3, precioUnitario: 15000, numeroEnvio: 1, creadoPorId: admin.id } });
+  await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1, creadoPorId: admin.id } });
+  await prisma.cuentaItem.create({
+    data: { cuentaId: cuenta.id, productoId: largo.id, cantidad: -1, precioUnitario: 15000, numeroEnvio: 1, anulaAItemId: original.id, motivoAnulacion: "Se quemó una", creadoPorId: admin.id },
+  });
+  const filasDeLaCuenta = () => prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id }, orderBy: { id: "asc" } });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    await expect(page.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
+    const antes = await filasDeLaCuenta();
+
+    await page.getByRole("button", { name: "Reimprimir la comanda del envío 1" }).click();
+    await expect.poll(async () => (await impresiones(page)).length).toBe(1);
+    const [copia] = await impresiones(page);
+    expect(copia.tipo).toBe("reimpresion");
+    for (const texto of ["REIMPRESIÓN", "Mesa 968", "Envío 1", "Tomó: e2e-admin", `2 × ${largo.nombre}`, `1 × ${cat.flan.nombre}`, "Anulado", `1 × ${largo.nombre} · Se quemó una`]) {
+      expect(copia.texto).toContain(texto);
+    }
+    expect(copia.texto).not.toContain("$");
+    // Reimprimir no escribe nada: ni envío nuevo ni filas nuevas.
+    expect(await filasDeLaCuenta()).toEqual(antes);
+
+    // En pantalla el documento nunca se ve; al imprimir es lo único que se ve, y en 58 mm (~220 px) u 80 mm (~302 px) no desborda.
+    const documento = page.locator("[data-imprimible]");
+    await expect(documento).toHaveCount(1);
+    await expect(documento).toBeHidden();
+    await page.emulateMedia({ media: "print" });
+    await expect(documento).toBeVisible();
+    await expect(page.locator(".pos-shell")).toBeHidden();
+    for (const ancho of [220, 302]) {
+      await page.setViewportSize({ width: ancho, height: 800 });
+      const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(desborde, `papel de ${ancho}px`).toBeLessThanOrEqual(0);
+    }
+    await page.emulateMedia({ media: "screen" });
+
+    // Al cerrar el diálogo de impresión (`afterprint`) el documento sale del DOM.
+    const otra = await page.context().newPage();
+    await interceptarImpresion(otra, { simularAfterprint: true });
+    await otra.goto(`/mesas/${mesa.id}`);
+    await otra.getByRole("button", { name: "Reimprimir la comanda del envío 1" }).click();
+    await expect.poll(async () => (await impresiones(otra)).length).toBe(1);
+    await expect(otra.locator("[data-imprimible]")).toHaveCount(0);
+    await otra.close();
+  } finally {
+    await cat.limpiar([mesa.id]);
+    await prisma.producto.deleteMany({ where: { id: largo.id } });
   }
 });
 
