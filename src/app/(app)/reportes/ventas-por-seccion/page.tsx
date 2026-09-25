@@ -7,7 +7,8 @@ import { SelectorRango } from "@/components/selector-rango";
 
 /**
  * Ventas por sección de carta (docs/plan-carta-catalogo-2026-09-24.md, M7): las mismas ventas que «Por categoría», agrupadas
- * como las ve el cliente en la carta pública. Mismo permiso que «Por categoría» (dinero).
+ * como las ve el cliente en la carta pública — por la sección donde se ve CADA producto (docs/plan-carta-seccion-directa-2026-09-25.md,
+ * M5), y dentro de cada sección, por categoría. Mismo permiso que «Por categoría» (dinero).
  */
 export default async function VentasPorSeccionPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -40,11 +41,11 @@ export default async function VentasPorSeccionPage({ searchParams }: { searchPar
       ))}
       {!rep.porSeccion.length && <p className="text-sm text-neutral-500">Sin ventas en el período.</p>}
 
-      {rep.categoriasSinSeccion.length > 0 && (
+      {rep.productosSinSeccion.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-600">Categorías con ventas que no están en ninguna sección de carta</h2>
+          <h2 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-600">Productos con ventas que no se ven en ninguna sección de carta</h2>
           <ul className="list-disc pl-5 text-sm">
-            {rep.categoriasSinSeccion.map((c) => (
+            {rep.productosSinSeccion.map((c) => (
               <li key={c}>{c}</li>
             ))}
           </ul>
