@@ -32,7 +32,7 @@ function formatearCantidad(n: number): string {
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 }).format(n);
 }
 
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 /** «"Muzzarella" (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
 function describirAviso(aviso: AvisoStockNegativo): string {

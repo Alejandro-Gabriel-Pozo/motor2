@@ -16,6 +16,12 @@ interface Props {
   /** Cualquier valor que cambie cuando el formulario padre se resetea (ej. un contador tras un submit exitoso) — limpia el texto visible, que si no queda "pegado" aunque `value` vuelva a "". */
   limpiarSenal?: unknown;
   className?: string;
+  /**
+   * Sin las variantes `dark:` de la lista desplegable: para pantallas que no tienen modo oscuro y quedan claras aunque el sistema
+   * esté en oscuro (el salón, `.pos-shell`). Sin esto, con el sistema en oscuro la lista se pintaba de fondo oscuro con la tinta
+   * oscura del salón encima.
+   */
+  siempreClaro?: boolean;
 }
 
 /**
@@ -28,7 +34,7 @@ interface Props {
  * `required` siga bloqueando el submit nativo como con el `<select>`
  * anterior — el `<input>` visible es solo el término de búsqueda.
  */
-export function SelectorProducto({ id, value, onChange, filtro, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className }: Props) {
+export function SelectorProducto({ id, value, onChange, filtro, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, siempreClaro }: Props) {
   const [query, setQuery] = useState(etiquetaInicial ?? "");
   const [opciones, setOpciones] = useState<ProductoOpcion[]>([]);
   const [abierto, setAbierto] = useState(false);
@@ -127,7 +133,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
         className="w-full rounded border px-2 py-1.5 text-sm"
       />
       {abierto && (
-        <div className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+        <div className={`absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg ${siempreClaro ? "" : "dark:border-neutral-700 dark:bg-neutral-900"}`}>
           {cargando && (
             <p role="status" className="px-2 py-1.5 text-neutral-500">
               Buscando…
@@ -156,7 +162,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
                     elegir(op);
                   }}
                   onMouseEnter={() => setResaltado(i)}
-                  className={`cursor-pointer px-2 py-1.5 ${i === resaltado ? "bg-neutral-100 dark:bg-neutral-800" : ""}`}
+                  className={`cursor-pointer px-2 py-1.5 ${i === resaltado ? `bg-neutral-100 ${siempreClaro ? "" : "dark:bg-neutral-800"}` : ""}`}
                 >
                   {op.codigo} — {op.nombre}
                 </li>

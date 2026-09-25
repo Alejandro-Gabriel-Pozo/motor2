@@ -40,7 +40,7 @@ describe("cerrarCuenta (server action)", () => {
     ]);
 
     const r = await cerrarCuenta(cuenta.id, s.seccion.id);
-    expect(r).toEqual({ ok: true, mensaje: `Cuenta de la mesa 4 cerrada: se registró la venta por ${new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(36000)}.` });
+    expect(r).toEqual({ ok: true, mensaje: `Cuenta de la mesa 4 cerrada: se registró la venta por ${new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(36000)}.` });
 
     const ventas = await ventasDeLaMesa();
     expect(ventas).toHaveLength(2);
