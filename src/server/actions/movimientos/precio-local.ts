@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { esNumeroFinito } from "@/core/numero";
+import { validarImporte } from "@/core/datos/importe";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
@@ -55,8 +55,10 @@ async function guardarPrecioLocal(ctx: ContextoUsuario, producto: { id: string; 
  */
 export async function setPrecioLocalProducto(productoId: string, precio: number, habilitado: boolean): Promise<ResultadoConSincronizable> {
   return conPermiso<ResultadoConSincronizable>("precio_local", async (ctx) => {
-    if (!(precio >= 0)) return error("El precio no puede ser negativo.");
-    if (!esNumeroFinito(precio)) return error("El precio no es un número válido.");
+    // Mismo validador que el formulario (CampoNumero tipo="importe"): número, no negativo, a lo sumo 2 decimales, dentro del tope.
+    const validado = validarImporte(precio, { etiqueta: "El precio", obligatorio: true });
+    if (!validado.ok) return error(validado.mensaje);
+    precio = validado.valor!; // obligatorio: nunca null
 
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
@@ -81,8 +83,9 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
 export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, productoIds: string[], precio: number, habilitado: boolean): Promise<ResultadoAccion> {
   return conPermiso("precio_local", async (ctx) => {
     if (sucursalId !== ctx.sucursalId) return error("La sucursal activa cambió desde que se cargó la pantalla: recargala y volvé a intentar.");
-    if (!(precio >= 0)) return error("El precio no puede ser negativo.");
-    if (!esNumeroFinito(precio)) return error("El precio no es un número válido.");
+    const validado = validarImporte(precio, { etiqueta: "El precio", obligatorio: true });
+    if (!validado.ok) return error(validado.mensaje);
+    precio = validado.valor!; // obligatorio: nunca null
     const ids = [...new Set(productoIds)];
     if (!ids.length) return error("No hay productos para actualizar.");
 
