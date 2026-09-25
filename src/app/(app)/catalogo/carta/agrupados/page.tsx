@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin, type SeccionCartaAdmin } from "@/core/carta/admin-consulta";
+import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin } from "@/core/carta/admin-consulta";
 import {
   actualizarActivoItemAgrupadoCarta,
   actualizarOrdenOpcionItemAgrupadoCarta,
@@ -13,6 +13,7 @@ import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 
 /**
  * Ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M7): un renglón visible ("Gaseosa 500 CC") que
@@ -37,6 +38,8 @@ const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 const CLASE_AVISO = "rounded border border-amber-300 p-3 text-sm dark:border-amber-700";
 
 type ProductoSinGrupo = { id: string; nombre: string; precioAca: number };
+/** Para el select de sección + orden sugerido (DA6): las secciones, y cuántos ítems ya tiene cada una. */
+type UbicacionEnCarta = { secciones: { id: string; nombre: string; activa: boolean }[]; cantidadPorSeccion: Record<string, number> };
 
 export default async function ItemsAgrupadosPage() {
   const ctx = await obtenerContextoUsuario();
@@ -46,6 +49,10 @@ export default async function ItemsAgrupadosPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const datos = await cargarAdminItemsAgrupados(ctx.sucursalId);
+  const ubicacion: UbicacionEnCarta = {
+    secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
+    cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,7 +75,7 @@ export default async function ItemsAgrupadosPage() {
 
       <ul className="flex flex-col gap-3">
         {datos.items.map((it) => (
-          <ItemAgrupado key={it.id} item={it} secciones={datos.secciones} productosSinGrupo={datos.productosSinGrupo} />
+          <ItemAgrupado key={it.id} item={it} ubicacion={ubicacion} productosSinGrupo={datos.productosSinGrupo} />
         ))}
         {!datos.items.length && <li className="text-sm text-neutral-500">Todavía no hay ítems agrupados.</li>}
       </ul>
@@ -82,7 +89,7 @@ export default async function ItemsAgrupadosPage() {
           className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
         >
           <h2 className="text-sm font-medium sm:col-span-2">Nuevo ítem agrupado</h2>
-          <CamposItem secciones={datos.secciones} />
+          <CamposItem ubicacion={ubicacion} />
           <div className="sm:col-span-2">
             <button type="submit" className={CLASE_BOTON}>
               Crear ítem agrupado
@@ -118,7 +125,7 @@ function resumenPrecio(it: ItemAgrupadoAdmin): string {
   return it.precio.minimo === it.precio.maximo ? pesos(it.precio.minimo) : `${pesos(it.precio.minimo)}–${pesos(it.precio.maximo)}`;
 }
 
-function ItemAgrupado({ item: it, secciones, productosSinGrupo }: { item: ItemAgrupadoAdmin; secciones: SeccionCartaAdmin[]; productosSinGrupo: ProductoSinGrupo[] }) {
+function ItemAgrupado({ item: it, ubicacion, productosSinGrupo }: { item: ItemAgrupadoAdmin; ubicacion: UbicacionEnCarta; productosSinGrupo: ProductoSinGrupo[] }) {
   const id = it.id;
   const activo = it.activo;
   const preciosDistintos = it.avisos.preciosDistintos;
@@ -138,7 +145,7 @@ function ItemAgrupado({ item: it, secciones, productosSinGrupo }: { item: ItemAg
           }}
           className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
         >
-          <CamposItem secciones={secciones} valores={it} />
+          <CamposItem ubicacion={ubicacion} valores={it} />
           <div className="sm:col-span-2">
             <button type="submit" className={CLASE_BOTON}>
               Guardar «{it.nombre}»
@@ -268,10 +275,10 @@ function ItemAgrupado({ item: it, secciones, productosSinGrupo }: { item: ItemAg
 }
 
 function CamposItem({
-  secciones,
+  ubicacion,
   valores,
 }: {
-  secciones: SeccionCartaAdmin[];
+  ubicacion: UbicacionEnCarta;
   valores?: { nombre: string; seccionCartaId: string; descripcion: string | null; tags: string[]; especial: boolean; orden: number };
 }) {
   return (
@@ -280,29 +287,21 @@ function CamposItem({
         Nombre
         <input name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Gaseosa 500 CC" className={CLASE_INPUT} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Sección de carta
-        <select name="seccionCartaId" required defaultValue={valores?.seccionCartaId ?? ""} className={CLASE_INPUT}>
-          {!valores && <option value="">— elegí una —</option>}
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-              {s.activa ? "" : " (apagada)"}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-        Descripción (opcional)
-        <textarea name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} className={CLASE_INPUT} />
-      </label>
+      <SeccionYOrden
+        secciones={ubicacion.secciones}
+        cantidadPorSeccion={ubicacion.cantidadPorSeccion}
+        guardado={valores ? { seccionCartaId: valores.seccionCartaId, orden: valores.orden } : null}
+        etiquetaSeccion="Sección de carta"
+        requerida
+        conOpcionVacia={!valores}
+      />
       <label className="flex flex-col gap-1 text-sm">
         Tags (separados por coma)
         <input name="tags" defaultValue={valores?.tags.join(", ") ?? ""} placeholder="Sin alcohol" className={CLASE_INPUT} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Orden dentro de su sección
-        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} className={CLASE_INPUT} />
+      <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+        Descripción (opcional)
+        <textarea name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} className={CLASE_INPUT} />
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input name="especial" type="checkbox" defaultChecked={valores?.especial ?? false} /> Especial (★)

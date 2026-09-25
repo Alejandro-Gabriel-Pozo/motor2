@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { cargarAdminCarta, type ProductoCartaAdmin, type SeccionCartaAdmin } from "@/core/carta/admin-consulta";
+import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { actualizarActivaPromoCarta, guardarPromoCarta } from "@/server/actions/carta/promos";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 
 /**
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que restaurant-menu-design lee de motor2 por
@@ -29,6 +30,10 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 const CLASE_INPUT = "rounded border px-2 py-1";
 const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 
+type OpcionSeccion = { id: string; nombre: string; activa: boolean };
+/** Para el select de sección + orden sugerido (DA6): las secciones, y cuántos ítems ya tiene cada una. */
+type UbicacionEnCarta = { secciones: OpcionSeccion[]; cantidadPorSeccion: Record<string, number> };
+
 export default async function CartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -38,6 +43,10 @@ export default async function CartaPage() {
 
   const datos = await cargarAdminCarta(ctx.sucursalId);
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
+  const ubicacion: UbicacionEnCarta = {
+    secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
+    cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),
+  };
 
   return (
     <div className="flex flex-col gap-10">
@@ -109,7 +118,8 @@ export default async function CartaPage() {
           className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
         >
           <h3 className="text-sm font-medium sm:col-span-2">Nueva sección de carta</h3>
-          <CamposSeccion />
+          {/* DA5: una sección nueva cae al final por defecto (orden = cuántas hay). */}
+          <CamposSeccion ordenSugerido={datos.secciones.length} />
           <div className="sm:col-span-2">
             <button type="submit" className={CLASE_BOTON}>
               Crear sección
@@ -151,7 +161,7 @@ export default async function CartaPage() {
 
         <ul className="flex flex-col gap-2">
           {datos.productos.map((p) => (
-            <ContenidoProducto key={p.id} producto={p} secciones={datos.secciones} />
+            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} />
           ))}
           {!datos.productos.length && <li className="text-sm text-neutral-500">No hay productos de venta disponibles en esta sucursal.</li>}
         </ul>
@@ -233,7 +243,14 @@ export default async function CartaPage() {
   );
 }
 
-function CamposSeccion({ valores }: { valores?: { nombre: string; titulo: string | null; descripcion: string | null; imagenUrl: string | null; orden: number } }) {
+function CamposSeccion({
+  valores,
+  ordenSugerido = 0,
+}: {
+  valores?: { nombre: string; titulo: string | null; descripcion: string | null; imagenUrl: string | null; orden: number };
+  /** Alta (DA5): el orden inicial; al editar se muestra el guardado. */
+  ordenSugerido?: number;
+}) {
   return (
     <>
       <label className="flex flex-col gap-1 text-sm">
@@ -254,7 +271,7 @@ function CamposSeccion({ valores }: { valores?: { nombre: string; titulo: string
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Orden
-        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} className={CLASE_INPUT} />
+        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} className={CLASE_INPUT} />
       </label>
     </>
   );
@@ -301,7 +318,7 @@ function CamposPromo({
   );
 }
 
-function ContenidoProducto({ producto: p, secciones }: { producto: ProductoCartaAdmin; secciones: SeccionCartaAdmin[] }) {
+function ContenidoProducto({ producto: p, ubicacion }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta }) {
   const productoId = p.id;
   // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
   const estado = p.agrupadoEn
@@ -350,22 +367,12 @@ function ContenidoProducto({ producto: p, secciones }: { producto: ProductoCarta
           <label className="flex items-center gap-2 text-sm">
             <input name="especial" type="checkbox" defaultChecked={p.contenido?.especial ?? false} /> Especial (★)
           </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Sección de carta (obligatoria si se muestra)
-            <select name="seccionCartaId" defaultValue={p.contenido?.seccionCartaId ?? ""} className={CLASE_INPUT}>
-              <option value="">— elegí una —</option>
-              {secciones.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                  {s.activa ? "" : " (apagada)"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Orden dentro de su sección
-            <input name="orden" type="number" step={1} defaultValue={p.contenido?.orden ?? 0} className={CLASE_INPUT} />
-          </label>
+          <SeccionYOrden
+            secciones={ubicacion.secciones}
+            cantidadPorSeccion={ubicacion.cantidadPorSeccion}
+            guardado={p.contenido && { seccionCartaId: p.contenido.seccionCartaId, orden: p.contenido.orden }}
+            etiquetaSeccion="Sección de carta (obligatoria si se muestra)"
+          />
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             Descripción (opcional)
             <textarea name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} className={CLASE_INPUT} />

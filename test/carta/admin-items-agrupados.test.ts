@@ -114,6 +114,25 @@ describe("admin de ítems agrupados", () => {
     expect(sinSeccion.diagnostico.agrupadosSinSeccion).toEqual([{ id: agId, nombre: "Gaseosa 500 CC" }]);
   });
 
+  it("cantidadItems por sección (base del orden sugerido, DA6): sueltos visibles sin agrupar + agrupados prendidos", async () => {
+    const otras = await prisma.seccionCarta.findUniqueOrThrow({ where: { nombre: "Otras bebidas" } });
+    await prisma.contenidoCartaProducto.createMany({
+      data: [
+        { productoId: ids.agua, visibleEnCarta: true, seccionCartaId: bebidasId },
+        // Oculto: no cuenta.
+        { productoId: ids.suelta, visibleEnCarta: false, seccionCartaId: bebidasId },
+        // Agrupado (sale dentro de «Gaseosa 500 CC», D3): no cuenta como suelto.
+        { productoId: ids.coca, visibleEnCarta: true, seccionCartaId: otras.id },
+      ],
+    });
+    // Un agrupado apagado no cuenta.
+    await prisma.itemAgrupadoCarta.create({ data: { nombre: "Apagado", seccionCartaId: bebidasId, activo: false } });
+    const cantidades = (secciones: { nombre: string; cantidadItems: number }[]) => Object.fromEntries(secciones.map((s) => [s.nombre, s.cantidadItems]));
+    // Bebidas: el agua (suelta visible) + «Gaseosa 500 CC» (agrupado prendido).
+    expect(cantidades((await cargarAdminItemsAgrupados(central)).secciones)).toEqual({ "Bebidas sin alcohol": 2, "Otras bebidas": 0 });
+    expect(cantidades((await cargarAdminCarta(central)).secciones)).toEqual({ "Bebidas sin alcohol": 2, "Otras bebidas": 0 });
+  });
+
   it("orden: activos primero, después orden y nombre", async () => {
     await prisma.itemAgrupadoCarta.create({ data: { nombre: "Apagado", seccionCartaId: bebidasId, activo: false } });
     await prisma.itemAgrupadoCarta.create({ data: { nombre: "Agua 1,5L", seccionCartaId: bebidasId, orden: 0 } });
