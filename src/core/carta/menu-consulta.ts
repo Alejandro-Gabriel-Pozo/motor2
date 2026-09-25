@@ -15,7 +15,8 @@ type Db = PrismaClient | Prisma.TransactionClient;
  *    disponible", guardián disponibilidad-en-un-solo-lugar.test.ts);
  *  - y con `ContenidoCartaProducto.visibleEnCarta` en true (sin fila de contenido = no se muestra, decisión D3);
  *  - con el precio local habilitado de la sucursal si lo hay (la regla la aplica `precioDeCarta`);
- *  - agrupados por las secciones de carta ACTIVAS;
+ *  - ubicados DIRECTO en las secciones de carta ACTIVAS, cada uno por su `seccionCartaId` (docs/plan-carta-seccion-directa-2026-09-25.md;
+ *    la Categoría de producto solo viaja como texto informativo);
  *  - más las promos activas de ESTA sucursal;
  *  - más los ítems AGRUPADOS activos (docs/plan-agrupacion-items-carta-2026-09-24.md, M3), cada uno con sus opciones PV
  *    disponibles acá. Un producto que es opción de un ítem agrupado NO entra como suelto (D3), esté prendido o apagado su
@@ -34,9 +35,8 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
         id: true,
         nombre: true,
         precioVenta: true,
-        categoriaId: true,
         categoria: { select: { nombre: true } },
-        contenidoCarta: { select: { descripcion: true, imagenUrl: true, tags: true, especial: true, orden: true } },
+        contenidoCarta: { select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true } },
       },
     }),
     db.seccionCarta.findMany({
@@ -48,7 +48,6 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
         descripcion: true,
         imagenUrl: true,
         orden: true,
-        categorias: { select: { categoriaId: true, orden: true } },
       },
     }),
     db.promoCarta.findMany({
@@ -60,10 +59,8 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
       select: {
         id: true,
         nombre: true,
-        categoriaId: true,
-        categoria: { select: { nombre: true } },
+        seccionCartaId: true,
         descripcion: true,
-        imagenUrl: true,
         tags: true,
         especial: true,
         orden: true,
@@ -96,8 +93,8 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
               id: p.id,
               nombre: p.nombre,
               precioVenta: Number(p.precioVenta),
-              categoriaId: p.categoriaId,
               categoriaNombre: p.categoria?.nombre ?? null,
+              seccionCartaId: p.contenidoCarta.seccionCartaId,
               contenido: p.contenidoCarta,
             },
           ]
@@ -108,9 +105,8 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
     agrupados: agrupados.map((ag) => ({
       id: ag.id,
       nombre: ag.nombre,
-      categoriaId: ag.categoriaId,
-      categoriaNombre: ag.categoria.nombre,
-      contenido: { descripcion: ag.descripcion, imagenUrl: ag.imagenUrl, tags: ag.tags, especial: ag.especial, orden: ag.orden },
+      seccionCartaId: ag.seccionCartaId,
+      contenido: { descripcion: ag.descripcion, tags: ag.tags, especial: ag.especial, orden: ag.orden },
       opciones: ag.opciones.map((o) => ({ productoId: o.producto.id, nombre: o.producto.nombre, precioVenta: Number(o.producto.precioVenta), orden: o.orden })),
     })),
   });

@@ -21,25 +21,22 @@ export interface SeccionCartaAdmin {
   imagenUrl: string | null;
   orden: number;
   activa: boolean;
-  cantidadCategorias: number;
-}
-
-export interface CategoriaAdmin {
-  id: string;
-  nombre: string;
-  activo: boolean;
-  seccionCartaId: string | null;
-  orden: number;
+  /**
+   * Cuántos ítems ya están ubicados en esta sección (docs/plan-carta-seccion-directa-2026-09-25.md, DA6): productos sueltos visibles
+   * (sin agrupar) + ítems agrupados prendidos — comparten la misma escala de orden. Es el orden que se sugiere para uno nuevo.
+   */
+  cantidadItems: number;
 }
 
 export interface ProductoCartaAdmin {
   id: string;
   nombre: string;
+  /** Solo informativo (Catálogo): no ubica nada en la carta. */
   categoria: string | null;
-  /** Nombre de la sección de carta ACTIVA donde cae por su categoría, o null. */
+  /** Nombre de la sección de carta ACTIVA donde está su contenido, o null. */
   seccionCarta: string | null;
   precio: number;
-  contenido: { visibleEnCarta: boolean; descripcion: string | null; imagenUrl: string | null; tags: string[]; especial: boolean; orden: number } | null;
+  contenido: { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number } | null;
   /** Nombre del ítem agrupado donde está (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), o null: si está, sale solo ahí. */
   agrupadoEn: string | null;
 }
@@ -57,7 +54,6 @@ export interface PromoCartaAdmin {
 
 export interface DatosAdminCarta {
   secciones: SeccionCartaAdmin[];
-  categorias: CategoriaAdmin[];
   /** PV disponibles en la sucursal (los únicos que pueden salir en su carta). */
   productos: ProductoCartaAdmin[];
   /**
@@ -65,23 +61,50 @@ export interface DatosAdminCarta {
    * los que están en un ítem agrupado: esos salen en la carta a través del grupo, sin contenido propio.
    */
   sinContenido: ProductoCartaAdmin[];
-  /** Visibles y disponibles que igual no salen porque su categoría no está en ninguna sección de carta activa. */
+  /** Visibles y disponibles que igual no salen porque no tienen sección de carta, o la suya está apagada. */
   visiblesSinSeccion: ProductoSinSeccion[];
   promos: PromoCartaAdmin[];
 }
 
+/** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
+async function seccionesConCantidad(db: Db): Promise<SeccionCartaAdmin[]> {
+  const secciones = await db.seccionCarta.findMany({
+    include: {
+      _count: {
+        select: {
+          // Mismo criterio que la carta: un PV agrupado no sale suelto (D3), aunque tenga contenido visible.
+          contenidos: { where: { visibleEnCarta: true, producto: { opcionItemAgrupadoCarta: { is: null } } } },
+          agrupados: { where: { activo: true } },
+        },
+      },
+    },
+    orderBy: [{ orden: "asc" }, { nombre: "asc" }],
+  });
+  return secciones.map((s) => ({
+    id: s.id,
+    nombre: s.nombre,
+    titulo: s.titulo,
+    descripcion: s.descripcion,
+    imagenUrl: s.imagenUrl,
+    orden: s.orden,
+    activa: s.activa,
+    cantidadItems: s._count.contenidos + s._count.agrupados,
+  }));
+}
+
 export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Promise<DatosAdminCarta> {
-  const [secciones, categorias, productos, promos, armado] = await Promise.all([
-    db.seccionCarta.findMany({ include: { _count: { select: { categorias: true } } }, orderBy: [{ orden: "asc" }, { nombre: "asc" }] }),
-    db.categoriaProducto.findMany({ include: { seccionCarta: true }, orderBy: { nombre: "asc" } }),
+  const [secciones, productos, promos, armado] = await Promise.all([
+    seccionesConCantidad(db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: {
         id: true,
         nombre: true,
         precioVenta: true,
-        categoria: { select: { nombre: true, seccionCarta: { select: { seccionCarta: { select: { nombre: true, activa: true } } } } } },
-        contenidoCarta: { select: { visibleEnCarta: true, descripcion: true, imagenUrl: true, tags: true, especial: true, orden: true } },
+        categoria: { select: { nombre: true } },
+        contenidoCarta: {
+          select: { visibleEnCarta: true, seccionCartaId: true, seccionCarta: { select: { nombre: true, activa: true } }, descripcion: true, tags: true, especial: true, orden: true },
+        },
         opcionItemAgrupadoCarta: { select: { itemAgrupadoCarta: { select: { nombre: true } } } },
       },
       orderBy: { nombre: "asc" },
@@ -91,30 +114,20 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
   ]);
 
   const productosAdmin: ProductoCartaAdmin[] = productos.map((p) => {
-    const seccion = p.categoria?.seccionCarta?.seccionCarta;
+    const c = p.contenidoCarta;
     return {
       id: p.id,
       nombre: p.nombre,
       categoria: p.categoria?.nombre ?? null,
-      seccionCarta: seccion?.activa ? seccion.nombre : null,
+      seccionCarta: c?.seccionCarta?.activa ? c.seccionCarta.nombre : null,
       precio: Number(p.precioVenta),
-      contenido: p.contenidoCarta,
+      contenido: c && { visibleEnCarta: c.visibleEnCarta, seccionCartaId: c.seccionCartaId, descripcion: c.descripcion, tags: c.tags, especial: c.especial, orden: c.orden },
       agrupadoEn: p.opcionItemAgrupadoCarta?.itemAgrupadoCarta.nombre ?? null,
     };
   });
 
   return {
-    secciones: secciones.map((s) => ({
-      id: s.id,
-      nombre: s.nombre,
-      titulo: s.titulo,
-      descripcion: s.descripcion,
-      imagenUrl: s.imagenUrl,
-      orden: s.orden,
-      activa: s.activa,
-      cantidadCategorias: s._count.categorias,
-    })),
-    categorias: categorias.map((c) => ({ id: c.id, nombre: c.nombre, activo: c.activo, seccionCartaId: c.seccionCarta?.seccionCartaId ?? null, orden: c.seccionCarta?.orden ?? 0 })),
+    secciones,
     productos: productosAdmin,
     sinContenido: productosAdmin.filter((p) => !p.contenido && !p.agrupadoEn),
     visiblesSinSeccion: armado?.diagnostico.visiblesSinSeccion ?? [],
@@ -141,25 +154,19 @@ export interface OpcionItemAgrupadoAdmin {
   productoId: string;
   nombre: string;
   orden: number;
-  categoria: string | null;
-  /** Sección de carta ACTIVA de la categoría del producto, o null. */
-  seccionCarta: string | null;
   disponibleAca: boolean;
   /** Precio en esta sucursal, con la regla de la carta (`precioDeCarta`). */
   precioAca: number;
-  /** Aviso D4: la categoría de la opción cae en otra sección de carta (o en ninguna) que la del ítem agrupado. */
-  otraSeccion: boolean;
 }
 
 export interface ItemAgrupadoAdmin {
   id: string;
   nombre: string;
-  categoriaId: string;
-  categoria: string;
-  /** Sección de carta ACTIVA de su categoría, o null (entonces no sale). */
+  /** La sección de carta donde se ubica, directo (docs/plan-carta-seccion-directa-2026-09-25.md). */
+  seccionCartaId: string;
+  /** Nombre de su sección de carta si está ACTIVA, o null (entonces no sale). */
   seccionCarta: string | null;
   descripcion: string | null;
-  imagenUrl: string | null;
   tags: string[];
   especial: boolean;
   orden: number;
@@ -174,16 +181,15 @@ export interface ItemAgrupadoAdmin {
     preciosDistintos: { minimo: number; maximo: number; mostrado: number } | null;
     /** Ninguna opción disponible acá: el ítem no sale en la carta de esta sucursal. */
     sinOpcionesAca: boolean;
-    /** Su categoría no está en ninguna sección de carta activa: el ítem no sale. */
+    /** Su sección de carta está apagada: el ítem no sale. */
     sinSeccion: boolean;
-    /** D4: alguna opción cae en otra sección de carta (sus ventas se cuentan ahí). */
-    opcionesEnOtraSeccion: boolean;
   };
 }
 
 export interface DatosAdminItemsAgrupados {
   items: ItemAgrupadoAdmin[];
-  categorias: { id: string; nombre: string; activo: boolean }[];
+  /** Todas las secciones de carta (para el select del ítem), con cuántos ítems ya tiene cada una (orden sugerido, DA6). */
+  secciones: SeccionCartaAdmin[];
   /** PV disponibles acá que no están en ningún ítem agrupado (para el select "Agregar producto"). */
   productosSinGrupo: { id: string; nombre: string; precioAca: number }[];
   diagnostico: Pick<MenuArmado["diagnostico"], "agrupadosSinSeccion" | "agrupadosSinOpciones" | "agrupadosConPreciosDistintos">;
@@ -191,16 +197,14 @@ export interface DatosAdminItemsAgrupados {
 
 /** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. */
 export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = prisma): Promise<DatosAdminItemsAgrupados> {
-  const seccionDeCategoria = { select: { seccionCarta: { select: { nombre: true, activa: true } } } } as const;
-  const [items, categorias, sinGrupo, armado] = await Promise.all([
+  const [items, secciones, sinGrupo, armado] = await Promise.all([
     db.itemAgrupadoCarta.findMany({
       select: {
         id: true,
         nombre: true,
-        categoriaId: true,
-        categoria: { select: { nombre: true, seccionCarta: seccionDeCategoria } },
+        seccionCartaId: true,
+        seccionCarta: { select: { nombre: true, activa: true } },
         descripcion: true,
-        imagenUrl: true,
         tags: true,
         especial: true,
         orden: true,
@@ -209,13 +213,13 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
           select: {
             id: true,
             orden: true,
-            producto: { select: { id: true, nombre: true, tipo: true, precioVenta: true, categoria: { select: { nombre: true, seccionCarta: seccionDeCategoria } } } },
+            producto: { select: { id: true, nombre: true, tipo: true, precioVenta: true } },
           },
         },
       },
       orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }],
     }),
-    db.categoriaProducto.findMany({ select: { id: true, nombre: true, activo: true }, orderBy: { nombre: "asc" } }),
+    seccionesConCantidad(db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId), opcionItemAgrupadoCarta: { is: null } },
       select: { id: true, nombre: true, precioVenta: true },
@@ -234,42 +238,30 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
   ]);
   const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
   const precioAca = (productoId: string, precioVenta: { toString(): string }) => precioDeCarta(Number(precioVenta), localPorProducto.get(productoId));
-  const seccionActiva = (c: { seccionCarta: { seccionCarta: { nombre: string; activa: boolean } } | null } | null | undefined) => {
-    const s = c?.seccionCarta?.seccionCarta;
-    return s?.activa ? s.nombre : null;
-  };
   const comparar = (a: string, b: string) => a.localeCompare(b, "es");
 
   return {
     items: items.map((it) => {
-      const seccionCarta = seccionActiva(it.categoria);
+      const seccionCarta = it.seccionCarta.activa ? it.seccionCarta.nombre : null;
       const opciones: OpcionItemAgrupadoAdmin[] = it.opciones
-        .map((o) => {
-          const seccionOpcion = seccionActiva(o.producto.categoria);
-          return {
-            id: o.id,
-            productoId: o.producto.id,
-            nombre: o.producto.nombre,
-            orden: o.orden,
-            categoria: o.producto.categoria?.nombre ?? null,
-            seccionCarta: seccionOpcion,
-            // Mismo criterio que la carta (menu-consulta.ts): solo un PV disponible acá cuenta.
-            disponibleAca: o.producto.tipo === "PV" && disponibilidad.get(o.producto.id) === true,
-            precioAca: precioAca(o.producto.id, o.producto.precioVenta),
-            otraSeccion: seccionOpcion !== seccionCarta,
-          };
-        })
+        .map((o) => ({
+          id: o.id,
+          productoId: o.producto.id,
+          nombre: o.producto.nombre,
+          orden: o.orden,
+          // Mismo criterio que la carta (menu-consulta.ts): solo un PV disponible acá cuenta.
+          disponibleAca: o.producto.tipo === "PV" && disponibilidad.get(o.producto.id) === true,
+          precioAca: precioAca(o.producto.id, o.producto.precioVenta),
+        }))
         .sort((a, b) => a.orden - b.orden || comparar(a.nombre, b.nombre));
       const precios = opciones.filter((o) => o.disponibleAca).map((o) => o.precioAca);
       const precio = precios.length ? { minimo: Math.min(...precios), maximo: Math.max(...precios) } : null;
       return {
         id: it.id,
         nombre: it.nombre,
-        categoriaId: it.categoriaId,
-        categoria: it.categoria.nombre,
+        seccionCartaId: it.seccionCartaId,
         seccionCarta,
         descripcion: it.descripcion,
-        imagenUrl: it.imagenUrl,
         tags: it.tags,
         especial: it.especial,
         orden: it.orden,
@@ -281,11 +273,10 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
           preciosDistintos: precio && precio.minimo !== precio.maximo ? { ...precio, mostrado: precio.maximo } : null,
           sinOpcionesAca: precios.length === 0,
           sinSeccion: seccionCarta === null,
-          opcionesEnOtraSeccion: opciones.some((o) => o.otraSeccion),
         },
       };
     }),
-    categorias,
+    secciones,
     productosSinGrupo: sinGrupo.map((p) => ({ id: p.id, nombre: p.nombre, precioAca: precioAca(p.id, p.precioVenta) })),
     diagnostico: {
       agrupadosSinSeccion: armado?.diagnostico.agrupadosSinSeccion ?? [],
