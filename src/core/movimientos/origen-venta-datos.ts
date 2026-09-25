@@ -10,7 +10,8 @@ import { crearLibroDeStock, type LibroDeStock, type SeccionCandidata } from "@/c
  * Dos modos (`OrigenVenta`):
  * - `seccion` (venta de mostrador): la sección la elige una persona; se valida que sea de la sucursal («No se encontró la sección.»,
  *   como siempre) y es la única candidata (habitual de todo = ella, sin respaldos).
- * - `automatico` (cierre de cuenta del POS): candidatas = las secciones activas de la sucursal, todas de respaldo. Si no hay ninguna,
+ * - `automatico` (cierre de cuenta del POS): candidatas = las secciones activas de la sucursal, todas de respaldo; cada PV prefiere
+ *   su sección HABITUAL (`SeccionHabitualProducto`), solo si apunta a una sección ACTIVA de ESTA sucursal. Si no hay ninguna activa,
  *   «Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.» (el mismo mensaje que ya mostraba la pantalla).
  *   Sección de REFERENCIA de un producto: la de su último movimiento entre las de respaldo (`groupBy` + `_max.creadoEn`, nunca
  *   `findMany distinct`, que Prisma deduplica en memoria); decide adónde va un faltante o la fila VENTA cuando nada más lo decide.
@@ -94,16 +95,26 @@ export async function cargarDatosDeOrigen(
   }
 
   const respaldos = origen.activas;
-  const referencias = await cargarReferencias(tx, [...pedido.pvIds, ...productoIds], respaldos);
+  const [referencias, habituales] = await Promise.all([cargarReferencias(tx, [...pedido.pvIds, ...productoIds], respaldos), cargarHabituales(tx, sucursalId, pedido.pvIds)]);
   return {
     libro,
     familiaDe,
-    habitualDe: () => null,
+    habitualDe: (pvId) => habituales.get(pvId) ?? null,
     respaldos,
     referenciaDe: (productoId) => referencias.get(productoId) ?? null,
     seccionPorDefectoId: respaldos[0]?.id ?? origen.activas[0].id,
     nombreDeSeccion: (id) => nombres.get(id) ?? id,
   };
+}
+
+/** Sección habitual de cada PV — solo las que apuntan a una sección ACTIVA de esta sucursal (cualquier otra se ignora, como si no hubiera). */
+async function cargarHabituales(tx: Prisma.TransactionClient, sucursalId: string, pvIds: readonly string[]): Promise<Map<string, SeccionCandidata>> {
+  if (!pvIds.length) return new Map();
+  const filas = await tx.seccionHabitualProducto.findMany({
+    where: { sucursalId, productoId: { in: [...pvIds] }, seccion: { sucursalId, activa: true } },
+    select: { productoId: true, seccion: { select: { id: true, nombre: true } } },
+  });
+  return new Map(filas.map((f) => [f.productoId, f.seccion]));
 }
 
 /** Sección del último movimiento de cada producto entre `respaldos` (empate: la primera por nombre). */
