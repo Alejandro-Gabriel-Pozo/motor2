@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
+import { importeDeLinea } from "@/core/moneda";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
@@ -250,7 +251,7 @@ export async function registrarVentaEnTx(
           operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "LIQUIDACION_CONSIGNACION",
           cantidad: 0, loteVencimiento: null,
           detalle: `Liquidación consignación por venta de "${producto?.nombre ?? venta.productoId}".`,
-          precioTotal: redondearMoneda(cantidadRedondeada * Number(consumido.precioConsignacion ?? 0)),
+          precioTotal: importeDeLinea(cantidadRedondeada, Number(consumido.precioConsignacion ?? 0)),
           precioPorUnidadStock: redondearMoneda(Number(consumido.precioConsignacion ?? 0)),
         });
       }
@@ -259,7 +260,7 @@ export async function registrarVentaEnTx(
     // El PV vendido en sí: signoStock -1 (Movimientos.js:190-205) — si
     // no tiene stock real (no "Se produce"), este saldo negativo es un
     // artefacto contable de las ventas, mismo criterio que hoy.
-    const importeVenta = redondearMoneda(venta.cantidadVendida * venta.precioVenta);
+    const importeVenta = importeDeLinea(venta.cantidadVendida, venta.precioVenta);
     filas.push({
       operacionId: operacion.id, productoId: venta.productoId, seccionId: datos.seccionId, proceso: "VENTA",
       cantidad: -venta.cantidadVendida, loteVencimiento: venta.loteVencimiento,

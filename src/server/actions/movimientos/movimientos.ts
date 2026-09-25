@@ -12,6 +12,7 @@ import {
   redondearACantidadDeUnidad,
   redondearMoneda,
 } from "@/core/movimientos/transiciones";
+import { importeDeLinea } from "@/core/moneda";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -399,7 +400,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
                 operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "LIQUIDACION_CONSIGNACION",
                 cantidad: 0, loteVencimiento: null,
                 detalle: "Liquidación consignación por producción.",
-                precioTotal: redondearMoneda(cantidadRedondeada * Number(consumido.precioConsignacion ?? 0)),
+                precioTotal: importeDeLinea(cantidadRedondeada, Number(consumido.precioConsignacion ?? 0)),
                 precioPorUnidadStock: redondearMoneda(Number(consumido.precioConsignacion ?? 0)),
               });
             }
