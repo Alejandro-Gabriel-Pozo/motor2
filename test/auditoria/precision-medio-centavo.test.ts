@@ -151,4 +151,18 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
       expect.soft(liquidado).toBe(22.91);
     });
   });
+
+  it("caso C: venta de 0,3 kg de un PV a $1.234,55/kg = 370,365 → la línea VENTA guarda 370,37 (en float 370.36499999999995)", async () => {
+    const kg3 = await prisma.unidad.create({ data: { nombre: "kg_3_decimales", magnitud: "PESO", decimales: 3 } });
+    const jamon = await sembrarProductoDisponible({ codigo: "MP_JAMON", nombre: "Jamón crudo", tipo: "MP", unidadStockId: kg3.id, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_JAMON", nombre: "Jamón crudo por kg", tipo: "PV", unidadStockId: kg3.id, precioVenta: 1234.55 }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: jamon.id, cantidad: 1, unidadId: kg3.id }] } } });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: jamon.id, cantidad: 5 }] });
+
+    const venta = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.3 }] });
+    expect(venta.ok, venta.mensaje).toBe(true);
+
+    const movVenta = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: pv.id, proceso: "VENTA" } });
+    expect(Number(movVenta.precioTotal)).toBe(370.37);
+  });
 });

@@ -260,7 +260,7 @@ export async function registrarVentaEnTx(
     // El PV vendido en sí: signoStock -1 (Movimientos.js:190-205) — si
     // no tiene stock real (no "Se produce"), este saldo negativo es un
     // artefacto contable de las ventas, mismo criterio que hoy.
-    const importeVenta = redondearMoneda(venta.cantidadVendida * venta.precioVenta);
+    const importeVenta = importeDeLinea(venta.cantidadVendida, venta.precioVenta);
     filas.push({
       operacionId: operacion.id, productoId: venta.productoId, seccionId: datos.seccionId, proceso: "VENTA",
       cantidad: -venta.cantidadVendida, loteVencimiento: venta.loteVencimiento,
