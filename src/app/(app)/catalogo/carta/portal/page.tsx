@@ -25,6 +25,12 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 const CLASE_INPUT = "rounded border px-2 py-1";
 const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 
+/** Base pública de la carta (CARTA_PORTAL_URL), sin barra final, o null si no está configurada — sin ella no se muestra ningún link "Ver en vivo". */
+function urlBasePortal(): string | null {
+  const base = process.env.CARTA_PORTAL_URL?.trim().replace(/\/+$/, "");
+  return base || null;
+}
+
 export default async function PortalSucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -33,6 +39,7 @@ export default async function PortalSucursalesPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sucursales = await cargarAdminPortal();
+  const basePortal = urlBasePortal();
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,11 +50,16 @@ export default async function PortalSucursalesPage() {
           el mismo slug de la sheet maestra de la carta; «Quitar del portal» vuelve a esa fila. Solo sale en el portal si está publicada y la sucursal está
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
+        {basePortal && (
+          <a href={basePortal} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm text-blue-600 underline">
+            Ver el portal en vivo →
+          </a>
+        )}
       </div>
 
       <ul className="flex flex-col gap-3">
         {sucursales.map((s) => (
-          <SucursalEnPortal key={s.id} sucursal={s} />
+          <SucursalEnPortal key={s.id} sucursal={s} basePortal={basePortal} />
         ))}
         {!sucursales.length && <li className="text-sm text-neutral-500">No hay sucursales.</li>}
       </ul>
@@ -61,7 +73,12 @@ function estadoEnPortal(s: SucursalPortalAdmin): string {
   return `/carta/${s.publica.slug} · ${s.activo ? "publicada" : "publicada, pero la sucursal está inactiva: no se muestra"}`;
 }
 
-function SucursalEnPortal({ sucursal: s }: { sucursal: SucursalPortalAdmin }) {
+/** Se ve en vivo solo publicada y con la sucursal activa — igual criterio que la carta real (D7: activo = publicada && Sucursal.activo). */
+function seVeEnVivo(s: SucursalPortalAdmin): boolean {
+  return Boolean(s.publica?.publicada) && s.activo;
+}
+
+function SucursalEnPortal({ sucursal: s, basePortal }: { sucursal: SucursalPortalAdmin; basePortal: string | null }) {
   const sucursalId = s.id;
   const p = s.publica;
   return (
@@ -69,6 +86,14 @@ function SucursalEnPortal({ sucursal: s }: { sucursal: SucursalPortalAdmin }) {
       <p className="text-sm">
         <span className="font-medium">{s.nombre}</span>
         {!s.activo && <span className="text-neutral-500"> (inactiva)</span>} · {estadoEnPortal(s)}
+        {basePortal && p && seVeEnVivo(s) && (
+          <>
+            {" · "}
+            <a href={`${basePortal}/carta/${p.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+              Ver en vivo →
+            </a>
+          </>
+        )}
       </p>
       {p && (
         // Solo lectura (docs/plan-tema-carta-2026-09-24.md, M6): de dónde saca la carta los colores y textos de esta sucursal.
