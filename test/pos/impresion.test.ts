@@ -48,6 +48,8 @@ describe("resolverImpresion: boleta de cierre", () => {
     total: 18000,
     ventaAnulada,
     numero: null,
+    corrigeA: null,
+    estado: ventaAnulada ? "anulada" : "vigente",
   });
 
   it("presente en «Cuentas cerradas»: se imprime", () => {
