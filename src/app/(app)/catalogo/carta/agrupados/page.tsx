@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin } from "@/core/carta/admin-consulta";
+import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin, type SeccionCartaAdmin } from "@/core/carta/admin-consulta";
 import {
   actualizarActivoItemAgrupadoCarta,
   actualizarOrdenOpcionItemAgrupadoCarta,
@@ -17,7 +17,8 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 /**
  * Ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M7): un renglón visible ("Gaseosa 500 CC") que
  * agrupa varios productos de venta reales y distintos (Coca-Cola, Sprite, Fanta 500cc), con su propia descripción, tags y ★.
- * Globales (Catálogo Central); lo que se ve acá de cada opción (disponible o no, y su precio) es de la sucursal ACTIVA.
+ * Se ubica DIRECTO en su sección de carta, sin imagen propia (docs/plan-carta-seccion-directa-2026-09-25.md). Globales (Catálogo
+ * Central); lo que se ve acá de cada opción (disponible o no, y su precio) es de la sucursal ACTIVA.
  *
  * Mismo estilo que /catalogo/carta: las mutaciones pasan por las Server Actions de src/server/actions/carta/items-agrupados.ts
  * (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
@@ -35,7 +36,6 @@ const CLASE_INPUT = "rounded border px-2 py-1";
 const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 const CLASE_AVISO = "rounded border border-amber-300 p-3 text-sm dark:border-amber-700";
 
-type Categoria = { id: string; nombre: string; activo: boolean };
 type ProductoSinGrupo = { id: string; nombre: string; precioAca: number };
 
 export default async function ItemsAgrupadosPage() {
@@ -53,8 +53,8 @@ export default async function ItemsAgrupadosPage() {
         <h1 className="mb-1 text-xl font-semibold">Ítems agrupados de la carta</h1>
         <p className="text-sm text-neutral-500">
           Un ítem agrupado es un solo renglón de la carta («Gaseosa 500 CC») que agrupa varios productos de venta reales («Coca-Cola 500cc», «Sprite
-          500cc»…), con su propia descripción, tags y ★. Se ubica en la carta por su categoría, igual que un producto. Un producto agrupado sale solo dentro
-          de su ítem, nunca suelto. Lo que se ve de cada opción (si está disponible y su precio) es de esta sucursal, {ctx.sucursalNombre}. Volver a{" "}
+          500cc»…), con su propia descripción, tags y ★. Se ubica directo en su sección de carta, igual que un producto suelto. Un producto agrupado sale solo
+          dentro de su ítem, nunca suelto. Lo que se ve de cada opción (si está disponible y su precio) es de esta sucursal, {ctx.sucursalNombre}. Volver a{" "}
           <Link href="/catalogo/carta" className="underline">
             Carta pública
           </Link>
@@ -68,12 +68,12 @@ export default async function ItemsAgrupadosPage() {
 
       <ul className="flex flex-col gap-3">
         {datos.items.map((it) => (
-          <ItemAgrupado key={it.id} item={it} categorias={datos.categorias} productosSinGrupo={datos.productosSinGrupo} />
+          <ItemAgrupado key={it.id} item={it} secciones={datos.secciones} productosSinGrupo={datos.productosSinGrupo} />
         ))}
         {!datos.items.length && <li className="text-sm text-neutral-500">Todavía no hay ítems agrupados.</li>}
       </ul>
 
-      {datos.categorias.length > 0 ? (
+      {datos.secciones.length > 0 ? (
         <FormConResultado
           accion={async (fd: FormData) => {
             "use server";
@@ -82,7 +82,7 @@ export default async function ItemsAgrupadosPage() {
           className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
         >
           <h2 className="text-sm font-medium sm:col-span-2">Nuevo ítem agrupado</h2>
-          <CamposItem categorias={datos.categorias} />
+          <CamposItem secciones={datos.secciones} />
           <div className="sm:col-span-2">
             <button type="submit" className={CLASE_BOTON}>
               Crear ítem agrupado
@@ -90,7 +90,13 @@ export default async function ItemsAgrupadosPage() {
           </div>
         </FormConResultado>
       ) : (
-        <p className="text-sm text-neutral-500">Para crear un ítem agrupado hace falta al menos una categoría en el catálogo.</p>
+        <p className="text-sm text-neutral-500">
+          Para crear un ítem agrupado hace falta al menos una sección de carta (
+          <Link href="/catalogo/carta" className="underline">
+            Carta pública
+          </Link>
+          ).
+        </p>
       )}
     </div>
   );
@@ -99,9 +105,8 @@ export default async function ItemsAgrupadosPage() {
 function datosDelFormulario(fd: FormData) {
   return {
     nombre: campo(fd, "nombre"),
-    categoriaId: campo(fd, "categoriaId"),
+    seccionCartaId: campo(fd, "seccionCartaId"),
     descripcion: campo(fd, "descripcion"),
-    imagenUrl: campo(fd, "imagenUrl"),
     tags: campo(fd, "tags"),
     especial: fd.get("especial") === "on",
     orden: campo(fd, "orden"),
@@ -113,7 +118,7 @@ function resumenPrecio(it: ItemAgrupadoAdmin): string {
   return it.precio.minimo === it.precio.maximo ? pesos(it.precio.minimo) : `${pesos(it.precio.minimo)}–${pesos(it.precio.maximo)}`;
 }
 
-function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemAgrupadoAdmin; categorias: Categoria[]; productosSinGrupo: ProductoSinGrupo[] }) {
+function ItemAgrupado({ item: it, secciones, productosSinGrupo }: { item: ItemAgrupadoAdmin; secciones: SeccionCartaAdmin[]; productosSinGrupo: ProductoSinGrupo[] }) {
   const id = it.id;
   const activo = it.activo;
   const preciosDistintos = it.avisos.preciosDistintos;
@@ -121,7 +126,7 @@ function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemA
     <li className="rounded border p-3" data-item-agrupado={it.nombre}>
       <details>
         <summary className="cursor-pointer text-sm">
-          <span className="font-medium">{it.nombre}</span> · {it.categoria} · {it.seccionCarta ?? "sin sección de carta"} · {it.disponiblesAca} de{" "}
+          <span className="font-medium">{it.nombre}</span> · {it.seccionCarta ?? "sección de carta apagada"} · {it.disponiblesAca} de{" "}
           {it.opciones.length} opciones disponibles acá · {resumenPrecio(it)} · {it.activo ? "activo" : "apagado"}
           {it.especial ? " · ★" : ""}
         </summary>
@@ -133,7 +138,7 @@ function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemA
           }}
           className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
         >
-          <CamposItem categorias={categorias} valores={it} />
+          <CamposItem secciones={secciones} valores={it} />
           <div className="sm:col-span-2">
             <button type="submit" className={CLASE_BOTON}>
               Guardar «{it.nombre}»
@@ -152,7 +157,7 @@ function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemA
                     <EnlaceInterno href={`/catalogo/productos/${o.productoId}/editar`} className="font-medium underline">
                       {o.nombre}
                     </EnlaceInterno>{" "}
-                    · {o.categoria ?? "sin categoría"} · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"}
+                    · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"}
                   </span>
                   <FormConResultado
                     accion={async (fd: FormData) => {
@@ -180,12 +185,6 @@ function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemA
                     </button>
                   </FormConResultado>
                 </div>
-                {o.otraSeccion && (
-                  <p className="text-amber-700 dark:text-amber-600">
-                    Su categoría ({o.categoria ?? "sin categoría"}) cae en {o.seccionCarta ? `la sección de carta «${o.seccionCarta}»` : "ninguna sección de carta"}, no
-                    en la de «{it.nombre}»: en «Ventas por sección de carta» sus ventas se cuentan ahí.
-                  </p>
-                )}
               </li>
             );
           })}
@@ -248,7 +247,7 @@ function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemA
       {it.avisos.sinSeccion && (
         <div className={`mt-2 ${CLASE_AVISO}`}>
           <p className="text-amber-700 dark:text-amber-600">
-            Sin sección de carta: su categoría «{it.categoria}» no está en ninguna sección de carta activa, así que «{it.nombre}» no sale en la carta.
+            Su sección de carta está apagada, así que «{it.nombre}» no sale en la carta.
           </p>
         </div>
       )}
@@ -269,11 +268,11 @@ function ItemAgrupado({ item: it, categorias, productosSinGrupo }: { item: ItemA
 }
 
 function CamposItem({
-  categorias,
+  secciones,
   valores,
 }: {
-  categorias: Categoria[];
-  valores?: { nombre: string; categoriaId: string; descripcion: string | null; imagenUrl: string | null; tags: string[]; especial: boolean; orden: number };
+  secciones: SeccionCartaAdmin[];
+  valores?: { nombre: string; seccionCartaId: string; descripcion: string | null; tags: string[]; especial: boolean; orden: number };
 }) {
   return (
     <>
@@ -282,13 +281,13 @@ function CamposItem({
         <input name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Gaseosa 500 CC" className={CLASE_INPUT} />
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        Categoría
-        <select name="categoriaId" required defaultValue={valores?.categoriaId ?? ""} className={CLASE_INPUT}>
+        Sección de carta
+        <select name="seccionCartaId" required defaultValue={valores?.seccionCartaId ?? ""} className={CLASE_INPUT}>
           {!valores && <option value="">— elegí una —</option>}
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-              {c.activo ? "" : " (inactiva)"}
+          {secciones.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+              {s.activa ? "" : " (apagada)"}
             </option>
           ))}
         </select>
@@ -302,12 +301,8 @@ function CamposItem({
         <input name="tags" defaultValue={valores?.tags.join(", ") ?? ""} placeholder="Sin alcohol" className={CLASE_INPUT} />
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        Orden dentro de su categoría
+        Orden dentro de su sección
         <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Imagen (URL https, opcional)
-        <input name="imagenUrl" type="url" defaultValue={valores?.imagenUrl ?? ""} placeholder="https://…" className={CLASE_INPUT} />
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input name="especial" type="checkbox" defaultChecked={valores?.especial ?? false} /> Especial (★)

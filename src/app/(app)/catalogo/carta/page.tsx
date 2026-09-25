@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
-import { actualizarActivaSeccionCarta, asignarCategoriaASeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
+import { cargarAdminCarta, type ProductoCartaAdmin, type SeccionCartaAdmin } from "@/core/carta/admin-consulta";
+import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { actualizarActivaPromoCarta, guardarPromoCarta } from "@/server/actions/carta/promos";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -11,9 +11,10 @@ import { FormConResultado } from "@/components/form-con-resultado";
 
 /**
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que restaurant-menu-design lee de motor2 por
- * GET /api/carta/[sucursal]. Cuatro bloques: secciones de carta, qué categoría va en cada sección, el contenido de carta de cada
- * PV disponible en esta sucursal (con el aviso de los que todavía no tienen — sin contenido no salen, decisión D3) y las promos
- * de la sucursal activa. El nombre, el precio y la disponibilidad de cada producto se siguen editando en Catálogo.
+ * GET /api/carta/[sucursal]. Tres bloques: secciones de carta, el contenido de carta de cada PV disponible en esta sucursal (con
+ * su sección de carta, elegida DIRECTO — docs/plan-carta-seccion-directa-2026-09-25.md —, y el aviso de los que todavía no tienen
+ * contenido: sin contenido no salen, decisión D3) y las promos de la sucursal activa. El nombre, el precio y la disponibilidad de
+ * cada producto se siguen editando en Catálogo; la Categoría de producto no ubica nada en la carta.
  *
  * Todas las mutaciones pasan por las Server Actions de src/server/actions/carta (conPermiso("carta")); el refresco lo piden los
  * closures de acá (ver refrescar.ts). Los closures capturan solo ids (texto): lo que captura un closure "use server" viaja al
@@ -62,7 +63,7 @@ export default async function CartaPage() {
                 <details>
                   <summary className="cursor-pointer text-sm">
                     <span className="font-medium">{s.nombre}</span>
-                    {s.titulo ? ` — «${s.titulo}»` : ""} · orden {s.orden} · {s.cantidadCategorias} categoría(s) · {s.activa ? "activa" : "apagada"}
+                    {s.titulo ? ` — «${s.titulo}»` : ""} · orden {s.orden} · {s.cantidadItems} ítem(s) · {s.activa ? "activa" : "apagada"}
                   </summary>
                   <FormConResultado
                     accion={async (fd: FormData) => {
@@ -117,63 +118,14 @@ export default async function CartaPage() {
         </FormConResultado>
       </section>
 
-      {/* 2. Categorías → sección de carta */}
-      <section aria-labelledby="titulo-categorias" className="flex flex-col gap-3">
-        <h2 id="titulo-categorias" className="text-lg font-medium">
-          Qué categoría va en cada sección
-        </h2>
-        <p className="text-sm text-neutral-500">Una categoría sin sección no aparece en la carta. El orden es el de la categoría dentro de su sección.</p>
-        <ul className="flex flex-col gap-2">
-          {datos.categorias.map((c) => {
-            const categoriaId = c.id;
-            return (
-              <li key={c.id} data-categoria-carta={c.nombre}>
-                <FormConResultado
-                  accion={async (fd: FormData) => {
-                    "use server";
-                    return refrescarSiOk(await asignarCategoriaASeccionCarta(categoriaId, campo(fd, "seccionCartaId") || null, campo(fd, "orden")));
-                  }}
-                  className="flex flex-wrap items-end gap-2 text-sm"
-                >
-                  <span className="min-w-40 py-1 font-medium">
-                    {c.nombre}
-                    {!c.activo && <span className="font-normal text-neutral-500"> (inactiva)</span>}
-                  </span>
-                  <label className="flex flex-col gap-1">
-                    Sección de carta
-                    <select name="seccionCartaId" defaultValue={c.seccionCartaId ?? ""} className={CLASE_INPUT}>
-                      <option value="">— ninguna —</option>
-                      {datos.secciones.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nombre}
-                          {s.activa ? "" : " (apagada)"}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    Orden
-                    <input name="orden" type="number" step={1} defaultValue={c.orden} className={`${CLASE_INPUT} w-20`} />
-                  </label>
-                  <button type="submit" className={CLASE_BOTON}>
-                    Guardar
-                  </button>
-                </FormConResultado>
-              </li>
-            );
-          })}
-          {!datos.categorias.length && <li className="text-sm text-neutral-500">No hay categorías en el catálogo.</li>}
-        </ul>
-      </section>
-
-      {/* 3. Contenido de carta por PV */}
+      {/* 2. Contenido de carta por PV */}
       <section aria-labelledby="titulo-contenido" className="flex flex-col gap-3">
         <h2 id="titulo-contenido" className="text-lg font-medium">
           Contenido de carta de cada producto de venta
         </h2>
         <p className="text-sm text-neutral-500">
-          Solo los productos de venta disponibles en esta sucursal. Un producto sale en la carta cuando tiene contenido cargado, está marcado como visible y su
-          categoría está en una sección de carta activa.
+          Solo los productos de venta disponibles en esta sucursal. Un producto sale en la carta cuando tiene contenido cargado, está marcado como visible y
+          está en una sección de carta activa.
         </p>
 
         {datos.sinContenido.length > 0 && (
@@ -188,12 +140,10 @@ export default async function CartaPage() {
         )}
         {datos.visiblesSinSeccion.length > 0 && (
           <div className="rounded border border-amber-300 p-3 dark:border-amber-700">
-            <h3 className="text-sm font-medium text-amber-700 dark:text-amber-600">Visibles pero sin sección de carta (su categoría no está en ninguna sección activa)</h3>
+            <h3 className="text-sm font-medium text-amber-700 dark:text-amber-600">Visibles pero sin sección de carta activa (no salen en la carta)</h3>
             <ul className="mt-1 list-disc pl-5 text-sm">
               {datos.visiblesSinSeccion.map((p) => (
-                <li key={p.productoId}>
-                  {p.nombre} {p.categoria ? `(${p.categoria})` : "(sin categoría)"}
-                </li>
+                <li key={p.productoId}>{p.nombre}</li>
               ))}
             </ul>
           </div>
@@ -201,13 +151,13 @@ export default async function CartaPage() {
 
         <ul className="flex flex-col gap-2">
           {datos.productos.map((p) => (
-            <ContenidoProducto key={p.id} producto={p} />
+            <ContenidoProducto key={p.id} producto={p} secciones={datos.secciones} />
           ))}
           {!datos.productos.length && <li className="text-sm text-neutral-500">No hay productos de venta disponibles en esta sucursal.</li>}
         </ul>
       </section>
 
-      {/* 4. Promos de la sucursal */}
+      {/* 3. Promos de la sucursal */}
       <section aria-labelledby="titulo-promos" className="flex flex-col gap-3">
         <h2 id="titulo-promos" className="text-lg font-medium">
           Promos de esta sucursal
@@ -351,7 +301,7 @@ function CamposPromo({
   );
 }
 
-function ContenidoProducto({ producto: p }: { producto: ProductoCartaAdmin }) {
+function ContenidoProducto({ producto: p, secciones }: { producto: ProductoCartaAdmin; secciones: SeccionCartaAdmin[] }) {
   const productoId = p.id;
   // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
   const estado = p.agrupadoEn
@@ -365,7 +315,7 @@ function ContenidoProducto({ producto: p }: { producto: ProductoCartaAdmin }) {
     <li className="rounded border p-3" data-contenido-carta={p.nombre}>
       <details>
         <summary className="cursor-pointer text-sm">
-          <span className="font-medium">{p.nombre}</span> · {p.categoria ?? "sin categoría"} · {p.seccionCarta ?? "sin sección de carta"} · ${p.precio.toLocaleString("es-AR")} ·{" "}
+          <span className="font-medium">{p.nombre}</span> · {p.seccionCarta ?? "sin sección de carta"} · ${p.precio.toLocaleString("es-AR")} ·{" "}
           {estado}
           {p.contenido?.especial ? " · ★" : ""}
         </summary>
@@ -384,8 +334,8 @@ function ContenidoProducto({ producto: p }: { producto: ProductoCartaAdmin }) {
             return refrescarSiOk(
               await guardarContenidoCartaProducto(productoId, {
                 visibleEnCarta: fd.get("visibleEnCarta") === "on",
+                seccionCartaId: campo(fd, "seccionCartaId") || null,
                 descripcion: campo(fd, "descripcion"),
-                imagenUrl: campo(fd, "imagenUrl"),
                 tags: campo(fd, "tags"),
                 especial: fd.get("especial") === "on",
                 orden: campo(fd, "orden"),
@@ -400,21 +350,29 @@ function ContenidoProducto({ producto: p }: { producto: ProductoCartaAdmin }) {
           <label className="flex items-center gap-2 text-sm">
             <input name="especial" type="checkbox" defaultChecked={p.contenido?.especial ?? false} /> Especial (★)
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Sección de carta (obligatoria si se muestra)
+            <select name="seccionCartaId" defaultValue={p.contenido?.seccionCartaId ?? ""} className={CLASE_INPUT}>
+              <option value="">— elegí una —</option>
+              {secciones.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                  {s.activa ? "" : " (apagada)"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Orden dentro de su sección
+            <input name="orden" type="number" step={1} defaultValue={p.contenido?.orden ?? 0} className={CLASE_INPUT} />
+          </label>
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             Descripción (opcional)
             <textarea name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} className={CLASE_INPUT} />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             Tags (separados por coma)
             <input name="tags" defaultValue={p.contenido?.tags.join(", ") ?? ""} placeholder="Regional, Sin TACC" className={CLASE_INPUT} />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Orden dentro de su categoría
-            <input name="orden" type="number" step={1} defaultValue={p.contenido?.orden ?? 0} className={CLASE_INPUT} />
-          </label>
-          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            Imagen (URL https, opcional)
-            <input name="imagenUrl" type="url" defaultValue={p.contenido?.imagenUrl ?? ""} placeholder="https://…" className={CLASE_INPUT} />
           </label>
           <div className="sm:col-span-2">
             <button type="submit" className={CLASE_BOTON}>

@@ -31,8 +31,6 @@ export interface SeccionCartaAdmin {
 export interface ProductoCartaAdmin {
   id: string;
   nombre: string;
-  /** Solo informativo (Catálogo): no ubica nada en la carta. */
-  categoria: string | null;
   /** Nombre de la sección de carta ACTIVA donde está su contenido, o null. */
   seccionCarta: string | null;
   precio: number;
@@ -101,7 +99,6 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
         id: true,
         nombre: true,
         precioVenta: true,
-        categoria: { select: { nombre: true } },
         contenidoCarta: {
           select: { visibleEnCarta: true, seccionCartaId: true, seccionCarta: { select: { nombre: true, activa: true } }, descripcion: true, tags: true, especial: true, orden: true },
         },
@@ -118,7 +115,6 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
     return {
       id: p.id,
       nombre: p.nombre,
-      categoria: p.categoria?.nombre ?? null,
       seccionCarta: c?.seccionCarta?.activa ? c.seccionCarta.nombre : null,
       precio: Number(p.precioVenta),
       contenido: c && { visibleEnCarta: c.visibleEnCarta, seccionCartaId: c.seccionCartaId, descripcion: c.descripcion, tags: c.tags, especial: c.especial, orden: c.orden },
