@@ -72,3 +72,49 @@ se confirma, como política documentada — §8), sin `version: Int` nuevo, sin 
 | `npm test` | 186 archivos, 2150 tests, todos verdes |
 | `npm run build` | limpio; `prisma migrate deploy`: 39 migraciones, «No pending migrations to apply» |
 | `npm run test:e2e` | 51 specs, 298 tests, todos verdes |
+
+## 7. Qué se hizo (un commit por paso)
+
+| Paso | Qué | Evidencia |
+|---|---|---|
+| 2 | `src/core/features/traspasos/traspaso.schema.ts` + `traspaso.guard.ts`: `guardTransicionTraspaso(t, operación, sucursalId)` → `{ ok: true; estadoNuevo }` o `{ ok: false; motivo: "LADO" \| "ESTADO"; mensaje }`. Tabla `operación → { lado, desde, hacia }` para las 6 operaciones; primero el lado, después el estado (el orden de antes); mensajes copiados textualmente de `traspasos.ts`. | `test/core/features/traspasos/traspaso-guard.test.ts`: tabla exhaustiva 6 × 7 × {origen, destino, ajena} contra una tabla esperada escrita a mano (130 tests). |
+| 3 | Las 6 Server Actions llaman al guard y escriben su `estadoNuevo`. Sin cambio de comportamiento. | `test/traspasos/traspasos.test.ts` y `test/auditoria/traspasos-en-transito.test.ts` pasan sin tocarlos. |
+| 4 | `cancelarSolicitudTransferencia` y `rechazarSolicitudTransferencia` pasan a `conTransaccionSerializable` con `buscarTraspaso(id, tx)` + guard + `tx.traspasoSucursal.update` (mismo arreglo que `rechazarTransferencia`). | Tres regresiones en `traspasos-en-transito.test.ts` («stock en tránsito»). Contra el código anterior fallaron: aprobar ‖ rechazar en 2 de 3 corridas, con `estado final RECHAZADA_ORIGEN, salidas 1` (los dos `ok: true`: el stock salió y el traspaso quedó rechazado); doble cancelación en 3 de 3 (las dos «cancelada»); doble rechazo en 1 de 3. Con el arreglo: 15 de 15 corridas verdes. La carrera es intermitente por naturaleza: el test la ataca con varios desfasajes y afirma el INVARIANTE (stock del origen + lo que sigue en tránsito = lo comprado). |
+| 5 | `src/components/boton-con-confirmacion.tsx`, extraído de `BotonAnularCompra`, que pasa a usarlo. | `compras-anular.spec.ts` y `accesibilidad.spec.ts` verdes sin cambios. |
+| 6a | «Cancelar solicitud» (`FilaEsperando`) confirma. Las filas de la bandeja llevan `data-traspaso` (localizador estable, como `data-compra`). | `test/e2e/traspasos-confirmar.spec.ts`. Contra la bandeja anterior (con solo `data-traspaso` agregado) falla: el primer clic cancelaba sin mostrar ningún aviso. |
+| 6b | Los dos «Rechazar» (`FilaParaAprobar`, `FilaParaAceptar`) confirman; el motivo se lee al confirmar; deshabilitados mientras «Aprobar/Aceptar» está en curso. | Dos pruebas más en el mismo spec. |
+| 7 | `test/arquitectura/confirmacion-en-un-solo-lugar.test.ts`. | Contra los archivos de antes del plan marca los 3 casos (bandeja y anular sin `BotonConConfirmacion`, `traspasos.ts` con `estado !== "…"`). |
+
+## 8. Política: qué se confirma y qué no
+
+El «nivel de impacto» decide SI una acción lleva confirmación. Es una regla de diseño, no una prop del componente: quien agrega un botón
+decide con esta tabla y, si corresponde, usa `BotonConConfirmacion`.
+
+| Clase | Qué es | ¿Confirma? | Ejemplos |
+|---|---|---|---|
+| A | Irreversible y mueve stock o dinero | **Sí** | Anular compra, anular venta |
+| B | Irreversible y cierra un ciclo con otra sucursal o persona | **Sí** | Cancelar una solicitud de traspaso, rechazar una solicitud, rechazar un envío |
+| C | Corta un acceso | **Sí** | Desactivar usuario, rol, sucursal o producto |
+| D | Reversible con la acción inversa, a un clic | No | Activar / reactivar |
+| E | Edición desde un formulario | No: enviar el formulario ya es la intención | Corregir proveedor y factura, renombrar |
+| F | Alta desde un formulario | No: ídem | Crear producto, registrar una compra |
+
+Las acciones A/B además tienen que estar protegidas en el servidor (la confirmación de la UI evita el miss-click, no la carrera): guard de
+estado dentro de una transacción serializable, y clave de idempotencia I3 si crean una `Operacion`.
+
+## 9. Convención
+
+- **UI**: `src/components/boton-con-confirmacion.tsx`. Nunca `window.confirm`, nunca un estado `confirmando` armado a mano en un archivo ya
+  migrado (lo vigila `test/arquitectura/confirmacion-en-un-solo-lugar.test.ts`; cada fase agrega sus archivos a `MIGRADOS`).
+- **Servidor**: las reglas de transición de una feature van en `src/core/features/<feature>/<feature>.guard.ts` (puro, sin Prisma ni permisos),
+  con sus tipos en `<feature>.schema.ts`; la Server Action resuelve lo que necesita la base y llama al guard DENTRO de la transacción en la
+  que escribe.
+
+## 10. Fases futuras (documentadas, NO implementadas en este plan)
+
+- **F2**: migrar la variante BÁSICA a `BotonConConfirmacion` (`boton-anular-venta.tsx`, los dos `boton-eliminar.tsx` de stock,
+  `acciones-historial.tsx` del conteo físico, `form-renombrar-insumo.tsx`) + las acciones del portal de la carta que corten acceso +
+  capacidades de sucursal (⛔ decisión del dueño pendiente sobre si desactivar una capacidad lleva confirmación).
+- **F3**: guards de transición por feature para ventas, POS y conteo físico (hoy repetidos en línea, como estaban los de traspasos).
+- **F4**: el arreglo de concurrencia de `actualizarActivoMembresia` y la auditoría de membresía y del portal.
+- **F5**: `versionEsperada` en recetas, solo si aparece evidencia real de ediciones pisadas (hoy `RecetaVersion.version` ya arbitra el guardado).
