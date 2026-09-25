@@ -101,3 +101,9 @@ implementación previa.
 
 Combos/promos, notas/modificadores de ítem, impresión y agente local, pantalla de cocina, dividir/unir cuentas, mover mesas
 («Opciones de mesa»), offline/PWA.
+
+> **Actualización 2026-09-25 — impresión:** la impresión dejó de estar fuera de alcance: la comanda de cocina (al enviar, al
+> reimprimir y al anular) y la boleta de cierre (al cerrar y desde «Cuentas cerradas») se imprimen con el diálogo nativo del
+> navegador, ver `docs/plan-imprimir-comanda-y-boleta-2026-09-25.md`. El agente local sigue sin hacer falta (una sola PC que ve las
+> dos impresoras). `enviarACocina` devuelve además `numeroEnvio`/`envioNuevo` (`ResultadoEnvioACocina`) para imprimir solo el
+> envío que creó cada llamada.
