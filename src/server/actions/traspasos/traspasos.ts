@@ -8,6 +8,7 @@ import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/t
 import { calcularSaldoTotal, obtenerSeccionPropia, validarStockSuficiente } from "@/core/movimientos/stock";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
@@ -244,8 +245,8 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
     return conTransaccionSerializable(async (tx) => {
       const traspaso = await buscarTraspaso(idTraspaso, tx);
       if (!traspaso) return error("No se encontró ese traspaso.");
-      if (traspaso.origenSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como origen.");
-      if (traspaso.estado !== "SOLICITADA") return error(`Este traspaso ya está en estado "${traspaso.estado}" — no se puede aprobar de nuevo.`);
+      const transicion = guardTransicionTraspaso(traspaso, "aprobar", ctx.sucursalId);
+      if (!transicion.ok) return error(transicion.mensaje);
 
       const destino = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.destinoSucursalId } });
       // El stock sale de acá recién ahora — re-chequea disponibilidad en origen Y destino (pudo haber cambiado desde la solicitud).
@@ -269,7 +270,7 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
 
       await tx.traspasoSucursal.update({
         where: { id: traspaso.id },
-        data: { seccionOrigenId: seccionOrigen.id, estado: "ENVIADA", fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId },
+        data: { seccionOrigenId: seccionOrigen.id, estado: transicion.estadoNuevo, fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId },
       });
 
       return ok(`Aprobado y enviado a "${destino.nombre}".`);
@@ -292,12 +293,12 @@ export async function cancelarSolicitudTransferencia(id: string): Promise<Result
 
     const traspaso = await buscarTraspaso(idTraspaso);
     if (!traspaso) return error("No se encontró ese traspaso.");
-    if (traspaso.destinoSucursalId !== ctx.sucursalId) return error("Esta solicitud no la creó esta sucursal.");
-    if (traspaso.estado !== "SOLICITADA") return error(`Este traspaso ya está en estado "${traspaso.estado}" — no se puede cancelar desde acá.`);
+    const transicion = guardTransicionTraspaso(traspaso, "cancelar_solicitud", ctx.sucursalId);
+    if (!transicion.ok) return error(transicion.mensaje);
 
     await prisma.traspasoSucursal.update({
       where: { id: idTraspaso },
-      data: { estado: "CANCELADA", fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
+      data: { estado: transicion.estadoNuevo, fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
     });
 
     return ok("Solicitud cancelada.");
@@ -312,12 +313,12 @@ export async function rechazarSolicitudTransferencia(id: string, motivo?: string
 
     const traspaso = await buscarTraspaso(idTraspaso);
     if (!traspaso) return error("No se encontró ese traspaso.");
-    if (traspaso.origenSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como origen.");
-    if (traspaso.estado !== "SOLICITADA") return error(`Este traspaso ya está en estado "${traspaso.estado}" — no se puede rechazar desde acá.`);
+    const transicion = guardTransicionTraspaso(traspaso, "rechazar_solicitud", ctx.sucursalId);
+    if (!transicion.ok) return error(transicion.mensaje);
 
     await prisma.traspasoSucursal.update({
       where: { id: idTraspaso },
-      data: { estado: "RECHAZADA_ORIGEN", fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId, motivoRechazoOrigen: texto(motivo) || null },
+      data: { estado: transicion.estadoNuevo, fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId, motivoRechazoOrigen: texto(motivo) || null },
     });
 
     return ok("Solicitud rechazada.");
@@ -344,8 +345,8 @@ export async function aceptarTransferencia(id: string, seccionDestinoId: string,
 
       const traspaso = await buscarTraspaso(idTraspaso, tx);
       if (!traspaso) return error("No se encontró ese traspaso.");
-      if (traspaso.destinoSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como destino.");
-      if (traspaso.estado !== "ENVIADA") return error(`Este traspaso está en estado "${traspaso.estado}" — no se puede aceptar.`);
+      const transicion = guardTransicionTraspaso(traspaso, "aceptar", ctx.sucursalId);
+      if (!transicion.ok) return error(transicion.mensaje);
       // El stock entra a ESTA sucursal recién ahora — re-chequea disponibilidad acá (pudo haber cambiado desde el envío).
       const resProducto = await obtenerProductoTransferible(traspaso.productoId, [{ sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre }], tx);
       if (!resProducto.ok) return error(resProducto.mensaje);
@@ -360,7 +361,7 @@ export async function aceptarTransferencia(id: string, seccionDestinoId: string,
 
       await tx.traspasoSucursal.update({
         where: { id: traspaso.id },
-        data: { seccionDestinoId: seccionDestino.id, estado: "ACEPTADA", fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId },
+        data: { seccionDestinoId: seccionDestino.id, estado: transicion.estadoNuevo, fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId },
       });
 
       const mensaje = `Recibido de "${origen.nombre}".`;
@@ -394,12 +395,12 @@ export async function rechazarTransferencia(id: string, motivo?: string): Promis
     return conTransaccionSerializable(async (tx) => {
       const traspaso = await buscarTraspaso(idTraspaso, tx);
       if (!traspaso) return error("No se encontró ese traspaso.");
-      if (traspaso.destinoSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como destino.");
-      if (traspaso.estado !== "ENVIADA") return error(`Este traspaso está en estado "${traspaso.estado}" — no se puede rechazar desde acá.`);
+      const transicion = guardTransicionTraspaso(traspaso, "rechazar_envio", ctx.sucursalId);
+      if (!transicion.ok) return error(transicion.mensaje);
 
       await tx.traspasoSucursal.update({
         where: { id: idTraspaso },
-        data: { estado: "RECHAZADA_DESTINO", fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId, motivoRechazoDestino: texto(motivo) || null },
+        data: { estado: transicion.estadoNuevo, fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId, motivoRechazoDestino: texto(motivo) || null },
       });
 
       return ok("Transferencia rechazada — queda pendiente que el origen confirme el reingreso a su stock.");
@@ -424,8 +425,8 @@ export async function confirmarReingresoTransferencia(id: string, claveIdempoten
 
       const traspaso = await buscarTraspaso(idTraspaso, tx);
       if (!traspaso) return error("No se encontró ese traspaso.");
-      if (traspaso.origenSucursalId !== ctx.sucursalId) return error("Este traspaso no está dirigido a esta sucursal como origen.");
-      if (traspaso.estado !== "RECHAZADA_DESTINO") return error(`Este traspaso está en estado "${traspaso.estado}" — no hay ningún reingreso pendiente.`);
+      const transicion = guardTransicionTraspaso(traspaso, "confirmar_reingreso", ctx.sucursalId);
+      if (!transicion.ok) return error(transicion.mensaje);
       if (!traspaso.seccionOrigenId) return error("Este traspaso no tiene una sección de origen registrada — no se puede reingresar.");
 
       const cantidad = Number(traspaso.cantidad);
@@ -439,7 +440,7 @@ export async function confirmarReingresoTransferencia(id: string, claveIdempoten
 
       await tx.traspasoSucursal.update({
         where: { id: traspaso.id },
-        data: { estado: "CERRADA", fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
+        data: { estado: transicion.estadoNuevo, fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
       });
 
       const mensaje = `Reingreso confirmado: se sumó de nuevo ${cantidad} de "${traspaso.producto.nombre}" en "${seccionOrigen.nombre}".`;
