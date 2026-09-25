@@ -2,8 +2,11 @@
 
 import type { Prisma, Proceso } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
+import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
+import { validarCantidad } from "@/core/datos/cantidad";
+import { validarImporte } from "@/core/datos/importe";
+import { validarNroFactura } from "@/core/datos/nro-factura";
 import {
   ACCION_POR_PROCESO,
   TRANSICIONES,
@@ -125,16 +128,48 @@ async function armarLineaMovimiento(
     return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para el proceso "${datos.proceso}" (revisá Tipo/"Se produce"/Consignación).` };
   }
 
-  let numCant: number | null = item.cantidad;
-  if (transicion.permiteCero) {
-    numCant = numCant ?? 0;
-  } else if (numCant === null || !(numCant > 0)) {
-    return { ok: true, linea: null }; // sin cantidad válida: se saltea, mismo criterio que Apps Script
-  }
-  // Llegado acá numCant es > 0 (o, en Ajuste, cualquier número): `> 0` no frena Infinity ni NaN en Ajuste.
-  if (!esNumeroFinito(numCant)) return { ok: false, mensaje: `La cantidad de "${producto.nombre}" no es un número válido.` };
-  if (item.precioTotal && item.precioTotal > 0 && !esNumeroFinito(item.precioTotal)) {
-    return { ok: false, mensaje: `El precio de "${producto.nombre}" no es un número válido.` };
+  // Presentación de compra alternativa (Compra/Devolución a Proveedor), solo si es real y activa: se busca ANTES de validar la
+  // cantidad, porque la cantidad tecleada está en SU unidad de compra.
+  const presentacion =
+    transicion.aplicaFactorConversion && item.unidadCompraId
+      ? await tx.presentacion.findFirst({
+          where: { productoId: producto.id, unidadCompraId: item.unidadCompraId, activa: true },
+          include: { unidadCompra: true },
+        })
+      : null;
+
+  let numCant: number;
+  let precioEntrada: number;
+  let pesoReal: number | null = null;
+  if (transicion.aplicaFactorConversion) {
+    // Compra y Devolución a proveedor (docs/plan-validacion-de-datos-2026-09-25.md, Paso C1): cada dato de entrada se valida con
+    // src/core/datos y un dato inválido RECHAZA el movimiento entero con un mensaje. Antes: una cantidad basura o 0 salteaba la
+    // línea en silencio, un precio NaN o negativo se guardaba como 0, un peso real inválido se ignoraba y 2,5 en una unidad entera
+    // se redondeaba a 3.
+    const unidadDeCompra = presentacion?.unidadCompra ?? producto.unidadCompra ?? producto.unidadStock;
+    const cantidad = validarCantidad(item.cantidad, unidadDeCompra, { etiqueta: `La cantidad de "${producto.nombre}"`, obligatorio: true });
+    if (!cantidad.ok) return { ok: false, mensaje: cantidad.mensaje };
+    const precio = validarImporte(item.precioTotal, { etiqueta: `El precio de "${producto.nombre}"` });
+    if (!precio.ok) return { ok: false, mensaje: precio.mensaje };
+    const peso = validarCantidad(item.pesoReal, producto.unidadStock, { etiqueta: `El peso real de "${producto.nombre}"`, obligatorio: false });
+    if (!peso.ok) return { ok: false, mensaje: peso.mensaje };
+    numCant = cantidad.valor!; // obligatoria: nunca null
+    precioEntrada = precio.valor ?? 0; // compra sin precio: sigue permitida, se guarda 0
+    pesoReal = peso.valor;
+  } else {
+    let cant: number | null = item.cantidad;
+    if (transicion.permiteCero) {
+      cant = cant ?? 0;
+    } else if (cant === null || !(cant > 0)) {
+      return { ok: true, linea: null }; // sin cantidad válida: se saltea, mismo criterio que Apps Script
+    }
+    // Llegado acá cant es > 0 (o, en Ajuste, cualquier número): `> 0` no frena Infinity ni NaN en Ajuste.
+    if (!esNumeroFinito(cant)) return { ok: false, mensaje: `La cantidad de "${producto.nombre}" no es un número válido.` };
+    if (item.precioTotal && item.precioTotal > 0 && !esNumeroFinito(item.precioTotal)) {
+      return { ok: false, mensaje: `El precio de "${producto.nombre}" no es un número válido.` };
+    }
+    numCant = cant;
+    precioEntrada = item.precioTotal && item.precioTotal > 0 ? item.precioTotal : 0;
   }
 
   // Conversión de unidad de Compra → unidad de Stock (Compra/Devolución a
@@ -147,17 +182,11 @@ async function armarLineaMovimiento(
 
   if (transicion.aplicaFactorConversion) {
     unidadCompraId = producto.unidadCompraId;
-    if (item.unidadCompraId) {
-      const presentacion = await tx.presentacion.findFirst({
-        where: { productoId: producto.id, unidadCompraId: item.unidadCompraId, activa: true },
-      });
-      if (presentacion) {
-        unidadCompraId = presentacion.unidadCompraId;
-        factor = Number(presentacion.factorConversion);
-      }
+    if (presentacion) {
+      unidadCompraId = presentacion.unidadCompraId;
+      factor = Number(presentacion.factorConversion);
     }
 
-    const pesoReal = item.pesoReal && item.pesoReal > 0 ? item.pesoReal : null;
     if (pesoReal !== null) {
       cantidadStock = pesoReal;
       detalle = `Peso real: ${pesoReal} ${producto.unidadStock.nombre} (${numCant} compradas)`;
@@ -174,7 +203,7 @@ async function armarLineaMovimiento(
   // que puede dejar más decimales de la cuenta, ej. 3 CJ × 4.5 factor).
   cantidadStock = redondearACantidadDeUnidad(cantidadStock, producto.unidadStock.decimales);
 
-  const precioTotal = item.precioTotal && item.precioTotal > 0 ? item.precioTotal : 0;
+  const precioTotal = precioEntrada;
   const precioUnitario = precioTotal > 0 && numCant > 0 ? precioTotal / numCant : 0;
   const precioPorUnidadStock = precioTotal > 0 && cantidadStock > 0 ? precioTotal / cantidadStock : 0;
 
@@ -257,8 +286,10 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
       if (!destino?.activo) return error("El destino elegido ya no está disponible.");
     }
 
-    const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
-    if (errorLargoFactura) return error(errorLargoFactura);
+    // El N.º de factura solo se carga en Compra y Devolución a proveedor (los procesos con proveedor): mismo validador que la corrección.
+    const factura = validarNroFactura(datos.nroFactura);
+    if (!factura.ok) return error(factura.mensaje);
+    const nroFactura = factura.valor;
 
     // Chequeo de factura duplicada (Movimientos.js:402-416): mismo
     // proveedor + mismo número de factura ya cargados como Compra en esta
@@ -272,10 +303,10 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
     // idempotencia-2026-09-17.md §9.2): su violación se atrapa más abajo,
     // fuera de la transacción (ya hizo rollback para cuando el `.catch`
     // la recibe).
-    if (datos.proceso === "COMPRA" && datos.proveedorId && texto(datos.nroFactura)) {
+    if (datos.proceso === "COMPRA" && datos.proveedorId && nroFactura) {
       const yaExiste = await prisma.operacion.findFirst({
         // Solo cuentan las compras vigentes: una compra anulada deja libre su N.º de factura (igual que el índice único).
-        where: { sucursalId: ctx.sucursalId, proceso: "COMPRA", proveedorId: datos.proveedorId, nroFactura: texto(datos.nroFactura), anuladaEn: null },
+        where: { sucursalId: ctx.sucursalId, proceso: "COMPRA", proveedorId: datos.proveedorId, nroFactura, anuladaEn: null },
       });
       if (yaExiste) return error(MENSAJE_FACTURA_DUPLICADA);
     }
@@ -338,7 +369,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
           proceso: datos.proceso,
           fecha: datos.fecha,
           proveedorId: datos.proveedorId ?? null,
-          nroFactura: texto(datos.nroFactura) || null,
+          nroFactura,
           seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? datos.seccionDestinoId : null,
           motivoId: datos.motivoId ?? null,
           destinoId: datos.destinoId ?? null,
