@@ -404,6 +404,115 @@ test("anular un ítem enviado imprime el aviso para cocina: ANULACIÓN · NO PRE
   }
 });
 
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const HORA_AR = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
+
+/** Una cuenta ya cerrada CON VENTA (sembrada directo: Operacion VENTA + ítems enlazados), cerrada en `cerradaEn`. */
+async function sembrarCuentaCerrada(sucursalId: string, mesaId: string, usuarioId: string, productoId: string, cerradaEn: Date, anulada = false) {
+  const venta = await prisma.operacion.create({
+    data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId, detalleLibre: "Mesa E2E", anuladaEn: anulada ? new Date() : null },
+  });
+  return prisma.cuenta.create({
+    data: {
+      mesaId,
+      abiertaPorId: usuarioId,
+      cerradaEn,
+      cerradaPorId: usuarioId,
+      items: { create: [{ productoId, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1, creadoPorId: usuarioId, operacionId: venta.id }] },
+    },
+  });
+}
+
+test("reimprimir la boleta de una cuenta cerrada: «Cuentas cerradas» la lista y la copia sale marcada REIMPRESIÓN, con las líneas netas y el total", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 972 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  await prisma.cuenta.create({
+    data: {
+      mesaId: mesa.id,
+      abiertaPorId: admin.id,
+      items: {
+        create: [
+          { productoId: cat.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1, creadoPorId: admin.id },
+          { productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1, creadoPorId: admin.id },
+        ],
+      },
+    },
+  });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: "Cerrar cuenta" }).click();
+    const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 972" });
+    const total = (await cierre.locator("[data-total-cierre]").textContent())?.trim() ?? "";
+    expect(total).toBe(MONEDA.format(21000));
+    await cierre.getByLabel("Sección de la que sale la mercadería").selectOption({ label: SECCION });
+    await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
+    await expect(page.getByText("La mesa está libre.")).toBeVisible();
+    expect(await impresiones(page)).toEqual([]);
+
+    const cerrada = await prisma.cuenta.findFirstOrThrow({ where: { mesaId: mesa.id } });
+    const hora = HORA_AR.format(cerrada.cerradaEn!);
+    const seccion = page.getByRole("region", { name: "Cuentas cerradas" });
+    await expect(seccion.locator("[data-cuenta-cerrada]")).toHaveCount(1);
+    await expect(seccion.locator("[data-cuenta-cerrada]")).toContainText(`Cerrada ${hora} · Atendió e2e-admin · ${total}`);
+
+    await seccion.getByRole("button", { name: `Reimprimir la boleta de la cuenta cerrada a las ${hora}` }).click();
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["boleta-reimpresion"]);
+    const [copia] = await impresiones(page);
+    for (const texto of [
+      "REIMPRESIÓN",
+      "Central",
+      "Mesa 972",
+      "Atendió: e2e-admin",
+      `2 × ${cat.milanesa.nombre}`,
+      `${MONEDA.format(9000)} c/u ${MONEDA.format(18000)}`,
+      `1 × ${cat.flan.nombre}`,
+      `${MONEDA.format(3000)} c/u ${MONEDA.format(3000)}`,
+      `TOTAL ${total}`,
+      "No válido como factura",
+    ]) {
+      expect(copia.texto).toContain(texto);
+    }
+
+    await page.emulateMedia({ media: "print" });
+    await expect(page.locator("[data-imprimible]")).toBeVisible();
+    await page.setViewportSize({ width: 220, height: 800 });
+    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(desborde).toBeLessThanOrEqual(0);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("guardas de la reimpresión de la boleta: sin pos_cerrar_cuenta queda deshabilitada; con la venta anulada, también, y lo dice", async ({ browser, baseURL, paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 973 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const vigenteEn = new Date(Date.now() - 60 * 60_000);
+  const anuladaEn = new Date(Date.now() - 2 * 60 * 60_000);
+  await sembrarCuentaCerrada(sucursalId, mesa.id, admin.id, cat.milanesa.id, vigenteEn);
+  await sembrarCuentaCerrada(sucursalId, mesa.id, admin.id, cat.milanesa.id, anuladaEn, true);
+  const reimprimir = (p: Page, fecha: Date) => p.getByRole("button", { name: `Reimprimir la boleta de la cuenta cerrada a las ${HORA_AR.format(fecha)}` });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await expect(page.locator("[data-cuenta-cerrada]")).toHaveCount(2);
+    await expect(reimprimir(page, vigenteEn)).toBeEnabled();
+    await expect(reimprimir(page, anuladaEn)).toBeDisabled();
+    await expect(page.locator(`[data-cuenta-cerrada="${HORA_AR.format(anuladaEn)}"]`)).toContainText("Venta anulada");
+    await expect(page.locator(`[data-cuenta-cerrada="${HORA_AR.format(vigenteEn)}"]`)).not.toContainText("Venta anulada");
+
+    await mozo.page.goto(`/mesas/${mesa.id}`);
+    await expect(mozo.page.locator("[data-cuenta-cerrada]")).toHaveCount(2);
+    await expect(reimprimir(mozo.page, vigenteEn)).toBeDisabled();
+    await expect(reimprimir(mozo.page, anuladaEn)).toBeDisabled();
+  } finally {
+    await cat.limpiar([mesa.id]);
+    await mozo.limpiar();
+  }
+});
+
 test("sin sesión, la pantalla de la mesa lleva al login recordando la ruta", async ({ browser, baseURL, sucursalId }) => {
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 966 } });
   const contexto = await browser.newContext();

@@ -9,7 +9,7 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
  * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), el admin de la carta, su portal de sucursales y su
- * tema, el mapa de mesas del salón y la pantalla de una mesa. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
+ * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas»). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -919,6 +919,57 @@ testAutenticado(
       await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id, anulaAItemId: { not: null } } });
       await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
       await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: mesa libre con «Cuentas cerradas» (una boleta reimprimible y una de venta anulada), en modo claro y oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B10: la sección nueva con sus dos estados de fila (botón habilitado; «Venta anulada»
+    // con el botón deshabilitado). Los documentos impresos no llevan caso propio: en pantalla son display:none.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-BOL-${marca}`, nombre: `E2E A11y Plato Boleta ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 975 } });
+    const operacionIds: string[] = [];
+    for (const [horasAtras, anulada] of [[1, false], [2, true]] as const) {
+      const cerradaEn = new Date(Date.now() - horasAtras * 60 * 60_000);
+      const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, anuladaEn: anulada ? new Date() : null } });
+      operacionIds.push(venta.id);
+      await prisma.cuenta.create({
+        data: {
+          mesaId: mesa.id,
+          abiertaPorId: admin.id,
+          cerradaEn,
+          cerradaPorId: admin.id,
+          items: { create: [{ productoId: producto.id, cantidad: 2, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: admin.id, operacionId: venta.id }] },
+        },
+      });
+    }
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 975");
+      await expect(page.getByText("La mesa está libre.")).toBeVisible();
+      await expect(page.locator("[data-cuenta-cerrada]")).toHaveCount(2);
+      await expect(page.getByText("Venta anulada")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Cuentas cerradas» en modo claro").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 975");
+      await expect(page.locator("[data-cuenta-cerrada]")).toHaveCount(2);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "«Cuentas cerradas» en modo oscuro emulado").toEqual([]);
+    } finally {
+      // Mismo orden que `limpiar` de pos-tomar-pedido.spec.ts: ítems → operaciones (y lo que cuelga de ellas) → cuentas → mesa → producto.
+      await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: mesa.id } } });
+      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: operacionIds } } });
+      await prisma.movimientoStock.deleteMany({ where: { operacionId: { in: operacionIds } } });
+      await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
+      await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });
       await prisma.mesa.deleteMany({ where: { id: mesa.id } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });
     }

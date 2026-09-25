@@ -3,9 +3,11 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerDetalleDeMesa, type ItemDeCuenta, type ItemEnEnvio } from "@/core/pos/cuenta";
 import { armarComandas } from "@/core/pos/comanda";
+import { obtenerBoletasRecientes } from "@/core/pos/boleta";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { AvisoMesaProvider } from "./aviso-mesa";
 import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
+import { CuentasCerradas } from "./cuentas-cerradas";
 import { AbrirCuenta } from "./abrir-cuenta";
 import { AgregarItems } from "./agregar-items";
 import { SinEnviar } from "./sin-enviar";
@@ -24,7 +26,8 @@ import { formatearCantidad, formatearMonto, nombreDeMesa } from "./formato";
  * permiso, el botón queda deshabilitado con un `title` que lo explica. Un rol con solo Ver de `pos_mesas` ve la mesa de solo lectura.
  *
  * Impresión (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md): la comanda de cada envío se arma ACÁ, en el servidor y sin precios
- * (`armarComandas`), y va al proveedor de impresión, que envuelve las dos ramas (mesa libre y cuenta abierta).
+ * (`armarComandas`), y va al proveedor de impresión, que envuelve las dos ramas (mesa libre y cuenta abierta) y «Cuentas cerradas» al
+ * pie (las últimas boletas de la mesa, `obtenerBoletasRecientes`): así la boleta se imprime aunque el cierre deje la mesa libre.
  *
  * Ruta dinámica: no va en RUTAS_SIN_PARAMETROS ni en el menú. `params` es una Promise en esta versión de Next
  * (node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md).
@@ -49,11 +52,12 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     );
   }
 
-  const [tomarPedido, anularItem, cerrarCuenta, secciones] = await Promise.all([
+  const [tomarPedido, anularItem, cerrarCuenta, secciones, boletas] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido"),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item"),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta"),
     listarSeccionesActivas(ctx.sucursalId),
+    obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id),
   ]);
   const { mesa, cuenta } = detalle;
   const titulo = nombreDeMesa(mesa.numero);
@@ -83,7 +87,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
       </header>
 
       <AvisoMesaProvider>
-        <ImpresionProvider mesa={titulo} comandas={comandas}>
+        <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} comandas={comandas} boletas={boletas}>
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
               <p className="mb-4 font-semibold">La mesa está libre.</p>
@@ -133,6 +137,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
               </div>
             </div>
           )}
+          <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} />
         </ImpresionProvider>
       </AvisoMesaProvider>
     </div>

@@ -2,15 +2,17 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { BoletaDeCuenta } from "@/core/pos/boleta";
 import { documentoDeReimpresion, type ComandaDeEnvio } from "@/core/pos/comanda";
 import { resolverImpresion, type DocumentoImprimible, type PedidoImpresion } from "@/core/pos/impresion";
+import { BoletaCuenta } from "./boleta-cuenta";
 import { BOTON_CHICO } from "./estilos";
 import { TicketCocina } from "./ticket-cocina";
 
 /**
  * Impresión de la pantalla de la mesa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B7/B9): UNA infraestructura para los
- * documentos que se imprimen desde acá (la comanda de cocina y, más adelante, la boleta del cliente), cada uno con su propio
- * componente de presentación.
+ * documentos que se imprimen desde acá (la comanda de cocina y la boleta del cliente), cada uno con su propio componente de
+ * presentación (`TicketCocina` sin precios, `BoletaCuenta` con precios): nunca un «ticket genérico» con banderas.
  *
  * - Vive en la CIMA de la página (por encima de «mesa libre» y «cuenta abierta»): así sobrevive a que la acción que pidió imprimir
  *   haga desaparecer su botón después de `router.refresh()` (que conserva el estado de los componentes de cliente).
@@ -26,9 +28,11 @@ interface ApiImpresion {
   anulacionesDe: (itemId: string) => string[];
   pedir: (pedido: PedidoImpresion) => void;
   reimprimirEnvio: (numero: number) => void;
+  /** Copia de la boleta de una cuenta cerrada de «Cuentas cerradas» (no, si su venta se anuló). */
+  reimprimirBoleta: (cuentaId: string) => void;
 }
 
-const ImpresionContexto = createContext<ApiImpresion>({ anulacionesDe: () => [], pedir: () => {}, reimprimirEnvio: () => {} });
+const ImpresionContexto = createContext<ApiImpresion>({ anulacionesDe: () => [], pedir: () => {}, reimprimirEnvio: () => {}, reimprimirBoleta: () => {} });
 
 export function useImpresion() {
   return useContext(ImpresionContexto);
@@ -40,7 +44,19 @@ interface EnCurso {
   impresoEn: Date;
 }
 
-export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; comandas: ComandaDeEnvio[]; children: React.ReactNode }) {
+export function ImpresionProvider({
+  mesa,
+  sucursal,
+  comandas,
+  boletas,
+  children,
+}: {
+  mesa: string;
+  sucursal: string;
+  comandas: ComandaDeEnvio[];
+  boletas: BoletaDeCuenta[];
+  children: React.ReactNode;
+}) {
   const [pedido, setPedido] = useState<PedidoImpresion | null>(null);
   const [enCurso, setEnCurso] = useState<EnCurso | null>(null);
   const [secuencia, setSecuencia] = useState(0);
@@ -54,7 +70,7 @@ export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; 
   // Con cada render (el refresco trae datos nuevos) se vuelve a mirar el pedido pendiente: el estado se ajusta durante el render, sin
   // efecto, igual que «guardar información de renders anteriores» (react.dev). Deja de ser pendiente en cuanto se imprime o se descarta.
   if (pedido) {
-    const resolucion = resolverImpresion({ comandas, boletas: [] }, pedido);
+    const resolucion = resolverImpresion({ comandas, boletas }, pedido);
     if (resolucion.accion !== "esperar") {
       setPedido(null);
       if (resolucion.accion === "imprimir") mostrar(resolucion.documento);
@@ -76,6 +92,10 @@ export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; 
       const documento = documentoDeReimpresion(comandas, numero);
       if (documento) mostrar(documento);
     },
+    reimprimirBoleta: (cuentaId) => {
+      const boleta = boletas.find((b) => b.cuentaId === cuentaId);
+      if (boleta && !boleta.ventaAnulada) mostrar({ tipo: "boleta-reimpresion", boleta });
+    },
   };
 
   return (
@@ -84,7 +104,11 @@ export function ImpresionProvider({ mesa, comandas, children }: { mesa: string; 
       {enCurso &&
         createPortal(
           <div data-imprimible data-tipo={enCurso.documento.tipo}>
-            {"comanda" in enCurso.documento && <TicketCocina documento={enCurso.documento} mesa={mesa} impresoEn={enCurso.impresoEn} />}
+            {"comanda" in enCurso.documento ? (
+              <TicketCocina documento={enCurso.documento} mesa={mesa} impresoEn={enCurso.impresoEn} />
+            ) : (
+              <BoletaCuenta documento={enCurso.documento} mesa={mesa} sucursal={sucursal} />
+            )}
           </div>,
           document.body
         )}
