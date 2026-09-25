@@ -12,7 +12,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * un solo lugar, nunca una copia divergente en cada Server Action).
  */
 export interface CambioAuditable {
-  entidad: "Producto" | "PrecioLocalProducto" | "DisponibilidadProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol" | "Operacion" | "CuentaItem";
+  entidad: "Producto" | "PrecioLocalProducto" | "DisponibilidadProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol" | "Operacion" | "CuentaItem" | "Cuenta";
   entidadId: string;
   /** Legible de entrada, ej. `Producto "Pan Francés": precio de venta`. */
   descripcion: string;

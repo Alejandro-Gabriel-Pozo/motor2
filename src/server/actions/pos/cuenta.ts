@@ -11,9 +11,10 @@ import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { lineasDeVenta, restanteDe, validarCantidadPedido, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { registrarVentaEnTx, type AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
+import { formatearNumeroBoleta, siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
+import { armarBoletaVigente, estadoDeBoleta, type ItemConVenta } from "@/core/pos/boleta";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
+import { error, ok, type ResultadoAccion, type ResultadoBoletaCorregida, type ResultadoEnvioACocina } from "../tipos";
 
 /**
  * Toma de pedido en el salón (módulo POS, docs/plan-tomar-pedido-2026-09-25.md). Todas las escrituras corren en una transacción
@@ -353,6 +354,82 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
         });
       }
       return ok(`${mensaje} ⚠ Quedó stock negativo: ${venta.avisosStockNegativo.map(describirAviso).join(", ")}. Corregilo con un Conteo Físico o un Ajuste.`);
+    });
+  });
+}
+
+/**
+ * «Emitir boleta corregida» (docs/plan-numeracion-boleta-2026-09-25.md, Fase 2): `anularVenta` anula UNA Operacion VENTA — una línea de
+ * la mesa —, así que después de imprimir la boleta se puede anular solo el flan y dejar vigente la milanesa. La boleta impresa quedó
+ * desactualizada; esta acción emite el EJEMPLAR SIGUIENTE con el MISMO número (566-A → 566-B), `corrigeAId` al ejemplar A (siempre al A,
+ * nunca al anterior: criterio de `CuentaItem.anulaAItemId`), el motivo y quién lo emitió, más una fila en el registro de auditoría
+ * (entidad `Cuenta`, campo `ejemplarBoleta`). Nunca edita ni borra un ejemplar.
+ *
+ * Solo sobre una cuenta de la sucursal, cerrada CON número (las cerradas antes de la numeración no tienen boleta que corregir) y en estado
+ * «desactualizada» (`estadoDeBoleta`): si el último ejemplar ya refleja las anulaciones, o la venta se anuló entera, se rechaza. Mismo
+ * permiso que cerrar la cuenta. La transacción serializable arbitra dos emisiones a la vez: la segunda reintenta, ve el B ya emitido
+ * (vigente) y se rechaza.
+ */
+export async function emitirBoletaCorregida(cuentaId: string, motivo: string): Promise<ResultadoBoletaCorregida> {
+  return conPermiso("pos_cerrar_cuenta", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const cuenta =
+        typeof cuentaId === "string"
+          ? await tx.cuenta.findFirst({
+              where: { id: cuentaId, mesa: { sucursalId: ctx.sucursalId } },
+              include: {
+                mesa: { select: { numero: true } },
+                items: { include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } } } },
+                ejemplaresBoleta: { orderBy: { ejemplar: "desc" } },
+              },
+            })
+          : null;
+      if (!cuenta) return error("No se encontró esa cuenta en esta sucursal.");
+      const mesa = cuenta.mesa.numero;
+      if (!cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} todavía está abierta: no tiene boleta que corregir.`);
+      const [ultimo] = cuenta.ejemplaresBoleta;
+      const original = cuenta.ejemplaresBoleta.find((e) => e.ejemplar === 1);
+      if (!ultimo || !original) return error(`La cuenta de la mesa ${mesa} se cerró antes de la numeración de boletas: no tiene boleta que corregir.`);
+
+      const items: ItemConVenta[] = cuenta.items.map((i) => ({
+        productoId: i.productoId,
+        productoNombre: i.producto.nombre,
+        cantidad: Number(i.cantidad),
+        precioUnitario: Number(i.precioUnitario),
+        operacionId: i.operacionId,
+        anuladaEn: i.operacion?.anuladaEn ?? null,
+      }));
+      const estado = estadoDeBoleta(items, ultimo.emitidoEn);
+      if (estado === "anulada" || !armarBoletaVigente(items).lineas.length) return error("La venta se anuló entera: no hay boleta que corregir.");
+      if (estado === "vigente") return error(`La boleta N.º ${formatearNumeroBoleta(ultimo)} ya refleja las anulaciones.`);
+
+      const motivoValidado = validarMotivoAnulacion(motivo);
+      if (!motivoValidado.ok) return error(motivoValidado.mensaje);
+
+      const nuevo = { numero: original.numero, ejemplar: ultimo.ejemplar + 1 };
+      await tx.ejemplarBoleta.create({
+        data: {
+          sucursalId: original.sucursalId,
+          cuentaId: cuenta.id,
+          ...nuevo,
+          emitidoEn: new Date(),
+          emitidoPorId: ctx.usuarioId,
+          corrigeAId: original.id,
+          motivo: motivoValidado.motivo,
+        },
+      });
+      const [anterior, emitido, reemplazado] = [formatearNumeroBoleta(ultimo), formatearNumeroBoleta(nuevo), formatearNumeroBoleta(original)];
+      await registrarCambioAuditado(tx, {
+        entidad: "Cuenta",
+        entidadId: cuenta.id,
+        descripcion: `Mesa ${mesa}: boleta corregida N.º ${emitido} (reemplaza a N.º ${reemplazado}). Motivo: ${motivoValidado.motivo}`,
+        campo: "ejemplarBoleta",
+        valorAnterior: anterior,
+        valorNuevo: emitido,
+        actorId: ctx.usuarioId,
+        sucursalId: ctx.sucursalId,
+      });
+      return { ...ok(`Boleta N.º ${emitido} emitida: reemplaza a N.º ${reemplazado}.`), ...nuevo };
     });
   });
 }

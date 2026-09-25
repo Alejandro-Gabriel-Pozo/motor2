@@ -4,7 +4,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
-import { agregarItems, anularItemEnviado, cerrarCuenta, enviarACocina } from "../../src/server/actions/pos/cuenta";
+import { agregarItems, anularItemEnviado, cerrarCuenta, emitirBoletaCorregida, enviarACocina } from "../../src/server/actions/pos/cuenta";
+import { anularVenta } from "../../src/server/actions/movimientos/venta";
 
 /**
  * Carreras del salón (docs/plan-tomar-pedido-2026-09-25.md paso 6; molde test/auditoria/concurrencia-*): dos mozos o un doble clic
@@ -33,6 +34,22 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     expect(await prisma.movimientoStock.count({ where: { proceso: "VENTA" } })).toBe(2);
     // Una sola boleta numerada: el cierre que perdió la carrera no emite otro ejemplar.
     expect(await prisma.ejemplarBoleta.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
+  });
+
+  it("dos «Emitir boleta corregida» a la vez: un solo ejemplar B; el otro ve que ya refleja las anulaciones (docs/plan-numeracion-boleta-2026-09-25.md)", async () => {
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [
+      { productoId: s.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 },
+      { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
+    ]);
+    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    const flan = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.flan.id } });
+    expect((await anularVenta(flan.operacionId!)).ok).toBe(true);
+
+    const resultados = await Promise.all([emitirBoletaCorregida(cuenta.id, "Cajero A"), emitirBoletaCorregida(cuenta.id, "Cajero B")]);
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok).map((r) => r.mensaje)).toEqual(["La boleta N.º 1-B ya refleja las anulaciones."]);
+    expect((await prisma.ejemplarBoleta.findMany({ where: { cuentaId: cuenta.id }, orderBy: { ejemplar: "asc" } })).map((e) => e.ejemplar)).toEqual([1, 2]);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Cuenta" } })).toBe(1);
   });
 
   for (const cuantas of [2, 3]) {
