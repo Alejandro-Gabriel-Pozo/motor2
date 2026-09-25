@@ -194,3 +194,8 @@ referencia mínima.
 4. **Alcance de la migración:** se confirma `Mesa` + `Cuenta` +
    `CuentaItem` ahora; la entidad de comanda/KOT con su lógica de
    anulación queda para "tomar pedido".
+
+> **Actualización 2026-09-25 — pendiente «tomar pedido»:** lo que acá quedaba «para cuando se planifique tomar pedido» (comanda/KOT,
+> anulación con motivo y permiso elevado) ya está diseñado e implementado: ver `docs/plan-tomar-pedido-2026-09-25.md`. En corto: el
+> KOT se deriva de `numeroEnvio` (sin tabla propia), la anulación de un ítem enviado es una fila espejo negativa con motivo y
+> auditoría, y el permiso elevado es una clave propia (`pos_anular_item`), sin PIN de supervisor.
