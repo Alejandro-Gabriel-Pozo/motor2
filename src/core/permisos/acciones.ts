@@ -100,6 +100,7 @@ export const ACCIONES: readonly AccionSemilla[] = [
   // «Tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, B4): tres claves separadas para poder armar un rol «mozo» que toma pedidos
   // (con `pos_mesas` Ver + `pos_tomar_pedido` Editar) sin poder anular lo que ya salió a cocina ni cobrar. Todas arrancan solo en admin.
   { clave: "pos_tomar_pedido", descripcion: "Tomar pedidos en el salón: abrir la cuenta de una mesa, agregar y quitar ítems sin enviar, enviarlos a cocina y liberar una mesa sin consumo (POS)", rolesEditarSemilla: ["admin"] },
+  { clave: "pos_anular_item", descripcion: "Anular un ítem de una cuenta que ya se envió a cocina, con motivo (POS)", rolesEditarSemilla: ["admin"] },
 ] as const;
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];

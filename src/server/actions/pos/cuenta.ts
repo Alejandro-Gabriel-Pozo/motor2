@@ -7,7 +7,8 @@ import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
-import { validarCantidadPedido } from "@/core/pos/cuenta";
+import { restanteDe, validarCantidadPedido, validarMotivoAnulacion } from "@/core/pos/cuenta";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -24,6 +25,11 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 // Sin `export`: un archivo "use server" solo puede exportar funciones async (cada export es un endpoint).
 const MAXIMO_ITEMS_POR_AGREGADO = 50;
 const MAXIMO_ITEMS_POR_ENVIO = 200;
+
+/** Cantidad legible («1», «0,5»), para mensajes y descripciones de auditoría. */
+function formatearCantidad(n: number): string {
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 }).format(n);
+}
 
 type CuentaAbierta = { id: string; mesa: { id: string; numero: number } };
 
@@ -149,6 +155,75 @@ export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
       }
       await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { cerradaEn: new Date(), cerradaPorId: ctx.usuarioId } });
       return ok(`Mesa ${abierta.cuenta.mesa.numero} liberada.`);
+    });
+  });
+}
+
+/**
+ * Anula (total o parcialmente) un ítem que YA SALIÓ a cocina (plan B2/B3): escribe una fila ESPEJO — un CuentaItem nuevo con la
+ * cantidad en NEGATIVO, mismo producto/precio/envío, `anulaAItemId` al original, el motivo y quién lo hizo — más una fila en el registro
+ * de auditoría (entidad `CuentaItem`, campo `cantidadVigente`). El original nunca se edita ni se borra: lo que queda se calcula
+ * (`restanteDe`). Permiso propio, más restrictivo que tomar pedido (el mozo no lo tiene de fábrica).
+ *
+ * `restanteVisto` es la guarda optimista (mismo criterio que el `esperado` de `corregirCompra`): lo que quedaba del ítem cuando el
+ * usuario abrió el diálogo. Si otro lo anuló mientras tanto, se rechaza en vez de anular sobre un número que ya no es el que vio.
+ * Una cuenta ya cerrada no se toca: su venta se anula por el camino de siempre (`anularVenta`).
+ */
+export async function anularItemEnviado(cuentaItemId: string, cantidad: number, motivo: string, restanteVisto: number): Promise<ResultadoAccion> {
+  return conPermiso("pos_anular_item", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const item =
+        typeof cuentaItemId === "string"
+          ? await tx.cuentaItem.findFirst({
+              where: { id: cuentaItemId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } },
+              include: {
+                producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } },
+                cuenta: { include: { mesa: { select: { numero: true } } } },
+                anulaciones: { select: { cantidad: true } },
+              },
+            })
+          : null;
+      if (!item) return error("No se encontró ese ítem en esta sucursal.");
+      const mesa = item.cuenta.mesa.numero;
+      if (item.anulaAItemId !== null) return error("Eso ya es una anulación: no se puede anular.");
+      if (item.cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
+      if (item.numeroEnvio === null) return error("Ese ítem todavía no salió a cocina: usá «Quitar».");
+
+      const motivoValidado = validarMotivoAnulacion(motivo);
+      if (!motivoValidado.ok) return error(motivoValidado.mensaje);
+
+      const restante = restanteDe({ cantidad: Number(item.cantidad) }, item.anulaciones.map((a) => ({ cantidad: Number(a.cantidad) })));
+      if (typeof restanteVisto !== "number" || restanteVisto !== restante) {
+        return error(`«${item.producto.nombre}» cambió mientras lo mirabas (ahora quedan ${formatearCantidad(restante)}): revisá y volvé a intentar.`);
+      }
+      const aAnular = validarCantidadPedido(cantidad, item.producto.unidadStock.decimales);
+      if (!aAnular.ok) return error(aAnular.mensaje);
+      if (aAnular.cantidad > restante) return error(`No se puede anular más de lo que queda de «${item.producto.nombre}» (${formatearCantidad(restante)}).`);
+
+      await tx.cuentaItem.create({
+        data: {
+          cuentaId: item.cuentaId,
+          productoId: item.productoId,
+          cantidad: -aAnular.cantidad,
+          precioUnitario: item.precioUnitario,
+          numeroEnvio: item.numeroEnvio,
+          anulaAItemId: item.id,
+          motivoAnulacion: motivoValidado.motivo,
+          creadoPorId: ctx.usuarioId,
+        },
+      });
+      const quedan = restanteDe({ cantidad: restante }, [{ cantidad: -aAnular.cantidad }]);
+      await registrarCambioAuditado(tx, {
+        entidad: "CuentaItem",
+        entidadId: item.id,
+        descripcion: `Mesa ${mesa}, envío ${item.numeroEnvio}: anulación de ${formatearCantidad(aAnular.cantidad)} × "${item.producto.nombre}" ya enviado a cocina. Motivo: ${motivoValidado.motivo}`,
+        campo: "cantidadVigente",
+        valorAnterior: restante,
+        valorNuevo: quedan,
+        actorId: ctx.usuarioId,
+        sucursalId: ctx.sucursalId,
+      });
+      return ok(`Se anuló ${formatearCantidad(aAnular.cantidad)} × «${item.producto.nombre}» de la mesa ${mesa}.`);
     });
   });
 }
