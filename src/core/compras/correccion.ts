@@ -1,4 +1,4 @@
-import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
+import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 
 /**
  * Reglas de la CORRECCIÓN de una compra confirmada (K1b, docs/planes-implementacion-pendientes-2026-09-21.md §5). Módulo PURO: sin base de datos ni permisos.
@@ -56,7 +56,11 @@ export function diferenciasDeCabecera(actual: CabeceraCompra, nueva: CabeceraCom
  */
 export function validarCorreccion(cambios: readonly CambioDeCabecera[]): string | null {
   for (const c of cambios) {
-    if (c.campo === "nroFactura" && c.nuevo && c.nuevo.length > LARGO_MAXIMO_NRO_FACTURA) return `El número de factura no puede superar los ${LARGO_MAXIMO_NRO_FACTURA} caracteres.`;
+    if (c.campo === "nroFactura") {
+      // Mismo validador que la carga de la compra (registrarMovimiento): largo y al menos una letra o número.
+      const factura = guardNroFacturaCompra(c.nuevo);
+      if (!factura.ok) return factura.mensaje;
+    }
     if (c.campo === "detalleLibre" && c.nuevo && c.nuevo.length > LARGO_MAXIMO_DETALLE_COMPRA) return `El detalle no puede superar los ${LARGO_MAXIMO_DETALLE_COMPRA} caracteres.`;
   }
   return null;

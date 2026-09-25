@@ -609,8 +609,11 @@ describe("escenario realista: 6 insumos × 4 platos, superpuestos entre sí", ()
         // guardado queda por debajo del "requerido" en punto flotante crudo
         // (ej. 3.00 < 3.0000000000000004). Redondear hacia arriba a 2
         // decimales y sumar otro 0.01 asegura stock real de sobra, muy por
-        // debajo de la tolerancia de los asserts de más abajo.
-        await registrarMovimiento({ proceso: "COMPRA", fecha: s.fecha, seccionId, items: [{ productoId, cantidad: Math.ceil(cantidad * 100) / 100 + 0.01 }] });
+        // debajo de la tolerancia de los asserts de más abajo. La suma se hace en centésimos ENTEROS: `x / 100 + 0.01` deja ruido de
+        // punto flotante (3.0000000000000004), que la Compra ya no redondea en silencio sino que rechaza por tener más de 2 decimales
+        // (docs/plan-validacion-de-datos-2026-09-25.md).
+        const compra = await registrarMovimiento({ proceso: "COMPRA", fecha: s.fecha, seccionId, items: [{ productoId, cantidad: (Math.ceil(cantidad * 100) + 1) / 100 }] });
+        expect(compra.ok, compra.mensaje).toBe(true);
       }
 
       const resultadoVenta = await registrarVenta({

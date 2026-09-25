@@ -171,3 +171,35 @@ test("categorías: tras un error el texto tipeado se conserva; tras un éxito el
     await prisma.categoriaProducto.deleteMany({ where: { nombre: valido } });
   }
 });
+
+test("precio local: un texto que no es número ('abc') no guarda un precio 0", async ({ paginaAutenticada: page, sucursalId }) => {
+  // Antes: CampoNumero borraba todo lo que no fuera dígito ("abc" → ""), el `required` lo cumplía el texto visible y el formulario mandaba
+  // `Number("")`, o sea 0. Ahora el campo marca el texto como inválido (validación nativa del navegador) y no sale ningún envío.
+  const marca = Date.now();
+  const nombre = `E2E Precio Texto ${marca}`;
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-PT-${marca}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+
+  try {
+    await page.goto("/movimientos/precio-local");
+    await expect(page.getByRole("heading", { name: /Precio local/ })).toBeVisible();
+    await page.getByRole("combobox").fill(nombre);
+    await page.getByRole("option", { name: new RegExp(nombre) }).click();
+
+    const campo = page.getByLabel("Precio local");
+    await campo.fill("abc");
+    await campo.press("Enter"); // envío implícito, sin sacar el foco del campo
+    await page.getByRole("button", { name: "Guardar", exact: true }).click();
+
+    expect(await campo.evaluate((e: HTMLInputElement) => e.validity.customError), "el campo tiene que quedar inválido").toBe(true);
+    expect(await campo.evaluate((e: HTMLInputElement) => e.validationMessage)).toMatch(/no es un número válido\./i);
+    await expect(campo).toHaveAttribute("aria-invalid", "true");
+    await page.waitForTimeout(500); // margen para que un envío que no debió salir llegue a la base
+    expect(await prisma.precioLocalProducto.count({ where: { productoId: producto.id } }), "no tenía que guardarse ningún precio").toBe(0);
+  } finally {
+    await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});

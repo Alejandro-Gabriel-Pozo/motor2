@@ -400,4 +400,150 @@ describe("registrarMovimiento", () => {
       expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // nada se movió
     });
   });
+
+  // docs/plan-validacion-de-datos-2026-09-25.md, Paso C1: Compra y Devolución a proveedor (los dos procesos con aplicaFactorConversion)
+  // validan cantidad, precio total, peso real y N.º de factura con src/core/datos. Antes: un precio NaN o negativo se guardaba como 0
+  // sin aviso, una línea con cantidad basura (o 0) se descartaba en silencio y 2,5 en una unidad entera se redondeaba a 3.
+  describe("Compra / Devolución a proveedor: validación de datos de entrada (src/core/datos)", () => {
+    async function compra(items: Parameters<typeof registrarMovimiento>[0]["items"], extra?: { nroFactura?: string; proveedorId?: string }) {
+      return registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items, ...extra });
+    }
+
+    it("precioTotal NaN → error, sin Operacion (antes se guardaba 0 sin aviso)", async () => {
+      const mp = await crearMP("Harina");
+      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: Number.NaN }]);
+      expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" no es un número válido.' });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+
+    it("precioTotal negativo → error, sin Operacion (antes se guardaba 0 sin aviso)", async () => {
+      const mp = await crearMP("Harina");
+      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: -5 }]);
+      expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" no puede ser negativo.' });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+
+    it("precioTotal con más de 2 decimales (10.555) → error, sin Operacion", async () => {
+      const mp = await crearMP("Harina");
+      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: 10.555 }]);
+      expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" admite como máximo 2 decimales.' });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+
+    it("dos líneas, una con cantidad NaN → error con el nombre del producto (antes se descartaba esa línea y se guardaba la otra)", async () => {
+      const harina = await crearMP("Harina");
+      const azucar = await crearMP("Azúcar");
+      const resultado = await compra([
+        { productoId: harina.id, cantidad: 10, precioTotal: 100 },
+        { productoId: azucar.id, cantidad: Number.NaN, precioTotal: 50 },
+      ]);
+      expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Azúcar" no es un número válido.' });
+      expect(await prisma.operacion.count()).toBe(0);
+      expect(await prisma.movimientoStock.count()).toBe(0);
+    });
+
+    it("2,5 en una unidad de 0 decimales → error (antes se redondeaba y se guardaba 3)", async () => {
+      const mp = await sembrarProductoDisponible(
+        { codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: unidadGId, insumoId },
+        sucursalId
+      );
+      const resultado = await compra([{ productoId: mp.id, cantidad: 2.5 }]);
+      expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Huevo" tiene que ser un número entero (la unidad "g" no admite decimales).' });
+      expect(await prisma.movimientoStock.count()).toBe(0);
+    });
+
+    it("los decimales se miden en la unidad de COMPRA (la de la presentación elegida), no en la de stock", async () => {
+      const mp = await crearMP("Harina en caja"); // stock en kg (2 decimales)
+      const presentacion = await prisma.presentacion.create({ data: { productoId: mp.id, unidadCompraId: unidadGId, factorConversion: 20 } }); // "g" = 0 decimales
+      const resultado = await compra([{ productoId: mp.id, cantidad: 1.5, unidadCompraId: presentacion.unidadCompraId }]);
+      expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Harina en caja" tiene que ser un número entero (la unidad "g" no admite decimales).' });
+      expect(await prisma.movimientoStock.count()).toBe(0);
+    });
+
+    it("cantidad 0 en una Compra → error (decisión del dueño: se rechaza, no se saltea en silencio)", async () => {
+      const harina = await crearMP("Harina");
+      const azucar = await crearMP("Azúcar");
+      const resultado = await compra([
+        { productoId: harina.id, cantidad: 10 },
+        { productoId: azucar.id, cantidad: 0 },
+      ]);
+      expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Azúcar" tiene que ser mayor que cero.' });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+
+    it("peso real negativo o NaN → error (antes se ignoraba sin aviso y se usaba el factor)", async () => {
+      const mp = await crearMP("Carne");
+      const negativo = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: -1 }]);
+      expect(negativo).toEqual({ ok: false, mensaje: 'El peso real de "Carne" tiene que ser mayor que cero.' });
+      const nan = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: Number.NaN }]);
+      expect(nan).toEqual({ ok: false, mensaje: 'El peso real de "Carne" no es un número válido.' });
+      const cero = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 0 }]);
+      expect(cero).toEqual({ ok: false, mensaje: 'El peso real de "Carne" tiene que ser mayor que cero.' });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+
+    it("peso real válido se usa como cantidad de stock; vacío (null) sigue sin peso real", async () => {
+      const mp = await crearMP("Carne");
+      expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 2.35 }])).ok).toBe(true);
+      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(2.35);
+      expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: null }])).ok).toBe(true);
+      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(3.35);
+    });
+
+    it("N.º de factura sin ninguna letra ni número ('---') → error, sin Operacion", async () => {
+      const mp = await crearMP("Harina");
+      const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_GUION", nombre: "Molino SA" } });
+      const resultado = await compra([{ productoId: mp.id, cantidad: 5 }], { proveedorId: proveedor.id, nroFactura: "---" });
+      expect(resultado).toEqual({ ok: false, mensaje: "El número de factura tiene que tener al menos una letra o un número." });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+
+    it("N.º de factura: 60 caracteres pasa; 61 da el mismo mensaje de siempre; se guarda recortado", async () => {
+      const mp = await crearMP("Harina");
+      const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_60", nombre: "Molino SA" } });
+      const largo = await compra([{ productoId: mp.id, cantidad: 5 }], { proveedorId: proveedor.id, nroFactura: "A".repeat(61) });
+      expect(largo).toEqual({ ok: false, mensaje: "El número de factura no puede superar los 60 caracteres." });
+      const justo = await compra([{ productoId: mp.id, cantidad: 5 }], { proveedorId: proveedor.id, nroFactura: `  ${"B".repeat(60)}  ` });
+      expect(justo.ok, justo.mensaje).toBe(true);
+      expect((await prisma.operacion.findFirstOrThrow()).nroFactura).toBe("B".repeat(60));
+    });
+
+    it("precioTotal vacío → se guarda 0 (una compra sin precio sigue permitida); precioTotal 0 → 0", async () => {
+      const mp = await crearMP("Harina");
+      expect((await compra([{ productoId: mp.id, cantidad: 5 }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 5, precioTotal: 0 }])).ok).toBe(true);
+      const filas = await prisma.movimientoStock.findMany({ where: { productoId: mp.id } });
+      expect(filas.map((f) => Number(f.precioTotal))).toEqual([0, 0]);
+    });
+
+    it("precioTotal válido con 2 decimales se guarda tal cual", async () => {
+      const mp = await crearMP("Harina");
+      expect((await compra([{ productoId: mp.id, cantidad: 3, precioTotal: 1234.56 }])).ok).toBe(true);
+      expect(Number((await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id } })).precioTotal)).toBe(1234.56);
+    });
+
+    it("Devolución a proveedor usa las mismas reglas (decisión del dueño): precio NaN → error, no 0", async () => {
+      const mp = await crearMP("Harina");
+      expect((await compra([{ productoId: mp.id, cantidad: 10 }])).ok).toBe(true);
+      const resultado = await registrarMovimiento({
+        proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId: seccionAId,
+        items: [{ productoId: mp.id, cantidad: 2, precioTotal: Number.NaN }],
+      });
+      expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" no es un número válido.' });
+      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+    });
+
+    it("los procesos sin aplicaFactorConversion no cambian: una línea de Merma con cantidad 0 se sigue salteando", async () => {
+      const harina = await crearMP("Harina");
+      const azucar = await crearMP("Azúcar");
+      await compra([{ productoId: harina.id, cantidad: 10 }, { productoId: azucar.id, cantidad: 10 }]);
+      const resultado = await registrarMovimiento({
+        proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
+        items: [{ productoId: harina.id, cantidad: 2 }, { productoId: azucar.id, cantidad: 0 }],
+      });
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+      expect(await calcularSaldoTotal(harina.id, seccionAId)).toBe(8);
+      expect(await calcularSaldoTotal(azucar.id, seccionAId)).toBe(10);
+    });
+  });
 });

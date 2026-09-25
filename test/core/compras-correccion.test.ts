@@ -57,6 +57,22 @@ describe("validarCorreccion — solo valida lo que cambia", () => {
   it("borrar un campo (null) no se valida como largo", () => {
     expect(validarCorreccion([{ campo: "nroFactura", anterior: "A-1", nuevo: null }])).toBeNull();
   });
+
+  // docs/plan-validacion-de-datos-2026-09-25.md, Paso C2: el mismo validador que la carga de la compra (validarNroFactura).
+  it("rechaza un N.º de factura sin ninguna letra ni número, igual que la carga", () => {
+    expect(validarCorreccion([{ campo: "nroFactura", anterior: "A-1", nuevo: "---" }])).toBe("El número de factura tiene que tener al menos una letra o un número.");
+    expect(validarCorreccion([{ campo: "nroFactura", anterior: "A-1", nuevo: "#*#" }])).toBe("El número de factura tiene que tener al menos una letra o un número.");
+  });
+
+  it("el mensaje de largo no cambia y un N.º de factura con caracteres típicos pasa", () => {
+    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "x".repeat(61) }])).toBe("El número de factura no puede superar los 60 caracteres.");
+    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "#12/345*" }])).toBeNull();
+    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "-0001" }])).toBeNull();
+  });
+
+  it("un N.º de factura viejo inválido que NO se toca no traba la corrección de otro campo", () => {
+    expect(validarCorreccion([{ campo: "detalleLibre", anterior: null, nuevo: "nota" }])).toBeNull();
+  });
 });
 
 describe("cabeceraCoincide (guarda optimista)", () => {

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { corregirCompra, type CabeceraVista } from "@/server/actions/movimientos/compras";
+import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 
 interface OpcionProveedor {
   id: string;
@@ -142,7 +143,7 @@ export function FormularioCorregirCompra({
       </div>
       <div className="flex flex-col gap-1 text-sm">
         <label htmlFor={`${idBase}-factura`}>N.º de factura</label>
-        <input id={`${idBase}-factura`} value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={60} className="rounded border px-2 py-1.5" />
+        <input id={`${idBase}-factura`} value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} className="rounded border px-2 py-1.5" />
       </div>
       <div className="flex flex-col gap-1 text-sm">
         <label htmlFor={`${idBase}-detalle`}>Detalle</label>

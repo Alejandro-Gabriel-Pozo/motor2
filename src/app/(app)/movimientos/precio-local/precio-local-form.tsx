@@ -7,6 +7,7 @@ import { obtenerPrecioVentaProducto } from "@/server/actions/catalogo/productos"
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 
@@ -48,7 +49,8 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
       onSubmit={(e) => {
         e.preventDefault();
         startTransition(async () => {
-          const resultado = await setPrecioLocalProducto(productoId, Number(precio), habilitado);
+          // numeroDelCampo: un texto inválido llega como NaN y el servidor lo rechaza; nunca el 0 que daba convertir un texto vacío.
+          const resultado = await setPrecioLocalProducto(productoId, numeroDelCampo(precio) ?? Number.NaN, habilitado);
           setMensaje(resultado.mensaje);
           setOk(resultado.ok);
           setSincronizable(resultado.ok ? (resultado.sincronizable ?? null) : null);
@@ -73,7 +75,7 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
 
       <label className="flex flex-col gap-1 text-sm">
         Precio local
-        <CampoNumero value={precio} onChange={setPrecio} prefijo="$" required />
+        <CampoNumero value={precio} onChange={setPrecio} prefijo="$" required tipo="importe" etiqueta="El precio" />
       </label>
 
       <label className="flex items-center gap-2 text-sm">
