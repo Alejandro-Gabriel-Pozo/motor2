@@ -4,9 +4,9 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
 /**
- * Mapa de mesas del salón (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md). Hasta el pendiente «tomar pedido» nadie escribe
- * cuentas desde la aplicación: los estados `en_pedido`/`ocupada` se prueban con filas sembradas acá. Cada caso limpia lo suyo en
- * `finally` (el número de mesa es único por sucursal y otros casos cuentan las mesas).
+ * Mapa de mesas del salón (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md). Los estados `en_pedido`/`ocupada` se prueban acá con
+ * filas sembradas (el circuito real de tomar pedido está en pos-tomar-pedido.spec.ts). Cada caso limpia lo suyo en `finally` (el
+ * número de mesa es único por sucursal y otros casos cuentan las mesas).
  */
 
 type ConMarca = { __sinRecargar?: boolean };
@@ -128,16 +128,18 @@ test("el mapa muestra las mesas con sus datos reales: métricas, tarjetas de los
   }
 });
 
-test("corte de alcance: tomar pedido, continuar, ver pedidos, facturar y opciones de mesa están deshabilitados, y el salón no muestra el menú de administración", async ({ paginaAutenticada: page, sucursalId }) => {
-  const { limpiar } = await sembrarTresMesas(sucursalId, [911, 912, 913]);
+test("las acciones de cada tarjeta llevan a la pantalla de la mesa; «Opciones de mesa» sigue deshabilitado, y el salón no muestra el menú de administración", async ({ paginaAutenticada: page, sucursalId }) => {
+  const { libre, enPedido, ocupada, limpiar } = await sembrarTresMesas(sucursalId, [911, 912, 913]);
   try {
     await page.goto("/mesas");
-    await expect(tarjeta(page, 911).getByRole("button", { name: "Tomar pedido" })).toBeDisabled();
-    await expect(tarjeta(page, 912).getByRole("button", { name: "Continuar pedido" })).toBeDisabled();
-    await expect(tarjeta(page, 913).getByRole("button", { name: "Ver pedidos" })).toBeDisabled();
-    await expect(tarjeta(page, 913).getByRole("button", { name: "Facturar" })).toBeDisabled();
+    await expect(tarjeta(page, 911).getByRole("link", { name: "Tomar pedido" })).toHaveAttribute("href", `/mesas/${libre.id}`);
+    await expect(tarjeta(page, 912).getByRole("link", { name: "Continuar pedido" })).toHaveAttribute("href", `/mesas/${enPedido.id}`);
+    await expect(tarjeta(page, 913).getByRole("link", { name: "Ver pedidos" })).toHaveAttribute("href", `/mesas/${ocupada.id}`);
+    await expect(tarjeta(page, 913).getByRole("link", { name: "Facturar" })).toHaveAttribute("href", `/mesas/${ocupada.id}`);
     await expect(tarjeta(page, 913).getByRole("button", { name: "Opciones de mesa" })).toBeDisabled();
-    await expect(page.getByText("Tomar pedido, ver pedidos y facturar todavía no están habilitados en esta versión.")).toBeVisible();
+    // Ya no queda ningún botón de acción deshabilitado por corte de alcance, ni la nota del pie que lo explicaba.
+    await expect(page.getByRole("button", { name: /Tomar pedido|Continuar pedido|Ver pedidos|Facturar/ })).toHaveCount(0);
+    await expect(page.getByText("todavía no están habilitados en esta versión")).toHaveCount(0);
 
     // Sin el menú lateral de la administración (ni su botón de ocultar, ni sus enlaces); sí el enlace de vuelta para el admin.
     await expect(page.getByRole("button", { name: /menú/ })).toHaveCount(0);

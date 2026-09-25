@@ -9,8 +9,9 @@ import { redondearMoneda } from "@/core/movimientos/transiciones";
  * `Cuenta_una_abierta_por_mesa_key`), mismo criterio del resto del repo de no materializar lo que se puede derivar. Sin
  * vencimiento automático (docs/grounding-pos-mesas-comandas-2026-09-24.md §2): el «hace N min» es solo informativo.
  *
- * Hasta el pendiente «tomar pedido» nadie escribe `Cuenta`/`CuentaItem` desde la aplicación, así que en producción todas las
- * mesas se ven «libre»; `en_pedido`/`ocupada` se prueban con filas sembradas.
+ * Las cuentas y sus ítems los escriben las acciones de «tomar pedido» (src/server/actions/pos/cuenta.ts,
+ * docs/plan-tomar-pedido-2026-09-25.md). Una anulación es una fila ESPEJO con cantidad negativa y el mismo `numeroEnvio` que su
+ * original: sin tocar nada de acá, baja el total, no cuenta como «sin enviar» ni como un envío nuevo (test/pos/mesas.test.ts).
  */
 export type EstadoMesa = "libre" | "en_pedido" | "ocupada";
 

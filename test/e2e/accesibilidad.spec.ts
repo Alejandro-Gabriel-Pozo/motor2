@@ -830,7 +830,8 @@ testAutenticado(
   async ({ paginaAutenticada: page, sucursalId }) => {
     // Plan docs/plan-mapa-de-mesas-2026-09-24.md §A.3: --ink-faint #76726A («MESA», rótulos de métricas, nota al pie), la etiqueta «Libre» en
     // --mesa-libre-ink y «En pedido» en --mesa-draft-ink. Hacen falta las tres tarjetas: sin una mesa en pedido no se dibuja la etiqueta ámbar,
-    // y sin datos no hay nada que auditar. (Axe ignora los botones deshabilitados: «Continuar pedido» se corrigió igual, para cuando se habilite.)
+    // y sin datos no hay nada que auditar. Desde «tomar pedido» «Tomar pedido»/«Continuar pedido»/«Facturar» son enlaces HABILITADOS: axe ya
+    // mide su contraste (antes los ignoraba por deshabilitados).
     const marca = Date.now();
     const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
@@ -843,7 +844,7 @@ testAutenticado(
       await conTitulo(page, "Mapa de mesas");
       await expect(page.locator('li[data-mesa="801"]').getByText("Libre", { exact: true })).toBeVisible();
       await expect(page.locator('li[data-mesa="802"]').getByText("En pedido", { exact: true })).toBeVisible();
-      await expect(page.locator('li[data-mesa="803"]').getByRole("button", { name: "Facturar" })).toBeVisible();
+      await expect(page.locator('li[data-mesa="803"]').getByRole("link", { name: "Facturar" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "mapa en reposo").toEqual([]);
 
       await page.getByRole("button", { name: "Nueva mesa" }).click();

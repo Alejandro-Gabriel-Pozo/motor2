@@ -11,7 +11,7 @@ const NUMERO_MESA_MAXIMO = 9999;
 
 /**
  * Alta de una mesa del salón en la sucursal activa (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md, paso 3). Es la ÚNICA
- * escritura de esta porción: sin baja ni renumeración, y sin abrir/cerrar cuentas (eso llega con el pendiente «tomar pedido»).
+ * escritura del mapa: sin baja ni renumeración. Abrir/cerrar cuentas vive en src/server/actions/pos/cuenta.ts («tomar pedido»).
  * Sin auditoría administrativa (no es un precio ni un permiso).
  *
  * El número es único por sucursal (`@@unique([sucursalId, numero])`): el choque se detecta en la base (P2002) y no con una

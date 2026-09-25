@@ -33,11 +33,10 @@ function hrefMapa(estado: EstadoMesa | null, q: string): string {
  * núcleo (`obtenerMapaDeMesas`) después de la guarda de Ver, sin Server Action de lectura. Filtros y búsqueda viajan por la URL
  * (`?estado=…&q=…`); la única pieza de cliente es «Nueva mesa».
  *
- * CORTE DE ALCANCE (paso 5 del plan): «Tomar pedido», «Continuar pedido», «Ver pedidos», «Facturar» y «Opciones de mesa» se dibujan
- * DESHABILITADOS — a `MesaCard` no se le pasa ningún callback — hasta el pendiente «tomar pedido / comanda-KOT / facturar» (insumos
- * en docs/grounding-pos-mesas-comandas-2026-09-24.md §3/§4). Sin rutas placeholder ni Server Actions de cuenta/comanda. Hasta ese
- * pendiente nadie escribe cuentas desde la aplicación, así que en producción todas las mesas se ven «libre» (esperado). Sin
- * actualización en vivo (ni polling ni realtime): el mapa se refresca al navegar, al filtrar o después de «Nueva mesa».
+ * «Tomar pedido», «Continuar pedido», «Ver pedidos» y «Facturar» llevan a la pantalla de la mesa (`/mesas/<id>`, pendiente «tomar
+ * pedido», docs/plan-tomar-pedido-2026-09-25.md): ahí se abre la cuenta, se cargan y envían ítems a cocina, se anulan y se cierra la
+ * cuenta, cada cosa con su permiso. «Opciones de mesa» (mover/unir mesas) sigue deshabilitado: fuera de alcance. Sin actualización
+ * en vivo (ni polling ni realtime): el mapa se refresca al navegar, al filtrar o después de «Nueva mesa».
  */
 export default async function MapaDeMesasPage({ searchParams }: { searchParams: Promise<{ estado?: string | string[]; q?: string | string[] }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -138,7 +137,6 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
         <ul aria-label="Mesas" className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
           {visibles.map((m) => (
             <li key={m.id} data-mesa={m.numero} className="grid">
-              {/* Sin callbacks a propósito: ver el corte de alcance en el docstring de la página. */}
               <MesaCard
                 numero={String(m.numero).padStart(2, "0")}
                 estado={m.estado}
@@ -147,13 +145,15 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                 mesero={m.mesero ?? undefined}
                 tiempoAbierta={m.tiempoAbierta ?? undefined}
                 pedidosEnviados={m.pedidosEnviados}
+                hrefPedido={`/mesas/${m.id}`}
+                hrefVerPedidos={`/mesas/${m.id}`}
+                hrefFacturar={`/mesas/${m.id}`}
               />
             </li>
           ))}
         </ul>
       )}
 
-      <p className="mt-9 text-center text-[11.5px] text-[var(--ink-faint)]">Tomar pedido, ver pedidos y facturar todavía no están habilitados en esta versión.</p>
     </div>
   );
 }

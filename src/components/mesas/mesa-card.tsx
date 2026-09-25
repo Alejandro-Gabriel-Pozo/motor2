@@ -2,9 +2,11 @@
 // Requiere las variables CSS del bloque `.pos-shell` de src/app/globals.css (las aplica PosShell, nunca `:root`).
 //
 // Insumo de diseño provisto (mesa-card.tsx + mesas-tokens.css), con los ajustes del plan
-// docs/plan-mapa-de-mesas-2026-09-24.md §A.4: botones sin callback deshabilitados, colores de texto con el contraste aprobado
-// por el dueño (§A.3) y `EstadoMesa` importado del núcleo. El número llega ya formateado por quien llama («01»).
+// docs/plan-mapa-de-mesas-2026-09-24.md §A.4: colores de texto con el contraste aprobado por el dueño (§A.3) y `EstadoMesa`
+// importado del núcleo. Desde «tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, paso 7) las acciones son ENLACES a la pantalla
+// de la mesa (`href*`); una acción sin `href` se sigue dibujando deshabilitada. El número llega ya formateado por quien llama («01»).
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { EstadoMesa } from "@/core/pos/mesas";
 
@@ -20,14 +22,13 @@ export interface MesaCardProps {
   tiempoAbierta?: string; // ej. "hace 42 min"
   pedidosEnviados?: number;
   /**
-   * CORTE DE ALCANCE (plan, paso 5): los cuatro callbacks son el punto de enganche del pendiente futuro «tomar pedido /
-   * comanda-KOT / facturar» (insumos en docs/grounding-pos-mesas-comandas-2026-09-24.md §3/§4). Hoy el mapa no pasa ninguno, y
-   * un botón sin callback se dibuja DESHABILITADO: nunca un botón habilitado que no hace nada, ni una ruta placeholder.
+   * Destinos de las acciones de la tarjeta (hoy, los tres van a la pantalla de la mesa, `/mesas/<id>`): «Tomar pedido» / «Continuar
+   * pedido», «Ver pedidos» y «Facturar». Sin `href`, la acción se dibuja DESHABILITADA: nunca un botón habilitado que no hace nada.
+   * «Opciones de mesa» (mover/unir mesas) sigue fuera de alcance: siempre deshabilitado.
    */
-  onTomarPedido?: () => void;
-  onVerPedidos?: () => void;
-  onFacturar?: () => void;
-  onMenu?: () => void;
+  hrefPedido?: string;
+  hrefVerPedidos?: string;
+  hrefFacturar?: string;
 }
 
 /**
@@ -48,7 +49,7 @@ function formatMonto(n?: number) {
 }
 
 export function MesaCard(props: MesaCardProps) {
-  const { numero, estado, productosSinEnviar, total, mesero, tiempoAbierta, pedidosEnviados, onTomarPedido, onVerPedidos, onFacturar, onMenu } = props;
+  const { numero, estado, productosSinEnviar, total, mesero, tiempoAbierta, pedidosEnviados, hrefPedido, hrefVerPedidos, hrefFacturar } = props;
   const cfg = ESTADO_CONFIG[estado];
 
   return (
@@ -64,9 +65,9 @@ export function MesaCard(props: MesaCardProps) {
         {estado === "ocupada" ? (
           <button
             type="button"
-            onClick={onMenu}
-            disabled={!onMenu}
+            disabled
             aria-label="Opciones de mesa"
+            title="Mover o unir mesas todavía no está disponible."
             className="-mr-1 rounded-md p-1 text-[var(--ink-faint)] enabled:hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <IconDots />
@@ -106,28 +107,32 @@ export function MesaCard(props: MesaCardProps) {
       )}
 
       {estado === "libre" && (
-        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} onClick={onTomarPedido} icon={<IconCart />}>
+        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefPedido} icon={<IconCart />}>
           Tomar pedido
         </ActionButton>
       )}
 
       {estado === "en_pedido" && (
-        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} onClick={onTomarPedido} icon={<IconEdit />}>
+        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefPedido} icon={<IconEdit />}>
           Continuar pedido
         </ActionButton>
       )}
 
       {estado === "ocupada" && (
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onVerPedidos}
-            disabled={!onVerPedidos}
-            className="w-full rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold enabled:hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Ver pedidos
-          </button>
-          <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} onClick={onFacturar}>
+          {hrefVerPedidos ? (
+            <Link
+              href={hrefVerPedidos}
+              className="flex w-full items-center justify-center rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold hover:bg-black/[0.03]"
+            >
+              Ver pedidos
+            </Link>
+          ) : (
+            <button type="button" disabled className="w-full rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+              Ver pedidos
+            </button>
+          )}
+          <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar}>
             Facturar
           </ActionButton>
         </div>
@@ -136,12 +141,24 @@ export function MesaCard(props: MesaCardProps) {
   );
 }
 
-function ActionButton({ color, textColor, onClick, icon, children }: { color: string; textColor: string; onClick?: () => void; icon?: ReactNode; children: ReactNode }) {
+/** Con `href`, un enlace con aspecto de botón; sin él, un botón deshabilitado (la acción no está disponible). */
+function ActionButton({ color, textColor, href, icon, children }: { color: string; textColor: string; href?: string; icon?: ReactNode; children: ReactNode }) {
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity hover:opacity-90"
+        style={{ background: color, color: textColor }}
+      >
+        {icon}
+        {children}
+      </Link>
+    );
+  }
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={!onClick}
+      disabled
       className="flex w-full items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       style={{ background: color, color: textColor }}
     >
