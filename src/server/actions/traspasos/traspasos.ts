@@ -285,43 +285,65 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
  * de esto, quien pedía una transferencia no tenía ninguna forma de
  * arrepentirse: solo podía esperar a que Origen la rechace (hallazgo de la
  * auditoría de motor2).
+ *
+ * Lectura + guard + escritura dentro de UNA transacción serializable, mismo
+ * arreglo que rechazarTransferencia (ver su docstring): antes era un
+ * check-then-act sin transacción, y dos cancelaciones simultáneas (doble
+ * clic, dos pestañas) respondían las DOS «cancelada»; peor, una cancelación
+ * que leía SOLICITADA justo antes de que Origen aprobara la pisaba después
+ * (docs/plan-mutaciones-controladas-2026-09-25.md, Paso 4).
  */
 export async function cancelarSolicitudTransferencia(id: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
     const idTraspaso = texto(id);
     if (!idTraspaso) return error("Falta el traspaso.");
 
-    const traspaso = await buscarTraspaso(idTraspaso);
-    if (!traspaso) return error("No se encontró ese traspaso.");
-    const transicion = guardTransicionTraspaso(traspaso, "cancelar_solicitud", ctx.sucursalId);
-    if (!transicion.ok) return error(transicion.mensaje);
+    return conTransaccionSerializable(async (tx) => {
+      const traspaso = await buscarTraspaso(idTraspaso, tx);
+      if (!traspaso) return error("No se encontró ese traspaso.");
+      const transicion = guardTransicionTraspaso(traspaso, "cancelar_solicitud", ctx.sucursalId);
+      if (!transicion.ok) return error(transicion.mensaje);
 
-    await prisma.traspasoSucursal.update({
-      where: { id: idTraspaso },
-      data: { estado: transicion.estadoNuevo, fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
+      await tx.traspasoSucursal.update({
+        where: { id: idTraspaso },
+        data: { estado: transicion.estadoNuevo, fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
+      });
+
+      return ok("Solicitud cancelada.");
     });
-
-    return ok("Solicitud cancelada.");
   });
 }
 
-/** Origen rechaza una SOLICITADA sin haber tocado stock (nunca salió). */
+/**
+ * Origen rechaza una SOLICITADA sin haber tocado stock (nunca salió).
+ *
+ * Dentro de una transacción serializable, mismo arreglo que
+ * rechazarTransferencia: sin ella, un rechazo que leía SOLICITADA justo
+ * antes de que aprobarYEnviarTransferencia hiciera commit de la SALIDA +
+ * ENVIADA escribía RECHAZADA_ORIGEN encima — el stock quedaba afuera del
+ * origen y nadie lo podía reingresar (el reingreso exige RECHAZADA_DESTINO):
+ * stock perdido en tránsito. Con SERIALIZABLE, el que pierde la carrera
+ * reintenta, ve el estado ya cambiado y falla con el error de estado
+ * (test/auditoria/traspasos-en-transito.test.ts, «stock en tránsito»).
+ */
 export async function rechazarSolicitudTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
     const idTraspaso = texto(id);
     if (!idTraspaso) return error("Falta el traspaso.");
 
-    const traspaso = await buscarTraspaso(idTraspaso);
-    if (!traspaso) return error("No se encontró ese traspaso.");
-    const transicion = guardTransicionTraspaso(traspaso, "rechazar_solicitud", ctx.sucursalId);
-    if (!transicion.ok) return error(transicion.mensaje);
+    return conTransaccionSerializable(async (tx) => {
+      const traspaso = await buscarTraspaso(idTraspaso, tx);
+      if (!traspaso) return error("No se encontró ese traspaso.");
+      const transicion = guardTransicionTraspaso(traspaso, "rechazar_solicitud", ctx.sucursalId);
+      if (!transicion.ok) return error(transicion.mensaje);
 
-    await prisma.traspasoSucursal.update({
-      where: { id: idTraspaso },
-      data: { estado: transicion.estadoNuevo, fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId, motivoRechazoOrigen: texto(motivo) || null },
+      await tx.traspasoSucursal.update({
+        where: { id: idTraspaso },
+        data: { estado: transicion.estadoNuevo, fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId, motivoRechazoOrigen: texto(motivo) || null },
+      });
+
+      return ok("Solicitud rechazada.");
     });
-
-    return ok("Solicitud rechazada.");
   });
 }
 
