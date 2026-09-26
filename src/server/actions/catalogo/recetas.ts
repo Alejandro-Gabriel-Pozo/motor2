@@ -8,6 +8,7 @@ import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conReintento } from "@/core/movimientos/reintentar";
 import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/pasos-receta";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
@@ -18,6 +19,12 @@ export interface IngredienteInput {
   unidadId: string;
   mermaPorcentaje?: number;
   observaciones?: string;
+  /**
+   * Insumos que reemplazan a este ingrediente cuando él y sus hermanos se agotan en la venta (docs/plan-sustitucion-insumos-receta-
+   * 2026-09-26.md, D1), EN ORDEN. Ausente o `[]` = sin sustitutos. Solo aplica a recetas que se consumen al vender (D2) — se
+   * rechaza en `validarIngredientes` si el producto de la receta tiene `seProduce`.
+   */
+  insumoSustitutoIds?: string[];
 }
 
 /**
@@ -51,7 +58,9 @@ export interface CabeceraRecetaInput {
 }
 
 const INCLUDE_RECETA_COMPLETA = {
-  ingredientes: { include: { insumoProducto: true, unidad: true } },
+  ingredientes: {
+    include: { insumoProducto: true, unidad: true, sustitutos: { orderBy: { orden: "asc" as const }, include: { insumoSustituto: true } } },
+  },
   pasos: { orderBy: { orden: "asc" as const }, include: { ingredientes: { include: { recetaIngrediente: { include: { insumoProducto: true } } } } } },
   rendimientoUnidad: true,
   racionUnidad: true,
@@ -84,7 +93,12 @@ export async function listarVersionesDeReceta(productoId: string) {
 
 type RecetaVigente = Awaited<ReturnType<typeof obtenerRecetaVigente>>;
 
-/** Round-trip de la receta vigente a los inputs de guardarReceta — usado por cada acción puntual (agregar/editar/quitar UN ingrediente o paso) para no pisar lo que no se está tocando. */
+/**
+ * Round-trip de la receta vigente a los inputs de guardarReceta — usado por cada acción puntual (agregar/editar/quitar UN
+ * ingrediente o paso) para no pisar lo que no se está tocando. Copia `insumoSustitutoIds` (ya en su `orden` — la ida y vuelta
+ * CRÍTICA de docs/plan-sustitucion-insumos-receta-2026-09-26.md §0.6/D1: sin esto, cualquier edición puntual que no toque el
+ * ingrediente sustituido igual le borraría los sustitutos en la próxima versión).
+ */
 function mapIngredientesAInput(vigente: RecetaVigente): IngredienteInput[] {
   if (!vigente) return [];
   return vigente.ingredientes.map((i) => ({
@@ -93,6 +107,7 @@ function mapIngredientesAInput(vigente: RecetaVigente): IngredienteInput[] {
     unidadId: i.unidadId,
     mermaPorcentaje: Number(i.mermaPorcentaje),
     observaciones: i.observaciones ?? undefined,
+    insumoSustitutoIds: i.sustitutos.map((s) => s.insumoSustitutoId),
   }));
 }
 
@@ -124,8 +139,32 @@ function mapCabeceraAInput(vigente: RecetaVigente): CabeceraRecetaInput {
   };
 }
 
-async function validarIngredientes(items: IngredienteInput[]) {
+/**
+ * D8 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): al guardar, cada sustituto declarado tiene que ser un Insumo que
+ * existe y está activo, distinto del propio Insumo del ingrediente principal, sin duplicados dentro de la misma línea, y con
+ * TODAS sus MP disponibles compartiendo la unidad de stock del ingrediente principal (mismo criterio que `validarUnidadInsumo`,
+ * ya usado para un producto suelto y para la fusión de Insumos).
+ */
+async function validarSustitutosDeIngrediente(insumoSustitutoIds: string[], mp: { insumoId: string | null; unidadStockId: string }): Promise<string | null> {
+  if (new Set(insumoSustitutoIds).size !== insumoSustitutoIds.length) return "Un ingrediente no puede tener el mismo sustituto declarado dos veces.";
+  for (const insumoSustitutoId of insumoSustitutoIds) {
+    if (mp.insumoId && insumoSustitutoId === mp.insumoId) return "Un sustituto no puede ser el mismo Insumo que el ingrediente principal.";
+    const insumo = await prisma.insumo.findUnique({ where: { id: insumoSustitutoId } });
+    if (!insumo) return "No se encontró uno de los insumos sustitutos.";
+    if (!insumo.activo) return `El insumo sustituto "${insumo.nombre}" está inactivo.`;
+    const invalidoUnidad = await validarUnidadInsumo(insumoSustitutoId, mp.unidadStockId);
+    if (invalidoUnidad) return invalidoUnidad;
+  }
+  return null;
+}
+
+async function validarIngredientes(items: IngredienteInput[], producto: { seProduce: boolean }) {
   if (!items.length) return "La receta necesita al menos un ingrediente.";
+  // D2: la sustitución automática solo tiene sentido donde el libro de origen-venta.ts decide la sección (venta de un PV que se
+  // vende tal cual) — Producción usa resolverConsumoPorFamilia, que no la conoce (fuera de alcance de este plan).
+  if (producto.seProduce && items.some((i) => i.insumoSustitutoIds?.length)) {
+    return "La sustitución automática solo aplica a platos que se descuentan al vender (no a recetas que se producen).";
+  }
   for (const item of items) {
     if (!(Number(item.cantidad) > 0)) return "Cada ingrediente necesita una cantidad mayor a 0.";
     if (!esNumeroFinito(item.cantidad)) return "Cada ingrediente necesita una cantidad válida.";
@@ -141,6 +180,10 @@ async function validarIngredientes(items: IngredienteInput[]) {
     const disponibleEnAlguna = await prisma.producto.findFirst({ where: { id: mp.id, ...whereDisponibleEnAlguna() } });
     if (!disponibleEnAlguna) {
       return `Cada ingrediente tiene que ser una materia prima (MP) disponible en alguna sucursal (${mp.nombre} no lo está en ninguna).`;
+    }
+    if (item.insumoSustitutoIds?.length) {
+      const invalidoSustitutos = await validarSustitutosDeIngrediente(item.insumoSustitutoIds, mp);
+      if (invalidoSustitutos) return invalidoSustitutos;
     }
   }
   return null;
@@ -194,7 +237,7 @@ export async function guardarReceta(
       return error(`"${producto.nombre}" no es elegible para tener receta — tiene que ser PV, o MP con "Se produce" activado.`);
     }
 
-    const invalidoIngredientes = await validarIngredientes(items);
+    const invalidoIngredientes = await validarIngredientes(items, producto);
     if (invalidoIngredientes) return error(invalidoIngredientes);
 
     const invalidoPasos = validarPasos(pasos, items);
@@ -232,6 +275,9 @@ export async function guardarReceta(
                   unidadId: it.unidadId,
                   mermaPorcentaje: it.mermaPorcentaje ?? 0,
                   observaciones: it.observaciones,
+                  sustitutos: it.insumoSustitutoIds?.length
+                    ? { create: it.insumoSustitutoIds.map((insumoSustitutoId, i) => ({ insumoSustitutoId, orden: i + 1 })) }
+                    : undefined,
                 })),
               },
               pasos: {
@@ -304,7 +350,7 @@ export async function agregarIngredienteAReceta(productoId: string, ingrediente:
 export async function actualizarIngredienteDeReceta(
   productoId: string,
   insumoProductoId: string,
-  cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number }
+  cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number; insumoSustitutoIds?: string[] }
 ): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const existentes = mapIngredientesAInput(vigente);
@@ -315,7 +361,16 @@ export async function actualizarIngredienteDeReceta(
 
   const items = existentes.map((i) =>
     i.insumoProductoId === insumoProductoId
-      ? { insumoProductoId, cantidad: cambios.cantidad, unidadId: cambios.unidadId, mermaPorcentaje: cambios.mermaPorcentaje ?? 0, observaciones: i.observaciones }
+      ? {
+          insumoProductoId,
+          cantidad: cambios.cantidad,
+          unidadId: cambios.unidadId,
+          mermaPorcentaje: cambios.mermaPorcentaje ?? 0,
+          observaciones: i.observaciones,
+          // undefined = conservar los sustitutos vigentes (docs/plan-sustitucion-insumos-receta-2026-09-26.md, paso 6) — solo se
+          // reemplazan cuando quien llama manda la lista explícita (incluso `[]` para vaciarla).
+          insumoSustitutoIds: cambios.insumoSustitutoIds ?? i.insumoSustitutoIds,
+        }
       : i
   );
 
