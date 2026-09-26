@@ -46,6 +46,13 @@ export interface DatosDeOrigen {
   libro: LibroDeStock;
   /** El insumo y sus hermanos disponibles en la sucursal (él mismo incluido); sin insumo, solo él. */
   familiaDe(mpId: string): string[];
+  /**
+   * D8 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): las MP de un Insumo declarado como SUSTITUTO en alguna línea de
+   * receta, ya filtradas por defensa — disponibles en la sucursal, `Insumo.activo`, y con la MISMA unidad de stock que se pide
+   * (la del ingrediente principal al que sustituyen). El dedupe contra la familia principal de ESA línea lo hace el núcleo puro
+   * (`asignarConsumosDeVenta`), no acá — esta función no conoce "la línea", solo el Insumo y la unidad.
+   */
+  familiaSustitutaDe(insumoId: string, unidadStockId: string): string[];
   /** Sección habitual del PV (en modo sección: la elegida). */
   habitualDe(pvId: string): SeccionCandidata | null;
   /** Secciones activas que sirven de respaldo automático (`sirveDeRespaldoEnVentas`; en modo sección: ninguna). */
@@ -65,13 +72,16 @@ export async function cargarDatosDeOrigen(
   tx: Prisma.TransactionClient,
   sucursalId: string,
   origen: Extract<OrigenPreparado, { ok: true }>,
-  pedido: { pvIds: readonly string[]; mpIds: readonly string[]; pvQueSeProducenIds: readonly string[] }
+  pedido: { pvIds: readonly string[]; mpIds: readonly string[]; pvQueSeProducenIds: readonly string[]; insumoSustitutoIds: readonly string[] }
 ): Promise<DatosDeOrigen> {
   const secciones: SeccionCandidata[] = origen.tipo === "seccion" ? [origen.fija] : origen.activas.map(({ id, nombre }) => ({ id, nombre }));
   const seccionIds = secciones.map((s) => s.id);
 
-  const familias = await cargarFamilias(tx, sucursalId, pedido.mpIds);
-  const productoIds = Array.from(new Set([...Array.from(familias.values()).flat(), ...pedido.pvQueSeProducenIds]));
+  const [familias, sustitutas] = await Promise.all([
+    cargarFamilias(tx, sucursalId, pedido.mpIds),
+    cargarFamiliasSustitutas(tx, sucursalId, pedido.insumoSustitutoIds),
+  ]);
+  const productoIds = Array.from(new Set([...Array.from(familias.values()).flat(), ...pedido.pvQueSeProducenIds, ...sustitutas.productoIds]));
   const grupos = productoIds.length
     ? await tx.movimientoStock.groupBy({
         by: ["productoId", "seccionId", "loteVencimiento"],
@@ -87,6 +97,7 @@ export async function cargarDatosDeOrigen(
     return {
       libro,
       familiaDe,
+      familiaSustitutaDe: sustitutas.familiaSustitutaDe,
       habitualDe: () => origen.fija,
       respaldos: [],
       referenciaDe: () => null,
@@ -100,6 +111,7 @@ export async function cargarDatosDeOrigen(
   return {
     libro,
     familiaDe,
+    familiaSustitutaDe: sustitutas.familiaSustitutaDe,
     habitualDe: (pvId) => habituales.get(pvId) ?? null,
     respaldos,
     referenciaDe: (productoId) => referencias.get(productoId) ?? null,
@@ -154,4 +166,39 @@ async function cargarFamilias(tx: Prisma.TransactionClient, sucursalId: string, 
     familias.set(mp.id, hermanos.includes(mp.id) ? hermanos : [mp.id, ...hermanos]);
   }
   return familias;
+}
+
+/**
+ * D8 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): las MP de cada Insumo declarado como sustituto en ALGUNA línea de la
+ * venta, EN LOTE (una sola consulta para todos, `insumoSustitutoIds` vacío = sin consulta extra), ya filtradas por defensa —
+ * `Insumo.activo`, disponibles en la sucursal. La unidad de stock se filtra recién en `familiaSustitutaDe`, por llamada (cada
+ * ingrediente principal puede pedir una unidad distinta) sin volver a golpear la base.
+ */
+async function cargarFamiliasSustitutas(
+  tx: Prisma.TransactionClient,
+  sucursalId: string,
+  insumoSustitutoIds: readonly string[]
+): Promise<{ familiaSustitutaDe: (insumoId: string, unidadStockId: string) => string[]; productoIds: string[] }> {
+  const ids = Array.from(new Set(insumoSustitutoIds));
+  if (!ids.length) return { familiaSustitutaDe: () => [], productoIds: [] };
+
+  const [insumosActivos, candidatos] = await Promise.all([
+    tx.insumo.findMany({ where: { id: { in: ids }, activo: true }, select: { id: true } }),
+    tx.producto.findMany({ where: { insumoId: { in: ids }, tipo: "MP" }, select: { id: true, insumoId: true, unidadStockId: true }, orderBy: { id: "asc" } }),
+  ]);
+  const activos = new Set(insumosActivos.map((i) => i.id));
+  const disponibilidad = await disponibilidadDeProductos(sucursalId, candidatos.map((c) => c.id), tx);
+
+  const porInsumo = new Map<string, { id: string; unidadStockId: string }[]>();
+  for (const c of candidatos) {
+    if (!c.insumoId || !activos.has(c.insumoId) || !disponibilidad.get(c.id)) continue;
+    const lista = porInsumo.get(c.insumoId) ?? [];
+    lista.push({ id: c.id, unidadStockId: c.unidadStockId });
+    porInsumo.set(c.insumoId, lista);
+  }
+
+  return {
+    familiaSustitutaDe: (insumoId, unidadStockId) => (porInsumo.get(insumoId) ?? []).filter((p) => p.unidadStockId === unidadStockId).map((p) => p.id),
+    productoIds: Array.from(porInsumo.values()).flatMap((lista) => lista.map((p) => p.id)),
+  };
 }
