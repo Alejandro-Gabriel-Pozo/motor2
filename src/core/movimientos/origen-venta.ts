@@ -149,9 +149,14 @@ function seccionesEnOrden(libro: LibroDeStock, familia: readonly string[], habit
   return [...(habitual ? [habitual] : []), ...ordenarRespaldos(libro, familia, otras)];
 }
 
-/** Junta las partes del mismo (producto, sección, lote): una sola fila de Kardex por cada una, como antes. */
-function juntarPartes(partes: ParteAsignada[]): ParteAsignada[] {
-  const juntas: ParteAsignada[] = [];
+/**
+ * Junta las partes del mismo (producto, sección, lote): una sola fila de Kardex por cada una, como antes. Genérica desde el paso 3
+ * (docs/plan-sustitucion-insumos-receta-2026-09-26.md) para que `asignarConsumosDeVenta` la reuse sobre `ParteConsumo[]` sin perder
+ * `sustituyeAProductoId` en el tipo de retorno — el dedupe (D8) garantiza que dos partes con el mismo (producto, sección, lote)
+ * siempre comparten el mismo valor de esa marca, así que copiarla de la primera (`{ ...p }`) alcanza.
+ */
+function juntarPartes<T extends ParteAsignada>(partes: T[]): T[] {
+  const juntas: T[] = [];
   for (const p of partes) {
     const igual = juntas.find((j) => j.productoId === p.productoId && j.seccionId === p.seccionId && claveLote(j.loteVencimiento) === claveLote(p.loteVencimiento));
     if (igual) igual.cantidad += p.cantidad;
@@ -240,6 +245,122 @@ export function asignarConsumo(
     partes.push(resto);
   }
   return juntarPartes(partes);
+}
+
+/**
+ * Una parte de consumo, marcada cuando salió de un INSUMO SUSTITUTO declarado en la línea de receta (docs/plan-sustitucion-insumos-
+ * receta-2026-09-26.md, D6/paso 3): `sustituyeAProductoId` es el producto de la receta al que reemplazó. La clave SOLO existe en
+ * partes de un sustituto — nunca se agrega `undefined` explícito a una parte de la familia principal (ni de un hermano): así
+ * `JSON.stringify`/Prisma la tratan igual que "no vino", y el test diferencial del paso 1 (que compara contra `asignarConsumo`, que
+ * nunca conoce esta clave) puede seguir usando `toStrictEqual` sin normalizar nada.
+ */
+export type ParteConsumo = ParteAsignada & { sustituyeAProductoId?: string };
+
+export interface PedidoDeConsumo {
+  productoId: string;
+  familia: readonly string[];
+  cantidad: number;
+  /** Se usa primero aunque no sirva de respaldo. */
+  seccionHabitual: SeccionCandidata | null;
+  /** Activas que sirven de respaldo (la habitual, si está, se ignora acá). */
+  respaldos: readonly SeccionCandidata[];
+  seccionParaFaltanteId: string;
+  /**
+   * Familias YA resueltas de cada sustituto declarado en la línea de receta, EN ORDEN (D3) — el primer elemento de cada una es el
+   * propio Insumo sustituto (desempate FEFO, igual criterio que `productoId` en la familia principal), el resto sus hermanos.
+   * Ausente o `[]` = sin sustitutos declarados: se resuelve exactamente como `asignarConsumo` (demostración (a) del plan §4).
+   */
+  sustitutos?: readonly (readonly string[])[];
+}
+
+/** Secciones candidatas de un pedido, sin orden ni duplicados — para sumar disponible total (D4), donde el orden no importa. */
+function seccionesCandidatas(seccionHabitual: SeccionCandidata | null, respaldos: readonly SeccionCandidata[]): SeccionCandidata[] {
+  const vistas = new Set<string>();
+  const todas = seccionHabitual ? [seccionHabitual, ...respaldos] : respaldos;
+  return todas.filter((s) => (vistas.has(s.id) ? false : (vistas.add(s.id), true)));
+}
+
+/**
+ * Asigna el consumo de TODA la venta, con sustitutos (docs/plan-sustitucion-insumos-receta-2026-09-26.md, D3/D4/D5): reemplaza a
+ * `asignarConsumo` como entrada cuando alguna línea declara sustitutos; para el resto se comporta idéntico (demostración (a), plan
+ * §4). Dos pasadas sobre el MISMO libro, en el orden de `pedidos`:
+ *
+ * 1. La familia PRINCIPAL de cada pedido, en TODAS sus secciones candidatas — exactamente como `asignarConsumo`. Un pedido sin
+ *    sustitutos queda resuelto acá mismo (con su faltante, si corresponde). Uno CON sustitutos quiere quedar "diferido": no se le
+ *    carga el faltante todavía, para que un hermano de OTRA línea no se quede sin stock por un sustituto de ESTA (D5 — una
+ *    sustitución nunca le saca stock a un consumo principal de la misma venta, ver el test de equidad entre líneas).
+ * 2. Recién ahí, cada diferido prueba sus sustitutos EN ORDEN, cada uno con su propia familia (D3: secciones y FEFO propios,
+ *    desempate por el primer producto de esa familia) — pero solo si la suma de lo disponible de TODOS ellos juntos (ya sin lo que
+ *    se solapa con la familia principal, D8) alcanza para cubrir el resto (D4, todo o nada): si no alcanza, no se toca NINGÚN
+ *    sustituto y el faltante queda IDÉNTICO al de `asignarConsumo` sin sustitutos. Si alcanza, se reparte sustituto por sustituto
+ *    (`tomarDeFamilia`), marcando cada parte con `sustituyeAProductoId`, hasta cubrir el resto; si un redondeo dejara un resto
+ *    ínfimo, se cierra con el mismo faltante de siempre.
+ */
+export function asignarConsumosDeVenta(libro: LibroDeStock, pedidos: readonly PedidoDeConsumo[]): ParteConsumo[][] {
+  const resultados: (ParteConsumo[] | undefined)[] = new Array(pedidos.length);
+  const diferidos: { indice: number; pedido: PedidoDeConsumo; familiaPropia: readonly string[]; partesPropias: ParteAsignada[]; restante: number }[] = [];
+
+  // Pasada 1: igual que asignarConsumo para todas las líneas — las que no declaran sustitutos quedan resueltas acá.
+  for (let i = 0; i < pedidos.length; i++) {
+    const pedido = pedidos[i];
+    if (!pedido.sustitutos?.length) {
+      resultados[i] = asignarConsumo(libro, pedido);
+      continue;
+    }
+    const familiaPropia = pedido.familia.includes(pedido.productoId) ? pedido.familia : [pedido.productoId, ...pedido.familia];
+    const { partes, restante } = tomarDeFamilia(libro, {
+      familia: familiaPropia,
+      preferidoId: pedido.productoId,
+      cantidad: pedido.cantidad,
+      seccionHabitual: pedido.seccionHabitual,
+      respaldos: pedido.respaldos,
+    });
+    diferidos.push({ indice: i, pedido, familiaPropia, partesPropias: partes, restante });
+  }
+
+  // Pasada 2: cada diferido prueba sus sustitutos y después su faltante — corre DESPUÉS de que la 1 terminó para TODAS las líneas.
+  for (const { indice, pedido, familiaPropia, partesPropias, restante } of diferidos) {
+    const partesFinal: ParteConsumo[] = [...partesPropias];
+    let restanteActual = restante;
+
+    if (r4(restanteActual) > 0) {
+      const yaEnPrincipal = new Set(familiaPropia);
+      const familiasSustitutas = (pedido.sustitutos ?? []).map((familia) => familia.filter((id) => !yaEnPrincipal.has(id)));
+      const candidatas = seccionesCandidatas(pedido.seccionHabitual, pedido.respaldos);
+      const idsSustitutos = new Set(familiasSustitutas.flat());
+      let disponibleTotal = 0;
+      for (const productoId of idsSustitutos) {
+        for (const seccion of candidatas) disponibleTotal += disponibleDeProducto(libro, productoId, seccion.id);
+      }
+
+      if (r4(disponibleTotal) >= r4(restanteActual)) {
+        for (const familiaSustituta of familiasSustitutas) {
+          if (r4(restanteActual) <= 0) break;
+          if (!familiaSustituta.length) continue;
+          const { partes: partesSustituto, restante: restanteTrasSustituto } = tomarDeFamilia(libro, {
+            familia: familiaSustituta,
+            preferidoId: familiaSustituta[0],
+            cantidad: restanteActual,
+            seccionHabitual: pedido.seccionHabitual,
+            respaldos: pedido.respaldos,
+          });
+          for (const p of partesSustituto) partesFinal.push({ ...p, sustituyeAProductoId: pedido.productoId });
+          restanteActual = restanteTrasSustituto;
+        }
+      }
+    }
+
+    if (r4(restanteActual) > 0) {
+      const ultimaAhi = partesPropias.findLast((p) => p.productoId === pedido.productoId && p.seccionId === pedido.seccionParaFaltanteId);
+      const resto: ParteConsumo = { productoId: pedido.productoId, seccionId: pedido.seccionParaFaltanteId, loteVencimiento: ultimaAhi?.loteVencimiento ?? null, cantidad: restanteActual };
+      libro.tomar(resto);
+      partesFinal.push(resto);
+    }
+
+    resultados[indice] = juntarPartes(partesFinal);
+  }
+
+  return resultados as ParteConsumo[][];
 }
 
 /**
