@@ -439,7 +439,7 @@ testAutenticado(
 );
 
 testAutenticado(
-  "reportes/rendimiento-recetas: la tabla en reposo (con rótulo, banda de ruido y motivoSinEstimacion) y con la confirmación de «Usar este valor» abierta (colSpan 11), sin violaciones de axe",
+  "reportes/rendimiento-recetas: la tabla en reposo (con rótulo, banda de ruido y motivoSinEstimacion), con la confirmación de «Usar este valor» abierta (colSpan 11) y con la fila ya calibrada, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     const marca = Date.now();
     const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
@@ -480,15 +480,84 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "tabla en reposo").toEqual([]);
 
       await botonUsar.click();
-      const filaConfirmacion = page.getByRole("alert").filter({ hasText: "¿Cambiar la receta" }).locator("xpath=ancestor::tr");
+      const filaConfirmacion = page.getByRole("alert").filter({ hasText: "¿Calibrar el rendimiento" }).locator("xpath=ancestor::tr");
       await expect(filaConfirmacion.locator("td")).toHaveAttribute("colspan", "11");
       expect((await new AxeBuilder({ page }).analyze()).violations, "confirmación abierta").toEqual([]);
+
+      // Fila ya calibrada — el texto "(calibrado acá; central: X)" y el botón "Volver al valor central" nuevos, sin violaciones.
+      await page.getByRole("button", { name: /Guardar como rendimiento de/ }).click();
+      await expect(fila.getByText(/calibrado acá/)).toBeVisible();
+      await expect(fila.getByRole("button", { name: "Volver al valor central" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila calibrada").toEqual([]);
     } finally {
+      await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngrediente: { insumoProductoId: mp.id } } });
+      await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
       await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id, mp2.id, pv2.id] } } });
       await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id, venta2.id] } } });
       await prisma.recetaVersion.deleteMany({ where: { productoId: { in: [pv.id, pv2.id] } } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [pv.id, mp.id, pv2.id, mp2.id] } } });
       await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id, pv2.id, mp2.id] } } });
+    }
+  }
+);
+
+testAutenticado(
+  "reportes/rendimiento-recetas/por-sucursal: central + una sucursal calibrada + una sin calibrar, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const membresiaA = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: admin.id, sucursalId } });
+    const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E A11y Norte ${marca}` } });
+    await prisma.usuarioSucursal.create({ data: { usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true } });
+
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PS-MP-${marca}`, nombre: `E2E A11y PS Salsa ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PS-PV-${marca}`, nombre: `E2E A11y PS Pizza ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    const receta = await prisma.recetaVersion.create({
+      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } },
+      include: { ingredientes: true },
+    });
+    await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: receta.ingredientes[0].id, sucursalId, cantidad: 2, mermaPorcentaje: null } });
+
+    try {
+      await page.goto("/reportes/rendimiento-recetas/por-sucursal");
+      await conTitulo(page, "Rendimiento por sucursal");
+      const fila = page.getByRole("row", { name: new RegExp(pv.nombre) });
+      await expect(fila.getByText("(calibrado)")).toBeVisible();
+      await expect(fila.getByText("(sin calibrar)")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "por-sucursal").toEqual([]);
+    } finally {
+      await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId: receta.ingredientes[0].id } });
+      await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: admin.id, sucursalId: sucursalB.id } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+      await prisma.sucursal.delete({ where: { id: sucursalB.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "catalogo/recetas/[productoId]: la nota «Calibrado en N sucursal(es)» de un ingrediente calibrado, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-MP-${marca}`, nombre: `E2E A11y Editor Salsa ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-PV-${marca}`, nombre: `E2E A11y Editor Pizza ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    const receta = await prisma.recetaVersion.create({
+      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } },
+      include: { ingredientes: true },
+    });
+    await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: receta.ingredientes[0].id, sucursalId, cantidad: 2, mermaPorcentaje: null } });
+
+    try {
+      await page.goto(`/catalogo/recetas/${pv.id}`);
+      await conTitulo(page, `${pv.nombre} — versión vigente: 1`);
+      await expect(page.getByText(/Calibrado en 1 sucursal\(es\)/)).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "nota de calibración").toEqual([]);
+    } finally {
+      await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId: receta.ingredientes[0].id } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
     }
   }
 );

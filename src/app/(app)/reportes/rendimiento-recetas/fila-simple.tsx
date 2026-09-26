@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { CampoNumero } from "@/components/campo-numero";
@@ -91,6 +92,7 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
     sucursalNombre,
     puedeCalibrar,
   } = props;
+  const router = useRouter();
   const [modo, setModo] = useState<"usar" | "volver" | null>(null);
   const idAviso = useId();
   const botonUsar = useRef<HTMLButtonElement>(null);
@@ -133,7 +135,10 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
                 semanas: semanasConDatos,
                 confianza: explicarConfianza(confianza, semanasConDatos),
               });
-              if (r.ok) setModo(null);
+              if (r.ok) {
+                setModo(null);
+                router.refresh();
+              }
               return r;
             }}
             className="flex flex-col gap-2"
@@ -183,7 +188,10 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
           <FormConResultado
             accion={async () => {
               const r = await volverAlRendimientoCentral(recetaIngredienteId);
-              if (r.ok) setModo(null);
+              if (r.ok) {
+                setModo(null);
+                router.refresh();
+              }
               return r;
             }}
             className="flex flex-col gap-1"
