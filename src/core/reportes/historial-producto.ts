@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { tieneStockReal } from "@/core/movimientos/transiciones";
 import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
 import { redondearCantidad, type Db } from "./comun";
 
 export interface FilaBusquedaProducto {
@@ -210,13 +211,34 @@ export interface IngredienteRecetaVigente {
  * NO reusa `obtenerRecetaVigente` de `server/actions/catalogo/recetas.ts`:
  * esa función exige el permiso `guardar_receta`, que le negaría esta
  * pantalla a un usuario con solo `ver_reportes_operativos`.
+ *
+ * `sucursalId` (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, R3): con ella, `cantidad` sale EFECTIVA (con la
+ * calibración de esa sucursal si la hay); sin ella, queda en el valor central.
  */
-export async function obtenerIngredientesRecetaVigente(productoId: string, db: Db = prisma): Promise<IngredienteRecetaVigente[]> {
+export async function obtenerIngredientesRecetaVigente(productoId: string, db: Db = prisma, sucursalId?: string): Promise<IngredienteRecetaVigente[]> {
   const version = await db.recetaVersion.findFirst({
     where: { productoId },
     orderBy: { version: "desc" },
-    include: { ingredientes: { include: { insumoProducto: { select: { nombre: true } }, unidad: { select: { nombre: true } } } } },
+    include: {
+      ingredientes: {
+        include: {
+          insumoProducto: { select: { nombre: true } },
+          unidad: { select: { nombre: true } },
+          rendimientosLocales: { where: { sucursalId: sucursalId ?? "" } },
+        },
+      },
+    },
   });
   if (!version) return [];
-  return version.ingredientes.map((i) => ({ nombre: i.insumoProducto.nombre, cantidad: Number(i.cantidad), unidad: i.unidad.nombre }));
+  return version.ingredientes.map((i) => {
+    const cantidadCentral = Number(i.cantidad);
+    const cantidad = sucursalId
+      ? rendimientoEfectivo(
+          { cantidad: cantidadCentral, mermaPorcentaje: 0 },
+          i.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: null })),
+          sucursalId
+        ).cantidad
+      : cantidadCentral;
+    return { nombre: i.insumoProducto.nombre, cantidad, unidad: i.unidad.nombre };
+  });
 }

@@ -12,7 +12,22 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * un solo lugar, nunca una copia divergente en cada Server Action).
  */
 export interface CambioAuditable {
-  entidad: "Producto" | "PrecioLocalProducto" | "DisponibilidadProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol" | "Operacion" | "CuentaItem" | "Cuenta";
+  // "RecetaVersion" (paso 2): cada versión nueva de la receta central (`guardarReceta`) — SIEMPRE `sucursalId: null`
+  // (Catálogo Central, no un dato por sucursal). "RendimientoLocalIngrediente" (paso 6): al revés, SIEMPRE lleva
+  // `sucursalId` — es la calibración de UNA sucursal puntual (`entidadId` es la clave estable
+  // `${sucursalId}:${productoId}:${insumoProductoId}`, no el id de la fila, que cambia con el arrastre entre versiones).
+  entidad:
+    | "Producto"
+    | "PrecioLocalProducto"
+    | "DisponibilidadProducto"
+    | "PermisoRol"
+    | "CapacidadSucursal"
+    | "Rol"
+    | "Operacion"
+    | "CuentaItem"
+    | "Cuenta"
+    | "RecetaVersion"
+    | "RendimientoLocalIngrediente";
   entidadId: string;
   /** Legible de entrada, ej. `Producto "Pan Francés": precio de venta`. */
   descripcion: string;

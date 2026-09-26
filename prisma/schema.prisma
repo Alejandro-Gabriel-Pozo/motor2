@@ -123,6 +123,7 @@ model Sucursal {
   publica              SucursalPublica?
   temaCarta            TemaCartaSucursal?
   mesas                Mesa[]
+  rendimientosLocales  RendimientoLocalIngrediente[]
   ejemplaresBoleta     EjemplarBoleta[]
 }
 
@@ -597,7 +598,8 @@ model RecetaIngrediente {
   mermaPorcentaje  Decimal       @default(0) @db.Decimal(6, 2)
   observaciones    String?
 
-  enPasos RecetaPasoIngrediente[]
+  enPasos           RecetaPasoIngrediente[]
+  rendimientosLocales RendimientoLocalIngrediente[]
 
   @@index([insumoProductoId])
 }
@@ -1066,6 +1068,25 @@ model PrecioLocalProducto {
   habilitado Boolean  @default(true)
 
   @@unique([sucursalId, productoId])
+}
+
+/// Rendimiento calibrado POR SUCURSAL de UNA línea de receta (override liviano, mismo patrón que PrecioLocalProducto).
+/// La receta (ingredientes/pasos/unidades) sigue siendo una sola, del Catálogo Central; esto solo guarda la cantidad y/o
+/// la merma que ESTA sucursal calibró. Sin fila, o con un campo en null → se usa el valor central de ese campo
+/// (rendimientoEfectivo, src/core/catalogo/rendimiento-local.ts). guardarReceta arrastra las filas a cada versión nueva
+/// (salvo cambio de unidad o ingrediente quitado, que se descartan y se auditan).
+model RendimientoLocalIngrediente {
+  id                  String            @id @default(cuid())
+  recetaIngredienteId String
+  recetaIngrediente   RecetaIngrediente @relation(fields: [recetaIngredienteId], references: [id], onDelete: Cascade)
+  sucursalId          String
+  sucursal            Sucursal          @relation(fields: [sucursalId], references: [id])
+  cantidad            Decimal?          @db.Decimal(14, 4)
+  mermaPorcentaje     Decimal?          @db.Decimal(6, 2)
+  actualizadoEn       DateTime          @updatedAt
+
+  @@unique([recetaIngredienteId, sucursalId])
+  @@index([sucursalId])
 }
 
 /// Cada cuánto toca volver a contar este producto en esta sucursal.

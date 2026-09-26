@@ -64,6 +64,16 @@ hábitos de consumo genuinamente distintos.
    nuevo es lectura (un reporte) sobre datos que `MovimientoStock` ya
    guarda hoy (Compra y Venta, con fecha y sucursal).
 
+   > **Actualización 2026-09-26 (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, decisión del dueño):** este
+   > principio SE MANTIENE en su forma original — `RecetaVersion`/`RecetaIngrediente` (ingredientes, pasos, unidades)
+   > siguen siendo una sola fila global, sin `sucursalId`, editable solo desde el editor central. Lo que cambió es que
+   > "Usar este valor" (§3.5, reescrita más abajo) dejó de escribir esa fila central: ahora escribe una tabla NUEVA,
+   > `RendimientoLocalIngrediente` — un override LIVIANO de `cantidad`/`mermaPorcentaje` por (línea de receta, sucursal),
+   > exactamente el mismo patrón que `PrecioLocalProducto` (precio local por sucursal, ya existente). No es una
+   > excepción al principio 6: la Receta (qué ingredientes lleva, en qué unidad, con qué pasos) sigue siendo una sola;
+   > lo que ahora puede variar por sucursal es cuánto rinde en la práctica cada línea, igual que el precio de venta ya
+   > podía variar por sucursal sin que eso hiciera del Producto algo "por sucursal".
+
 ## 3. Qué se agrega — el reporte
 
 ### 3.1 Alcance de una corrida
@@ -131,16 +141,38 @@ variación real hubo en la mezcla de ventas), no una probabilidad estadística
 formal — el objetivo es que el dueño sepa cuándo confiar en el número y
 cuándo el sistema todavía no tiene suficiente para opinar.
 
-### 3.5 Acción sobre el reporte
+### 3.5 Acción sobre el reporte (reescrita 2026-09-26 — ver decisión del dueño)
 
-- Ver varias sucursales lado a lado para la misma línea de receta (la
-  comparación que motivó todo esto: "¿quién gasta más?").
-- Un botón "Usar este valor como nuevo estándar" en la fila de UNA
-  sucursal → abre el editor de receta (`/catalogo/recetas/[productoId]`)
-  prellenado con ese número, usando `actualizarIngredienteDeReceta` (ya
-  existe) → genera versión nueva si se confirma. Ninguna actualización
-  automática — siempre pasa por la pantalla de edición real, con el número
-  ya cargado como punto de partida.
+**Versión original de este documento (descartada):** un botón "Usar este valor como nuevo estándar" abría el editor de
+receta CENTRAL prellenado, vía `actualizarIngredienteDeReceta` — la sugerencia terminaba siempre en la fila global,
+sin importar desde qué sucursal se la haya aceptado. Ese es justo el bug que motivó todo el plan de 2026-09-26: nunca
+había forma de calibrar "lo que rinde ACÁ" sin tocar lo que rinde en todas las demás sucursales a la vez.
+
+**Versión implementada:**
+
+- Ver varias sucursales lado a lado para la misma línea de receta sigue existiendo — ahora es una pantalla propia,
+  `/reportes/rendimiento-recetas/por-sucursal` (D8): columnas = central + una por sucursal de `ctx.membresias`,
+  comparando el BRUTO (`cantidad × (1 + merma/100)`, para que no engañe si dos sucursales calibraron mermas
+  distintas), con el desvío contra la central marcado en ámbar.
+  Ninguna sucursal fuera de `ctx.membresias` aparece nunca, ni su calibración.
+- "Usar este valor" en una fila del reporte principal (`/reportes/rendimiento-recetas`) YA NO navega a ningún lado:
+  pide confirmación EN LA MISMA FILA (el porqué a la vista — comprado/vendido/confianza, o platos/semanas/ajuste R²
+  para un pool) y, si se confirma, calibra la **sucursal activa** con `fijarRendimientoLocal` — nunca la receta
+  central, nunca otra sucursal (la acción no recibe `sucursalId` por parámetro, siempre usa la de la sesión). La
+  confirmación deja claro que el cambio es local: "Esto cambia solo el rendimiento de «Centro». La receta central (1
+  kg) y las otras sucursales no se tocan.", con un enlace a la comparación de arriba.
+- **Regla de la merma congelada (D4, decisión del dueño):** al aplicar una sugerencia se escriben `cantidad` (el
+  estimado NETO, igual que antes) Y `mermaPorcentaje` — la merma EFECTIVA que se usó para calcular ese estimado — a
+  la vez. Antes de esta decisión, calibrar solo la cantidad y dejar la merma vieja podía hacer que el número
+  guardado ya no coincidiera con el que motivó la sugerencia.
+- Si la sucursal ya calibró esa línea, aparece "Volver al valor central" (pone la calibración en `null`, no borra la
+  fila — mismo criterio "nunca DELETE" del resto del catálogo).
+- **Regla del arrastre entre versiones (D3):** la receta central se sigue editando y versionando (append-only) sin
+  ninguna restricción nueva. Cuando se guarda una versión nueva, cada calibración local existente se copia al
+  ingrediente nuevo que tenga el MISMO insumo Y la MISMA unidad; si la unidad cambió, o el insumo salió de la receta,
+  la calibración se DESCARTA (nunca se arrastra "resucitada" con otra unidad) y queda auditada. Un cambio de
+  cantidad/merma CENTRAL, sin cambiar unidad ni sacar el insumo, NO descarta nada — la calibración es de la sucursal,
+  no una copia del valor central.
 
 ### 3.6 Dónde vive en la navegación
 
@@ -173,9 +205,25 @@ real" linkea para acá filtrado a ese producto — atajo, no la única entrada.
 
 - Nada de "modo declarativo vs. estimado" — ya descartado, ver §2.1.
 - Ninguna tabla nueva de "pool de receta" — se reusa Insumo tal cual está.
-- Ninguna receta por sucursal — la receta sigue siendo una sola, global.
+- Ninguna receta por sucursal — la receta (ingredientes/pasos/unidades) sigue siendo una sola, global. **Matiz
+  agregado 2026-09-26:** lo que SÍ puede variar por sucursal, desde el plan de esa fecha, es cuánto RINDE cada línea
+  (cantidad/merma efectivas) — ver la actualización de la nota del principio 6 y la §3.5 reescrita más arriba. La
+  receta en sí (qué lleva, en qué unidad) sigue sin tener ninguna variante por sucursal.
 - Ningún proceso de "Desposte" (1 insumo → N salidas) — eso quedó
   descartado como no aplicable a este negocio en
   `docs/grounding-desposte-grocy.md` (ni siquiera Grocy lo tiene de verdad).
 - La Fase 2 (regresión multivariable) no se construye antes que la Fase 1
   (división simple) esté funcionando y probada con datos reales.
+
+## 6. Pendientes fuera de alcance (D9, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 12)
+
+Explícitamente NO resueltos por el plan de calibración por sucursal — quedan anotados, no implementados:
+
+- Quién puede editar la receta global (separado a propósito de quién puede calibrar su sucursal, D5).
+- Estimación de rendimiento real de OTRAS sucursales lado a lado, más allá de la comparación de valores ya calibrados
+  (D8) — es decir, correr la estimación estadística de este documento (§3) para varias sucursales a la vez y
+  mostrarlas juntas, no solo comparar lo que cada una ya calibró.
+- Calibrar a mano una línea sin que exista una sugerencia previa (evaluado y recortado en el paso 7 del plan).
+- Mostrar "quién" (qué usuario) calibró cada versión, en el historial de versiones de la receta central.
+- `MovimientoStock` no se recalcula nunca con el rendimiento efectivo: `costo-historico.ts` sigue usando la receta
+  vigente (ahora la efectiva de la sucursal) para días pasados, no la que regía ese día.
