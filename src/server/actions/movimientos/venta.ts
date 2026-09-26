@@ -147,6 +147,11 @@ export async function anularVenta(operacionId: string): Promise<ResultadoAccion>
         seccionId: m.seccionId,
         proceso: m.proceso === "LIQUIDACION_CONSIGNACION" ? "LIQUIDACION_CONSIGNACION" : "AJUSTE",
         cantidad: -Number(m.cantidad),
+        // Arrastre de redondeo (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): invertida igual que `cantidad`, para
+        // que la deuda de redondeo del producto (`D = Σcantidad − ΣcantidadExacta`, MovimientoStock.cantidadExacta) vuelva EXACTAMENTE
+        // al estado que corresponde a las ventas que siguen vigentes — hoy esta columna siempre es `null` (se llena recién en el paso
+        // 4 de la Task #27), así que este cambio, por sí solo, no altera ningún comportamiento observable todavía.
+        cantidadExacta: m.cantidadExacta === null ? null : -Number(m.cantidadExacta),
         loteVencimiento: m.loteVencimiento,
         detalle: `Anulación de venta: revierte "${m.detalle}".`,
         precioTotal: -Number(m.precioTotal),
