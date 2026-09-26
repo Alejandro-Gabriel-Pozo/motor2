@@ -9,6 +9,7 @@ import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 
 const ACCIONES: { value: AccionConteo; label: string; titulo: string }[] = [
   { value: "AJUSTAR", label: "Ajustar", titulo: "Escribe el movimiento de corrección ahora — el stock queda en lo contado." },
@@ -132,7 +133,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
               productoId: f.productoId,
               seccionId,
               loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
-              conteoReal: Number(estado.conteoReal),
+              conteoReal: numeroDelCampo(estado.conteoReal) ?? NaN,
               fechaConteo: new Date(fechaConteo),
               accion: estado.accion,
               detalle: estado.detalle || undefined,
@@ -210,7 +211,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
           {filas.map((f) => {
             const estado = estadoDe(f.key);
             const esManual = f.key.startsWith("manual-");
-            const diferencia = estado.conteoReal.trim() !== "" ? Number(estado.conteoReal) - f.saldoSistema : null;
+            const diferencia = estado.conteoReal.trim() !== "" ? (numeroDelCampo(estado.conteoReal) ?? NaN) - f.saldoSistema : null;
             return (
               <tr key={f.key} className="border-b">
                 <td className="py-1 pr-2">{f.etiqueta}</td>

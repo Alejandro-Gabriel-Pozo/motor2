@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { crearEnvioDirectoTransferencia } from "@/server/actions/traspasos/traspasos";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 
 interface Opcion {
   id: string;
@@ -29,7 +30,7 @@ export function EnviarForm({ sucursales, secciones }: { sucursales: Opcion[]; se
       const resultado = await crearEnvioDirectoTransferencia({
         destinoSucursalId,
         productoId,
-        cantidad: Number(cantidad),
+        cantidad: numeroDelCampo(cantidad) ?? NaN,
         seccionOrigenId,
         detalle: detalle || undefined,
       });

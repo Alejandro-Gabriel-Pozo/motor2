@@ -3,8 +3,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
-import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
+import { validarCantidad } from "@/core/datos/cantidad";
+import { tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoTotal, obtenerSeccionPropia, validarStockSuficiente } from "@/core/movimientos/stock";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -120,8 +120,6 @@ export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso)
     const origenSucursalId = texto(datos.origenSucursalId);
     if (!origenSucursalId) return error("Elegí de qué sucursal lo pedís.");
     if (origenSucursalId === ctx.sucursalId) return error("No podés pedirte una transferencia a vos mismo.");
-    if (!(datos.cantidad > 0)) return error("La cantidad debe ser mayor a 0.");
-    if (!esNumeroFinito(datos.cantidad)) return error("La cantidad no es un número válido.");
 
     const origen = await prisma.sucursal.findUnique({ where: { id: origenSucursalId } });
     if (!origen || !origen.activo) return error("Esa sucursal no existe o no está activa.");
@@ -135,11 +133,17 @@ export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso)
     ]);
     if (!resProducto.ok) return error(resProducto.mensaje);
 
-    // Mismo redondeo que crearEnvioDirectoTransferencia (PUSH) — sin esto,
-    // una cantidad sin redondear entraba al Kardex recién en aprobar/
-    // aceptar/reingresar, violando el invariante de que toda cantidad que
-    // llega a MovimientoStock ya está redondeada a los decimales de su unidad.
-    const cantidad = redondearACantidadDeUnidad(datos.cantidad, resProducto.producto.unidadStock.decimales);
+    // Mismo criterio que crearEnvioDirectoTransferencia (PUSH) y que Compra
+    // (guardLineaCompra): una cantidad con más decimales de los que admite
+    // la unidad de stock del producto se RECHAZA, no se redondea en
+    // silencio — 2,5 en una unidad entera es un error de carga, no un 3
+    // (docs/plan-validacion-de-datos-2026-09-25.md).
+    const resCantidad = validarCantidad(datos.cantidad, resProducto.producto.unidadStock, {
+      etiqueta: `La cantidad de "${resProducto.producto.nombre}"`,
+      obligatorio: true,
+    });
+    if (!resCantidad.ok) return error(resCantidad.mensaje);
+    const cantidad = resCantidad.valor!;
 
     const traspaso = await prisma.traspasoSucursal.create({
       data: {
@@ -173,8 +177,6 @@ export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTra
     const destinoSucursalId = texto(datos.destinoSucursalId);
     if (!destinoSucursalId) return error("Elegí a qué sucursal se lo mandás.");
     if (destinoSucursalId === ctx.sucursalId) return error("No podés mandarte una transferencia a vos mismo.");
-    if (!(datos.cantidad > 0)) return error("La cantidad debe ser mayor a 0.");
-    if (!esNumeroFinito(datos.cantidad)) return error("La cantidad no es un número válido.");
 
     const destino = await prisma.sucursal.findUnique({ where: { id: destinoSucursalId } });
     if (!destino || !destino.activo) return error("Esa sucursal no existe o no está activa.");
@@ -188,18 +190,28 @@ export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTra
     ]);
     if (!resProducto.ok) return error(resProducto.mensaje);
 
-    const chequeoStock = await validarStockSuficiente(datos.productoId, seccionOrigen.id, datos.cantidad);
+    // Mismo criterio que Compra (guardLineaCompra): se rechaza el exceso de
+    // decimales ANTES de chequear stock, así el mensaje de error nombra el
+    // problema real (la cantidad tecleada) y no un "stock insuficiente"
+    // calculado contra un valor que después se iba a redondear.
+    const resCantidad = validarCantidad(datos.cantidad, resProducto.producto.unidadStock, {
+      etiqueta: `La cantidad de "${resProducto.producto.nombre}"`,
+      obligatorio: true,
+    });
+    if (!resCantidad.ok) return error(resCantidad.mensaje);
+    const cantidad = resCantidad.valor!;
+
+    const chequeoStock = await validarStockSuficiente(datos.productoId, seccionOrigen.id, cantidad);
     if (!chequeoStock.ok) {
       return error(`Stock insuficiente de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${chequeoStock.actual}, requerido: ${chequeoStock.requerido}.`);
     }
 
     const resultado = await conTransaccionSerializable(async (tx) => {
       const disponible = await calcularSaldoTotal(datos.productoId, seccionOrigen.id, tx);
-      if (disponible < datos.cantidad) {
-        return error(`Stock insuficiente de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${disponible}, requerido: ${datos.cantidad}.`);
+      if (disponible < cantidad) {
+        return error(`Stock insuficiente de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${disponible}, requerido: ${cantidad}.`);
       }
 
-      const cantidad = redondearACantidadDeUnidad(datos.cantidad, resProducto.producto.unidadStock.decimales);
       const ahora = new Date();
       const traspaso = await tx.traspasoSucursal.create({
         data: {
