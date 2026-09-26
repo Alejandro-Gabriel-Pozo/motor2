@@ -42,11 +42,11 @@ const base = resolverUrlE2E(process.env);
 process.env.DATABASE_URL = base.url;
 process.env.DIRECT_URL = base.url;
 
-// Puerto propio de ESTE worktree (motor2-recetas-central): 3101 es el default que copian todos los worktrees del
-// sandbox, y con varias sesiones corriendo su propio E2E al mismo tiempo eso choca todo el tiempo
-// ("http://localhost:3101 is already used"). No es una decisión de producto — la app no expone nada real en este
-// puerto — así que se corrige acá, sin tocar ningún otro worktree.
-const PUERTO = 3193;
+// Puerto propio de ESTE worktree (feat/genero-carta): 3193 (el que traía este archivo desde otro worktree/rama previo)
+// chocaba con otro worktree del sandbox corriendo su propio E2E al mismo tiempo ("http://localhost:3193 is already
+// used"). No es una decisión de producto — la app no expone nada real en este puerto — así que se corrige acá, sin
+// tocar ningún otro worktree.
+const PUERTO = 38217;
 const URL_BASE = `http://localhost:${PUERTO}`;
 
 /**

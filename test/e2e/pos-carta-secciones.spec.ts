@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { abrirComoRol } from "./fixtures/rol-pos";
@@ -250,6 +251,126 @@ test("a 1024px y a 390px, con un agrupado desplegado, no hay scroll horizontal",
       const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(desborde, `a ${ancho}px`).toBeLessThanOrEqual(0);
     }
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+/**
+ * Carpeta de GÉNERO (docs/plan-genero-carta-2026-09-26.md): en «E2E Bebidas Género» siembra un género («E2E Cerveza») con un
+ * suelto (IPA) y un ítem agrupado («E2E Cerveza Artesanal»: Stout y Rubia) adentro, más un suelto SIN género (Agua con gas) en
+ * la misma sección, y una segunda sección («E2E Postres Género») con un suelto para probar que cambiar de sección cierra la
+ * carpeta.
+ */
+async function sembrarCartaConGenero(sucursalId: string) {
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const crear = async (clave: string, nombre: string, precioVenta: number) => {
+    const p = await prisma.producto.create({ data: { codigo: `E2E-GEN-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
+    return p;
+  };
+  const ipa = await crear("IPA", "Cerveza IPA", 6000);
+  const stout = await crear("STOUT", "Cerveza Stout", 6500);
+  const rubia = await crear("RUBIA", "Cerveza Rubia", 6500);
+  const agua = await crear("AGUA2", "Agua con gas", 2000);
+  const flan = await crear("FLAN2", "Flan casero", 3000);
+  const productoIds = [ipa, stout, rubia, agua, flan].map((p) => p.id);
+
+  const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas Género ${marca}`, orden: 1 } });
+  const postres = await prisma.seccionCarta.create({ data: { nombre: `E2E Postres Género ${marca}`, orden: 2 } });
+  const genero = await prisma.generoCarta.create({ data: { nombre: `E2E Cerveza ${marca}`, orden: 0 } });
+  await prisma.contenidoCartaProducto.createMany({
+    data: [
+      { productoId: ipa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1, generoCartaId: genero.id },
+      { productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
+      { productoId: flan.id, visibleEnCarta: true, seccionCartaId: postres.id, orden: 1 },
+    ],
+  });
+  const artesanal = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Cerveza Artesanal ${marca}`, seccionCartaId: bebidas.id, orden: 0, generoCartaId: genero.id } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: [stout, rubia].map((p, orden) => ({ itemAgrupadoCartaId: artesanal.id, productoId: p.id, orden })) });
+
+  return {
+    ipa,
+    stout,
+    rubia,
+    agua,
+    flan,
+    bebidas,
+    postres,
+    genero,
+    artesanal,
+    limpiar: async (mesaIds: string[]) => {
+      await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
+      await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
+      await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: artesanal.id } });
+      await prisma.itemAgrupadoCarta.deleteMany({ where: { id: artesanal.id } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.seccionCarta.deleteMany({ where: { id: { in: [bebidas.id, postres.id] } } });
+      await prisma.generoCarta.deleteMany({ where: { id: genero.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
+    },
+  };
+}
+
+test("la carpeta de género se ve, se abre y muestra sueltos y agrupados; elegir un producto de adentro lo agrega y la carpeta queda abierta; cambiar de sección la cierra", async ({
+  paginaAutenticada: page,
+  sucursalId,
+}) => {
+  const cat = await sembrarCartaConGenero(sucursalId);
+  const { mesa, cuenta } = await mesaConCuenta(sucursalId, 987);
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await barra(page).getByRole("button", { name: cat.bebidas.nombre }).click();
+    const region = page.getByRole("region", { name: cat.bebidas.nombre });
+
+    // La carpeta se ve, cerrada, y el suelto sin género (Agua con gas) está a la vista sin abrir nada.
+    const carpeta = region.getByRole("button", { name: cat.genero.nombre });
+    await expect(carpeta).toBeVisible();
+    await expect(carpeta).toHaveAttribute("aria-expanded", "false");
+    await expect(region.getByRole("button", { name: cat.agua.nombre })).toBeVisible();
+    await expect(region.getByRole("button", { name: cat.ipa.nombre })).toHaveCount(0);
+
+    // Se abre y muestra tanto el suelto (IPA) como el agrupado (Stout y Rubia), sin un clic adicional para el agrupado.
+    await carpeta.click();
+    await expect(carpeta).toHaveAttribute("aria-expanded", "true");
+    const contenido = page.getByRole("list", { name: `Productos de ${cat.genero.nombre}` });
+    await expect(contenido.getByRole("button", { name: cat.ipa.nombre })).toBeVisible();
+    await expect(contenido.getByRole("button", { name: cat.stout.nombre })).toBeVisible();
+    await expect(contenido.getByRole("button", { name: cat.rubia.nombre })).toBeVisible();
+
+    // Elegir un producto de adentro (Stout) lo agrega con su propio productoId.
+    await contenido.getByRole("button", { name: cat.stout.nombre }).click();
+    await expect(elegido(page)).toHaveText(`Elegido: ${cat.stout.nombre} · ${MONEDA.format(6500)}`);
+    await page.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 987.");
+    const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
+    expect(items.map((i) => [i.productoId, Number(i.precioUnitario)])).toEqual([[cat.stout.id, 6500]]);
+
+    // G3: la carpeta queda ABIERTA después de agregar (para pedir varias de adentro sin reabrir).
+    await expect(carpeta).toHaveAttribute("aria-expanded", "true");
+    await expect(contenido.getByRole("button", { name: cat.ipa.nombre })).toBeVisible();
+
+    // Cambiar de sección la cierra.
+    await barra(page).getByRole("button", { name: cat.postres.nombre }).click();
+    await barra(page).getByRole("button", { name: cat.bebidas.nombre }).click();
+    await expect(region.getByRole("button", { name: cat.genero.nombre })).toHaveAttribute("aria-expanded", "false");
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("accesibilidad: con la carpeta de género abierta, sin violaciones", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCartaConGenero(sucursalId);
+  const { mesa } = await mesaConCuenta(sucursalId, 988);
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await barra(page).getByRole("button", { name: cat.bebidas.nombre }).click();
+    await page.getByRole("region", { name: cat.bebidas.nombre }).getByRole("button", { name: cat.genero.nombre }).click();
+    await expect(page.getByRole("list", { name: `Productos de ${cat.genero.nombre}` })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "mesa con la carpeta de género abierta").toEqual([]);
   } finally {
     await cat.limpiar([mesa.id]);
   }

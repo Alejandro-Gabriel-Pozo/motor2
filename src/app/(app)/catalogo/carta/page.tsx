@@ -3,6 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
+import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { actualizarActivaPromoCarta, guardarPromoCarta } from "@/server/actions/carta/promos";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -36,8 +37,9 @@ const CLASE_INPUT = "rounded border px-2 py-1";
 const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 
 type OpcionSeccion = { id: string; nombre: string; activa: boolean };
+type OpcionGenero = { id: string; nombre: string; activo: boolean };
 /** Para el select de sección + orden sugerido (DA6): las secciones, y cuántos ítems ya tiene cada una. */
-type UbicacionEnCarta = { secciones: OpcionSeccion[]; cantidadPorSeccion: Record<string, number> };
+type UbicacionEnCarta = { secciones: OpcionSeccion[]; cantidadPorSeccion: Record<string, number>; generos: OpcionGenero[] };
 
 export default async function CartaPage() {
   const ctx = await obtenerContextoUsuario();
@@ -52,6 +54,7 @@ export default async function CartaPage() {
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),
+    generos: datos.generos.map((g) => ({ id: g.id, nombre: g.nombre, activo: g.activo })),
   };
 
   return (
@@ -151,7 +154,87 @@ export default async function CartaPage() {
         )}
       </section>
 
-      {/* 2. Contenido de carta por PV */}
+      {/* 2. Géneros de carta (docs/plan-genero-carta-2026-09-26.md): carpetas VISUALES del POS, globales como las secciones. */}
+      <section aria-labelledby="titulo-generos" className="flex flex-col gap-3">
+        <h2 id="titulo-generos" className="text-lg font-medium">
+          Géneros de carta
+        </h2>
+        <p className="text-sm text-neutral-500">
+          Carpetas del selector del POS (ej. «Cerveza»): agrupan, dentro de una sección, tanto productos sueltos como ítems agrupados que comparten género. No
+          implican mismo precio ni sustituibilidad (eso lo maneja «Ítems agrupados de la carta»); no cambian la carta pública que ve el cliente. Un producto sin
+          género (o con uno apagado) sigue apareciendo suelto.
+        </p>
+        <ul className="flex flex-col gap-2">
+          {datos.generos.map((g) => {
+            const id = g.id;
+            const activo = g.activo;
+            return (
+              <li key={g.id} className="rounded border p-3" data-genero-carta={g.nombre}>
+                <details>
+                  <summary className="cursor-pointer text-sm">
+                    <span className="font-medium">{g.nombre}</span> · orden {g.orden} · {g.activo ? "activo" : "apagado"}
+                  </summary>
+                  {puedeEditarCarta ? (
+                    <FormConResultado
+                      accion={async (fd: FormData) => {
+                        "use server";
+                        return refrescarSiOk(await guardarGeneroCarta({ id, nombre: campo(fd, "nombre"), orden: campo(fd, "orden") }));
+                      }}
+                      className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+                    >
+                      <CamposGenero valores={g} />
+                      <div className="sm:col-span-2">
+                        <button type="submit" className={CLASE_BOTON}>
+                          Guardar género
+                        </button>
+                      </div>
+                    </FormConResultado>
+                  ) : (
+                    <DatosSoloLectura className="mt-3">
+                      <Dato etiqueta="Nombre">{g.nombre}</Dato>
+                      <Dato etiqueta="Orden">{g.orden}</Dato>
+                    </DatosSoloLectura>
+                  )}
+                </details>
+                {puedeEditarCarta && (
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return refrescarSiOk(await actualizarActivoGeneroCarta(id, !activo));
+                    }}
+                    className="mt-2"
+                  >
+                    <button type="submit" className="text-sm underline">
+                      {g.activo ? `Apagar «${g.nombre}»` : `Prender «${g.nombre}»`}
+                    </button>
+                  </FormConResultado>
+                )}
+              </li>
+            );
+          })}
+          {!datos.generos.length && <li className="text-sm text-neutral-500">Todavía no hay géneros.</li>}
+        </ul>
+
+        {puedeEditarCarta && (
+          <FormConResultado
+            accion={async (fd: FormData) => {
+              "use server";
+              return refrescarSiOk(await guardarGeneroCarta({ nombre: campo(fd, "nombre"), orden: campo(fd, "orden") }));
+            }}
+            className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
+          >
+            <h3 className="text-sm font-medium sm:col-span-2">Nuevo género</h3>
+            <CamposGenero ordenSugerido={datos.generos.length} />
+            <div className="sm:col-span-2">
+              <button type="submit" className={CLASE_BOTON}>
+                Crear género
+              </button>
+            </div>
+          </FormConResultado>
+        )}
+      </section>
+
+      {/* 3. Contenido de carta por PV */}
       <section aria-labelledby="titulo-contenido" className="flex flex-col gap-3">
         <h2 id="titulo-contenido" className="text-lg font-medium">
           Contenido de carta de cada producto de venta
@@ -190,7 +273,7 @@ export default async function CartaPage() {
         </ul>
       </section>
 
-      {/* 3. Promos de la sucursal */}
+      {/* 4. Promos de la sucursal */}
       <section aria-labelledby="titulo-promos" className="flex flex-col gap-3">
         <h2 id="titulo-promos" className="text-lg font-medium">
           Promos de esta sucursal
@@ -314,6 +397,46 @@ function CamposSeccion({
   );
 }
 
+function CamposGenero({
+  valores,
+  ordenSugerido = 0,
+}: {
+  valores?: { nombre: string; orden: number };
+  /** Alta: el orden inicial; al editar se muestra el guardado. */
+  ordenSugerido?: number;
+}) {
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-sm">
+        Nombre
+        <input name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Cerveza" className={CLASE_INPUT} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Orden
+        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} className={CLASE_INPUT} />
+      </label>
+    </>
+  );
+}
+
+/** El select "Género (opcional)" del contenido de un PV o de un ítem agrupado (docs/plan-genero-carta-2026-09-26.md). */
+function SelectGenero({ generos, guardado }: { generos: OpcionGenero[]; guardado: string | null }) {
+  return (
+    <label className="flex flex-col gap-1 text-sm">
+      Género (opcional)
+      <select name="generoCartaId" defaultValue={guardado ?? ""} className={CLASE_INPUT}>
+        <option value="">— sin género (sale suelto) —</option>
+        {generos.map((g) => (
+          <option key={g.id} value={g.id} disabled={!g.activo}>
+            {g.nombre}
+            {g.activo ? "" : " (apagado)"}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function CamposPromo({
   secciones,
   valores,
@@ -372,6 +495,7 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: 
           <span className="font-medium">{p.nombre}</span> · {p.seccionCarta ?? "sin sección de carta"} · ${p.precio.toLocaleString("es-AR")} ·{" "}
           {estado}
           {p.contenido?.especial ? " · ★" : ""}
+          {p.generoCarta ? ` · ${p.generoCarta}` : ""}
         </summary>
         {p.agrupadoEn && (
           <p className="mt-2 text-sm text-neutral-500">
@@ -396,6 +520,7 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: 
                   tags: campo(fd, "tags"),
                   especial: fd.get("especial") === "on",
                   orden: campo(fd, "orden"),
+                  generoCartaId: campo(fd, "generoCartaId") || null,
                 })
               );
             }}
@@ -413,6 +538,7 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: 
               guardado={p.contenido && { seccionCartaId: p.contenido.seccionCartaId, orden: p.contenido.orden }}
               etiquetaSeccion="Sección de carta (obligatoria si se muestra)"
             />
+            <SelectGenero generos={ubicacion.generos} guardado={p.contenido?.generoCartaId ?? null} />
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
               Descripción (opcional)
               <textarea name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} className={CLASE_INPUT} />
@@ -438,11 +564,13 @@ function ContenidoSoloLectura({ producto: p, ubicacion }: { producto: ProductoCa
   const c = p.contenido;
   if (!c) return <p className="mt-3 text-sm text-neutral-500">Todavía no tiene contenido de carta.</p>;
   const seccion = ubicacion.secciones.find((s) => s.id === c.seccionCartaId);
+  const genero = ubicacion.generos.find((g) => g.id === c.generoCartaId);
   return (
     <DatosSoloLectura className="mt-3">
       <Dato etiqueta="Se muestra en la carta">{c.visibleEnCarta ? "Sí" : "No"}</Dato>
       <Dato etiqueta="Especial (★)">{c.especial ? "Sí" : "No"}</Dato>
       <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
+      <Dato etiqueta="Género">{genero && `${genero.nombre}${genero.activo ? "" : " (apagado)"}`}</Dato>
       <Dato etiqueta="Orden">{c.orden}</Dato>
       <Dato etiqueta="Descripción" ancho>
         {c.descripcion}

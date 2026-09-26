@@ -3,7 +3,7 @@
 import { useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta";
-import type { ProductoPedible, SelectorCartaPos } from "@/core/pos/selector-carta";
+import { pediblesDeEntrada, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/selector-carta";
 import { estadoInicialSelectorCarta, reducirSelectorCarta } from "@/core/pos/selector-carta-estado";
 import { BOTON_PRIMARIO, CAMPO } from "./estilos";
 import { formatearMonto } from "./formato";
@@ -30,7 +30,7 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
   // Para «Elegido: …»: cualquier pedible, lo haya elegido la carta o el buscador.
   const pediblePorId = useMemo(() => {
     const todos: ProductoPedible[] = [
-      ...(selectorCarta?.seccionesCarta ?? []).flatMap((s) => s.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto] : e.opciones))),
+      ...(selectorCarta?.seccionesCarta ?? []).flatMap((s) => s.entradas.flatMap(pediblesDeEntrada)),
       ...(selectorCarta?.fueraDeCarta ?? []),
     ];
     return new Map(todos.map((p) => [p.productoId, p]));

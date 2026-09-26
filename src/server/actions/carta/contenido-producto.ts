@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta, LARGO_MAXIMO_DESCRIPCION_CARTA } from "@/core/carta/validaciones";
+import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -24,6 +25,8 @@ export interface DatosContenidoCarta {
   tags?: readonly string[] | string | null;
   especial?: boolean;
   orden?: number | string | null;
+  /** Carpeta de género del POS (docs/plan-genero-carta-2026-09-26.md), OPCIONAL: vacío/null = sin género (sale suelto). */
+  generoCartaId?: string | null;
 }
 
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
@@ -47,6 +50,8 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
       const seccion = await prisma.seccionCarta.findUnique({ where: { id: seccionCartaId }, select: { id: true } });
       if (!seccion) return error("No se encontró la sección de carta.");
     }
+    const genero = await validarGeneroCartaOpcional(datos.generoCartaId);
+    if (!genero.ok) return error(genero.mensaje);
 
     const data = {
       visibleEnCarta,
@@ -55,6 +60,7 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
       tags: tags.valor,
       especial: datos.especial === true,
       orden: orden.valor,
+      generoCartaId: genero.valor,
     };
     await prisma.contenidoCartaProducto.upsert({ where: { productoId }, update: data, create: { productoId, ...data } });
     return ok(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`);

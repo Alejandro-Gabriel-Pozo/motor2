@@ -26,8 +26,8 @@ const aplicar = (estado: EstadoSelectorCarta, ...acciones: AccionSelectorCarta[]
 describe("estado del selector por sección de carta", () => {
   const inicial = estadoInicialSelectorCarta(selector);
 
-  it("arranca en la primera sección de carta, sin agrupado abierto ni nada elegido", () => {
-    expect(inicial).toEqual({ seccionActiva: "s-platos", agrupadoAbierto: null, productoId: "", limpiarBuscador: 0 });
+  it("arranca en la primera sección de carta, sin agrupado ni carpeta abiertos ni nada elegido", () => {
+    expect(inicial).toEqual({ seccionActiva: "s-platos", agrupadoAbierto: null, carpetaAbierta: null, productoId: "", limpiarBuscador: 0 });
   });
 
   it("sin secciones de carta arranca en «Fuera de carta»; sin nada que navegar, en ninguna", () => {
@@ -71,6 +71,37 @@ describe("estado del selector por sección de carta", () => {
       { tipo: "elegirProducto", productoId: "p-sprite", origen: "carta" },
       { tipo: "limpiarTrasAgregar" }
     );
-    expect(e).toEqual({ seccionActiva: "s-bebidas", agrupadoAbierto: null, productoId: "", limpiarBuscador: 2 });
+    expect(e).toEqual({ seccionActiva: "s-bebidas", agrupadoAbierto: null, carpetaAbierta: null, productoId: "", limpiarBuscador: 2 });
+  });
+
+  it("carpeta de género: abrir una cierra la anterior y el agrupado suelto que estuviera abierto; volver a tocar la misma la cierra", () => {
+    const conAgrupado = aplicar(inicial, { tipo: "elegirSeccion", seccionId: "s-bebidas" }, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" });
+    const abierta = aplicar(conAgrupado, { tipo: "alternarCarpeta", generoCartaId: "gen-cerveza" });
+    expect(abierta).toMatchObject({ carpetaAbierta: "gen-cerveza", agrupadoAbierto: null });
+    const otra = aplicar(abierta, { tipo: "alternarCarpeta", generoCartaId: "gen-vino" });
+    expect(otra.carpetaAbierta).toBe("gen-vino");
+    expect(aplicar(otra, { tipo: "alternarCarpeta", generoCartaId: "gen-vino" }).carpetaAbierta).toBeNull();
+  });
+
+  it("abrir un agrupado suelto cierra la carpeta abierta", () => {
+    const conCarpeta = aplicar(inicial, { tipo: "alternarCarpeta", generoCartaId: "gen-cerveza" });
+    expect(conCarpeta.carpetaAbierta).toBe("gen-cerveza");
+    const e = aplicar(conCarpeta, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" });
+    expect(e).toMatchObject({ agrupadoAbierto: "ag-gaseosa", carpetaAbierta: null });
+  });
+
+  it("después de agregar: la carpeta abierta QUEDA abierta (G3, pedir varios de adentro sin reabrir); el agrupado suelto se cierra igual que siempre", () => {
+    const e = aplicar(
+      inicial,
+      { tipo: "alternarCarpeta", generoCartaId: "gen-cerveza" },
+      { tipo: "elegirProducto", productoId: "p-bife", origen: "carta" },
+      { tipo: "limpiarTrasAgregar" }
+    );
+    expect(e).toMatchObject({ carpetaAbierta: "gen-cerveza", agrupadoAbierto: null, productoId: "" });
+  });
+
+  it("cambiar de sección cierra también la carpeta de género abierta", () => {
+    const e = aplicar(inicial, { tipo: "alternarCarpeta", generoCartaId: "gen-cerveza" }, { tipo: "elegirSeccion", seccionId: "s-bebidas" });
+    expect(e.carpetaAbierta).toBeNull();
   });
 });
