@@ -385,4 +385,77 @@ describe("productos", () => {
       expect(registro!.valorNuevo).toBe("0.5");
     });
   });
+
+  describe("validación de precios y factorConversion (Task #31 — validarImporte/validarCantidad, mismo criterio que Compra/Mesa/Mostrador)", () => {
+    it("rechaza un precio de venta con más de 2 decimales", async () => {
+      const r = await darDeAltaProducto({ nombre: "Pizza con precio raro", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 100.123 });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/decimales/);
+    });
+
+    it("rechaza un precio de venta negativo", async () => {
+      const r = await darDeAltaProducto({ nombre: "Pizza precio negativo", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: -50 });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/negativo/);
+    });
+
+    it("rechaza un precio de venta NaN (lo que manda el cliente cuando el campo tiene texto inválido)", async () => {
+      const r = await darDeAltaProducto({ nombre: "Pizza precio NaN", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: Number.NaN });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/número válido/);
+    });
+
+    it("acepta un precio de venta válido con hasta 2 decimales", async () => {
+      const r = await darDeAltaProducto({ nombre: "Pizza precio válido", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 1234.56 });
+      expect(r.ok).toBe(true);
+    });
+
+    it("rechaza un precio de consignación con más de 2 decimales", async () => {
+      const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_CONS", nombre: "Consignante" } });
+      const r = await darDeAltaProducto({
+        nombre: "Vino consignado con decimales", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1,
+        esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 30.999,
+      });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/decimales/);
+    });
+
+    it("rechaza un factorConversion con más decimales de los que admite la unidad de stock (kg admite 2)", async () => {
+      const r = await darDeAltaProducto({ nombre: "Producto factor con 3 decimales", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1.234 });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/decimales/);
+    });
+
+    it("rechaza un factorConversion gigantesco (por encima del tope de la columna Decimal)", async () => {
+      const r = await darDeAltaProducto({ nombre: "Producto factor enorme", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1e15 });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/grande/);
+    });
+
+    it("acepta un factorConversion válido con los decimales que admite la unidad de stock", async () => {
+      const r = await darDeAltaProducto({ nombre: "Producto factor válido", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1.25 });
+      expect(r.ok).toBe(true);
+    });
+
+    it("actualizarProducto aplica la misma validación de precioVenta al editar", async () => {
+      const alta = await darDeAltaProducto({ nombre: "Pizza editable", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 1000 });
+      expect(alta.ok).toBe(true);
+      if (!alta.ok) return;
+
+      const r = await actualizarProducto(alta.id, { nombre: "Pizza editable", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 1000.555 });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/decimales/);
+
+      // No se tocó nada: el precio sigue siendo el original (mismo criterio de Compra/Mesa/Mostrador — nunca reprocesa lo ya guardado).
+      const sigueIgual = await prisma.producto.findUniqueOrThrow({ where: { id: alta.id } });
+      expect(Number(sigueIgual.precioVenta)).toBe(1000);
+    });
+  });
 });
