@@ -293,4 +293,96 @@ describe("productos", () => {
       expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
     });
   });
+
+  describe("pasoVenta (Task #25, venta fraccionada, docs/plan-venta-fraccionada-2026-09-26.md)", () => {
+    it("solo aplica a PV: se rechaza en el alta de una MP", async () => {
+      const r = await darDeAltaProducto({ nombre: "Harina fraccionada", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, pasoVenta: 0.5 });
+      expect(r).toEqual({ ok: false, mensaje: "El paso de venta solo aplica a productos de venta (PV)." });
+    });
+
+    it("0,3 se rechaza (1/paso no es entero); 0,5 se acepta, sin stock real, aunque la unidad tenga 0 decimales", async () => {
+      const invalido = await darDeAltaProducto({ nombre: "Pizza mal fraccionada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000, pasoVenta: 0.3 });
+      expect(invalido.ok).toBe(false);
+
+      const valido = await darDeAltaProducto({ nombre: "Pizza fraccionada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000, pasoVenta: 0.5 });
+      expect(valido.ok).toBe(true);
+      if (!valido.ok) return;
+      const creado = await prisma.producto.findUniqueOrThrow({ where: { id: valido.id } });
+      expect(Number(creado.pasoVenta)).toBe(0.5);
+    });
+
+    it("R3: con 'Se produce', se rechaza si la unidad no tiene decimales suficientes — sugiere una unidad propia", async () => {
+      const r = await darDeAltaProducto({
+        nombre: "Pizza producida",
+        tipo: "PV",
+        unidadStockId: unidadGId, // 0 decimales
+        factorConversion: 1,
+        precioVenta: 12000,
+        pasoVenta: 0.5,
+        seProduce: true,
+      });
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toMatch(/unidad propia/);
+    });
+
+    it("R3: con 'Se produce' y una unidad con decimales suficientes, se acepta", async () => {
+      const unidadDecimal = await prisma.unidad.create({ data: { nombre: "unidad (0,1)", magnitud: "CANTIDAD", decimales: 1 } });
+      const r = await darDeAltaProducto({
+        nombre: "Pizza producida OK",
+        tipo: "PV",
+        unidadStockId: unidadDecimal.id,
+        factorConversion: 1,
+        precioVenta: 12000,
+        pasoVenta: 0.5,
+        seProduce: true,
+      });
+      expect(r.ok).toBe(true);
+    });
+
+    it("transición peligrosa (a): marcar 'Se produce' en un producto con un pasoVenta ya inconsistente se bloquea", async () => {
+      const alta = await darDeAltaProducto({ nombre: "Pizza al momento", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000, pasoVenta: 0.5 });
+      expect(alta.ok).toBe(true);
+      if (!alta.ok) return;
+
+      const r = await actualizarProducto(alta.id, {
+        nombre: "Pizza al momento",
+        tipo: "PV",
+        unidadStockId: unidadGId,
+        factorConversion: 1,
+        precioVenta: 12000,
+        pasoVenta: 0.5,
+        seProduce: true, // ahora SÍ tiene stock real, y la unidad (0 decimales) no admite 0,5
+      });
+      expect(r.ok).toBe(false);
+
+      const sigueIgual = await prisma.producto.findUniqueOrThrow({ where: { id: alta.id } });
+      expect(sigueIgual.seProduce).toBe(false);
+    });
+
+    it("editar sin tocar pasoVenta lo conserva; vaciarlo vuelve al comportamiento sin paso", async () => {
+      const alta = await darDeAltaProducto({ nombre: "Media pizza", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000, pasoVenta: 0.5 });
+      expect(alta.ok).toBe(true);
+      if (!alta.ok) return;
+
+      await actualizarProducto(alta.id, { nombre: "Media pizza especial", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000, pasoVenta: 0.5 });
+      expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: alta.id } })).pasoVenta)).toBe(0.5);
+
+      await actualizarProducto(alta.id, { nombre: "Media pizza especial", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000, pasoVenta: null });
+      expect((await prisma.producto.findUniqueOrThrow({ where: { id: alta.id } })).pasoVenta).toBeNull();
+    });
+
+    it("se audita igual que el resto de los campos de producto", async () => {
+      const alta = await darDeAltaProducto({ nombre: "Pizza auditada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000 });
+      expect(alta.ok).toBe(true);
+      if (!alta.ok) return;
+
+      await actualizarProducto(alta.id, { nombre: "Pizza auditada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: 12000, pasoVenta: 0.5 });
+
+      const registro = await prisma.registroAuditoria.findFirst({ where: { entidadId: alta.id, campo: "pasoVenta" } });
+      expect(registro).not.toBeNull();
+      expect(registro!.valorAnterior).toBeNull();
+      expect(registro!.valorNuevo).toBe("0.5");
+    });
+  });
 });
