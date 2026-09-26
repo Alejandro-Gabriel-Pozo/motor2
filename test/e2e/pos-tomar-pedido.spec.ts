@@ -72,12 +72,17 @@ async function abrirCuentaUI(page: Page, comensales: number) {
   await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
 }
 
+/**
+ * Un producto por vez, de punta a punta (docs/plan-pos-agregar-varios-2026-09-26.md): lo busca, lo elige (queda sumado a la lista
+ * «Por agregar» con cantidad 1), corrige la cantidad de esa línea si no es 1 y confirma — una sola línea, así que el botón de
+ * confirmar siempre dice «Agregar 1 al pedido» en este punto.
+ */
 async function agregar(page: Page, nombre: string, cantidad: string) {
   const combo = page.getByRole("combobox", { name: "Producto" });
   await combo.fill(nombre);
   await page.getByRole("option", { name: new RegExp(nombre) }).click();
-  await page.getByLabel("Cantidad", { exact: true }).fill(cantidad);
-  await page.getByRole("button", { name: "Agregar", exact: true }).click();
+  if (cantidad !== "1") await page.getByLabel(`Cantidad de ${nombre}`, { exact: true }).fill(cantidad);
+  await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
 }
 
 test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con motivo y cerrar la cuenta registra la venta y libera la mesa", async ({ paginaAutenticada: page, sucursalId }) => {
@@ -255,7 +260,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
     const v = soloVe.page;
     await v.goto(`/mesas/${mesaLectura.id}`);
     await expect(v.locator("main h1")).toHaveText("Mesa 965");
-    await expect(v.getByRole("button", { name: "Agregar", exact: true })).toBeDisabled();
+    await expect(v.getByRole("button", { name: /^Agregar \d+ al pedido$/ })).toBeDisabled();
     await expect(v.getByRole("combobox", { name: "Producto" })).toBeDisabled();
     await expect(v.getByRole("button", { name: `Quitar ${cat.milanesa.nombre}` })).toBeDisabled();
     await expect(v.getByRole("button", { name: "Enviar a cocina" })).toBeDisabled();
