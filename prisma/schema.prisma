@@ -1438,9 +1438,15 @@ model ContenidoCartaProducto {
   especial       Boolean       @default(false)
   /// Orden dentro de su sección de carta (misma escala que ItemAgrupadoCarta.orden).
   orden          Int           @default(0)
+  /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. No implica precio ni
+  /// sustituibilidad (eso es ItemAgrupadoCarta) ni tiene nada que ver con Grupo (Insumo/stock) ni con CategoriaProducto (que no
+  /// ubica nada en la carta): solo visual, solo del POS por ahora (G4, la carta pública `CartaV1` no lo usa).
+  generoCartaId  String?
+  generoCarta    GeneroCarta?  @relation(fields: [generoCartaId], references: [id])
   actualizadoEn  DateTime      @updatedAt
 
   @@index([seccionCartaId])
+  @@index([generoCartaId])
 }
 
 /// Ítem AGRUPADO de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md): un solo renglón visible ("Gaseosa 500cc") que
@@ -1460,12 +1466,35 @@ model ItemAgrupadoCarta {
   /// Orden dentro de su sección de carta (misma escala que ContenidoCartaProducto.orden).
   orden          Int                       @default(0)
   activo         Boolean                   @default(true)
+  /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. Las opciones del ítem agrupado
+  /// heredan este género: nunca tienen uno propio.
+  generoCartaId  String?
+  generoCarta    GeneroCarta?              @relation(fields: [generoCartaId], references: [id])
   creadoEn       DateTime                  @default(now())
   actualizadoEn  DateTime                  @updatedAt
   opciones       OpcionItemAgrupadoCarta[]
 
   @@index([seccionCartaId])
   @@index([activo])
+  @@index([generoCartaId])
+}
+
+/// Carpeta VISUAL del POS que agrupa, dentro de una sección de carta, tanto productos sueltos como ítems agrupados que
+/// comparten género (p. ej. "Cerveza"; docs/plan-genero-carta-2026-09-26.md). NO implica precio ni sustituibilidad (eso lo
+/// sigue manejando ItemAgrupadoCarta, que no se toca); NO es Insumo, ni Grupo (que es de stock/Insumo), ni CategoriaProducto
+/// (que no ubica nada en la carta ni en el POS). GLOBAL (como SeccionCarta, G1): "Cerveza" aparece en cualquier sección donde
+/// tenga contenido pedible, no en una sola. SOLO interno del POS por ahora (G4): la carta pública (`CartaV1`) no lo usa.
+/// Nunca se borra: se apaga (mismo patrón que el resto del catálogo/carta).
+model GeneroCarta {
+  id         String                   @id @default(cuid())
+  nombre     String                   @unique
+  orden      Int                      @default(0)
+  activo     Boolean                  @default(true)
+  creadoEn   DateTime                 @default(now())
+  contenidos ContenidoCartaProducto[]
+  agrupados  ItemAgrupadoCarta[]
+
+  @@index([activo, orden])
 }
 
 /// Un PV real dentro de un ítem agrupado. `productoId @unique`: un producto está en a lo sumo UN ítem agrupado (D2). Un producto
