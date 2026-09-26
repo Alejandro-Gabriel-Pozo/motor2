@@ -3,6 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { CampoNumero } from "@/components/campo-numero";
+import { FormConResultado } from "@/components/form-con-resultado";
+import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/actions/catalogo/rendimiento-local";
 import { ETIQUETA_ROTULO, desvioEsNotable, type RotuloLinea } from "@/core/reportes/rendimiento-recetas-vistas";
 
 /** Ver el docstring del mismo mapa en fila-simple.tsx. */
@@ -24,8 +27,12 @@ export interface FilaRendimientoCompartidaProps {
   productoVentaId: string;
   productoVentaNombre: string;
   insumoProductoId: string;
+  recetaIngredienteId: string;
   unidadRecetaNombre: string;
   cantidadActual: number;
+  cantidadActualCentral: number;
+  calibradoLocal: boolean;
+  mermaActual: number;
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
   motivoSinEstimacion: string | null;
@@ -36,22 +43,27 @@ export interface FilaRendimientoCompartidaProps {
   semanasConDatos: number;
   r2: number | null;
   rotulo: RotuloLinea;
+  sucursalId: string;
+  sucursalNombre: string;
+  puedeCalibrar: boolean;
 }
 
 /**
- * Una fila de "Insumo compartido entre varios platos". Mismo criterio que `FilaRendimientoSimple`: "Usar este valor" nunca
- * aplica directo, siempre confirma en la misma fila con el porqué a la vista. Acá el valor sale de una regresión sobre todo el
- * pool (no de comprado÷vendido de ESTE plato), así que el contexto que se muestra es la calidad del ajuste (R²) y cuántos
- * platos comparten el insumo, no comprado/vendido — esos ya se ven arriba de la tabla, por pool (Comprado/Producido/Δ stock
- * del POOL entero van en el párrafo de encabezado, en page.tsx — acá solo lo que es propio de CADA plato: vendido e impacto).
+ * Una fila de "Insumo compartido entre varios platos". Mismo criterio que `FilaRendimientoSimple` (paso 7 del plan de
+ * rendimiento por sucursal): "Usar este valor" calibra `fijarRendimientoLocal` de la sucursal activa, nunca navega al
+ * editor central. El contexto que se muestra acá es la calidad del ajuste (R²) y cuántos platos comparten el insumo, no
+ * comprado/vendido (eso va por pool en page.tsx).
  */
 export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps) {
   const {
-    productoVentaId,
     productoVentaNombre,
     insumoProductoId,
+    recetaIngredienteId,
     unidadRecetaNombre,
     cantidadActual,
+    cantidadActualCentral,
+    calibradoLocal,
+    mermaActual,
     cantidadEstimada,
     desviacionPorcentaje,
     motivoSinEstimacion,
@@ -62,55 +74,116 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
     semanasConDatos,
     r2,
     rotulo,
+    sucursalId,
+    sucursalNombre,
+    puedeCalibrar,
   } = props;
-  const [confirmando, setConfirmando] = useState(false);
+  const [modo, setModo] = useState<"usar" | "volver" | null>(null);
   const idAviso = useId();
   const botonUsar = useRef<HTMLButtonElement>(null);
+  const botonVolver = useRef<HTMLButtonElement>(null);
   const botonCancelar = useRef<HTMLButtonElement>(null);
-  const volverAlBoton = useRef(false);
+  const volverAlBotonQueAbrio = useRef<"usar" | "volver" | null>(null);
 
   useEffect(() => {
-    if (confirmando) {
+    if (modo) {
       botonCancelar.current?.focus();
-    } else if (volverAlBoton.current) {
-      volverAlBoton.current = false;
+    } else if (volverAlBotonQueAbrio.current === "usar") {
       botonUsar.current?.focus();
+    } else if (volverAlBotonQueAbrio.current === "volver") {
+      botonVolver.current?.focus();
     }
-  }, [confirmando]);
+    volverAlBotonQueAbrio.current = null;
+  }, [modo]);
 
   function cancelar() {
-    volverAlBoton.current = true;
-    setConfirmando(false);
+    volverAlBotonQueAbrio.current = modo;
+    setModo(null);
   }
 
-  const href =
-    cantidadEstimada !== null
-      ? `/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}` +
-        `&platos=${cantidadPlatosEnPool}&semanas=${semanasConDatos}${r2 !== null ? `&ajuste=${r2.toFixed(2)}` : ""}`
-      : null;
-
-  if (confirmando && href) {
+  if (modo === "usar" && cantidadEstimada !== null) {
     return (
       <tr className="border-b">
         <td colSpan={7} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
-          <div className="flex flex-col gap-1">
+          <FormConResultado
+            accion={async (formData) => {
+              const cantidad = Number(formData.get("cantidad"));
+              const mermaPorcentaje = Number(formData.get("mermaPorcentaje") || 0);
+              const r = await fijarRendimientoLocal(recetaIngredienteId, { cantidad, mermaPorcentaje }, {
+                tipo: "sugerencia_pool",
+                sucursalCalculoId: sucursalId,
+                sugerido: cantidadEstimada,
+                platos: cantidadPlatosEnPool,
+                semanas: semanasConDatos,
+                ajusteR2: r2 ?? undefined,
+              });
+              if (r.ok) setModo(null);
+              return r;
+            }}
+            className="flex flex-col gap-2"
+          >
             <p id={idAviso} role="alert" className="text-sm text-amber-700 dark:text-amber-600">
-              ¿Cambiar la receta de {productoVentaNombre}? Vas a pasar de {cantidadActual} a {cantidadEstimada} {unidadRecetaNombre}.
+              ¿Calibrar el rendimiento de {productoVentaNombre} en «{sucursalNombre}»? Pasás de {cantidadActual} a {cantidadEstimada} {unidadRecetaNombre}.
             </p>
             <p className="text-xs text-neutral-500">
               Insumo compartido por {cantidadPlatosEnPool} plato(s) · {semanasConDatos} semana(s) con datos
               {r2 !== null && ` · ajuste R² ${r2.toFixed(2)}`}.
               {rotulo && ` ${AYUDA_ROTULO[rotulo]}`}
             </p>
-            <div className="flex gap-3">
-              <EnlaceInterno href={href} aria-describedby={idAviso} className="text-sm font-medium text-amber-700 underline dark:text-amber-600">
-                Sí, ir a aplicarlo
+            <p className="text-xs text-neutral-500">
+              Esto cambia solo el rendimiento de «{sucursalNombre}». La receta central ({cantidadActualCentral} {unidadRecetaNombre}) y las otras
+              sucursales no se tocan.{" "}
+              <EnlaceInterno href="/reportes/rendimiento-recetas/por-sucursal" className="underline">
+                Comparar con otras sucursales
               </EnlaceInterno>
-              <button ref={botonCancelar} type="button" aria-describedby={idAviso} onClick={cancelar} className="text-sm underline">
+              .
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-xs">
+                Cantidad
+                <CampoNumero name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Merma %
+                <CampoNumero name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
+              </label>
+              <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+                Guardar como rendimiento de «{sucursalNombre}»
+              </button>
+              <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
                 Cancelar
               </button>
             </div>
-          </div>
+          </FormConResultado>
+        </td>
+      </tr>
+    );
+  }
+
+  if (modo === "volver") {
+    return (
+      <tr className="border-b">
+        <td colSpan={7} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
+          <FormConResultado
+            accion={async () => {
+              const r = await volverAlRendimientoCentral(recetaIngredienteId);
+              if (r.ok) setModo(null);
+              return r;
+            }}
+            className="flex flex-col gap-1"
+          >
+            <p id={idAviso} role="alert" className="text-sm text-amber-700 dark:text-amber-600">
+              ¿Volver «{productoVentaNombre}» al valor central ({cantidadActualCentral} {unidadRecetaNombre}) en «{sucursalNombre}»?
+            </p>
+            <div className="flex gap-3">
+              <button type="submit" className="text-sm font-medium text-amber-700 underline dark:text-amber-600" aria-describedby={idAviso}>
+                Sí, volver al valor central
+              </button>
+              <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
+                Cancelar
+              </button>
+            </div>
+          </FormConResultado>
         </td>
       </tr>
     );
@@ -132,6 +205,11 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
       </td>
       <td className="px-2 py-2">
         {cantidadActual} {unidadRecetaNombre}
+        {calibradoLocal && (
+          <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+            (calibrado acá; central: {cantidadActualCentral} {unidadRecetaNombre})
+          </span>
+        )}
       </td>
       <td className="px-2 py-2">
         {cantidadEstimada !== null ? (
@@ -156,11 +234,18 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
         )}
       </td>
       <td className="px-2 py-2">
-        {href && (
-          <button ref={botonUsar} type="button" aria-label={`Usar este valor para ${productoVentaNombre}`} onClick={() => setConfirmando(true)} className="text-sm underline">
-            Usar este valor
-          </button>
-        )}
+        <div className="flex flex-col gap-1">
+          {puedeCalibrar && cantidadEstimada !== null && (
+            <button ref={botonUsar} type="button" aria-label={`Usar este valor para ${productoVentaNombre}`} onClick={() => setModo("usar")} className="text-sm underline">
+              Usar este valor
+            </button>
+          )}
+          {puedeCalibrar && calibradoLocal && (
+            <button ref={botonVolver} type="button" onClick={() => setModo("volver")} className="text-sm underline">
+              Volver al valor central
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );

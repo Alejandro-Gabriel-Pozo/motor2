@@ -3,6 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { CampoNumero } from "@/components/campo-numero";
+import { FormConResultado } from "@/components/form-con-resultado";
+import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/actions/catalogo/rendimiento-local";
 import { ETIQUETA_ROTULO, desvioEsNotable, explicarConfianza, type Confianza, type RotuloLinea } from "@/core/reportes/rendimiento-recetas-vistas";
 
 /** Ayuda por tipo de rótulo — reemplaza el AYUDA_TRIVIAL único (§3, plan P7): cada uno explica algo distinto sobre por qué el desvío se lee diferente acá. */
@@ -25,8 +28,12 @@ export interface FilaRendimientoSimpleProps {
   productoVentaNombre: string;
   insumoProductoId: string;
   insumoONombre: string;
+  recetaIngredienteId: string;
   unidadRecetaNombre: string;
   cantidadActual: number;
+  cantidadActualCentral: number;
+  calibradoLocal: boolean;
+  mermaActual: number;
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
   motivoSinEstimacion: string | null;
@@ -41,26 +48,31 @@ export interface FilaRendimientoSimpleProps {
   semanasConDatos: number;
   confianza: Confianza;
   rotulo: RotuloLinea;
+  sucursalId: string;
+  sucursalNombre: string;
+  /** true si el usuario activo puede calibrar (`calibrar_rendimiento_local`, Ver+Editar) en esta sucursal. */
+  puedeCalibrar: boolean;
 }
 
 /**
- * Una fila de "Un solo plato por insumo" (Rendimiento real de recetas). Cuando hay un valor sugerido, "Usar este valor" NUNCA
- * navega directo al editor de recetas: primero pide una confirmación explícita, EN LA MISMA FILA (colSpan, mismo patrón que el
- * modo edición de `/catalogo/recetas/[productoId]`), con el porqué a la vista — comprado, vendido, semanas con datos y
- * confianza — siempre, incluso cuando el dato es confiable. La diferencia entre un caso confiable y uno dudoso queda en esos
- * números (ej. "comprado: 0" es una alarma que el propio dato ya muestra), no en si el botón existe.
- *
- * Ese mismo contexto viaja en la URL hacia el editor de recetas, para que la advertencia siga a la vista en el punto donde el
- * cambio se guarda de verdad (ver la nota junto al campo "cantidad" en `catalogo/recetas/[productoId]/page.tsx`).
+ * Una fila de "Un solo plato por insumo" (Rendimiento real de recetas). Rendimiento por sucursal (docs/plan-rendimiento-
+ * receta-por-sucursal-2026-09-26.md, paso 7): "Usar este valor" ya NO navega al editor de la receta central — pide
+ * confirmación EN LA MISMA FILA (colSpan, mismo patrón que antes) con el porqué a la vista, y calibra el rendimiento de LA
+ * SUCURSAL ACTIVA (`fijarRendimientoLocal`), nunca la receta central. La merma se congela junto con la cantidad (D4,
+ * decisión del dueño): el formulario trae los dos campos editables, con la cantidad estimada y la merma EFECTIVA usada en
+ * el cálculo como default.
  */
 export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
   const {
-    productoVentaId,
     productoVentaNombre,
     insumoProductoId,
     insumoONombre,
+    recetaIngredienteId,
     unidadRecetaNombre,
     cantidadActual,
+    cantidadActualCentral,
+    calibradoLocal,
+    mermaActual,
     cantidadEstimada,
     desviacionPorcentaje,
     motivoSinEstimacion,
@@ -75,57 +87,119 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
     semanasConDatos,
     confianza,
     rotulo,
+    sucursalId,
+    sucursalNombre,
+    puedeCalibrar,
   } = props;
-  const [confirmando, setConfirmando] = useState(false);
+  const [modo, setModo] = useState<"usar" | "volver" | null>(null);
   const idAviso = useId();
   const botonUsar = useRef<HTMLButtonElement>(null);
+  const botonVolver = useRef<HTMLButtonElement>(null);
   const botonCancelar = useRef<HTMLButtonElement>(null);
-  const volverAlBoton = useRef(false);
+  const volverAlBotonQueAbrio = useRef<"usar" | "volver" | null>(null);
 
   useEffect(() => {
-    if (confirmando) {
+    if (modo) {
       botonCancelar.current?.focus();
-    } else if (volverAlBoton.current) {
-      volverAlBoton.current = false;
+    } else if (volverAlBotonQueAbrio.current === "usar") {
       botonUsar.current?.focus();
+    } else if (volverAlBotonQueAbrio.current === "volver") {
+      botonVolver.current?.focus();
     }
-  }, [confirmando]);
+    volverAlBotonQueAbrio.current = null;
+  }, [modo]);
 
   function cancelar() {
-    volverAlBoton.current = true;
-    setConfirmando(false);
+    volverAlBotonQueAbrio.current = modo;
+    setModo(null);
   }
 
   const resumen = `${productoVentaNombre} — ${insumoONombre}`;
-  // comprado/vendido/semanas/confianza acá siguen siendo los de SIEMPRE (no totalEntradas) — es el contexto que ya lee catalogo/recetas/[productoId]/page.tsx, sin tocar esa pantalla.
-  const href =
-    cantidadEstimada !== null
-      ? `/catalogo/recetas/${productoVentaId}?editar=${insumoProductoId}&sugerido=${cantidadEstimada}` +
-        `&comprado=${totalComprado}&vendido=${totalVendido}&semanas=${semanasConDatos}&confianza=${encodeURIComponent(explicarConfianza(confianza, semanasConDatos))}`
-      : null;
 
-  if (confirmando && href) {
+  if (modo === "usar" && cantidadEstimada !== null) {
     return (
       <tr className="border-b">
         <td colSpan={11} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
-          <div className="flex flex-col gap-1">
+          <FormConResultado
+            accion={async (formData) => {
+              const cantidad = Number(formData.get("cantidad"));
+              const mermaPorcentaje = Number(formData.get("mermaPorcentaje") || 0);
+              const r = await fijarRendimientoLocal(recetaIngredienteId, { cantidad, mermaPorcentaje }, {
+                tipo: "sugerencia_simple",
+                sucursalCalculoId: sucursalId,
+                sugerido: cantidadEstimada,
+                comprado: totalComprado,
+                vendido: totalVendido,
+                semanas: semanasConDatos,
+                confianza: explicarConfianza(confianza, semanasConDatos),
+              });
+              if (r.ok) setModo(null);
+              return r;
+            }}
+            className="flex flex-col gap-2"
+          >
             <p id={idAviso} role="alert" className="text-sm text-amber-700 dark:text-amber-600">
-              ¿Cambiar la receta de {resumen}? Vas a pasar de {cantidadActual} a {cantidadEstimada} {unidadRecetaNombre}.
+              ¿Calibrar el rendimiento de {resumen} en «{sucursalNombre}»? Pasás de {cantidadActual} a {cantidadEstimada} {unidadRecetaNombre}.
             </p>
             <p className="text-xs text-neutral-500">
               Comprado: {totalComprado}
               {totalProducido > 0 && ` (+${totalProducido} producido)`} · Vendido: {totalVendido} · Confianza: {explicarConfianza(confianza, semanasConDatos)}.
               {rotulo && ` ${AYUDA_ROTULO[rotulo]}`}
             </p>
-            <div className="flex gap-3">
-              <EnlaceInterno href={href} aria-describedby={idAviso} className="text-sm font-medium text-amber-700 underline dark:text-amber-600">
-                Sí, ir a aplicarlo
+            <p className="text-xs text-neutral-500">
+              Esto cambia solo el rendimiento de «{sucursalNombre}». La receta central ({cantidadActualCentral} {unidadRecetaNombre}) y las otras
+              sucursales no se tocan.{" "}
+              <EnlaceInterno href="/reportes/rendimiento-recetas/por-sucursal" className="underline">
+                Comparar con otras sucursales
               </EnlaceInterno>
-              <button ref={botonCancelar} type="button" aria-describedby={idAviso} onClick={cancelar} className="text-sm underline">
+              .
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-xs">
+                Cantidad
+                <CampoNumero name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Merma %
+                <CampoNumero name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
+              </label>
+              <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+                Guardar como rendimiento de «{sucursalNombre}»
+              </button>
+              <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
                 Cancelar
               </button>
             </div>
-          </div>
+          </FormConResultado>
+        </td>
+      </tr>
+    );
+  }
+
+  if (modo === "volver") {
+    return (
+      <tr className="border-b">
+        <td colSpan={11} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
+          <FormConResultado
+            accion={async () => {
+              const r = await volverAlRendimientoCentral(recetaIngredienteId);
+              if (r.ok) setModo(null);
+              return r;
+            }}
+            className="flex flex-col gap-1"
+          >
+            <p id={idAviso} role="alert" className="text-sm text-amber-700 dark:text-amber-600">
+              ¿Volver «{insumoONombre}» en «{productoVentaNombre}» al valor central ({cantidadActualCentral} {unidadRecetaNombre}) en «{sucursalNombre}»?
+            </p>
+            <div className="flex gap-3">
+              <button type="submit" className="text-sm font-medium text-amber-700 underline dark:text-amber-600" aria-describedby={idAviso}>
+                Sí, volver al valor central
+              </button>
+              <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
+                Cancelar
+              </button>
+            </div>
+          </FormConResultado>
         </td>
       </tr>
     );
@@ -148,6 +222,11 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
       </td>
       <td className="px-2 py-2">
         {cantidadActual} {unidadRecetaNombre}
+        {calibradoLocal && (
+          <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+            (calibrado acá; central: {cantidadActualCentral} {unidadRecetaNombre})
+          </span>
+        )}
       </td>
       <td className="px-2 py-2">
         {cantidadEstimada !== null ? (
@@ -186,11 +265,18 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
       </td>
       <td className="px-2 py-2">{explicarConfianza(confianza, semanasConDatos)}</td>
       <td className="px-2 py-2">
-        {href && (
-          <button ref={botonUsar} type="button" aria-label={`Usar este valor para ${resumen}`} onClick={() => setConfirmando(true)} className="text-sm underline">
-            Usar este valor
-          </button>
-        )}
+        <div className="flex flex-col gap-1">
+          {puedeCalibrar && cantidadEstimada !== null && (
+            <button ref={botonUsar} type="button" aria-label={`Usar este valor para ${resumen}`} onClick={() => setModo("usar")} className="text-sm underline">
+              Usar este valor
+            </button>
+          )}
+          {puedeCalibrar && calibradoLocal && (
+            <button ref={botonVolver} type="button" onClick={() => setModo("volver")} className="text-sm underline">
+              Volver al valor central
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );

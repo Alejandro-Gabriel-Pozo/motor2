@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer, obtenerMiNivelPermiso } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/core/reportes/rendimiento-recetas";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
@@ -59,9 +59,10 @@ export default async function RendimientoRecetasPage({
   const desde = new Date(desdeStr);
   const hasta = new Date(hastaStr);
 
-  const [todasLasSimples, todasLasCompartidas] = await Promise.all([
+  const [todasLasSimples, todasLasCompartidas, { editar: puedeCalibrar }] = await Promise.all([
     calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta),
     calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local"),
   ]);
   const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;
   const filasCompartidas = sp.productoId ? todasLasCompartidas.filter((f) => f.productoVentaId === sp.productoId) : todasLasCompartidas;
@@ -165,8 +166,12 @@ export default async function RendimientoRecetasPage({
                     productoVentaNombre={f.productoVentaNombre}
                     insumoProductoId={f.insumoProductoId}
                     insumoONombre={f.insumoONombre}
+                    recetaIngredienteId={f.recetaIngredienteId}
                     unidadRecetaNombre={f.unidadRecetaNombre}
                     cantidadActual={f.cantidadActual}
+                    cantidadActualCentral={f.cantidadActualCentral}
+                    calibradoLocal={f.calibradoLocal}
+                    mermaActual={f.mermaActual}
                     cantidadEstimada={f.cantidadEstimada}
                     desviacionPorcentaje={f.desviacionPorcentaje}
                     motivoSinEstimacion={f.motivoSinEstimacion}
@@ -181,6 +186,9 @@ export default async function RendimientoRecetasPage({
                     semanasConDatos={f.semanasConDatos}
                     confianza={f.confianza}
                     rotulo={f.rotulo}
+                    sucursalId={ctx.sucursalId}
+                    sucursalNombre={ctx.sucursalNombre}
+                    puedeCalibrar={puedeCalibrar}
                   />
                 ))}
               </tbody>
@@ -239,8 +247,12 @@ export default async function RendimientoRecetasPage({
                           productoVentaId={f.productoVentaId}
                           productoVentaNombre={f.productoVentaNombre}
                           insumoProductoId={f.insumoProductoId}
+                          recetaIngredienteId={f.recetaIngredienteId}
                           unidadRecetaNombre={f.unidadRecetaNombre}
                           cantidadActual={f.cantidadActual}
+                          cantidadActualCentral={f.cantidadActualCentral}
+                          calibradoLocal={f.calibradoLocal}
+                          mermaActual={f.mermaActual}
                           cantidadEstimada={f.cantidadEstimada}
                           desviacionPorcentaje={f.desviacionPorcentaje}
                           motivoSinEstimacion={f.motivoSinEstimacion}
@@ -251,6 +263,9 @@ export default async function RendimientoRecetasPage({
                           semanasConDatos={f.semanasConDatos}
                           r2={f.r2}
                           rotulo={f.rotulo}
+                          sucursalId={ctx.sucursalId}
+                          sucursalNombre={ctx.sucursalNombre}
+                          puedeCalibrar={puedeCalibrar}
                         />
                       ))}
                     </tbody>

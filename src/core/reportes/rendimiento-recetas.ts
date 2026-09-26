@@ -30,6 +30,8 @@ export interface FilaRendimientoSimple {
   cantidadActualCentral: number;
   /** true si ESTA sucursal calibró cantidad y/o merma de esta línea. */
   calibradoLocal: boolean;
+  /** Merma % EFECTIVA de esta sucursal — la que se CONGELA junto con `cantidadEstimada` al calibrar (D4, decisión del dueño). */
+  mermaActual: number;
   /** NETO (misma base que `cantidadActual` — RecetaIngrediente.cantidad es neta) — ver docstring de `calcularCantidadEstimadaNeta`, es lo que se escribe si se usa este valor. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
@@ -77,6 +79,8 @@ export interface FilaRendimientoCompartido {
   cantidadActualCentral: number;
   /** true si ESTA sucursal calibró cantidad y/o merma de esta línea. */
   calibradoLocal: boolean;
+  /** Merma % EFECTIVA de esta sucursal — la que se CONGELA junto con `cantidadEstimada` al calibrar (D4, decisión del dueño). */
+  mermaActual: number;
   /** El coeficiente resuelto por regresión para ESTE plato, ya en NETO — null si el pool no fue resoluble. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
@@ -356,6 +360,7 @@ export async function calcularRendimientoRecetasSimples(
       cantidadActual: uso.cantidad,
       cantidadActualCentral: uso.cantidadCentral,
       calibradoLocal: uso.calibradoLocal,
+      mermaActual: uso.mermaPorcentaje,
       cantidadEstimada,
       desviacionPorcentaje,
       totalComprado,
@@ -482,6 +487,7 @@ export async function calcularRendimientoRecetasCompartidas(
         cantidadActual: uso.cantidad,
         cantidadActualCentral: uso.cantidadCentral,
         calibradoLocal: uso.calibradoLocal,
+        mermaActual: uso.mermaPorcentaje,
         cantidadEstimada,
         desviacionPorcentaje,
         totalVendido: totalVendidoUso,
