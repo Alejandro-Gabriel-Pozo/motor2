@@ -52,7 +52,9 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
     });
 
     for (let i = 1; i <= 5; i++) {
-      const r = await actualizarCabeceraDeReceta(pv.id, { rendimientoCantidad: i, racionesCantidad: i });
+      // rendimientoUnidadId es obligatorio junto con rendimientoCantidad desde la guarda de cabecera (fix/validar-cabecera-receta):
+      // sin unidad no hay forma de saber cuántos decimales admite el valor.
+      const r = await actualizarCabeceraDeReceta(pv.id, { rendimientoCantidad: i, rendimientoUnidadId: unidadKgId, racionesCantidad: i });
       expect(r.ok, r.mensaje).toBe(true);
     }
 

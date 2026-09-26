@@ -411,5 +411,74 @@ describe("recetas", () => {
       const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 4 });
       expect(resultado.ok).toBe(false);
     });
+
+    describe("validarCabecera: bug real — antes NaN llegaba directo a prisma.recetaVersion.create sin ningún control", () => {
+      beforeEach(async () => {
+        await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }], [], { racionesCantidad: 4 });
+      });
+
+      it("rechaza rendimientoCantidad sin unidad elegida", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 2 });
+        expect(resultado.ok).toBe(false);
+        if (!resultado.ok) expect(resultado.mensaje).toMatch(/unidad del rendimiento/i);
+      });
+
+      it("rechaza rendimientoCantidad con más decimales que los que admite su unidad (g, 0 decimales)", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 1.5, rendimientoUnidadId: unidadGId });
+        expect(resultado.ok).toBe(false);
+      });
+
+      it("rechaza rendimientoCantidad en 0 (no tiene sentido un rendimiento nulo)", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 0, rendimientoUnidadId: unidadKgId });
+        expect(resultado.ok).toBe(false);
+      });
+
+      it("rechaza racionTamano sin unidad elegida", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionTamano: 200 });
+        expect(resultado.ok).toBe(false);
+        if (!resultado.ok) expect(resultado.mensaje).toMatch(/unidad del tamaño de ración/i);
+      });
+
+      it("rechaza racionesCantidad negativa", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: -1 });
+        expect(resultado.ok).toBe(false);
+      });
+
+      it("rechaza racionesCantidad no entera", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 2.5 });
+        expect(resultado.ok).toBe(false);
+      });
+
+      it("rechaza racionesCantidad NaN — antes llegaba tal cual a la base sin ningún aviso", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: Number.NaN });
+        expect(resultado.ok).toBe(false);
+      });
+
+      it("rechaza tiempoPreparacionMinutos negativo", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { tiempoPreparacionMinutos: -5 });
+        expect(resultado.ok).toBe(false);
+      });
+
+      it("rechaza tiempoCoccionMinutos no entero", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, { tiempoCoccionMinutos: 12.5 });
+        expect(resultado.ok).toBe(false);
+      });
+
+      it("acepta una cabecera válida con rendimiento y ración en su unidad correspondiente", async () => {
+        const resultado = await actualizarCabeceraDeReceta(pvId, {
+          rendimientoCantidad: 1.25,
+          rendimientoUnidadId: unidadKgId,
+          racionTamano: 250,
+          racionUnidadId: unidadGId,
+          tiempoPreparacionMinutos: 10,
+          tiempoCoccionMinutos: 20,
+        });
+        expect(resultado.ok).toBe(true);
+
+        const vigente = await obtenerRecetaVigente(pvId);
+        expect(Number(vigente?.rendimientoCantidad)).toBe(1.25);
+        expect(Number(vigente?.racionTamano)).toBe(250);
+      });
+    });
   });
 });
