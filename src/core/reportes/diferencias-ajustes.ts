@@ -69,7 +69,7 @@ const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1
  */
 export async function generarReporteDiferenciasAjustes(sucursalId: string, db: Db = prisma, hoy: Date = new Date()): Promise<FilaDiferenciaAjuste[]> {
   const productos = await construirMapaProductos(sucursalId, db);
-  const { recetaPorProducto, mpsEnRecetas } = await construirIndiceRecetas(db);
+  const { recetaPorProducto, mpsEnRecetas } = await construirIndiceRecetas(db, sucursalId);
   const frecuencias = await db.frecuenciaConteoProducto.findMany({ where: { sucursalId }, select: { productoId: true, frecuenciaDias: true } });
   const frecuenciaPorProducto = new Map(frecuencias.map((f) => [f.productoId, f.frecuenciaDias]));
 

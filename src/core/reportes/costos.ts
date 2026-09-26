@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/movimientos/transiciones";
 import {
+  asegurarIndiceRecetasDeLaSucursal,
   cargarClasificacionNoComestibles,
   construirIndiceRecetas,
   construirMapaProductos,
@@ -138,8 +139,9 @@ export async function calcularCostosYMargenes(
   /** El índice de recetas ya cargado, mismo motivo que `productosCargados` — ver `calcularMargenDelPeriodo`/`obtenerReportePorPeriodoConCatalogo`, que lo comparten entre las funciones que lo necesitan. */
   indiceRecetas?: IndiceRecetas
 ): Promise<FilaCostoProducto[]> {
+  if (indiceRecetas) asegurarIndiceRecetasDeLaSucursal(indiceRecetas, sucursalId);
   const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
-  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db));
+  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db, sucursalId));
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   // Compartido entre todos los PV de este cálculo: un mismo intermedio
   // fabricado (ej. la prepizza) suele aparecer en varias recetas — no hace
@@ -349,8 +351,9 @@ export async function calcularImpactoRecetasPorPeriodo(
   /** La clasificación de grupos "No comestibles" ya cargada, mismo motivo. */
   clasificacion?: ClasificacionNoComestibles
 ): Promise<FilaImpactoRecetaPorPeriodo[]> {
+  if (indiceRecetas) asegurarIndiceRecetasDeLaSucursal(indiceRecetas, sucursalId);
   const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
-  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db));
+  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db, sucursalId));
   const costosActuales = await obtenerCostoActualPorMP(sucursalId, db);
   const costosAntesDelPeriodo = await obtenerCostoActualPorMP(sucursalId, db, desde);
 

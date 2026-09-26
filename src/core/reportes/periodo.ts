@@ -171,7 +171,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   // confirmado hasta ahora). Se cargan acá una sola vez, igual que el catálogo.
   const clasificacionNoComestibles = await cargarClasificacionNoComestibles(db);
   const productos = await construirMapaProductos(sucursalId, db, clasificacionNoComestibles);
-  const indiceRecetas = await construirIndiceRecetas(db);
+  const indiceRecetas = await construirIndiceRecetas(db, sucursalId);
   const ventas = calcularVentasDelPeriodo(items, productos);
   const compras = calcularComprasDelPeriodo(items, productos);
   const gastoPorInsumo = calcularGastoPorInsumoDelPeriodo(items, productos);

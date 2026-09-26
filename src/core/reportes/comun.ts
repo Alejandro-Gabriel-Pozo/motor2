@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { clasificarGruposNoComestibles, type ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
 import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -101,16 +102,28 @@ export async function construirMapaProductos(
 }
 
 export interface IngredienteRecetaReporte {
+  recetaIngredienteId: string;
   insumoProductoId: string;
   insumoNombre: string;
+  /** EFECTIVO — el valor central, salvo que `sucursalId` tenga una calibración local (rendimientoEfectivo). */
   cantidad: number;
   unidadNombre: string;
+  /** EFECTIVO — ver `cantidad`. */
   mermaPorcentaje: number;
+  /** El valor del Catálogo Central, SIN calibrar — para mostrar "(calibrado acá; central: X)" en la UI. */
+  cantidadCentral: number;
+  mermaPorcentajeCentral: number;
+  /** true si ESTA sucursal calibró cantidad y/o merma de esta línea (sin `sucursalId`, siempre false). */
+  calibradoLocal: boolean;
 }
 
 export interface IndiceRecetas {
   recetaPorProducto: Map<string, IngredienteRecetaReporte[]>;
   mpsEnRecetas: Set<string>;
+  /** La sucursal con la que se resolvió `cantidad`/`mermaPorcentaje` — `null` = valores centrales, sin calibrar (quien solo
+   * usa la estructura, ver el docstring de `construirIndiceRecetas`). Guarda contra pasar este índice a un cálculo de OTRA
+   * sucursal (ver `calcularCostosYMargenes`/`calcularImpactoRecetasPorPeriodo`/`reconstruirCostosDeVenta`). */
+  sucursalId: string | null;
 }
 
 /**
@@ -119,31 +132,75 @@ export interface IndiceRecetas {
  * ascendente y un Map que se pisa solo se queda con la última versión de
  * cada producto (misma técnica que obtenerRecetaVigente pero en bloque,
  * para no hacer 1 query por producto).
+ *
+ * `sucursalId` (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, D2/R1): con ella, `cantidad`/`mermaPorcentaje`
+ * salen EFECTIVOS (con el override de esa sucursal si lo hay); sin ella, quedan en el valor CENTRAL — para quien solo
+ * necesita la estructura de la receta (huecos de catálogo, insumos sin receta), sin resolver ningún override.
+ * El `include` anidado de `rendimientosLocales` no suma una consulta más (sigue siendo un solo `recetaVersion.findMany`,
+ * ver test/reportes/catalogo-una-sola-carga.test.ts).
  */
-export async function construirIndiceRecetas(db: Db = prisma): Promise<IndiceRecetas> {
+export async function construirIndiceRecetas(db: Db = prisma, sucursalId?: string): Promise<IndiceRecetas> {
   const versiones = await db.recetaVersion.findMany({
     orderBy: { version: "asc" },
-    include: { ingredientes: { include: { insumoProducto: true, unidad: true } } },
+    include: {
+      ingredientes: {
+        include: {
+          insumoProducto: true,
+          unidad: true,
+          // Sin sucursalId, este where nunca matchea ninguna fila real (cuid válido nunca es "") — el include queda
+          // siempre presente (mismo shape de tipos en las dos ramas), pero vacío.
+          rendimientosLocales: { where: { sucursalId: sucursalId ?? "" } },
+        },
+      },
+    },
   });
 
   const recetaPorProducto = new Map<string, IngredienteRecetaReporte[]>();
   for (const v of versiones) {
     recetaPorProducto.set(
       v.productoId,
-      v.ingredientes.map((it) => ({
-        insumoProductoId: it.insumoProductoId,
-        insumoNombre: it.insumoProducto.nombre,
-        cantidad: Number(it.cantidad),
-        unidadNombre: it.unidad.nombre,
-        mermaPorcentaje: Number(it.mermaPorcentaje),
-      }))
+      v.ingredientes.map((it) => {
+        const cantidadCentral = Number(it.cantidad);
+        const mermaPorcentajeCentral = Number(it.mermaPorcentaje);
+        const ef = sucursalId
+          ? rendimientoEfectivo(
+              { cantidad: cantidadCentral, mermaPorcentaje: mermaPorcentajeCentral },
+              it.rendimientosLocales.map((r) => ({
+                sucursalId: r.sucursalId,
+                cantidad: r.cantidad !== null ? Number(r.cantidad) : null,
+                mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null,
+              })),
+              sucursalId
+            )
+          : { cantidad: cantidadCentral, mermaPorcentaje: mermaPorcentajeCentral, calibrado: false };
+        return {
+          recetaIngredienteId: it.id,
+          insumoProductoId: it.insumoProductoId,
+          insumoNombre: it.insumoProducto.nombre,
+          cantidad: ef.cantidad,
+          unidadNombre: it.unidad.nombre,
+          mermaPorcentaje: ef.mermaPorcentaje,
+          cantidadCentral,
+          mermaPorcentajeCentral,
+          calibradoLocal: ef.calibrado,
+        };
+      })
     );
   }
 
   const mpsEnRecetas = new Set<string>();
   recetaPorProducto.forEach((items) => items.forEach((it) => mpsEnRecetas.add(it.insumoProductoId)));
 
-  return { recetaPorProducto, mpsEnRecetas };
+  return { recetaPorProducto, mpsEnRecetas, sucursalId: sucursalId ?? null };
+}
+
+/** Lanza si `indiceRecetas` viene de OTRA sucursal — defensa en profundidad para todo cálculo que lo reciba ya cargado
+ * desde afuera (ver `calcularCostosYMargenes`/`calcularImpactoRecetasPorPeriodo`/`reconstruirCostosDeVenta`): pasar el de
+ * una sucursal para calcular la de otra daría costos/rendimientos de la sucursal equivocada, sin ningún error visible. */
+export function asegurarIndiceRecetasDeLaSucursal(indiceRecetas: IndiceRecetas, sucursalId: string): void {
+  if (indiceRecetas.sucursalId !== sucursalId) {
+    throw new Error(`indiceRecetas es de la sucursal "${indiceRecetas.sucursalId ?? "(central, sin calibrar)"}", se pidió "${sucursalId}".`);
+  }
 }
 
 export interface CostoMP {

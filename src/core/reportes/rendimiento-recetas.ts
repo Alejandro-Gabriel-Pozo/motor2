@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
 import type { CostoMP, Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import {
   bandaDeRuidoDeLote,
@@ -23,7 +24,12 @@ export interface FilaRendimientoSimple {
   insumoProductoId: string;
   insumoONombre: string;
   unidadRecetaNombre: string;
+  /** EFECTIVO de la sucursal (rendimientoEfectivo, D2) — el central, salvo que esta sucursal lo haya calibrado. */
   cantidadActual: number;
+  /** El valor del Catálogo Central, SIN calibrar — para "(calibrado acá; central: X)" en la UI. */
+  cantidadActualCentral: number;
+  /** true si ESTA sucursal calibró cantidad y/o merma de esta línea. */
+  calibradoLocal: boolean;
   /** NETO (misma base que `cantidadActual` — RecetaIngrediente.cantidad es neta) — ver docstring de `calcularCantidadEstimadaNeta`, es lo que se escribe si se usa este valor. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
@@ -65,7 +71,12 @@ export interface FilaRendimientoCompartido {
   recetaIngredienteId: string;
   insumoProductoId: string;
   unidadRecetaNombre: string;
+  /** EFECTIVO de la sucursal (rendimientoEfectivo, D2) — el central, salvo que esta sucursal lo haya calibrado. */
   cantidadActual: number;
+  /** El valor del Catálogo Central, SIN calibrar — para "(calibrado acá; central: X)" en la UI. */
+  cantidadActualCentral: number;
+  /** true si ESTA sucursal calibró cantidad y/o merma de esta línea. */
+  calibradoLocal: boolean;
   /** El coeficiente resuelto por regresión para ESTE plato, ya en NETO — null si el pool no fue resoluble. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
@@ -165,10 +176,19 @@ interface UsoDeInsumo {
   pvNombre: string;
   recetaIngredienteId: string;
   insumoProductoId: string;
+  /** EFECTIVO (rendimientoEfectivo, D2) — el central, salvo que esta sucursal lo haya calibrado. */
   cantidad: number;
   unidadNombre: string;
+  /** EFECTIVO — ver `cantidad`. */
   mermaPorcentaje: number;
-  /** Los tres datos DECLARADOS que alimentan `rotularLineaDeReceta` — ver su docstring en rendimiento-recetas-vistas.ts. */
+  /** Los valores del Catálogo Central, SIN calibrar — para "(calibrado acá; central: X)" en la UI. */
+  cantidadCentral: number;
+  mermaPorcentajeCentral: number;
+  calibradoLocal: boolean;
+  /** Los tres datos DECLARADOS que alimentan `rotularLineaDeReceta` — ver su docstring en rendimiento-recetas-vistas.ts.
+   * SIEMPRE con los valores CENTRALES (cantidadCentral/mermaPorcentajeCentral): el rótulo clasifica la ESTRUCTURA
+   * declarada de la receta, no si esta sucursal la calibró — una calibración local no puede cambiar de qué "tipo" de
+   * línea se trata. */
   insumoSeProduce: boolean;
   insumoEsNoComestible: boolean;
   pvSeProduce: boolean;
@@ -198,7 +218,11 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
         recetaVersiones: {
           orderBy: { version: "desc" },
           take: 1,
-          include: { ingredientes: { include: { insumoProducto: { include: { insumo: true } }, unidad: true } } },
+          include: {
+            ingredientes: {
+              include: { insumoProducto: { include: { insumo: true } }, unidad: true, rendimientosLocales: { where: { sucursalId } } },
+            },
+          },
         },
       },
     }),
@@ -223,14 +247,24 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
       nombrePorClave.set(clave, ing.insumoProducto.insumo?.nombre ?? ing.insumoProducto.nombre);
 
       if (!usosPorClave.has(clave)) usosPorClave.set(clave, []);
+      const cantidadCentral = Number(ing.cantidad);
+      const mermaPorcentajeCentral = Number(ing.mermaPorcentaje);
+      const ef = rendimientoEfectivo(
+        { cantidad: cantidadCentral, mermaPorcentaje: mermaPorcentajeCentral },
+        ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
+        sucursalId
+      );
       usosPorClave.get(clave)!.push({
         pvProductoId: pv.id,
         pvNombre: pv.nombre,
         recetaIngredienteId: ing.id,
         insumoProductoId: ing.insumoProductoId,
-        cantidad: Number(ing.cantidad),
+        cantidad: ef.cantidad,
         unidadNombre: ing.unidad.nombre,
-        mermaPorcentaje: Number(ing.mermaPorcentaje),
+        mermaPorcentaje: ef.mermaPorcentaje,
+        cantidadCentral,
+        mermaPorcentajeCentral,
+        calibradoLocal: ef.calibrado,
         insumoSeProduce: ing.insumoProducto.seProduce,
         insumoEsNoComestible: ing.insumoProducto.insumo?.grupoId ? clasificacion.idsGrupos.has(ing.insumoProducto.insumo.grupoId) : false,
         pvSeProduce: pv.seProduce,
@@ -320,6 +354,8 @@ export async function calcularRendimientoRecetasSimples(
       insumoONombre: pool.nombre,
       unidadRecetaNombre: uso.unidadNombre,
       cantidadActual: uso.cantidad,
+      cantidadActualCentral: uso.cantidadCentral,
+      calibradoLocal: uso.calibradoLocal,
       cantidadEstimada,
       desviacionPorcentaje,
       totalComprado,
@@ -334,7 +370,7 @@ export async function calcularRendimientoRecetasSimples(
       motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta }),
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
-      rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidad, mermaPorcentaje: uso.mermaPorcentaje }),
+      rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidadCentral, mermaPorcentaje: uso.mermaPorcentajeCentral }),
     });
   }
 
@@ -444,6 +480,8 @@ export async function calcularRendimientoRecetasCompartidas(
         insumoProductoId: uso.insumoProductoId,
         unidadRecetaNombre: uso.unidadNombre,
         cantidadActual: uso.cantidad,
+        cantidadActualCentral: uso.cantidadCentral,
+        calibradoLocal: uso.calibradoLocal,
         cantidadEstimada,
         desviacionPorcentaje,
         totalVendido: totalVendidoUso,
@@ -459,7 +497,7 @@ export async function calcularRendimientoRecetasCompartidas(
         r2,
         resoluble,
         motivoNoResoluble,
-        rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidad, mermaPorcentaje: uso.mermaPorcentaje }),
+        rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidadCentral, mermaPorcentaje: uso.mermaPorcentajeCentral }),
       });
     });
   }
