@@ -39,6 +39,12 @@ implementación previa.
   fuera (permiso + validaciones + idempotencia + transacción) y mapea cada línea a mano a `{ productoId, cantidadVendida }`: un
   POST crudo con `precioUnitario` no puede fijar el precio (test). Los tests existentes de venta, idempotencia y concurrencia
   siguen en verde sin tocarlos.
+  - **Nota posterior (2026-09-25, docs/plan-seccion-habitual-stock-2026-09-25.md):** `DatosVentaEnTx.seccionId` pasó a
+    `origen: { tipo: "seccion", seccionId } | { tipo: "automatico" }`. La venta de mostrador usa `"seccion"` (igual que antes, salvo el
+    arreglo de H9: el libro de `src/core/movimientos/origen-venta.ts` descuenta lo ya asignado entre líneas de la misma venta);
+    `cerrarCuenta(cuentaId)` ya NO recibe sección: usa `"automatico"` (sección habitual del PV → secciones de respaldo por
+    vencimiento). Cada `AvisoStockNegativo` trae su `seccionId`/`seccionNombre` y el aviso/auditoría del cierre nombra la sección
+    («"Muzzarella" en «Cocina» (tenía …)»).
 - **B6bis (decisión del dueño, reemplaza «stock insuficiente bloquea el cierre»).** `cerrarCuenta` NO se bloquea por stock
   insuficiente: la mesa ya comió.
   - `registrarVentaEnTx` acepta `opciones.permitirStockNegativo`. Con `true`, un insumo sin stock suficiente no aborta: el
