@@ -29,7 +29,7 @@ describe("emitirBoletaCorregida (server action)", () => {
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
       { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9500, numeroEnvio: 2 },
     ]);
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const ventaDe = async (productoId: string, precioUnitario: number) =>
       (await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId, precioUnitario } })).operacionId!;
     return { cuenta, ventaMila: await ventaDe(s.milanesa.id, 9000), ventaFlan: await ventaDe(s.flan.id, 3000), ventaMila2: await ventaDe(s.milanesa.id, 9500) };
