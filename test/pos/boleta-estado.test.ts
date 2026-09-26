@@ -29,7 +29,7 @@ describe("obtenerBoletasRecientes — estado derivado (vigente / desactualizada 
       { productoId: s.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 },
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
     ]);
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const operacionDe = async (productoId: string) => (await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId } })).operacionId!;
     return { cuenta, ventaMilanesa: await operacionDe(s.milanesa.id), ventaFlan: await operacionDe(s.flan.id) };
   }

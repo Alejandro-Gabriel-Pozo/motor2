@@ -41,7 +41,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
       { productoId: s.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 },
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
     ]);
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const flan = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.flan.id } });
     expect((await anularVenta(flan.operacionId!)).ok).toBe(true);
 
@@ -59,7 +59,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
         const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 200 + i } });
         cuentas.push(await sembrarCuenta(mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]));
       }
-      const resultados = await Promise.all(cuentas.map((c) => cerrarCuenta(c.id, s.seccion.id)));
+      const resultados = await Promise.all(cuentas.map((c) => cerrarCuenta(c.id)));
       expect(resultados.map((r) => r.ok), resultados.map((r) => r.mensaje).join(" / ")).toEqual(cuentas.map(() => true));
 
       const ejemplares = await prisma.ejemplarBoleta.findMany({ where: { sucursalId: s.sucursalId } });
