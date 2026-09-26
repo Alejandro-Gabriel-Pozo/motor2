@@ -20,6 +20,11 @@ interface Opcion {
   nombre: string;
 }
 
+interface OpcionUnidad extends Opcion {
+  /** 0-6: cuántos decimales admite — para validar `factorConversion` con el mismo criterio del servidor (validarCantidad). */
+  decimales: number;
+}
+
 export interface ProductoExistente extends DatosProducto {
   id: string;
   codigo: string;
@@ -35,7 +40,7 @@ export function ProductoForm({
   cantidadSucursales,
   nombreSucursalActual,
 }: {
-  unidades: Opcion[];
+  unidades: OpcionUnidad[];
   insumosIniciales: Opcion[];
   categoriasIniciales: Opcion[];
   proveedoresIniciales: Opcion[];
@@ -80,15 +85,16 @@ export function ProductoForm({
           categoriaId: categoriaId || null,
           unidadCompraId: texto(form.get("unidadCompraId")) || null,
           unidadStockId,
-          factorConversion: Number(form.get("factorConversion")),
+          // numeroDelCampo: vacío → undefined (nunca 0 por un campo required sin tocar), texto inválido → NaN (el servidor lo rechaza).
+          factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
           insumoId: tipo === "MP" ? insumoId || null : null,
-          precioVenta: Number(form.get("precioVenta") || 0),
+          precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
           // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
           pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
           seProduce: form.get("seProduce") === "on",
           esConsignacion,
           proveedorConsignacionId: esConsignacion ? proveedorConsignacionId || null : null,
-          precioConsignacion: Number(form.get("precioConsignacion") || 0),
+          precioConsignacion: numeroDelCampo(String(form.get("precioConsignacion") ?? "")) ?? 0,
           observaciones: texto(form.get("observaciones")) || undefined,
           activoEnTodasLasSucursales: editando ? undefined : activoEnTodas,
         };
@@ -227,6 +233,9 @@ export function ProductoForm({
           placeholder="Factor de conversión (unidades de stock por unidad de compra)"
           ariaLabel="Factor de conversión (unidades de stock por unidad de compra)"
           defaultValue={String(productoExistente?.factorConversion ?? 1)}
+          tipo="cantidad"
+          etiqueta="El factor de conversión"
+          decimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
           required
         />
         <AyudaCampo>
@@ -236,7 +245,15 @@ export function ProductoForm({
       </div>
 
       {tipo === "PV" && (
-        <CampoNumero name="precioVenta" prefijo="$" placeholder="Precio de venta" ariaLabel="Precio de venta" defaultValue={String(productoExistente?.precioVenta ?? 0)} />
+        <CampoNumero
+          name="precioVenta"
+          prefijo="$"
+          placeholder="Precio de venta"
+          ariaLabel="Precio de venta"
+          defaultValue={String(productoExistente?.precioVenta ?? 0)}
+          tipo="importe"
+          etiqueta="El precio de venta"
+        />
       )}
 
       {tipo === "PV" && (
@@ -255,7 +272,12 @@ export function ProductoForm({
       )}
 
       {editando && tipo === "MP" && (
-        <GestionPresentaciones productoId={productoExistente!.id} unidades={unidades} presentacionesIniciales={presentacionesIniciales ?? []} />
+        <GestionPresentaciones
+          productoId={productoExistente!.id}
+          unidades={unidades}
+          presentacionesIniciales={presentacionesIniciales ?? []}
+          unidadStockDecimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
+        />
       )}
 
       {tipo === "MP" && (
@@ -321,6 +343,8 @@ export function ProductoForm({
               placeholder="Precio de consignación"
               ariaLabel="Precio de consignación"
               defaultValue={String(productoExistente?.precioConsignacion ?? 0)}
+              tipo="importe"
+              etiqueta="El precio de consignación"
             />
             <AyudaCampo>Lo que le pagás al proveedor por cada unidad vendida — no tiene por qué ser igual al precio al que vos la vendés.</AyudaCampo>
           </div>

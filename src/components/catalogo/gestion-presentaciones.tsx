@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import {
   agregarPresentacionAlternativa,
   actualizarActivaPresentacion,
@@ -28,10 +29,13 @@ export function GestionPresentaciones({
   productoId,
   unidades,
   presentacionesIniciales,
+  unidadStockDecimales,
 }: {
   productoId: string;
   unidades: Opcion[];
   presentacionesIniciales: PresentacionOpcion[];
+  /** Decimales de la unidad de STOCK de este producto (validarCantidad, mismo criterio que el servidor: factorConversion es "unidades de stock por 1 unidad de compra"). */
+  unidadStockDecimales?: number;
 }) {
   const [presentaciones, setPresentaciones] = useState(presentacionesIniciales);
   const [unidadCompraId, setUnidadCompraId] = useState("");
@@ -52,7 +56,7 @@ export function GestionPresentaciones({
   function agregar() {
     if (!unidadCompraId || !factorConversion) return;
     startTransition(async () => {
-      const r = await agregarPresentacionAlternativa(productoId, unidadCompraId, Number(factorConversion));
+      const r = await agregarPresentacionAlternativa(productoId, unidadCompraId, numeroDelCampo(factorConversion) ?? Number.NaN);
       setResultado({ ok: r.ok, texto: r.mensaje });
       if (r.ok) {
         setUnidadCompraId("");
@@ -119,7 +123,14 @@ export function GestionPresentaciones({
         </label>
         <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500">
           Factor de conversión
-          <CampoNumero value={factorConversion} onChange={setFactorConversion} tamano="compacto" />
+          <CampoNumero
+            value={factorConversion}
+            onChange={setFactorConversion}
+            tamano="compacto"
+            tipo="cantidad"
+            etiqueta="El factor de conversión"
+            decimales={unidadStockDecimales}
+          />
         </label>
         <button
           type="button"

@@ -51,6 +51,19 @@ describe("Presentaciones de compra alternativas", () => {
     expect(resultado.ok).toBe(false);
   });
 
+  it("rechaza un factor de conversión con más decimales de los que admite la unidad de stock del producto (kg admite 2)", async () => {
+    const resultado = await agregarPresentacionAlternativa(productoId, unidadGId, 1.234);
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toMatch(/decimales/);
+    expect(await listarPresentaciones(productoId)).toEqual([]);
+  });
+
+  it("rechaza un factor de conversión gigantesco", async () => {
+    const resultado = await agregarPresentacionAlternativa(productoId, unidadGId, 1e15);
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toMatch(/grande/);
+  });
+
   it("actualizarActivaPresentacion la desactiva sin borrarla — sigue listada, ya no activa", async () => {
     await agregarPresentacionAlternativa(productoId, unidadGId, 20);
     const presentacion = (await listarPresentaciones(productoId))[0];

@@ -4,6 +4,8 @@ import type { TipoProducto } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
+import { validarImporte } from "@/core/datos/importe";
+import { validarCantidad } from "@/core/datos/cantidad";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
 import { validarPasoVenta } from "@/core/catalogo/venta-fraccionada";
@@ -231,20 +233,26 @@ async function validarComun(datos: DatosProducto, productoIdExcluir?: string): P
   const invalido = validarTextoCatalogo(nombre, "El nombre");
   if (invalido) return invalido;
   if (!datos.unidadStockId) return "La unidad de stock es obligatoria.";
-  if (!(Number(datos.factorConversion) > 0)) return "El factor de conversión tiene que ser mayor a 0.";
-  if (!esNumeroFinito(datos.factorConversion)) return "El factor de conversión no es un número válido.";
-  if (datos.precioVenta !== undefined && !esNumeroFinito(datos.precioVenta)) return "El precio de venta no es un número válido.";
+  // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
+  // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.
+  const unidadStock = await prisma.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
+  if (!unidadStock) return "La unidad de stock es obligatoria.";
+
+  const factorConversion = validarCantidad(datos.factorConversion, unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
+  if (!factorConversion.ok) return factorConversion.mensaje;
+
+  const precioVenta = validarImporte(datos.precioVenta, { etiqueta: "El precio de venta" });
+  if (!precioVenta.ok) return precioVenta.mensaje;
+
   if (datos.esConsignacion) {
     if (!datos.proveedorConsignacionId) return "Falta el proveedor de consignación.";
-    if (!(Number(datos.precioConsignacion) > 0)) return "El precio de consignación tiene que ser mayor a 0.";
-    if (!esNumeroFinito(datos.precioConsignacion)) return "El precio de consignación no es un número válido.";
+    const precioConsignacion = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación", obligatorio: true, permitirCero: false });
+    if (!precioConsignacion.ok) return precioConsignacion.mensaje;
   }
 
   if (datos.pasoVenta !== undefined && datos.pasoVenta !== null) {
     if (datos.tipo !== "PV") return "El paso de venta solo aplica a productos de venta (PV).";
-    const unidad = await prisma.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { decimales: true } });
-    if (!unidad) return "La unidad de stock es obligatoria.";
-    const r = validarPasoVenta(datos.pasoVenta, { decimalesUnidad: unidad.decimales, tieneStockReal: tieneStockReal("PV", datos.seProduce ?? false) });
+    const r = validarPasoVenta(datos.pasoVenta, { decimalesUnidad: unidadStock.decimales, tieneStockReal: tieneStockReal("PV", datos.seProduce ?? false) });
     if (!r.ok) return r.mensaje;
   }
 
@@ -521,18 +529,20 @@ export async function agregarPresentacionAlternativa(
   factorConversion: number
 ): Promise<ResultadoAccion> {
   return conPermiso("alta_producto", async () => {
-    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
+    const producto = await prisma.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.unidadCompraId === unidadCompraId) {
       return error("Esa ya es la unidad de compra por defecto de este producto.");
     }
-    if (!(Number(factorConversion) > 0)) return error("El factor de conversión tiene que ser mayor a 0.");
-    if (!esNumeroFinito(factorConversion)) return error("El factor de conversión no es un número válido.");
+    // Mismo criterio que `factorConversion` de Producto (validarComun): "unidades de stock por 1 unidad de compra" — sus
+    // decimales son los de la unidad de STOCK de este producto, no los de la unidad de compra alternativa.
+    const factor = validarCantidad(factorConversion, producto.unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
+    if (!factor.ok) return error(factor.mensaje);
 
     await prisma.presentacion.upsert({
       where: { productoId_unidadCompraId: { productoId, unidadCompraId } },
-      update: { factorConversion, activa: true },
-      create: { productoId, unidadCompraId, factorConversion },
+      update: { factorConversion: factor.valor!, activa: true },
+      create: { productoId, unidadCompraId, factorConversion: factor.valor! },
     });
     return ok("Presentación agregada.");
   });
