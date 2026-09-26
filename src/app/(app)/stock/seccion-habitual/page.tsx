@@ -32,7 +32,7 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
         </p>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-neutral-500 dark:text-neutral-400">
               <th className="py-2">Producto</th>
               <th>Sección habitual</th>
               <th><span className="sr-only">Acciones</span></th>

@@ -8,7 +8,7 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
- * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), el admin de la carta, su portal de sucursales y su
+ * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), la sección habitual de stock, el admin de la carta, su portal de sucursales y su
  * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas»). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
@@ -184,6 +184,38 @@ testAutenticado("movimientos/precio-local: sin violaciones de axe", async ({ pag
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+testAutenticado("stock/seccion-habitual: la tabla con una fila, con «Quitar» a confirmar, en modo claro y oscuro, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  // Pantalla nueva (docs/plan-seccion-habitual-stock-2026-09-25.md, C2): una fila sembrada para que la tabla y sus acciones se dibujen.
+  const marca = Date.now();
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-SH-${marca}`, nombre: `E2E A11y Habitual ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
+  const seccion = await prisma.seccion.create({ data: { sucursalId, nombre: `E2E A11y Cocina ${marca}` } });
+  await prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId: producto.id, seccionId: seccion.id } });
+  try {
+    await page.goto("/stock/seccion-habitual");
+    await conTitulo(page, "Sección habitual");
+    const fila = page.locator("tr", { hasText: producto.nombre });
+    await expect(fila).toContainText(seccion.nombre);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
+
+    await fila.getByRole("button", { name: `Quitar la sección habitual de ${producto.nombre}` }).click();
+    await expect(fila.getByRole("button", { name: "Sí, quitar" })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "«Quitar» a confirmar").toEqual([]);
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/stock/seccion-habitual");
+    await conTitulo(page, "Sección habitual");
+    await expect(page.locator("tr", { hasText: producto.nombre })).toBeVisible();
+    // En oscuro se audita el contenido de la pantalla (`main`), no el marco de la app: el menú y el encabezado (text-neutral-500 sobre
+    // #0a0a0a, 4,17:1) ya fallaban el contraste en modo oscuro antes de esta pantalla — hallazgo aparte, fuera de este cambio.
+    expect((await new AxeBuilder({ page }).include("main").analyze()).violations, "modo oscuro emulado (contenido de la pantalla)").toEqual([]);
+  } finally {
+    await prisma.seccionHabitualProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.seccion.deleteMany({ where: { id: seccion.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });

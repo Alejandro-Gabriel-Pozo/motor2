@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { setSeccionHabitual } from "@/server/actions/stock/seccion-habitual";
 import { SelectorProducto } from "@/components/selector-producto";
 
@@ -21,6 +21,7 @@ export function SeccionHabitualForm({ secciones, filaEnEdicion }: { secciones: {
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
   const [resetCount, setResetCount] = useState(0);
+  const idSeccion = useId();
 
   return (
     <form
@@ -58,9 +59,10 @@ export function SeccionHabitualForm({ secciones, filaEnEdicion }: { secciones: {
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Sección habitual
-        <select value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required className="rounded border px-3 py-2">
+      {/* Etiqueta con htmlFor (no envolviendo): el nombre accesible del <select> queda «Sección habitual», sin el texto de sus opciones. */}
+      <div className="flex flex-col gap-1 text-sm">
+        <label htmlFor={idSeccion}>Sección habitual</label>
+        <select id={idSeccion} value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required className="rounded border px-3 py-2">
           <option value="">Elegí una sección</option>
           {secciones.map((s) => (
             <option key={s.id} value={s.id}>
@@ -68,7 +70,7 @@ export function SeccionHabitualForm({ secciones, filaEnEdicion }: { secciones: {
             </option>
           ))}
         </select>
-      </label>
+      </div>
 
       {mensaje && (
         <p role={ok ? "status" : "alert"} className={`text-sm ${ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
