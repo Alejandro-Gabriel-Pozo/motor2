@@ -30,17 +30,17 @@ model User {
   sessions                  Session[]
   sucursales                UsuarioSucursal[]
   operaciones               Operacion[]
-  operacionesAnuladas       Operacion[]        @relation("OperacionAnuladaPor")
+  operacionesAnuladas       Operacion[]         @relation("OperacionAnuladaPor")
   conteosFisicos            ConteoFisico[]
-  traspasosCreados          TraspasoSucursal[] @relation("TraspasoCreadoPor")
-  traspasosDecididosOrigen  TraspasoSucursal[] @relation("TraspasoDecididoOrigen")
-  traspasosDecididosDestino TraspasoSucursal[] @relation("TraspasoDecididoDestino")
-  traspasosCerrados         TraspasoSucursal[] @relation("TraspasoCerradoPor")
+  traspasosCreados          TraspasoSucursal[]  @relation("TraspasoCreadoPor")
+  traspasosDecididosOrigen  TraspasoSucursal[]  @relation("TraspasoDecididoOrigen")
+  traspasosDecididosDestino TraspasoSucursal[]  @relation("TraspasoDecididoDestino")
+  traspasosCerrados         TraspasoSucursal[]  @relation("TraspasoCerradoPor")
   pagosConsignante          PagoConsignante[]
   registrosAuditoria        RegistroAuditoria[]
-  cuentasAbiertas           Cuenta[]           @relation("CuentaAbiertaPor")
-  cuentasCerradas           Cuenta[]           @relation("CuentaCerradaPor")
-  cuentaItemsCreados        CuentaItem[]       @relation("CuentaItemCreadoPor")
+  cuentasAbiertas           Cuenta[]            @relation("CuentaAbiertaPor")
+  cuentasCerradas           Cuenta[]            @relation("CuentaCerradaPor")
+  cuentaItemsCreados        CuentaItem[]        @relation("CuentaItemCreadoPor")
 }
 
 model Account {
@@ -103,25 +103,25 @@ model Sucursal {
   /// PromocionProducto abajo (porción Reportes).
   promocionesHabilitadas Boolean @default(false)
 
-  usuarios             UsuarioSucursal[]
-  capacidades          CapacidadSucursal[]
-  secciones            Seccion[]
-  operaciones          Operacion[]
-  conteosFisicos       ConteoFisico[]
-  preciosLocales       PrecioLocalProducto[]
-  stockMinimos         StockMinimoProducto[]
-  seccionesHabituales  SeccionHabitualProducto[]
-  frecuenciasConteo    FrecuenciaConteoProducto[]
+  usuarios                 UsuarioSucursal[]
+  capacidades              CapacidadSucursal[]
+  secciones                Seccion[]
+  operaciones              Operacion[]
+  conteosFisicos           ConteoFisico[]
+  preciosLocales           PrecioLocalProducto[]
+  stockMinimos             StockMinimoProducto[]
+  seccionesHabituales      SeccionHabitualProducto[]
+  frecuenciasConteo        FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
-  promociones          PromocionProducto[]
-  traspasosComoOrigen  TraspasoSucursal[]    @relation("TraspasoOrigen")
-  traspasosComoDestino TraspasoSucursal[]    @relation("TraspasoDestino")
-  pagosConsignante     PagoConsignante[]
-  registrosAuditoria   RegistroAuditoria[]
-  promosCarta          PromoCarta[]
-  publica              SucursalPublica?
-  temaCarta            TemaCartaSucursal?
-  mesas                Mesa[]
+  promociones              PromocionProducto[]
+  traspasosComoOrigen      TraspasoSucursal[]         @relation("TraspasoOrigen")
+  traspasosComoDestino     TraspasoSucursal[]         @relation("TraspasoDestino")
+  pagosConsignante         PagoConsignante[]
+  registrosAuditoria       RegistroAuditoria[]
+  promosCarta              PromoCarta[]
+  publica                  SucursalPublica?
+  temaCarta                TemaCartaSucursal?
+  mesas                    Mesa[]
 }
 
 model Rol {
@@ -312,22 +312,22 @@ model Producto {
 
   creadoEn DateTime @default(now())
 
-  presentaciones       Presentacion[]
-  proveedorPorProducto ProveedorPorProducto[]
-  recetaVersiones      RecetaVersion[]        @relation("RecetaVersionProducto")
-  usadoComoIngrediente RecetaIngrediente[]    @relation("RecetaIngredienteInsumo")
-  movimientos          MovimientoStock[]
-  conteosFisicos       ConteoFisico[]
-  preciosLocales       PrecioLocalProducto[]
-  stockMinimos         StockMinimoProducto[]
-  seccionesHabituales  SeccionHabitualProducto[]
-  frecuenciasConteo    FrecuenciaConteoProducto[]
-  disponibilidades     DisponibilidadProducto[]
-  promociones          PromocionProducto[]
-  traspasos            TraspasoSucursal[]
-  contenidoCarta       ContenidoCartaProducto?
+  presentaciones          Presentacion[]
+  proveedorPorProducto    ProveedorPorProducto[]
+  recetaVersiones         RecetaVersion[]            @relation("RecetaVersionProducto")
+  usadoComoIngrediente    RecetaIngrediente[]        @relation("RecetaIngredienteInsumo")
+  movimientos             MovimientoStock[]
+  conteosFisicos          ConteoFisico[]
+  preciosLocales          PrecioLocalProducto[]
+  stockMinimos            StockMinimoProducto[]
+  seccionesHabituales     SeccionHabitualProducto[]
+  frecuenciasConteo       FrecuenciaConteoProducto[]
+  disponibilidades        DisponibilidadProducto[]
+  promociones             PromocionProducto[]
+  traspasos               TraspasoSucursal[]
+  contenidoCarta          ContenidoCartaProducto?
   opcionItemAgrupadoCarta OpcionItemAgrupadoCarta?
-  cuentaItems          CuentaItem[]
+  cuentaItems             CuentaItem[]
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -388,7 +388,8 @@ model Insumo {
   grupoId String?
   grupo   Grupo?  @relation(fields: [grupoId], references: [id])
 
-  productos Producto[]
+  productos   Producto[]
+  sustitutoEn SustitutoRecetaIngrediente[]
 
   @@index([grupoId])
 }
@@ -433,13 +434,13 @@ model Unidad {
   /// 0-6, validado en la capa de aplicación (Catalogo.js:2777).
   decimales Int            @default(2)
 
-  productosPorUnidadCompra Producto[]             @relation("ProductoUnidadCompra")
-  productosPorUnidadStock  Producto[]             @relation("ProductoUnidadStock")
-  presentaciones           Presentacion[]
-  proveedorPorProducto     ProveedorPorProducto[]
-  recetaIngredientes       RecetaIngrediente[]
-  recetaVersionesPorRendimiento RecetaVersion[] @relation("RecetaVersionRendimientoUnidad")
-  recetaVersionesPorRacion      RecetaVersion[] @relation("RecetaVersionRacionUnidad")
+  productosPorUnidadCompra      Producto[]             @relation("ProductoUnidadCompra")
+  productosPorUnidadStock       Producto[]             @relation("ProductoUnidadStock")
+  presentaciones                Presentacion[]
+  proveedorPorProducto          ProveedorPorProducto[]
+  recetaIngredientes            RecetaIngrediente[]
+  recetaVersionesPorRendimiento RecetaVersion[]        @relation("RecetaVersionRendimientoUnidad")
+  recetaVersionesPorRacion      RecetaVersion[]        @relation("RecetaVersionRacionUnidad")
 }
 
 /// Presentaciones de compra ALTERNATIVAS a la default de Producto
@@ -556,10 +557,10 @@ model RecetaVersion {
   /// parte de la misma "foto" de qué receta exacta se usó (ver
   /// razonamiento completo en el documento, sección "Interacción con el
   /// versionado append-only").
-  rendimientoCantidad Decimal? @db.Decimal(14, 4)
-  rendimientoUnidadId String?
-  rendimientoUnidad   Unidad?  @relation("RecetaVersionRendimientoUnidad", fields: [rendimientoUnidadId], references: [id])
-  racionesCantidad    Int?
+  rendimientoCantidad      Decimal? @db.Decimal(14, 4)
+  rendimientoUnidadId      String?
+  rendimientoUnidad        Unidad?  @relation("RecetaVersionRendimientoUnidad", fields: [rendimientoUnidadId], references: [id])
+  racionesCantidad         Int?
   /// Tamaño de CADA ración — distinto de rendimientoCantidad (lo que
   /// produce la receta ENTERA). Ej.: rendimiento "1 unidad" (la pizza
   /// entera), racionesCantidad 8, racionTamano 150 (gramos cada porción).
@@ -571,11 +572,11 @@ model RecetaVersion {
   comentarios              String?
   /// Cómo se sirve el plato — distinto de los pasos de cocción (Fudo
   /// separa "Pasos del procedimiento" de "Presentación o emplatado").
-  presentacionEmplatado String?
-  notasAdicionales      String?
+  presentacionEmplatado    String?
+  notasAdicionales         String?
   /// Texto libre, un renglón = un ítem (ej. "Horno pizzero") — no amerita
   /// un catálogo de equipos propio, ver §6 del documento de grounding.
-  equipamientoNecesario String?
+  equipamientoNecesario    String?
 
   @@unique([productoId, version])
 }
@@ -595,9 +596,26 @@ model RecetaIngrediente {
   mermaPorcentaje  Decimal       @default(0) @db.Decimal(6, 2)
   observaciones    String?
 
-  enPasos RecetaPasoIngrediente[]
+  enPasos    RecetaPasoIngrediente[]
+  sustitutos SustitutoRecetaIngrediente[]
 
   @@index([insumoProductoId])
+}
+
+/// Insumos que pueden reemplazar a la MP de UNA línea de receta cuando ella y sus hermanos se agotan en la venta
+/// (docs/plan-sustitucion-insumos-receta-2026-09-26.md). Por línea, no por Insumo global. Viaja con la versión de la
+/// receta (append-only).
+model SustitutoRecetaIngrediente {
+  id                  String            @id @default(cuid())
+  recetaIngredienteId String
+  recetaIngrediente   RecetaIngrediente @relation(fields: [recetaIngredienteId], references: [id], onDelete: Cascade)
+  insumoSustitutoId   String
+  insumoSustituto     Insumo            @relation(fields: [insumoSustitutoId], references: [id])
+  orden               Int
+
+  @@unique([recetaIngredienteId, insumoSustitutoId], map: "SustitutoRecetaIngrediente_ingrediente_insumo_key")
+  @@unique([recetaIngredienteId, orden])
+  @@index([insumoSustitutoId])
 }
 
 /// Paso de preparación — grounded contra Tandoor Recipes (`Step`) y Fudo
@@ -737,24 +755,24 @@ enum EstadoConteo {
 /// una era un spreadsheet separado); acá sucursalId es una columna real
 /// porque ya no hay un contenedor propio que la implique.
 model Seccion {
-  id         String   @id @default(cuid())
-  sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
-  nombre     String
-  activa     Boolean  @default(true)
+  id                      String   @id @default(cuid())
+  sucursalId              String
+  sucursal                Sucursal @relation(fields: [sucursalId], references: [id])
+  nombre                  String
+  activa                  Boolean  @default(true)
   /// ¿El cierre de cuenta del POS puede descontar de acá AUTOMÁTICAMENTE cuando la sección habitual de un producto no alcanza
   /// (o el producto no tiene habitual)? Default true: todas sirven de respaldo sin configurar nada (decisión del dueño 2026-09-25:
   /// hoy no se excluye ninguna, pero queda la herramienta). No afecta a la sección HABITUAL de un producto (la preferencia
   /// explícita manda) ni a la venta de mostrador (ahí la sección la elige una persona). Ver docs/plan-seccion-habitual-stock-2026-09-25.md.
-  sirveDeRespaldoEnVentas Boolean @default(true)
+  sirveDeRespaldoEnVentas Boolean  @default(true)
 
-  operacionesTransferenciaDestino Operacion[]           @relation("OperacionSeccionDestino")
+  operacionesTransferenciaDestino Operacion[]               @relation("OperacionSeccionDestino")
   movimientos                     MovimientoStock[]
   conteosFisicos                  ConteoFisico[]
   stockMinimos                    StockMinimoProducto[]
   seccionesHabituales             SeccionHabitualProducto[]
-  traspasosComoSeccionOrigen      TraspasoSucursal[]    @relation("TraspasoSeccionOrigen")
-  traspasosComoSeccionDestino     TraspasoSucursal[]    @relation("TraspasoSeccionDestino")
+  traspasosComoSeccionOrigen      TraspasoSucursal[]        @relation("TraspasoSeccionOrigen")
+  traspasosComoSeccionDestino     TraspasoSucursal[]        @relation("TraspasoSeccionDestino")
 
   /// Único índice funcional case/espacio-insensible por sucursal (mismo
   /// criterio que Producto/Proveedor/Insumo/... en la porción Catálogo) —
@@ -822,10 +840,10 @@ model Operacion {
   /// enum fijo (`motivo`/`destino`, columnas que existieron entre P3 y P8,
   /// llamadas `motivoLegacy`/`destinoLegacy` en ese tramo transitorio;
   /// dropeadas en la migración contract P8 junto con los enums `*Legacy`).
-  motivoId  String?
-  motivo    MotivoMerma?    @relation(fields: [motivoId], references: [id])
-  destinoId String?
-  destino   DestinoConsumo? @relation(fields: [destinoId], references: [id])
+  motivoId     String?
+  motivo       MotivoMerma?    @relation(fields: [motivoId], references: [id])
+  destinoId    String?
+  destino      DestinoConsumo? @relation(fields: [destinoId], references: [id])
   /// Texto libre adicional (ctx.detalleLibre, Movimientos.js:767) — en
   /// Apps Script terminaba plegado dentro de "Movimiento detalle" de cada
   /// fila; acá queda en su propia columna, una vez por operación.
@@ -880,8 +898,8 @@ model Operacion {
   /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
   cuentaItems CuentaItem[]
 
-  @@index([sucursalId, proceso, fecha])
   @@unique([claveIdempotencia])
+  @@index([sucursalId, proceso, fecha])
 }
 
 /// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
