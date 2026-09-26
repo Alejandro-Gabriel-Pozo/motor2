@@ -10,6 +10,7 @@ import { AvisoMesaProvider } from "./aviso-mesa";
 import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
 import { CuentasCerradas } from "./cuentas-cerradas";
 import { AbrirCuenta } from "./abrir-cuenta";
+import { ComensalesCuenta } from "./comensales-cuenta";
 import { AgregarItems } from "./agregar-items";
 import { SinEnviar } from "./sin-enviar";
 import { AnularItem } from "./anular-item";
@@ -74,24 +75,31 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
         <span aria-hidden>←</span> Volver al mapa
       </Link>
 
-      <header className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">{titulo}</h1>
-          <p className="text-[13.5px] text-[var(--ink-soft)]">
-            {cuenta ? `Atiende ${cuenta.mesero} · abierta ${cuenta.tiempoAbierta}` : "Libre · sin cuenta abierta"}
-          </p>
-        </div>
-        {cuenta && (
-          <div className="text-left md:text-right">
-            <div className="text-[11px] font-medium text-[var(--ink-faint)]">Total</div>
-            <div data-total-cuenta className="text-2xl font-extrabold tabular-nums">
-              {formatearMonto(cuenta.total)}
-            </div>
-          </div>
-        )}
-      </header>
-
+      {/* AvisoMesaProvider envuelve DESDE ACÁ (no solo el contenido de abajo): ComensalesCuenta, en el encabezado, también necesita
+          publicar su aviso (`useAvisar`) — "vive ARRIBA de todo", ver su docstring. */}
       <AvisoMesaProvider>
+        <header className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">{titulo}</h1>
+            <p className="text-[13.5px] text-[var(--ink-soft)]">
+              {cuenta ? `Atiende ${cuenta.mesero} · abierta ${cuenta.tiempoAbierta}` : "Libre · sin cuenta abierta"}
+            </p>
+            {cuenta && (
+              <div className="mt-1">
+                <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={tomarPedido.editar} />
+              </div>
+            )}
+          </div>
+          {cuenta && (
+            <div className="text-left md:text-right">
+              <div className="text-[11px] font-medium text-[var(--ink-faint)]">Total</div>
+              <div data-total-cuenta className="text-2xl font-extrabold tabular-nums">
+                {formatearMonto(cuenta.total)}
+              </div>
+            </div>
+          )}
+        </header>
+
         <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} comandas={comandas} boletas={boletas}>
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">

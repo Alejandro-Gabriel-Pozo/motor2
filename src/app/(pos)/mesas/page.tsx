@@ -4,6 +4,8 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate"
 import { esEstadoMesa, filtrarMesas, obtenerMapaDeMesas, type EstadoMesa } from "@/core/pos/mesas";
 import { MesaCard } from "@/components/mesas/mesa-card";
 import { NuevaMesa } from "./nueva-mesa";
+import { LimiteMesasAbiertas } from "./limite-mesas";
+import { prisma } from "@/lib/db";
 
 const HORA = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
 
@@ -50,7 +52,11 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const estado = esEstadoMesa(estadoPedido) ? estadoPedido : null;
   const q = (primero(params.q) ?? "").trim();
 
-  const [nivel, mapa] = await Promise.all([obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_mesas"), obtenerMapaDeMesas(ctx.sucursalId)]);
+  const [nivel, mapa, sucursal] = await Promise.all([
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_mesas"),
+    obtenerMapaDeMesas(ctx.sucursalId),
+    prisma.sucursal.findUniqueOrThrow({ where: { id: ctx.sucursalId }, select: { maxMesasAbiertas: true } }),
+  ]);
   const { metricas } = mapa;
   const visibles = filtrarMesas(mapa.mesas, { estado: estado ?? undefined, q });
   const conteoDe = (e: EstadoMesa | null) => (e === "libre" ? metricas.libres : e === "en_pedido" ? metricas.enPedido : e === "ocupada" ? metricas.ocupadas : metricas.total);
@@ -62,6 +68,9 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
           <p className="text-[13.5px] text-[var(--ink-soft)]">
             {ctx.sucursalNombre} · actualizado a las {HORA.format(new Date())}
+          </p>
+          <p className="mt-1">
+            <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={nivel.editar} />
           </p>
         </div>
         <NuevaMesa siguienteNumero={mapa.siguienteNumero} puedeCrear={nivel.editar} />
