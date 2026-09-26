@@ -42,8 +42,9 @@ const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 const CLASE_AVISO = "rounded border border-amber-300 p-3 text-sm dark:border-amber-700";
 
 type ProductoSinGrupo = { id: string; nombre: string; precioAca: number };
+type OpcionGenero = { id: string; nombre: string; activo: boolean };
 /** Para el select de sección + orden sugerido (DA6): las secciones, y cuántos ítems ya tiene cada una. */
-type UbicacionEnCarta = { secciones: { id: string; nombre: string; activa: boolean }[]; cantidadPorSeccion: Record<string, number> };
+type UbicacionEnCarta = { secciones: { id: string; nombre: string; activa: boolean }[]; cantidadPorSeccion: Record<string, number>; generos: OpcionGenero[] };
 
 export default async function ItemsAgrupadosPage() {
   const ctx = await obtenerContextoUsuario();
@@ -57,6 +58,7 @@ export default async function ItemsAgrupadosPage() {
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),
+    generos: datos.generos.map((g) => ({ id: g.id, nombre: g.nombre, activo: g.activo })),
   };
 
   return (
@@ -137,6 +139,7 @@ function datosDelFormulario(fd: FormData) {
     tags: campo(fd, "tags"),
     especial: fd.get("especial") === "on",
     orden: campo(fd, "orden"),
+    generoCartaId: campo(fd, "generoCartaId") || null,
   };
 }
 
@@ -166,6 +169,7 @@ function ItemAgrupado({
           <span className="font-medium">{it.nombre}</span> · {it.seccionCarta ?? "sección de carta apagada"} · {it.disponiblesAca} de{" "}
           {it.opciones.length} opciones disponibles acá · {resumenPrecio(it)} · {it.activo ? "activo" : "apagado"}
           {it.especial ? " · ★" : ""}
+          {it.generoCarta ? ` · ${it.generoCarta}` : ""}
         </summary>
 
         {!puedeEditar ? (
@@ -315,11 +319,13 @@ function ItemAgrupado({
 /** Los datos del ítem y sus opciones como texto, para quien puede ver la carta pero no editarla. */
 function ItemSoloLectura({ item: it, ubicacion }: { item: ItemAgrupadoAdmin; ubicacion: UbicacionEnCarta }) {
   const seccion = ubicacion.secciones.find((s) => s.id === it.seccionCartaId);
+  const genero = ubicacion.generos.find((g) => g.id === it.generoCartaId);
   return (
     <>
       <DatosSoloLectura className="mt-3">
         <Dato etiqueta="Nombre">{it.nombre}</Dato>
         <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
+        <Dato etiqueta="Género">{genero && `${genero.nombre}${genero.activo ? "" : " (apagado)"}`}</Dato>
         <Dato etiqueta="Orden">{it.orden}</Dato>
         <Dato etiqueta="Especial (★)">{it.especial ? "Sí" : "No"}</Dato>
         <Dato etiqueta="Tags" ancho>
@@ -352,7 +358,7 @@ function CamposItem({
   valores,
 }: {
   ubicacion: UbicacionEnCarta;
-  valores?: { nombre: string; seccionCartaId: string; descripcion: string | null; tags: string[]; especial: boolean; orden: number };
+  valores?: { nombre: string; seccionCartaId: string; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId?: string | null };
 }) {
   return (
     <>
@@ -368,6 +374,18 @@ function CamposItem({
         requerida
         conOpcionVacia={!valores}
       />
+      <label className="flex flex-col gap-1 text-sm">
+        Género (opcional)
+        <select name="generoCartaId" defaultValue={valores?.generoCartaId ?? ""} className={CLASE_INPUT}>
+          <option value="">— sin género (sale suelto) —</option>
+          {ubicacion.generos.map((g) => (
+            <option key={g.id} value={g.id} disabled={!g.activo}>
+              {g.nombre}
+              {g.activo ? "" : " (apagado)"}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="flex flex-col gap-1 text-sm">
         Tags (separados por coma)
         <input name="tags" defaultValue={valores?.tags.join(", ") ?? ""} placeholder="Sin alcohol" className={CLASE_INPUT} />

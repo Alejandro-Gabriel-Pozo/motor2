@@ -34,9 +34,21 @@ export interface ProductoCartaAdmin {
   /** Nombre de la sección de carta ACTIVA donde está su contenido, o null. */
   seccionCarta: string | null;
   precio: number;
-  contenido: { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number } | null;
+  contenido:
+    | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null }
+    | null;
   /** Nombre del ítem agrupado donde está (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), o null: si está, sale solo ahí. */
   agrupadoEn: string | null;
+  /** Nombre de su género de carta si está ACTIVO (docs/plan-genero-carta-2026-09-26.md), o null: entonces sale suelto en el POS. */
+  generoCarta: string | null;
+}
+
+/** Un género de carta (docs/plan-genero-carta-2026-09-26.md): carpeta VISUAL del POS, global. */
+export interface GeneroCartaAdmin {
+  id: string;
+  nombre: string;
+  orden: number;
+  activo: boolean;
 }
 
 export interface PromoCartaAdmin {
@@ -52,6 +64,8 @@ export interface PromoCartaAdmin {
 
 export interface DatosAdminCarta {
   secciones: SeccionCartaAdmin[];
+  /** TODOS los géneros (activos primero, orden, nombre) — para el select "Género (opcional)" de cada contenido. */
+  generos: GeneroCartaAdmin[];
   /** PV disponibles en la sucursal (los únicos que pueden salir en su carta). */
   productos: ProductoCartaAdmin[];
   /**
@@ -90,9 +104,16 @@ async function seccionesConCantidad(db: Db): Promise<SeccionCartaAdmin[]> {
   }));
 }
 
+/** Todos los géneros (docs/plan-genero-carta-2026-09-26.md), activos primero, orden, nombre — reusado por las dos pantallas. */
+async function generosOrdenados(db: Db): Promise<GeneroCartaAdmin[]> {
+  const generos = await db.generoCarta.findMany({ orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }] });
+  return generos.map((g) => ({ id: g.id, nombre: g.nombre, orden: g.orden, activo: g.activo }));
+}
+
 export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Promise<DatosAdminCarta> {
-  const [secciones, productos, promos, armado] = await Promise.all([
+  const [secciones, generos, productos, promos, armado] = await Promise.all([
     seccionesConCantidad(db),
+    generosOrdenados(db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: {
@@ -100,7 +121,17 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
         nombre: true,
         precioVenta: true,
         contenidoCarta: {
-          select: { visibleEnCarta: true, seccionCartaId: true, seccionCarta: { select: { nombre: true, activa: true } }, descripcion: true, tags: true, especial: true, orden: true },
+          select: {
+            visibleEnCarta: true,
+            seccionCartaId: true,
+            seccionCarta: { select: { nombre: true, activa: true } },
+            descripcion: true,
+            tags: true,
+            especial: true,
+            orden: true,
+            generoCartaId: true,
+            generoCarta: { select: { nombre: true, activo: true } },
+          },
         },
         opcionItemAgrupadoCarta: { select: { itemAgrupadoCarta: { select: { nombre: true } } } },
       },
@@ -117,13 +148,23 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
       nombre: p.nombre,
       seccionCarta: c?.seccionCarta?.activa ? c.seccionCarta.nombre : null,
       precio: Number(p.precioVenta),
-      contenido: c && { visibleEnCarta: c.visibleEnCarta, seccionCartaId: c.seccionCartaId, descripcion: c.descripcion, tags: c.tags, especial: c.especial, orden: c.orden },
+      contenido: c && {
+        visibleEnCarta: c.visibleEnCarta,
+        seccionCartaId: c.seccionCartaId,
+        descripcion: c.descripcion,
+        tags: c.tags,
+        especial: c.especial,
+        orden: c.orden,
+        generoCartaId: c.generoCartaId,
+      },
       agrupadoEn: p.opcionItemAgrupadoCarta?.itemAgrupadoCarta.nombre ?? null,
+      generoCarta: c?.generoCarta?.activo ? c.generoCarta.nombre : null,
     };
   });
 
   return {
     secciones,
+    generos,
     productos: productosAdmin,
     sinContenido: productosAdmin.filter((p) => !p.contenido && !p.agrupadoEn),
     visiblesSinSeccion: armado?.diagnostico.visiblesSinSeccion ?? [],
@@ -167,6 +208,10 @@ export interface ItemAgrupadoAdmin {
   especial: boolean;
   orden: number;
   activo: boolean;
+  /** Su género de carta (docs/plan-genero-carta-2026-09-26.md), para preseleccionarlo en el form; null = sin género. */
+  generoCartaId: string | null;
+  /** Nombre de su género si está ACTIVO, o null (entonces sale suelto en el POS). */
+  generoCarta: string | null;
   opciones: OpcionItemAgrupadoAdmin[];
   /** Cuántas opciones están disponibles en esta sucursal. */
   disponiblesAca: number;
@@ -186,6 +231,8 @@ export interface DatosAdminItemsAgrupados {
   items: ItemAgrupadoAdmin[];
   /** Todas las secciones de carta (para el select del ítem), con cuántos ítems ya tiene cada una (orden sugerido, DA6). */
   secciones: SeccionCartaAdmin[];
+  /** Todos los géneros (activos primero, orden, nombre) — para el select "Género (opcional)" del ítem. */
+  generos: GeneroCartaAdmin[];
   /** PV disponibles acá que no están en ningún ítem agrupado (para el select "Agregar producto"). */
   productosSinGrupo: { id: string; nombre: string; precioAca: number }[];
   diagnostico: Pick<MenuArmado["diagnostico"], "agrupadosSinSeccion" | "agrupadosSinOpciones" | "agrupadosConPreciosDistintos">;
@@ -193,7 +240,7 @@ export interface DatosAdminItemsAgrupados {
 
 /** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. */
 export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = prisma): Promise<DatosAdminItemsAgrupados> {
-  const [items, secciones, sinGrupo, armado] = await Promise.all([
+  const [items, secciones, generos, sinGrupo, armado] = await Promise.all([
     db.itemAgrupadoCarta.findMany({
       select: {
         id: true,
@@ -205,6 +252,8 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
         especial: true,
         orden: true,
         activo: true,
+        generoCartaId: true,
+        generoCarta: { select: { nombre: true, activo: true } },
         opciones: {
           select: {
             id: true,
@@ -216,6 +265,7 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
       orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }],
     }),
     seccionesConCantidad(db),
+    generosOrdenados(db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId), opcionItemAgrupadoCarta: { is: null } },
       select: { id: true, nombre: true, precioVenta: true },
@@ -262,6 +312,8 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
         especial: it.especial,
         orden: it.orden,
         activo: it.activo,
+        generoCartaId: it.generoCartaId,
+        generoCarta: it.generoCarta?.activo ? it.generoCarta.nombre : null,
         opciones,
         disponiblesAca: precios.length,
         precio,
@@ -273,6 +325,7 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
       };
     }),
     secciones,
+    generos,
     productosSinGrupo: sinGrupo.map((p) => ({ id: p.id, nombre: p.nombre, precioAca: precioAca(p.id, p.precioVenta) })),
     diagnostico: {
       agrupadosSinSeccion: armado?.diagnostico.agrupadosSinSeccion ?? [],
