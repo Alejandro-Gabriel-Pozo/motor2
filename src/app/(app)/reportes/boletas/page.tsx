@@ -143,7 +143,7 @@ function FilaBoleta({ boleta: b }: { boleta: Awaited<ReturnType<typeof listarBol
                 <td className="px-2 py-1">{l.producto}</td>
                 <td className="px-2 py-1 text-right tabular-nums">{l.cantidad.toLocaleString("es-AR")}</td>
                 <td className="px-2 py-1 text-right tabular-nums">
-                  {l.precioListaUnitario !== undefined && <span className="mr-1 text-neutral-400 line-through">{formatearMonto(l.precioListaUnitario)}</span>}
+                  {l.precioListaUnitario !== undefined && <span className="mr-1 text-neutral-500 line-through dark:text-neutral-400">{formatearMonto(l.precioListaUnitario)}</span>}
                   {formatearMonto(l.precioUnitario)}
                 </td>
                 <td className="px-2 py-1 text-right tabular-nums">{formatearMonto(l.subtotal)}</td>
