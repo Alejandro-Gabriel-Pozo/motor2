@@ -20,6 +20,7 @@ import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { disponibilidadPorSucursalDeProducto, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { secuenciaMoviendo } from "@/core/catalogo/pasos-receta";
 import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 
@@ -158,13 +159,15 @@ export default async function RecetaEditorPage({
               accion={async (formData: FormData) => {
                 "use server";
                 const resultado = await actualizarCabeceraDeReceta(producto.id, {
-                  rendimientoCantidad: formData.get("rendimientoCantidad") ? Number(formData.get("rendimientoCantidad")) : undefined,
+                  // numeroDelCampo (no Number(...) a secas): un texto inválido llega como NaN y el servidor lo rechaza, nunca el 0
+                  // falso que daba Number("") — CampoNumero ya emite el texto canónico o crudo en su <input type="hidden">.
+                  rendimientoCantidad: numeroDelCampo(String(formData.get("rendimientoCantidad") ?? "")),
                   rendimientoUnidadId: String(formData.get("rendimientoUnidadId") ?? "") || undefined,
-                  racionesCantidad: formData.get("racionesCantidad") ? Number(formData.get("racionesCantidad")) : undefined,
-                  racionTamano: formData.get("racionTamano") ? Number(formData.get("racionTamano")) : undefined,
+                  racionesCantidad: numeroDelCampo(String(formData.get("racionesCantidad") ?? "")),
+                  racionTamano: numeroDelCampo(String(formData.get("racionTamano") ?? "")),
                   racionUnidadId: String(formData.get("racionUnidadId") ?? "") || undefined,
-                  tiempoPreparacionMinutos: formData.get("tiempoPreparacionMinutos") ? Number(formData.get("tiempoPreparacionMinutos")) : undefined,
-                  tiempoCoccionMinutos: formData.get("tiempoCoccionMinutos") ? Number(formData.get("tiempoCoccionMinutos")) : undefined,
+                  tiempoPreparacionMinutos: numeroDelCampo(String(formData.get("tiempoPreparacionMinutos") ?? "")),
+                  tiempoCoccionMinutos: numeroDelCampo(String(formData.get("tiempoCoccionMinutos") ?? "")),
                   comentarios: String(formData.get("comentarios") ?? ""),
                   presentacionEmplatado: String(formData.get("presentacionEmplatado") ?? ""),
                   notasAdicionales: String(formData.get("notasAdicionales") ?? ""),
@@ -180,7 +183,15 @@ export default async function RecetaEditorPage({
                 <label className="flex flex-col gap-1">
                   Rendimiento
                   <div className="flex gap-1">
-                    <CampoNumero name="rendimientoCantidad" defaultValue={vigente.rendimientoCantidad ? String(Number(vigente.rendimientoCantidad)) : ""} className="w-24" tamano="compacto" />
+                    <CampoNumero
+                      name="rendimientoCantidad"
+                      defaultValue={vigente.rendimientoCantidad ? String(Number(vigente.rendimientoCantidad)) : ""}
+                      tipo="cantidad"
+                      etiqueta="El rendimiento"
+                      decimales={unidades.find((u) => u.id === vigente.rendimientoUnidadId)?.decimales}
+                      className="w-24"
+                      tamano="compacto"
+                    />
                     <select name="rendimientoUnidadId" defaultValue={vigente.rendimientoUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
                       <option value="">Unidad</option>
                       {unidades.map((u) => (
@@ -193,12 +204,28 @@ export default async function RecetaEditorPage({
                 </label>
                 <label className="flex flex-col gap-1">
                   Raciones
-                  <CampoNumero name="racionesCantidad" defaultValue={vigente.racionesCantidad ? String(vigente.racionesCantidad) : ""} className="w-20" tamano="compacto" />
+                  <CampoNumero
+                    name="racionesCantidad"
+                    defaultValue={vigente.racionesCantidad ? String(vigente.racionesCantidad) : ""}
+                    tipo="cantidad"
+                    etiqueta="La cantidad de raciones"
+                    decimales={0}
+                    className="w-20"
+                    tamano="compacto"
+                  />
                 </label>
                 <label className="flex flex-col gap-1">
                   Tamaño de ración
                   <div className="flex gap-1">
-                    <CampoNumero name="racionTamano" defaultValue={vigente.racionTamano ? String(Number(vigente.racionTamano)) : ""} className="w-24" tamano="compacto" />
+                    <CampoNumero
+                      name="racionTamano"
+                      defaultValue={vigente.racionTamano ? String(Number(vigente.racionTamano)) : ""}
+                      tipo="cantidad"
+                      etiqueta="El tamaño de ración"
+                      decimales={unidades.find((u) => u.id === vigente.racionUnidadId)?.decimales}
+                      className="w-24"
+                      tamano="compacto"
+                    />
                     <select name="racionUnidadId" defaultValue={vigente.racionUnidadId ?? ""} className="rounded border px-2 py-1.5 text-sm">
                       <option value="">Unidad</option>
                       {unidades.map((u) => (
@@ -211,11 +238,27 @@ export default async function RecetaEditorPage({
                 </label>
                 <label className="flex flex-col gap-1">
                   Prep. (min)
-                  <CampoNumero name="tiempoPreparacionMinutos" defaultValue={vigente.tiempoPreparacionMinutos ? String(vigente.tiempoPreparacionMinutos) : ""} className="w-20" tamano="compacto" />
+                  <CampoNumero
+                    name="tiempoPreparacionMinutos"
+                    defaultValue={vigente.tiempoPreparacionMinutos ? String(vigente.tiempoPreparacionMinutos) : ""}
+                    tipo="cantidad"
+                    etiqueta="El tiempo de preparación"
+                    decimales={0}
+                    className="w-20"
+                    tamano="compacto"
+                  />
                 </label>
                 <label className="flex flex-col gap-1">
                   Cocción (min)
-                  <CampoNumero name="tiempoCoccionMinutos" defaultValue={vigente.tiempoCoccionMinutos ? String(vigente.tiempoCoccionMinutos) : ""} className="w-20" tamano="compacto" />
+                  <CampoNumero
+                    name="tiempoCoccionMinutos"
+                    defaultValue={vigente.tiempoCoccionMinutos ? String(vigente.tiempoCoccionMinutos) : ""}
+                    tipo="cantidad"
+                    etiqueta="El tiempo de cocción"
+                    decimales={0}
+                    className="w-20"
+                    tamano="compacto"
+                  />
                 </label>
               </div>
               <label className="flex flex-col gap-1">

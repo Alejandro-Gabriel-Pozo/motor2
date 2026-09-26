@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
+import { validarCantidad } from "@/core/datos/cantidad";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conReintento } from "@/core/movimientos/reintentar";
@@ -211,6 +212,47 @@ function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): string | n
 }
 
 /**
+ * Cabecera informativa: nunca se validaba (bug real — un texto inválido en el cliente llegaba como `NaN` directo a
+ * `prisma.recetaVersion.create`, sin ningún `esNumeroFinito` ni control de rango). `rendimientoCantidad`/`racionTamano`
+ * son cantidades CON unidad — se validan con el módulo central (`validarCantidad`), a los decimales de la unidad elegida
+ * (`rendimientoUnidadId`/`racionUnidadId` respectivamente; sin unidad elegida no hay forma de saber cuántos decimales
+ * admite, así que se rechaza). Las tres restantes son enteros >= 0 sin unidad — mismo criterio que ya usaba `validarPasos`
+ * más arriba para los minutos de un paso.
+ */
+async function validarCabecera(cabecera: CabeceraRecetaInput): Promise<string | null> {
+  if (cabecera.rendimientoCantidad !== undefined) {
+    if (!cabecera.rendimientoUnidadId) return "Falta la unidad del rendimiento.";
+    const unidad = await prisma.unidad.findUnique({ where: { id: cabecera.rendimientoUnidadId }, select: { nombre: true, decimales: true } });
+    if (!unidad) return "No se encontró la unidad del rendimiento.";
+    const resultado = validarCantidad(cabecera.rendimientoCantidad, unidad, { etiqueta: "El rendimiento" });
+    if (!resultado.ok) return resultado.mensaje;
+  }
+  if (cabecera.racionTamano !== undefined) {
+    if (!cabecera.racionUnidadId) return "Falta la unidad del tamaño de ración.";
+    const unidad = await prisma.unidad.findUnique({ where: { id: cabecera.racionUnidadId }, select: { nombre: true, decimales: true } });
+    if (!unidad) return "No se encontró la unidad del tamaño de ración.";
+    const resultado = validarCantidad(cabecera.racionTamano, unidad, { etiqueta: "El tamaño de ración" });
+    if (!resultado.ok) return resultado.mensaje;
+  }
+  if (cabecera.racionesCantidad !== undefined) {
+    if (cabecera.racionesCantidad < 0) return "La cantidad de raciones no puede ser negativa.";
+    if (!esNumeroFinito(cabecera.racionesCantidad)) return "La cantidad de raciones no es un número válido.";
+    if (!Number.isInteger(cabecera.racionesCantidad)) return "La cantidad de raciones tiene que ser un número entero.";
+  }
+  if (cabecera.tiempoPreparacionMinutos !== undefined) {
+    if (cabecera.tiempoPreparacionMinutos < 0) return "El tiempo de preparación no puede ser negativo.";
+    if (!esNumeroFinito(cabecera.tiempoPreparacionMinutos)) return "El tiempo de preparación no es un número válido.";
+    if (!Number.isInteger(cabecera.tiempoPreparacionMinutos)) return "El tiempo de preparación tiene que ser un número entero.";
+  }
+  if (cabecera.tiempoCoccionMinutos !== undefined) {
+    if (cabecera.tiempoCoccionMinutos < 0) return "El tiempo de cocción no puede ser negativo.";
+    if (!esNumeroFinito(cabecera.tiempoCoccionMinutos)) return "El tiempo de cocción no es un número válido.";
+    if (!Number.isInteger(cabecera.tiempoCoccionMinutos)) return "El tiempo de cocción tiene que ser un número entero.";
+  }
+  return null;
+}
+
+/**
  * Equivalente de guardarReceta (Catalogo.js:1711-1779): versionado
  * append-only real — NUNCA pisa ni borra una versión vieja. `version` se
  * calcula de forma optimista (MAX(version)+1); el
@@ -246,6 +288,9 @@ export async function guardarReceta(
 
     const invalidoPasos = validarPasos(pasos, items);
     if (invalidoPasos) return error(invalidoPasos);
+
+    const invalidoCabecera = await validarCabecera(cabecera);
+    if (invalidoCabecera) return error(invalidoCabecera);
 
     // Reintento con backoff y jitter (mismo ciclo de siempre, core/movimientos/reintentar.ts): dos ediciones simultáneas de la
     // MISMA receta calculan la misma `version` y una choca con el UNIQUE (productoId, version) — se relee el máximo y se
