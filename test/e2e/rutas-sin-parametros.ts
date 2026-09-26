@@ -60,4 +60,5 @@ export const RUTAS_SIN_PARAMETROS = [
   "/traspasos",
   "/traspasos/enviar",
   "/traspasos/solicitar",
+  "/reportes/rotacion-mesas",
 ];

@@ -101,6 +101,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/conteos", label: "Conteos físicos", accion: "proceso_control" },
       { href: "/reportes/historial", label: "Historial de un producto", accion: "ver_reportes_operativos" },
       { href: "/reportes/trazabilidad", label: "Trazabilidad por ID", accion: "ver_reportes_operativos" },
+      { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "ver_reportes_operativos" },
     ],
   },
   {
