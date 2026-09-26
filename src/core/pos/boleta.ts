@@ -65,11 +65,22 @@ export interface ItemConVenta {
 }
 
 /**
- * Líneas y total de lo que sigue vendido: `armarBoleta` sobre los ítems cuya Operacion VENTA no se anuló. Funciona por línea porque
- * `cerrarCuenta` enlaza a la operación de su línea TODOS los ítems de esa línea (originales y filas espejo).
+ * Líneas y total de la boleta TAL COMO SE VEÍA en el instante `impresaEn` (el reporte de boletas emitidas, Task #17: «como se
+ * imprimió» un ejemplar viejo, no como está la cuenta ahora): `armarBoleta` sobre los ítems cuya Operacion VENTA no estaba anulada
+ * en ese momento — vigente (`anuladaEn === null`) o anulada DESPUÉS (`anuladaEn > impresaEn`, una anulación posterior a esa
+ * impresión no le resta nada a lo que ese papel mostró). Es la misma cuenta que hace `estadoDeBoleta` para decidir «desactualizada».
+ */
+export function armarBoletaImpresaEn(items: readonly ItemConVenta[], impresaEn: Date): { lineas: LineaDeBoleta[]; total: number } {
+  return armarBoleta(items.filter((i) => i.anuladaEn === null || i.anuladaEn > impresaEn));
+}
+
+/**
+ * Líneas y total de lo que sigue vendido AHORA: el caso «impresaEn = este instante» de `armarBoletaImpresaEn` (ninguna anulación
+ * real puede ser posterior a "ahora", así que el filtro se reduce a `anuladaEn === null`). Funciona por línea porque `cerrarCuenta`
+ * enlaza a la operación de su línea TODOS los ítems de esa línea (originales y filas espejo).
  */
 export function armarBoletaVigente(items: readonly ItemConVenta[]): { lineas: LineaDeBoleta[]; total: number } {
-  return armarBoleta(items.filter((i) => i.anuladaEn === null));
+  return armarBoletaImpresaEn(items, new Date());
 }
 
 /** Estado del último ejemplar impreso en `impresaEn` (sin número: el cierre de la cuenta), según las Operaciones VENTA de la cuenta. */
