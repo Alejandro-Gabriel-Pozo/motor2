@@ -719,3 +719,37 @@ test("a 1024px no hay scroll horizontal y el título de la mesa está en main h1
     await cat.limpiar([mesa.id]);
   }
 });
+
+test("anular un ítem: notación científica en la cantidad no se acepta en silencio — queda inválida, con mensaje, y no se manda nada", async ({
+  paginaAutenticada: page,
+  sucursalId,
+}) => {
+  // Antes: un <input> crudo con `Number(cantidad.replace(",", "."))` interpretaba "1e3" como 1000 sin avisar nada. Ahora usa
+  // CampoNumero (interpretarNumero), que lo deja aria-invalid con el mensaje nativo del navegador y no deja salir el envío.
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 977 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  await prisma.cuenta.create({
+    data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 }] } },
+  });
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: `Anular ${cat.milanesa.nombre}` }).click();
+    const dialogo = page.getByRole("dialog", { name: `Anular «${cat.milanesa.nombre}»` });
+    const campoCantidad = dialogo.getByLabel("Cantidad a anular");
+    await expect(campoCantidad).toHaveValue("2");
+
+    await campoCantidad.fill("1e3");
+    await dialogo.getByLabel("Motivo (obligatorio)").fill("Prueba de formato inválido");
+    await dialogo.getByRole("button", { name: "Anular" }).click();
+
+    expect(await campoCantidad.evaluate((e: HTMLInputElement) => e.validity.customError), "el campo tiene que quedar inválido").toBe(true);
+    expect(await campoCantidad.evaluate((e: HTMLInputElement) => e.validationMessage)).toMatch(/no es un número válido\./i);
+    await expect(campoCantidad).toHaveAttribute("aria-invalid", "true");
+    // El diálogo sigue abierto (el envío nativo nunca salió) y no llegó a anularse nada.
+    await expect(dialogo).toBeVisible();
+    expect(await prisma.cuentaItem.count({ where: { cuenta: { mesaId: mesa.id }, anulaAItemId: { not: null } } })).toBe(0);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
