@@ -35,6 +35,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
     factorConversion: Number(p.factorConversion),
     insumoId: p.insumoId,
     precioVenta: Number(p.precioVenta),
+    pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
     seProduce: p.seProduce,
     esConsignacion: p.esConsignacion,
     proveedorConsignacionId: p.proveedorConsignacionId,

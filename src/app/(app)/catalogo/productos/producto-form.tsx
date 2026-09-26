@@ -7,6 +7,7 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
@@ -82,6 +83,8 @@ export function ProductoForm({
           factorConversion: Number(form.get("factorConversion")),
           insumoId: tipo === "MP" ? insumoId || null : null,
           precioVenta: Number(form.get("precioVenta") || 0),
+          // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
+          pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
           seProduce: form.get("seProduce") === "on",
           esConsignacion,
           proveedorConsignacionId: esConsignacion ? proveedorConsignacionId || null : null,
@@ -234,6 +237,21 @@ export function ProductoForm({
 
       {tipo === "PV" && (
         <CampoNumero name="precioVenta" prefijo="$" placeholder="Precio de venta" ariaLabel="Precio de venta" defaultValue={String(productoExistente?.precioVenta ?? 0)} />
+      )}
+
+      {tipo === "PV" && (
+        <div className="flex flex-col gap-1">
+          <CampoNumero
+            name="pasoVenta"
+            placeholder="Paso de venta (opcional)"
+            ariaLabel="Paso de venta"
+            defaultValue={productoExistente?.pasoVenta != null ? String(productoExistente.pasoVenta) : ""}
+          />
+          <AyudaCampo>
+            Dejalo vacío para vender siempre de a una unidad entera (lo habitual). Con un paso (ej. 0,5), se puede vender esa fracción —
+            0,5 vende media unidad al 50% del precio — y cualquier cantidad que no sea múltiplo exacto del paso se rechaza al cargarla.
+          </AyudaCampo>
+        </div>
       )}
 
       {editando && tipo === "MP" && (
