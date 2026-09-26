@@ -115,6 +115,17 @@ El ítem es **Agua mineral 500 ml** (consume 1 unidad de "Agua caja x12" por ven
 | 2 — Netear con el Kardex | `saldo inicial + compras − saldo final` | **Descartada sola**: en motor2 es casi tautológica (las salidas del Kardex las genera la propia receta); da ≈0 % en casi todo y no informa nada nuevo |
 | 3 — Varianza real entre conteos físicos | El estándar de la industria ("actual vs. theoretical", verificado en ERPNext Stock Balance y en la literatura de restaurantes) | Después, **si el negocio adopta conteos periódicos** |
 
+> **ACTUALIZACIÓN (Task #26 del backlog, 2026-09-26).** El negocio adoptó conteos periódicos (decisión 2 de abajo,
+> sub-plan S) desde 2026-09-22, pero ese sub-plan solo conectó el conteo con `/reportes/diferencias` — nunca con
+> "Rendimiento real de recetas" en sí. La Variante 2 ("Netear con el Kardex") sigue **descartada, y por el motivo
+> correcto** (es tautológica: `stockCierre − stockApertura` asume la propia receta) — pero eso no descarta usar el
+> Conteo Físico como ancla del CÁLCULO, solo descarta restar el Δstock del sistema. La Variante 3 ("varianza real
+> entre conteos") queda implementada, no como reporte separado sino integrada en esta misma pantalla: con DOS
+> `ConteoFisico` `RESUELTO` que cubren el pool entero (uno al principio del tramo, otro al final), el consumo real
+> se suma DIRECTO por proceso entre esas dos anclas (`metodo: "CONTEO"`) en vez de estimarse por compras; sin esas
+> dos anclas, sigue el método de compras de siempre (`metodo: "COMPRAS"`, D4 — nunca se deja la fila sin ningún
+> número). Ver `docs/plan-rendimiento-recetas-2026-09-22.md` §B4 y `src/core/reportes/rendimiento-conciliado.ts`.
+
 ### Grounding externo (2026-09-22)
 
 `docs/grounding-rendimiento-recetas-decisiones-2026-09-22.md` — investigación contra ERPNext/Dolibarr/Grocy/Tandoor Recipes (+ Odoo y literatura de cycle counting), pedida explícitamente por el dueño para las 5 decisiones de abajo. Hallazgo más importante: **motor2 ya tiene el medidor de pérdidas construido y en producción** (`/reportes/diferencias` + `/reportes/perdidas`, anclado en conteos físicos) — "Rendimiento real de recetas" no debería intentar medir pérdida también, sería duplicar un reporte que ya existe con peores datos (compras en vez de consumo declarado). 3 de las 5 decisiones quedan resueltas por evidencia externa; las otras 2 tienen su mitad técnica resuelta y su mitad operativa/de negocio explícitamente marcada como tal.

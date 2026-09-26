@@ -220,6 +220,29 @@ de desvío.
 Para el caso compartido (Fase 2) el Δstock es del **pool**, igual para todas
 las filas → va en el párrafo de encabezado del pool, no repetido por fila.
 
+> **CORRECCIÓN (Task #26 del backlog, 2026-09-26) — el "consumo real 63/63 = 0
+> % de desvío" de arriba es narrativamente correcto para el caso real del Agua
+> descrito en §3, pero la fórmula que insinúa (restar Δstock del estimado) es
+> **tautológica** en general, no solo "una simplificación": `stockCierre` ya
+> se calcula asumiendo la propia receta (cada venta escribe un `CONSUMO =
+> receta × vendido`), así que `stockCierre − stockApertura` siempre reproduce
+> el MISMO desvío que ya se está midiendo — nunca un número independiente. No
+> hay ninguna forma de detectar sobreconsumo real restando Δstock; hace falta
+> un dato independiente del Kardex. Un agente de planificación investigó esto
+> a fondo (`docs/pendientes-2026-09-26.md` o el ítem #26 del backlog, según
+> corresponda) y encontró que ESE dato independiente ya existe en el sistema:
+> un `ConteoFisico` con `estado: "RESUELTO"` es la única medición del depósito
+> que no depende de la receta. Con DOS anclas de ese tipo que cubren el pool
+> entero (una al principio del tramo, otra al final), el consumo real se puede
+> sumar DIRECTO por proceso entre ellas (`CONSUMO`/`CONTROL`/`AJUSTE`, sin
+> reversiones de anulación) — método "CONTEO", implementado en
+> `src/core/reportes/rendimiento-conciliado.ts` y wireado en
+> `rendimiento-recetas.ts` (`metodo`/`anclaDesde`/`anclaHasta`/`consumoReal` en
+> `FilaRendimientoSimple`/`FilaRendimientoCompartido`). Sin esas dos anclas,
+> se sigue cayendo al método de compras de acá (`metodo: "COMPRAS"`), sin
+> ningún cambio de comportamiento. Ver también la corrección equivalente en
+> `docs/planes-demo-y-claridad-reportes-2026-09-21.md`.
+
 ### B5. Banda de ruido de lote (CONTEXTO en texto, nunca umbral)
 
 ```
