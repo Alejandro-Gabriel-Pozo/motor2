@@ -10,6 +10,9 @@ export interface ItemOperacion {
   proceso: string;
   seccionNombre: string;
   idMovimiento: string;
+  /** D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo en un CONSUMO que salió de un insumo SUSTITUTO — el nombre del
+   * producto de la receta al que reemplazó. Null en todo lo demás (incluido un consumo de un hermano del mismo Insumo). */
+  sustituyeANombre: string | null;
 }
 
 export interface DatosOperacion {
@@ -36,7 +39,7 @@ export interface DatosOperacion {
 export async function obtenerOperacionPorId(sucursalId: string, idOperacion: string, db: Db = prisma): Promise<DatosOperacion | null> {
   const operacion = await db.operacion.findFirst({
     where: { id: idOperacion, sucursalId },
-    include: { proveedor: true, anuladaPor: true, movimientos: { include: { producto: true, seccion: true } } },
+    include: { proveedor: true, anuladaPor: true, movimientos: { include: { producto: true, seccion: true, sustituyeAProducto: { select: { nombre: true } } } } },
   });
   if (!operacion) return null;
 
@@ -58,6 +61,7 @@ export async function obtenerOperacionPorId(sucursalId: string, idOperacion: str
       proceso: m.proceso,
       seccionNombre: m.seccion.nombre,
       idMovimiento: m.id,
+      sustituyeANombre: m.sustituyeAProducto?.nombre ?? null,
     })),
   };
 }

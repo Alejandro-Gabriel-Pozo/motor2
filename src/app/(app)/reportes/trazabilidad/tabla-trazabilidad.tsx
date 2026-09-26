@@ -19,8 +19,24 @@ const COLUMNAS_ENCONTRADAS: ColumnaReporte<OperacionEncontrada>[] = [
   },
 ];
 
+/** D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): tercera capa de trazabilidad, más visible que el detalle — texto, no
+ * solo color, para que sea legible sin depender del contraste (mismo criterio que `MarcaAnulada` de tabla-historial.tsx). */
+function MarcaSustituto({ nombrePrincipal }: { nombrePrincipal: string }) {
+  return <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-600">Sustituto de «{nombrePrincipal}»</span>;
+}
+
 const COLUMNAS_ITEMS: ColumnaReporte<ItemOperacion>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (it) => `${it.productoCodigo} — ${it.productoNombre}`, render: (it) => `${it.productoCodigo} — ${it.productoNombre}` },
+  {
+    clave: "producto",
+    etiqueta: "Producto",
+    valor: (it) => `${it.productoCodigo} — ${it.productoNombre}`,
+    render: (it) => (
+      <>
+        {it.productoCodigo} — {it.productoNombre}
+        {it.sustituyeANombre && <MarcaSustituto nombrePrincipal={it.sustituyeANombre} />}
+      </>
+    ),
+  },
   { clave: "proceso", etiqueta: "Proceso", valor: (it) => it.proceso, render: (it) => it.proceso },
   { clave: "seccion", etiqueta: "Sección", valor: (it) => it.seccionNombre, render: (it) => it.seccionNombre },
   { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (it) => it.cantidad, render: (it) => it.cantidad },
