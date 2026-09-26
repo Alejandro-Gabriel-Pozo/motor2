@@ -984,6 +984,13 @@ model MovimientoStock {
   /// incompleto en el momento de vender (mismo criterio que costoIncompleto
   /// en costos.ts — no se inventa un número parcial). La COLUMNA se queda en null: el reporte de Período reconstruye ese costo
   /// aparte, con el historial de compras (ver src/core/reportes/costo-historico.ts), y lo rotula «reconstruido».
+  ///
+  /// Sustitución de insumos (docs/plan-sustitucion-insumos-receta-2026-09-26.md, D7): cuando una fila CONSUMO salió de un insumo
+  /// SUSTITUTO (ver `sustituyeAProductoId` abajo), este costo sigue siendo el TEÓRICO de la receta, anclado al producto principal —
+  /// mismo criterio que un consumo de un simple hermano del mismo Insumo. Si el sustituto cuesta bastante distinto del principal
+  /// (a diferencia de los hermanos, que suelen parecerse), el margen de Reportes → Período puede quedar sub/sobreestimado en esas
+  /// ventas puntuales; el costo REAL del producto efectivamente consumido ya lo usa `src/core/reportes/perdidas.ts` por separado.
+  /// Un reporte de "costo real vs. teórico por sustitución" queda como seguimiento posible, apoyado en `sustituyeAProductoId`.
   costoUnitarioVenta Decimal? @db.Decimal(14, 4)
 
   /// Solo si esta línea la generó un ajuste de Conteo Físico (incluida su

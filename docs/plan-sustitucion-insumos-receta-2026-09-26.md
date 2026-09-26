@@ -216,6 +216,18 @@ Se cierra solo cuando los 5 comandos pasan limpios en la misma corrida, conteos 
 ## 6. Precondición de datos (catálogo, no código)
 Bife de chorizo y Ojo de bife tienen que ser `Insumo`s distintos, cada uno con su MP, las dos con la misma unidad de stock (kg), disponibles en la sucursal. Después, en la receta de Milanesa, Editar la línea de Bife de chorizo → Sustituto 1: Ojo de bife. La receta de "Bife a la parrilla" no se toca.
 
+## 7. Pendientes de seguimiento (fuera de este alcance, anotados a propósito)
+
+- **Reporte de costo real vs. teórico por sustitución.** `costoUnitarioVenta` sigue siendo el teórico de la receta (D7) — con
+  `MovimientoStock.sustituyeAProductoId` ya disponible, se puede construir después un reporte que compare ese teórico contra el
+  costo real del producto efectivamente consumido (que `src/core/reportes/perdidas.ts` ya calcula por separado).
+- **"Rendimiento real de recetas" con sustitución.** Cuando una venta sustituye, el pool de Insumo del producto principal queda
+  sub-consumido y el del sustituto sobre-consumido — `rendimiento-recetas.ts` no se tocó en este plan. Corregirlo (por ejemplo,
+  reasignando el consumo real al insumo de la receta antes de comparar contra lo comprado) queda para un pendiente aparte.
+- **Sustitutos en Producción.** La sustitución solo aplica a lo que se consume al vender (D2) — un producto `seProduce` sigue
+  usando `resolverConsumoPorFamilia` (que además tiene su propio H9 sin resolver, documentado antes de este plan). Extender la
+  sustitución a Producción es un pendiente propio, no cubierto acá.
+
 ## Decisiones de autorización (YA RESUELTAS por el dueño del producto, 2026-09-26)
 1. **Migración A (paso 4, tabla `SustitutoRecetaIngrediente`): AUTORIZADA.**
 2. **Migración B (paso 5, columna `MovimientoStock.sustituyeAProductoId`): AUTORIZADA.**

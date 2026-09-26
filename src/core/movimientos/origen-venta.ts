@@ -15,6 +15,11 @@ import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
  *
  * La venta de mostrador usa el mismo núcleo en "modo sección fija": `seccionHabitual` = la elegida, `respaldos` = [] — idéntico a
  * antes salvo H9. Toda comparación se hace redondeando a 4 decimales (la precisión real de `MovimientoStock.cantidad`).
+ *
+ * `asignarConsumosDeVenta` (docs/plan-sustitucion-insumos-receta-2026-09-26.md) suma una segunda pasada, solo para líneas de
+ * receta que declararon sustitutos: primero se agota la familia principal de TODAS las líneas de la venta (como arriba), y recién
+ * después, entre pedidos diferidos, se prueba cada sustituto declarado en orden — nunca al revés, y nunca a costa de un consumo
+ * principal de la misma venta. Ver el docstring de esa función para el detalle.
  */
 
 export interface SeccionCandidata {
