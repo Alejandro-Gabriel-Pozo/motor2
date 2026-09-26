@@ -113,6 +113,22 @@ export function validarCantidadPedido(cantidad: unknown, decimales: number): { o
   return { ok: true, cantidad: redondeada };
 }
 
+export const COMENSALES_MAXIMO = 99;
+
+/**
+ * Comensales al abrir la cuenta, o al corregirlos después (docs/plan-comensales-y-limite-mesas-2026-09-26.md): entero entre 1 y
+ * {@link COMENSALES_MAXIMO}, SIN valor por defecto — quien llama tiene que mandar un número, nunca se completa solo (ver el
+ * docstring de `Cuenta.comensales` en prisma/schema.prisma: un default sesgaría la métrica de rotación que existe para medir).
+ * Solo enteros: no tiene sentido "2,5 comensales".
+ */
+export function validarComensales(valor: unknown): { ok: true; comensales: number } | { ok: false; mensaje: string } {
+  const n = typeof valor === "number" ? valor : Number.NaN;
+  if (!Number.isInteger(n) || !esNumeroFinito(n) || n < 1 || n > COMENSALES_MAXIMO) {
+    return { ok: false, mensaje: `La cantidad de comensales tiene que ser un número entero entre 1 y ${COMENSALES_MAXIMO}.` };
+  }
+  return { ok: true, comensales: n };
+}
+
 /** Motivo de anulación de un ítem ya enviado: obligatorio (sin espacios sueltos) y de hasta 200 caracteres. */
 export function validarMotivoAnulacion(motivo: unknown): { ok: true; motivo: string } | { ok: false; mensaje: string } {
   const v = texto(motivo);
@@ -142,6 +158,8 @@ export interface DetalleDeCuenta {
   abiertaEn: Date;
   mesero: string;
   tiempoAbierta: string;
+  /** `null` = cuenta abierta antes de este campo (sin backfill) — ver el docstring de `Cuenta.comensales`. */
+  comensales: number | null;
   /** Σ cantidad × precio de TODAS las filas (espejos incluidos): lo que se cobraría hoy. Mismo cálculo que el mapa. */
   total: number;
   sinEnviar: ItemDeCuenta[];
@@ -205,6 +223,7 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
       abiertaEn: fila.abiertaEn,
       mesero: nombreDelMesero(fila.abiertaPor),
       tiempoAbierta: tiempoDesde(fila.abiertaEn, ahora),
+      comensales: fila.comensales,
       // Σ del importe de cada línea (importeDeLinea), no la suma cruda re-redondeada: así el total en pantalla nunca difiere del que
       // registraría un cierre inmediato (boleta y cerrarCuenta usan el mismo criterio). redondearMoneda solo limpia el ruido del float.
       total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, i.precioUnitario), 0)),

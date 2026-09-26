@@ -9,8 +9,8 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
  * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), la sección habitual de stock, el admin de la carta, su portal de sucursales y su
- * tema, el mapa de mesas del salón, la pantalla de una mesa (con «Cuentas cerradas») y el reporte de boletas emitidas (Task #17). No es exhaustivo sobre todas las
- * pantallas: se suma una cuando aparece una necesidad concreta.
+ * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas», el modal de comensales al abrir cuenta), el reporte de
+ * rotación de mesas y el reporte de boletas emitidas (Task #17). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -1200,6 +1200,70 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado(
+  "pos/mesas/[mesaId]: el modal «¿Cuántos comensales?» al abrir cuenta, en reposo y con el error de «elegí cuántos», en modo claro y oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-comensales-y-limite-mesas-2026-09-26.md: el modal de comensales es obligatorio y sin default.
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 978 } });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 978");
+      await page.getByRole("button", { name: "Abrir cuenta" }).click();
+      const dialogo = page.getByRole("dialog", { name: "¿Cuántos comensales?" });
+      await expect(dialogo).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modal de comensales en reposo").toEqual([]);
+
+      await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
+      await expect(dialogo.getByRole("alert")).toHaveText("Elegí cuántos comensales son.");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modal de comensales con el error").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await page.getByRole("button", { name: "Abrir cuenta" }).click();
+      await expect(page.getByRole("dialog", { name: "¿Cuántos comensales?" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modal de comensales en modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+    }
+  }
+);
+
+testAutenticado("reportes/rotacion-mesas: con datos y sin datos, sin violaciones de accesibilidad detectables por axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 979 } });
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const marcaProd = Date.now();
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ROT-${marcaProd}`, nombre: `E2E A11y Rotación ${marcaProd}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+  const cuenta = await prisma.cuenta.create({
+    data: {
+      mesaId: mesa.id,
+      abiertaPorId: admin.id,
+      comensales: 3,
+      abiertaEn: new Date(Date.now() - 60 * 60_000),
+      cerradaEn: new Date(),
+      cerradaPorId: admin.id,
+      items: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: admin.id }] },
+    },
+  });
+  try {
+    await page.goto("/reportes/rotacion-mesas");
+    await conTitulo(page, "Rotación de mesas");
+    await expect(page.locator("[data-metrica='atendidas']")).not.toHaveText("0");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "con datos").toEqual([]);
+
+    // Rango sin ninguna cuenta: las tablas caen a su mensaje de "sin datos".
+    await page.goto("/reportes/rotacion-mesas?rango=personalizado&desde=2000-01-01&hasta=2000-01-02");
+    await expect(page.getByText("Sin cuentas atendidas en este rango.")).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "sin datos").toEqual([]);
+  } finally {
+    await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+    await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+    await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
 
 testAutenticado(
   "reportes/boletas: el listado con una corrección expandida (marcas «Corrección de»/«Reemplazada por» y el detalle con link a Trazabilidad) sin violaciones de axe",

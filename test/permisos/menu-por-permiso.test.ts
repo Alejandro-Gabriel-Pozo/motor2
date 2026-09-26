@@ -65,6 +65,7 @@ describe("filtrarMenuPorPermiso", () => {
     const reportes = grupos.find((g) => g.id === "reportes");
     expect(reportes?.items.map((i) => i.href).sort()).toEqual([
       "/reportes/historial",
+      "/reportes/rotacion-mesas",
       "/reportes/salud",
       "/reportes/trazabilidad",
       "/reportes/vencimientos",

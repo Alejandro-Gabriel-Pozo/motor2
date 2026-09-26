@@ -27,7 +27,10 @@ export interface CambioAuditable {
     | "CuentaItem"
     | "Cuenta"
     | "RecetaVersion"
-    | "RendimientoLocalIngrediente";
+    | "RendimientoLocalIngrediente"
+    // "Sucursal" (docs/plan-comensales-y-limite-mesas-2026-09-26.md): el límite de mesas abiertas (`maxMesasAbiertas`) se edita desde
+    // el mapa de mesas con el mismo permiso que da de alta mesas (`pos_mesas`) — `entidadId` es el id de la Sucursal.
+    | "Sucursal";
   entidadId: string;
   /** Legible de entrada, ej. `Producto "Pan Francés": precio de venta`. */
   descripcion: string;

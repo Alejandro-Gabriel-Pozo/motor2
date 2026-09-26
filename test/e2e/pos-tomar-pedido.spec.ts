@@ -64,6 +64,14 @@ async function sembrarCatalogo(sucursalId: string) {
 const tarjeta = (page: Page, numero: number) => page.locator(`li[data-mesa="${numero}"]`);
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
 
+/** «Abrir cuenta» pasando por el modal de comensales (docs/plan-comensales-y-limite-mesas-2026-09-26.md): botón rápido 1-6 + confirmar. */
+async function abrirCuentaUI(page: Page, comensales: number) {
+  await page.getByRole("button", { name: "Abrir cuenta" }).click();
+  const dialogo = page.getByRole("dialog", { name: "¿Cuántos comensales?" });
+  await dialogo.getByRole("button", { name: String(comensales), exact: true }).click();
+  await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
+}
+
 async function agregar(page: Page, nombre: string, cantidad: string) {
   const combo = page.getByRole("combobox", { name: "Producto" });
   await combo.fill(nombre);
@@ -84,7 +92,7 @@ test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con moti
     await expect(page.locator("main h1")).toHaveText("Mesa 961");
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
 
-    await page.getByRole("button", { name: "Abrir cuenta" }).click();
+    await abrirCuentaUI(page, 4);
     await expect(aviso(page)).toHaveText("Cuenta de la mesa 961 abierta.");
 
     await agregar(page, cat.milanesa.nombre, "2");
@@ -155,7 +163,7 @@ test("quitar un ítem sin enviar no pide motivo: se borra y listo", async ({ pag
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 962 } });
   try {
     await page.goto(`/mesas/${mesa.id}`);
-    await page.getByRole("button", { name: "Abrir cuenta" }).click();
+    await abrirCuentaUI(page, 2);
     await expect(aviso(page)).toHaveText("Cuenta de la mesa 962 abierta.");
     await agregar(page, cat.flan.nombre, "1");
     await expect(page.locator(`[data-item-sin-enviar="${cat.flan.nombre}"]`)).toBeVisible();
@@ -233,7 +241,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
     const m = mozo.page;
     await interceptarImpresion(m);
     await m.goto(`/mesas/${mesaMozo.id}`);
-    await m.getByRole("button", { name: "Abrir cuenta" }).click();
+    await abrirCuentaUI(m, 2);
     await expect(aviso(m)).toHaveText("Cuenta de la mesa 964 abierta.");
     await agregar(m, cat.flan.nombre, "1");
     await expect(aviso(m)).toHaveText("Se agregó 1 ítem a la mesa 964.");
@@ -335,7 +343,7 @@ test("enviar a cocina imprime la comanda del envío: sin precios, y el segundo e
   try {
     await interceptarImpresion(page);
     await page.goto(`/mesas/${mesa.id}`);
-    await page.getByRole("button", { name: "Abrir cuenta" }).click();
+    await abrirCuentaUI(page, 3);
     await expect(aviso(page)).toHaveText("Cuenta de la mesa 969 abierta.");
     await agregar(page, cat.milanesa.nombre, "2");
     await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 969.");
