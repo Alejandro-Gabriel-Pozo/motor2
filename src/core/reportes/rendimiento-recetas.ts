@@ -43,7 +43,19 @@ export interface FilaRendimientoSimple {
   totalVendido: number;
   /** Saldo del pool ANTES de `desde` — contexto, nunca entra en ninguna fórmula (ver docstring de `stockCierre`). */
   stockApertura: number;
-  /** Saldo del pool DESPUÉS de `hasta` (`stockApertura + deltaStock`) — si subió durante la ventana, parte de lo "comprado" en realidad se quedó en el depósito, no se consumió (el caso real del Agua: +14,3 % con Δstock=+9 es 0 % de desvío real). */
+  /**
+   * Saldo del pool DESPUÉS de `hasta` (`stockApertura + deltaStock`) — si
+   * subió durante la ventana, parte de lo "comprado" en realidad se quedó
+   * en el depósito, no se consumió. El caso real del Agua (+14,3 % con
+   * Δstock=+9) es 0 % de desvío real SOLO SI un Conteo Físico confirma que
+   * esos +9 están de verdad en el depósito (`metodo: "CONTEO"` — ver
+   * rendimiento-conciliado.ts); sin ese conteo (`metodo: "COMPRAS"`) el
+   * Δstock queda como advertencia de sesgo, no como una corrección: el
+   * "restar Δstock" es tautológico (el propio saldo del sistema ya asume
+   * la receta, vía el CONSUMO que cada venta escribe), así que no hay
+   * ninguna forma de saber si esos +9 son acopio real o faltante sin medir
+   * el depósito con un conteo físico real.
+   */
   stockCierre: number;
   /** Por qué `cantidadEstimada` es null, cuando lo es — nunca se oculta la fila, se explica (docs/plan-rendimiento-recetas-2026-09-22.md §B7). */
   motivoSinEstimacion: string | null;
@@ -117,6 +129,16 @@ export interface FilaRendimientoCompartido {
  * anulación es su propio contra-asiento (compra + reversión AJUSTE); si se
  * filtrara, el saldo quedaría mal. Mismo patrón que `historial-producto.ts`
  * (`saldoInicial`, con `operacion.fecha < desde`, sin filtro de anuladas).
+ *
+ * NUNCA "restar Δstock" del estimado para corregir el sesgo de compra por
+ * lote: es tautológico. El saldo del sistema ya asume la propia receta
+ * (cada venta escribe un CONSUMO = receta × vendido), así que
+ * `stockCierre - stockApertura` siempre da el mismo desvío que ya se está
+ * calculando — nunca 0 % "real" ni ningún otro número independiente. La
+ * única forma de medir un consumo real independiente del Kardex es un
+ * Conteo Físico (`metodo: "CONTEO"`, ver rendimiento-conciliado.ts) — con
+ * dos anclas RESUELTO que cubren el pool entero, se suma el consumo real
+ * DIRECTO por proceso entre ellas, en vez de inferirlo de las compras.
  */
 async function calcularStockAperturaYCierre(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<{ stockApertura: number; stockCierre: number }> {
   const [apertura, delta] = await Promise.all([
