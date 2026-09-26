@@ -1,0 +1,76 @@
+import { describe, expect, it } from "vitest";
+import { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta, type AccionSelectorCarta, type EstadoSelectorCarta } from "../../src/core/pos/selector-carta-estado";
+import type { ProductoPedible, SelectorCartaPos } from "../../src/core/pos/selector-carta";
+
+/** Estado del selector por sección de carta del POS (docs/plan-selector-carta-pos-2026-09-25.md, paso 3): reductor puro, sin DOM. */
+
+const pedible = (productoId: string): ProductoPedible => ({ productoId, codigo: productoId, nombre: productoId, precio: 1 });
+
+const selector: SelectorCartaPos = {
+  seccionesCarta: [
+    { seccionCartaId: "s-platos", nombre: "Platos", entradas: [{ tipo: "producto", producto: pedible("p-bife") }] },
+    {
+      seccionCartaId: "s-bebidas",
+      nombre: "Bebidas",
+      entradas: [
+        { tipo: "agrupado", itemAgrupadoCartaId: "ag-gaseosa", nombre: "Gaseosa", precioMinimo: 1, precioMaximo: 1, opciones: [pedible("p-coca"), pedible("p-sprite")] },
+        { tipo: "agrupado", itemAgrupadoCartaId: "ag-agua", nombre: "Agua", precioMinimo: 1, precioMaximo: 1, opciones: [pedible("p-agua")] },
+      ],
+    },
+  ],
+  fueraDeCarta: [pedible("p-flan")],
+};
+
+const aplicar = (estado: EstadoSelectorCarta, ...acciones: AccionSelectorCarta[]) => acciones.reduce(reducirSelectorCarta, estado);
+
+describe("estado del selector por sección de carta", () => {
+  const inicial = estadoInicialSelectorCarta(selector);
+
+  it("arranca en la primera sección de carta, sin agrupado abierto ni nada elegido", () => {
+    expect(inicial).toEqual({ seccionActiva: "s-platos", agrupadoAbierto: null, productoId: "", limpiarBuscador: 0 });
+  });
+
+  it("sin secciones de carta arranca en «Fuera de carta»; sin nada que navegar, en ninguna", () => {
+    expect(estadoInicialSelectorCarta({ seccionesCarta: [], fueraDeCarta: [pedible("p-flan")] }).seccionActiva).toBe(SECCION_FUERA_DE_CARTA);
+    expect(estadoInicialSelectorCarta({ seccionesCarta: [], fueraDeCarta: [] }).seccionActiva).toBeNull();
+    expect(estadoInicialSelectorCarta(null).seccionActiva).toBeNull();
+  });
+
+  it("cambiar de sección cierra el agrupado desplegado y conserva lo elegido", () => {
+    const e = aplicar(
+      inicial,
+      { tipo: "elegirSeccion", seccionId: "s-bebidas" },
+      { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" },
+      { tipo: "elegirProducto", productoId: "p-sprite", origen: "carta" },
+      { tipo: "elegirSeccion", seccionId: SECCION_FUERA_DE_CARTA }
+    );
+    expect(e).toMatchObject({ seccionActiva: SECCION_FUERA_DE_CARTA, agrupadoAbierto: null, productoId: "p-sprite" });
+  });
+
+  it("abrir otro agrupado cierra el anterior; volver a tocar el mismo lo cierra", () => {
+    const abierto = aplicar(inicial, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" });
+    expect(abierto.agrupadoAbierto).toBe("ag-gaseosa");
+    const otro = aplicar(abierto, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-agua" });
+    expect(otro.agrupadoAbierto).toBe("ag-agua");
+    expect(aplicar(otro, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-agua" }).agrupadoAbierto).toBeNull();
+  });
+
+  it("elegir desde la carta vacía el buscador; elegir (o tipear) en el buscador no lo toca", () => {
+    const desdeCarta = aplicar(inicial, { tipo: "elegirProducto", productoId: "p-bife", origen: "carta" });
+    expect(desdeCarta).toMatchObject({ productoId: "p-bife", limpiarBuscador: 1 });
+    const desdeBuscador = aplicar(desdeCarta, { tipo: "elegirProducto", productoId: "p-flan", origen: "buscador" });
+    expect(desdeBuscador).toMatchObject({ productoId: "p-flan", limpiarBuscador: 1 });
+    expect(aplicar(desdeBuscador, { tipo: "elegirProducto", productoId: "", origen: "buscador" })).toMatchObject({ productoId: "", limpiarBuscador: 1 });
+  });
+
+  it("después de agregar: se limpia lo elegido, se cierra el agrupado y el buscador, y se queda en la sección activa", () => {
+    const e = aplicar(
+      inicial,
+      { tipo: "elegirSeccion", seccionId: "s-bebidas" },
+      { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" },
+      { tipo: "elegirProducto", productoId: "p-sprite", origen: "carta" },
+      { tipo: "limpiarTrasAgregar" }
+    );
+    expect(e).toEqual({ seccionActiva: "s-bebidas", agrupadoAbierto: null, productoId: "", limpiarBuscador: 2 });
+  });
+});

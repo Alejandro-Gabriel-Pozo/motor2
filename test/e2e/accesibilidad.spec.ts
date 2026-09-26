@@ -1009,6 +1009,69 @@ testAutenticado(
 );
 
 testAutenticado(
+  "pos/mesas/[mesaId]: «Agregar al pedido» por sección de carta en reposo, con un ítem agrupado desplegado, con una opción elegida y en modo oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-selector-carta-pos-2026-09-25.md, paso 6. Los dos casos de la mesa de arriba no siembran carta: sin ninguna sección de carta
+    // el navegador no se dibuja (DP3) y axe nunca lo vería. Acá se siembra una sección con un suelto y un agrupado de dos opciones.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const crear = async (clave: string, nombre: string) => {
+      const p = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CS-${clave}-${marca}`, nombre: `E2E A11y ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 5000 } });
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
+      return p;
+    };
+    const agua = await crear("AGUA", "Agua");
+    const coca = await crear("COCA", "Coca");
+    const sprite = await crear("SPRITE", "Sprite");
+    const productoIds = [agua.id, coca.id, sprite.id];
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Bebidas ${marca}`, orden: 1 } });
+    await prisma.contenidoCartaProducto.create({ data: { productoId: agua.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, orden: 1 } });
+    await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 987 } });
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
+    const secciones = page.getByRole("group", { name: "Secciones de la carta" });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 987");
+      await secciones.getByRole("button", { name: seccion.nombre }).click();
+      const region = page.getByRole("region", { name: seccion.nombre });
+      await expect(region.getByRole("button", { name: agua.nombre })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "selector por sección de carta en reposo").toEqual([]);
+
+      await region.getByRole("button", { name: gaseosa.nombre }).click();
+      const opciones = page.getByRole("list", { name: `Opciones de ${gaseosa.nombre}` });
+      await expect(opciones.getByRole("button")).toHaveCount(2);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "ítem agrupado desplegado").toEqual([]);
+
+      await opciones.getByRole("button", { name: sprite.nombre }).click();
+      await expect(page.locator("[data-elegido]")).toContainText(`Elegido: ${sprite.nombre}`);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "con una opción elegida").toEqual([]);
+
+      // El salón no tiene modo oscuro: con el sistema en oscuro queda claro igual.
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 987");
+      await secciones.getByRole("button", { name: seccion.nombre }).click();
+      await page.getByRole("region", { name: seccion.nombre }).getByRole("button", { name: gaseosa.nombre }).click();
+      await page.getByRole("list", { name: `Opciones de ${gaseosa.nombre}` }).getByRole("button", { name: coca.nombre }).click();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: gaseosa.id } });
+      await prisma.itemAgrupadoCarta.deleteMany({ where: { id: gaseosa.id } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
+    }
+  }
+);
+
+testAutenticado(
   "pos/mesas/[mesaId]: «Cuentas cerradas» con una boleta desactualizada («Emitir boleta corregida» habilitado) y su diálogo abierto con el error, en modo claro y oscuro, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId }) => {
     // docs/plan-numeracion-boleta-2026-09-25.md, paso 8: la fila con el número de la boleta y el botón nuevo, y el diálogo del motivo.

@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { abrirCuenta, agregarItems, enviarACocina, liberarMesa, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta";
 import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
+import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 
 /** Toma de pedido (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 4): abrir, agregar, quitar, enviar, liberar. */
 describe("tomar pedido (server actions)", () => {
@@ -106,6 +107,38 @@ describe("tomar pedido (server actions)", () => {
       const cerrada = await prisma.cuenta.create({ data: { mesaId: s.mesa.id, abiertaPorId: s.admin.id, cerradaEn: new Date() } });
       expect(await agregarItems(cerrada.id, [{ productoId: s.flan.id, cantidad: 1 }])).toEqual({ ok: false, mensaje: "La cuenta de la mesa 4 ya está cerrada." });
       expect(await prisma.cuentaItem.count()).toBe(0);
+    });
+
+    describe("con un ítem agrupado de la carta (docs/plan-selector-carta-pos-2026-09-25.md)", () => {
+      async function sembrarGaseosa() {
+        const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 1 } });
+        const coca = await sembrarProductoDisponible({ codigo: "PV_COCA", nombre: "Coca-Cola 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
+        const sprite = await sembrarProductoDisponible({ codigo: "PV_SPRITE", nombre: "Sprite 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
+        const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } });
+        await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+        return { coca, sprite, gaseosa };
+      }
+
+      it("el id de un ítem agrupado no es un producto: se rechaza y no se escribe nada", async () => {
+        const { gaseosa } = await sembrarGaseosa();
+        const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
+        expect(await agregarItems(cuenta.id, [{ productoId: gaseosa.id, cantidad: 1 }])).toEqual({ ok: false, mensaje: "El producto no existe." });
+        expect(await itemsDe(cuenta.id)).toEqual([]);
+      });
+
+      it("una opción del grupo congela SU precio (con su Precio Local), aunque la carta muestre el mayor", async () => {
+        const { coca, sprite, gaseosa } = await sembrarGaseosa();
+        await prisma.precioLocalProducto.create({ data: { sucursalId: s.sucursalId, productoId: sprite.id, precio: 5500, habilitado: true } });
+        const carta = await resolverMenuCarta(s.sucursalId);
+        expect(carta?.secciones[0].items.find((i) => i.productoId === gaseosa.id)?.precio).toBe(5500);
+
+        const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
+        expect(await agregarItems(cuenta.id, [{ productoId: coca.id, cantidad: 2 }, { productoId: sprite.id, cantidad: 1 }])).toEqual({ ok: true, mensaje: "Se agregaron 2 ítems a la mesa 4." });
+        expect((await itemsDe(cuenta.id)).map((i) => [i.productoId, Number(i.cantidad), Number(i.precioUnitario)])).toEqual([
+          [coca.id, 2, 5000],
+          [sprite.id, 1, 5500],
+        ]);
+      });
     });
   });
 
