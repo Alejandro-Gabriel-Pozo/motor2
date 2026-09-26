@@ -34,11 +34,15 @@ export async function crearUsuarioConRol(sucursalId: string, nombre: string, per
   return crearUsuarioConMembresia({ email: `${nombre}@test.com`, sucursalId, rolId: rol.id });
 }
 
-/** El «mozo» del plan: ve el mapa (`pos_mesas` Ver) y toma pedidos (`pos_tomar_pedido` Editar); no anula ni cobra. */
+/**
+ * El «mozo» del plan: ve el mapa (`pos_mesas` Ver), toma pedidos (`pos_tomar_pedido` Editar) y asigna un cliente con descuento
+ * (`pos_asignar_cliente` Editar — Task #14, D3: CUALQUIER mozo que ya toma pedido, no solo admin); no anula ni cobra.
+ */
 export function crearMozo(sucursalId: string, nombre = "mozo") {
   return crearUsuarioConRol(sucursalId, nombre, [
     { clave: "pos_mesas", ver: true, editar: false },
     { clave: "pos_tomar_pedido", ver: true, editar: true },
+    { clave: "pos_asignar_cliente", ver: true, editar: true },
   ]);
 }
 

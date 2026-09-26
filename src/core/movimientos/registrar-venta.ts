@@ -20,9 +20,17 @@ import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
  * (docs/plan-tomar-pedido-2026-09-25.md, B6). Quien llama es responsable de: el permiso, la transacción serializable
  * (`conTransaccionSerializable`) y — si aplica — el chequeo de idempotencia previo.
  *
- * Dos extensiones internas, que la Server Action pública NUNCA expone (mapea cada línea a `{ productoId, cantidadVendida }` a mano):
+ * Tres extensiones internas, que la Server Action pública NUNCA expone (mapea cada línea a `{ productoId, cantidadVendida }` a mano):
  * - `precioUnitario` por línea: reemplaza a `resolverPrecioVenta`. Lo usa `cerrarCuenta` para cobrar el precio CONGELADO al tomar
- *   el pedido, no el de hoy.
+ *   el pedido, no el de hoy — y, con un cliente con descuento asignado (Task #14), el precio YA CON el descuento aplicado
+ *   (`precioConDescuento`, src/core/moneda.ts): esta función no sabe nada de clientes ni de porcentajes, solo recibe el número final.
+ * - `precioListaUnitario` por línea (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 3): el precio de LISTA de esa línea,
+ *   cuando difiere de `precioUnitario` (venta con descuento) — se guarda tal cual en `MovimientoStock.precioListaUnitario` de la fila
+ *   VENTA. Quien llama decide si lo manda (`cerrarCuenta` lo omite cuando no hay descuento, o cuando el descuento no cambió el
+ *   precio por el piso de 0,01 — no hay nada que este núcleo tenga que comparar).
+ * - `datos.clienteId` (Task #14): el cliente de la cuenta, si tiene uno asignado — va en CADA Operacion que crea este lote
+ *   (`Operacion.clienteId`, FK RESTRICT). `undefined`/`null` = sin cliente, el caso de siempre (mostrador, o una mesa sin cliente
+ *   asignado).
  * - `opciones.permitirStockNegativo` (B6bis, decisión del dueño): con `true`, un insumo sin stock suficiente NO aborta la venta; el
  *   movimiento se escribe igual (el Kardex es un ledger por suma: el saldo queda negativo) y se devuelve en `avisosStockNegativo`.
  *   Ausente o `false` (el caso de `registrarVenta`): rechaza igual que siempre.
@@ -45,12 +53,16 @@ export interface LineaVentaEnTx {
   cantidadVendida: number;
   /** Override INTERNO del precio de venta (ver el docstring del módulo). Ausente = Precio Local o global de hoy. */
   precioUnitario?: number;
+  /** Precio de LISTA, si difiere de `precioUnitario` (Task #14 — ver el docstring del módulo). Ausente = coinciden, no se guarda. */
+  precioListaUnitario?: number;
 }
 
 export interface DatosVentaEnTx {
   fecha: Date;
   origen: OrigenVenta;
   proveedorId?: string | null;
+  /** Cliente con descuento de la cuenta, si tiene uno asignado (Task #14 — ver el docstring del módulo). */
+  clienteId?: string | null;
   nroFactura?: string;
   detalle?: string;
   lineas: LineaVentaEnTx[];
@@ -87,6 +99,8 @@ interface LineaArmada {
   seProduce: boolean;
   cantidadVendida: number;
   precioVenta: number;
+  /** Precio de LISTA de esta línea, si difiere de `precioVenta` (Task #14). `null` = coinciden, no se guarda nada distinto. */
+  precioListaVenta: number | null;
   /** Costo de receta resuelto AL MOMENTO de esta venta (docstring en schema.prisma, MovimientoStock.costoUnitarioVenta) — null si el costeo estaba incompleto ese día. */
   costoUnitarioAlVender: number | null;
   /** Consumo de receta por ingrediente, en el orden de los ingredientes (id ascendente: determinístico para el libro). */
@@ -187,11 +201,12 @@ async function armarLinea(
   }
 
   const precioVenta = item.precioUnitario ?? (await resolverPrecioVenta(sucursalId, producto.id, Number(producto.precioVenta), tx));
+  const precioListaVenta = item.precioListaUnitario ?? null;
   const costoUnitarioAlVender = costoUnitarioPorProducto.get(producto.id) ?? null;
 
   return {
     ok: true,
-    linea: { productoId: producto.id, nombre: producto.nombre, seProduce: producto.seProduce, cantidadVendida: cantidad, precioVenta, costoUnitarioAlVender, pedidos },
+    linea: { productoId: producto.id, nombre: producto.nombre, seProduce: producto.seProduce, cantidadVendida: cantidad, precioVenta, precioListaVenta, costoUnitarioAlVender, pedidos },
   };
 }
 
@@ -344,6 +359,7 @@ export async function registrarVentaEnTx(
         proceso: "VENTA",
         fecha: datos.fecha,
         proveedorId: datos.proveedorId ?? null,
+        clienteId: datos.clienteId ?? null,
         nroFactura: texto(datos.nroFactura) || null,
         detalleLibre: texto(datos.detalle) || null,
         usuarioId: actor.usuarioId,
@@ -388,6 +404,7 @@ export async function registrarVentaEnTx(
       cantidad: -venta.cantidadVendida, loteVencimiento: venta.loteVencimiento,
       detalle: texto(datos.detalle) || "Venta", precioTotal: importeVenta, precioPorUnidadStock: redondearMoneda(venta.precioVenta),
       costoUnitarioVenta: venta.costoUnitarioAlVender !== null ? redondearMoneda(venta.costoUnitarioAlVender) : null,
+      precioListaUnitario: venta.precioListaVenta !== null ? redondearMoneda(venta.precioListaVenta) : null,
     });
   }
 

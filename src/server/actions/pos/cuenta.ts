@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { redondearMoneda, tieneStockReal } from "@/core/movimientos/transiciones";
-import { importeDeLinea } from "@/core/moneda";
+import { importeDeLinea, precioConDescuento } from "@/core/moneda";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -114,6 +114,40 @@ export async function corregirComensales(cuentaId: string, comensales: number): 
 
       await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { comensales: val.comensales } });
       return ok(`Comensales de la mesa ${abierta.cuenta.mesa.numero} actualizados a ${val.comensales}.`);
+    });
+  });
+}
+
+/**
+ * Asigna (o quita, con `clienteId: null`) el cliente con descuento de una cuenta ABIERTA (Task #14, docs/plan-clientes-descuento-
+ * 2026-09-26.md, D3): CUALQUIER mozo con `pos_asignar_cliente` (que se semilla junto con `pos_tomar_pedido` — no hace falta ser
+ * admin), en cualquier momento antes de cerrarla, tantas veces como haga falta (se cargó mal, el cliente se bajó, etc.).
+ *
+ * El % SE CONGELA en `Cuenta.descuentoPorcentaje` en este momento (D7, snapshot de `Cliente.descuentoPorcentaje`): si el % del
+ * cliente cambia después con la cuenta todavía abierta, esta cuenta no se entera — solo una nueva asignación (con este mismo cliente
+ * o corrigiendo el error) lo actualiza. Quitar el cliente (`null`) limpia los dos campos: la cuenta vuelve a cobrar precio de lista.
+ *
+ * `activo: false` bloquea asignar un cliente DESACTIVADO (no tiene sentido dar de alta un descuento nuevo con un cliente que ya no
+ * se usa) — pero no bloquea QUITARLO de una cuenta que ya lo tenía asignado, ni cerrar una cuenta que ya lo tiene: desactivar un
+ * cliente nunca revierte una cuenta en curso.
+ */
+export async function asignarClienteACuenta(cuentaId: string, clienteId: string | null): Promise<ResultadoAccion> {
+  return conPermiso("pos_asignar_cliente", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
+      if (!abierta.ok) return error(abierta.mensaje);
+
+      if (clienteId === null) {
+        await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: null, descuentoPorcentaje: null } });
+        return ok(`Se quitó el cliente de la mesa ${abierta.cuenta.mesa.numero}.`);
+      }
+
+      const cliente = typeof clienteId === "string" ? await tx.cliente.findUnique({ where: { id: clienteId } }) : null;
+      if (!cliente) return error("No se encontró ese cliente.");
+      if (!cliente.activo) return error(`«${cliente.nombre}» está desactivado: no se puede asignar a una cuenta.`);
+
+      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: cliente.id, descuentoPorcentaje: cliente.descuentoPorcentaje } });
+      return ok(`«${cliente.nombre}» asignado a la mesa ${abierta.cuenta.mesa.numero}, con ${cliente.descuentoPorcentaje}% de descuento.`);
     });
   });
 }
@@ -305,11 +339,16 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
  * caja ni de pago). En una transacción serializable:
  * 1. arma las líneas NETAS por (producto, precio congelado) sumando originales y espejos (`lineasDeVenta`); una línea anulada entera no
  *    se vende;
- * 2. registra la venta con el MISMO núcleo que la venta de mostrador (`registrarVentaEnTx`): una Operacion VENTA por línea, con
- *    `detalle` «Mesa N», sin cliente y el precio congelado de cada línea. La sección NO se elige (docs/plan-seccion-habitual-stock-
- *    2026-09-25.md): el núcleo resuelve, insumo por insumo, de qué sección activa sale (`origen: { tipo: "automatico" }`, por
- *    vencimiento); sin ninguna sección activa, se rechaza sin escribir nada;
- * 3. enlaza cada ítem con su Operacion (`CuentaItem.operacionId`) y cierra la cuenta (`cerradaEn`/`cerradaPorId`): la mesa queda libre.
+ * 2. si la cuenta tiene un cliente con descuento asignado (Task #14, docs/plan-clientes-descuento-2026-09-26.md, D7 — el snapshot
+ *    congelado en `Cuenta.descuentoPorcentaje`, NUNCA el % actual de `Cliente`), aplica `precioConDescuento` sobre el precio de
+ *    lista de cada línea (`src/core/moneda.ts`) — el precio de lista SOLO se guarda aparte (`precioListaUnitario`) cuando el
+ *    descuento cambió el número; sin cliente, es un pasamanos: el precio congelado de siempre;
+ * 3. registra la venta con el MISMO núcleo que la venta de mostrador (`registrarVentaEnTx`): una Operacion VENTA por línea, con
+ *    `detalle` «Mesa N», el cliente de la cuenta (si tiene uno) y el precio COBRADO de cada línea (de lista, o con descuento). La
+ *    sección NO se elige (docs/plan-seccion-habitual-stock-2026-09-25.md): el núcleo resuelve, insumo por insumo, de qué sección
+ *    activa sale (`origen: { tipo: "automatico" }`, por vencimiento); sin ninguna sección activa, se rechaza sin escribir nada;
+ * 4. enlaza cada ítem con su Operacion (`CuentaItem.operacionId`, buscado por el precio de LISTA — el descuento no cambia esa
+ *    búsqueda) y cierra la cuenta (`cerradaEn`/`cerradaPorId`): la mesa queda libre.
  *
  * STOCK INSUFICIENTE NO BLOQUEA (plan B6bis, decisión del dueño): la mesa ya comió, así que la venta se registra igual
  * (`permitirStockNegativo`) y cada insumo que quedó en negativo sale EXPLÍCITO en el mensaje y deja una fila en el registro de auditoría
@@ -326,7 +365,10 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
     return conTransaccionSerializable(async (tx) => {
       const cuenta =
         typeof cuentaId === "string"
-          ? await tx.cuenta.findFirst({ where: { id: cuentaId, mesa: { sucursalId: ctx.sucursalId } }, include: { mesa: { select: { numero: true } }, items: true } })
+          ? await tx.cuenta.findFirst({
+              where: { id: cuentaId, mesa: { sucursalId: ctx.sucursalId } },
+              include: { mesa: { select: { numero: true } }, items: true, cliente: { select: { nombre: true } } },
+            })
           : null;
       if (!cuenta) return error("No se encontró esa cuenta en esta sucursal.");
       const mesa = cuenta.mesa.numero;
@@ -337,11 +379,23 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
 
       const ahora = new Date();
       const cerrar = () => tx.cuenta.update({ where: { id: cuenta.id }, data: { cerradaEn: ahora, cerradaPorId: ctx.usuarioId } });
+      // `lineas`: precio de LISTA (congelado al pedir), agrupado por (producto, precio) — es la clave con la que se busca cada
+      // CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14).
       const lineas = lineasDeVenta(cuenta.items.map((i) => ({ productoId: i.productoId, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario) })));
       if (!lineas.length) {
         await cerrar();
         return ok(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`);
       }
+
+      // Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, D7): `descuentoPorcentaje` es el SNAPSHOT
+      // congelado al asignarlo (`asignarClienteACuenta`), nunca el % actual de `Cliente` — para esta cuenta ya no importa si el
+      // cliente cambió su % después. `precioConDescuento` (src/core/moneda.ts) hace la aritmética exacta y el piso de 0,01; sin
+      // cliente asignado (el caso de siempre) devuelve el precio de lista tal cual, sin pasar por Decimal.
+      const descuento = cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null;
+      const lineasVenta = lineas.map((l) => {
+        const precioCobrado = precioConDescuento(l.precioUnitario, descuento);
+        return { productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: precioCobrado, precioListaUnitario: precioCobrado !== l.precioUnitario ? l.precioUnitario : undefined };
+      });
 
       const venta = await registrarVentaEnTx(
         tx,
@@ -350,8 +404,9 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
           fecha: ahora,
           origen: { tipo: "automatico" },
           proveedorId: null,
+          clienteId: cuenta.clienteId,
           detalle: `Mesa ${mesa}`,
-          lineas: lineas.map((l) => ({ productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: l.precioUnitario })),
+          lineas: lineasVenta,
         },
         { permitirStockNegativo: true }
       );
@@ -375,10 +430,12 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
       }
       await cerrar();
 
-      // Σ del importe de cada línea VENTA registrada (importeDeLinea, igual que registrarVentaEnTx y la boleta), no la suma cruda
-      // re-redondeada: el total del mensaje coincide centavo a centavo con lo registrado. redondearMoneda solo limpia el ruido del float.
-      const total = redondearMoneda(lineas.reduce((suma, l) => suma + importeDeLinea(l.cantidad, l.precioUnitario), 0));
-      const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}.`;
+      // Σ del importe COBRADO de cada línea VENTA registrada (importeDeLinea, igual que registrarVentaEnTx y la boleta — con
+      // descuento ya aplicado si hay cliente), no la suma cruda re-redondeada: el total del mensaje coincide centavo a centavo con
+      // lo registrado. redondearMoneda solo limpia el ruido del float.
+      const total = redondearMoneda(lineasVenta.reduce((suma, l) => suma + importeDeLinea(l.cantidadVendida, l.precioUnitario), 0));
+      const conCliente = cuenta.cliente ? ` (con ${descuento}% de descuento a «${cuenta.cliente.nombre}»)` : "";
+      const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}${conCliente}.`;
       if (!venta.avisosStockNegativo.length) return ok(mensaje);
 
       for (const aviso of venta.avisosStockNegativo) {

@@ -118,6 +118,12 @@ function FilaBoleta({ boleta: b }: { boleta: Awaited<ReturnType<typeof listarBol
       <div className="border-t px-3 py-2">
         <p className="mb-2 text-xs text-neutral-500">
           Atendió {b.detalle.mesero} · Abierta {formatearFechaHora(b.detalle.abiertaEn)} · Cerrada {formatearFechaHora(b.detalle.cerradaEn)}
+          {b.detalle.cliente && (
+            <>
+              {" "}
+              · Cliente {b.detalle.cliente.nombre} (−{b.detalle.cliente.descuentoPorcentaje}%)
+            </>
+          )}
         </p>
         <table className="w-full text-sm">
           <thead>
@@ -136,7 +142,10 @@ function FilaBoleta({ boleta: b }: { boleta: Awaited<ReturnType<typeof listarBol
               <tr key={`${l.producto}|${l.precioUnitario}|${i}`} className="border-b last:border-0">
                 <td className="px-2 py-1">{l.producto}</td>
                 <td className="px-2 py-1 text-right tabular-nums">{l.cantidad.toLocaleString("es-AR")}</td>
-                <td className="px-2 py-1 text-right tabular-nums">{formatearMonto(l.precioUnitario)}</td>
+                <td className="px-2 py-1 text-right tabular-nums">
+                  {l.precioListaUnitario !== undefined && <span className="mr-1 text-neutral-500 line-through dark:text-neutral-400">{formatearMonto(l.precioListaUnitario)}</span>}
+                  {formatearMonto(l.precioUnitario)}
+                </td>
                 <td className="px-2 py-1 text-right tabular-nums">{formatearMonto(l.subtotal)}</td>
                 <td className="px-2 py-1 text-right">
                   {l.operacionId ? (

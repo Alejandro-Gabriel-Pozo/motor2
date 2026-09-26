@@ -50,6 +50,7 @@ describe("resolverImpresion: boleta de cierre", () => {
     numero: null,
     corrigeA: null,
     estado: ventaAnulada ? "anulada" : "vigente",
+    cliente: null,
   });
 
   it("presente en «Cuentas cerradas»: se imprime", () => {
@@ -78,6 +79,7 @@ describe("resolverImpresion: boleta corregida", () => {
     numero: { numero: 566, ejemplar },
     corrigeA: ejemplar > 1 ? { numero: 566, ejemplar: 1 } : null,
     estado,
+    cliente: null,
   });
   const pedido = { tipo: "boleta-correccion", cuentaId: "c1", ejemplar: 2 } as const;
 

@@ -6,11 +6,13 @@ import { armarComandas } from "@/core/pos/comanda";
 import { obtenerBoletasRecientes } from "@/core/pos/boleta";
 import { cargarSelectorCartaPos } from "@/core/pos/selector-carta-consulta";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
+import { listarClientes } from "@/server/actions/clientes/cliente";
 import { AvisoMesaProvider } from "./aviso-mesa";
 import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
 import { CuentasCerradas } from "./cuentas-cerradas";
 import { AbrirCuenta } from "./abrir-cuenta";
 import { ComensalesCuenta } from "./comensales-cuenta";
+import { ClienteCuenta } from "./cliente-cuenta";
 import { AgregarItems } from "./agregar-items";
 import { SinEnviar } from "./sin-enviar";
 import { AnularItem } from "./anular-item";
@@ -54,8 +56,9 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     );
   }
 
-  const [tomarPedido, anularItem, cerrarCuenta, verReportesDinero, secciones, boletas] = await Promise.all([
+  const [tomarPedido, asignarCliente, anularItem, cerrarCuenta, verReportesDinero, secciones, boletas] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido"),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_asignar_cliente"),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item"),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta"),
     // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Boletas emitidas» se
@@ -69,6 +72,10 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
   // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
   const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaPos(ctx.sucursalId) : null;
+  // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
+  // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
+  // a un Client Component (`ClienteCuenta`).
+  const clientesActivos = cuenta && asignarCliente.editar ? (await listarClientes(true)).map((c) => ({ id: c.id, nombre: c.nombre, descuentoPorcentaje: Number(c.descuentoPorcentaje) })) : [];
   const titulo = nombreDeMesa(mesa.numero);
   const comandas = cuenta ? armarComandas(cuenta.envios, cuenta.mesero) : [];
 
@@ -88,8 +95,16 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
               {cuenta ? `Atiende ${cuenta.mesero} · abierta ${cuenta.tiempoAbierta}` : "Libre · sin cuenta abierta"}
             </p>
             {cuenta && (
-              <div className="mt-1">
+              <div className="mt-1 flex flex-col gap-1">
                 <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={tomarPedido.editar} />
+                <ClienteCuenta
+                  cuentaId={cuenta.id}
+                  clienteId={cuenta.clienteId}
+                  clienteNombre={cuenta.cliente}
+                  descuentoPorcentaje={cuenta.descuentoPorcentaje}
+                  clientes={clientesActivos}
+                  puede={asignarCliente.editar}
+                />
               </div>
             )}
           </div>

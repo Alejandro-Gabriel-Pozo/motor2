@@ -41,6 +41,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
     items: [
       { href: "/catalogo/productos", label: "Productos", accion: "alta_producto" },
       { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores" },
+      { href: "/catalogo/clientes", label: "Clientes con descuento", accion: "clientes" },
       { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta" },
       { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia" },
       { href: "/catalogo/categorias", label: "Categorías", accion: "categorias" },
@@ -103,6 +104,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/trazabilidad", label: "Trazabilidad por ID", accion: "ver_reportes_operativos" },
       { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "ver_reportes_operativos" },
       { href: "/reportes/boletas", label: "Boletas emitidas", accion: "ver_reportes_dinero" },
+      { href: "/reportes/descuentos-clientes", label: "Descuentos por cliente", accion: "ver_reportes_dinero" },
     ],
   },
   {
