@@ -2,6 +2,8 @@
 
 import { useId, useState } from "react";
 import { anularItemEnviado } from "@/server/actions/pos/cuenta";
+import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
 import { formatearCantidad } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";
@@ -12,6 +14,11 @@ import { useAccionMesa } from "./usar-accion";
  * además lo que quedaba al abrir el diálogo (`restanteVisto`): si otro lo anuló mientras tanto, el servidor rechaza en vez de anular
  * sobre un número viejo. El motivo no lleva `required` nativo a propósito: el que valida es el servidor, y su mensaje se muestra acá
  * (`role="alert"`). Sin `pos_anular_item`, el botón queda deshabilitado.
+ *
+ * La cantidad usa `CampoNumero` (nunca `Number(...)` a secas): antes un `<input>` crudo aceptaba notación científica en silencio
+ * ("1e3" → 1000) sin marcar el campo como inválido. `CampoNumero` interpreta con `interpretarNumero`/`numeroDelCampo`
+ * (src/core/datos/numero-tecleado.ts) y deja el campo `aria-invalid` con el mensaje nativo del navegador ante un formato que no
+ * es un número — el servidor (`validarCantidadPedido`) sigue siendo quien valida decimales/paso de venta/rango.
  *
  * Al salir bien pide imprimir el aviso para cocina («ANULACIÓN · NO PREPARAR»): la anulación nueva del ítem, la que no estaba entre
  * las que tenía al confirmar (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B4). Quitar un ítem SIN enviar no imprime nada.
@@ -26,7 +33,8 @@ export function AnularItem({ item, puede }: { item: { id: string; productoNombre
   const base = useId();
 
   const abrir = () => {
-    setCantidad(String(item.restante).replace(".", ","));
+    // Canónico (punto decimal, nunca coma): lo que CampoNumero espera como `value` controlado — ver textoCanonico.
+    setCantidad(String(item.restante));
     setMotivo("");
     setRestanteVisto(item.restante);
     setError(null);
@@ -37,7 +45,8 @@ export function AnularItem({ item, puede }: { item: { id: string; productoNombre
   };
   const enviar = (e: React.FormEvent) => {
     e.preventDefault();
-    const n = Number(cantidad.trim().replace(",", ".") || Number.NaN);
+    // numeroDelCampo: vacío → undefined, texto inválido (ej. notación científica) → NaN — el servidor lo rechaza, nunca un 0 encubierto.
+    const n = numeroDelCampo(cantidad) ?? Number.NaN;
     const espejosAntes = anulacionesDe(item.id);
     ejecutar(
       () => anularItemEnviado(item.id, n, motivo, restanteVisto),
@@ -81,14 +90,7 @@ export function AnularItem({ item, puede }: { item: { id: string; productoNombre
               <label htmlFor={`${base}-cantidad`} className="text-[13px] font-semibold">
                 Cantidad a anular
               </label>
-              <input
-                id={`${base}-cantidad`}
-                inputMode="decimal"
-                autoComplete="off"
-                value={cantidad}
-                onChange={(e) => setCantidad(e.target.value)}
-                className={`${CAMPO} tabular-nums`}
-              />
+              <CampoNumero id={`${base}-cantidad`} value={cantidad} onChange={setCantidad} />
               <label htmlFor={`${base}-motivo`} className="text-[13px] font-semibold">
                 Motivo (obligatorio)
               </label>

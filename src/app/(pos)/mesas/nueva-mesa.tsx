@@ -3,12 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { crearMesa } from "@/server/actions/pos/mesas";
+import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 
 /**
  * «Nueva mesa»: la única pieza de cliente del mapa. Abre un diálogo propio (con `role="dialog"`, título y cierre con Escape) con el
  * número sugerido precargado (el mayor + 1) y llama a `crearMesa`; si sale bien, cierra el diálogo, avisa y pide `router.refresh()`
  * (la acción no refresca sola: ver su docstring). Sin permiso de Editar en `pos_mesas` el botón queda deshabilitado; igual la acción
  * vuelve a verificarlo en el servidor.
+ *
+ * El número usa `CampoNumero` (nunca `Number(...)` a secas): antes un `<input>` crudo aceptaba notación científica en silencio
+ * ("1e3" → 1000). `CampoNumero` interpreta con `interpretarNumero`/`numeroDelCampo` (src/core/datos/numero-tecleado.ts) y deja el
+ * campo `aria-invalid` con el mensaje nativo del navegador ante un formato que no es un número — `crearMesa` sigue siendo quien
+ * valida que sea un entero dentro del rango permitido.
  */
 export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: number; puedeCrear: boolean }) {
   const router = useRouter();
@@ -31,7 +38,8 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
   const enviar = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const r = await crearMesa(Number(numero.trim() || NaN));
+      // numeroDelCampo: vacío → undefined, texto inválido (ej. notación científica) → NaN — el servidor lo rechaza, nunca un 0 encubierto.
+      const r = await crearMesa(numeroDelCampo(numero) ?? Number.NaN);
       if (!r.ok) {
         setError(r.mensaje);
         return;
@@ -81,19 +89,7 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
               <label htmlFor="nueva-mesa-numero" className="text-[13px] font-semibold">
                 Número de mesa
               </label>
-              <input
-                id="nueva-mesa-numero"
-                inputMode="numeric"
-                autoComplete="off"
-                autoFocus
-                required
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? "nueva-mesa-error" : undefined}
-                className="rounded-lg border border-[var(--border)] px-3 py-2 text-[15px] tabular-nums outline-none focus:border-[var(--ink-soft)]"
-              />
+              <CampoNumero id="nueva-mesa-numero" value={numero} onChange={setNumero} required autoFocus />
               {error && (
                 <p id="nueva-mesa-error" role="alert" className="text-[13px] text-red-700">
                   {error}

@@ -213,3 +213,22 @@ test("con el sistema en modo oscuro, el salón sigue claro (tokens en .pos-shell
   });
   expect(estilos).toEqual({ fondo: "rgb(250, 250, 248)", texto: "rgb(28, 27, 25)", esquema: "light", titulo: "rgb(28, 27, 25)", raiz: "light dark" });
 });
+
+test("«Nueva mesa»: notación científica en el número no se acepta en silencio — queda inválido, con mensaje, y no se crea nada", async ({ paginaAutenticada: page, sucursalId }) => {
+  // Antes: un <input> crudo con `Number(numero.trim())` interpretaba "1e3" como 1000 sin avisar nada. Ahora usa CampoNumero
+  // (interpretarNumero), que lo deja aria-invalid con el mensaje nativo del navegador y no deja salir el envío.
+  await page.goto("/mesas");
+  await page.getByRole("button", { name: "Nueva mesa" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Nueva mesa" });
+  const campoNumero = dialogo.getByLabel("Número de mesa");
+
+  await campoNumero.fill("1e3");
+  await dialogo.getByRole("button", { name: "Crear mesa" }).click();
+
+  expect(await campoNumero.evaluate((e: HTMLInputElement) => e.validity.customError), "el campo tiene que quedar inválido").toBe(true);
+  expect(await campoNumero.evaluate((e: HTMLInputElement) => e.validationMessage)).toMatch(/no es un número válido\./i);
+  await expect(campoNumero).toHaveAttribute("aria-invalid", "true");
+  // El diálogo sigue abierto (el envío nativo nunca salió) y no se creó la mesa 1000.
+  await expect(dialogo).toBeVisible();
+  expect(await prisma.mesa.count({ where: { sucursalId, numero: 1000 } })).toBe(0);
+});

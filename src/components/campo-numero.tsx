@@ -16,6 +16,8 @@ interface Props {
   onChange?: (valor: string) => void;
   required?: boolean;
   placeholder?: string;
+  /** Foco automático al montar (ej. el primer campo de un diálogo recién abierto) — mismo `autoFocus` nativo de un `<input>`. */
+  autoFocus?: boolean;
   /** Nombre accesible del campo cuando no hay un `<label>` asociado (un placeholder desaparece al tipear y no es un nombre confiable para un lector de pantalla). */
   ariaLabel?: string;
   /** Ej. "$" — se muestra al costado del campo, nunca dentro del valor editable (mismo criterio que ERPNext/Dolibarr: el símbolo no es parte de lo que se tipea). */
@@ -108,6 +110,7 @@ export function CampoNumero({
   etiqueta,
   decimales,
   permitirNegativo,
+  autoFocus,
 }: Props) {
   const controlado = value !== undefined;
   const [interno, setInterno] = useState(defaultValue ?? "");
@@ -148,6 +151,7 @@ export function CampoNumero({
         placeholder={placeholder}
         aria-label={ariaLabel}
         required={required}
+        autoFocus={autoFocus}
         aria-invalid={error ? true : undefined}
         onFocus={(e) => {
           setEnFoco(true);
