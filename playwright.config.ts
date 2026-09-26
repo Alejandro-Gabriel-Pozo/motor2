@@ -42,11 +42,11 @@ const base = resolverUrlE2E(process.env);
 process.env.DATABASE_URL = base.url;
 process.env.DIRECT_URL = base.url;
 
-// Puerto propio de ESTE worktree (fix/validar-precios-producto): 48213, distinto del que traía este archivo desde
-// el worktree/rama anterior (45677, que otro worktree del sandbox seguía usando al mismo tiempo — colisión real,
-// "http://localhost:45677 is already used", confirmada sin ningún listener propio en pie). No es una decisión de
-// producto — la app no expone nada real en este puerto — así que se corrige acá, sin tocar ningún otro worktree.
-const PUERTO = 48213;
+// Puerto propio de ESTE worktree (fix/redondeo-consumo-fraccionado): 53219, distinto de los ya tomados por ramas
+// anteriores en este mismo sandbox compartido (48213, 45677, 47391 — ver el historial de este archivo). No es una
+// decisión de producto — la app no expone nada real en este puerto — así que se corrige acá, sin tocar ningún otro
+// worktree.
+const PUERTO = 53219;
 const URL_BASE = `http://localhost:${PUERTO}`;
 
 /**

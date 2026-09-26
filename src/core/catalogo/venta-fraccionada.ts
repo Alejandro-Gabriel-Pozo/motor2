@@ -15,9 +15,12 @@ import { esNumeroFinito } from "@/core/numero";
  * propio Kardex tuviera que redondear la cantidad vendida del PV — silenciosamente, el mismo bug que esta tarea corrige para la
  * cantidad CARGADA.
  *
- * FUERA DE ALCANCE, a propósito (Task #27 aparte): el consumo de MATERIA PRIMA que la receta de este PV dispara (ej. vender 0,5
- * pizza pide 0,5 "bollo" a una MP en unidad de 0 decimales) sigue redondeándose exactamente igual que hoy — esta tarea no lo toca,
- * ni siquiera para agregar un aviso.
+ * RESUELTO por la Task #27 (docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): el consumo de MATERIA PRIMA que la receta de este
+ * PV dispara (ej. vender 0,5 pizza pide 0,5 "bollo" a una MP en unidad de 0 decimales) ya NO se redondea "a secas" por separado en
+ * cada venta — `registrar-venta.ts` arrastra un resto por (sucursal, producto consumido) con `src/core/movimientos/arrastre-
+ * redondeo.ts` (`crearArrastreDeRedondeo`/`cargarDeudaDeRedondeo`), así que dos medias pizzas consumen 1 bollo en total, no 2 (ni 0
+ * con paso 0,25). El arreglo es transparente para este archivo: sigue sin mirar la unidad de las materias primas de la receta, la
+ * validación de acá (R3) solo protege la unidad del PV cuando tiene stock propio.
  */
 
 /**
