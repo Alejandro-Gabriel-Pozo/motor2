@@ -111,6 +111,7 @@ model Sucursal {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  seccionesHabituales  SeccionHabitualProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
   promociones          PromocionProducto[]
@@ -321,6 +322,7 @@ model Producto {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  seccionesHabituales  SeccionHabitualProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
   disponibilidades     DisponibilidadProducto[]
   promociones          PromocionProducto[]
@@ -742,11 +744,17 @@ model Seccion {
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
   nombre     String
   activa     Boolean  @default(true)
+  /// ¿El cierre de cuenta del POS puede descontar de acá AUTOMÁTICAMENTE cuando la sección habitual de un producto no alcanza
+  /// (o el producto no tiene habitual)? Default true: todas sirven de respaldo sin configurar nada (decisión del dueño 2026-09-25:
+  /// hoy no se excluye ninguna, pero queda la herramienta). No afecta a la sección HABITUAL de un producto (la preferencia
+  /// explícita manda) ni a la venta de mostrador (ahí la sección la elige una persona). Ver docs/plan-seccion-habitual-stock-2026-09-25.md.
+  sirveDeRespaldoEnVentas Boolean @default(true)
 
   operacionesTransferenciaDestino Operacion[]           @relation("OperacionSeccionDestino")
   movimientos                     MovimientoStock[]
   conteosFisicos                  ConteoFisico[]
   stockMinimos                    StockMinimoProducto[]
+  seccionesHabituales             SeccionHabitualProducto[]
   traspasosComoSeccionOrigen      TraspasoSucursal[]    @relation("TraspasoSeccionOrigen")
   traspasosComoSeccionDestino     TraspasoSucursal[]    @relation("TraspasoSeccionDestino")
 
@@ -1124,6 +1132,22 @@ model StockMinimoProducto {
   minimo     Decimal  @db.Decimal(14, 4)
 
   @@unique([productoId, seccionId])
+}
+
+/// Sección HABITUAL de la que sale un producto de venta (PV) en una sucursal — `Seccion` de STOCK (Barra/Cocina/Depósito),
+/// NO `SeccionCarta` (categoría del menú). Fila ausente = sin preferencia: el cierre del POS resuelve solo, por vencimiento.
+/// Es una preferencia, no una restricción: si ahí no alcanza, se busca en las secciones marcadas como respaldo
+/// (docs/plan-seccion-habitual-stock-2026-09-25.md). Se usa aunque la sección no sirva de respaldo (Seccion.sirveDeRespaldoEnVentas).
+model SeccionHabitualProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  seccionId  String
+  seccion    Seccion  @relation(fields: [seccionId], references: [id])
+
+  @@unique([sucursalId, productoId])
 }
 
 // ===================================================================

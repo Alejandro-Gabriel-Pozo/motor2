@@ -49,6 +49,20 @@ export interface Transicion {
    * SIEMPRE un FK obligatorio en la firma de la acción — este flag es solo
    * para que la UI sepa si tiene que exigir la elección al operario o
    * puede preseleccionar "General" sin preguntar.
+   *
+   * EXCEPCIÓN — el cierre de cuenta del salón (POS, `cerrarCuenta`) NO pide
+   * sección: registra una VENTA cuyos CONSUMOS de receta sí reparten stock
+   * existente, pero quien cierra es un cajero frente al cliente, que no sabe
+   * (ni tiene por qué saber) de qué depósito sale cada insumo, y la mesa ya
+   * comió (B6bis). En vez de adivinar una sola sección para toda la cuenta,
+   * el núcleo de la venta la RESUELVE insumo por insumo con una regla
+   * explícita y auditable: la sección habitual del producto
+   * (SeccionHabitualProducto) si tiene; si ahí no alcanza, las secciones
+   * activas marcadas como respaldo (Seccion.sirveDeRespaldoEnVentas), por
+   * vencimiento (FEFO); lo que falte queda en negativo en una sección
+   * determinada y se avisa y audita con su nombre. La venta de mostrador
+   * sigue exigiendo la sección elegida por una persona. Ver
+   * docs/plan-seccion-habitual-stock-2026-09-25.md.
    */
   exigeSeccion: boolean;
 }

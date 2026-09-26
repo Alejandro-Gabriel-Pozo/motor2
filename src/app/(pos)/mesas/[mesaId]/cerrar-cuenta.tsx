@@ -2,16 +2,17 @@
 
 import { useId, useState } from "react";
 import { cerrarCuenta } from "@/server/actions/pos/cuenta";
-import { BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
+import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
 import { formatearMonto } from "./formato";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 
 /**
  * «Cerrar cuenta»: registra la venta de lo consumido (al precio congelado de cada ítem) y libera la mesa, en un solo paso (no hay caja
- * ni cobro aparte). Se elige la sección de la que sale la mercadería (la primera activa, preseleccionada). Con ítems sin enviar el
- * botón queda deshabilitado y se dice por qué; sin `pos_cerrar_cuenta`, también. Si el cierre dejó algún insumo en negativo, el
- * mensaje de éxito lo nombra (aviso de la pantalla, en ámbar).
+ * ni cobro aparte). La sección de la que sale la mercadería NO se elige: el servidor la resuelve insumo por insumo
+ * (docs/plan-seccion-habitual-stock-2026-09-25.md); sin ninguna sección activa en la sucursal el cierre no se puede confirmar. Con ítems
+ * sin enviar el botón queda deshabilitado y se dice por qué; sin `pos_cerrar_cuenta`, también. Si el cierre dejó algún insumo en
+ * negativo, el mensaje de éxito lo nombra, con su sección (aviso de la pantalla, en ámbar).
  *
  * Con total > 0, al salir bien pide imprimir la boleta para el cliente: la de esta cuenta, en cuanto el refresco la trae en «Cuentas
  * cerradas» (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B6). Sin navegar a otra pantalla, para no perder el aviso. Con total
@@ -22,25 +23,24 @@ export function CerrarCuenta({
   titulo,
   total,
   sinEnviar,
-  secciones,
+  haySecciones,
   puede,
 }: {
   cuentaId: string;
   titulo: string;
   total: number;
   sinEnviar: number;
-  secciones: { id: string; nombre: string }[];
+  /** ¿La sucursal tiene alguna sección activa? Sin ninguna, no hay de dónde descontar la mercadería. */
+  haySecciones: boolean;
   puede: boolean;
 }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();
   const { pedir } = useImpresion();
   const [abierto, setAbierto] = useState(false);
-  const [seccionId, setSeccionId] = useState(secciones[0]?.id ?? "");
   const base = useId();
 
   const bloqueo = sinEnviar > 0 ? `Hay ${sinEnviar === 1 ? "1 ítem sin enviar: envialo o quitalo" : `${sinEnviar} ítems sin enviar: envialos o quitalos`} antes de cerrar la cuenta.` : null;
   const abrir = () => {
-    setSeccionId((actual) => (secciones.some((s) => s.id === actual) ? actual : (secciones[0]?.id ?? "")));
     setError(null);
     setAbierto(true);
   };
@@ -86,7 +86,7 @@ export function CerrarCuenta({
               onSubmit={(e) => {
                 e.preventDefault();
                 ejecutar(
-                  () => cerrarCuenta(cuentaId, seccionId),
+                  () => cerrarCuenta(cuentaId),
                   () => {
                     setAbierto(false);
                     if (total > 0) pedir({ tipo: "boleta", cuentaId });
@@ -101,19 +101,8 @@ export function CerrarCuenta({
                   {formatearMonto(total)}
                 </span>
               </div>
-              {secciones.length ? (
-                <label htmlFor={`${base}-seccion`} className="text-[13px] font-semibold">
-                  Sección de la que sale la mercadería
-                </label>
-              ) : null}
-              {secciones.length ? (
-                <select id={`${base}-seccion`} autoFocus value={seccionId} onChange={(e) => setSeccionId(e.target.value)} className={CAMPO}>
-                  {secciones.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre}
-                    </option>
-                  ))}
-                </select>
+              {haySecciones ? (
+                <p className="text-[13px] text-[var(--ink-soft)]">Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.</p>
               ) : (
                 <p className="text-[13px] text-red-700">
                   Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.
@@ -128,7 +117,7 @@ export function CerrarCuenta({
                 <button type="button" onClick={cerrar} className={BOTON_SECUNDARIO}>
                   Cancelar
                 </button>
-                <button type="submit" disabled={pending || !seccionId} className={BOTON_PRIMARIO}>
+                <button type="submit" autoFocus disabled={pending || !haySecciones} className={BOTON_PRIMARIO}>
                   {pending ? "Cerrando…" : "Cerrar y registrar la venta"}
                 </button>
               </div>

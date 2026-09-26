@@ -130,7 +130,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   titulo={titulo}
                   total={cuenta.total}
                   sinEnviar={cuenta.sinEnviar.length}
-                  secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+                  haySecciones={secciones.length > 0}
                   puede={cerrarCuenta.editar}
                 />
                 {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={tomarPedido.editar} />}

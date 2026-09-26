@@ -20,6 +20,7 @@ import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos
 import { listarRoles } from "../../src/server/actions/permisos/roles";
 import { buscarProductoParaPromocion, obtenerPromocionesHabilitadas } from "../../src/server/actions/reportes/promociones";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
+import { listarSeccionesHabituales } from "../../src/server/actions/stock/seccion-habitual";
 import { listarSucursalesDisponibles, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/traspasos";
 
 /**
@@ -55,6 +56,7 @@ const LECTURAS: Fila[] = [
   { nombre: "obtenerPromocionesHabilitadas", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => obtenerPromocionesHabilitadas(s) },
   { nombre: "buscarProductoParaPromocion", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => buscarProductoParaPromocion(s, "") },
   { nombre: "listarStockMinimo", clave: "stock_minimo", pagina: "stock/minimo/page.tsx", archivo: "stock/stock-minimo.ts", llamar: (s) => listarStockMinimo(s) },
+  { nombre: "listarSeccionesHabituales", clave: "stock_minimo", pagina: "stock/seccion-habitual/page.tsx", archivo: "stock/seccion-habitual.ts", llamar: (s) => listarSeccionesHabituales(s) },
   { nombre: "obtenerBandejaTransferencias", clave: "proceso_transferencia_sucursal", pagina: "traspasos/page.tsx", archivo: "traspasos/traspasos.ts", llamar: (s) => obtenerBandejaTransferencias(s) },
   { nombre: "listarSucursalesDisponibles", clave: "proceso_transferencia_sucursal", pagina: "traspasos/enviar/page.tsx", archivo: "traspasos/traspasos.ts", llamar: (s) => listarSucursalesDisponibles(s) },
   { nombre: "obtenerComparativaPreciosPorInsumo", clave: "comparar_precios", pagina: "catalogo/proveedores/comparativa/page.tsx", archivo: "catalogo/proveedor-por-producto.ts", llamar: () => obtenerComparativaPreciosPorInsumo() },

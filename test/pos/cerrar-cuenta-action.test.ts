@@ -16,7 +16,8 @@ import { obtenerBoletasRecientes } from "../../src/core/pos/boleta";
 
 /**
  * Cierre de cuenta (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 6): registra la venta con el núcleo
- * de la venta de mostrador, al precio congelado, y libera la mesa. Stock insuficiente NO bloquea (B6bis): la venta se registra, el
+ * de la venta de mostrador, al precio congelado, y libera la mesa. La sección no se elige: sale sola (acá hay una sola, «Salón»; los
+ * casos con varias secciones están en cerrar-cuenta-origen.test.ts). Stock insuficiente NO bloquea (B6bis): la venta se registra, el
  * mensaje lo dice y queda auditado; el saldo negativo aparece en Alertas de stock y se corrige con Conteo Físico o Ajuste normales.
  */
 describe("cerrarCuenta (server action)", () => {
@@ -41,7 +42,7 @@ describe("cerrarCuenta (server action)", () => {
       { productoId: s.pizza.id, cantidad: 1, precioUnitario: 11000, numeroEnvio: 2 },
     ]);
 
-    const r = await cerrarCuenta(cuenta.id, s.seccion.id);
+    const r = await cerrarCuenta(cuenta.id);
     expect(r).toEqual({ ok: true, mensaje: `Cuenta de la mesa 4 cerrada: se registró la venta por ${new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(36000)}.` });
 
     const ventas = await ventasDeLaMesa();
@@ -72,7 +73,7 @@ describe("cerrarCuenta (server action)", () => {
     await anularItemEnviado(mila.id, 1, "Una menos", 3);
     await anularItemEnviado(flan.id, 1, "No quiso postre", 1);
 
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const ventas = await ventasDeLaMesa();
     expect(ventas.flatMap((v) => v.movimientos).map((m) => [m.productoId, Number(m.cantidad), Number(m.precioTotal)])).toEqual([[s.milanesa.id, -2, 18000]]);
     // El flan anulado entero queda sin Operacion; la milanesa y su espejo, enlazados a la misma venta.
@@ -86,7 +87,7 @@ describe("cerrarCuenta (server action)", () => {
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
       { productoId: s.flan.id, cantidad: 2, precioUnitario: 3500, numeroEnvio: 2 },
     ]);
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const lineas = (await ventasDeLaMesa()).flatMap((v) => v.movimientos).map((m) => [Number(m.cantidad), Number(m.precioPorUnidadStock)]);
     expect(lineas).toEqual([[-1, 3000], [-2, 3500]]);
   });
@@ -94,7 +95,7 @@ describe("cerrarCuenta (server action)", () => {
   it("neto cero (todo anulado): cierra la cuenta sin venta", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
     await anularItemEnviado(cuenta.items[0].id, 1, "Se fueron", 1);
-    expect(await cerrarCuenta(cuenta.id, s.seccion.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar." });
+    expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar." });
     expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
   });
@@ -105,32 +106,40 @@ describe("cerrarCuenta (server action)", () => {
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 },
       { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000 },
     ]);
-    expect(await cerrarCuenta(cuenta.id, s.seccion.id)).toEqual({ ok: false, mensaje: "Hay 2 ítems sin enviar: envialos o quitalos." });
+    expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: false, mensaje: "Hay 2 ítems sin enviar: envialos o quitalos." });
     expect(await prisma.operacion.count()).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
 
   it("un segundo cierre devuelve «ya estaba cerrada» sin vender dos veces", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
-    expect(await cerrarCuenta(cuenta.id, s.seccion.id)).toEqual({ ok: true, mensaje: "La cuenta de la mesa 4 ya estaba cerrada." });
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
+    expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: true, mensaje: "La cuenta de la mesa 4 ya estaba cerrada." });
     expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(1);
   });
 
-  it("una sección de otra sucursal se rechaza y la cuenta sigue abierta, sin escribir nada", async () => {
+  it("sin ninguna sección activa en la sucursal se rechaza y la cuenta sigue abierta, sin escribir nada (una sección de otra sucursal no cuenta)", async () => {
+    await prisma.seccion.update({ where: { id: s.seccion.id }, data: { activa: false } });
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-    const ajena = await sembrarSeccion(norte.id, "Barra Norte");
+    await sembrarSeccion(norte.id, "Barra Norte");
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
-    expect(await cerrarCuenta(cuenta.id, ajena.id)).toEqual({ ok: false, mensaje: "No se encontró la sección." });
+    expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: false, mensaje: "Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una." });
     expect(await prisma.operacion.count()).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
+  });
+
+  it("sin ninguna sección activa pero con neto cero (todo anulado): cierra sin venta igual", async () => {
+    await prisma.seccion.update({ where: { id: s.seccion.id }, data: { activa: false } });
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
+    await anularItemEnviado(cuenta.items[0].id, 1, "Se fueron", 1);
+    expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar." });
   });
 
   it("una cuenta de otra sucursal no se encuentra", async () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const mesaNorte = await prisma.mesa.create({ data: { sucursalId: norte.id, numero: 1 } });
     const ajena = await sembrarCuenta(mesaNorte.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
-    expect(await cerrarCuenta(ajena.id, s.seccion.id)).toEqual({ ok: false, mensaje: "No se encontró esa cuenta en esta sucursal." });
+    expect(await cerrarCuenta(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró esa cuenta en esta sucursal." });
   });
 
   it("sin pos_cerrar_cuenta no se puede cerrar: ni el mozo (pos_tomar_pedido) ni uno que solo lo VE", async () => {
@@ -139,7 +148,7 @@ describe("cerrarCuenta (server action)", () => {
     const soloVe = await crearUsuarioConRol(s.sucursalId, "cajero-solo-ve", [{ clave: "pos_cerrar_cuenta", ver: true, editar: false }]);
     for (const usuario of [mozo, soloVe]) {
       await entrarComo(usuario);
-      const r = await cerrarCuenta(cuenta.id, s.seccion.id);
+      const r = await cerrarCuenta(cuenta.id);
       expect(r.ok).toBe(false);
       expect(r.mensaje).toMatch(/No tenés permiso/);
       expect(r.mensaje).toContain('"pos_cerrar_cuenta"');
@@ -152,7 +161,7 @@ describe("cerrarCuenta (server action)", () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
     const cajero = await crearUsuarioConRol(s.sucursalId, "cajero", [{ clave: "pos_cerrar_cuenta", ver: true, editar: true }]);
     await entrarComo(cajero);
-    expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaPorId).toBe(cajero.id);
   });
 
@@ -164,10 +173,10 @@ describe("cerrarCuenta (server action)", () => {
         { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
       ]);
 
-      const r = await cerrarCuenta(cuenta.id, s.seccion.id);
+      const r = await cerrarCuenta(cuenta.id);
       expect(r.ok).toBe(true);
       expect(r.mensaje).toMatch(/^Cuenta de la mesa 4 cerrada: se registró la venta por /);
-      expect(r.mensaje).toContain('⚠ Quedó stock negativo: "Muzzarella" (tenía 0,5, se consumió 1,5, quedó en -1). Corregilo con un Conteo Físico o un Ajuste.');
+      expect(r.mensaje).toContain('⚠ Quedó stock negativo: "Muzzarella" en «Salón» (tenía 0,5, se consumió 1,5, quedó en -1). Corregilo con un Conteo Físico o un Ajuste.');
 
       expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id)).toBe(-1);
       expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
@@ -185,8 +194,8 @@ describe("cerrarCuenta (server action)", () => {
 
     it("sin ninguna compra previa (saldo 0) también cierra, y lo que faltó es todo lo consumido", async () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 2, precioUnitario: 12000, numeroEnvio: 1 }]);
-      const r = await cerrarCuenta(cuenta.id, s.seccion.id);
-      expect(r.mensaje).toContain('"Muzzarella" (tenía 0, se consumió 0,5, quedó en -0,5)');
+      const r = await cerrarCuenta(cuenta.id);
+      expect(r.mensaje).toContain('"Muzzarella" en «Salón» (tenía 0, se consumió 0,5, quedó en -0,5)');
       const [fila] = await prisma.registroAuditoria.findMany();
       expect(fila.descripcion).toContain("tenía 0, la venta consumió 0,5, faltaron 0,5");
     });
@@ -195,7 +204,7 @@ describe("cerrarCuenta (server action)", () => {
       await prisma.stockMinimoProducto.create({ data: { sucursalId: s.sucursalId, productoId: s.muzzarella.id, minimo: 2 } });
       await comprar(s.muzzarella.id, 0.5);
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 6, precioUnitario: 12000, numeroEnvio: 1 }]);
-      expect((await cerrarCuenta(cuenta.id, s.seccion.id)).ok).toBe(true);
+      expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
       const alertas = await calcularAlertasStock(s.sucursalId);
       const muzza = alertas.find((a) => a.productoId === s.muzzarella.id);
@@ -212,7 +221,7 @@ describe("cerrarCuenta (server action)", () => {
       await prisma.stockMinimoProducto.create({ data: { sucursalId: s.sucursalId, productoId: s.muzzarella.id, minimo: 2 } });
       await comprar(s.muzzarella.id, 0.5);
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 6, precioUnitario: 12000, numeroEnvio: 1 }]);
-      await cerrarCuenta(cuenta.id, s.seccion.id);
+      await cerrarCuenta(cuenta.id);
 
       const r = await registrarConteoFisico({ productoId: s.muzzarella.id, seccionId: s.seccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
       expect(r).toEqual({ ok: true, mensaje: "Conteo registrado. Diferencia: +4 (ajustada)." });
@@ -225,7 +234,7 @@ describe("cerrarCuenta (server action)", () => {
     it("también se corrige con un Ajuste normal (sin caso especial)", async () => {
       await comprar(s.muzzarella.id, 0.5);
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 6, precioUnitario: 12000, numeroEnvio: 1 }]);
-      await cerrarCuenta(cuenta.id, s.seccion.id);
+      await cerrarCuenta(cuenta.id);
 
       const r = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 1.5 }] });
       expect(r.ok).toBe(true);
@@ -316,7 +325,7 @@ describe("cerrarCuenta (server action)", () => {
     expect.soft((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id))?.cuenta?.total).toBe(370.37);
     expect.soft((await obtenerMapaDeMesas(s.sucursalId)).mesas[0].total).toBe(370.37);
 
-    const r = await cerrarCuenta(cuenta.id, s.seccion.id);
+    const r = await cerrarCuenta(cuenta.id);
     const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
     expect.soft(r.mensaje).toContain(MONEDA.format(370.37));
     const [venta] = await ventasDeLaMesa();
@@ -336,7 +345,7 @@ describe("cerrarCuenta (server action)", () => {
       { productoId: queso.id, cantidad: 0.5, precioUnitario: 1234.57, numeroEnvio: 1 },
     ]);
 
-    const r = await cerrarCuenta(cuenta.id, s.seccion.id);
+    const r = await cerrarCuenta(cuenta.id);
     const registrado = (await ventasDeLaMesa()).flatMap((v) => v.movimientos).filter((m) => m.proceso === "VENTA").map((m) => Number(m.precioTotal));
     expect(registrado.sort((a, b) => a - b)).toEqual([370.37, 617.29]);
     const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
