@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
+import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
 import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/venta-fraccionada";
 import { importeDeLinea } from "@/core/moneda";
 import { seccionesConStock } from "@/core/movimientos/stock";
@@ -211,6 +212,26 @@ async function armarLinea(
 }
 
 /**
+ * Deuda de arrastre de redondeo de cada producto, en ESTA sucursal, al momento de empezar la venta (Task #27, docs/plan-redondeo-
+ * consumo-fraccionado-2026-09-26.md) — cargador con Prisma del núcleo puro `arrastre-redondeo.ts`, mismo criterio que
+ * `origen-venta-datos.ts` para `origen-venta.ts`. `D = Σcantidad − ΣcantidadExacta` (ver el docstring de
+ * `MovimientoStock.cantidadExacta`, schema.prisma), sumando solo las filas CONSUMO con `cantidadExacta` no nulo — las nulas aportan 0
+ * por definición, ya que ahí `cantidad` YA era exacta. Filtra por `seccion.sucursalId` (una relación, no `seccionId: { in: [...] }`):
+ * ya lo hacen `consignacion.ts:104` y `resumen-operativo.ts` con el mismo `groupBy`, así que el filtro por relación es un patrón
+ * probado en esta versión de Prisma. SIEMPRE con `tx` (nunca `prisma` global): dos ventas concurrentes de la misma MP tienen que leer
+ * esto dentro de la MISMA transacción SERIALIZABLE que arbitra el conflicto (ver el docstring del módulo, con-reintento.ts).
+ */
+async function cargarDeudaDeRedondeo(tx: Prisma.TransactionClient, sucursalId: string, productoIds: readonly string[]): Promise<Map<string, number>> {
+  if (!productoIds.length) return new Map();
+  const grupos = await tx.movimientoStock.groupBy({
+    by: ["productoId"],
+    where: { productoId: { in: productoIds as string[] }, cantidadExacta: { not: null }, seccion: { sucursalId } },
+    _sum: { cantidad: true, cantidadExacta: true },
+  });
+  return new Map(grupos.map((g) => [g.productoId, Number(g._sum.cantidad ?? 0) - Number(g._sum.cantidadExacta ?? 0)]));
+}
+
+/**
  * Port de confirmarRegistrarVenta_ConLock_ (Movimientos.js:1154-1332).
  * A diferencia del resto de los procesos, cada venta individual del lote
  * es su propia Operacion (idOperacionVenta propio en Apps Script) — para
@@ -349,6 +370,14 @@ export async function registrarVentaEnTx(
     return fallo(`Stock insuficiente para "${producto?.nombre ?? faltante.productoId}". Actual: ${faltante.actual}, requerido: ${faltante.requerido}.${detallePista}`);
   }
 
+  // Arrastre de redondeo (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): UNA sola carga para la venta ENTERA (todos
+  // los productos que algún consumo va a tocar), después de validar stock (arriba, con la cantidad EXACTA — el arrastre nunca influye
+  // en si una venta se acepta o se rechaza) y antes del bucle de escritura, porque el arrastre tiene que vivir durante TODO ese
+  // bucle: dos consumos del mismo producto en esta misma venta (ej. napolitana + muzzarella, mismo bollo) también se arrastran entre
+  // sí, no solo entre ventas distintas.
+  const productosConsumidosIds = Array.from(new Set(ventas.flatMap((v) => v.consumos.map((c) => c.productoId))));
+  const arrastreDeRedondeo = crearArrastreDeRedondeo(await cargarDeudaDeRedondeo(tx, actor.sucursalId, productosConsumidosIds));
+
   const filas: Prisma.MovimientoStockCreateManyInput[] = [];
   const operacionIds: string[] = [];
   for (const venta of ventas) {
@@ -371,7 +400,14 @@ export async function registrarVentaEnTx(
 
     for (const c of venta.consumos) {
       const consumido = await obtenerProducto(c.productoId);
-      const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
+      // Redondeo CON ARRASTRE (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md) — reemplaza el redondeo "a secas" de
+      // cada parte por separado (`redondearACantidadDeUnidad(c.cantidad, decimales)`, el bug: dos medias pizzas consumían 2 bollos
+      // en vez de 1). Con deuda 0 (el caso de siempre para un producto que nunca dejó resto) el resultado es IDÉNTICO al de antes;
+      // con deuda, la parte que sobró o faltó de consumos anteriores del MISMO producto en esta sucursal (`cargarDeudaDeRedondeo`,
+      // arriba) se suma antes de redondear, así que el TOTAL de la sucursal converge al consumo exacto en vez de que cada parte
+      // redondee de forma independiente. `cantidadExacta` (con el mismo signo que `cantidad`) solo se llena cuando difiere de lo
+      // escrito — alimenta la deuda de la PRÓXIMA venta (`cargarDeudaDeRedondeo`) y la reversión exacta de esta (`anularVenta`).
+      const { cantidad: cantidadRedondeada, cantidadExacta } = arrastreDeRedondeo.consumir(c.productoId, c.cantidad, consumido?.unidadStock.decimales ?? 2);
       // D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo si esta parte vino de un sustituto — un consumo de un
       // HERMANO del mismo Insumo (el caso de siempre) deja el objeto IDÉNTICO a hoy, sin la columna ni el detalle distinto.
       const detalle = c.sustituyeAProductoId
@@ -379,7 +415,7 @@ export async function registrarVentaEnTx(
         : `Consumo por venta de "${venta.nombre}".`;
       filas.push({
         operacionId: operacion.id, productoId: c.productoId, seccionId: c.seccionId, proceso: "CONSUMO",
-        cantidad: -cantidadRedondeada, loteVencimiento: c.loteVencimiento,
+        cantidad: -cantidadRedondeada, cantidadExacta: cantidadExacta === null ? null : -cantidadExacta, loteVencimiento: c.loteVencimiento,
         detalle, precioTotal: 0, precioPorUnidadStock: 0,
         ...(c.sustituyeAProductoId ? { sustituyeAProductoId: c.sustituyeAProductoId } : {}),
       });
