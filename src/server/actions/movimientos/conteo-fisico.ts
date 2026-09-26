@@ -3,7 +3,7 @@
 import type { AccionConteo, EstadoConteo } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
+import { validarCantidad } from "@/core/datos/cantidad";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
@@ -56,8 +56,8 @@ export async function registrarConteoFisico(datos: DatosConteoFisico): Promise<R
  */
 async function registrarConteoConContexto(ctx: ContextoUsuario, datos: DatosConteoFisico): Promise<ResultadoAccion> {
   if (!texto(datos.seccionId)) return error("Elegí una sección — no se puede dejar en blanco.");
-  if (!(datos.conteoReal >= 0)) return error("El conteo real debe ser un número mayor o igual a 0.");
-  if (!esNumeroFinito(datos.conteoReal)) return error("El conteo real no es un número válido.");
+  // El formato/signo/decimales del conteo tecleado se validan más abajo con `validarCantidad`, una vez resuelta la unidad de
+  // stock del producto (Fase de rechazo de decimales, mismo criterio que Compra/Mesa: docs/plan-validacion-de-datos-2026-09-25.md).
   // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
   // registrarMovimiento — conPermiso no valida que la sección sea de
   // ESTA sucursal, solo el permiso de quien llama.
@@ -73,7 +73,16 @@ async function registrarConteoConContexto(ctx: ContextoUsuario, datos: DatosCont
       return error(`El conteo físico es sobre materias primas (MP) o productos "Se produce", no sobre PV comunes.`);
     }
 
-    const conteoReal = redondearACantidadDeUnidad(datos.conteoReal, producto.unidadStock.decimales);
+    // Cantidad de ENTRADA (lo que se tecleó): se rechaza el exceso de decimales, no se redondea en silencio — mismo criterio que
+    // Compra/Mesa (src/core/datos/cantidad.ts). `diferencia`, más abajo, es lo CALCULADO (conteoReal - saldoSistema): eso sigue
+    // redondeándose con `redondearACantidadDeUnidad`, el mismo criterio que la conversión de unidades en Compra.
+    const resConteoReal = validarCantidad(datos.conteoReal, producto.unidadStock, {
+      etiqueta: `El conteo real de "${producto.nombre}"`,
+      obligatorio: true,
+      permitirCero: true,
+    });
+    if (!resConteoReal.ok) return error(resConteoReal.mensaje);
+    const conteoReal = resConteoReal.valor!;
     const loteVencimiento = datos.loteVencimiento ?? null;
     const saldoSistema = loteVencimiento
       ? await calcularSaldoPorLote(producto.id, datos.seccionId, loteVencimiento, tx)

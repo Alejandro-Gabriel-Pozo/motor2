@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 /**
  * Conteo físico: «Registrar conteo» manda TODA la grilla al servidor en una sola llamada (registrarConteosFisicos). Antes era una
@@ -84,6 +85,30 @@ test("una grilla de más de 50 filas se manda en tandas (2 llamadas), y se regis
 
   expect(llamadas).toHaveLength(2); // 50 + 5
   expect(await prisma.conteoFisico.count({ where: { productoId: { in: productos.map((p) => p.id) } } })).toBe(TOTAL);
+});
+
+// Task #32 (docs/pendientes-*.md): antes, un conteo con más decimales de los que admite la unidad de stock (kg, 2 decimales) se
+// redondeaba en silencio; ahora se RECHAZA, mismo criterio que Compra/Mesa/Traspasos (src/core/datos/cantidad.ts).
+test("cargar un conteo con más decimales de los que admite la unidad muestra el error y no registra nada", async ({ paginaAutenticada: page, seccionId }) => {
+  const ahora = Date.now();
+  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  const codigo = `E2E-CD-${ahora}`;
+  const producto = await prisma.producto.create({ data: { codigo, nombre: `E2E Decimal ${codigo}`, tipo: "MP", unidadStockId: kg.id } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId: seccion.sucursalId, productoId: producto.id, disponible: true } });
+  const operacion = await prisma.operacion.create({ data: { sucursalId: seccion.sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
+  await prisma.movimientoStock.create({
+    data: { operacionId: operacion.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Stock inicial del test", precioTotal: 0, precioPorUnidadStock: 0 },
+  });
+
+  await page.goto(`/movimientos/conteo-fisico?seccionId=${seccionId}`);
+  await page.getByRole("row", { name: new RegExp(codigo) }).locator("input").first().fill("7,126");
+  await page.getByRole("button", { name: "Registrar conteo", exact: true }).click();
+
+  await expect(page.getByText(/decimales/)).toBeVisible();
+  expect(await prisma.conteoFisico.count({ where: { productoId: producto.id } })).toBe(0);
+  expect(await calcularSaldoTotal(producto.id, seccionId)).toBe(10);
 });
 
 test("con la sesión vencida, «Registrar conteo» lleva al login y no escribe nada (el aviso de corte no se traga el redirect)", async ({ paginaAutenticada: page, seccionId }) => {

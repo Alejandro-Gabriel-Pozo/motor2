@@ -47,6 +47,28 @@ describe("Conteo Físico", () => {
     expect(Number(conteo.diferencia)).toBe(-3);
   });
 
+  // Task #32 (docs/pendientes-*.md): antes, un conteo con más decimales de los que admite la unidad de stock se redondeaba en
+  // silencio (`redondearACantidadDeUnidad`); ahora se RECHAZA, mismo criterio que Compra/Mesa/Traspasos (src/core/datos/cantidad.ts)
+  // — no se crea ningún ConteoFisico ni se toca el stock.
+  it("RECHAZA un conteo con más decimales de los que admite la unidad (ya no redondea en silencio)", async () => {
+    const resultado = await registrarConteoFisico({
+      productoId: mpId, seccionId, conteoReal: 7.126, fechaConteo: new Date(), accion: "AJUSTAR",
+    });
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+    expect(resultado.mensaje).toContain("decimales");
+    expect(await prisma.conteoFisico.count()).toBe(0);
+    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10); // sin cambios
+  });
+
+  it("sigue aceptando un conteo con los decimales exactos que admite la unidad", async () => {
+    const resultado = await registrarConteoFisico({
+      productoId: mpId, seccionId, conteoReal: 7.13, fechaConteo: new Date(), accion: "AJUSTAR",
+    });
+    expect(resultado.ok, resultado.ok ? "" : resultado.mensaje).toBe(true);
+    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7.13);
+  });
+
   it("FALTA_MOVIMIENTO no toca el stock y queda PENDIENTE", async () => {
     const resultado = await registrarConteoFisico({
       productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO",
@@ -243,7 +265,9 @@ describe("Conteo Físico", () => {
       expect(r.ok).toBe(true);
       if (!r.ok) return;
       expect(r.resultados.map((x) => x.ok)).toEqual([true, false, false, true]);
-      expect(r.resultados[1].mensaje).toContain("mayor o igual a 0");
+      // Task #32: el mensaje de un conteo negativo cambió de "El conteo real debe ser un número mayor o igual a 0." (chequeo manual
+      // `!(datos.conteoReal >= 0)`) al de `validarCantidad` — mismo rechazo (sigue sin aceptar negativos), texto distinto.
+      expect(r.resultados[1].mensaje).toContain("no puede ser menor que cero");
       expect(r.resultados[2].mensaje).toContain("no existe");
       expect(r.mensaje).toBe("2 de 4 conteo(s) registrado(s).");
       expect(await prisma.conteoFisico.count()).toBe(2);
