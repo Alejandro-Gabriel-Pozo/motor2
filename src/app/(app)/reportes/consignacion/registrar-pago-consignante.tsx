@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { registrarPagoConsignante } from "@/server/actions/reportes/consignacion";
 
 function hoyISO() {
@@ -25,7 +26,8 @@ export function RegistrarPagoConsignante({ proveedorId, proveedorNombre, saldoAc
           onSubmit={(e) => {
             e.preventDefault();
             startTransition(async () => {
-              const resultado = await registrarPagoConsignante(proveedorId, Number(importe), new Date(fecha), notas || undefined);
+              // numeroDelCampo: un texto inválido llega como NaN y el servidor lo rechaza; nunca el 0 que daba convertir un texto vacío.
+              const resultado = await registrarPagoConsignante(proveedorId, numeroDelCampo(importe) ?? Number.NaN, new Date(fecha), notas || undefined);
               setMensaje(resultado.mensaje);
               if (resultado.ok) {
                 router.refresh();
@@ -37,7 +39,7 @@ export function RegistrarPagoConsignante({ proveedorId, proveedorNombre, saldoAc
         >
           <label className="text-sm">
             Importe
-            <CampoNumero value={importe} onChange={setImporte} prefijo="$" required />
+            <CampoNumero value={importe} onChange={setImporte} prefijo="$" required tipo="importe" etiqueta="El importe" />
           </label>
           <label className="text-sm">
             Fecha
