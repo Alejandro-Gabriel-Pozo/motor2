@@ -92,7 +92,7 @@ export interface FilaRendimientoSimple {
   motivoSinEstimacion: string | null;
   /** Cuánto puede moverse el % de desvío solo por comprar de a lotes — CONTEXTO en texto, nunca decide si la celda se pinta ámbar (eso es fijo, ver `desvioEsNotable`). Ver `bandaDeRuidoDeLote`. */
   bandaRuidoPct: number | null;
-  /** (entradas reales − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA el ranking, no el %. Ver `impactoDelDesvio`. */
+  /** (consumo observado − lo que la receta hubiera consumido) × costo de reposición — entradas reales en método COMPRAS, consumoReal en método CONTEO. Lo que ORDENA el ranking, no el %. Ver `impactoDelDesvio`. */
   impactoPesos: number | null;
   /** true cuando `impactoPesos` es null por falta de costo conocido (nunca se inventa un precio — mismo criterio que perdidas.ts). */
   sinCosto: boolean;
