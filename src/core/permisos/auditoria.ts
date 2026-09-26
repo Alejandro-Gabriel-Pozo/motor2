@@ -25,6 +25,7 @@ export interface CambioAuditable {
     | "Rol"
     | "Operacion"
     | "CuentaItem"
+    | "Cuenta"
     | "RecetaVersion"
     | "RendimientoLocalIngrediente";
   entidadId: string;

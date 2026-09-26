@@ -41,6 +41,7 @@ model User {
   cuentasAbiertas           Cuenta[]           @relation("CuentaAbiertaPor")
   cuentasCerradas           Cuenta[]           @relation("CuentaCerradaPor")
   cuentaItemsCreados        CuentaItem[]       @relation("CuentaItemCreadoPor")
+  ejemplaresBoletaEmitidos  EjemplarBoleta[]   @relation("EjemplarBoletaEmitidoPor")
 }
 
 model Account {
@@ -110,6 +111,7 @@ model Sucursal {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  seccionesHabituales  SeccionHabitualProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
   promociones          PromocionProducto[]
@@ -122,6 +124,7 @@ model Sucursal {
   temaCarta            TemaCartaSucursal?
   mesas                Mesa[]
   rendimientosLocales  RendimientoLocalIngrediente[]
+  ejemplaresBoleta     EjemplarBoleta[]
 }
 
 model Rol {
@@ -320,6 +323,7 @@ model Producto {
   conteosFisicos       ConteoFisico[]
   preciosLocales       PrecioLocalProducto[]
   stockMinimos         StockMinimoProducto[]
+  seccionesHabituales  SeccionHabitualProducto[]
   frecuenciasConteo    FrecuenciaConteoProducto[]
   disponibilidades     DisponibilidadProducto[]
   promociones          PromocionProducto[]
@@ -742,11 +746,17 @@ model Seccion {
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
   nombre     String
   activa     Boolean  @default(true)
+  /// ¿El cierre de cuenta del POS puede descontar de acá AUTOMÁTICAMENTE cuando la sección habitual de un producto no alcanza
+  /// (o el producto no tiene habitual)? Default true: todas sirven de respaldo sin configurar nada (decisión del dueño 2026-09-25:
+  /// hoy no se excluye ninguna, pero queda la herramienta). No afecta a la sección HABITUAL de un producto (la preferencia
+  /// explícita manda) ni a la venta de mostrador (ahí la sección la elige una persona). Ver docs/plan-seccion-habitual-stock-2026-09-25.md.
+  sirveDeRespaldoEnVentas Boolean @default(true)
 
   operacionesTransferenciaDestino Operacion[]           @relation("OperacionSeccionDestino")
   movimientos                     MovimientoStock[]
   conteosFisicos                  ConteoFisico[]
   stockMinimos                    StockMinimoProducto[]
+  seccionesHabituales             SeccionHabitualProducto[]
   traspasosComoSeccionOrigen      TraspasoSucursal[]    @relation("TraspasoSeccionOrigen")
   traspasosComoSeccionDestino     TraspasoSucursal[]    @relation("TraspasoSeccionDestino")
 
@@ -1145,6 +1155,22 @@ model StockMinimoProducto {
   @@unique([productoId, seccionId])
 }
 
+/// Sección HABITUAL de la que sale un producto de venta (PV) en una sucursal — `Seccion` de STOCK (Barra/Cocina/Depósito),
+/// NO `SeccionCarta` (categoría del menú). Fila ausente = sin preferencia: el cierre del POS resuelve solo, por vencimiento.
+/// Es una preferencia, no una restricción: si ahí no alcanza, se busca en las secciones marcadas como respaldo
+/// (docs/plan-seccion-habitual-stock-2026-09-25.md). Se usa aunque la sección no sirva de respaldo (Seccion.sirveDeRespaldoEnVentas).
+model SeccionHabitualProducto {
+  id         String   @id @default(cuid())
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+  seccionId  String
+  seccion    Seccion  @relation(fields: [seccionId], references: [id])
+
+  @@unique([sucursalId, productoId])
+}
+
 // ===================================================================
 // REPORTES: el resto de la porción (período, costos, pérdidas,
 // devoluciones, vencimientos, diferencias de ajuste, salud por producto,
@@ -1512,6 +1538,10 @@ model TemaCartaSucursal {
 // - Un ítem SIN enviar (`numeroEnvio` null) es un borrador: se quita con DELETE físico, sin motivo ni auditoría.
 // Invariantes validadas en la APLICACIÓN (src/server/actions/pos/cuenta.ts), no en la base: espejo ⇒ cantidad < 0, mismo
 // numeroEnvio que su original y motivoAnulacion no vacío; original (anulaAItemId null) ⇒ cantidad > 0.
+// - NUMERACIÓN DE LA BOLETA (docs/plan-numeracion-boleta-2026-09-25.md): cada papel impreso de la boleta de cierre es una fila de
+//   `EjemplarBoleta` (control interno, no fiscal). Número base por sucursal = max + 1 dentro de la tx serializable de `cerrarCuenta`
+//   (solo con venta, después de validarla), ejemplar 1 = A. Corrección (`emitirBoletaCorregida`, tras anular una línea con
+//   anularVenta) = fila NUEVA con el mismo número, el ejemplar siguiente, `corrigeAId` → el A y el motivo. Nunca se edita ni se borra.
 // Grounding: docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6.
 // ===================================================================
 
@@ -1542,6 +1572,7 @@ model Cuenta {
   cerradaPorId String?
   cerradaPor   User?        @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
   items        CuentaItem[]
+  ejemplaresBoleta EjemplarBoleta[]
 
   @@index([mesaId])
 }
@@ -1575,4 +1606,28 @@ model CuentaItem {
   @@index([cuentaId])
   @@index([anulaAItemId])
   @@index([operacionId])
+}
+
+/// Ejemplar IMPRESO de la boleta de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
+/// numero: secuencial por sucursal, sin huecos (max+1 en la tx serializable de cerrarCuenta). ejemplar: 1 = A (original), 2 = B…
+/// Corrección = fila NUEVA (mismo numero, ejemplar siguiente, corrigeAId → el ejemplar A, motivo); nunca se edita ni se borra.
+model EjemplarBoleta {
+  id           String           @id @default(cuid())
+  sucursalId   String
+  sucursal     Sucursal         @relation(fields: [sucursalId], references: [id])
+  cuentaId     String
+  cuenta       Cuenta           @relation(fields: [cuentaId], references: [id])
+  numero       Int
+  ejemplar     Int              @default(1)
+  emitidoEn    DateTime         @default(now())
+  emitidoPorId String
+  emitidoPor   User             @relation("EjemplarBoletaEmitidoPor", fields: [emitidoPorId], references: [id])
+  corrigeAId   String?
+  corrigeA     EjemplarBoleta?  @relation("EjemplarBoletaCorreccion", fields: [corrigeAId], references: [id], onDelete: Restrict)
+  correcciones EjemplarBoleta[] @relation("EjemplarBoletaCorreccion")
+  motivo       String?
+
+  @@unique([sucursalId, numero, ejemplar])
+  @@unique([cuentaId, ejemplar])
+  @@index([corrigeAId])
 }

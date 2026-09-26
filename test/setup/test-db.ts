@@ -20,6 +20,10 @@ export async function limpiarBaseDeTest() {
 
   // POS antes que nada: CuentaItem referencia Cuenta, Producto, User y Operacion; Cuenta referencia Mesa y User; Mesa referencia
   // Sucursal. Las filas espejo (anulaciones) primero: referencian a su ítem original con ON DELETE RESTRICT.
+  // EjemplarBoleta referencia Cuenta, Sucursal y User (RESTRICT): antes que la cuenta. Los ejemplares de corrección (B, C…) primero:
+  // referencian a su ejemplar A con ON DELETE RESTRICT.
+  await prisma.ejemplarBoleta.deleteMany({ where: { corrigeAId: { not: null } } });
+  await prisma.ejemplarBoleta.deleteMany();
   await prisma.cuentaItem.deleteMany({ where: { anulaAItemId: { not: null } } });
   await prisma.cuentaItem.deleteMany();
   await prisma.cuenta.deleteMany();
@@ -41,6 +45,7 @@ export async function limpiarBaseDeTest() {
   await prisma.rendimientoLocalIngrediente.deleteMany();
   await prisma.precioLocalProducto.deleteMany();
   await prisma.stockMinimoProducto.deleteMany();
+  await prisma.seccionHabitualProducto.deleteMany();
   await prisma.frecuenciaConteoProducto.deleteMany();
   await prisma.disponibilidadProducto.deleteMany();
   await prisma.promocionProducto.deleteMany();

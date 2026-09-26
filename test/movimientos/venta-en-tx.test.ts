@@ -55,7 +55,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     const r = await prisma.$transaction((tx) =>
       registrarVentaEnTx(tx, actor, {
         fecha: new Date(),
-        seccionId,
+        origen: { tipo: "seccion", seccionId },
         detalle: "Mesa 4",
         lineas: [
           { productoId: pvGaseosaId, cantidadVendida: 1, precioUnitario: 77 },
@@ -77,7 +77,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
   it("sección de otra sucursal → «No se encontró la sección.» sin escribir nada", async () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const ajena = await sembrarSeccion(norte.id, "Barra Norte");
-    const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), seccionId: ajena.id, lineas: [{ productoId: pvGaseosaId, cantidadVendida: 1 }] }));
+    const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId: ajena.id }, lineas: [{ productoId: pvGaseosaId, cantidadVendida: 1 }] }));
     expect(r).toEqual({ ok: false, mensaje: "No se encontró la sección." });
     expect(await prisma.operacion.count()).toBe(0);
   });
@@ -86,7 +86,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     it("ausente o false: con stock insuficiente rechaza exactamente como antes y no escribe nada", async () => {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }] });
       for (const opciones of [undefined, { permitirStockNegativo: false }]) {
-        const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), seccionId, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] }, opciones));
+        const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] }, opciones));
         expect(r).toEqual({ ok: false, mensaje: 'Stock insuficiente para "Harina". Actual: 0.5, requerido: 1.5. Tiene stock en: Depósito.' });
       }
       // registrarVenta (la Server Action pública) tampoco lo permite.
@@ -99,19 +99,36 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     it("true: la venta se registra igual, el insumo queda en negativo y el aviso trae el detalle", async () => {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }] });
       const r = await prisma.$transaction((tx) =>
-        registrarVentaEnTx(tx, actor, { fecha: new Date(), seccionId, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }, { productoId: pvGaseosaId, cantidadVendida: 1 }] }, { permitirStockNegativo: true })
+        registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }, { productoId: pvGaseosaId, cantidadVendida: 1 }] }, { permitirStockNegativo: true })
       );
       expect(r.ok).toBe(true);
       if (!r.ok) return;
       expect(r.operacionIds).toHaveLength(2);
-      expect(r.avisosStockNegativo).toEqual([{ productoId: mpHarinaId, nombre: "Harina", actual: 0.5, requerido: 1.5, resultante: -1 }]);
+      expect(r.avisosStockNegativo).toEqual([{ productoId: mpHarinaId, nombre: "Harina", seccionId, seccionNombre: "Depósito", actual: 0.5, requerido: 1.5, resultante: -1 }]);
       expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(-1);
       expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(2);
     });
 
+    it("con hermanos que no alcanzan: toma lo de los hermanos y el rechazo/aviso nombra SOLO lo que le falta al producto de la receta", async () => {
+      const catalogo = await prisma.producto.findUniqueOrThrow({ where: { id: mpHarinaId } });
+      const hermana = await sembrarProductoDisponible({ codigo: "MP_HARINA_000", nombre: "Harina 000", tipo: "MP", unidadStockId: catalogo.unidadStockId, insumoId: catalogo.insumoId }, sucursalId);
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }, { productoId: hermana.id, cantidad: 0.4 }] });
+      const venta = { fecha: new Date(), origen: { tipo: "seccion" as const, seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] };
+
+      // Se piden 1,5: 0,5 de Harina + 0,4 de su hermana, y a Harina le falta el resto (0,6): se le cargan 1,1 contra 0,5.
+      const rechazo = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, venta));
+      expect(rechazo).toEqual({ ok: false, mensaje: 'Stock insuficiente para "Harina". Actual: 0.5, requerido: 1.1. Tiene stock en: Depósito.' });
+      expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
+
+      const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, venta, { permitirStockNegativo: true }));
+      expect(r).toMatchObject({ ok: true, avisosStockNegativo: [{ productoId: mpHarinaId, nombre: "Harina", seccionId, seccionNombre: "Depósito", actual: 0.5, requerido: 1.1, resultante: -0.6 }] });
+      expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(-0.6);
+      expect(await calcularSaldoTotal(hermana.id, seccionId)).toBe(0);
+    });
+
     it("true pero con stock suficiente: sin avisos", async () => {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 5 }] });
-      const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), seccionId, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] }, { permitirStockNegativo: true }));
+      const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] }, { permitirStockNegativo: true }));
       expect(r).toMatchObject({ ok: true, avisosStockNegativo: [] });
       expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(3.5);
     });

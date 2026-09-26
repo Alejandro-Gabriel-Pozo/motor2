@@ -51,9 +51,17 @@ export default async function FichaProductoPage({
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
   const productoId = p.id;
 
-  const [presentaciones, disponibilidadPorSucursal] = await Promise.all([
+  const [presentaciones, disponibilidadPorSucursal, seccionHabitual] = await Promise.all([
     p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
     disponibilidadPorSucursalDeProducto(p.id),
+    // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
+    // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).
+    p.tipo === "PV"
+      ? prisma.seccionHabitualProducto.findFirst({
+          where: { sucursalId: ctx.sucursalId, productoId: p.id, seccion: { sucursalId: ctx.sucursalId, activa: true } },
+          select: { seccion: { select: { nombre: true } } },
+        })
+      : Promise.resolve(null),
   ]);
   const tieneReceta = p.tipo === "PV" || p.seProduce;
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
@@ -109,6 +117,11 @@ export default async function FichaProductoPage({
             {Number(p.factorConversion).toLocaleString("es-AR")} {p.unidadStock.nombre} por {p.unidadCompra?.nombre ?? "unidad de compra"}
           </Dato>
           {p.tipo === "PV" && <Dato etiqueta="Precio de venta">{plata(Number(p.precioVenta))}</Dato>}
+          {p.tipo === "PV" && (
+            <Dato etiqueta={`Sección habitual en «${ctx.sucursalNombre}»`}>
+              {seccionHabitual ? seccionHabitual.seccion.nombre : <span className="text-neutral-500 dark:text-neutral-400">Sin sección habitual (sale de donde haya stock)</span>}
+            </Dato>
+          )}
           <Dato etiqueta="Se produce (tiene receta propia)">{p.seProduce ? "Sí" : "No"}</Dato>
           <Dato etiqueta="Consignación">
             {p.esConsignacion ? (

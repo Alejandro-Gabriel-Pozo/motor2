@@ -8,7 +8,7 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
- * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), el admin de la carta, su portal de sucursales y su
+ * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), la sección habitual de stock, el admin de la carta, su portal de sucursales y su
  * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas»). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
@@ -184,6 +184,38 @@ testAutenticado("movimientos/precio-local: sin violaciones de axe", async ({ pag
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+testAutenticado("stock/seccion-habitual: la tabla con una fila, con «Quitar» a confirmar, en modo claro y oscuro, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  // Pantalla nueva (docs/plan-seccion-habitual-stock-2026-09-25.md, C2): una fila sembrada para que la tabla y sus acciones se dibujen.
+  const marca = Date.now();
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-SH-${marca}`, nombre: `E2E A11y Habitual ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
+  const seccion = await prisma.seccion.create({ data: { sucursalId, nombre: `E2E A11y Cocina ${marca}` } });
+  await prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId: producto.id, seccionId: seccion.id } });
+  try {
+    await page.goto("/stock/seccion-habitual");
+    await conTitulo(page, "Sección habitual");
+    const fila = page.locator("tr", { hasText: producto.nombre });
+    await expect(fila).toContainText(seccion.nombre);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
+
+    await fila.getByRole("button", { name: `Quitar la sección habitual de ${producto.nombre}` }).click();
+    await expect(fila.getByRole("button", { name: "Sí, quitar" })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "«Quitar» a confirmar").toEqual([]);
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/stock/seccion-habitual");
+    await conTitulo(page, "Sección habitual");
+    await expect(page.locator("tr", { hasText: producto.nombre })).toBeVisible();
+    // En oscuro se audita el contenido de la pantalla (`main`), no el marco de la app: el menú y el encabezado (text-neutral-500 sobre
+    // #0a0a0a, 4,17:1) ya fallaban el contraste en modo oscuro antes de esta pantalla — hallazgo aparte, fuera de este cambio.
+    expect((await new AxeBuilder({ page }).include("main").analyze()).violations, "modo oscuro emulado (contenido de la pantalla)").toEqual([]);
+  } finally {
+    await prisma.seccionHabitualProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.seccion.deleteMany({ where: { id: seccion.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
@@ -1039,6 +1071,129 @@ testAutenticado(
       await prisma.movimientoStock.deleteMany({ where: { operacionId: { in: operacionIds } } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: «Agregar al pedido» por sección de carta en reposo, con un ítem agrupado desplegado, con una opción elegida y en modo oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-selector-carta-pos-2026-09-25.md, paso 6. Los dos casos de la mesa de arriba no siembran carta: sin ninguna sección de carta
+    // el navegador no se dibuja (DP3) y axe nunca lo vería. Acá se siembra una sección con un suelto y un agrupado de dos opciones.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const crear = async (clave: string, nombre: string) => {
+      const p = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CS-${clave}-${marca}`, nombre: `E2E A11y ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 5000 } });
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
+      return p;
+    };
+    const agua = await crear("AGUA", "Agua");
+    const coca = await crear("COCA", "Coca");
+    const sprite = await crear("SPRITE", "Sprite");
+    const productoIds = [agua.id, coca.id, sprite.id];
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Bebidas ${marca}`, orden: 1 } });
+    await prisma.contenidoCartaProducto.create({ data: { productoId: agua.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, orden: 1 } });
+    await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 987 } });
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
+    const secciones = page.getByRole("group", { name: "Secciones de la carta" });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 987");
+      await secciones.getByRole("button", { name: seccion.nombre }).click();
+      const region = page.getByRole("region", { name: seccion.nombre });
+      await expect(region.getByRole("button", { name: agua.nombre })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "selector por sección de carta en reposo").toEqual([]);
+
+      await region.getByRole("button", { name: gaseosa.nombre }).click();
+      const opciones = page.getByRole("list", { name: `Opciones de ${gaseosa.nombre}` });
+      await expect(opciones.getByRole("button")).toHaveCount(2);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "ítem agrupado desplegado").toEqual([]);
+
+      await opciones.getByRole("button", { name: sprite.nombre }).click();
+      await expect(page.locator("[data-elegido]")).toContainText(`Elegido: ${sprite.nombre}`);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "con una opción elegida").toEqual([]);
+
+      // El salón no tiene modo oscuro: con el sistema en oscuro queda claro igual.
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 987");
+      await secciones.getByRole("button", { name: seccion.nombre }).click();
+      await page.getByRole("region", { name: seccion.nombre }).getByRole("button", { name: gaseosa.nombre }).click();
+      await page.getByRole("list", { name: `Opciones de ${gaseosa.nombre}` }).getByRole("button", { name: coca.nombre }).click();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: gaseosa.id } });
+      await prisma.itemAgrupadoCarta.deleteMany({ where: { id: gaseosa.id } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: «Cuentas cerradas» con una boleta desactualizada («Emitir boleta corregida» habilitado) y su diálogo abierto con el error, en modo claro y oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-numeracion-boleta-2026-09-25.md, paso 8: la fila con el número de la boleta y el botón nuevo, y el diálogo del motivo.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-COR-${marca}`, nombre: `E2E A11y Plato Corrección ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 977 } });
+    const cerradaEn = new Date(Date.now() - 60 * 60_000);
+    const ventas = await Promise.all(
+      [null, new Date()].map((anuladaEn) => prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, anuladaEn } }))
+    );
+    const cuenta = await prisma.cuenta.create({
+      data: {
+        mesaId: mesa.id,
+        abiertaPorId: admin.id,
+        cerradaEn,
+        cerradaPorId: admin.id,
+        items: {
+          create: ventas.map((venta, i) => ({ productoId: producto.id, cantidad: 1, precioUnitario: 1000 + i * 500, numeroEnvio: 1, creadoPorId: admin.id, operacionId: venta.id })),
+        },
+      },
+    });
+    const { _max } = await prisma.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
+    await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero: (_max.numero ?? 0) + 1, emitidoEn: cerradaEn, emitidoPorId: admin.id } });
+    const emitir = page.getByRole("button", { name: /^Emitir la boleta corregida de la cuenta cerrada/ });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 977");
+      await expect(page.locator("[data-cuenta-cerrada]")).toContainText("N.º");
+      await expect(emitir).toBeEnabled();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo claro").toEqual([]);
+
+      await emitir.click();
+      const dialogo = page.getByRole("dialog", { name: /^Emitir boleta corregida/ });
+      await dialogo.getByRole("button", { name: "Emitir e imprimir" }).click();
+      await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo «Emitir boleta corregida» con el error").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 977");
+      await expect(emitir).toBeEnabled();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo oscuro emulado").toEqual([]);
+      await emitir.click();
+      await expect(page.getByRole("dialog", { name: /^Emitir boleta corregida/ })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo en modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.operacion.deleteMany({ where: { id: { in: ventas.map((v) => v.id) } } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
       await prisma.mesa.deleteMany({ where: { id: mesa.id } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });
     }

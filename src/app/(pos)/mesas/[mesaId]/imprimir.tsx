@@ -28,7 +28,7 @@ interface ApiImpresion {
   anulacionesDe: (itemId: string) => string[];
   pedir: (pedido: PedidoImpresion) => void;
   reimprimirEnvio: (numero: number) => void;
-  /** Copia de la boleta de una cuenta cerrada de «Cuentas cerradas» (no, si su venta se anuló). */
+  /** Copia de la boleta de una cuenta cerrada de «Cuentas cerradas», solo si su último ejemplar sigue vigente (también un 566-B). */
   reimprimirBoleta: (cuentaId: string) => void;
 }
 
@@ -94,7 +94,7 @@ export function ImpresionProvider({
     },
     reimprimirBoleta: (cuentaId) => {
       const boleta = boletas.find((b) => b.cuentaId === cuentaId);
-      if (boleta && !boleta.ventaAnulada) mostrar({ tipo: "boleta-reimpresion", boleta });
+      if (boleta?.estado === "vigente") mostrar({ tipo: "boleta-reimpresion", boleta });
     },
   };
 

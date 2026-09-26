@@ -39,6 +39,12 @@ implementación previa.
   fuera (permiso + validaciones + idempotencia + transacción) y mapea cada línea a mano a `{ productoId, cantidadVendida }`: un
   POST crudo con `precioUnitario` no puede fijar el precio (test). Los tests existentes de venta, idempotencia y concurrencia
   siguen en verde sin tocarlos.
+  - **Nota posterior (2026-09-25, docs/plan-seccion-habitual-stock-2026-09-25.md):** `DatosVentaEnTx.seccionId` pasó a
+    `origen: { tipo: "seccion", seccionId } | { tipo: "automatico" }`. La venta de mostrador usa `"seccion"` (igual que antes, salvo el
+    arreglo de H9: el libro de `src/core/movimientos/origen-venta.ts` descuenta lo ya asignado entre líneas de la misma venta);
+    `cerrarCuenta(cuentaId)` ya NO recibe sección: usa `"automatico"` (sección habitual del PV → secciones de respaldo por
+    vencimiento). Cada `AvisoStockNegativo` trae su `seccionId`/`seccionNombre` y el aviso/auditoría del cierre nombra la sección
+    («"Muzzarella" en «Cocina» (tenía …)»).
 - **B6bis (decisión del dueño, reemplaza «stock insuficiente bloquea el cierre»).** `cerrarCuenta` NO se bloquea por stock
   insuficiente: la mesa ya comió.
   - `registrarVentaEnTx` acepta `opciones.permitirStockNegativo`. Con `true`, un insumo sin stock suficiente no aborta: el
@@ -107,3 +113,8 @@ Combos/promos, notas/modificadores de ítem, impresión y agente local, pantalla
 > navegador, ver `docs/plan-imprimir-comanda-y-boleta-2026-09-25.md`. El agente local sigue sin hacer falta (una sola PC que ve las
 > dos impresoras). `enviarACocina` devuelve además `numeroEnvio`/`envioNuevo` (`ResultadoEnvioACocina`) para imprimir solo el
 > envío que creó cada llamada.
+
+> **Actualización 2026-09-25 — selector por sección de carta:** «Agregar al pedido» ya no es solo el buscador por texto: si la
+> sucursal tiene carta, se navega por sus secciones (más «Fuera de carta» para lo que la carta no muestra) y un ítem agrupado se
+> despliega para elegir la opción concreta. El buscador sigue igual, al lado, y sin ninguna sección de carta la pantalla queda como
+> antes. `agregarItems` no cambió. Ver `docs/plan-selector-carta-pos-2026-09-25.md`.

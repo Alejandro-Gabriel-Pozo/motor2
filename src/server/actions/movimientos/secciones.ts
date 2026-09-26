@@ -87,3 +87,20 @@ export async function actualizarActivaSeccion(seccionId: string, activa: boolean
     return ok(`Sección "${seccion.nombre}" ${activa ? "activada" : "desactivada"}.`);
   });
 }
+
+/**
+ * ¿Sirve de RESPALDO automático al cerrar una cuenta del salón? (`Seccion.sirveDeRespaldoEnVentas`, docs/plan-seccion-habitual-stock-
+ * 2026-09-25.md, B5/C10). Con `false`, el cierre solo descuenta de acá cuando es la sección habitual de un producto; la venta de mostrador
+ * no cambia (ahí la sección la elige una persona). No se borra ni desactiva nada.
+ */
+export async function actualizarRespaldoSeccion(seccionId: string, sirveDeRespaldoEnVentas: boolean): Promise<ResultadoAccion> {
+  return conPermiso("secciones", async (ctx) => {
+    if (typeof sirveDeRespaldoEnVentas !== "boolean") return error("Valor inválido.");
+    const seccion = typeof seccionId === "string" ? await prisma.seccion.findUnique({ where: { id: seccionId } }) : null;
+    if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
+
+    await prisma.seccion.update({ where: { id: seccion.id }, data: { sirveDeRespaldoEnVentas } });
+    refrescarVistaSiHaceFalta(); // ver crearSeccion
+    return ok(`Sección "${seccion.nombre}" ${sirveDeRespaldoEnVentas ? "ahora sirve" : "ya no sirve"} de respaldo automático en ventas.`);
+  });
+}

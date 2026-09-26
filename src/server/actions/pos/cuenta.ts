@@ -11,8 +11,10 @@ import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { lineasDeVenta, restanteDe, validarCantidadPedido, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { registrarVentaEnTx, type AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { formatearNumeroBoleta, siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
+import { armarBoletaVigente, estadoDeBoleta, type ItemConVenta } from "@/core/pos/boleta";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
+import { error, ok, type ResultadoAccion, type ResultadoBoletaCorregida, type ResultadoEnvioACocina } from "../tipos";
 
 /**
  * Toma de pedido en el salón (módulo POS, docs/plan-tomar-pedido-2026-09-25.md). Todas las escrituras corren en una transacción
@@ -35,9 +37,9 @@ function formatearCantidad(n: number): string {
 
 const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-/** «"Muzzarella" (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
+/** «"Muzzarella" en «Cocina» (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
 function describirAviso(aviso: AvisoStockNegativo): string {
-  return `"${aviso.nombre}" (tenía ${formatearCantidad(aviso.actual)}, se consumió ${formatearCantidad(aviso.requerido)}, quedó en ${formatearCantidad(aviso.resultante)})`;
+  return `"${aviso.nombre}" en «${aviso.seccionNombre}» (tenía ${formatearCantidad(aviso.actual)}, se consumió ${formatearCantidad(aviso.requerido)}, quedó en ${formatearCantidad(aviso.resultante)})`;
 }
 
 type CuentaAbierta = { id: string; mesa: { id: string; numero: number } };
@@ -256,20 +258,22 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
  * 1. arma las líneas NETAS por (producto, precio congelado) sumando originales y espejos (`lineasDeVenta`); una línea anulada entera no
  *    se vende;
  * 2. registra la venta con el MISMO núcleo que la venta de mostrador (`registrarVentaEnTx`): una Operacion VENTA por línea, con
- *    `detalle` «Mesa N», sin cliente, la sección elegida (validada contra la sucursal dentro del núcleo) y el precio congelado de cada
- *    línea;
+ *    `detalle` «Mesa N», sin cliente y el precio congelado de cada línea. La sección NO se elige (docs/plan-seccion-habitual-stock-
+ *    2026-09-25.md): el núcleo resuelve, insumo por insumo, de qué sección activa sale (`origen: { tipo: "automatico" }`, por
+ *    vencimiento); sin ninguna sección activa, se rechaza sin escribir nada;
  * 3. enlaza cada ítem con su Operacion (`CuentaItem.operacionId`) y cierra la cuenta (`cerradaEn`/`cerradaPorId`): la mesa queda libre.
  *
  * STOCK INSUFICIENTE NO BLOQUEA (plan B6bis, decisión del dueño): la mesa ya comió, así que la venta se registra igual
  * (`permitirStockNegativo`) y cada insumo que quedó en negativo sale EXPLÍCITO en el mensaje y deja una fila en el registro de auditoría
- * (entidad `Operacion` — la venta que lo consumió —, campo `saldoStock`, con la mesa, el insumo, el déficit y quién cerró). Se corrige
+ * (entidad `Operacion` — la venta que lo consumió en ESA sección —, campo `saldoStock`, con la mesa, el insumo, la sección, el déficit y
+ * quién cerró). Se corrige
  * después con las herramientas de siempre (Conteo Físico o Ajuste), sin ningún caso especial.
  *
  * Bloquea si queda algún ítem sin enviar (hay que enviarlo o quitarlo: lo que no salió a cocina no se cobra). Con neto cero (todo
  * anulado) cierra sin venta. Idempotente: una cuenta ya cerrada devuelve ok sin volver a vender (la transacción serializable arbitra el
  * doble clic: el segundo reintenta, la ve cerrada y no escribe nada).
  */
-export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise<ResultadoAccion> {
+export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_cerrar_cuenta", async (ctx) => {
     return conTransaccionSerializable(async (tx) => {
       const cuenta =
@@ -290,14 +294,13 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
         await cerrar();
         return ok(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`);
       }
-      if (typeof seccionId !== "string" || !seccionId.trim()) return error("Elegí la sección de la que sale la mercadería.");
 
       const venta = await registrarVentaEnTx(
         tx,
         { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
         {
           fecha: ahora,
-          seccionId,
+          origen: { tipo: "automatico" },
           proveedorId: null,
           detalle: `Mesa ${mesa}`,
           lineas: lineas.map((l) => ({ productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: l.precioUnitario })),
@@ -307,6 +310,14 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
       // El núcleo valida todo antes de escribir: un rechazo no dejó nada escrito y la cuenta sigue abierta.
       if (!venta.ok) return error(venta.mensaje);
       if (venta.operacionIds.length !== lineas.length) throw new Error("cerrarCuenta: la venta no devolvió una Operacion por línea.");
+
+      // Número de la boleta (docs/plan-numeracion-boleta-2026-09-25.md): max + 1 de la sucursal, ejemplar A. Recién DESPUÉS de que la venta
+      // salió bien — devolver `error(...)` desde acá CONFIRMA la transacción, así que numerar antes gastaría un número en un cierre
+      // rechazado. Dos cierres simultáneos de la misma sucursal chocan (índice único + SERIALIZABLE) y uno reintenta: sin huecos ni repetidos.
+      const { _max } = await tx.ejemplarBoleta.aggregate({ where: { sucursalId: ctx.sucursalId }, _max: { numero: true } });
+      await tx.ejemplarBoleta.create({
+        data: { sucursalId: ctx.sucursalId, cuentaId: cuenta.id, numero: siguienteNumeroBoleta(_max.numero), ejemplar: 1, emitidoEn: ahora, emitidoPorId: ctx.usuarioId },
+      });
 
       for (const [i, linea] of lineas.entries()) {
         await tx.cuentaItem.updateMany({
@@ -322,10 +333,9 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
       const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}.`;
       if (!venta.avisosStockNegativo.length) return ok(mensaje);
 
-      const seccion = await tx.seccion.findUniqueOrThrow({ where: { id: seccionId }, select: { nombre: true } });
       for (const aviso of venta.avisosStockNegativo) {
         const consumo = await tx.movimientoStock.findFirst({
-          where: { operacionId: { in: venta.operacionIds }, productoId: aviso.productoId, proceso: "CONSUMO" },
+          where: { operacionId: { in: venta.operacionIds }, productoId: aviso.productoId, seccionId: aviso.seccionId, proceso: "CONSUMO" },
           select: { operacionId: true },
           orderBy: { creadoEn: "asc" },
         });
@@ -333,7 +343,7 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
           entidad: "Operacion",
           entidadId: consumo?.operacionId ?? venta.operacionIds[0],
           descripcion:
-            `Mesa ${mesa}: al cerrar la cuenta (${ctx.email}) el stock de "${aviso.nombre}" en «${seccion.nombre}» quedó en negativo — ` +
+            `Mesa ${mesa}: al cerrar la cuenta (${ctx.email}) el stock de "${aviso.nombre}" en «${aviso.seccionNombre}» quedó en negativo — ` +
             `tenía ${formatearCantidad(aviso.actual)}, la venta consumió ${formatearCantidad(aviso.requerido)}, faltaron ${formatearCantidad(aviso.requerido - Math.max(aviso.actual, 0))}. ` +
             "La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste.",
           campo: "saldoStock",
@@ -344,6 +354,82 @@ export async function cerrarCuenta(cuentaId: string, seccionId: string): Promise
         });
       }
       return ok(`${mensaje} ⚠ Quedó stock negativo: ${venta.avisosStockNegativo.map(describirAviso).join(", ")}. Corregilo con un Conteo Físico o un Ajuste.`);
+    });
+  });
+}
+
+/**
+ * «Emitir boleta corregida» (docs/plan-numeracion-boleta-2026-09-25.md, Fase 2): `anularVenta` anula UNA Operacion VENTA — una línea de
+ * la mesa —, así que después de imprimir la boleta se puede anular solo el flan y dejar vigente la milanesa. La boleta impresa quedó
+ * desactualizada; esta acción emite el EJEMPLAR SIGUIENTE con el MISMO número (566-A → 566-B), `corrigeAId` al ejemplar A (siempre al A,
+ * nunca al anterior: criterio de `CuentaItem.anulaAItemId`), el motivo y quién lo emitió, más una fila en el registro de auditoría
+ * (entidad `Cuenta`, campo `ejemplarBoleta`). Nunca edita ni borra un ejemplar.
+ *
+ * Solo sobre una cuenta de la sucursal, cerrada CON número (las cerradas antes de la numeración no tienen boleta que corregir) y en estado
+ * «desactualizada» (`estadoDeBoleta`): si el último ejemplar ya refleja las anulaciones, o la venta se anuló entera, se rechaza. Mismo
+ * permiso que cerrar la cuenta. La transacción serializable arbitra dos emisiones a la vez: la segunda reintenta, ve el B ya emitido
+ * (vigente) y se rechaza.
+ */
+export async function emitirBoletaCorregida(cuentaId: string, motivo: string): Promise<ResultadoBoletaCorregida> {
+  return conPermiso("pos_cerrar_cuenta", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const cuenta =
+        typeof cuentaId === "string"
+          ? await tx.cuenta.findFirst({
+              where: { id: cuentaId, mesa: { sucursalId: ctx.sucursalId } },
+              include: {
+                mesa: { select: { numero: true } },
+                items: { include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } } } },
+                ejemplaresBoleta: { orderBy: { ejemplar: "desc" } },
+              },
+            })
+          : null;
+      if (!cuenta) return error("No se encontró esa cuenta en esta sucursal.");
+      const mesa = cuenta.mesa.numero;
+      if (!cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} todavía está abierta: no tiene boleta que corregir.`);
+      const [ultimo] = cuenta.ejemplaresBoleta;
+      const original = cuenta.ejemplaresBoleta.find((e) => e.ejemplar === 1);
+      if (!ultimo || !original) return error(`La cuenta de la mesa ${mesa} se cerró antes de la numeración de boletas: no tiene boleta que corregir.`);
+
+      const items: ItemConVenta[] = cuenta.items.map((i) => ({
+        productoId: i.productoId,
+        productoNombre: i.producto.nombre,
+        cantidad: Number(i.cantidad),
+        precioUnitario: Number(i.precioUnitario),
+        operacionId: i.operacionId,
+        anuladaEn: i.operacion?.anuladaEn ?? null,
+      }));
+      const estado = estadoDeBoleta(items, ultimo.emitidoEn);
+      if (estado === "anulada" || !armarBoletaVigente(items).lineas.length) return error("La venta se anuló entera: no hay boleta que corregir.");
+      if (estado === "vigente") return error(`La boleta N.º ${formatearNumeroBoleta(ultimo)} ya refleja las anulaciones.`);
+
+      const motivoValidado = validarMotivoAnulacion(motivo);
+      if (!motivoValidado.ok) return error(motivoValidado.mensaje);
+
+      const nuevo = { numero: original.numero, ejemplar: ultimo.ejemplar + 1 };
+      await tx.ejemplarBoleta.create({
+        data: {
+          sucursalId: original.sucursalId,
+          cuentaId: cuenta.id,
+          ...nuevo,
+          emitidoEn: new Date(),
+          emitidoPorId: ctx.usuarioId,
+          corrigeAId: original.id,
+          motivo: motivoValidado.motivo,
+        },
+      });
+      const [anterior, emitido, reemplazado] = [formatearNumeroBoleta(ultimo), formatearNumeroBoleta(nuevo), formatearNumeroBoleta(original)];
+      await registrarCambioAuditado(tx, {
+        entidad: "Cuenta",
+        entidadId: cuenta.id,
+        descripcion: `Mesa ${mesa}: boleta corregida N.º ${emitido} (reemplaza a N.º ${reemplazado}). Motivo: ${motivoValidado.motivo}`,
+        campo: "ejemplarBoleta",
+        valorAnterior: anterior,
+        valorNuevo: emitido,
+        actorId: ctx.usuarioId,
+        sucursalId: ctx.sucursalId,
+      });
+      return { ...ok(`Boleta N.º ${emitido} emitida: reemplaza a N.º ${reemplazado}.`), ...nuevo };
     });
   });
 }

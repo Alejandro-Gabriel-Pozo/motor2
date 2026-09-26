@@ -56,6 +56,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/stock/minimo",
   "/stock/por-familia",
   "/stock/reclasificar",
+  "/stock/seccion-habitual",
   "/traspasos",
   "/traspasos/enviar",
   "/traspasos/solicitar",

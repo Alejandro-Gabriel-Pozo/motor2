@@ -23,6 +23,13 @@ export type ResultadoConSincronizable = { ok: true; mensaje: string; sincronizab
  */
 export type ResultadoEnvioACocina = { ok: true; mensaje: string; numeroEnvio: number | null; envioNuevo: boolean } | { ok: false; mensaje: string };
 
+/**
+ * Resultado de `emitirBoletaCorregida` (src/server/actions/pos/cuenta.ts): como ResultadoAccion y, al salir bien, el ejemplar que emitió
+ * ESTA llamada (mismo número, ejemplar siguiente) — así la pantalla de la mesa imprime ese ejemplar y no el que infiere de lo que ve
+ * (mismo criterio que `ResultadoEnvioACocina`; docs/plan-numeracion-boleta-2026-09-25.md, paso 7).
+ */
+export type ResultadoBoletaCorregida = { ok: true; mensaje: string; numero: number; ejemplar: number } | { ok: false; mensaje: string };
+
 export function ok(mensaje: string): ResultadoAccion {
   return { ok: true, mensaje };
 }

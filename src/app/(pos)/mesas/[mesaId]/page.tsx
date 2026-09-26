@@ -4,6 +4,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate"
 import { obtenerDetalleDeMesa, type ItemDeCuenta, type ItemEnEnvio } from "@/core/pos/cuenta";
 import { armarComandas } from "@/core/pos/comanda";
 import { obtenerBoletasRecientes } from "@/core/pos/boleta";
+import { cargarSelectorCartaPos } from "@/core/pos/selector-carta-consulta";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { AvisoMesaProvider } from "./aviso-mesa";
 import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
@@ -60,6 +61,10 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id),
   ]);
   const { mesa, cuenta } = detalle;
+  // «Agregar al pedido» por sección de CARTA (docs/plan-selector-carta-pos-2026-09-25.md): solo con cuenta abierta y si quien mira
+  // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
+  // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
+  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaPos(ctx.sucursalId) : null;
   const titulo = nombreDeMesa(mesa.numero);
   const comandas = cuenta ? armarComandas(cuenta.envios, cuenta.mesero) : [];
 
@@ -99,7 +104,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                 <h2 id="agregar-titulo" className="mb-3 text-[15px] font-bold">
                   Agregar al pedido
                 </h2>
-                <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} />
+                <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} selectorCarta={selectorCarta} />
               </section>
 
               <SinEnviar
@@ -130,7 +135,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   titulo={titulo}
                   total={cuenta.total}
                   sinEnviar={cuenta.sinEnviar.length}
-                  secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+                  haySecciones={secciones.length > 0}
                   puede={cerrarCuenta.editar}
                 />
                 {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={tomarPedido.editar} />}

@@ -17,7 +17,7 @@ type ConMarca = { __sinRecargar?: boolean };
 const ponerMarca = (page: import("@playwright/test").Page) => page.evaluate(() => ((window as unknown as ConMarca).__sinRecargar = true));
 const marcaSigue = (page: import("@playwright/test").Page) => page.evaluate(() => (window as unknown as ConMarca).__sinRecargar === true);
 
-test("secciones: crear, desactivar y renombrar se ven sin recargar la página", async ({ paginaAutenticada: page }) => {
+test("secciones: crear, quitar del respaldo automático, desactivar y renombrar se ven sin recargar la página", async ({ paginaAutenticada: page }) => {
   const nombre = `E2E Sección ${Date.now()}`;
   const renombrada = `${nombre} v2`;
   // La fila se identifica por el valor del input del nombre (`defaultValue`, que React deja como atributo `value`).
@@ -32,6 +32,12 @@ test("secciones: crear, desactivar y renombrar se ven sin recargar la página", 
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(filaDe(nombre)).toHaveCount(1);
   await expect(filaDe(nombre).getByRole("cell", { name: "Sí", exact: true })).toBeVisible();
+
+  // Respaldo automático en ventas (Seccion.sirveDeRespaldoEnVentas): nace en «Sí»; «Quitar del respaldo» lo pasa a «No» y el botón a «Usar de respaldo».
+  await expect(filaDe(nombre).getByRole("button", { name: "Quitar del respaldo", exact: true })).toBeVisible();
+  await filaDe(nombre).getByRole("button", { name: "Quitar del respaldo", exact: true }).click();
+  await expect(filaDe(nombre).getByRole("button", { name: "Usar de respaldo", exact: true })).toBeVisible();
+  await expect(filaDe(nombre).getByText(`Sección "${nombre}" ya no sirve de respaldo automático en ventas.`)).toBeVisible();
 
   // Desactivar: la columna «Activa» pasa a «No» y el botón a «Activar».
   await filaDe(nombre).getByRole("button", { name: "Desactivar", exact: true }).click();
