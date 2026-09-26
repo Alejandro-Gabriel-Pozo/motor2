@@ -4,6 +4,7 @@ import type { CostoMP, Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
+import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/anulaciones";
 import {
   bandaDeRuidoDeLote,
   calcularCantidadEstimadaNeta,
@@ -12,9 +13,21 @@ import {
   compararPorImpacto,
   impactoDelDesvio,
   motivoSinEstimacion as calcularMotivoSinEstimacion,
+  motivoSinEstimacionConteo as calcularMotivoSinEstimacionConteo,
   rotularLineaDeReceta,
   type RotuloLinea,
 } from "./rendimiento-recetas-vistas";
+import {
+  clavePar,
+  consumoRealDelTramo,
+  elegirAnclas,
+  finDelDiaUtc,
+  limitesDelTramo,
+  type Anclas,
+  type CandidatoAncla,
+  type MetodoRendimiento,
+  type MovimientoParaConciliar,
+} from "./rendimiento-conciliado";
 
 export interface FilaRendimientoSimple {
   productoVentaId: string;
@@ -57,6 +70,23 @@ export interface FilaRendimientoSimple {
    * el depósito con un conteo físico real.
    */
   stockCierre: number;
+  /**
+   * "CONTEO" = medido (Task #26, Diseño B): hay dos `ConteoFisico`
+   * `RESUELTO` que cubren el pool entero, uno al principio y otro al
+   * final del tramo — `cantidadEstimada`/`desviacionPorcentaje` salen de
+   * sumar el consumo real DIRECTO por proceso entre esas dos anclas
+   * (`anclaDesde`/`anclaHasta`/`consumoReal`), nunca de las compras.
+   * "COMPRAS" = estimado, el método de siempre (`totalEntradas /
+   * totalVendido`) — D4: SIN las dos anclas, nunca se deja la fila sin
+   * ningún número, se cae a este método, marcado como menos confiable.
+   */
+  metodo: MetodoRendimiento;
+  /** Solo `metodo === "CONTEO"` — el día (calendario, D3) del Conteo Físico que abre el tramo medido. `null` en método COMPRAS. */
+  anclaDesde: Date | null;
+  /** Solo `metodo === "CONTEO"` — el día del Conteo Físico que cierra el tramo medido. `null` en método COMPRAS. */
+  anclaHasta: Date | null;
+  /** Solo `metodo === "CONTEO"` — −Σ CONSUMO(venta/producción) − Σ CONTROL − Σ AJUSTE(no-reversión) entre las dos anclas (ver `consumoRealDelTramo`). `null` en método COMPRAS. */
+  consumoReal: number | null;
   /** Por qué `cantidadEstimada` es null, cuando lo es — nunca se oculta la fila, se explica (docs/plan-rendimiento-recetas-2026-09-22.md §B7). */
   motivoSinEstimacion: string | null;
   /** Cuánto puede moverse el % de desvío solo por comprar de a lotes — CONTEXTO en texto, nunca decide si la celda se pinta ámbar (eso es fijo, ver `desvioEsNotable`). Ver `bandaDeRuidoDeLote`. */
@@ -148,6 +178,92 @@ async function calcularStockAperturaYCierre(sucursalId: string, productoIds: str
   const stockApertura = redondearCantidad(Number(apertura._sum.cantidad ?? 0));
   const stockCierre = redondearCantidad(stockApertura + Number(delta._sum.cantidad ?? 0));
   return { stockApertura, stockCierre };
+}
+
+/** El día calendario (UTC, D3) de `fecha` — medianoche, para agrupar Conteo Físico por día sin importar la hora exacta a la que se registró. */
+function diaUtc(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Las dos anclas de Conteo Físico del pool dentro de `[desde, hasta]`
+ * (Task #26, Diseño B — D1/D3/D4): busca los `ConteoFisico` `RESUELTO` de
+ * cualquier producto del pool en la ventana, los agrupa por día calendario
+ * y, para cada día con al menos un conteo, calcula el saldo de TODO el
+ * pool (todos los productos, todas las secciones de la sucursal) al
+ * cierre de ese día — para decidir si ESE día cubrió al pool entero
+ * (`elegirAnclas`, rendimiento-conciliado.ts). `null` sin ningún conteo en
+ * la ventana, o sin dos días que califiquen — el llamador cae al método
+ * COMPRAS (D4).
+ */
+async function elegirAnclasDelPool(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<Anclas | null> {
+  const conteos = await db.conteoFisico.findMany({
+    where: { sucursalId, productoId: { in: productoIds }, estado: "RESUELTO", fecha: { gte: desde, lte: hasta } },
+    select: { productoId: true, seccionId: true, fecha: true },
+  });
+  if (conteos.length === 0) return null;
+
+  const diaPorClave = new Map<string, Date>();
+  const paresContadosPorDia = new Map<string, Set<string>>();
+  for (const c of conteos) {
+    const dia = diaUtc(c.fecha);
+    const clave = dia.toISOString();
+    diaPorClave.set(clave, dia);
+    if (!paresContadosPorDia.has(clave)) paresContadosPorDia.set(clave, new Set());
+    paresContadosPorDia.get(clave)!.add(clavePar(c.productoId, c.seccionId));
+  }
+
+  const candidatos: CandidatoAncla[] = await Promise.all(
+    Array.from(diaPorClave.entries()).map(async ([clave, dia]) => {
+      const saldos = await db.movimientoStock.groupBy({
+        by: ["productoId", "seccionId"],
+        where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { lte: finDelDiaUtc(dia) } } },
+        _sum: { cantidad: true },
+      });
+      const paresConSaldo = new Set(saldos.filter((s) => Number(s._sum.cantidad ?? 0) !== 0).map((s) => clavePar(s.productoId, s.seccionId)));
+      return { fecha: dia, paresContados: paresContadosPorDia.get(clave)!, paresConSaldo };
+    })
+  );
+
+  return elegirAnclas(candidatos, desde, hasta);
+}
+
+/**
+ * Los movimientos de un tramo (entre dos anclas) que cuentan como consumo
+ * real de la receta (D2), listos para `consumoRealDelTramo`. `anuladaEn:
+ * null` cubre la VENTA/PRODUCCION detrás de un CONSUMO que se haya anulado
+ * después — un consumo de una venta que ya no existe no puede contar como
+ * consumo real. `OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION` excluye el
+ * AJUSTE que escribe anular una COMPRA/VENTA (D2 — es el propio deshacer
+ * del sistema, no un ajuste manual), sin importar si cae dentro o fuera
+ * del tramo (escenario F del plan: una compra que se anula DESPUÉS de
+ * `hasta` ya queda afuera por fecha, pero el filtro es el mismo sin
+ * excepción).
+ */
+async function movimientosDelTramoParaConciliar(sucursalId: string, productoIds: string[], anclas: Anclas, db: Db): Promise<MovimientoParaConciliar[]> {
+  const { desde, hasta } = limitesDelTramo(anclas);
+  const movimientos = await db.movimientoStock.findMany({
+    where: {
+      seccion: { sucursalId },
+      productoId: { in: productoIds },
+      proceso: { in: ["CONSUMO", "CONTROL", "AJUSTE"] },
+      operacion: { anuladaEn: null, fecha: { gt: desde, lte: hasta }, ...OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION },
+    },
+    select: { cantidad: true, proceso: true, operacion: { select: { proceso: true } } },
+  });
+  return movimientos.map((m) => ({ procesoMovimiento: m.proceso, procesoOperacion: m.operacion.proceso, cantidad: Number(m.cantidad) }));
+}
+
+/** Vendido de un producto puntual DENTRO de un tramo (entre dos anclas) — mismo filtro de anuladas que el resto de este archivo para VENTA. */
+async function vendidoDelTramo(sucursalId: string, productoId: string, anclas: Anclas, db: Db): Promise<number> {
+  const { desde, hasta } = limitesDelTramo(anclas);
+  const ventas = await db.movimientoStock.findMany({
+    where: { seccion: { sucursalId }, productoId, proceso: "VENTA", operacion: { fecha: { gt: desde, lte: hasta }, anuladaEn: null } },
+    select: { cantidad: true },
+  });
+  return redondearCantidad(ventas.reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
 }
 
 /**
@@ -363,14 +479,49 @@ export async function calcularRendimientoRecetasSimples(
     const semanasConDatos = contarSemanasConDatos([...entradas, ...ventas].map((m) => m.operacion.fecha));
 
     const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
-    // 0 entradas con ventas sí registradas daría -100% (0/vendido) — un número inventado a partir de "no entró nada", no una medición (defecto 1 de §3). Se prefiere null + el motivo explicado, igual que sin ventas.
-    const cantidadEstimadaBruta = totalVendido > 0 && totalEntradas > 0 ? redondearCantidad(totalEntradas / totalVendido) : null;
+
+    // Task #26 (Diseño B): con dos anclas de Conteo Físico que cubren el pool entero, el consumo se MIDE directo
+    // por proceso entre ellas (metodo="CONTEO") — sin ellas (D4), se cae al método de siempre (metodo="COMPRAS",
+    // totalEntradas/totalVendido). Nunca se deja la fila sin ningún número.
+    const anclas = await elegirAnclasDelPool(sucursalId, pool.productoIds, desde, hasta, db);
+    let metodo: MetodoRendimiento;
+    let cantidadEstimadaBruta: number | null;
+    let impactoPesos: number | null;
+    let bandaRuidoPct: number | null;
+    let motivoSinEstimacionFila: string | null;
+    let anclaDesde: Date | null = null;
+    let anclaHasta: Date | null = null;
+    let consumoReal: number | null = null;
+
+    if (anclas) {
+      metodo = "CONTEO";
+      anclaDesde = anclas.anclaDesde;
+      anclaHasta = anclas.anclaHasta;
+      const [movimientosParaConciliar, vendidoTramo] = await Promise.all([
+        movimientosDelTramoParaConciliar(sucursalId, pool.productoIds, anclas, db),
+        vendidoDelTramo(sucursalId, uso.pvProductoId, anclas, db),
+      ]);
+      consumoReal = consumoRealDelTramo(movimientosParaConciliar);
+      cantidadEstimadaBruta = vendidoTramo > 0 ? redondearCantidad(consumoReal / vendidoTramo) : null;
+      impactoPesos = impactoDelDesvio(consumoReal, cantidadTeoricaBruta, vendidoTramo, costoUnitario);
+      // La banda de ruido de lote es contexto para cuando el estimado viene de compras (D4 del plan) — con un
+      // Conteo Físico real de por medio ya no hace falta: el número no es un estimado de "cuánto se compró de a
+      // lotes", es una medición directa.
+      bandaRuidoPct = null;
+      motivoSinEstimacionFila = calcularMotivoSinEstimacionConteo({ vendidoDelTramo: vendidoTramo, cantidadTeoricaBruta });
+    } else {
+      metodo = "COMPRAS";
+      // 0 entradas con ventas sí registradas daría -100% (0/vendido) — un número inventado a partir de "no entró nada", no una medición (defecto 1 de §3). Se prefiere null + el motivo explicado, igual que sin ventas.
+      cantidadEstimadaBruta = totalVendido > 0 && totalEntradas > 0 ? redondearCantidad(totalEntradas / totalVendido) : null;
+      impactoPesos = impactoDelDesvio(totalEntradas, cantidadTeoricaBruta, totalVendido, costoUnitario);
+      // `entradas` ya viene filtrada por anuladaEn: null (misma consulta que totalComprado) — este filtro es solo para separar COMPRA de PRODUCCION, no vuelve a decidir nada sobre anuladas.
+      const cantidadesDeCadaCompra = entradas.filter((m) => m.proceso === "COMPRA").map((m) => Number(m.cantidad));
+      bandaRuidoPct = bandaDeRuidoDeLote(cantidadesDeCadaCompra, totalVendido, cantidadTeoricaBruta);
+      motivoSinEstimacionFila = calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta });
+    }
+
     const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
     const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
-    const impactoPesos = impactoDelDesvio(totalEntradas, cantidadTeoricaBruta, totalVendido, costoUnitario);
-    // `entradas` ya viene filtrada por anuladaEn: null (misma consulta que totalComprado) — este filtro es solo para separar COMPRA de PRODUCCION, no vuelve a decidir nada sobre anuladas.
-    const cantidadesDeCadaCompra = entradas.filter((m) => m.proceso === "COMPRA").map((m) => Number(m.cantidad));
-    const bandaRuidoPct = bandaDeRuidoDeLote(cantidadesDeCadaCompra, totalVendido, cantidadTeoricaBruta);
 
     filas.push({
       productoVentaId: uso.pvProductoId,
@@ -391,10 +542,14 @@ export async function calcularRendimientoRecetasSimples(
       totalVendido,
       stockApertura,
       stockCierre,
+      metodo,
+      anclaDesde,
+      anclaHasta,
+      consumoReal,
       bandaRuidoPct,
       impactoPesos,
       sinCosto: costoUnitario === null,
-      motivoSinEstimacion: calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta }),
+      motivoSinEstimacion: motivoSinEstimacionFila,
       semanasConDatos,
       confianza: calcularConfianza(semanasConDatos),
       rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidadCentral, mermaPorcentaje: uso.mermaPorcentajeCentral }),

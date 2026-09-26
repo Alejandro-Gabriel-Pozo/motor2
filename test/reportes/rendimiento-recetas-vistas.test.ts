@@ -11,6 +11,7 @@ import {
   explicarConfianza,
   impactoDelDesvio,
   motivoSinEstimacion,
+  motivoSinEstimacionConteo,
   rotularLineaDeReceta,
 } from "../../src/core/reportes/rendimiento-recetas-vistas";
 
@@ -197,6 +198,20 @@ describe("motivoSinEstimacion", () => {
 
   it("con datos suficientes: null", () => {
     expect(motivoSinEstimacion({ totalVendido: 10, totalEntradas: 10, cantidadTeoricaBruta: 1 })).toBeNull();
+  });
+});
+
+describe("motivoSinEstimacionConteo (método CONTEO — Task #26, Diseño B)", () => {
+  it("sin ventas entre las anclas: motivo específico, no null", () => {
+    expect(motivoSinEstimacionConteo({ vendidoDelTramo: 0, cantidadTeoricaBruta: 1 })).toMatch(/no hubo ventas.*entre las dos anclas/i);
+  });
+
+  it("receta en 0: mismo motivo que el método COMPRAS", () => {
+    expect(motivoSinEstimacionConteo({ vendidoDelTramo: 10, cantidadTeoricaBruta: 0 })).toMatch(/la receta dice 0/i);
+  });
+
+  it("con datos suficientes: null — nunca exige 'entradas', el consumo se mide directo", () => {
+    expect(motivoSinEstimacionConteo({ vendidoDelTramo: 10, cantidadTeoricaBruta: 1 })).toBeNull();
   });
 });
 
