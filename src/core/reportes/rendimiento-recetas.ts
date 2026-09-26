@@ -18,6 +18,7 @@ import {
   type RotuloLinea,
 } from "./rendimiento-recetas-vistas";
 import {
+  anclasValidasEnVentana,
   clavePar,
   consumoRealDelTramo,
   elegirAnclas,
@@ -138,11 +139,20 @@ export interface FilaRendimientoCompartido {
   /** Ver docstring en FilaRendimientoSimple — acá es del POOL, mismo valor repetido en todas sus filas. */
   stockApertura: number;
   stockCierre: number;
-  /** Ver docstring en FilaRendimientoSimple — el LOTE de compra es del pool (todo el insumo compartido), pero la banda en sí es por FILA: depende de cuánto vendió y qué recta pide CADA plato, así que varía entre las filas de un mismo pool. */
+  /** Ver docstring en FilaRendimientoSimple — el LOTE de compra es del pool (todo el insumo compartido), pero la banda en sí es por FILA: depende de cuánto vendió y qué recta pide CADA plato, así que varía entre las filas de un mismo pool. `null` siempre en método CONTEO (mismo criterio que Fase 1). */
   bandaRuidoPct: number | null;
+  /**
+   * Cuántas OBSERVACIONES alimentaron la regresión — semanas de compras
+   * (método COMPRAS) o intervalos entre anclas consecutivas de Conteo
+   * Físico (método CONTEO, Task #26 §6). El nombre se queda igual entre
+   * los dos métodos (ambos son "cuántos puntos tuvo el ajuste"), pero la
+   * UNIDAD cambia — ver `metodo` antes de interpretar este número.
+   */
   semanasConDatos: number;
   /** Calidad del ajuste (0-1) — mismo valor en todas las filas del pool, null si no se pudo resolver. */
   r2: number | null;
+  /** Ver el docstring del mismo campo en FilaRendimientoSimple — acá es del POOL: si CUALQUIER intervalo entre anclas resultó resoluble, TODAS las filas del pool salen por CONTEO (la regresión es del pool entero, no por plato). */
+  metodo: MetodoRendimiento;
   resoluble: boolean;
   motivoNoResoluble: string | null;
   /** Solo cuando SÍ es resoluble pero el desvío no se puede calcular igual (ver docstring en FilaRendimientoSimple) — si `motivoNoResoluble` ya explica la falta de estimado, este queda null (es más básico). */
@@ -188,22 +198,22 @@ function diaUtc(fecha: Date): Date {
 }
 
 /**
- * Las dos anclas de Conteo Físico del pool dentro de `[desde, hasta]`
- * (Task #26, Diseño B — D1/D3/D4): busca los `ConteoFisico` `RESUELTO` de
+ * Los días candidatos a ancla del pool dentro de `[desde, hasta]` (Task
+ * #26, Diseño B — D1/D3): busca los `ConteoFisico` `RESUELTO` de
  * cualquier producto del pool en la ventana, los agrupa por día calendario
  * y, para cada día con al menos un conteo, calcula el saldo de TODO el
  * pool (todos los productos, todas las secciones de la sucursal) al
- * cierre de ese día — para decidir si ESE día cubrió al pool entero
- * (`elegirAnclas`, rendimiento-conciliado.ts). `null` sin ningún conteo en
- * la ventana, o sin dos días que califiquen — el llamador cae al método
- * COMPRAS (D4).
+ * cierre de ese día — el insumo que le falta a `esAnclaValida`/
+ * `elegirAnclas`/`anclasValidasEnVentana` (rendimiento-conciliado.ts) para
+ * decidir cuáles de estos días cubrieron al pool entero. `[]` sin ningún
+ * conteo en la ventana.
  */
-async function elegirAnclasDelPool(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<Anclas | null> {
+async function construirCandidatosAncla(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<CandidatoAncla[]> {
   const conteos = await db.conteoFisico.findMany({
     where: { sucursalId, productoId: { in: productoIds }, estado: "RESUELTO", fecha: { gte: desde, lte: hasta } },
     select: { productoId: true, seccionId: true, fecha: true },
   });
-  if (conteos.length === 0) return null;
+  if (conteos.length === 0) return [];
 
   const diaPorClave = new Map<string, Date>();
   const paresContadosPorDia = new Map<string, Set<string>>();
@@ -215,7 +225,7 @@ async function elegirAnclasDelPool(sucursalId: string, productoIds: string[], de
     paresContadosPorDia.get(clave)!.add(clavePar(c.productoId, c.seccionId));
   }
 
-  const candidatos: CandidatoAncla[] = await Promise.all(
+  return Promise.all(
     Array.from(diaPorClave.entries()).map(async ([clave, dia]) => {
       const saldos = await db.movimientoStock.groupBy({
         by: ["productoId", "seccionId"],
@@ -226,7 +236,15 @@ async function elegirAnclasDelPool(sucursalId: string, productoIds: string[], de
       return { fecha: dia, paresContados: paresContadosPorDia.get(clave)!, paresConSaldo };
     })
   );
+}
 
+/**
+ * Las dos anclas del pool (caso simple, Fase 1) — `null` sin dos días que
+ * califiquen dentro de `[desde, hasta]`, el llamador cae al método
+ * COMPRAS (D4).
+ */
+async function elegirAnclasDelPool(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<Anclas | null> {
+  const candidatos = await construirCandidatosAncla(sucursalId, productoIds, desde, hasta, db);
   return elegirAnclas(candidatos, desde, hasta);
 }
 
@@ -564,16 +582,74 @@ export async function calcularRendimientoRecetasSimples(
 }
 
 /**
+ * Un pool resuelto por mínimos cuadrados — comparte forma entre el método
+ * CONTEO (§6, intervalos entre anclas) y el método COMPRAS (semanas) de
+ * `calcularRendimientoRecetasCompartidas`, para que el resto de la función
+ * no necesite dos caminos distintos de ahí en adelante.
+ */
+interface ResultadoPoolCompartido {
+  metodo: MetodoRendimiento;
+  resoluble: boolean;
+  motivoNoResoluble: string | null;
+  r2: number | null;
+  /** Un coeficiente BRUTO por uso, en el mismo orden que `pool.usos` — solo con `resoluble`. */
+  coeficientes: number[] | null;
+  /** Semanas (COMPRAS) o intervalos entre anclas (CONTEO) que alimentaron la regresión. */
+  observaciones: number;
+}
+
+/**
+ * Intenta el método CONTEO (Task #26 §6): cada intervalo ENTRE DOS ANCLAS
+ * consecutivas (`anclasValidasEnVentana`) es una observación — `y_k` es el
+ * consumo real del intervalo (misma fórmula que la Fase 1, sumado para el
+ * pool ENTERO), `X_k` son las ventas de CADA plato en ese mismo intervalo.
+ * `null` si no hay al menos `pool.usos.length + 1` anclas válidas dentro de
+ * `[desde, hasta]` — ni siquiera llega a intentar la regresión (mismo
+ * umbral que el método COMPRAS, en intervalos en vez de en semanas).
+ */
+async function resolverPoolPorConteo(sucursalId: string, pool: Pool, desde: Date, hasta: Date, db: Db): Promise<ResultadoPoolCompartido | null> {
+  const candidatos = await construirCandidatosAncla(sucursalId, pool.productoIds, desde, hasta, db);
+  const anclas = anclasValidasEnVentana(candidatos, desde, hasta);
+  if (anclas.length <= pool.usos.length) return null; // hacen falta más intervalos que platos — ni la primera y la última ancla, tomadas solas, alcanzarían (mismo motivo que la Fase 1).
+
+  const intervalos: Anclas[] = [];
+  for (let i = 0; i < anclas.length - 1; i++) intervalos.push({ anclaDesde: anclas[i], anclaHasta: anclas[i + 1] });
+
+  const y: number[] = [];
+  const X: number[][] = [];
+  for (const intervalo of intervalos) {
+    const [movimientos, ventasPorUso] = await Promise.all([
+      movimientosDelTramoParaConciliar(sucursalId, pool.productoIds, intervalo, db),
+      Promise.all(pool.usos.map((uso) => vendidoDelTramo(sucursalId, uso.pvProductoId, intervalo, db))),
+    ]);
+    y.push(consumoRealDelTramo(movimientos));
+    X.push(ventasPorUso);
+  }
+
+  const resultado = resolverMinimosCuadrados(X, y);
+  if (!resultado || resultado.coeficientes.some((c) => c < 0)) return null; // singular o consumo negativo — cae a COMPRAS, no se inventa un número.
+
+  return { metodo: "CONTEO", resoluble: true, motivoNoResoluble: null, r2: resultado.r2, coeficientes: resultado.coeficientes, observaciones: intervalos.length };
+}
+
+/**
  * Fase 2 del diseño: el caso compartido, 2+ platos consumen del mismo
  * pool (ej. nalga/lomo/bife/cuadrada repartidos entre Milanesa y Bife).
- * Arma, por semana, compras del pool (y) y ventas de cada plato (X), y
- * resuelve mínimos cuadrados — un coeficiente estimado por plato.
  *
- * Si el sistema no es resoluble (pocas semanas, o la mezcla de ventas no
- * varió lo suficiente entre semanas) o el ajuste da algún coeficiente
- * negativo (consumo negativo no existe — señal de que el ajuste no es
- * confiable), NINGUNA fila del pool devuelve una cantidadEstimada: se
- * marca `resoluble: false` con el motivo, en vez de inventar un número.
+ * Primero intenta el método CONTEO (Task #26 §6, `resolverPoolPorConteo`)
+ * — con suficientes anclas de Conteo Físico que cubren el pool entero, el
+ * consumo real de cada intervalo se MIDE directo, en vez de asumirse de
+ * las compras. Sin eso (pocos intervalos, sistema singular o algún
+ * coeficiente negativo — D4), cae al método COMPRAS de siempre: arma, por
+ * semana, compras del pool (y) y ventas de cada plato (X), y resuelve
+ * mínimos cuadrados igual.
+ *
+ * Si NINGUNO de los dos es resoluble (pocas semanas/intervalos, o la
+ * mezcla de ventas no varió lo suficiente) o el ajuste da algún
+ * coeficiente negativo (consumo negativo no existe — señal de que el
+ * ajuste no es confiable), NINGUNA fila del pool devuelve una
+ * cantidadEstimada: se marca `resoluble: false` con el motivo, en vez de
+ * inventar un número.
  */
 export async function calcularRendimientoRecetasCompartidas(
   sucursalId: string,
@@ -591,6 +667,8 @@ export async function calcularRendimientoRecetasCompartidas(
     const costoUnitario = costoUnitarioDePool(pool.productoIds, costos);
     const { stockApertura, stockCierre } = await calcularStockAperturaYCierre(sucursalId, pool.productoIds, desde, hasta, db);
 
+    // Contexto SIEMPRE de la ventana elegida (desde/hasta), sin importar qué método termine resolviendo el pool —
+    // mismo criterio que Fase 1: el "Comprado"/"Vendido" que se muestra es siempre el de la ventana del reporte.
     // COMPRA + PRODUCCION: mismo motivo que Fase 1 — un insumo con seProduce=true entra por producción, no por compra. anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
     const entradas = await db.movimientoStock.findMany({
       where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: pool.productoIds } },
@@ -606,51 +684,64 @@ export async function calcularRendimientoRecetasCompartidas(
         })
       )
     );
-
-    const entradasPorSemana = new Map<number, number>();
-    for (const m of entradas) entradasPorSemana.set(claveSemana(m.operacion.fecha), (entradasPorSemana.get(claveSemana(m.operacion.fecha)) ?? 0) + Number(m.cantidad));
-
-    const ventasPorSemanaPorPlato = ventasPorPlato.map((ventas) => {
-      const mapa = new Map<number, number>();
-      for (const m of ventas) mapa.set(claveSemana(m.operacion.fecha), (mapa.get(claveSemana(m.operacion.fecha)) ?? 0) + Math.abs(Number(m.cantidad)));
-      return mapa;
-    });
-
-    const todasLasSemanas = new Set<number>(entradasPorSemana.keys());
-    for (const mapa of ventasPorSemanaPorPlato) for (const semana of mapa.keys()) todasLasSemanas.add(semana);
-    const semanas = Array.from(todasLasSemanas).sort();
-
-    const y = semanas.map((s) => entradasPorSemana.get(s) ?? 0);
-    const X = semanas.map((s) => ventasPorSemanaPorPlato.map((mapa) => mapa.get(s) ?? 0));
-
-    let motivoNoResoluble: string | null = null;
-    if (semanas.length <= pool.usos.length) {
-      motivoNoResoluble = `Hacen falta más semanas con datos (hay ${semanas.length}, se necesitan más de ${pool.usos.length} platos que comparten este insumo).`;
-    }
-
-    const resultado = motivoNoResoluble ? null : resolverMinimosCuadrados(X, y);
-    if (!motivoNoResoluble && !resultado) {
-      motivoNoResoluble = "La mezcla de ventas entre semanas no varió lo suficiente para separar cuánto consume cada plato de este pool.";
-    }
-    if (resultado && resultado.coeficientes.some((c) => c < 0)) {
-      motivoNoResoluble = "El ajuste dio un consumo negativo para algún plato — no es confiable con los datos actuales.";
-    }
-
-    const resoluble = motivoNoResoluble === null;
-    const r2 = resoluble ? resultado!.r2 : null;
     const totalEntradasPool = redondearCantidad(entradas.reduce((acc, m) => acc + Number(m.cantidad), 0));
 
+    const porConteo = await resolverPoolPorConteo(sucursalId, pool, desde, hasta, db);
+
+    const resultadoPool: ResultadoPoolCompartido =
+      porConteo ??
+      (() => {
+        const entradasPorSemana = new Map<number, number>();
+        for (const m of entradas) entradasPorSemana.set(claveSemana(m.operacion.fecha), (entradasPorSemana.get(claveSemana(m.operacion.fecha)) ?? 0) + Number(m.cantidad));
+
+        const ventasPorSemanaPorPlato = ventasPorPlato.map((ventas) => {
+          const mapa = new Map<number, number>();
+          for (const m of ventas) mapa.set(claveSemana(m.operacion.fecha), (mapa.get(claveSemana(m.operacion.fecha)) ?? 0) + Math.abs(Number(m.cantidad)));
+          return mapa;
+        });
+
+        const todasLasSemanas = new Set<number>(entradasPorSemana.keys());
+        for (const mapa of ventasPorSemanaPorPlato) for (const semana of mapa.keys()) todasLasSemanas.add(semana);
+        const semanas = Array.from(todasLasSemanas).sort();
+
+        const y = semanas.map((s) => entradasPorSemana.get(s) ?? 0);
+        const X = semanas.map((s) => ventasPorSemanaPorPlato.map((mapa) => mapa.get(s) ?? 0));
+
+        let motivoNoResoluble: string | null = null;
+        if (semanas.length <= pool.usos.length) {
+          motivoNoResoluble = `Hacen falta más semanas con datos (hay ${semanas.length}, se necesitan más de ${pool.usos.length} platos que comparten este insumo).`;
+        }
+
+        const resultado = motivoNoResoluble ? null : resolverMinimosCuadrados(X, y);
+        if (!motivoNoResoluble && !resultado) {
+          motivoNoResoluble = "La mezcla de ventas entre semanas no varió lo suficiente para separar cuánto consume cada plato de este pool.";
+        }
+        if (resultado && resultado.coeficientes.some((c) => c < 0)) {
+          motivoNoResoluble = "El ajuste dio un consumo negativo para algún plato — no es confiable con los datos actuales.";
+        }
+
+        const resoluble = motivoNoResoluble === null;
+        return { metodo: "COMPRAS" as MetodoRendimiento, resoluble, motivoNoResoluble, r2: resoluble ? resultado!.r2 : null, coeficientes: resoluble ? resultado!.coeficientes : null, observaciones: semanas.length };
+      })();
+
+    const { metodo, resoluble, motivoNoResoluble, r2, coeficientes, observaciones } = resultadoPool;
+
     pool.usos.forEach((uso, i) => {
-      // El coeficiente de la regresión sale en la misma unidad que `y` (entradas crudas del pool) — es BRUTO, misma interpretación que cantidadEstimadaBruta de Fase 1.
-      const cantidadEstimadaBruta = resoluble ? redondearCantidad(resultado!.coeficientes[i]) : null;
+      // El coeficiente de la regresión sale en la misma unidad que `y` (consumo real o entradas crudas del pool, según el método) — es BRUTO, misma interpretación que cantidadEstimadaBruta de Fase 1.
+      const cantidadEstimadaBruta = resoluble ? redondearCantidad(coeficientes![i]) : null;
       const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
       const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
       const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
       const totalVendidoUso = redondearCantidad(ventasPorPlato[i].reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
-      const bandaRuidoPct = bandaDeRuidoDeLote(cantidadesDeCadaCompraPool, totalVendidoUso, cantidadTeoricaBruta);
+      // La banda de ruido de lote es contexto de compras por lote (D4) — con Conteo Físico real de por medio (CONTEO) ya no aplica, mismo criterio que Fase 1.
+      const bandaRuidoPct = metodo === "CONTEO" ? null : bandaDeRuidoDeLote(cantidadesDeCadaCompraPool, totalVendidoUso, cantidadTeoricaBruta);
       // Si la regresión ya explicó por qué no hay estimado (motivoNoResoluble), no hace falta un segundo motivo más básico encima.
-      const motivo = motivoNoResoluble ? null : calcularMotivoSinEstimacion({ totalVendido: totalVendidoUso, totalEntradas: totalEntradasPool, cantidadTeoricaBruta });
-      // Impacto de ESTE plato (no del pool entero): reconstruye "cuánto de las entradas del pool le toca a este plato" a partir del coeficiente ya estimado (cantidadEstimadaBruta × lo que vendió), y de ahí la misma resta que Fase 1. Sin regresión resoluble, no hay estimado del que partir → null (nunca se inventa un impacto).
+      const motivo = motivoNoResoluble
+        ? null
+        : metodo === "CONTEO"
+          ? calcularMotivoSinEstimacionConteo({ vendidoDelTramo: totalVendidoUso, cantidadTeoricaBruta })
+          : calcularMotivoSinEstimacion({ totalVendido: totalVendidoUso, totalEntradas: totalEntradasPool, cantidadTeoricaBruta });
+      // Impacto de ESTE plato (no del pool entero): reconstruye "cuánto consumió ESTE plato" a partir del coeficiente ya estimado (cantidadEstimadaBruta × lo que vendió), y de ahí la misma resta que Fase 1. Sin regresión resoluble, no hay estimado del que partir → null (nunca se inventa un impacto).
       const impactoPesos = cantidadEstimadaBruta !== null ? impactoDelDesvio(redondearCantidad(cantidadEstimadaBruta * totalVendidoUso), cantidadTeoricaBruta, totalVendidoUso, costoUnitario) : null;
 
       filas.push({
@@ -676,8 +767,9 @@ export async function calcularRendimientoRecetasCompartidas(
         stockApertura,
         stockCierre,
         bandaRuidoPct,
-        semanasConDatos: semanas.length,
+        semanasConDatos: observaciones,
         r2,
+        metodo,
         resoluble,
         motivoNoResoluble,
         rotulo: rotularLineaDeReceta({ insumoSeProduce: uso.insumoSeProduce, insumoEsNoComestible: uso.insumoEsNoComestible, pvSeProduce: uso.pvSeProduce, cantidadReceta: uso.cantidadCentral, mermaPorcentaje: uso.mermaPorcentajeCentral }),

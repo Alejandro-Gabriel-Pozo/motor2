@@ -650,6 +650,86 @@ describe("calcularRendimientoRecetasCompartidas", () => {
     expect(filaMilanesa.sinCosto).toBe(false);
     expect(filaMilanesa.impactoPesos).not.toBeNull();
   });
+
+  // --- Task #26 §6 (Diseño B): caso compartido/regresión con intervalos entre anclas de Conteo Físico. ---
+
+  it("método CONTEO (§6): con anclas que cubren el pool entero, cada intervalo mide el consumo real — 0% de desvío (la receta real es 0.1 para ambos), no lo que sugerirían compras artificiales", async () => {
+    const insumoCarne = await prisma.insumo.create({ data: { nombre: "Carne vacuna conteo" } });
+    const nalga = await sembrarProductoDisponible({ codigo: "MP_NALGA_CONTEO", nombre: "Nalga conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const lomo = await sembrarProductoDisponible({ codigo: "MP_LOMO_CONTEO", nombre: "Lomo conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA_CONTEO", nombre: "Milanesa conteo", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    const bife = await sembrarProductoDisponible({ codigo: "PV_BIFE_CONTEO", nombre: "Bife conteo", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: nalga.id, cantidad: 0.1, unidadId: unidadKgId }] } } });
+    await prisma.recetaVersion.create({ data: { productoId: bife.id, version: 1, ingredientes: { create: [{ insumoProductoId: lomo.id, cantidad: 0.1, unidadId: unidadKgId }] } } });
+
+    // Stock inicial, ANTES de la primera ancla — grande, para no quedarse sin stock durante las ventas.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: lomo.id, cantidad: 1000 }] });
+    await registrarConteoFisico({ productoId: nalga.id, seccionId, conteoReal: 1000, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    await registrarConteoFisico({ productoId: lomo.id, seccionId, conteoReal: 1000, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+
+    // 3 intervalos entre 4 anclas (hacen falta más que los 2 platos del pool) — mismos pares (m, b) que el test
+    // de la regresión semanal de arriba, pero acá NINGUNA compra artificial: el consumo real es exactamente la
+    // receta (0.1 c/u), y cada ancla lo confirma sin diferencia.
+    const intervalos = [
+      { fecha: new Date("2026-01-10"), m: 10, b: 4, cierre: new Date("2026-01-16") },
+      { fecha: new Date("2026-01-24"), m: 6, b: 12, cierre: new Date("2026-01-30") },
+      { fecha: new Date("2026-02-07"), m: 15, b: 2, cierre: new Date("2026-02-13") },
+    ];
+    let saldoNalga = 1000;
+    let saldoLomo = 1000;
+    for (const t of intervalos) {
+      await registrarVenta({ fecha: t.fecha, seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: t.m }] });
+      await registrarVenta({ fecha: t.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: t.b }] });
+      saldoNalga = Math.round((saldoNalga - 0.1 * t.m) * 100) / 100;
+      saldoLomo = Math.round((saldoLomo - 0.1 * t.b) * 100) / 100;
+      const cierreNalga = await registrarConteoFisico({ productoId: nalga.id, seccionId, conteoReal: saldoNalga, fechaConteo: t.cierre, accion: "AJUSTAR" });
+      const cierreLomo = await registrarConteoFisico({ productoId: lomo.id, seccionId, conteoReal: saldoLomo, fechaConteo: t.cierre, accion: "AJUSTAR" });
+      expect(cierreNalga.ok, cierreNalga.mensaje).toBe(true);
+      expect(cierreLomo.ok, cierreLomo.mensaje).toBe(true);
+    }
+
+    expect(await prisma.movimientoStock.count({ where: { proceso: "CONTROL" } })).toBe(0); // ningún conteo dio diferencia — nunca hizo falta ajustar
+
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa conteo")!;
+    const filaBife = filas.find((f) => f.productoVentaNombre === "Bife conteo")!;
+    expect(filaMilanesa.metodo).toBe("CONTEO");
+    expect(filaBife.metodo).toBe("CONTEO");
+    expect(filaMilanesa.resoluble).toBe(true);
+    expect(filaMilanesa.semanasConDatos).toBe(3); // 3 intervalos entre las 4 anclas, no semanas de compras
+    expect(filaMilanesa.cantidadEstimada).toBeCloseTo(0.1, 2);
+    expect(filaBife.cantidadEstimada).toBeCloseTo(0.1, 2);
+    expect(filaMilanesa.desviacionPorcentaje).toBeCloseTo(0, 0);
+    expect(filaBife.desviacionPorcentaje).toBeCloseTo(0, 0);
+    expect(filaMilanesa.bandaRuidoPct).toBeNull(); // método CONTEO: sin banda de ruido de lote (D4)
+  });
+
+  it("sin suficientes anclas (o si el intento por CONTEO no es resoluble) cae al método COMPRAS de siempre, sin dejar la fila sin estimar", async () => {
+    const { milanesa, bife } = await armarPoolCompartido();
+    const nalga = await prisma.producto.findFirstOrThrow({ where: { codigo: "MP_NALGA" } });
+
+    // Un solo Conteo Físico (ninguna segunda ancla) — no alcanza para el método CONTEO, cae al de compras/semanas de siempre.
+    await registrarConteoFisico({ productoId: nalga.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
+
+    const semanas = [
+      { fecha: new Date("2026-01-05"), milanesa: 10, bife: 4 },
+      { fecha: new Date("2026-01-15"), milanesa: 6, bife: 12 },
+      { fecha: new Date("2026-01-25"), milanesa: 15, bife: 2 },
+    ];
+    for (const s of semanas) {
+      const comprado = 0.15 * s.milanesa + 0.25 * s.bife;
+      await registrarMovimiento({ proceso: "COMPRA", fecha: s.fecha, seccionId, items: [{ productoId: nalga.id, cantidad: comprado }] });
+      await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: s.milanesa }] });
+      await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: s.bife }] });
+    }
+
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa")!;
+    expect(filaMilanesa.metodo).toBe("COMPRAS");
+    expect(filaMilanesa.resoluble).toBe(true); // la regresión semanal de siempre sigue funcionando
+    expect(filaMilanesa.cantidadEstimada).toBeCloseTo(0.15, 2);
+  });
 });
 
 describe("escenario realista: 6 insumos × 4 platos, superpuestos entre sí", () => {
