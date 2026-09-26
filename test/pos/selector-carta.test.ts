@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CartaV1, ItemCartaV1, SeccionCartaV1 } from "../../src/core/carta/armar-menu";
-import { armarSelectorCartaPos, type ProductoPedible, type SelectorCartaPos } from "../../src/core/pos/selector-carta";
+import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type SelectorCartaPos } from "../../src/core/pos/selector-carta";
 
 /**
  * Armado PURO del selector por sección de carta del POS (docs/plan-selector-carta-pos-2026-09-25.md, paso 1): la estructura sale
@@ -38,12 +38,16 @@ const seccion = (id: string, nombre: string, items: ItemCartaV1[], promos: Secci
 
 const carta = (secciones: SeccionCartaV1[]): CartaV1 => ({ version: 1, generadoEn: "2026-09-25T12:00:00.000Z", sucursal: { id: "suc", nombre: "Central" }, secciones });
 
-/** Todos los productoId que ofrece el selector (sueltos, opciones y «Fuera de carta»), con repetidos si los hubiera. */
+/** Los productoId de una entrada de nivel superior o de dentro de una carpeta de género (producto suelto o agrupado con opciones). */
+function productoIdsDeEntrada(e: SelectorCartaPos["seccionesCarta"][number]["entradas"][number]): string[] {
+  if (e.tipo === "producto") return [e.producto.productoId];
+  if (e.tipo === "agrupado") return e.opciones.map((o) => o.productoId);
+  return e.entradas.flatMap(productoIdsDeEntrada);
+}
+
+/** Todos los productoId que ofrece el selector (sueltos, opciones, dentro o fuera de una carpeta, y «Fuera de carta»), con repetidos si los hubiera. */
 function productoIdsOfrecidos(s: SelectorCartaPos): string[] {
-  return [
-    ...s.seccionesCarta.flatMap((sc) => sc.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto.productoId] : e.opciones.map((o) => o.productoId)))),
-    ...s.fueraDeCarta.map((p) => p.productoId),
-  ];
+  return [...s.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(productoIdsDeEntrada)), ...s.fueraDeCarta.map((p) => p.productoId)];
 }
 
 describe("armarSelectorCartaPos", () => {
@@ -139,5 +143,89 @@ describe("armarSelectorCartaPos", () => {
     for (const idAgrupado of ["ag-gaseosa", "ag-vacio"]) expect(ofrecidos).not.toContain(idAgrupado);
     const idsDeAgrupados = s.seccionesCarta.flatMap((sc) => sc.entradas.flatMap((e) => (e.tipo === "agrupado" ? [e.itemAgrupadoCartaId] : [])));
     expect(idsDeAgrupados).toEqual(["ag-gaseosa"]);
+  });
+
+  describe("carpetas de género (docs/plan-genero-carta-2026-09-26.md)", () => {
+    const cartaBebidas = carta([seccion("s-bebidas", "Bebidas", [suelto("p-agua", "Agua"), agrupado("ag-gaseosa", "Gaseosa 500cc", [{ productoId: "p-coca", nombre: "Coca" }, { productoId: "p-sprite", nombre: "Sprite" }])])]);
+
+    it("sin el tercer parámetro, la salida es IDÉNTICA a la de antes de que existiera el género", () => {
+      const conParametro = armarSelectorCartaPos(cartaBebidas, pedibles, undefined);
+      const sinParametro = armarSelectorCartaPos(cartaBebidas, pedibles);
+      expect(conParametro).toEqual(sinParametro);
+      expect(sinParametro.seccionesCarta[0].entradas.every((e) => e.tipo !== "carpeta")).toBe(true);
+    });
+
+    it("un producto suelto con género activo cae en una carpeta; sin género (o con uno apagado/inexistente) sigue suelto", () => {
+      const generos: GenerosSelectorCartaPos = {
+        generos: [{ id: "gen-agua", nombre: "Aguas", orden: 0 }],
+        generoPorProducto: new Map([["p-agua", "gen-agua"]]),
+        generoPorAgrupado: new Map(),
+      };
+      const s = armarSelectorCartaPos(cartaBebidas, pedibles, generos);
+      expect(s.seccionesCarta[0].entradas).toEqual([
+        { tipo: "carpeta", generoCartaId: "gen-agua", nombre: "Aguas", entradas: [{ tipo: "producto", producto: agua }] },
+        { tipo: "agrupado", itemAgrupadoCartaId: "ag-gaseosa", nombre: "Gaseosa 500cc", precioMinimo: 5000, precioMaximo: 5000, opciones: [coca, sprite] },
+      ]);
+    });
+
+    it("un ítem agrupado con género activo cae en una carpeta con sus opciones (las opciones nunca tienen género propio)", () => {
+      const generos: GenerosSelectorCartaPos = {
+        generos: [{ id: "gen-gaseosas", nombre: "Gaseosas", orden: 0 }],
+        generoPorProducto: new Map(),
+        generoPorAgrupado: new Map([["ag-gaseosa", "gen-gaseosas"]]),
+      };
+      const s = armarSelectorCartaPos(cartaBebidas, pedibles, generos);
+      expect(s.seccionesCarta[0].entradas).toEqual([
+        { tipo: "carpeta", generoCartaId: "gen-gaseosas", nombre: "Gaseosas", entradas: [{ tipo: "agrupado", itemAgrupadoCartaId: "ag-gaseosa", nombre: "Gaseosa 500cc", precioMinimo: 5000, precioMaximo: 5000, opciones: [coca, sprite] }] },
+        { tipo: "producto", producto: agua },
+      ]);
+    });
+
+    it("género apagado (no está en `generos`) o inexistente: el producto sigue suelto, sin error", () => {
+      const generos: GenerosSelectorCartaPos = { generos: [], generoPorProducto: new Map([["p-agua", "gen-apagado"]]), generoPorAgrupado: new Map() };
+      const s = armarSelectorCartaPos(cartaBebidas, pedibles, generos);
+      expect(s.seccionesCarta[0].entradas.filter((e) => e.tipo === "carpeta")).toEqual([]);
+      expect(s.seccionesCarta[0].entradas).toContainEqual({ tipo: "producto", producto: agua });
+    });
+
+    it("carpeta sin ningún producto pedible en la sucursal actual (todas sus opciones no pedibles): no se muestra", () => {
+      const cartaConGeneroVacio = carta([seccion("s-bebidas", "Bebidas", [suelto("p-fantasma", "No pedible"), suelto("p-agua", "Agua")])]);
+      const generos: GenerosSelectorCartaPos = { generos: [{ id: "gen-x", nombre: "X", orden: 0 }], generoPorProducto: new Map([["p-fantasma", "gen-x"]]), generoPorAgrupado: new Map() };
+      const s = armarSelectorCartaPos(cartaConGeneroVacio, pedibles, generos);
+      expect(s.seccionesCarta[0].entradas).toEqual([{ tipo: "producto", producto: agua }]);
+    });
+
+    it("orden (G2): las carpetas van primero por su `orden` propio (después nombre), y los sueltos después, en el orden de la carta", () => {
+      const cartaOrden = carta([
+        seccion("s-bebidas", "Bebidas", [suelto("p-agua", "Agua"), suelto("p-bife", "Bife de chorizo"), suelto("p-flan", "Flan"), suelto("p-coca", "Coca-Cola 500cc")]),
+      ]);
+      const generos: GenerosSelectorCartaPos = {
+        generos: [
+          { id: "gen-z", nombre: "Zeta (orden 5)", orden: 5 },
+          { id: "gen-a", nombre: "Alfa (orden 1)", orden: 1 },
+        ],
+        generoPorProducto: new Map([["p-bife", "gen-z"], ["p-flan", "gen-a"]]),
+        generoPorAgrupado: new Map(),
+      };
+      const s = armarSelectorCartaPos(cartaOrden, pedibles, generos);
+      expect(s.seccionesCarta[0].entradas.map((e) => (e.tipo === "carpeta" ? e.nombre : (e.tipo === "producto" ? e.producto.nombre : e.nombre)))).toEqual([
+        "Alfa (orden 1)",
+        "Zeta (orden 5)",
+        "Agua",
+        "Coca-Cola 500cc",
+      ]);
+    });
+
+    it("invariante con géneros: cada pedible sigue apareciendo exactamente una vez, dentro o fuera de una carpeta", () => {
+      const generos: GenerosSelectorCartaPos = {
+        generos: [{ id: "gen-gaseosas", nombre: "Gaseosas", orden: 0 }],
+        generoPorProducto: new Map(),
+        generoPorAgrupado: new Map([["ag-gaseosa", "gen-gaseosas"]]),
+      };
+      const s = armarSelectorCartaPos(cartaBebidas, pedibles, generos);
+      const ofrecidos = productoIdsOfrecidos(s);
+      expect(new Set(ofrecidos).size).toBe(ofrecidos.length);
+      expect([...ofrecidos].sort()).toEqual(pedibles.map((p) => p.productoId).sort());
+    });
   });
 });
