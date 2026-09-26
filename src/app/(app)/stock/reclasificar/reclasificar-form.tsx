@@ -6,6 +6,7 @@ import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar, type Destino
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 
 interface FilaDestino {
   seccionId: string;
@@ -87,7 +88,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
 
     const destinosValidos: DestinoReclasificacion[] = destinos
       .filter((d) => d.seccionId && d.cantidad !== "")
-      .map((d) => ({ seccionId: d.seccionId, loteVencimiento: d.loteVencimiento ? new Date(d.loteVencimiento) : null, cantidad: Number(d.cantidad) }));
+      .map((d) => ({ seccionId: d.seccionId, loteVencimiento: d.loteVencimiento ? new Date(d.loteVencimiento) : null, cantidad: numeroDelCampo(d.cantidad) ?? NaN }));
 
     if (!destinosValidos.length) {
       setMensaje("Agregá al menos un destino.");

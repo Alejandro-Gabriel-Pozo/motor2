@@ -53,6 +53,31 @@ describe("reclasificarStock", () => {
     expect(await calcularSaldoTotal(mpId, destinoBId)).toBe(4);
   });
 
+  // Task #32 (docs/pendientes-*.md): Reclasificación no tenía NINGÚN chequeo de decimales en los montos de destino — ni
+  // siquiera redondeo — antes de sumarlos al Kardex. Ahora se RECHAZA un destino con más decimales de los que admite la unidad
+  // de stock del producto, mismo criterio que Traspasos/Conteo Físico/Compra (src/core/datos/cantidad.ts).
+  it("rechaza un destino con más decimales de los que admite la unidad de stock (antes no había NINGÚN chequeo)", async () => {
+    const resultado = await reclasificarStock({
+      productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: destinoAId, cantidad: 9.996 }], fecha: new Date(),
+    });
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+    expect(resultado.mensaje).toContain("decimales");
+    expect(await calcularSaldoTotal(mpId, origenId)).toBe(10); // nada se tocó
+    expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(0);
+  });
+
+  it("sigue aceptando destinos con los decimales exactos que admite la unidad", async () => {
+    const resultado = await reclasificarStock({
+      productoId: mpId, seccionOrigenId: origenId,
+      destinos: [{ seccionId: destinoAId, cantidad: 6.25 }, { seccionId: destinoBId, cantidad: 3.75 }],
+      fecha: new Date(),
+    });
+    expect(resultado.ok, resultado.ok ? "" : resultado.mensaje).toBe(true);
+    expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(6.25);
+    expect(await calcularSaldoTotal(mpId, destinoBId)).toBe(3.75);
+  });
+
   it("rechaza si la suma de los destinos no coincide exacto con el disponible (ni de más ni de menos)", async () => {
     const deMenos = await reclasificarStock({
       productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: destinoAId, cantidad: 5 }], fecha: new Date(),

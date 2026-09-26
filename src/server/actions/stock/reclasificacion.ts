@@ -2,7 +2,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
+import { validarCantidad } from "@/core/datos/cantidad";
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
@@ -74,16 +74,19 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
     }
     for (const d of datos.destinos) {
       if (!texto(d.seccionId)) return error("Cada destino necesita una sección — no se puede dejar en blanco.");
-      if (!(d.cantidad > 0)) return error("Cada destino necesita una cantidad mayor a 0.");
-      if (!esNumeroFinito(d.cantidad)) return error("Cada destino necesita una cantidad válida.");
     }
+    // El formato/signo/decimales de cada cantidad de destino se validan más abajo con `validarCantidad`, una vez resuelta la
+    // unidad de stock del producto (antes NO había ningún chequeo de decimales acá — hallazgo del pendiente #32).
 
     // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
     // registrarMovimiento — conPermiso no valida que las secciones sean
     // de ESTA sucursal, solo el permiso de quien llama.
     if (!(await obtenerSeccionPropia(datos.seccionOrigenId, ctx.sucursalId))) return error("No se encontró la sección de origen.");
+    const seccionesDestino = new Map<string, { id: string; nombre: string }>();
     for (const d of datos.destinos) {
-      if (!(await obtenerSeccionPropia(d.seccionId, ctx.sucursalId))) return error("No se encontró una de las secciones de destino.");
+      const seccion = await obtenerSeccionPropia(d.seccionId, ctx.sucursalId);
+      if (!seccion) return error("No se encontró una de las secciones de destino.");
+      seccionesDestino.set(d.seccionId, seccion);
     }
 
     // Con un único destino idéntico al origen (misma sección+lote), la
@@ -96,8 +99,6 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
         return error("El único destino es idéntico al origen (misma sección y lote) — no hay nada para reclasificar.");
       }
     }
-
-    const totalDestinos = datos.destinos.reduce((acc, d) => acc + d.cantidad, 0);
 
     return conTransaccionSerializable(async (tx) => {
       // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
@@ -113,6 +114,21 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
       if (!(await productoDisponibleEn(ctx.sucursalId, producto.id, tx))) {
         return error(`«${producto.nombre}» no está disponible en «${ctx.sucursalNombre}».`);
       }
+
+      // Cantidad de ENTRADA de cada destino: se rechaza el exceso de decimales para la unidad de stock del producto, no se
+      // redondea ni se guarda tal cual (hallazgo del pendiente #32 — Reclasificación no tenía NINGÚN chequeo de decimales acá,
+      // a diferencia de Traspasos/Conteo Físico/Compra). Recién acá se conoce `producto.unidadStock`.
+      const destinosValidados: { seccionId: string; loteVencimiento: Date | null; cantidad: number }[] = [];
+      for (const d of datos.destinos) {
+        const nombreSeccion = seccionesDestino.get(d.seccionId)?.nombre ?? d.seccionId;
+        const resCantidad = validarCantidad(d.cantidad, producto.unidadStock, {
+          etiqueta: `La cantidad de "${producto.nombre}" hacia "${nombreSeccion}"`,
+          obligatorio: true,
+        });
+        if (!resCantidad.ok) return error(resCantidad.mensaje);
+        destinosValidados.push({ seccionId: d.seccionId, loteVencimiento: d.loteVencimiento ?? null, cantidad: resCantidad.valor! });
+      }
+      const totalDestinos = destinosValidados.reduce((acc, d) => acc + d.cantidad, 0);
 
       // El saldo disponible se lee DENTRO de la transacción (Serializable
       // aborta si otra escritura concurrente lo cambia mientras tanto) —
@@ -151,14 +167,14 @@ export async function reclasificarStock(datos: DatosReclasificacion): Promise<Re
           precioTotal: 0,
           precioPorUnidadStock: 0,
         },
-        ...datos.destinos.map(
+        ...destinosValidados.map(
           (d): Prisma.MovimientoStockCreateManyInput => ({
             operacionId: operacion.id,
             productoId: datos.productoId,
             seccionId: d.seccionId,
             proceso: "RECLASIFICACION",
             cantidad: d.cantidad,
-            loteVencimiento: d.loteVencimiento ?? null,
+            loteVencimiento: d.loteVencimiento,
             detalle: "Reclasificación: entra desde otra sección/lote.",
             precioTotal: 0,
             precioPorUnidadStock: 0,
