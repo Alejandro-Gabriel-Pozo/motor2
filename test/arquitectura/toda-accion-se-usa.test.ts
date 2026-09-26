@@ -44,8 +44,6 @@ const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
   notificar_alertas: "Alertas de stock por mail: falta un proveedor de mail configurado (Resend/SendGrid). docs/plan-migracion.md:1097, docs/grounding-decisiones-abiertas-erpnext-dolibarr-2026-09-21.md:134.",
   sincronizar_proveedores: "Reservada sin Server Action propia a propósito, tras sacar el parche que reemplazó la FK real. docs/plan-migracion.md:535,778.",
   ejecutar_tests: "Reservada para una futura pantalla de administración que corra la suite; no existe todavía.",
-  calibrar_rendimiento_local:
-    "Rendimiento por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 3): la migración de datos y el permiso se crean en este paso; se usa desde el paso 6 (fijarRendimientoLocal/volverAlRendimientoCentral).",
 };
 
 function archivosFuente(dir: string): string[] {

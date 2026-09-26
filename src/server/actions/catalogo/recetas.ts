@@ -6,10 +6,12 @@ import { esNumeroFinito } from "@/core/numero";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conReintento } from "@/core/movimientos/reintentar";
+import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/con-reintento";
 import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/pasos-receta";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { describirCambioVersionReceta } from "@/core/catalogo/describir-cambio-receta";
+import { describirDescarteArrastre } from "@/core/catalogo/origen-cambio-receta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
@@ -202,16 +204,26 @@ export async function guardarReceta(
     const invalidoPasos = validarPasos(pasos, items);
     if (invalidoPasos) return error(invalidoPasos);
 
-    // Reintento con backoff y jitter (el mismo ciclo que usa `conTransaccionSerializable`, ver core/movimientos/reintentar.ts): dos ediciones
-    // simultáneas de la MISMA receta calculan la misma `version` y una choca con el UNIQUE (productoId, version). Se relee el máximo y se
-    // reintenta; esperar un tiempo aleatorio entre intentos evita que las dos vuelvan a chocar en el mismo instante. Si se agotan los
-    // intentos, el error de unicidad sale tal cual, como antes.
+    // Reintento con backoff y jitter (mismo ciclo de siempre, core/movimientos/reintentar.ts): dos ediciones simultáneas de la
+    // MISMA receta calculan la misma `version` y una choca con el UNIQUE (productoId, version) — se relee el máximo y se
+    // reintenta. Desde D3 (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6) la transacción pasa a
+    // SERIALIZABLE (el arrastre de calibraciones locales lee/escribe `RendimientoLocalIngrediente`, que una calibración
+    // concurrente también puede estar tocando): se reintenta tanto el choque de UNIQUE como un conflicto de escritura
+    // (esErrorDeUnicidad(e) || esConflictoDeEscritura(e)).
     let version = 0;
+    let descartes: string[] = [];
     await conReintento(
       async () => {
-        const ultima = await prisma.recetaVersion.findFirst({ where: { productoId }, orderBy: { version: "desc" } });
+        descartes = [];
+        // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el
+        // ingrediente haya cambiado de unidad o haya salido de la receta.
+        const ultima = await prisma.recetaVersion.findFirst({
+          where: { productoId },
+          orderBy: { version: "desc" },
+          include: { ingredientes: { include: { rendimientosLocales: true, unidad: { select: { nombre: true } }, insumoProducto: { select: { nombre: true } } } } },
+        });
         version = (ultima?.version ?? 0) + 1;
-        await prisma.$transaction(async (tx) => {
+        await conTransaccionSerializable(async (tx) => {
           const creada = await tx.recetaVersion.create({
             data: {
               productoId,
@@ -245,7 +257,7 @@ export async function guardarReceta(
                 })),
               },
             },
-            include: { ingredientes: true, pasos: true },
+            include: { ingredientes: { include: { unidad: { select: { nombre: true } } } }, pasos: true },
           });
 
           // Los pasos ya existen (con id real), y también los ingredientes
@@ -265,6 +277,52 @@ export async function guardarReceta(
             }
           }
 
+          // D3 — arrastre de calibraciones locales (RendimientoLocalIngrediente) de la versión vieja a la nueva, por
+          // insumoProductoId. Si cambió la unidad, o el ingrediente salió de la receta, la calibración se DESCARTA
+          // (nunca se arrastra "resucitada" con otra unidad) y se audita. Un cambio de cantidad/merma CENTRAL no
+          // descarta nada — la calibración es de la sucursal, no del valor central.
+          if (ultima) {
+            const sucursalIds = new Set<string>();
+            for (const viejoIng of ultima.ingredientes) for (const r of viejoIng.rendimientosLocales) sucursalIds.add(r.sucursalId);
+            const sucursales = sucursalIds.size ? await tx.sucursal.findMany({ where: { id: { in: Array.from(sucursalIds) } }, select: { id: true, nombre: true } }) : [];
+            const nombreSucursal = new Map(sucursales.map((s) => [s.id, s.nombre]));
+
+            for (const viejoIng of ultima.ingredientes) {
+              if (!viejoIng.rendimientosLocales.length) continue; // nada calibrado en ninguna sucursal: nada que arrastrar ni descartar.
+              const nuevoIng = creada.ingredientes.find((i) => i.insumoProductoId === viejoIng.insumoProductoId);
+
+              if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId) {
+                await tx.rendimientoLocalIngrediente.createMany({
+                  data: viejoIng.rendimientosLocales.map((r) => ({
+                    recetaIngredienteId: nuevoIng.id,
+                    sucursalId: r.sucursalId,
+                    cantidad: r.cantidad,
+                    mermaPorcentaje: r.mermaPorcentaje,
+                  })),
+                });
+                continue;
+              }
+
+              const motivo = !nuevoIng ? "se quitó de la receta" : `cambió la unidad de ${viejoIng.unidad.nombre} a ${nuevoIng.unidad.nombre}`;
+              for (const r of viejoIng.rendimientosLocales) {
+                const sucNombre = nombreSucursal.get(r.sucursalId) ?? r.sucursalId;
+                const entidadId = `${r.sucursalId}:${productoId}:${viejoIng.insumoProductoId}`;
+                const descripcion = describirDescarteArrastre({ insumoNombre: viejoIng.insumoProducto.nombre, sucursalNombre: sucNombre, version, motivo });
+                await registrarCambioAuditado(tx, {
+                  entidad: "RendimientoLocalIngrediente", entidadId, campo: "cantidad", descripcion,
+                  valorAnterior: r.cantidad !== null ? Number(r.cantidad) : null, valorNuevo: null,
+                  actorId: ctx.usuarioId, sucursalId: r.sucursalId,
+                });
+                await registrarCambioAuditado(tx, {
+                  entidad: "RendimientoLocalIngrediente", entidadId, campo: "mermaPorcentaje", descripcion,
+                  valorAnterior: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null, valorNuevo: null,
+                  actorId: ctx.usuarioId, sucursalId: r.sucursalId,
+                });
+                descartes.push(`«${sucNombre}» para "${viejoIng.insumoProducto.nombre}" (${motivo})`);
+              }
+            }
+          }
+
           // Auditoría (D6(b), docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 2): un registro por versión
           // nueva de la receta CENTRAL — sucursalId siempre null (Catálogo Central, no un dato por sucursal). El origen
           // es siempre manual: guardarReceta no recibe ningún parámetro `origen`.
@@ -278,16 +336,17 @@ export async function guardarReceta(
             actorId: ctx.usuarioId,
             sucursalId: null,
           });
-        }, { maxWait: 5_000, timeout: 15_000 });
+        });
       },
-      { maxIntentos: 5, esReintentable: esErrorDeUnicidad }
+      { maxIntentos: 5, esReintentable: (e) => esErrorDeUnicidad(e) || esConflictoDeEscritura(e) }
     );
     // Sin esto la página no refleja el cambio en un navegador real hasta
     // recargar a mano (ver src/server/actions/refrescar.ts) — detectado
     // con Playwright, no con Vitest ni con los closures que ya hacían
     // `redirect(volver)` tras un `ok` (una navegación real ya refresca sola).
     refrescarVistaSiHaceFalta();
-    return ok(`Receta de "${producto.nombre}" guardada como versión ${version}.`);
+    const avisoDescartes = descartes.length ? ` Se descartó la calibración local de ${descartes.join(", ")}.` : "";
+    return ok(`Receta de "${producto.nombre}" guardada como versión ${version}.${avisoDescartes}`);
   });
 }
 

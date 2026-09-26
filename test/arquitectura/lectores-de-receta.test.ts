@@ -52,7 +52,12 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
   {
     ruta: "server/actions/catalogo/recetas.ts",
     clase: "central",
-    motivo: "El editor de la receta CENTRAL (obtenerRecetaVigente/listarVersionesDeReceta/guardarReceta) — nunca resuelve por sucursal, es lo que se calibra contra.",
+    motivo: "El editor de la receta CENTRAL (obtenerRecetaVigente/listarVersionesDeReceta/guardarReceta) — nunca resuelve por sucursal, es lo que se calibra contra. El arrastre de D3 lee la versión vieja completa, pero solo para copiar/descartar RendimientoLocalIngrediente, no para resolver ningún efectivo.",
+  },
+  {
+    ruta: "server/actions/catalogo/rendimiento-local.ts",
+    clase: "central",
+    motivo: "fijarRendimientoLocal/volverAlRendimientoCentral leen la línea (RecetaIngrediente) y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelven ningún rendimiento efectivo, escriben el override tal cual.",
   },
   {
     ruta: "app/(app)/catalogo/recetas/page.tsx",
