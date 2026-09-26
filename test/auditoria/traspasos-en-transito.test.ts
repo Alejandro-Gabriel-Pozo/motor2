@@ -13,6 +13,10 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import {
   crearEnvioDirectoTransferencia,
+  crearSolicitudTransferencia,
+  aprobarYEnviarTransferencia,
+  rechazarSolicitudTransferencia,
+  cancelarSolicitudTransferencia,
   aceptarTransferencia,
   rechazarTransferencia,
   confirmarReingresoTransferencia,
@@ -242,6 +246,101 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
 
     const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("CERRADA");
+  });
+
+  /**
+   * Carrera de stock en tránsito (docs/plan-mutaciones-controladas-2026-09-25.md, Paso 4). `rechazarSolicitudTransferencia` y
+   * `cancelarSolicitudTransferencia` leían el estado y escribían el nuevo SIN transacción: si `aprobarYEnviarTransferencia` (que sí es
+   * serializable) hacía commit de la SALIDA + ENVIADA justo entre esa lectura y esa escritura, el traspaso quedaba RECHAZADA_ORIGEN con el
+   * stock YA afuera del origen — y nadie lo podía reingresar (el reingreso exige RECHAZADA_DESTINO): stock perdido. Mismo arreglo que ya
+   * tenía `rechazarTransferencia` (ver "rechazo simultáneo" más arriba).
+   *
+   * La carrera es intermitente por naturaleza (depende de en qué milisegundo cae cada consulta): por eso se corre varias veces, con el
+   * rechazo arrancando con distintos desfasajes, y lo que se afirma es el INVARIANTE — el stock del origen más lo que sigue en tránsito es
+   * siempre lo que se compró.
+   */
+  it("REGRESIÓN (stock en tránsito): aprobar y rechazar la MISMA solicitud simultáneos — exactamente uno gana, y nunca queda RECHAZADA_ORIGEN con la SALIDA ya hecha", async () => {
+    const mp = await crearMP("HarinaCarrera");
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 20 }] });
+
+    const DESFASAJES_MS = [0, 0, 1, 2, 4, 8, 15];
+    for (const desfasaje of DESFASAJES_MS) {
+      await comoB();
+      const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 1, seccionDestinoId: seccionBId });
+      if (!sol.ok) throw new Error(sol.mensaje);
+
+      await comoA(); // aprobar y rechazar una solicitud son los dos decisiones de Origen
+      const settled = await Promise.allSettled([
+        aprobarYEnviarTransferencia(sol.id, seccionAId),
+        new Promise((r) => setTimeout(r, desfasaje)).then(() => rechazarSolicitudTransferencia(sol.id, "No tenemos")),
+      ]);
+
+      expect(settled.every((s) => s.status === "fulfilled"), `ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+      const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+      const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
+      const salidas = await prisma.movimientoStock.count({ where: { traspasoSucursalId: sol.id, proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } });
+      const contexto = `desfasaje ${desfasaje} ms → ${JSON.stringify(resultados)}; estado final ${traspaso.estado}, salidas ${salidas}`;
+
+      expect(resultados.filter((r) => r.ok).length, contexto).toBe(1);
+      expect(resultados.filter((r) => !r.ok)[0]?.mensaje, contexto).toMatch(/ya está en estado/);
+      if (traspaso.estado === "ENVIADA") expect(salidas, contexto).toBe(1); // ganó aprobar: una sola salida
+      else {
+        expect(traspaso.estado, contexto).toBe("RECHAZADA_ORIGEN"); // ganó rechazar: nunca salió nada
+        expect(salidas, contexto).toBe(0);
+      }
+    }
+
+    // Invariante: lo que queda en el origen + lo que sigue en tránsito (ENVIADA) = lo que se compró. Nada se perdió en el medio.
+    const enTransito = await prisma.traspasoSucursal.aggregate({ where: { productoId: mp.id, estado: "ENVIADA" }, _sum: { cantidad: true } });
+    expect((await calcularSaldoTotal(mp.id, seccionAId)) + Number(enTransito._sum.cantidad ?? 0)).toBe(20);
+  });
+
+  it("REGRESIÓN (stock en tránsito): doble cancelación simultánea de la misma solicitud — exactamente una tiene efecto, la otra recibe el error de estado", async () => {
+    const mp = await crearMP("HarinaDobleCancela");
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+    if (!sol.ok) throw new Error(sol.mensaje);
+
+    // Mismo usuario (B = quien la pidió) en las dos llamadas: el caso real es un doble clic o dos pestañas.
+    const settled = await Promise.allSettled([cancelarSolicitudTransferencia(sol.id), cancelarSolicitudTransferencia(sol.id)]);
+
+    expect(settled.every((s) => s.status === "fulfilled"), `ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+    const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+    expect(resultados.filter((r) => r.ok).length, JSON.stringify(resultados)).toBe(1);
+    expect(resultados.filter((r) => !r.ok)[0]?.mensaje).toMatch(/no se puede cancelar desde acá/);
+
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
+    expect(traspaso.estado).toBe("CANCELADA");
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // una solicitud nunca tocó stock
+  });
+
+  it("REGRESIÓN (stock en tránsito): doble rechazo simultáneo de la misma solicitud — exactamente uno gana, el otro recibe el error de estado, nunca se pisa el motivo en silencio", async () => {
+    const mp = await crearMP("HarinaDobleRechazoSol");
+    await comoA();
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
+    if (!sol.ok) throw new Error(sol.mensaje);
+
+    await comoA();
+    const settled = await Promise.allSettled([
+      rechazarSolicitudTransferencia(sol.id, "Motivo A: no tenemos"),
+      rechazarSolicitudTransferencia(sol.id, "Motivo B: pedilo a otra"),
+    ]);
+
+    expect(settled.every((s) => s.status === "fulfilled"), `ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+    const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+    expect(resultados.filter((r) => r.ok).length, JSON.stringify(resultados)).toBe(1);
+    expect(resultados.filter((r) => !r.ok)[0]?.mensaje).toMatch(/no se puede rechazar desde acá/);
+
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
+    expect(traspaso.estado).toBe("RECHAZADA_ORIGEN");
+    expect(["Motivo A: no tenemos", "Motivo B: pedilo a otra"]).toContain(traspaso.motivoRechazoOrigen);
   });
 
   it("Caso 2 (Pivote 3): fallo a mitad de la escritura de un envío — atomicidad real, no queda un TraspasoSucursal ni un MovimientoStock huérfano", async () => {

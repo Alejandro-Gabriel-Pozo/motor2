@@ -20,12 +20,17 @@ export type PedidoImpresion =
   /** «Anular» un ítem enviado: los ids de las anulaciones que el ítem ya tenía antes. */
   | { tipo: "anulacion"; itemId: string; espejosAntes: readonly string[] }
   /** «Cerrar y registrar la venta» con total > 0: la boleta de la cuenta cerrada. */
-  | { tipo: "boleta"; cuentaId: string };
+  | { tipo: "boleta"; cuentaId: string }
+  /**
+   * «Emitir boleta corregida»: el ejemplar que el SERVIDOR confirmó como emitido por esta llamada (`emitirBoletaCorregida` → `ejemplar`),
+   * con el mismo número que el A (docs/plan-numeracion-boleta-2026-09-25.md, paso 8).
+   */
+  | { tipo: "boleta-correccion"; cuentaId: string; ejemplar: number };
 
 export type DocumentoImprimible =
   | { tipo: "comanda" | "reimpresion"; comanda: ComandaDeEnvio }
   | { tipo: "anulacion"; comanda: ComandaDeEnvio; anulacion: AnulacionDeComanda }
-  | { tipo: "boleta" | "boleta-reimpresion"; boleta: BoletaDeCuenta };
+  | { tipo: "boleta" | "boleta-reimpresion" | "boleta-correccion"; boleta: BoletaDeCuenta };
 
 export interface DatosDeImpresion {
   comandas: readonly ComandaDeEnvio[];
@@ -44,6 +49,8 @@ const DESCARTAR: ResolucionImpresion = { accion: "descartar" };
  * - Boleta: imprime la de la cuenta cerrada en cuanto el refresco la trae en «Cuentas cerradas» (también en el caso idempotente «ya
  *   estaba cerrada»: una copia de más no genera trabajo repetido). Si su venta se anuló, descarta: no se imprime el comprobante de una
  *   venta revertida.
+ * - Boleta corregida: imprime el ejemplar pedido en cuanto el refresco lo trae como último ejemplar de la cuenta; mientras la cuenta siga
+ *   mostrando uno anterior, espera. Si ya hay uno posterior, o el pedido dejó de estar vigente (otra anulación en el medio), descarta.
  */
 export function resolverImpresion(datos: DatosDeImpresion, pedido: PedidoImpresion): ResolucionImpresion {
   switch (pedido.tipo) {
@@ -64,6 +71,13 @@ export function resolverImpresion(datos: DatosDeImpresion, pedido: PedidoImpresi
       if (!boleta) return ESPERAR;
       if (boleta.ventaAnulada) return DESCARTAR;
       return { accion: "imprimir", documento: { tipo: "boleta", boleta } };
+    }
+    case "boleta-correccion": {
+      const boleta = datos.boletas.find((b) => b.cuentaId === pedido.cuentaId);
+      const ejemplar = boleta?.numero?.ejemplar ?? 0;
+      if (!boleta || ejemplar < pedido.ejemplar) return ESPERAR;
+      if (ejemplar > pedido.ejemplar || boleta.estado !== "vigente") return DESCARTAR;
+      return { accion: "imprimir", documento: { tipo: "boleta-correccion", boleta } };
     }
   }
 }

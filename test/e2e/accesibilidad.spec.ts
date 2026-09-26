@@ -1038,3 +1038,63 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado(
+  "pos/mesas/[mesaId]: «Cuentas cerradas» con una boleta desactualizada («Emitir boleta corregida» habilitado) y su diálogo abierto con el error, en modo claro y oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-numeracion-boleta-2026-09-25.md, paso 8: la fila con el número de la boleta y el botón nuevo, y el diálogo del motivo.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-COR-${marca}`, nombre: `E2E A11y Plato Corrección ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 977 } });
+    const cerradaEn = new Date(Date.now() - 60 * 60_000);
+    const ventas = await Promise.all(
+      [null, new Date()].map((anuladaEn) => prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, anuladaEn } }))
+    );
+    const cuenta = await prisma.cuenta.create({
+      data: {
+        mesaId: mesa.id,
+        abiertaPorId: admin.id,
+        cerradaEn,
+        cerradaPorId: admin.id,
+        items: {
+          create: ventas.map((venta, i) => ({ productoId: producto.id, cantidad: 1, precioUnitario: 1000 + i * 500, numeroEnvio: 1, creadoPorId: admin.id, operacionId: venta.id })),
+        },
+      },
+    });
+    const { _max } = await prisma.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
+    await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero: (_max.numero ?? 0) + 1, emitidoEn: cerradaEn, emitidoPorId: admin.id } });
+    const emitir = page.getByRole("button", { name: /^Emitir la boleta corregida de la cuenta cerrada/ });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 977");
+      await expect(page.locator("[data-cuenta-cerrada]")).toContainText("N.º");
+      await expect(emitir).toBeEnabled();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo claro").toEqual([]);
+
+      await emitir.click();
+      const dialogo = page.getByRole("dialog", { name: /^Emitir boleta corregida/ });
+      await dialogo.getByRole("button", { name: "Emitir e imprimir" }).click();
+      await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo «Emitir boleta corregida» con el error").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 977");
+      await expect(emitir).toBeEnabled();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo oscuro emulado").toEqual([]);
+      await emitir.click();
+      await expect(page.getByRole("dialog", { name: /^Emitir boleta corregida/ })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo en modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.operacion.deleteMany({ where: { id: { in: ventas.map((v) => v.id) } } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);
