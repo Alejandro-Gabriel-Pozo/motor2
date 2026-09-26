@@ -97,6 +97,11 @@ export default async function RendimientoRecetasPage({
           <strong>¿La receta cargada refleja lo que realmente se usa?</strong> Compara la receta contra lo que las compras, la
           producción y las ventas de esta sucursal sugieren que se consume.
         </p>
+        <p className="mb-1 text-sm">
+          <EnlaceInterno href="/reportes/rendimiento-recetas/por-sucursal" className="underline">
+            Comparar el rendimiento calibrado entre sucursales
+          </EnlaceInterno>
+        </p>
         <p className="mb-4 text-sm text-neutral-500">
           Esto no mide si te falta stock. Para eso están{" "}
           <EnlaceInterno href="/reportes/diferencias" className="underline">

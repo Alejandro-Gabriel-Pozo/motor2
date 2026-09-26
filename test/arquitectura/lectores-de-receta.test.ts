@@ -50,6 +50,11 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     motivo: "R3 (obtenerIngredientesRecetaVigente): cantidad efectiva de la sucursal en el cartel de 'producto de reventa'.",
   },
   {
+    ruta: "core/reportes/rendimiento-por-sucursal.ts",
+    clase: "efectivo",
+    motivo: "D8 (compararRendimientosPorSucursal): resuelve el efectivo de CADA sucursal pedida, una al lado de la otra, para compararlas.",
+  },
+  {
     ruta: "server/actions/catalogo/recetas.ts",
     clase: "central",
     motivo: "El editor de la receta CENTRAL (obtenerRecetaVigente/listarVersionesDeReceta/guardarReceta) — nunca resuelve por sucursal, es lo que se calibra contra. El arrastre de D3 lee la versión vieja completa, pero solo para copiar/descartar RendimientoLocalIngrediente, no para resolver ningún efectivo.",
