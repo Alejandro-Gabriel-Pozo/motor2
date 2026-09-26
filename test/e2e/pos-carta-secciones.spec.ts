@@ -70,6 +70,14 @@ async function sembrarCarta(sucursalId: string) {
 
 const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
+
+/** «Abrir cuenta» pasando por el modal de comensales (docs/plan-comensales-y-limite-mesas-2026-09-26.md): botón rápido 1-6 + confirmar. */
+async function abrirCuentaUI(page: Page, comensales: number) {
+  await page.getByRole("button", { name: "Abrir cuenta" }).click();
+  const dialogo = page.getByRole("dialog", { name: "¿Cuántos comensales?" });
+  await dialogo.getByRole("button", { name: String(comensales), exact: true }).click();
+  await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
+}
 const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la carta" });
 const elegido = (page: Page) => page.locator("[data-elegido]");
 
@@ -221,7 +229,7 @@ test("el mozo (sin permiso de carta) elige por sección de carta y agrega", asyn
   try {
     const m = mozo.page;
     await m.goto(`/mesas/${mesa.id}`);
-    await m.getByRole("button", { name: "Abrir cuenta" }).click();
+    await abrirCuentaUI(m, 2);
     await expect(aviso(m)).toHaveText("Cuenta de la mesa 985 abierta.");
     await barra(m).getByRole("button", { name: cat.bebidas.nombre }).click();
     await m.getByRole("region", { name: cat.bebidas.nombre }).getByRole("button", { name: cat.gaseosa.nombre }).click();
