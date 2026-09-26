@@ -3,7 +3,7 @@
 import { useId } from "react";
 import type { EntradaCarpetaSelectorCarta, EntradaSelectorCarta, ProductoPedible, SelectorCartaPos } from "@/core/pos/selector-carta";
 import { SECCION_FUERA_DE_CARTA, type AccionSelectorCarta, type EstadoSelectorCarta } from "@/core/pos/selector-carta-estado";
-import { formatearMonto } from "./formato";
+import { formatearMonto } from "@/core/pos/formato";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA (docs/plan-selector-carta-pos-2026-09-25.md, §2.2) y por CARPETA DE GÉNERO

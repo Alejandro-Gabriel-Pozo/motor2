@@ -6,7 +6,7 @@ import { agregarItems } from "@/server/actions/pos/cuenta";
 import { pediblesDeEntrada, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/selector-carta";
 import { estadoInicialSelectorCarta, reducirSelectorCarta } from "@/core/pos/selector-carta-estado";
 import { BOTON_PRIMARIO, CAMPO } from "./estilos";
-import { formatearMonto } from "./formato";
+import { formatearMonto } from "@/core/pos/formato";
 import { SelectorCarta } from "./selector-carta";
 import { useAccionMesa } from "./usar-accion";
 
