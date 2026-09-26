@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
-import { calcularMetricas, filtrarMesas, obtenerMapaDeMesas, resolverEstadoMesa, tiempoDesde, type MesaEnMapa } from "../../src/core/pos/mesas";
+import { calcularMetricas, filtrarMesas, obtenerMapaDeMesas, resolverEstadoMesa, tiempoDesde, validarMaxMesasAbiertas, type MesaEnMapa } from "../../src/core/pos/mesas";
 
 /** Núcleo del mapa de mesas (src/core/pos/mesas.ts): derivación del estado, métricas, tiempos, filtros y la consulta real. */
 
@@ -25,6 +25,24 @@ describe("resolverEstadoMesa (el estado se deriva de la cuenta abierta, no se pe
 
   it("segunda ronda en una mesa ocupada (enviados + uno nuevo sin enviar) → vuelve a en_pedido", () => {
     expect(resolverEstadoMesa({ items: [{ numeroEnvio: 1 }, { numeroEnvio: null }] })).toBe("en_pedido");
+  });
+});
+
+describe("validarMaxMesasAbiertas (docs/plan-comensales-y-limite-mesas-2026-09-26.md: null = sin límite)", () => {
+  it("null pasa siempre (sin límite)", () => {
+    expect(validarMaxMesasAbiertas(null)).toEqual({ ok: true, limite: null });
+  });
+
+  it("acepta enteros positivos", () => {
+    expect(validarMaxMesasAbiertas(1)).toEqual({ ok: true, limite: 1 });
+    expect(validarMaxMesasAbiertas(50)).toEqual({ ok: true, limite: 50 });
+    expect(validarMaxMesasAbiertas(9999)).toEqual({ ok: true, limite: 9999 });
+  });
+
+  it("rechaza cero, negativos, decimales, NaN, más de 9999 y no-números", () => {
+    for (const valor of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 10000, "5", undefined, [], {}]) {
+      expect(validarMaxMesasAbiertas(valor).ok, `límite ${JSON.stringify(valor)}`).toBe(false);
+    }
   });
 });
 

@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
-import { abrirCuenta, agregarItems, enviarACocina, liberarMesa, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta";
+import { abrirCuenta, agregarItems, corregirComensales, enviarACocina, liberarMesa, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta";
 import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 
@@ -22,23 +22,97 @@ describe("tomar pedido (server actions)", () => {
   const cuentaAbiertaDe = (mesaId: string) => prisma.cuenta.findFirst({ where: { mesaId, cerradaEn: null } });
 
   describe("abrirCuenta", () => {
-    it("abre la cuenta de una mesa libre, a nombre de quien la abre", async () => {
-      expect(await abrirCuenta(s.mesa.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 abierta." });
+    it("abre la cuenta de una mesa libre, a nombre de quien la abre, con los comensales dados", async () => {
+      expect(await abrirCuenta(s.mesa.id, 3)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 abierta." });
       const cuenta = await cuentaAbiertaDe(s.mesa.id);
       expect(cuenta?.abiertaPorId).toBe(s.admin.id);
+      expect(cuenta?.comensales).toBe(3);
     });
 
     it("si la mesa ya tenía una cuenta abierta, avisa sin error y no crea otra (el índice único parcial arbitra)", async () => {
-      await abrirCuenta(s.mesa.id);
-      expect(await abrirCuenta(s.mesa.id)).toEqual({ ok: true, mensaje: "La mesa 4 ya tenía una cuenta abierta." });
+      await abrirCuenta(s.mesa.id, 2);
+      expect(await abrirCuenta(s.mesa.id, 5)).toEqual({ ok: true, mensaje: "La mesa 4 ya tenía una cuenta abierta." });
       expect(await prisma.cuenta.count({ where: { mesaId: s.mesa.id } })).toBe(1);
+    });
+
+    it("idempotencia: reabrir la MISMA mesa conserva los comensales de la primera apertura, aun con otro valor (o inválido) en la segunda", async () => {
+      await abrirCuenta(s.mesa.id, 4);
+      expect((await abrirCuenta(s.mesa.id, 99)).ok).toBe(true);
+      expect((await cuentaAbiertaDe(s.mesa.id))?.comensales).toBe(4);
+      // Un valor inválido en la segunda llamada tampoco falla: la idempotencia se resuelve ANTES de validar.
+      expect((await abrirCuenta(s.mesa.id, 0)).ok).toBe(true);
+      expect((await cuentaAbiertaDe(s.mesa.id))?.comensales).toBe(4);
     });
 
     it("una mesa de otra sucursal no se puede abrir", async () => {
       const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
       const ajena = await prisma.mesa.create({ data: { sucursalId: norte.id, numero: 1 } });
-      expect(await abrirCuenta(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró esa mesa en esta sucursal." });
+      expect(await abrirCuenta(ajena.id, 2)).toEqual({ ok: false, mensaje: "No se encontró esa mesa en esta sucursal." });
       expect(await prisma.cuenta.count()).toBe(0);
+    });
+
+    it("comensales inválidos rechazan sin crear la cuenta (0, negativo, decimal, NaN, 100, string)", async () => {
+      for (const invalido of [0, -1, 1.5, Number.NaN, 100, "2" as unknown as number]) {
+        const r = await abrirCuenta(s.mesa.id, invalido);
+        expect(r.ok, `comensales ${JSON.stringify(invalido)}`).toBe(false);
+        expect(r.mensaje).toMatch(/comensales/);
+      }
+      expect(await prisma.cuenta.count()).toBe(0);
+    });
+
+    it("con la sucursal en el límite de mesas abiertas, no deja abrir otra (bloqueo en seco)", async () => {
+      await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 1 } });
+      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
+      const otraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
+      expect(await abrirCuenta(otraMesa.id, 2)).toEqual({
+        ok: false,
+        mensaje: 'Se alcanzó el máximo de 1 mesas abiertas en «Central». Cerrá o liberá una antes de abrir otra.',
+      });
+      expect(await prisma.cuenta.count({ where: { mesaId: otraMesa.id } })).toBe(0);
+    });
+
+    it("bajar el límite por debajo de las mesas ya abiertas no cierra ninguna, solo bloquea aperturas nuevas", async () => {
+      const otraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
+      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
+      expect((await abrirCuenta(otraMesa.id, 2)).ok).toBe(true);
+      await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 1 } });
+      expect(await prisma.cuenta.count({ where: { cerradaEn: null } })).toBe(2); // ninguna se cerró sola
+
+      const terceraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 6 } });
+      expect((await abrirCuenta(terceraMesa.id, 2)).ok).toBe(false);
+      // La MISMA mesa ya abierta reabre igual (idempotente), aunque el límite ya esté superado.
+      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
+    });
+
+    it("sin límite (null, default), se puede abrir cualquier cantidad de mesas", async () => {
+      expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: s.sucursalId } })).maxMesasAbiertas).toBeNull();
+      for (let i = 0; i < 5; i++) {
+        const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 300 + i } });
+        expect((await abrirCuenta(mesa.id, 2)).ok).toBe(true);
+      }
+    });
+  });
+
+  describe("corregirComensales", () => {
+    it("corrige los comensales de una cuenta abierta", async () => {
+      await abrirCuenta(s.mesa.id, 2);
+      const cuenta = (await cuentaAbiertaDe(s.mesa.id))!;
+      expect(await corregirComensales(cuenta.id, 5)).toEqual({ ok: true, mensaje: "Comensales de la mesa 4 actualizados a 5." });
+      expect((await cuentaAbiertaDe(s.mesa.id))?.comensales).toBe(5);
+    });
+
+    it("rechaza un valor inválido, sin tocar el valor vigente", async () => {
+      await abrirCuenta(s.mesa.id, 2);
+      const cuenta = (await cuentaAbiertaDe(s.mesa.id))!;
+      expect((await corregirComensales(cuenta.id, 0)).ok).toBe(false);
+      expect((await cuentaAbiertaDe(s.mesa.id))?.comensales).toBe(2);
+    });
+
+    it("una cuenta ya cerrada no se corrige: el dato queda congelado", async () => {
+      const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
+      await prisma.cuenta.update({ where: { id: cuenta.id }, data: { cerradaEn: new Date(), comensales: 2 } });
+      expect(await corregirComensales(cuenta.id, 5)).toEqual({ ok: false, mensaje: "La cuenta de la mesa 4 ya está cerrada." });
+      expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).comensales).toBe(2);
     });
   });
 
@@ -198,7 +272,7 @@ describe("tomar pedido (server actions)", () => {
 
   describe("liberarMesa", () => {
     it("una cuenta sin ningún ítem se cierra sin venta y la mesa vuelve a libre", async () => {
-      await abrirCuenta(s.mesa.id);
+      await abrirCuenta(s.mesa.id, 2);
       const cuenta = (await cuentaAbiertaDe(s.mesa.id))!;
       expect(await liberarMesa(cuenta.id)).toEqual({ ok: true, mensaje: "Mesa 4 liberada." });
       const cerrada = await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } });
@@ -223,7 +297,7 @@ describe("tomar pedido (server actions)", () => {
       await prisma.usuarioSucursal.create({ data: { usuarioId: operador.id, sucursalId: s.sucursalId, rolId: s.operador.id, activo: true } });
       await entrarComo(operador);
       for (const r of [
-        await abrirCuenta(s.mesa.id),
+        await abrirCuenta(s.mesa.id, 2),
         await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }]),
         await quitarItemSinEnviar(cuenta.items[0].id),
         await enviarACocina(cuenta.id, [cuenta.items[0].id]),
@@ -242,7 +316,7 @@ describe("tomar pedido (server actions)", () => {
         { clave: "pos_tomar_pedido", ver: true, editar: false },
       ]);
       await entrarComo(soloVe);
-      const r = await abrirCuenta(s.mesa.id);
+      const r = await abrirCuenta(s.mesa.id, 2);
       expect(r.ok).toBe(false);
       expect(r.mensaje).toMatch(/No tenés permiso/);
       expect(await prisma.cuenta.count()).toBe(0);
@@ -250,7 +324,7 @@ describe("tomar pedido (server actions)", () => {
 
     it("si la Central deshabilitó pos_tomar_pedido para la sucursal, ni el admin puede", async () => {
       await prisma.capacidadSucursal.create({ data: { accionClave: "pos_tomar_pedido", sucursalId: s.sucursalId, habilitado: false } });
-      const r = await abrirCuenta(s.mesa.id);
+      const r = await abrirCuenta(s.mesa.id, 2);
       expect(r.ok).toBe(false);
       expect(r.mensaje).toMatch(/no habilitó "pos_tomar_pedido"/);
     });
@@ -258,7 +332,7 @@ describe("tomar pedido (server actions)", () => {
     it("un «mozo» armado desde la matriz (pos_mesas Ver + pos_tomar_pedido Editar) hace todo el circuito", async () => {
       const mozo = await crearMozo(s.sucursalId);
       await entrarComo(mozo);
-      expect((await abrirCuenta(s.mesa.id)).ok).toBe(true);
+      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
       const cuenta = (await cuentaAbiertaDe(s.mesa.id))!;
       expect((await agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }, { productoId: s.flan.id, cantidad: 2 }])).ok).toBe(true);
       const [mila, flan] = await itemsDe(cuenta.id);
@@ -267,7 +341,7 @@ describe("tomar pedido (server actions)", () => {
       expect((await itemsDe(cuenta.id)).map((i) => [i.numeroEnvio, i.creadoPorId])).toEqual([[1, mozo.id]]);
 
       const otraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
-      expect((await abrirCuenta(otraMesa.id)).ok).toBe(true);
+      expect((await abrirCuenta(otraMesa.id, 2)).ok).toBe(true);
       expect((await liberarMesa((await cuentaAbiertaDe(otraMesa.id))!.id)).ok).toBe(true);
     });
   });

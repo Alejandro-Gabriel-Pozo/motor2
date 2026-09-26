@@ -6,6 +6,7 @@ import {
   obtenerDetalleDeMesa,
   restanteDe,
   validarCantidadPedido,
+  validarComensales,
   validarMotivoAnulacion,
 } from "../../src/core/pos/cuenta";
 
@@ -98,6 +99,21 @@ describe("validarCantidadPedido", () => {
       expect(validarCantidadPedido(valor, 0).ok, String(valor)).toBe(false);
     }
     expect(validarCantidadPedido(1000, 0)).toEqual({ ok: false, mensaje: "La cantidad no puede superar 999." });
+  });
+});
+
+describe("validarComensales (docs/plan-comensales-y-limite-mesas-2026-09-26.md: obligatorio, sin default)", () => {
+  it("acepta enteros de 1 a 99", () => {
+    expect(validarComensales(1)).toEqual({ ok: true, comensales: 1 });
+    expect(validarComensales(4)).toEqual({ ok: true, comensales: 4 });
+    expect(validarComensales(99)).toEqual({ ok: true, comensales: 99 });
+  });
+
+  it("rechaza cero, negativos, decimales, NaN, más de 99 y no-números", () => {
+    for (const valor of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 100, "2", null, undefined, [], {}]) {
+      expect(validarComensales(valor).ok, `comensales ${JSON.stringify(valor)}`).toBe(false);
+    }
+    expect(validarComensales(100)).toEqual({ ok: false, mensaje: "La cantidad de comensales tiene que ser un número entero entre 1 y 99." });
   });
 });
 

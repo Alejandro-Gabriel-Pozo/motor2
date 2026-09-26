@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
-import { agregarItems, anularItemEnviado, cerrarCuenta, emitirBoletaCorregida, enviarACocina } from "../../src/server/actions/pos/cuenta";
+import { abrirCuenta, agregarItems, anularItemEnviado, cerrarCuenta, emitirBoletaCorregida, enviarACocina } from "../../src/server/actions/pos/cuenta";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 
 /**
@@ -91,6 +91,20 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     const espejos = await prisma.cuentaItem.findMany({ where: { anulaAItemId: item.id } });
     expect(espejos.map((e) => Number(e.cantidad))).toEqual([-2]);
     expect(await prisma.registroAuditoria.count()).toBe(1);
+  });
+
+  it("límite de mesas abiertas: con N-1 ya abiertas, dos aperturas simultáneas a mesas DISTINTAS → exactamente una tiene éxito (docs/plan-comensales-y-limite-mesas-2026-09-26.md)", async () => {
+    await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 2 } });
+    // Ya hay 1 mesa abierta (s.mesa): con el límite en 2, queda lugar para exactamente UNA más entre las dos que compiten.
+    await abrirCuenta(s.mesa.id, 2);
+    const [mesaA, mesaB] = await Promise.all([
+      prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 700 } }),
+      prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 701 } }),
+    ]);
+    const resultados = await Promise.all([abrirCuenta(mesaA.id, 2), abrirCuenta(mesaB.id, 2)]);
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok)[0].mensaje).toBe('Se alcanzó el máximo de 2 mesas abiertas en «Central». Cerrá o liberá una antes de abrir otra.');
+    expect(await prisma.cuenta.count({ where: { cerradaEn: null } })).toBe(2); // la de antes + la única que ganó la carrera
   });
 
   it("dos «Enviar a cocina» a la vez: un solo número de envío", async () => {
