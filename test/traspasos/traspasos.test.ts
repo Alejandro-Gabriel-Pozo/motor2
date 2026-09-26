@@ -107,21 +107,56 @@ describe("Traspasos entre sucursales", () => {
     expect(sol.mensaje).toContain("no está disponible en");
   });
 
-  it("crearSolicitudTransferencia redondea la cantidad a los decimales de la unidad, igual que crearEnvioDirectoTransferencia (PUSH)", async () => {
+  // Task #32 (docs/pendientes-*.md): antes de este cambio, una cantidad con más decimales de los que admite la unidad de stock
+  // se REDONDEABA en silencio acá (ver el commit que agregó este test); ahora se RECHAZA, mismo criterio que Compra y Mesa
+  // (src/core/datos/cantidad.ts) — 5,126 en una unidad de 2 decimales es un error de carga, no un 5,13.
+  it("crearSolicitudTransferencia RECHAZA una cantidad con más decimales de los que admite la unidad (ya no redondea en silencio)", async () => {
     const mp = await crearProductoConStock("MP_PULL_DEC", 20); // unidadStock = kg, 2 decimales
 
     await comoB();
     const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5.126, seccionDestinoId: seccionBId });
-    expect(sol.ok).toBe(true);
+    expect(sol.ok).toBe(false);
+    if (sol.ok) return;
+    expect(sol.mensaje).toContain("decimales");
+    expect(await prisma.traspasoSucursal.count()).toBe(0); // nada se creó
+  });
+
+  it("crearSolicitudTransferencia sigue aceptando una cantidad con los decimales exactos que admite la unidad", async () => {
+    const mp = await crearProductoConStock("MP_PULL_DEC_OK", 20); // unidadStock = kg, 2 decimales
+
+    await comoB();
+    const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5.13, seccionDestinoId: seccionBId });
+    expect(sol.ok, sol.ok ? "" : sol.mensaje).toBe(true);
     if (!sol.ok) return;
 
     const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
-    expect(Number(traspaso.cantidad)).toBe(5.13); // redondeado a 2 decimales, no 5.126 crudo
+    expect(Number(traspaso.cantidad)).toBe(5.13);
+  });
+
+  it("crearEnvioDirectoTransferencia RECHAZA una cantidad con más decimales de los que admite la unidad (ya no redondea en silencio)", async () => {
+    const mp = await crearProductoConStock("MP_PUSH_DEC", 20); // unidadStock = kg, 2 decimales
 
     await comoA();
-    await aprobarYEnviarTransferencia(sol.id, seccionAId);
-    const movimiento = await prisma.movimientoStock.findFirstOrThrow({ where: { traspasoSucursalId: sol.id, proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } });
-    expect(Number(movimiento.cantidad)).toBe(-5.13); // el Kardex nunca recibe el valor sin redondear
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 3.126, seccionOrigenId: seccionAId });
+    expect(envio.ok).toBe(false);
+    if (envio.ok) return;
+    expect(envio.mensaje).toContain("decimales");
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(20); // no se descontó nada
+    expect(await prisma.traspasoSucursal.count()).toBe(0);
+  });
+
+  it("crearEnvioDirectoTransferencia sigue aceptando una cantidad con los decimales exactos que admite la unidad", async () => {
+    const mp = await crearProductoConStock("MP_PUSH_DEC_OK", 20); // unidadStock = kg, 2 decimales
+
+    await comoA();
+    const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 5.13, seccionOrigenId: seccionAId });
+    expect(envio.ok, envio.ok ? "" : envio.mensaje).toBe(true);
+    if (!envio.ok) return;
+
+    const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
+    expect(Number(traspaso.cantidad)).toBe(5.13);
+    // 20 - 5.13 en JS da 14.870000000000001 por ruido de punto flotante; Postgres (Decimal real) guarda 14.87 exacto.
+    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(14.87);
   });
 
   it("flujo pull completo: B solicita a A, A aprueba (sale de su Sección Origen), B acepta (entra a su Sección Destino)", async () => {
