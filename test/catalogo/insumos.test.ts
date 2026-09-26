@@ -84,4 +84,110 @@ describe("renombrarOFusionarInsumo", () => {
     const resultado = await renombrarOFusionarInsumo(insumoAId, "Harina premium", true);
     expect(resultado.ok, resultado.mensaje).toBe(true);
   });
+
+  /**
+   * D9 (docs/plan-sustitucion-insumos-receta-2026-09-26.md, paso 7): fusionar un Insumo usado como sustituto en alguna receta
+   * tiene que arrastrar esos sustitutos, no fallar por la FK RESTRICT de SustitutoRecetaIngrediente.insumoSustitutoId.
+   */
+  describe("D9: la fusión arrastra los sustitutos de receta", () => {
+    let pvId: string;
+    let mpPrincipalId: string;
+    let insumoBId: string;
+
+    beforeEach(async () => {
+      const insumoB = await prisma.insumo.create({ data: { nombre: "Harina premium" } });
+      insumoBId = insumoB.id;
+      const mpPrincipal = await darDeAltaProducto({ nombre: "Manteca", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1 });
+      mpPrincipalId = mpPrincipal.ok ? mpPrincipal.id : "";
+      const pv = await darDeAltaProducto({ nombre: "Medialuna", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1 });
+      pvId = pv.ok ? pv.id : "";
+    });
+
+    it("la fusión reapunta el sustituto del Insumo viejo al nuevo", async () => {
+      await prisma.recetaVersion.create({
+        data: {
+          productoId: pvId,
+          version: 1,
+          ingredientes: { create: [{ insumoProductoId: mpPrincipalId, cantidad: 0.1, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoAId, orden: 1 }] } }] },
+        },
+      });
+
+      const resultado = await renombrarOFusionarInsumo(insumoAId, "Harina premium", true);
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+
+      const ingrediente = await prisma.recetaIngrediente.findFirstOrThrow({ where: { insumoProductoId: mpPrincipalId }, include: { sustitutos: true } });
+      expect(ingrediente.sustitutos.map((s) => [s.insumoSustitutoId, s.orden])).toEqual([[insumoBId, 1]]);
+    });
+
+    it("el duplicado se colapsa: si la línea ya tenía al insumo destino como sustituto, se queda con uno solo", async () => {
+      await prisma.recetaVersion.create({
+        data: {
+          productoId: pvId,
+          version: 1,
+          ingredientes: {
+            create: [
+              {
+                insumoProductoId: mpPrincipalId,
+                cantidad: 0.1,
+                unidadId: unidadKgId,
+                sustitutos: { create: [{ insumoSustitutoId: insumoAId, orden: 1 }, { insumoSustitutoId: insumoBId, orden: 2 }] },
+              },
+            ],
+          },
+        },
+      });
+
+      const resultado = await renombrarOFusionarInsumo(insumoAId, "Harina premium", true);
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+
+      const ingrediente = await prisma.recetaIngrediente.findFirstOrThrow({ where: { insumoProductoId: mpPrincipalId }, include: { sustitutos: true } });
+      expect(ingrediente.sustitutos.map((s) => s.insumoSustitutoId)).toEqual([insumoBId]);
+      // Renumerado sin huecos (D9): quedaba en orden 2, pasa a 1 al colapsar el duplicado.
+      expect(ingrediente.sustitutos.map((s) => s.orden)).toEqual([1]);
+    });
+
+    it("el redundante con el principal se borra: si el destino de la fusión es el propio Insumo del ingrediente, el sustituto desaparece", async () => {
+      // La MP principal de la receta ahora pertenece al Insumo B (destino de la próxima fusión).
+      await prisma.producto.update({ where: { id: mpPrincipalId }, data: { insumoId: insumoBId } });
+      await prisma.recetaVersion.create({
+        data: {
+          productoId: pvId,
+          version: 1,
+          ingredientes: { create: [{ insumoProductoId: mpPrincipalId, cantidad: 0.1, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoAId, orden: 1 }] } }] },
+        },
+      });
+
+      const resultado = await renombrarOFusionarInsumo(insumoAId, "Harina premium", true);
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+
+      const ingrediente = await prisma.recetaIngrediente.findFirstOrThrow({ where: { insumoProductoId: mpPrincipalId }, include: { sustitutos: true } });
+      expect(ingrediente.sustitutos).toEqual([]);
+    });
+
+    it("la fusión ya no falla por la FK cuando el Insumo fusionado es sustituto en dos líneas de receta distintas", async () => {
+      const pv2 = await darDeAltaProducto({ nombre: "Facturita", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1 });
+      const pv2Id = pv2.ok ? pv2.id : "";
+      await prisma.recetaVersion.create({
+        data: {
+          productoId: pvId,
+          version: 1,
+          ingredientes: { create: [{ insumoProductoId: mpPrincipalId, cantidad: 0.1, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoAId, orden: 1 }] } }] },
+        },
+      });
+      await prisma.recetaVersion.create({
+        data: {
+          productoId: pv2Id,
+          version: 1,
+          ingredientes: { create: [{ insumoProductoId: mpPrincipalId, cantidad: 0.2, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoAId, orden: 1 }] } }] },
+        },
+      });
+
+      const resultado = await renombrarOFusionarInsumo(insumoAId, "Harina premium", true);
+      expect(resultado.ok, resultado.mensaje).toBe(true);
+      expect(await prisma.insumo.findUnique({ where: { id: insumoAId } })).toBeNull();
+      const sustitutos = await prisma.sustitutoRecetaIngrediente.findMany({});
+      expect(sustitutos.every((s) => s.insumoSustitutoId === insumoBId)).toBe(true);
+      expect(sustitutos).toHaveLength(2);
+    });
+  });
 });

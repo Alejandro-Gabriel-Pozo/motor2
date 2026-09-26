@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { creariaCiclo } from "@/core/catalogo/grupo";
@@ -8,6 +9,58 @@ import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
+
+/**
+ * D9 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): antes de borrar el Insumo `origenId` en una fusión, reapunta cada
+ * `SustitutoRecetaIngrediente` que lo declaraba como sustituto hacia `destinoId` — la FK es RESTRICT, así que sin esto la fusión de
+ * un Insumo usado como sustituto en alguna receta fallaba en vez de arrastrarlo (mismo criterio que ya aplica
+ * `producto.updateMany` con `Producto.insumoId` unas líneas arriba). Por cada línea de receta afectada:
+ * - si YA tenía un sustituto apuntando a `destinoId` (duplicado tras la fusión), se borra el del origen y se conserva el otro;
+ * - si el destino termina siendo el mismo Insumo que el propio ingrediente principal de esa línea (redundante — D8 nunca lo
+ *   permitiría al guardar), se borra;
+ * - se renumera `orden` de lo que quede, sin huecos.
+ */
+async function reapuntarSustitutosDeInsumoFusionado(tx: Prisma.TransactionClient, origenId: string, destinoId: string): Promise<void> {
+  const afectados = await tx.sustitutoRecetaIngrediente.findMany({
+    where: { insumoSustitutoId: { in: [origenId, destinoId] } },
+    include: { recetaIngrediente: { include: { insumoProducto: true } } },
+  });
+  const porIngrediente = new Map<string, typeof afectados>();
+  for (const fila of afectados) {
+    const lista = porIngrediente.get(fila.recetaIngredienteId) ?? [];
+    lista.push(fila);
+    porIngrediente.set(fila.recetaIngredienteId, lista);
+  }
+
+  for (const [, filas] of porIngrediente) {
+    const principalInsumoId = filas[0].recetaIngrediente.insumoProducto.insumoId;
+    // Como mucho una fila por (ingrediente, insumo) — el UNIQUE ya lo garantiza — así que hay a lo sumo una del origen y una del
+    // destino. La del destino (si existía) sobrevive tal cual; si no, sobrevive la del origen, reapuntada.
+    const delDestino = filas.find((f) => f.insumoSustitutoId === destinoId);
+    const delOrigen = filas.find((f) => f.insumoSustitutoId === origenId);
+    const sobrevive = delDestino ?? delOrigen;
+    const aBorrar = filas.filter((f) => f.id !== sobrevive?.id);
+    if (aBorrar.length) await tx.sustitutoRecetaIngrediente.deleteMany({ where: { id: { in: aBorrar.map((f) => f.id) } } });
+
+    if (!sobrevive) continue;
+    if (destinoId === principalInsumoId) {
+      // Redundante: el destino de la fusión ES el Insumo del propio ingrediente principal — ya no tiene sentido como sustituto.
+      await tx.sustitutoRecetaIngrediente.delete({ where: { id: sobrevive.id } });
+      continue;
+    }
+    if (sobrevive.insumoSustitutoId !== destinoId) {
+      await tx.sustitutoRecetaIngrediente.update({ where: { id: sobrevive.id }, data: { insumoSustitutoId: destinoId } });
+    }
+  }
+
+  // Renumerar sin huecos — en orden ascendente para no chocar nunca con el UNIQUE (recetaIngredienteId, orden) a mitad de camino.
+  for (const recetaIngredienteId of porIngrediente.keys()) {
+    const restantes = await tx.sustitutoRecetaIngrediente.findMany({ where: { recetaIngredienteId }, orderBy: { orden: "asc" } });
+    for (let i = 0; i < restantes.length; i++) {
+      if (restantes[i].orden !== i + 1) await tx.sustitutoRecetaIngrediente.update({ where: { id: restantes[i].id }, data: { orden: i + 1 } });
+    }
+  }
+}
 
 export async function listarInsumos() {
   await requerirSesion();
@@ -114,10 +167,13 @@ export async function renombrarOFusionarInsumo(
         return error(`Ya existe el insumo "${existente.nombre}" — hace falta confirmar la fusión antes de aplicarla.`);
       }
 
-      await prisma.$transaction([
-        prisma.producto.updateMany({ where: { insumoId }, data: { insumoId: existente.id } }),
-        prisma.insumo.delete({ where: { id: insumoId } }),
-      ]);
+      await prisma.$transaction(async (tx) => {
+        await tx.producto.updateMany({ where: { insumoId }, data: { insumoId: existente.id } });
+        await reapuntarSustitutosDeInsumoFusionado(tx, insumoId, existente.id);
+        // DESPUÉS de reapuntar los sustitutos (FK RESTRICT: docs/plan-sustitucion-insumos-receta-2026-09-26.md, D9) — sin esto, la
+        // fusión de un Insumo usado como sustituto en alguna receta fallaba por la FK en vez de arrastrarlo como corresponde.
+        await tx.insumo.delete({ where: { id: insumoId } });
+      });
       return ok(`"${actual.nombre}" se fusionó con el insumo existente "${existente.nombre}".`);
     }
 
