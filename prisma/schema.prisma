@@ -742,6 +742,11 @@ model Seccion {
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
   nombre     String
   activa     Boolean  @default(true)
+  /// ¿El cierre de cuenta del POS puede descontar de acá AUTOMÁTICAMENTE cuando la sección habitual de un producto no alcanza
+  /// (o el producto no tiene habitual)? Default true: todas sirven de respaldo sin configurar nada (decisión del dueño 2026-09-25:
+  /// hoy no se excluye ninguna, pero queda la herramienta). No afecta a la sección HABITUAL de un producto (la preferencia
+  /// explícita manda) ni a la venta de mostrador (ahí la sección la elige una persona). Ver docs/plan-seccion-habitual-stock-2026-09-25.md.
+  sirveDeRespaldoEnVentas Boolean @default(true)
 
   operacionesTransferenciaDestino Operacion[]           @relation("OperacionSeccionDestino")
   movimientos                     MovimientoStock[]

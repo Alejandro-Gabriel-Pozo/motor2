@@ -25,6 +25,13 @@ describe("Secciones", () => {
     expect(activas.map((s) => s.nombre)).toContain("Depósito Central");
   });
 
+  it("una sección nueva nace sirviendo de respaldo automático en ventas (Seccion.sirveDeRespaldoEnVentas, default de la base)", async () => {
+    const resultado = await crearSeccion("Cocina");
+    expect(resultado.ok).toBe(true);
+    const creada = await prisma.seccion.findFirstOrThrow({ where: { sucursalId, nombre: "Cocina" } });
+    expect(creada.sirveDeRespaldoEnVentas).toBe(true);
+  });
+
   it("rechaza un nombre duplicado, ignorando mayúsculas/espacios", async () => {
     await crearSeccion("Barra");
     const resultado = await crearSeccion("  barra  ");
