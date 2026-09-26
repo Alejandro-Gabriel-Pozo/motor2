@@ -122,8 +122,8 @@ model Sucursal {
   frecuenciasConteo        FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
   promociones              PromocionProducto[]
-  traspasosComoOrigen      TraspasoSucursal[]         @relation("TraspasoOrigen")
-  traspasosComoDestino     TraspasoSucursal[]         @relation("TraspasoDestino")
+  traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
+  traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
   pagosConsignante         PagoConsignante[]
   registrosAuditoria       RegistroAuditoria[]
   promosCarta              PromoCarta[]
@@ -558,6 +558,25 @@ model ProveedorPorProducto {
   @@unique([productoId, proveedorId, unidadCompraId])
 }
 
+/// Cliente con % de descuento fijo (Task #14, docs/plan-clientes-descuento-2026-09-26.md): catálogo CENTRAL, sin `sucursalId` —
+/// mismo criterio que `Proveedor` (una hostería con varias sucursales suele compartir sus clientes frecuentes). D1: un único
+/// `descuentoPorcentaje` por cliente, no varía por categoría de producto. Nunca se borra (`activo`, igual que `Proveedor.activo`):
+/// una `Cuenta` ya cerrada referencia su cliente para siempre (FK RESTRICT en `Cuenta.clienteId`/`Operacion.clienteId`).
+///
+/// El % que efectivamente se cobró queda CONGELADO en `Cuenta.descuentoPorcentaje` al asignar el cliente a la cuenta (D7) — cambiar
+/// `descuentoPorcentaje` acá nunca reescribe una cuenta ya abierta ni una ya cerrada.
+model Cliente {
+  id                  String   @id @default(cuid())
+  nombre              String   @unique
+  /// 0 ≤ % < 100 (D4, validarPorcentajeDescuento) — Decimal(5,2): hasta 999,99, sobra para un porcentaje.
+  descuentoPorcentaje Decimal  @db.Decimal(5, 2)
+  activo              Boolean  @default(true)
+  creadoEn            DateTime @default(now())
+
+  cuentas     Cuenta[]
+  operaciones Operacion[]
+}
+
 /// Versionado append-only real (Catalogo.js:1690-1779): NUNCA se pisa ni
 /// borra una versión — una venta pasada referencia esa versión para
 /// costeo/auditoría (Catalogo.js:1696-1706). `version` es un entero simple;
@@ -838,6 +857,14 @@ model Operacion {
   /// nullable en vez de forzar un Proveedor "Mostrador" ficticio).
   proveedorId String?
   proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
+
+  /// Cliente con descuento de una venta de mesa (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 3/4): NO reusa
+  /// `proveedorId` a propósito — ese campo ya documentado como "a quién se vende" nunca se usó, y mezclaría el catálogo de
+  /// proveedores con el de clientes. FK RESTRICT: una Operacion vieja sigue apuntando a su Cliente aunque se lo desactive.
+  /// SOLO mesas en v1 (D6): `registrarVenta`, la venta de mostrador, todavía no pasa `clienteId` — el campo ya existe para que
+  /// esa extensión, cuando llegue, no pida otra migración.
+  clienteId  String?
+  cliente    Cliente? @relation(fields: [clienteId], references: [id])
   /// Índice único parcial "Operacion_factura_unica_vigente_key" (sucursalId, proveedorId, nroFactura) WHERE
   /// nroFactura IS NOT NULL AND proceso = 'COMPRA' AND anuladaEn IS NULL — definido FUERA de este schema (Prisma
   /// no declara índices parciales, ver prisma/migrations/20260921230000_factura_unica_vigente/ y el precedente
@@ -845,7 +872,7 @@ model Operacion {
   /// concurrencia real — el chequeo de aplicación (registrarMovimiento) es solo el camino rápido para el caso
   /// secuencial. Solo cuentan las compras VIGENTES: una compra anulada deja libre su N.º de factura. NO cubre:
   /// compras sin proveedor, ni diferencias de formato/mayúsculas en el número.
-  nroFactura  String?
+  nroFactura String?
 
   /// Solo Transferencia (Movimientos.js:425-431, TRANSICIONES.TRANSFERENCIA
   /// no tiene exigeSeccion porque el origen YA es un campo obligatorio
@@ -1016,6 +1043,15 @@ model MovimientoStock {
   /// ventas puntuales; el costo REAL del producto efectivamente consumido ya lo usa `src/core/reportes/perdidas.ts` por separado.
   /// Un reporte de "costo real vs. teórico por sustitución" queda como seguimiento posible, apoyado en `sustituyeAProductoId`.
   costoUnitarioVenta Decimal? @db.Decimal(14, 4)
+
+  /// Precio de LISTA de esta línea, SOLO cuando difiere de lo cobrado (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 3):
+  /// se llena únicamente en la fila proceso VENTA de una venta con descuento de cliente (`precioPorUnidadStock` de esa misma fila
+  /// queda con lo COBRADO, como siempre). `null` = lista y cobrado coinciden (sin descuento, o cualquier proceso que no sea VENTA) —
+  /// no se llena redundante con el mismo valor. Existe para poder medir cuánto se "regaló" (precio de lista − cobrado) sin perder
+  /// ninguno de los dos números: `precioTotal`/`precioPorUnidadStock` de esta misma fila son el importe/precio COBRADO real, la
+  /// fuente de los reportes de dinero de siempre (Período, Costos y márgenes) — esta columna es SOLO para el reporte nuevo de
+  /// descuentos por cliente (`/reportes/descuentos-clientes`), que la resta contra el costo real (`src/core/reportes/margen-real.ts`).
+  precioListaUnitario Decimal? @db.Decimal(14, 2)
 
   /// Solo si esta línea la generó un ajuste de Conteo Físico (incluida su
   /// eventual reversión al cancelar) — reemplaza la correlación por texto
@@ -1642,16 +1678,16 @@ model Mesa {
 /// en la migración pos_mesas_cuentas: Prisma no sabe declarar un índice con WHERE). Sin vencimiento automático (§2).
 /// Se cierra con `cerrarCuenta` (registra la venta) o `liberarMesa` (cuenta sin ningún ítem, sin venta).
 model Cuenta {
-  id           String       @id @default(cuid())
-  mesaId       String
-  mesa         Mesa         @relation(fields: [mesaId], references: [id])
-  abiertaPorId String
-  abiertaPor   User         @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
-  abiertaEn    DateTime     @default(now())
-  cerradaEn    DateTime?
-  cerradaPorId String?
-  cerradaPor   User?        @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
-  items        CuentaItem[]
+  id               String           @id @default(cuid())
+  mesaId           String
+  mesa             Mesa             @relation(fields: [mesaId], references: [id])
+  abiertaPorId     String
+  abiertaPor       User             @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
+  abiertaEn        DateTime         @default(now())
+  cerradaEn        DateTime?
+  cerradaPorId     String?
+  cerradaPor       User?            @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
+  items            CuentaItem[]
   ejemplaresBoleta EjemplarBoleta[]
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
@@ -1663,6 +1699,17 @@ model Cuenta {
   /// SOLO para medir rotación: NO habilita dividir la cuenta por persona. No hay entidad "comensal"/"asiento" ni relación con
   /// `CuentaItem` — ningún ítem se asocia a un comensal en particular.
   comensales Int?
+
+  /// Cliente con descuento asignado a esta cuenta (Task #14, docs/plan-clientes-descuento-2026-09-26.md): CUALQUIER mozo con
+  /// `pos_tomar_pedido` puede asignarlo (D3, `asignarClienteACuenta`), sobre una cuenta abierta, en cualquier momento antes de
+  /// cerrarla. FK RESTRICT: una cuenta ya cerrada sigue apuntando a su Cliente para siempre.
+  clienteId           String?
+  cliente             Cliente? @relation(fields: [clienteId], references: [id])
+  /// SNAPSHOT del `Cliente.descuentoPorcentaje` en el momento de asignarlo (D7): el % se CONGELA acá — si el % del cliente cambia
+  /// después con la cuenta ya abierta, esta cuenta no se entera (nunca se vuelve a leer `Cliente.descuentoPorcentaje` para calcular
+  /// lo cobrado). `null` = sin cliente asignado (el caso de siempre, sin descuento). Es el que usa `precioConDescuento`
+  /// (src/core/moneda.ts) al cerrar la cuenta — `CuentaItem.precioUnitario` sigue siendo el precio de LISTA, sin cambiar de semántica.
+  descuentoPorcentaje Decimal? @db.Decimal(5, 2)
 
   @@index([mesaId])
 }

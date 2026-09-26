@@ -110,6 +110,15 @@ export const ACCIONES: readonly AccionSemilla[] = [
   // de datos 20260926012600_permiso_calibrar_rendimiento_local): separada de `guardar_receta` a propósito — editar la
   // receta global es una decisión distinta de calibrar la sucursal propia.
   { clave: "calibrar_rendimiento_local", descripcion: "Calibrar el rendimiento de las recetas en esta sucursal (cantidad y merma propias de cada ingrediente)", rolesEditarSemilla: ["admin"] },
+  // Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 9): 'clientes' administra el catálogo (alta,
+  // edición del %, activar/desactivar), mismo criterio admin-only que el resto del catálogo (proveedores, categorías, ...).
+  { clave: "clientes", descripcion: "Administrar el catálogo de Clientes y su % de descuento", rolesEditarSemilla: ["admin"] },
+  // 'pos_asignar_cliente' (D3): CUALQUIER MOZO puede asignar un cliente con descuento a la cuenta de una mesa, no solo admin — mismo
+  // criterio de seed que 'pos_tomar_pedido' arriba (arranca solo en admin; el rol «mozo» se arma desde /administracion/roles y la
+  // matriz de permisos, que es donde se le da esta acción). La migración de datos (20260926190200_permiso_pos_asignar_cliente) hace
+  // lo mismo que ESTE seed haría en una base nueva, más: en una base YA EXISTENTE con un rol «mozo» ya armado, le da la fila también
+  // a ese rol (a cualquiera que ya edite 'pos_tomar_pedido'), no solo a admin — así no hace falta que un admin la vuelva a tocar.
+  { clave: "pos_asignar_cliente", descripcion: "Asignar un cliente con descuento a la cuenta de una mesa (POS)", rolesEditarSemilla: ["admin"] },
 ] as const;
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];
