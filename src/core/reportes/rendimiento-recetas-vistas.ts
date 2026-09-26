@@ -100,17 +100,25 @@ export function dentroDeLaBanda(desviacionPorcentaje: number | null, bandaRuidoP
 // ---------------------------------------------------------------------------
 
 /**
- * (entradas reales − lo que la receta hubiera consumido) × costo de
+ * (consumo observado − lo que la receta hubiera consumido) × costo de
  * reposición — mismo espíritu que `deltaImpacto` de periodo.ts:519
  * (grounding §6.3: Restaurant365/xtraCHEF ordenan por plata, no por %).
  * Forma sin división (nunca explota con `totalVendido = 0`, ahí ya da
  * `null` por `costoUnitario`/el propio caller). `null` sin costo conocido
  * — nunca se inventa un precio (mismo criterio que `perdidas.ts:83`).
  * Signo: positivo = entró/se consumió MÁS de lo que la receta prevé.
+ *
+ * `consumoObservado` (Task #26, Diseño B): método COMPRAS pasa
+ * `totalEntradas` (se asume que se consumió lo que entró — la estimación
+ * de siempre); método CONTEO pasa `consumoReal` (lo medido directo por
+ * proceso entre dos anclas, ver rendimiento-conciliado.ts) — MEDIDO, no
+ * asumido. `totalVendido` tiene que ser el vendido de la MISMA ventana que
+ * `consumoObservado` (el vendido del tramo entre anclas, no el de la
+ * ventana elegida en el reporte, cuando el método es CONTEO).
  */
-export function impactoDelDesvio(totalEntradas: number, cantidadTeoricaBruta: number, totalVendido: number, costoUnitario: number | null): number | null {
+export function impactoDelDesvio(consumoObservado: number, cantidadTeoricaBruta: number, totalVendido: number, costoUnitario: number | null): number | null {
   if (costoUnitario === null || totalVendido <= 0) return null;
-  return redondearMoneda((totalEntradas - cantidadTeoricaBruta * totalVendido) * costoUnitario);
+  return redondearMoneda((consumoObservado - cantidadTeoricaBruta * totalVendido) * costoUnitario);
 }
 
 /**
@@ -152,6 +160,26 @@ export function motivoSinEstimacion({
 }): string | null {
   if (totalVendido === 0) return "No hubo ventas de este plato en la ventana elegida: no hay contra qué comparar.";
   if (totalEntradas === 0) return "No hubo compras ni producción de este insumo en la ventana: no se puede estimar el consumo.";
+  if (cantidadTeoricaBruta <= 0) return "La receta dice 0: no se puede calcular un porcentaje de desvío.";
+  return null;
+}
+
+/**
+ * Mismo criterio que `motivoSinEstimacion`, pero para el método CONTEO
+ * (Task #26, Diseño B) — ahí no hay "compras" de las que depender (el
+ * consumo se mide directo, nunca da -100%/null solo por falta de compras
+ * en la ventana), así que el único motivo posible fuera de "sin ventas" es
+ * la receta en 0. `vendidoDelTramo` es el vendido ENTRE LAS DOS ANCLAS
+ * (ver `limitesDelTramo`), no el de la ventana elegida en el reporte.
+ */
+export function motivoSinEstimacionConteo({
+  vendidoDelTramo,
+  cantidadTeoricaBruta,
+}: {
+  vendidoDelTramo: number;
+  cantidadTeoricaBruta: number;
+}): string | null {
+  if (vendidoDelTramo === 0) return "No hubo ventas de este plato entre las dos anclas del conteo: no hay contra qué comparar.";
   if (cantidadTeoricaBruta <= 0) return "La receta dice 0: no se puede calcular un porcentaje de desvío.";
   return null;
 }

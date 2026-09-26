@@ -8,6 +8,16 @@ import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/actions/catalogo/rendimiento-local";
 import { ETIQUETA_ROTULO, desvioEsNotable, explicarConfianza, type Confianza, type RotuloLinea } from "@/core/reportes/rendimiento-recetas-vistas";
+// rendimiento-conciliado.ts es puro (sin @/lib/db, ver su propio docstring) — importable desde un componente cliente sin arrastrar Prisma al bundle.
+import type { MetodoRendimiento } from "@/core/reportes/rendimiento-conciliado";
+
+/** Mismo criterio de "fecha corta" que compras/page.tsx (`fechaCorta`) — YYYY-MM-DD, no se reinventa un formato nuevo acá. */
+const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
+
+const ETIQUETA_METODO: Record<MetodoRendimiento, string> = {
+  CONTEO: "Medido (Conteo Físico)",
+  COMPRAS: "Estimado (compras)",
+};
 
 /** Ayuda por tipo de rótulo — reemplaza el AYUDA_TRIVIAL único (§3, plan P7): cada uno explica algo distinto sobre por qué el desvío se lee diferente acá. */
 const AYUDA_ROTULO: Record<Exclude<RotuloLinea, null>, string> = {
@@ -43,6 +53,11 @@ export interface FilaRendimientoSimpleProps {
   totalVendido: number;
   stockApertura: number;
   stockCierre: number;
+  /** "CONTEO" (medido) o "COMPRAS" (estimado, D4) — ver el docstring del mismo campo en FilaRendimientoSimple, rendimiento-recetas.ts. */
+  metodo: MetodoRendimiento;
+  anclaDesde: Date | null;
+  anclaHasta: Date | null;
+  consumoReal: number | null;
   bandaRuidoPct: number | null;
   impactoPesos: number | null;
   sinCosto: boolean;
@@ -82,6 +97,9 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
     totalVendido,
     stockApertura,
     stockCierre,
+    metodo,
+    anclaDesde,
+    anclaHasta,
     bandaRuidoPct,
     impactoPesos,
     sinCosto,
@@ -244,6 +262,7 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
             {motivoSinEstimacion ?? "—"}
           </span>
         )}
+        <span className="block text-xs text-neutral-500 dark:text-neutral-400">{ETIQUETA_METODO[metodo]}</span>
       </td>
       <td className={`px-2 py-2 ${desvioEsNotable(desviacionPorcentaje) ? "font-medium text-amber-700 dark:text-amber-600" : ""}`}>
         {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
@@ -258,10 +277,19 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
         {totalProducido > 0 && <span className="text-xs text-neutral-500 dark:text-neutral-400"> (+{totalProducido} producido)</span>}
       </td>
       <td className="px-2 py-2">{totalVendido}</td>
-      <td className="px-2 py-2" title={`Antes de este rango: ${stockApertura} — después: ${stockCierre}`}>
-        {stockCierre - stockApertura > 0 ? "+" : ""}
-        {redondearParaMostrar(stockCierre - stockApertura)}
-      </td>
+      {metodo === "CONTEO" && anclaDesde && anclaHasta ? (
+        <td className="px-2 py-2" title="El consumo de esta fila se midió DIRECTO entre estas dos fechas, no con Δ stock — ver la fórmula (icono de ayuda de Rendimiento real).">
+          contado {fechaCorta(anclaDesde)} → {fechaCorta(anclaHasta)}
+        </td>
+      ) : (
+        <td className="px-2 py-2" title={`Antes de este rango: ${stockApertura} — después: ${stockCierre}`}>
+          {stockCierre - stockApertura > 0 ? "+" : ""}
+          {redondearParaMostrar(stockCierre - stockApertura)}
+          <EnlaceInterno href="/movimientos/conteo-fisico" className="block text-xs underline">
+            Programá un conteo
+          </EnlaceInterno>
+        </td>
+      )}
       <td className={`px-2 py-2 ${claseImpacto(impactoPesos)}`}>
         {impactoPesos !== null ? (
           <>

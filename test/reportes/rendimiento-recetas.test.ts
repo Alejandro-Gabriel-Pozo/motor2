@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../../src/core/reportes/rendimiento-recetas";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
+import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 
 describe("calcularRendimientoRecetasSimples", () => {
   let sucursalId: string;
@@ -323,6 +324,181 @@ describe("calcularRendimientoRecetasSimples", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Task #26, Diseño B: método CONTEO — dos anclas de Conteo Físico RESUELTO
+// que cubren el pool entero reemplazan la estimación por compras (D1-D4).
+// Escenarios A-G del plan, con las acciones reales (registrarMovimiento/
+// registrarVenta/registrarConteoFisico) en orden cronológico — importante:
+// `saldoSistema` de un conteo se calcula al MOMENTO de registrarlo.
+// ---------------------------------------------------------------------------
+describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseño B)", () => {
+  let sucursalId: string;
+  let seccionId: string;
+  let unidadKgId: string;
+  let admin: { id: string; email: string };
+
+  const desde = new Date("2026-01-01");
+  const hasta = new Date("2026-01-31");
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    sucursalId = base.sucursal.id;
+    const catalogo = await sembrarCatalogoBase();
+    unidadKgId = catalogo.kg.id;
+    seccionId = (await sembrarSeccion(sucursalId)).id;
+
+    admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+  });
+
+  /** Agua 1:1 — MP aguaCaja / PV aguaBotella, receta cantidad 1 sin merma (el mismo caso real que el resto del archivo). */
+  async function sembrarAgua() {
+    const aguaCaja = await sembrarProductoDisponible({ codigo: "MP_AGUA_CONTEO", nombre: "Agua caja x12", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const aguaBotella = await sembrarProductoDisponible({ codigo: "PV_AGUA_CONTEO", nombre: "Agua botella", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    await prisma.recetaVersion.create({
+      data: { productoId: aguaBotella.id, version: 1, ingredientes: { create: [{ insumoProductoId: aguaCaja.id, cantidad: 1, unidadId: unidadKgId }] } },
+    });
+    return { aguaCaja, aguaBotella };
+  }
+
+  it("escenario A — acopio real (conteo del 28/01 confirma 9): 0% de desvío, método CONTEO", async () => {
+    const { aguaCaja, aguaBotella } = await sembrarAgua();
+    const anclaDesde = await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    expect(anclaDesde.ok, anclaDesde.mensaje).toBe(true);
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-05"), seccionId, items: [{ productoId: aguaCaja.id, cantidad: 72 }] });
+    await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });
+    const anclaHasta = await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 9, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
+    expect(anclaHasta.ok, anclaHasta.mensaje).toBe(true);
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
+    expect(fila.metodo).toBe("CONTEO");
+    expect(fila.anclaDesde?.toISOString().slice(0, 10)).toBe("2026-01-02");
+    expect(fila.anclaHasta?.toISOString().slice(0, 10)).toBe("2026-01-28");
+    expect(fila.consumoReal).toBe(63); // solo la venta — ningún CONTROL, el conteo confirmó que coincidía
+    expect(fila.desviacionPorcentaje).toBe(0);
+    expect(fila.cantidadEstimada).toBe(1); // receta 1:1 sin merma
+  });
+
+  it("escenario B — faltan 9 (conteo del 28/01 da 0, un CONTROL de -9 los corrige): +14,3%, método CONTEO", async () => {
+    const { aguaCaja, aguaBotella } = await sembrarAgua();
+    await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-05"), seccionId, items: [{ productoId: aguaCaja.id, cantidad: 72 }] });
+    await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });
+    const cierre = await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
+    expect(cierre.ok, cierre.mensaje).toBe(true);
+
+    const control = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: aguaCaja.id, proceso: "CONTROL" } });
+    expect(Number(control.cantidad)).toBe(-9); // 72 comprado - 63 consumido = 9 en el sistema; contado 0 → diferencia -9
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
+    expect(fila.metodo).toBe("CONTEO");
+    expect(fila.consumoReal).toBe(72); // 63 (venta) + 9 (lo que corrigió el CONTROL)
+    expect(fila.desviacionPorcentaje).toBeCloseTo(14.3, 1);
+  });
+
+  it("escenarios C y D — SIN conteo del 28/01: +14,3%, método COMPRAS con Δstock=+9 — MISMO resultado tenga o no acopio real (el Kardex es idéntico sin un segundo conteo que lo distinga)", async () => {
+    // "C" (faltan 9) y "D" (acopio real) son, a propósito, EL MISMO escenario acá: sin la segunda ancla no hay
+    // forma de distinguir un caso del otro — el punto del test es justamente demostrar que ambos dan la fila
+    // idéntica (D4 del plan), no que haya dos setups distintos.
+    const { aguaCaja, aguaBotella } = await sembrarAgua();
+    await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-05"), seccionId, items: [{ productoId: aguaCaja.id, cantidad: 72 }] });
+    await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });
+    // Sin conteo del 28/01 — solo UNA ancla (02/01): no alcanza (D4).
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
+    expect(fila.metodo).toBe("COMPRAS");
+    expect(fila.anclaDesde).toBeNull();
+    expect(fila.anclaHasta).toBeNull();
+    expect(fila.consumoReal).toBeNull();
+    expect(fila.desviacionPorcentaje).toBeCloseTo(14.3, 1);
+    expect(fila.stockCierre - fila.stockApertura).toBe(9); // Δstock, mostrado como advertencia de sesgo — no corrige nada
+  });
+
+  it("escenario E — traspaso saliente de 40 entre las dos anclas: 0% (NO +80%, que daría la fórmula sin filtrar la transferencia)", async () => {
+    const mp = await sembrarProductoDisponible({ codigo: "MP_TRASPASO_CONTEO", nombre: "Vino en caja", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_TRASPASO_CONTEO", nombre: "Copa de vino", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+
+    await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-05"), seccionId, items: [{ productoId: mp.id, cantidad: 100 }] });
+    await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 60 }] });
+
+    // Traspaso saliente hacia otra sucursal — movimiento real de Kardex, pero NUNCA es "consumo de receta" (D2).
+    // Directo por prisma (mismo patrón que el resto del archivo para procesos que no expone registrarMovimiento —
+    // ver "sin compras pero CON ventas" más arriba): TRANSFERENCIA_SALIDA_SUCURSAL siempre va por traspasos.ts.
+    const traspaso = await prisma.operacion.create({ data: { sucursalId, proceso: "TRANSFERENCIA_SALIDA_SUCURSAL", fecha: new Date("2026-01-20"), usuarioId: admin.id } });
+    await prisma.movimientoStock.create({
+      data: { operacionId: traspaso.id, productoId: mp.id, seccionId, proceso: "TRANSFERENCIA_SALIDA_SUCURSAL", cantidad: -40, detalle: "Traspaso saliente de prueba", precioTotal: 0, precioPorUnidadStock: 0 },
+    });
+
+    // 100 - 60 (consumo) - 40 (traspaso) = 0 — el conteo confirma que coincide.
+    const cierre = await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
+    expect(cierre.ok, cierre.mensaje).toBe(true);
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Copa de vino")!;
+    expect(fila.metodo).toBe("CONTEO");
+    expect(fila.consumoReal).toBe(60); // el traspaso NUNCA suma — sin filtrarlo hubiera dado 100 (consumoReal) → +66,7%, no 0%
+    expect(fila.desviacionPorcentaje).toBe(0);
+  });
+
+  it("escenario F — una compra de la ventana se anula DESPUÉS de `hasta`: el resultado de B no cambia", async () => {
+    const { aguaCaja, aguaBotella } = await sembrarAgua();
+    await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-05"), seccionId, items: [{ productoId: aguaCaja.id, cantidad: 72 }] });
+
+    // Una compra EXTRA dentro de la ventana, anulada YA (mismo turno del test) — `anularCompra` fecha la reversión
+    // a `new Date()` (el reloj real, hoy) sin importar la fecha de la compra original: como el test corre mucho
+    // después de enero de 2026, la reversión SIEMPRE cae después de `hasta`, quede fuera del tramo medido.
+    const compraExtra = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-06"), seccionId, items: [{ productoId: aguaCaja.id, cantidad: 10 }] });
+    expect(compraExtra.ok, compraExtra.mensaje).toBe(true);
+    const operacionExtra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId, fecha: new Date("2026-01-06") } });
+    const anulacion = await anularCompra(operacionExtra.id);
+    expect(anulacion.ok, anulacion.mensaje).toBe(true);
+
+    await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });
+    const cierre = await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
+    expect(cierre.ok, cierre.mensaje).toBe(true);
+
+    const control = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: aguaCaja.id, proceso: "CONTROL" } });
+    expect(Number(control.cantidad)).toBe(-9); // igual que B — la compra extra se cancela contra su propia reversión antes del conteo
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
+    expect(fila.metodo).toBe("CONTEO");
+    expect(fila.consumoReal).toBe(72); // idéntico al escenario B
+    expect(fila.desviacionPorcentaje).toBeCloseTo(14.3, 1);
+  });
+
+  it("escenario G — 'salsa producida' (hoy da +300% sin conciliar): con dos anclas que cubren la producción, 0%", async () => {
+    const tomate = await sembrarProductoDisponible({ codigo: "MP_TOMATE_CONTEO", nombre: "Tomate conteo", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+    const salsaBase = await sembrarProductoDisponible({ codigo: "MP_SALSA_CONTEO", nombre: "Salsa base conteo", tipo: "MP", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
+    const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA_CONTEO", nombre: "Pizza con salsa conteo", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: salsaBase.id, version: 1, ingredientes: { create: [{ insumoProductoId: tomate.id, cantidad: 2, unidadId: unidadKgId }] } } });
+    await prisma.recetaVersion.create({ data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: salsaBase.id, cantidad: 0.5, unidadId: unidadKgId }] } } });
+
+    await registrarConteoFisico({ productoId: salsaBase.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-05"), seccionId, items: [{ productoId: tomate.id, cantidad: 40 }] });
+    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date("2026-01-10"), seccionId, items: [{ productoId: salsaBase.id, cantidad: 20 }] });
+    expect(produccion.ok, produccion.mensaje).toBe(true);
+    await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: pizza.id, cantidadVendida: 10 }] });
+    // 20 producido - 5 consumido (0.5 × 10) = 15 en depósito — el conteo confirma que coincide (0% real, no +300%).
+    const cierre = await registrarConteoFisico({ productoId: salsaBase.id, seccionId, conteoReal: 15, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
+    expect(cierre.ok, cierre.mensaje).toBe(true);
+
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const fila = filas.find((f) => f.productoVentaNombre === "Pizza con salsa conteo")!;
+    expect(fila.metodo).toBe("CONTEO");
+    expect(fila.consumoReal).toBe(5); // solo lo que consumió la venta — nunca lo producido de más
+    expect(fila.desviacionPorcentaje).toBe(0);
+  });
+});
+
 describe("calcularRendimientoRecetasCompartidas", () => {
   let sucursalId: string;
   let seccionId: string;
@@ -473,6 +649,86 @@ describe("calcularRendimientoRecetasCompartidas", () => {
     expect(filaMilanesa.totalVendido).not.toBe(filaBife.totalVendido); // confirma que NO es el mismo valor repetido (el del pool)
     expect(filaMilanesa.sinCosto).toBe(false);
     expect(filaMilanesa.impactoPesos).not.toBeNull();
+  });
+
+  // --- Task #26 §6 (Diseño B): caso compartido/regresión con intervalos entre anclas de Conteo Físico. ---
+
+  it("método CONTEO (§6): con anclas que cubren el pool entero, cada intervalo mide el consumo real — 0% de desvío (la receta real es 0.1 para ambos), no lo que sugerirían compras artificiales", async () => {
+    const insumoCarne = await prisma.insumo.create({ data: { nombre: "Carne vacuna conteo" } });
+    const nalga = await sembrarProductoDisponible({ codigo: "MP_NALGA_CONTEO", nombre: "Nalga conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const lomo = await sembrarProductoDisponible({ codigo: "MP_LOMO_CONTEO", nombre: "Lomo conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoCarne.id }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA_CONTEO", nombre: "Milanesa conteo", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    const bife = await sembrarProductoDisponible({ codigo: "PV_BIFE_CONTEO", nombre: "Bife conteo", tipo: "PV", unidadStockId: unidadKgId }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: nalga.id, cantidad: 0.1, unidadId: unidadKgId }] } } });
+    await prisma.recetaVersion.create({ data: { productoId: bife.id, version: 1, ingredientes: { create: [{ insumoProductoId: lomo.id, cantidad: 0.1, unidadId: unidadKgId }] } } });
+
+    // Stock inicial, ANTES de la primera ancla — grande, para no quedarse sin stock durante las ventas.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: lomo.id, cantidad: 1000 }] });
+    await registrarConteoFisico({ productoId: nalga.id, seccionId, conteoReal: 1000, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+    await registrarConteoFisico({ productoId: lomo.id, seccionId, conteoReal: 1000, fechaConteo: new Date("2026-01-02"), accion: "AJUSTAR" });
+
+    // 3 intervalos entre 4 anclas (hacen falta más que los 2 platos del pool) — mismos pares (m, b) que el test
+    // de la regresión semanal de arriba, pero acá NINGUNA compra artificial: el consumo real es exactamente la
+    // receta (0.1 c/u), y cada ancla lo confirma sin diferencia.
+    const intervalos = [
+      { fecha: new Date("2026-01-10"), m: 10, b: 4, cierre: new Date("2026-01-16") },
+      { fecha: new Date("2026-01-24"), m: 6, b: 12, cierre: new Date("2026-01-30") },
+      { fecha: new Date("2026-02-07"), m: 15, b: 2, cierre: new Date("2026-02-13") },
+    ];
+    let saldoNalga = 1000;
+    let saldoLomo = 1000;
+    for (const t of intervalos) {
+      await registrarVenta({ fecha: t.fecha, seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: t.m }] });
+      await registrarVenta({ fecha: t.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: t.b }] });
+      saldoNalga = Math.round((saldoNalga - 0.1 * t.m) * 100) / 100;
+      saldoLomo = Math.round((saldoLomo - 0.1 * t.b) * 100) / 100;
+      const cierreNalga = await registrarConteoFisico({ productoId: nalga.id, seccionId, conteoReal: saldoNalga, fechaConteo: t.cierre, accion: "AJUSTAR" });
+      const cierreLomo = await registrarConteoFisico({ productoId: lomo.id, seccionId, conteoReal: saldoLomo, fechaConteo: t.cierre, accion: "AJUSTAR" });
+      expect(cierreNalga.ok, cierreNalga.mensaje).toBe(true);
+      expect(cierreLomo.ok, cierreLomo.mensaje).toBe(true);
+    }
+
+    expect(await prisma.movimientoStock.count({ where: { proceso: "CONTROL" } })).toBe(0); // ningún conteo dio diferencia — nunca hizo falta ajustar
+
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa conteo")!;
+    const filaBife = filas.find((f) => f.productoVentaNombre === "Bife conteo")!;
+    expect(filaMilanesa.metodo).toBe("CONTEO");
+    expect(filaBife.metodo).toBe("CONTEO");
+    expect(filaMilanesa.resoluble).toBe(true);
+    expect(filaMilanesa.semanasConDatos).toBe(3); // 3 intervalos entre las 4 anclas, no semanas de compras
+    expect(filaMilanesa.cantidadEstimada).toBeCloseTo(0.1, 2);
+    expect(filaBife.cantidadEstimada).toBeCloseTo(0.1, 2);
+    expect(filaMilanesa.desviacionPorcentaje).toBeCloseTo(0, 0);
+    expect(filaBife.desviacionPorcentaje).toBeCloseTo(0, 0);
+    expect(filaMilanesa.bandaRuidoPct).toBeNull(); // método CONTEO: sin banda de ruido de lote (D4)
+  });
+
+  it("sin suficientes anclas (o si el intento por CONTEO no es resoluble) cae al método COMPRAS de siempre, sin dejar la fila sin estimar", async () => {
+    const { milanesa, bife } = await armarPoolCompartido();
+    const nalga = await prisma.producto.findFirstOrThrow({ where: { codigo: "MP_NALGA" } });
+
+    // Un solo Conteo Físico (ninguna segunda ancla) — no alcanza para el método CONTEO, cae al de compras/semanas de siempre.
+    await registrarConteoFisico({ productoId: nalga.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
+
+    const semanas = [
+      { fecha: new Date("2026-01-05"), milanesa: 10, bife: 4 },
+      { fecha: new Date("2026-01-15"), milanesa: 6, bife: 12 },
+      { fecha: new Date("2026-01-25"), milanesa: 15, bife: 2 },
+    ];
+    for (const s of semanas) {
+      const comprado = 0.15 * s.milanesa + 0.25 * s.bife;
+      await registrarMovimiento({ proceso: "COMPRA", fecha: s.fecha, seccionId, items: [{ productoId: nalga.id, cantidad: comprado }] });
+      await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: s.milanesa }] });
+      await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: s.bife }] });
+    }
+
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa")!;
+    expect(filaMilanesa.metodo).toBe("COMPRAS");
+    expect(filaMilanesa.resoluble).toBe(true); // la regresión semanal de siempre sigue funcionando
+    expect(filaMilanesa.cantidadEstimada).toBeCloseTo(0.15, 2);
   });
 });
 

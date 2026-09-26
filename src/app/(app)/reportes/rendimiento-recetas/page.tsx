@@ -10,11 +10,12 @@ import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
 
 const AYUDA_RENDIMIENTO_REAL =
-  "Total comprado ÷ total vendido en el rango de fechas elegido. Es una estimación indirecta, no una medición física: asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12).";
+  "«Medido» (con dos Conteos Físicos que cubren el insumo, al principio y al final del tramo): el consumo real, sumado directo del Kardex entre esos dos conteos ÷ lo vendido en ese mismo tramo — una medición, no una estimación. «Estimado» (sin esos dos conteos): total comprado ÷ total vendido en el rango elegido — asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12). El método de esta fila se muestra debajo del número.";
 const AYUDA_DESVIO =
-  "Diferencia entre Rendimiento real y Receta actual (con la merma ya aplicada). El texto chico debajo, cuando aparece, muestra cuánto puede moverse solo por comprar de a lotes — no decide si la celda se pinta ámbar, es contexto.";
-const AYUDA_DELTA_STOCK = "Cuánto cambió el stock del insumo dentro de la ventana elegida (pasá el mouse para ver el saldo antes y después). Si subió, parte de lo comprado quedó en el depósito, no se consumió — no es, por sí solo, un error de receta.";
-const AYUDA_IMPACTO = "(entradas reales − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA la tabla, no el %. Un desvío grande en un insumo barato puede pesar menos que uno moderado en un insumo caro.";
+  "Diferencia entre Rendimiento real y Receta actual (con la merma ya aplicada). El texto chico debajo, cuando aparece, muestra cuánto puede moverse solo por comprar de a lotes (solo en método «estimado» — con un conteo real de por medio ya no aplica) — no decide si la celda se pinta ámbar, es contexto.";
+const AYUDA_DELTA_STOCK =
+  "Método «estimado»: cuánto cambió el stock del insumo dentro de la ventana elegida (pasá el mouse para ver el saldo antes y después) — si subió, parte de lo comprado quedó en el depósito, no se consumió; no es, por sí solo, un error de receta, y no corrige el número de arriba (restarlo sería circular). Método «medido»: esta celda muestra el tramo entre las dos anclas de Conteo Físico usadas — el dato real detrás de la fórmula.";
+const AYUDA_IMPACTO = "(consumo observado − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA la tabla, no el %. Un desvío grande en un insumo barato puede pesar menos que uno moderado en un insumo caro.";
 
 /** Mismo criterio que `hoyUtcSinHora`/"29 + hoy" de rango-por-defecto.ts — acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
 function fechaUtcIsoHaceNDias(n: number): string {
@@ -185,6 +186,10 @@ export default async function RendimientoRecetasPage({
                     totalVendido={f.totalVendido}
                     stockApertura={f.stockApertura}
                     stockCierre={f.stockCierre}
+                    metodo={f.metodo}
+                    anclaDesde={f.anclaDesde}
+                    anclaHasta={f.anclaHasta}
+                    consumoReal={f.consumoReal}
                     bandaRuidoPct={f.bandaRuidoPct}
                     impactoPesos={f.impactoPesos}
                     sinCosto={f.sinCosto}
@@ -211,8 +216,11 @@ export default async function RendimientoRecetasPage({
             {Array.from(poolsCompartidos.entries()).map(([poolClave, filas]) => (
               <div key={poolClave} className="max-w-6xl">
                 <p className="mb-1 text-sm">
-                  <strong>{filas[0].insumoONombre}</strong> — {filas[0].cantidadPlatosEnPool} platos, {filas[0].semanasConDatos} semanas con datos
+                  <strong>{filas[0].insumoONombre}</strong> — {filas[0].cantidadPlatosEnPool} platos,{" "}
+                  {filas[0].semanasConDatos} {filas[0].metodo === "CONTEO" ? "intervalos entre anclas de conteo" : "semanas con datos"}
                   {filas[0].resoluble && filas[0].r2 !== null && ` — ajuste R² ${filas[0].r2.toFixed(2)}`}
+                  {" — "}
+                  {filas[0].metodo === "CONTEO" ? "medido (Conteo Físico)" : "estimado (compras)"}
                 </p>
                 <p className="mb-2 text-xs text-neutral-500">
                   Del pool entero: comprado/producido {filas[0].totalEntradasPool} ·{" "}
@@ -220,6 +228,15 @@ export default async function RendimientoRecetasPage({
                     Δ stock {filas[0].stockCierre - filas[0].stockApertura > 0 ? "+" : ""}
                     {filas[0].stockCierre - filas[0].stockApertura}
                   </span>
+                  {filas[0].metodo === "COMPRAS" && (
+                    <>
+                      {" "}
+                      —{" "}
+                      <EnlaceInterno href="/movimientos/conteo-fisico" className="underline">
+                        Programá un conteo
+                      </EnlaceInterno>
+                    </>
+                  )}
                   .
                 </p>
                 {!filas[0].resoluble && <p className="mb-2 text-sm text-amber-700 dark:text-amber-600">No se pudo estimar: {filas[0].motivoNoResoluble}</p>}
@@ -267,6 +284,7 @@ export default async function RendimientoRecetasPage({
                           cantidadPlatosEnPool={f.cantidadPlatosEnPool}
                           semanasConDatos={f.semanasConDatos}
                           r2={f.r2}
+                          metodo={f.metodo}
                           rotulo={f.rotulo}
                           sucursalId={ctx.sucursalId}
                           sucursalNombre={ctx.sucursalNombre}

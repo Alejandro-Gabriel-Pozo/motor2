@@ -8,6 +8,13 @@ import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/actions/catalogo/rendimiento-local";
 import { ETIQUETA_ROTULO, desvioEsNotable, type RotuloLinea } from "@/core/reportes/rendimiento-recetas-vistas";
+// rendimiento-conciliado.ts es puro (sin @/lib/db) — importable desde un componente cliente sin arrastrar Prisma al bundle. Ver el docstring de este mapa en fila-simple.tsx.
+import type { MetodoRendimiento } from "@/core/reportes/rendimiento-conciliado";
+
+const ETIQUETA_METODO: Record<MetodoRendimiento, string> = {
+  CONTEO: "Medido (Conteo Físico)",
+  COMPRAS: "Estimado (compras)",
+};
 
 /** Ver el docstring del mismo mapa en fila-simple.tsx. */
 const AYUDA_ROTULO: Record<Exclude<RotuloLinea, null>, string> = {
@@ -43,6 +50,8 @@ export interface FilaRendimientoCompartidaProps {
   cantidadPlatosEnPool: number;
   semanasConDatos: number;
   r2: number | null;
+  /** Ver el docstring del mismo campo en FilaRendimientoCompartido, rendimiento-recetas.ts — repetido en todas las filas del pool. */
+  metodo: MetodoRendimiento;
   rotulo: RotuloLinea;
   sucursalId: string;
   sucursalNombre: string;
@@ -74,6 +83,7 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
     cantidadPlatosEnPool,
     semanasConDatos,
     r2,
+    metodo,
     rotulo,
     sucursalId,
     sucursalNombre,
@@ -227,6 +237,7 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
             {motivoSinEstimacion ?? "—"}
           </span>
         )}
+        <span className="block text-xs text-neutral-500 dark:text-neutral-400">{ETIQUETA_METODO[metodo]}</span>
       </td>
       <td className={`px-2 py-2 ${desvioEsNotable(desviacionPorcentaje) ? "font-medium text-amber-700 dark:text-amber-600" : ""}`}>
         {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
