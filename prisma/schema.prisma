@@ -104,6 +104,13 @@ model Sucursal {
   /// PromocionProducto abajo (porción Reportes).
   promocionesHabilitadas Boolean @default(false)
 
+  /// Cupo de mesas ABIERTAS a la vez en esta sucursal (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md). `null` (default) =
+  /// sin límite. Se cuenta como "abierta" toda `Cuenta` con `cerradaEn IS NULL` de una mesa de esta sucursal — no la cantidad de `Mesa`
+  /// dadas de alta. Se edita con el mismo permiso que da de alta mesas (`pos_mesas`, Editar — src/server/actions/pos/mesas.ts). Bajarlo
+  /// por debajo de las mesas ya abiertas NO cierra ninguna: solo bloquea aperturas nuevas hasta que se libere o cierre alguna
+  /// (`abrirCuenta`, chequeo dentro de la misma transacción serializable que crea la `Cuenta`).
+  maxMesasAbiertas Int?
+
   usuarios                 UsuarioSucursal[]
   capacidades              CapacidadSucursal[]
   secciones                Seccion[]
@@ -1604,6 +1611,16 @@ model Cuenta {
   cerradaPor   User?        @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
   items        CuentaItem[]
   ejemplaresBoleta EjemplarBoleta[]
+
+  /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
+  /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
+  /// `null` = cuenta abierta ANTES de este cambio (sin backfill: no se inventan datos históricos); una cuenta nunca vuelve a `null`.
+  /// Se puede corregir mientras la cuenta esté ABIERTA (`corregirComensales`: llega gente después, se corrige un error) — una vez
+  /// cerrada, el dato queda congelado, igual que el precio de cada ítem.
+  ///
+  /// SOLO para medir rotación: NO habilita dividir la cuenta por persona. No hay entidad "comensal"/"asiento" ni relación con
+  /// `CuentaItem` — ningún ítem se asocia a un comensal en particular.
+  comensales Int?
 
   @@index([mesaId])
 }
