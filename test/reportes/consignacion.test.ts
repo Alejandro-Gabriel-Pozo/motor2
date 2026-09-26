@@ -94,6 +94,36 @@ describe("generarReporteConsignacion", () => {
       expect(resultado.ok).toBe(false);
     });
 
+    it("rechaza un importe negativo", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const resultado = await registrarPagoConsignante(consignante.id, -40, new Date());
+      expect(resultado.ok).toBe(false);
+      expect(resultado.mensaje).toBe("El importe no puede ser negativo.");
+    });
+
+    it("rechaza un importe que no es un número (NaN)", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const resultado = await registrarPagoConsignante(consignante.id, Number.NaN, new Date());
+      expect(resultado.ok).toBe(false);
+    });
+
+    // Antes de usar validarImporte, esto validaba a mano (!(importe > 0) + esNumeroFinito) sin el tope de
+    // decimales ni el máximo del módulo central — un importe con más de 2 decimales pasaba esa validación
+    // casera y podía fallar feo contra la columna Decimal en vez de dar este mensaje entendible.
+    it("rechaza un importe con más de 2 decimales, con el mensaje de validarImporte", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const resultado = await registrarPagoConsignante(consignante.id, 40.123, new Date());
+      expect(resultado.ok).toBe(false);
+      expect(resultado.mensaje).toBe("El importe admite como máximo 2 decimales.");
+    });
+
+    it("rechaza un importe astronómicamente grande (tope de las columnas Decimal)", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const resultado = await registrarPagoConsignante(consignante.id, 1e13, new Date());
+      expect(resultado.ok).toBe(false);
+      expect(resultado.mensaje).toBe("El importe es demasiado grande.");
+    });
+
     it("rechaza un proveedor inexistente", async () => {
       const resultado = await registrarPagoConsignante("no-existe", 10, new Date());
       expect(resultado.ok).toBe(false);

@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { esNumeroFinito } from "@/core/numero";
+import { validarImporte } from "@/core/datos/importe";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
@@ -15,8 +15,10 @@ import { error, ok, type ResultadoAccion } from "../tipos";
  */
 export async function registrarPagoConsignante(proveedorId: string, importe: number, fecha: Date, notas?: string): Promise<ResultadoAccion> {
   return conPermiso("pagar_consignante", async (ctx) => {
-    if (!(importe > 0)) return error("El importe tiene que ser mayor a 0.");
-    if (!esNumeroFinito(importe)) return error("El importe no es un número válido.");
+    // Mismo validador que el formulario (CampoNumero tipo="importe"): número, no negativo, a lo sumo 2 decimales, dentro del tope.
+    const validado = validarImporte(importe, { etiqueta: "El importe", obligatorio: true, permitirCero: false });
+    if (!validado.ok) return error(validado.mensaje);
+    importe = validado.valor!; // obligatorio: nunca null
 
     const proveedor = await prisma.proveedor.findUnique({ where: { id: proveedorId } });
     if (!proveedor || !proveedor.activo) return error("No se encontró el proveedor, o está inactivo.");
