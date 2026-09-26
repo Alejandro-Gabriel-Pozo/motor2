@@ -1,6 +1,6 @@
 import type { DocumentoImprimible } from "@/core/pos/impresion";
 import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
-import { formatearCantidad, formatearFechaHora, formatearMonto } from "./formato";
+import { formatearCantidad, formatearFechaHora, formatearMonto } from "@/core/pos/formato";
 
 type DocumentoDeBoleta = Extract<DocumentoImprimible, { boleta: unknown }>;
 

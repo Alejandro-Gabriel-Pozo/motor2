@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { anularItemEnviado } from "@/server/actions/pos/cuenta";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
-import { formatearCantidad } from "./formato";
+import { formatearCantidad } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 

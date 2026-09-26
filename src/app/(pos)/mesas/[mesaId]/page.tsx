@@ -15,7 +15,7 @@ import { SinEnviar } from "./sin-enviar";
 import { AnularItem } from "./anular-item";
 import { CerrarCuenta } from "./cerrar-cuenta";
 import { LiberarMesa } from "./liberar-mesa";
-import { formatearCantidad, formatearMonto, nombreDeMesa } from "./formato";
+import { formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/formato";
 
 /**
  * Pantalla de una mesa del salón (módulo POS, pendiente «tomar pedido», docs/plan-tomar-pedido-2026-09-25.md paso 8). A ella llevan

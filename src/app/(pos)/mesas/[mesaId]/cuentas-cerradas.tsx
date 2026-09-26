@@ -3,7 +3,7 @@
 import type { BoletaDeCuenta } from "@/core/pos/boleta";
 import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { BOTON_CHICO } from "./estilos";
-import { formatearHora, formatearMonto } from "./formato";
+import { formatearHora, formatearMonto } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";
 import { EmitirBoletaCorregida } from "./emitir-boleta-corregida";
 

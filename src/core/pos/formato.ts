@@ -1,4 +1,9 @@
-/** Formatos de la pantalla de la mesa (compartidos por la página y sus componentes de cliente). */
+/**
+ * Formatos de la pantalla de la mesa (compartidos por la página y sus componentes de cliente). Vive en `core/pos` (y no en la
+ * carpeta de rutas del POS, `(pos)/mesas/[mesaId]/`) para que un reporte de `(app)` (el reporte de boletas emitidas, Task #17)
+ * también pueda formatear en hora de Argentina sin duplicar los `Intl.DateTimeFormat` — movido en un commit propio, mecánico, sin
+ * cambiar ningún formato.
+ */
 const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const CANTIDAD = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 });
 const HORA = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
