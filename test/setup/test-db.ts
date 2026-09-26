@@ -8,7 +8,7 @@ export { prisma };
 
 /** Borra todo (orden respetando FKs) — se llama en beforeEach de cada test file. */
 export async function limpiarBaseDeTest() {
-  // Carta antes que nada: sus 7 tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
+  // Carta antes que nada: sus 8 tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
   // Las opciones de un ítem agrupado primero: referencian al ítem agrupado (RESTRICT) y a Producto.
   await prisma.opcionItemAgrupadoCarta.deleteMany();
   await prisma.itemAgrupadoCarta.deleteMany();
@@ -17,6 +17,10 @@ export async function limpiarBaseDeTest() {
   await prisma.promoCarta.deleteMany();
   await prisma.contenidoCartaProducto.deleteMany();
   await prisma.seccionCarta.deleteMany();
+  // GeneroCarta (docs/plan-genero-carta-2026-09-26.md): DESPUÉS de ItemAgrupadoCarta y ContenidoCartaProducto, que lo referencian
+  // (ON DELETE SET NULL, por ser `generoCartaId` opcional — el orden no es estrictamente necesario, pero mantiene el mismo
+  // criterio "quien referencia se borra antes" del resto de esta función).
+  await prisma.generoCarta.deleteMany();
 
   // POS antes que nada: CuentaItem referencia Cuenta, Producto, User y Operacion; Cuenta referencia Mesa y User; Mesa referencia
   // Sucursal. Las filas espejo (anulaciones) primero: referencian a su ítem original con ON DELETE RESTRICT.

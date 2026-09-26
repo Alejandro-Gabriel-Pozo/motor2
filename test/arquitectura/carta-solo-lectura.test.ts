@@ -16,6 +16,10 @@ import { describe, expect, it } from "vitest";
  * Prisma sobre un modelo (`x.modelo.create(`, `.createMany(`, `.update(`, `.updateMany(`, `.upsert(`, `.delete(`,
  * `.deleteMany(`, …) ni `$executeRaw`. Se exige la forma `cliente.modelo.op(` para no marcar métodos homónimos que no son de
  * Prisma (p. ej. `createHash("sha256").update(...)` de token-servicio.ts).
+ *
+ * `GeneroCarta` (docs/plan-genero-carta-2026-09-26.md) suma una 8ª tabla a la whitelist de abajo: carpeta VISUAL del POS, sin
+ * relación con `ContenidoCartaProducto.generoCartaId` / `ItemAgrupadoCarta.generoCartaId` en la carta pública (G4: la lee
+ * `selector-carta-consulta.ts`, en `core/pos`, no en `core/carta`).
  */
 const SRC = join(__dirname, "../../src");
 const CARPETAS = ["core/carta", "app/api/carta"];
@@ -63,11 +67,12 @@ describe("carta: solo lectura", () => {
     expect(problemas, `La carta pública es de solo lectura; estas líneas escriben:\n${problemas.join("\n")}`).toEqual([]);
   });
 
-  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 7 tablas de carta", () => {
+  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 8 tablas de carta", () => {
     // `sucursalPublica`: el registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6).
     // `temaCartaSucursal`: el tema visual de la carta (docs/plan-tema-carta-2026-09-24.md, M8).
     // `itemAgrupadoCarta` y `opcionItemAgrupadoCarta`: los ítems agrupados (docs/plan-agrupacion-items-carta-2026-09-24.md, M5).
     // Ya no está la puente categoría → sección: cada contenido e ítem agrupado elige su sección directo (docs/plan-carta-seccion-directa-2026-09-25.md, M1).
+    // `generoCarta`: carpetas VISUALES del POS (docs/plan-genero-carta-2026-09-26.md), global, sin efecto en la carta pública.
     const TABLAS_DE_CARTA = new Set([
       "seccionCarta",
       "contenidoCartaProducto",
@@ -76,6 +81,7 @@ describe("carta: solo lectura", () => {
       "temaCartaSucursal",
       "itemAgrupadoCarta",
       "opcionItemAgrupadoCarta",
+      "generoCarta",
     ]);
     const acciones = archivos(join(SRC, "server/actions/carta"));
     expect(acciones.length, "no se encontraron las acciones de la carta").toBeGreaterThan(0);

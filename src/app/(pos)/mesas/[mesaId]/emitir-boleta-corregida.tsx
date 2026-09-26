@@ -5,7 +5,7 @@ import type { BoletaDeCuenta } from "@/core/pos/boleta";
 import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { emitirBoletaCorregida } from "@/server/actions/pos/cuenta";
 import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
-import { formatearMonto } from "./formato";
+import { formatearMonto } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 

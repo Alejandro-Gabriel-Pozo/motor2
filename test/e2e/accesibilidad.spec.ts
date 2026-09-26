@@ -9,8 +9,8 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
  * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), la sección habitual de stock, el admin de la carta, su portal de sucursales y su
- * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas», el modal de comensales al abrir cuenta) y el reporte de
- * rotación de mesas. No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
+ * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas», el modal de comensales al abrir cuenta), el reporte de
+ * rotación de mesas y el reporte de boletas emitidas (Task #17). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -1264,3 +1264,49 @@ testAutenticado("reportes/rotacion-mesas: con datos y sin datos, sin violaciones
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
+
+testAutenticado(
+  "reportes/boletas: el listado con una corrección expandida (marcas «Corrección de»/«Reemplazada por» y el detalle con link a Trazabilidad) sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // Task #17: una fila por EjemplarBoleta — se siembra un A y su corrección B para que aparezcan las dos marcas a la vez.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RB-${marca}`, nombre: `E2E A11y Boleta ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 978 } });
+    const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: admin.id, detalleLibre: "Mesa 978" } });
+    const cuenta = await prisma.cuenta.create({
+      data: {
+        mesaId: mesa.id,
+        abiertaPorId: admin.id,
+        cerradaEn: new Date(),
+        cerradaPorId: admin.id,
+        items: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: admin.id, operacionId: venta.id }] },
+      },
+    });
+    const { _max } = await prisma.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
+    const numero = (_max.numero ?? 0) + 1;
+    const a = await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero, ejemplar: 1, emitidoPorId: admin.id } });
+    await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero, ejemplar: 2, emitidoPorId: admin.id, corrigeAId: a.id, motivo: "E2E a11y" } });
+    try {
+      await page.goto(`/reportes/boletas?mesaId=${mesa.id}&desde=&hasta=`);
+      await conTitulo(page, "Boletas emitidas");
+      await expect(page.locator("[data-boleta]")).toHaveCount(2);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "listado con marcas de corrección/reemplazo").toEqual([]);
+
+      await page.locator(`[data-boleta="${a.id}"] summary`).click();
+      await expect(page.getByRole("link", { name: "Trazabilidad" }).first()).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "detalle expandido con el link a Trazabilidad").toEqual([]);
+    } finally {
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.operacion.deleteMany({ where: { id: venta.id } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);

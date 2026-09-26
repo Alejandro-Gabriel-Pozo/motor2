@@ -102,6 +102,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/historial", label: "Historial de un producto", accion: "ver_reportes_operativos" },
       { href: "/reportes/trazabilidad", label: "Trazabilidad por ID", accion: "ver_reportes_operativos" },
       { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "ver_reportes_operativos" },
+      { href: "/reportes/boletas", label: "Boletas emitidas", accion: "ver_reportes_dinero" },
     ],
   },
   {

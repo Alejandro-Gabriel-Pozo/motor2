@@ -3,7 +3,7 @@ import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/t
 import { sembrarSalon } from "./salon-fixture";
 import { cargarSelectorCartaPos } from "../../src/core/pos/selector-carta-consulta";
 import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
-import type { SelectorCartaPos } from "../../src/core/pos/selector-carta";
+import { pediblesDeEntrada, type SelectorCartaPos } from "../../src/core/pos/selector-carta";
 
 /**
  * Lectura del selector por sección de carta del POS contra Postgres real (docs/plan-selector-carta-pos-2026-09-25.md, paso 2): la
@@ -115,7 +115,7 @@ describe("cargarSelectorCartaPos", () => {
   it("«Fuera de carta»: no visible, sección apagada y agrupado apagado; nunca una MP ni un PV no disponible acá", async () => {
     const sel = await cargarSelectorCartaPos(s.sucursalId);
     expect(nombresFuera(sel)).toEqual(["Fernet con cola", "Flan", "Jugo de naranja"]);
-    const todos = [...sel.seccionesCarta.flatMap((sc) => sc.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto.productoId] : e.opciones.map((o) => o.productoId)))), ...sel.fueraDeCarta.map((p) => p.productoId)];
+    const todos = [...sel.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId)), ...sel.fueraDeCarta.map((p) => p.productoId)];
     for (const noPedible of [s.muzzarella.id, ids.fanta, ids.soloNorte]) expect(todos).not.toContain(noPedible);
     for (const idAgrupado of [agrupadoGaseosa, agrupadoJugos]) expect(todos).not.toContain(idAgrupado);
     expect(new Set(todos).size).toBe(todos.length);
@@ -128,7 +128,7 @@ describe("cargarSelectorCartaPos", () => {
     expect(central.fueraDeCarta.find((p) => p.productoId === s.flan.id)?.precio).toBe(3000);
 
     const enNorte = await cargarSelectorCartaPos(norte);
-    const idsNorte = [...enNorte.seccionesCarta.flatMap((sc) => sc.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto.productoId] : e.opciones.map((o) => o.productoId)))), ...enNorte.fueraDeCarta.map((p) => p.productoId)];
+    const idsNorte = [...enNorte.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId)), ...enNorte.fueraDeCarta.map((p) => p.productoId)];
     expect(idsNorte.sort()).toEqual([ids.fanta, ids.soloNorte].sort());
     // En Norte la Fanta es la única opción disponible del agrupado.
     expect(enNorte.seccionesCarta).toEqual([
@@ -145,7 +145,7 @@ describe("cargarSelectorCartaPos", () => {
 
   it("paridad: el precio de cada pedible es el que congela agregarItems (resolverPrecioVenta)", async () => {
     const sel = await cargarSelectorCartaPos(s.sucursalId);
-    const pedibles = [...sel.seccionesCarta.flatMap((sc) => sc.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto] : e.opciones))), ...sel.fueraDeCarta];
+    const pedibles = [...sel.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada)), ...sel.fueraDeCarta];
     expect(pedibles).toHaveLength(7);
     for (const p of pedibles) {
       const producto = await prisma.producto.findUniqueOrThrow({ where: { id: p.productoId } });

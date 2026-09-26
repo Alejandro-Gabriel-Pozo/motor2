@@ -16,7 +16,7 @@ import { SinEnviar } from "./sin-enviar";
 import { AnularItem } from "./anular-item";
 import { CerrarCuenta } from "./cerrar-cuenta";
 import { LiberarMesa } from "./liberar-mesa";
-import { formatearCantidad, formatearMonto, nombreDeMesa } from "./formato";
+import { formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/formato";
 
 /**
  * Pantalla de una mesa del salón (módulo POS, pendiente «tomar pedido», docs/plan-tomar-pedido-2026-09-25.md paso 8). A ella llevan
@@ -54,10 +54,13 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     );
   }
 
-  const [tomarPedido, anularItem, cerrarCuenta, secciones, boletas] = await Promise.all([
+  const [tomarPedido, anularItem, cerrarCuenta, verReportesDinero, secciones, boletas] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido"),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item"),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta"),
+    // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Boletas emitidas» se
+    // condiciona a mano, del lado del servidor (Task #17).
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero"),
     listarSeccionesActivas(ctx.sucursalId),
     obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id),
   ]);
@@ -151,6 +154,13 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
             </div>
           )}
           <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} />
+          {verReportesDinero.ver && (
+            <p className="mt-3 text-[13px]">
+              <Link href={`/reportes/boletas?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
+                Ver todas las boletas de esta mesa →
+              </Link>
+            </p>
+          )}
         </ImpresionProvider>
       </AvisoMesaProvider>
     </div>

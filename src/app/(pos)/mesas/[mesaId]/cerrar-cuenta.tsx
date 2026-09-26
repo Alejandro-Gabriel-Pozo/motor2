@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { cerrarCuenta } from "@/server/actions/pos/cuenta";
 import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
-import { formatearMonto } from "./formato";
+import { formatearMonto } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 
