@@ -8,6 +8,8 @@ import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conReintento } from "@/core/movimientos/reintentar";
 import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/pasos-receta";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { describirCambioVersionReceta } from "@/core/catalogo/describir-cambio-receta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
@@ -185,7 +187,7 @@ export async function guardarReceta(
   pasos: PasoInput[] = [],
   cabecera: CabeceraRecetaInput = {}
 ): Promise<ResultadoAccion> {
-  return conPermiso("guardar_receta", async () => {
+  return conPermiso("guardar_receta", async (ctx) => {
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
 
@@ -262,6 +264,20 @@ export async function guardarReceta(
               });
             }
           }
+
+          // Auditoría (D6(b), docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 2): un registro por versión
+          // nueva de la receta CENTRAL — sucursalId siempre null (Catálogo Central, no un dato por sucursal). El origen
+          // es siempre manual: guardarReceta no recibe ningún parámetro `origen`.
+          await registrarCambioAuditado(tx, {
+            entidad: "RecetaVersion",
+            entidadId: creada.id,
+            campo: "version",
+            descripcion: describirCambioVersionReceta(producto.nombre, ctx.sucursalNombre),
+            valorAnterior: ultima ? ultima.version : null,
+            valorNuevo: version,
+            actorId: ctx.usuarioId,
+            sucursalId: null,
+          });
         }, { maxWait: 5_000, timeout: 15_000 });
       },
       { maxIntentos: 5, esReintentable: esErrorDeUnicidad }
