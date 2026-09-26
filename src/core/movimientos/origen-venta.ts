@@ -161,6 +161,53 @@ function juntarPartes(partes: ParteAsignada[]): ParteAsignada[] {
 }
 
 /**
+ * Núcleo del reparto DENTRO de una familia (hermanos de un mismo Insumo, o los sustitutos de UN sustituto en el paso 3): recorre las
+ * secciones candidatas, FEFO por lote dentro de cada una, hasta agotar `cantidad` o las secciones. `preferidoId` es el desempate
+ * (el producto de la receta, o el sustituto en cuestión) — no tiene que ser miembro de `familia` para el desempate en sí, pero
+ * `asignarConsumo` siempre lo agrega antes de llamar. Extraído tal cual del cuerpo del bucle de `asignarConsumo` (refactor puro,
+ * docs/plan-sustitucion-insumos-receta-2026-09-26.md, paso 2): NO cambia ninguna aritmética ni el orden de `restante -= tomar`.
+ * No anota faltante ni junta partes — eso es responsabilidad de quien llama (`asignarConsumo`, y desde el paso 3 también
+ * `asignarConsumosDeVenta`).
+ */
+function tomarDeFamilia(
+  libro: LibroDeStock,
+  pedido: {
+    familia: readonly string[];
+    /** Desempate FEFO: este producto gana un lote empatado por sobre sus hermanos. */
+    preferidoId: string;
+    cantidad: number;
+    /** Se usa primero aunque no sirva de respaldo. */
+    seccionHabitual: SeccionCandidata | null;
+    /** Activas que sirven de respaldo (la habitual, si está, se ignora acá). */
+    respaldos: readonly SeccionCandidata[];
+  }
+): { partes: ParteAsignada[]; restante: number } {
+  const partes: ParteAsignada[] = [];
+  let restante = pedido.cantidad;
+
+  for (const seccion of seccionesEnOrden(libro, pedido.familia, pedido.seccionHabitual, pedido.respaldos)) {
+    if (r4(restante) <= 0) break;
+    const candidatos = pedido.familia.flatMap((productoId) => libro.lotes(productoId, seccion.id).map((lote) => ({ productoId, lote })));
+    candidatos.sort(
+      (a, b) =>
+        compararLotes(a.lote, b.lote) ||
+        Number(b.productoId === pedido.preferidoId) - Number(a.productoId === pedido.preferidoId) ||
+        (a.productoId < b.productoId ? -1 : a.productoId > b.productoId ? 1 : 0)
+    );
+    for (const c of candidatos) {
+      if (r4(restante) <= 0) break;
+      const tomar = Math.min(restante, libro.disponible(c.productoId, seccion.id, c.lote), disponibleDeProducto(libro, c.productoId, seccion.id));
+      if (r4(tomar) <= 0) continue;
+      const parte = { productoId: c.productoId, seccionId: seccion.id, loteVencimiento: c.lote, cantidad: tomar };
+      libro.tomar(parte);
+      partes.push(parte);
+      restante -= tomar;
+    }
+  }
+  return { partes, restante };
+}
+
+/**
  * Asigna el consumo de UN ingrediente (`productoId`, el de la receta, con su `familia` de hermanos: él mismo incluido) y lo anota en
  * el libro. Devuelve las partes, ya juntadas por (producto, sección, lote).
  */
@@ -178,28 +225,13 @@ export function asignarConsumo(
   }
 ): ParteAsignada[] {
   const familia = pedido.familia.includes(pedido.productoId) ? pedido.familia : [pedido.productoId, ...pedido.familia];
-  const partes: ParteAsignada[] = [];
-  let restante = pedido.cantidad;
-
-  for (const seccion of seccionesEnOrden(libro, familia, pedido.seccionHabitual, pedido.respaldos)) {
-    if (r4(restante) <= 0) break;
-    const candidatos = familia.flatMap((productoId) => libro.lotes(productoId, seccion.id).map((lote) => ({ productoId, lote })));
-    candidatos.sort(
-      (a, b) =>
-        compararLotes(a.lote, b.lote) ||
-        Number(b.productoId === pedido.productoId) - Number(a.productoId === pedido.productoId) ||
-        (a.productoId < b.productoId ? -1 : a.productoId > b.productoId ? 1 : 0)
-    );
-    for (const c of candidatos) {
-      if (r4(restante) <= 0) break;
-      const tomar = Math.min(restante, libro.disponible(c.productoId, seccion.id, c.lote), disponibleDeProducto(libro, c.productoId, seccion.id));
-      if (r4(tomar) <= 0) continue;
-      const parte = { productoId: c.productoId, seccionId: seccion.id, loteVencimiento: c.lote, cantidad: tomar };
-      libro.tomar(parte);
-      partes.push(parte);
-      restante -= tomar;
-    }
-  }
+  const { partes, restante } = tomarDeFamilia(libro, {
+    familia,
+    preferidoId: pedido.productoId,
+    cantidad: pedido.cantidad,
+    seccionHabitual: pedido.seccionHabitual,
+    respaldos: pedido.respaldos,
+  });
 
   if (r4(restante) > 0) {
     const ultimaAhi = partes.findLast((p) => p.productoId === pedido.productoId && p.seccionId === pedido.seccionParaFaltanteId);
