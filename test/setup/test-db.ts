@@ -36,6 +36,9 @@ export async function limpiarBaseDeTest() {
   await prisma.motivoMerma.deleteMany();
   await prisma.destinoConsumo.deleteMany();
   await prisma.pagoConsignante.deleteMany();
+  // Antes de RecetaIngrediente (RendimientoLocalIngrediente.recetaIngredienteId es ON DELETE CASCADE, pero el
+  // orden explícito documenta la dependencia igual que el resto de este bloque — sembrarBase() borra sucursal más abajo).
+  await prisma.rendimientoLocalIngrediente.deleteMany();
   await prisma.precioLocalProducto.deleteMany();
   await prisma.stockMinimoProducto.deleteMany();
   await prisma.frecuenciaConteoProducto.deleteMany();
