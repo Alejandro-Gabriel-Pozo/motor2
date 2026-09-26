@@ -14,7 +14,7 @@ import {
 } from "@/core/pos/agregar-lista-estado";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
 import { BOTON_CHICO, BOTON_PRIMARIO, CAMPO } from "./estilos";
-import { formatearMonto } from "@/core/pos/formato";
+import { formatearCantidad, formatearMonto } from "@/core/pos/formato";
 import { SelectorCarta } from "./selector-carta";
 import { useAccionMesa } from "./usar-accion";
 
@@ -30,6 +30,10 @@ import { useAccionMesa } from "./usar-accion";
  * con los botones −/+ o tecleando (parser `interpretarNumero`, nunca `Number(...)` a secas); al salir del campo se normaliza con
  * `validarCantidadPedido` — la MISMA función que usará el servidor al confirmar — así lo que se ve es lo que se va a guardar (una
  * cantidad que redondea, ej. "1,4" en una unidad entera, queda mostrada en "1", nunca oculta).
+ *
+ * Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): si el producto elegido tiene `pasoVenta` (ej. "se vende
+ * de a 0,5"), la ayuda bajo la línea lo dice, y `normalizarCantidad` valida contra el paso en vez de redondear — una cantidad que
+ * no sea múltiplo exacto se RECHAZA (mensaje a la vista), nunca se redondea en silencio.
  *
  * Todo o nada: si al confirmar algún producto dejó de estar disponible justo en ese instante, el servidor no guarda nada (misma
  * transacción serializable de `agregarItems`) y la lista del cliente queda INTACTA (no se vacía) con el error a la vista — no hay
@@ -124,9 +128,17 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
                           value={l.cantidadTexto}
                           onChange={(e) => despacharLista({ tipo: "cambiarCantidadTexto", productoId: l.productoId, texto: e.target.value })}
                           onFocus={(e) => e.target.select()}
-                          onBlur={() => despacharLista({ tipo: "normalizarCantidad", productoId: l.productoId, decimales: p.decimales })}
+                          onBlur={() =>
+                            despacharLista({
+                              tipo: "normalizarCantidad",
+                              productoId: l.productoId,
+                              decimales: p.decimales,
+                              pasoVenta: p.pasoVenta,
+                              tieneStockReal: p.tieneStockReal,
+                            })
+                          }
                           aria-invalid={l.error ? true : undefined}
-                          aria-describedby={l.error ? idError : undefined}
+                          aria-describedby={l.error ? idError : p.pasoVenta ? `${idError}-ayuda` : undefined}
                           className={`${CAMPO} w-16 text-center tabular-nums`}
                         />
                         <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
@@ -143,10 +155,16 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
                         </button>
                       </div>
                     </div>
-                    {l.error && (
+                    {l.error ? (
                       <p id={idError} role="alert" className="px-2 text-[12.5px] text-red-700">
                         {l.error}
                       </p>
+                    ) : (
+                      p.pasoVenta && (
+                        <p id={`${idError}-ayuda`} className="px-2 text-[12.5px] text-[var(--ink-soft)]">
+                          Se vende de a {formatearCantidad(p.pasoVenta)}.
+                        </p>
+                      )
                     )}
                   </li>,
                 ];

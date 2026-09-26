@@ -2,7 +2,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { redondearMoneda, tieneStockReal } from "@/core/movimientos/transiciones";
 import { importeDeLinea } from "@/core/moneda";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
@@ -138,7 +138,8 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
         if (!producto) return error("El producto no existe.");
         if (producto.tipo !== "PV") return error(`«${producto.nombre}» no se puede pedir: solo se piden productos de venta (PV).`);
         if (!(await productoDisponibleEn(ctx.sucursalId, producto.id, tx))) return error(`«${producto.nombre}» no está disponible en «${ctx.sucursalNombre}».`);
-        const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales);
+        const paso = producto.pasoVenta !== null ? { pasoVenta: Number(producto.pasoVenta), tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce) } : null;
+        const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
         if (!cantidad.ok) return error(`«${producto.nombre}»: ${cantidad.mensaje}`);
         const precioUnitario = redondearMoneda(await resolverPrecioVenta(ctx.sucursalId, producto.id, Number(producto.precioVenta), tx));
         filas.push({ cuentaId: abierta.cuenta.id, productoId: producto.id, cantidad: cantidad.cantidad, precioUnitario, numeroEnvio: null, creadoPorId: ctx.usuarioId });
@@ -246,7 +247,7 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
           ? await tx.cuentaItem.findFirst({
               where: { id: cuentaItemId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } },
               include: {
-                producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } },
+                producto: { select: { tipo: true, nombre: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } } },
                 cuenta: { include: { mesa: { select: { numero: true } } } },
                 anulaciones: { select: { cantidad: true } },
               },
@@ -265,7 +266,9 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
       if (typeof restanteVisto !== "number" || restanteVisto !== restante) {
         return error(`«${item.producto.nombre}» cambió mientras lo mirabas (ahora quedan ${formatearCantidad(restante)}): revisá y volvé a intentar.`);
       }
-      const aAnular = validarCantidadPedido(cantidad, item.producto.unidadStock.decimales);
+      const pasoDelItem =
+        item.producto.pasoVenta !== null ? { pasoVenta: Number(item.producto.pasoVenta), tieneStockReal: tieneStockReal(item.producto.tipo, item.producto.seProduce) } : null;
+      const aAnular = validarCantidadPedido(cantidad, item.producto.unidadStock.decimales, pasoDelItem);
       if (!aAnular.ok) return error(aAnular.mensaje);
       if (aAnular.cantidad > restante) return error(`No se puede anular más de lo que queda de «${item.producto.nombre}» (${formatearCantidad(restante)}).`);
 

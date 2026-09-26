@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { precioDeCarta } from "@/core/carta/armar-menu";
 import { resolverMenuCarta } from "@/core/carta/menu-consulta";
+import { tieneStockReal } from "@/core/movimientos/transiciones";
 import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type SelectorCartaPos } from "./selector-carta";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -28,7 +29,10 @@ type Db = PrismaClient | Prisma.TransactionClient;
 export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma): Promise<SelectorCartaPos> {
   const [carta, productos, preciosLocales, generosActivos, contenidosConGenero, agrupadosConGenero] = await Promise.all([
     resolverMenuCarta(sucursalId, db),
-    db.producto.findMany({ where: { tipo: "PV", ...whereDisponibleEn(sucursalId) }, select: { id: true, codigo: true, nombre: true, precioVenta: true, unidadStock: { select: { decimales: true } } } }),
+    db.producto.findMany({
+      where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
+      select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
+    }),
     db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true }, select: { productoId: true, precio: true, habilitado: true } }),
     db.generoCarta.findMany({ where: { activo: true }, select: { id: true, nombre: true, orden: true } }),
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null } }, select: { productoId: true, generoCartaId: true } }),
@@ -41,6 +45,8 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma
     nombre: p.nombre,
     precio: precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)),
     decimales: p.unidadStock.decimales,
+    pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
+    tieneStockReal: tieneStockReal("PV", p.seProduce),
   }));
   const generos: GenerosSelectorCartaPos = {
     generos: generosActivos,
