@@ -13,6 +13,8 @@ describe("registrarVenta", () => {
   let sucursalId: string;
   let seccionId: string;
   let unidadKgId: string;
+  /** `g`: 0 decimales — para probar `pasoVenta` sin que la unidad "tape" el bug (ver el describe de venta fraccionada). */
+  let unidadGId: string;
   let insumoId: string;
 
   beforeEach(async () => {
@@ -21,6 +23,7 @@ describe("registrarVenta", () => {
     sucursalId = base.sucursal.id;
     const catalogo = await sembrarCatalogoBase();
     unidadKgId = catalogo.kg.id;
+    unidadGId = catalogo.g.id;
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
 
@@ -142,6 +145,47 @@ describe("registrarVenta", () => {
 
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     expect(resultado.ok).toBe(false);
+  });
+
+  describe("venta fraccionada — pasoVenta (Task #25, docs/plan-venta-fraccionada-2026-09-26.md)", () => {
+    it("sin pasoVenta, el mostrador sigue sin validar decimales de ningún tipo (comportamiento de siempre)", async () => {
+      const pv = await sembrarProductoDisponible({ codigo: "PV_SIN_PASO", nombre: "Empanada", tipo: "PV", unidadStockId: unidadGId, precioVenta: 500 }, sucursalId);
+      const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
+      expect(resultado.ok).toBe(true);
+      // Ni redondea ni rechaza: `g` tiene 0 decimales pero el mostrador nunca validó eso (a diferencia del POS).
+      expect(await calcularSaldoTotal(pv.id, seccionId)).toBe(-0.5);
+    });
+
+    it("con pasoVenta, un múltiplo exacto se acepta TAL CUAL (nunca se redondea a los decimales de la unidad)", async () => {
+      const pv = await sembrarProductoDisponible(
+        { codigo: "PV_PASO_05", nombre: "Pizza fraccionada", tipo: "PV", unidadStockId: unidadGId, precioVenta: 12000, pasoVenta: 0.5 },
+        sucursalId
+      );
+      const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
+      expect(resultado.ok).toBe(true);
+      expect(await calcularSaldoTotal(pv.id, seccionId)).toBe(-0.5);
+      const venta = await prisma.movimientoStock.findFirst({ where: { productoId: pv.id, proceso: "VENTA" } });
+      expect(Number(venta!.precioTotal)).toBe(6000); // proporcional: 0,5 × 12000
+    });
+
+    it("con pasoVenta, lo que NO es múltiplo exacto se RECHAZA (nunca se redondea en silencio)", async () => {
+      const pv = await sembrarProductoDisponible(
+        { codigo: "PV_PASO_05_R", nombre: "Pizza fraccionada", tipo: "PV", unidadStockId: unidadGId, precioVenta: 12000, pasoVenta: 0.5 },
+        sucursalId
+      );
+      const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.3 }] });
+      expect(resultado).toEqual({ ok: false, mensaje: '"Pizza fraccionada": Se vende de a 0,5: la cantidad tiene que ser un múltiplo exacto.' });
+      expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
+    });
+
+    it("una cantidad ENTERA sigue siendo válida aunque el producto tenga pasoVenta", async () => {
+      const pv = await sembrarProductoDisponible(
+        { codigo: "PV_PASO_ENTERO", nombre: "Pizza entera", tipo: "PV", unidadStockId: unidadGId, precioVenta: 12000, pasoVenta: 0.25 },
+        sucursalId
+      );
+      const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
+      expect(resultado.ok).toBe(true);
+    });
   });
 });
 
