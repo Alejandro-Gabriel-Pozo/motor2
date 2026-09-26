@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { crearSeccion, actualizarActivaSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/movimientos/secciones";
+import { crearSeccion, actualizarActivaSeccion, actualizarRespaldoSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/movimientos/secciones";
 import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function SeccionesPage() {
@@ -14,13 +14,19 @@ export default async function SeccionesPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold">Secciones (depósitos/ubicaciones de esta sucursal)</h1>
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold">Secciones (depósitos/ubicaciones de esta sucursal)</h1>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Si una sección no sirve de respaldo, las ventas del salón solo la usan cuando es la sección habitual de un producto.
+        </p>
+      </div>
 
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-neutral-500">
             <th className="py-2">Nombre</th>
             <th>Activa</th>
+            <th>Respaldo automático en ventas</th>
             <th><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
@@ -42,6 +48,21 @@ export default async function SeccionesPage() {
                 </FormConResultado>
               </td>
               <td>{s.activa ? "Sí" : "No"}</td>
+              <td>
+                {/* Sí/No y su botón en la MISMA celda (el flex va en el form, no en el <td>): la celda «Activa» sigue siendo la única que dice solo «Sí»/«No». */}
+                <FormConResultado
+                  accion={async () => {
+                    "use server";
+                    return actualizarRespaldoSeccion(s.id, !s.sirveDeRespaldoEnVentas);
+                  }}
+                  className="flex items-baseline gap-2"
+                >
+                  <span>{s.sirveDeRespaldoEnVentas ? "Sí" : "No"}</span>
+                  <button type="submit" className="text-sm underline">
+                    {s.sirveDeRespaldoEnVentas ? "Quitar del respaldo" : "Usar de respaldo"}
+                  </button>
+                </FormConResultado>
+              </td>
               <td>
                 <FormConResultado
                   accion={async () => {

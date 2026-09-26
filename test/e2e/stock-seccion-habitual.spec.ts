@@ -126,3 +126,40 @@ test("cierre de cuenta con la habitual en una sección sin muzza y la muzza en o
     await s.limpiar([mesa.id]);
   }
 });
+
+test("una sección excluida del respaldo automático no se usa al cerrar: la venta sale de la otra aunque la excluida tenga el lote que vence antes", async ({ paginaAutenticada: page, sucursalId }) => {
+  const s = await sembrar(sucursalId);
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
+  await prisma.movimientoStock.createMany({
+    data: [
+      { operacionId: compra.id, productoId: s.muzzarella.id, seccionId: s.cocina.id, proceso: "COMPRA", cantidad: 1, loteVencimiento: new Date("2026-10-01"), detalle: "Compra", precioTotal: 0, precioPorUnidadStock: 0 },
+      { operacionId: compra.id, productoId: s.muzzarella.id, seccionId: s.deposito.id, proceso: "COMPRA", cantidad: 1, loteVencimiento: new Date("2026-11-01"), detalle: "Compra", precioTotal: 0, precioPorUnidadStock: 0 },
+    ],
+  });
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 982 } });
+  await prisma.cuenta.create({
+    data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: s.pizza.id, cantidad: 2, precioUnitario: 12000, numeroEnvio: 1, creadoPorId: admin.id }] } },
+  });
+  try {
+    // Se excluye Cocina desde Movimientos › Secciones.
+    await page.goto("/movimientos/secciones");
+    const filaCocina = page.locator(`tr:has(input[value="${s.cocina.nombre}"])`);
+    await filaCocina.getByRole("button", { name: "Quitar del respaldo", exact: true }).click();
+    await expect(filaCocina.getByRole("button", { name: "Usar de respaldo", exact: true })).toBeVisible();
+
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    await page.getByRole("button", { name: "Cerrar cuenta" }).click();
+    await page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 982" }).getByRole("button", { name: "Cerrar y registrar la venta" }).click();
+    const aviso = page.locator('[role="status"][aria-live="polite"]');
+    await expect(aviso).toHaveText(/^Cuenta de la mesa 982 cerrada: se registró la venta por /);
+    await expect(aviso).not.toContainText("⚠");
+
+    const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 982", sucursalId }, include: { movimientos: true } });
+    const filas = venta.movimientos.map((m) => [m.proceso, m.seccionId, Number(m.cantidad)]).sort();
+    expect(filas).toEqual([["CONSUMO", s.deposito.id, -0.5], ["VENTA", s.deposito.id, -2]].sort());
+  } finally {
+    await s.limpiar([mesa.id]);
+  }
+});

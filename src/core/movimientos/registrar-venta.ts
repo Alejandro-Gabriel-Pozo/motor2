@@ -196,6 +196,17 @@ export async function registrarVentaEnTx(
   const pvIds = Array.from(new Set(lineas.map((l) => l.productoId)));
   const origenDatos = await cargarDatosDeOrigen(tx, actor.sucursalId, origen, { pvIds, mpIds, pvQueSeProducenIds });
   const { libro, respaldos, seccionPorDefectoId } = origenDatos;
+  // Sin ninguna sección de respaldo (todas excluidas con `sirveDeRespaldoEnVentas`), un PV sin habitual no tiene de dónde salir: se
+  // rechaza ANTES de escribir nada, con la salida concreta (distinto de «sin secciones activas»: la solución es otra).
+  if (!respaldos.length) {
+    const sinHabitual = lineas.find((l) => !origenDatos.habitualDe(l.productoId));
+    if (sinHabitual) {
+      return fallo(
+        `Ninguna sección de «${actor.sucursalNombre}» sirve de respaldo automático en ventas y «${sinHabitual.nombre}» no tiene sección habitual: ` +
+          "configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Movimientos → Secciones)."
+      );
+    }
+  }
   const ventas: VentaCalculada[] = lineas.map((linea) => {
     const habitual = origenDatos.habitualDe(linea.productoId);
     if (linea.seProduce) {

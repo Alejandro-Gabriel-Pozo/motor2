@@ -10,8 +10,9 @@ import { crearLibroDeStock, type LibroDeStock, type SeccionCandidata } from "@/c
  * Dos modos (`OrigenVenta`):
  * - `seccion` (venta de mostrador): la sección la elige una persona; se valida que sea de la sucursal («No se encontró la sección.»,
  *   como siempre) y es la única candidata (habitual de todo = ella, sin respaldos).
- * - `automatico` (cierre de cuenta del POS): candidatas = las secciones activas de la sucursal, todas de respaldo; cada PV prefiere
- *   su sección HABITUAL (`SeccionHabitualProducto`), solo si apunta a una sección ACTIVA de ESTA sucursal. Si no hay ninguna activa,
+ * - `automatico` (cierre de cuenta del POS): candidatas = las secciones activas de la sucursal; de RESPALDO, solo las marcadas
+ *   `sirveDeRespaldoEnVentas` (default true: todas). Cada PV prefiere su sección HABITUAL (`SeccionHabitualProducto`), solo si apunta a
+ *   una sección ACTIVA de ESTA sucursal — y se usa aunque no sirva de respaldo (la preferencia explícita manda). Si no hay ninguna activa,
  *   «Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.» (el mismo mensaje que ya mostraba la pantalla).
  *   Sección de REFERENCIA de un producto: la de su último movimiento entre las de respaldo (`groupBy` + `_max.creadoEn`, nunca
  *   `findMany distinct`, que Prisma deduplica en memoria); decide adónde va un faltante o la fila VENTA cuando nada más lo decide.
@@ -24,7 +25,7 @@ export type OrigenVenta = { tipo: "seccion"; seccionId: string } | { tipo: "auto
 /** Paso previo, ANTES de validar las líneas: resuelve las secciones candidatas o devuelve el error listo para mostrar. */
 export type OrigenPreparado =
   | { ok: true; tipo: "seccion"; fija: SeccionCandidata }
-  | { ok: true; tipo: "automatico"; activas: SeccionCandidata[] }
+  | { ok: true; tipo: "automatico"; activas: (SeccionCandidata & { sirveDeRespaldoEnVentas: boolean })[] }
   | { ok: false; mensaje: string };
 
 export async function prepararOrigen(tx: Prisma.TransactionClient, sucursalId: string, origen: OrigenVenta): Promise<OrigenPreparado> {
@@ -34,7 +35,7 @@ export async function prepararOrigen(tx: Prisma.TransactionClient, sucursalId: s
     if (!seccion) return { ok: false, mensaje: "No se encontró la sección." };
     return { ok: true, tipo: "seccion", fija: { id: seccion.id, nombre: seccion.nombre } };
   }
-  const activas = await tx.seccion.findMany({ where: { sucursalId, activa: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
+  const activas = await tx.seccion.findMany({ where: { sucursalId, activa: true }, select: { id: true, nombre: true, sirveDeRespaldoEnVentas: true }, orderBy: { nombre: "asc" } });
   if (!activas.length) return { ok: false, mensaje: MENSAJE_SIN_SECCIONES_ACTIVAS };
   // Por nombre en castellano (mismo criterio que el desempate de origen-venta.ts), no por la intercalación de la base.
   activas.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
@@ -47,7 +48,7 @@ export interface DatosDeOrigen {
   familiaDe(mpId: string): string[];
   /** Sección habitual del PV (en modo sección: la elegida). */
   habitualDe(pvId: string): SeccionCandidata | null;
-  /** Secciones que sirven de respaldo automático (en modo sección: ninguna). */
+  /** Secciones activas que sirven de respaldo automático (`sirveDeRespaldoEnVentas`; en modo sección: ninguna). */
   respaldos: SeccionCandidata[];
   /** Sección del último movimiento del producto entre las de respaldo, o null. */
   referenciaDe(productoId: string): string | null;
@@ -66,7 +67,7 @@ export async function cargarDatosDeOrigen(
   origen: Extract<OrigenPreparado, { ok: true }>,
   pedido: { pvIds: readonly string[]; mpIds: readonly string[]; pvQueSeProducenIds: readonly string[] }
 ): Promise<DatosDeOrigen> {
-  const secciones = origen.tipo === "seccion" ? [origen.fija] : origen.activas;
+  const secciones: SeccionCandidata[] = origen.tipo === "seccion" ? [origen.fija] : origen.activas.map(({ id, nombre }) => ({ id, nombre }));
   const seccionIds = secciones.map((s) => s.id);
 
   const familias = await cargarFamilias(tx, sucursalId, pedido.mpIds);
@@ -94,7 +95,7 @@ export async function cargarDatosDeOrigen(
     };
   }
 
-  const respaldos = origen.activas;
+  const respaldos = origen.activas.filter((s) => s.sirveDeRespaldoEnVentas).map(({ id, nombre }) => ({ id, nombre }));
   const [referencias, habituales] = await Promise.all([cargarReferencias(tx, [...pedido.pvIds, ...productoIds], respaldos), cargarHabituales(tx, sucursalId, pedido.pvIds)]);
   return {
     libro,
