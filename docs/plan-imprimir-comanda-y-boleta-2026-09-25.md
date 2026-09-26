@@ -36,6 +36,10 @@ configuración del sistema operativo (driver de la térmica como USB o TCP/IP pu
   dos renglones para 58 mm («2 × Milanesa» y debajo, a la derecha, «$ 9.000 c/u» y el subtotal); las de neto 0 no aparecen;
   «TOTAL» en grande (mismo cálculo); «No válido como factura». Sin forma de pago, propina ni número de comprobante (no existen) y SIN
   el aviso de stock negativo (información interna: queda en el aviso ámbar de la pantalla y en la auditoría; lo verifica un E2E).
+  > **Nota 2026-09-25 — numeración:** la boleta ya tiene número. «Boleta N.º 566-A» va en su propio renglón debajo de la mesa y
+  > «Cuentas cerradas» antepone «N.º 566-A · »: número base secuencial por sucursal + ejemplar (A = original; B, C… = correcciones
+  > tras anular parte de la venta, con encabezado «CORRECCIÓN» y «Reemplaza a N.º 566-A»). Sigue siendo control interno, no número
+  > fiscal. Ver `docs/plan-numeracion-boleta-2026-09-25.md`.
 - **B6. «Cerrar y registrar la venta» imprime la boleta sola**, solo con total > 0: después del refresco la mesa aparece libre y
   «Cuentas cerradas» ya trae la cuenta con los datos de la venta registrada. En el caso idempotente «ya estaba cerrada» se imprime
   igual (una copia de más no genera trabajo repetido, a diferencia del KOT). No se navega a otra pantalla (se perdería el aviso).
@@ -59,6 +63,9 @@ configuración del sistema operativo (driver de la térmica como USB o TCP/IP pu
   anulada, claro y oscuro).
 - **B11. Sin migración.** La hora del KOT es la de impresión: la del envío no se guarda. Guardarla (`CuentaItem.enviadoEn`) queda
   como mejora que **requiere autorización expresa**; no forma parte de este plan.
+  > **Nota 2026-09-25:** la numeración de la boleta SÍ trajo una migración, autorizada aparte: la tabla `EjemplarBoleta`
+  > (`20260925200000_pos_numeracion_boleta`, `docs/plan-numeracion-boleta-2026-09-25.md`). Lo de este plan sigue sin migración propia
+  > y la hora del envío sigue sin guardarse.
 
 ## C. Pasos (un commit por paso, suite completa en verde en cada uno)
 

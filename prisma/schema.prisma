@@ -41,6 +41,7 @@ model User {
   cuentasAbiertas           Cuenta[]           @relation("CuentaAbiertaPor")
   cuentasCerradas           Cuenta[]           @relation("CuentaCerradaPor")
   cuentaItemsCreados        CuentaItem[]       @relation("CuentaItemCreadoPor")
+  ejemplaresBoletaEmitidos  EjemplarBoleta[]   @relation("EjemplarBoletaEmitidoPor")
 }
 
 model Account {
@@ -121,6 +122,7 @@ model Sucursal {
   publica              SucursalPublica?
   temaCarta            TemaCartaSucursal?
   mesas                Mesa[]
+  ejemplaresBoleta     EjemplarBoleta[]
 }
 
 model Rol {
@@ -1491,6 +1493,10 @@ model TemaCartaSucursal {
 // - Un ítem SIN enviar (`numeroEnvio` null) es un borrador: se quita con DELETE físico, sin motivo ni auditoría.
 // Invariantes validadas en la APLICACIÓN (src/server/actions/pos/cuenta.ts), no en la base: espejo ⇒ cantidad < 0, mismo
 // numeroEnvio que su original y motivoAnulacion no vacío; original (anulaAItemId null) ⇒ cantidad > 0.
+// - NUMERACIÓN DE LA BOLETA (docs/plan-numeracion-boleta-2026-09-25.md): cada papel impreso de la boleta de cierre es una fila de
+//   `EjemplarBoleta` (control interno, no fiscal). Número base por sucursal = max + 1 dentro de la tx serializable de `cerrarCuenta`
+//   (solo con venta, después de validarla), ejemplar 1 = A. Corrección (`emitirBoletaCorregida`, tras anular una línea con
+//   anularVenta) = fila NUEVA con el mismo número, el ejemplar siguiente, `corrigeAId` → el A y el motivo. Nunca se edita ni se borra.
 // Grounding: docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6.
 // ===================================================================
 
@@ -1521,6 +1527,7 @@ model Cuenta {
   cerradaPorId String?
   cerradaPor   User?        @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
   items        CuentaItem[]
+  ejemplaresBoleta EjemplarBoleta[]
 
   @@index([mesaId])
 }
@@ -1554,4 +1561,28 @@ model CuentaItem {
   @@index([cuentaId])
   @@index([anulaAItemId])
   @@index([operacionId])
+}
+
+/// Ejemplar IMPRESO de la boleta de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
+/// numero: secuencial por sucursal, sin huecos (max+1 en la tx serializable de cerrarCuenta). ejemplar: 1 = A (original), 2 = B…
+/// Corrección = fila NUEVA (mismo numero, ejemplar siguiente, corrigeAId → el ejemplar A, motivo); nunca se edita ni se borra.
+model EjemplarBoleta {
+  id           String           @id @default(cuid())
+  sucursalId   String
+  sucursal     Sucursal         @relation(fields: [sucursalId], references: [id])
+  cuentaId     String
+  cuenta       Cuenta           @relation(fields: [cuentaId], references: [id])
+  numero       Int
+  ejemplar     Int              @default(1)
+  emitidoEn    DateTime         @default(now())
+  emitidoPorId String
+  emitidoPor   User             @relation("EjemplarBoletaEmitidoPor", fields: [emitidoPorId], references: [id])
+  corrigeAId   String?
+  corrigeA     EjemplarBoleta?  @relation("EjemplarBoletaCorreccion", fields: [corrigeAId], references: [id], onDelete: Restrict)
+  correcciones EjemplarBoleta[] @relation("EjemplarBoletaCorreccion")
+  motivo       String?
+
+  @@unique([sucursalId, numero, ejemplar])
+  @@unique([cuentaId, ejemplar])
+  @@index([corrigeAId])
 }
