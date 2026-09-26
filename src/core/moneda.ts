@@ -54,6 +54,29 @@ export function importeDeLinea(cantidad: number, precioUnitario: number): number
 }
 
 /**
+ * Precio COBRADO a un cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 6): aplica `porcentaje` (0 a
+ * menor que 100 — lo valida `validarPorcentajeDescuento`, src/core/datos/porcentaje-descuento.ts, no este módulo) sobre `precioLista`
+ * con aritmética Decimal EXACTA (mismo `D` que el resto de este archivo) y un solo redondeo al centavo, alejándose del cero en los
+ * empates — igual criterio que `redondearMoneda`.
+ *
+ * `porcentaje` ausente, `null`, `0` o no numérico devuelve `precioLista` TAL CUAL, sin pasar por Decimal: sin descuento, cero cambios
+ * respecto al precio de lista ya congelado (`CuentaItem.precioUnitario`, que NO cambia de semántica con esta Task).
+ *
+ * PISO DE 0,01 (confirmado contra `src/core/reportes/periodo.ts`, `calcularVentasDelPeriodo`): con `precioLista > 0` esta función NUNCA
+ * devuelve 0, ni con un porcentaje altísimo (99,99 %) — ese reporte trata `MovimientoStock.precioTotal === 0` en una línea VENTA como
+ * "venta vieja cargada sin precio" y la REESTIMA al precio de carta vigente de HOY, ignorando el precio congelado de ese día; si el
+ * precio con descuento pudiera dar 0, una venta con descuento real (que sí tiene precio, aunque sea mínimo) se leería como si no
+ * hubiera tenido descuento. `precioLista <= 0` pasa sin piso: no hay nada que proteger (no debería llegar así — no es este módulo el
+ * que lo valida).
+ */
+export function precioConDescuento(precioLista: number, porcentaje: number | null | undefined): number {
+  if (!porcentaje || !Number.isFinite(porcentaje)) return precioLista;
+  if (!Number.isFinite(precioLista) || precioLista <= 0) return precioLista;
+  const conDescuento = aCentavos(new D(precioLista).times(new D(100).minus(porcentaje).dividedBy(100)));
+  return conDescuento > 0 ? conDescuento : 0.01;
+}
+
+/**
  * Total de varias líneas: suma EXACTA de los productos cantidad × precio y UN SOLO redondeo al final (la política de redondeo que ya
  * tenía el POS para sus totales, ahora sin el error del float).
  */
