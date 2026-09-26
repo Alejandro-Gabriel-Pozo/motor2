@@ -96,7 +96,11 @@ export const ACCIONES: readonly AccionSemilla[] = [
   // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): Ver = abrir el mapa de mesas; Editar = dar de alta mesas. Ninguna acción existente
   // servía (reusar `proceso_venta` daría de más). El operador de fábrica queda sin asignar, igual que `anular_compra`; el rol «mozo» NO se
   // crea en código: se crea desde /administracion/roles y se le da esta acción desde la matriz de permisos.
-  { clave: "pos_mesas", descripcion: "Ver el mapa de mesas del salón, dar de alta mesas y editar el límite de mesas abiertas (POS)", rolesEditarSemilla: ["admin"] },
+  // La descripción NO cambia con el límite de mesas abiertas nuevo (mismo permiso, ver actualizarMaxMesasAbiertas en
+  // src/server/actions/pos/mesas.ts): test/permisos/migracion-permiso-pos-mesas.test.ts exige que coincida con el literal
+  // ya escrito en la migración de datos 20260924151000_permiso_pos_mesas — cambiarla exigiría, además, una migración nueva
+  // que la actualice en cualquier base ya sembrada, y no es necesario: la acción (`pos_mesas`) es la fuente de verdad, no su texto.
+  { clave: "pos_mesas", descripcion: "Ver el mapa de mesas del salón y dar de alta mesas (POS)", rolesEditarSemilla: ["admin"] },
   // «Tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, B4): tres claves separadas para poder armar un rol «mozo» que toma pedidos
   // (con `pos_mesas` Ver + `pos_tomar_pedido` Editar) sin poder anular lo que ya salió a cocina ni cobrar. Todas arrancan solo en admin.
   { clave: "pos_tomar_pedido", descripcion: "Tomar pedidos en el salón: abrir la cuenta de una mesa, agregar y quitar ítems sin enviar, enviarlos a cocina y liberar una mesa sin consumo (POS)", rolesEditarSemilla: ["admin"] },
