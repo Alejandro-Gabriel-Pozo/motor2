@@ -100,6 +100,35 @@ describe("validarCantidadPedido", () => {
     }
     expect(validarCantidadPedido(1000, 0)).toEqual({ ok: false, mensaje: "La cantidad no puede superar 999." });
   });
+
+  describe("con pasoVenta (Task #25, docs/plan-venta-fraccionada-2026-09-26.md)", () => {
+    it("sin tercer parámetro, o con pasoVenta null/undefined, el comportamiento es IDÉNTICO al de siempre (redondea)", () => {
+      expect(validarCantidadPedido(0.5, 0, null)).toEqual(validarCantidadPedido(0.5, 0));
+      expect(validarCantidadPedido(1.256, 2, { pasoVenta: null, tieneStockReal: false })).toEqual(validarCantidadPedido(1.256, 2));
+      expect(validarCantidadPedido(0.2, 0, { pasoVenta: undefined, tieneStockReal: true })).toEqual(validarCantidadPedido(0.2, 0));
+    });
+
+    it("un múltiplo exacto del paso se acepta TAL CUAL, sin redondear a los decimales de la unidad (sin stock real)", () => {
+      expect(validarCantidadPedido(0.5, 0, { pasoVenta: 0.5, tieneStockReal: false })).toEqual({ ok: true, cantidad: 0.5 });
+      expect(validarCantidadPedido(1, 0, { pasoVenta: 0.5, tieneStockReal: false })).toEqual({ ok: true, cantidad: 1 });
+      expect(validarCantidadPedido(0.25, 0, { pasoVenta: 0.25, tieneStockReal: false })).toEqual({ ok: true, cantidad: 0.25 });
+    });
+
+    it("lo que NO es múltiplo exacto se RECHAZA, nunca se redondea en silencio", () => {
+      const r = validarCantidadPedido(0.3, 0, { pasoVenta: 0.5, tieneStockReal: false });
+      expect(r).toEqual({ ok: false, mensaje: "Se vende de a 0,5: la cantidad tiene que ser un múltiplo exacto." });
+    });
+
+    it("con stock real, redondea a los decimales de la unidad (no-op: R3 ya garantiza que el paso entra)", () => {
+      expect(validarCantidadPedido(0.5, 1, { pasoVenta: 0.5, tieneStockReal: true })).toEqual({ ok: true, cantidad: 0.5 });
+    });
+
+    it("sigue rechazando lo de siempre (cero, negativo, más de 999) aunque tenga paso", () => {
+      for (const valor of [0, -1, Number.NaN, 1000]) {
+        expect(validarCantidadPedido(valor, 0, { pasoVenta: 0.5, tieneStockReal: false }).ok, String(valor)).toBe(false);
+      }
+    });
+  });
 });
 
 describe("validarComensales (docs/plan-comensales-y-limite-mesas-2026-09-26.md: obligatorio, sin default)", () => {

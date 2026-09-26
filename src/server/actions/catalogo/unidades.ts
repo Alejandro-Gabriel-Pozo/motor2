@@ -6,6 +6,7 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { decimalesDelPaso } from "@/core/catalogo/venta-fraccionada";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -57,11 +58,30 @@ export async function actualizarActivaUnidad(unidadId: string, activa: boolean):
   });
 }
 
+/**
+ * Transición peligrosa (b) de R3 (Task #25, docs/plan-venta-fraccionada-2026-09-26.md — ver el docstring de `pasoVenta` en
+ * prisma/schema.prisma): bajar los decimales de una Unidad no puede dejar a un producto "Se produce" (stock real) con un
+ * `pasoVenta` que ya no entra en esos decimales — se rechaza, nombrando el primero que rompería (mismo criterio que
+ * `dependenciasParaDesactivar`, "avisa qué es").
+ */
 export async function actualizarDecimalesUnidad(unidadId: string, decimales: number): Promise<ResultadoAccion> {
   return conPermiso("unidades", async () => {
     if (!Number.isInteger(decimales) || decimales < 0 || decimales > 6) {
       return error("Los decimales tienen que ser un entero entre 0 y 6.");
     }
+
+    const productosConStockReal = await prisma.producto.findMany({
+      where: { unidadStockId: unidadId, tipo: "PV", seProduce: true, pasoVenta: { not: null } },
+      select: { nombre: true, pasoVenta: true },
+    });
+    const inconsistente = productosConStockReal.find((p) => decimalesDelPaso(Number(p.pasoVenta)) > decimales);
+    if (inconsistente) {
+      return error(
+        `No se puede bajar a ${decimales} decimal(es): "${inconsistente.nombre}" "se produce" (tiene stock propio) y su paso de venta ` +
+          `(${Number(inconsistente.pasoVenta)}) necesita más precisión — cambiale el paso de venta, desmarcá "Se produce", o dale una unidad propia.`
+      );
+    }
+
     await prisma.unidad.update({ where: { id: unidadId }, data: { decimales } });
     refrescarVistaSiHaceFalta(); // ver crearUnidad
     return ok("Decimales actualizados.");

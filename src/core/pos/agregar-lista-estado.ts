@@ -38,7 +38,10 @@ export type AccionListaPorAgregar =
   | { tipo: "incrementar"; productoId: string }
   | { tipo: "decrementar"; productoId: string }
   | { tipo: "cambiarCantidadTexto"; productoId: string; texto: string }
-  | { tipo: "normalizarCantidad"; productoId: string; decimales: number }
+  /** `pasoVenta`/`tieneStockReal` (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): OPCIONALES — sin `pasoVenta` (o `null`), el
+   *  comportamiento es IDÉNTICO al de siempre (redondea a `decimales`). Con `pasoVenta`, `validarCantidadPedido` rechaza lo que no
+   *  sea un múltiplo exacto en vez de redondear. */
+  | { tipo: "normalizarCantidad"; productoId: string; decimales: number; pasoVenta?: number | null; tieneStockReal?: boolean }
   | { tipo: "quitarLinea"; productoId: string }
   | { tipo: "vaciar" };
 
@@ -111,7 +114,8 @@ export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: Ac
           const r = interpretarNumero(l.cantidadTexto);
           if (!r.ok) return { ...l, error: r.mensaje };
           if (r.valor === null) return { ...l, error: "La cantidad tiene que ser un número mayor que cero." };
-          const v = validarCantidadPedido(r.valor, accion.decimales);
+          const paso = accion.pasoVenta != null ? { pasoVenta: accion.pasoVenta, tieneStockReal: Boolean(accion.tieneStockReal) } : null;
+          const v = validarCantidadPedido(r.valor, accion.decimales, paso);
           if (!v.ok) return { ...l, error: v.mensaje };
           // Se ve EXACTAMENTE lo que se va a guardar (ej. "1,4" en una unidad entera queda mostrado como "1"): nunca un redondeo
           // silencioso, ver docstring del módulo.

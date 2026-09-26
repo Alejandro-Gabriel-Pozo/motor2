@@ -118,6 +118,15 @@ export default async function FichaProductoPage({
           </Dato>
           {p.tipo === "PV" && <Dato etiqueta="Precio de venta">{plata(Number(p.precioVenta))}</Dato>}
           {p.tipo === "PV" && (
+            <Dato etiqueta="Venta fraccionada">
+              {p.pasoVenta !== null ? (
+                `Se vende de a ${Number(p.pasoVenta).toLocaleString("es-AR")}`
+              ) : (
+                <span className="text-neutral-500 dark:text-neutral-400">No — se vende de a una unidad entera</span>
+              )}
+            </Dato>
+          )}
+          {p.tipo === "PV" && (
             <Dato etiqueta={`Sección habitual en «${ctx.sucursalNombre}»`}>
               {seccionHabitual ? seccionHabitual.seccion.nombre : <span className="text-neutral-500 dark:text-neutral-400">Sin sección habitual (sale de donde haya stock)</span>}
             </Dato>

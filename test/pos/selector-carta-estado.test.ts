@@ -8,7 +8,15 @@ import type { ProductoPedible, SelectorCartaPos } from "../../src/core/pos/selec
  * (test/pos/agregar-lista-estado.test.ts) — acá solo qué sección/agrupado/carpeta está a la vista.
  */
 
-const pedible = (productoId: string): ProductoPedible => ({ productoId, codigo: productoId, nombre: productoId, precio: 1, decimales: 0 });
+const pedible = (productoId: string): ProductoPedible => ({
+  productoId,
+  codigo: productoId,
+  nombre: productoId,
+  precio: 1,
+  decimales: 0,
+  pasoVenta: null,
+  tieneStockReal: false,
+});
 
 const selector: SelectorCartaPos = {
   seccionesCarta: [

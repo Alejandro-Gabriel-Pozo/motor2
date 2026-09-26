@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
+import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/venta-fraccionada";
 import { importeDeLinea } from "@/core/moneda";
 import { seccionesConStock } from "@/core/movimientos/stock";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
@@ -136,6 +137,15 @@ async function armarLinea(
   }
   if (producto.tipo !== "PV") {
     return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para venta: solo se puede vender un PV (vinculado por receta a la materia prima que consume).` };
+  }
+  // Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): validación ADICIONAL, específica del paso — no
+  // reemplaza ninguna validación de decimales general (mostrador no tenía ninguna, y sigue sin tenerla). Comparte este núcleo con
+  // `cerrarCuenta` (POS): cada línea que llega acá ya pasó por `validarCantidadPedido` al cargarse (múltiplo exacto del paso), y la
+  // SUMA de múltiplos exactos sigue siendo un múltiplo exacto — así que esto nunca debería disparar desde el POS, solo desde la
+  // venta de mostrador directa (`registrarVenta`), que hoy no valida nada de esto.
+  if (producto.pasoVenta !== null) {
+    const paso = Number(producto.pasoVenta);
+    if (!cumplePaso(cantidad, paso)) return { ok: false, mensaje: `"${producto.nombre}": ${mensajeCantidadNoCumplePaso(paso)}` };
   }
 
   const pedidos: LineaArmada["pedidos"] = [];

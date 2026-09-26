@@ -311,6 +311,19 @@ model Producto {
 
   precioVenta Decimal @default(0) @db.Decimal(14, 2)
 
+  /// Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): excepción de venta PUNTUAL de este PV — ej. 0.5
+  /// para "esta pizza se vende de a 1 o de a media". null (default) = comportamiento actual, sin cambios (una unidad entera por
+  /// línea). Solo tiene sentido si tipo=PV (se valida en la capa de aplicación, `validarPasoVenta`, src/core/catalogo/venta-
+  /// fraccionada.ts). Migración puramente aditiva, sin backfill.
+  ///
+  /// R3 (la precondición que cuida `validarPasoVenta`): el paso NUNCA amplía la precisión de algo con STOCK REAL — si este
+  /// producto "se produce" (`seProduce`, stock propio en el Kardex), sus decimales tienen que entrar en los que admite su
+  /// `unidadStock` (si no, se rechaza al guardar); si no se produce (se cocina al momento, sin fila propia en el Kardex), el
+  /// paso es libre. Dos transiciones cuidan esto DESPUÉS del alta: marcar `seProduce` en un producto con un paso ya
+  /// inconsistente, y bajar `Unidad.decimales` por debajo de lo que algún producto "se produce" con paso necesita — las dos se
+  /// revalidan y bloquean (ver `actualizarProducto`/`actualizarDecimalesUnidad`).
+  pasoVenta Decimal? @db.Decimal(14, 4)
+
   /// Elegibilidad de receta (Catalogo.js:1723-1726): PV siempre elegible;
   /// MP solo si seProduce=true (se fabrica por lote, ej. una salsa base).
   seProduce Boolean @default(false)

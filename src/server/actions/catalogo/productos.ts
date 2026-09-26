@@ -6,6 +6,8 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { validarUnidadInsumo } from "@/core/catalogo/producto";
+import { validarPasoVenta } from "@/core/catalogo/venta-fraccionada";
+import { tieneStockReal } from "@/core/movimientos/transiciones";
 import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
 import { disponibilidadDeProductos, productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
@@ -204,6 +206,13 @@ export interface DatosProducto {
   observaciones?: string;
   insumoId?: string | null;
   precioVenta?: number;
+  /**
+   * Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): excepción de venta puntual de ESTE PV — ej. 0,5 para
+   * "esta pizza se vende de a 1 o de a media". `undefined`/`null` (el caso común) = comportamiento actual, sin cambios. Solo tiene
+   * sentido con `tipo: "PV"` (se rechaza si viene en un alta/edición de MP); validada contra `Unidad.decimales` de
+   * `unidadStockId` cuando el producto "se produce" (R3, `validarPasoVenta`).
+   */
+  pasoVenta?: number | null;
   seProduce?: boolean;
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
@@ -231,6 +240,14 @@ async function validarComun(datos: DatosProducto, productoIdExcluir?: string): P
     if (!esNumeroFinito(datos.precioConsignacion)) return "El precio de consignación no es un número válido.";
   }
 
+  if (datos.pasoVenta !== undefined && datos.pasoVenta !== null) {
+    if (datos.tipo !== "PV") return "El paso de venta solo aplica a productos de venta (PV).";
+    const unidad = await prisma.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { decimales: true } });
+    if (!unidad) return "La unidad de stock es obligatoria.";
+    const r = validarPasoVenta(datos.pasoVenta, { decimalesUnidad: unidad.decimales, tieneStockReal: tieneStockReal("PV", datos.seProduce ?? false) });
+    if (!r.ok) return r.mensaje;
+  }
+
   const dup = await prisma.producto.findFirst({
     where: {
       ...whereDisponibleEnAlguna(),
@@ -252,6 +269,8 @@ function datosParaGuardar(datos: DatosProducto) {
     factorConversion: datos.factorConversion,
     insumoId: datos.insumoId || null,
     precioVenta: datos.precioVenta ?? 0,
+    // Defensivo (validarComun ya lo rechaza para MP): un paso de venta nunca se guarda fuera de un PV.
+    pasoVenta: datos.tipo === "PV" ? (datos.pasoVenta ?? null) : null,
     seProduce: datos.seProduce ?? false,
     esConsignacion: datos.esConsignacion ?? false,
     proveedorConsignacionId: datos.proveedorConsignacionId || null,
@@ -370,6 +389,14 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       entidad: "Producto", entidadId: productoId, campo: "precioConsignacion",
       descripcion: `Producto "${nombreActual}": precio de consignación`,
       valorAnterior: Number(existente.precioConsignacion), valorNuevo: Number(nuevos.precioConsignacion), actorId: ctx.usuarioId,
+    });
+    // Venta fraccionada (Task #25): se audita igual que el resto de los campos de mayor impacto de negocio.
+    await registrarCambioAuditado(prisma, {
+      entidad: "Producto", entidadId: productoId, campo: "pasoVenta",
+      descripcion: `Producto "${nombreActual}": paso de venta`,
+      valorAnterior: existente.pasoVenta !== null ? Number(existente.pasoVenta) : null,
+      valorNuevo: nuevos.pasoVenta,
+      actorId: ctx.usuarioId,
     });
 
     const mensaje = `Producto "${nombreActual}" actualizado.`;
