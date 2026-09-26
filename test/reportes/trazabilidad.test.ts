@@ -5,6 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerOperacionPorId, buscarOperacionesPorProducto } from "../../src/core/reportes/trazabilidad";
 
 describe("Trazabilidad", () => {
@@ -38,6 +39,28 @@ describe("Trazabilidad", () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra" } });
     const noEncontrada = await obtenerOperacionPorId(otraSucursal.id, operacion.id);
     expect(noEncontrada).toBeNull();
+  });
+
+  it("D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): un CONSUMO por sustitución trae sustituyeANombre; el resto queda en null", async () => {
+    const insumoOjo = await prisma.insumo.create({ data: { nombre: "Ojo de bife" } });
+    const bife = await sembrarProductoDisponible({ codigo: "MP_BIFE", nombre: "Bife de chorizo", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const ojo = await sembrarProductoDisponible({ codigo: "MP_OJO", nombre: "Ojo de bife", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoOjo.id }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 5000 }, sucursalId);
+    await prisma.recetaVersion.create({
+      data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: bife.id, cantidad: 0.3, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoOjo.id, orden: 1 }] } }] } },
+    });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: ojo.id, cantidad: 1 }] });
+
+    const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 1 }] });
+    expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
+    const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
+
+    const traida = await obtenerOperacionPorId(sucursalId, venta.id);
+    const consumo = traida!.items.find((it) => it.proceso === "CONSUMO")!;
+    const filaVenta = traida!.items.find((it) => it.proceso === "VENTA")!;
+    expect(consumo.productoNombre).toBe("Ojo de bife");
+    expect(consumo.sustituyeANombre).toBe("Bife de chorizo");
+    expect(filaVenta.sustituyeANombre).toBeNull();
   });
 
   it("buscarOperacionesPorProducto encuentra por nombre o código, sin duplicar operación", async () => {

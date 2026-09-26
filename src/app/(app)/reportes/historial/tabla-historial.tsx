@@ -13,6 +13,11 @@ function MarcaAnulada() {
   );
 }
 
+/** D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md), mismo criterio que tabla-trazabilidad.tsx — texto, no solo color. */
+function MarcaSustituto({ nombrePrincipal }: { nombrePrincipal: string }) {
+  return <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-600">Sustituto de «{nombrePrincipal}»</span>;
+}
+
 function columnas(mostrarSaldo: boolean): ColumnaReporte<EventoHistorialProducto>[] {
   const base: ColumnaReporte<EventoHistorialProducto>[] = [
     { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (ev) => ev.fecha.toISOString().slice(0, 10), render: (ev) => ev.fecha.toISOString().slice(0, 10) },
@@ -25,6 +30,7 @@ function columnas(mostrarSaldo: boolean): ColumnaReporte<EventoHistorialProducto
         <>
           {ev.detalle}
           {ev.tipo === "movimiento" && ev.anulada && <MarcaAnulada />}
+          {ev.tipo === "movimiento" && ev.sustituyeANombre && <MarcaSustituto nombrePrincipal={ev.sustituyeANombre} />}
         </>
       ),
     },

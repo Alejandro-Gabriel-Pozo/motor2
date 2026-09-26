@@ -65,6 +65,7 @@ export async function limpiarBaseDeTest() {
   await prisma.accion.deleteMany();
   await prisma.sucursal.deleteMany();
 
+  await prisma.sustitutoRecetaIngrediente.deleteMany();
   await prisma.recetaIngrediente.deleteMany();
   await prisma.recetaVersion.deleteMany();
   await prisma.presentacion.deleteMany();

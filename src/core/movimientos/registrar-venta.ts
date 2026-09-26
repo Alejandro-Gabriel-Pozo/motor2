@@ -4,7 +4,7 @@ import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
 import { importeDeLinea } from "@/core/moneda";
 import { seccionesConStock } from "@/core/movimientos/stock";
-import { asignarConsumo, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada } from "@/core/movimientos/origen-venta";
+import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
 import { cargarDatosDeOrigen, prepararOrigen, type OrigenVenta } from "@/core/movimientos/origen-venta-datos";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
@@ -89,13 +89,20 @@ interface LineaArmada {
   /** Costo de receta resuelto AL MOMENTO de esta venta (docstring en schema.prisma, MovimientoStock.costoUnitarioVenta) — null si el costeo estaba incompleto ese día. */
   costoUnitarioAlVender: number | null;
   /** Consumo de receta por ingrediente, en el orden de los ingredientes (id ascendente: determinístico para el libro). */
-  pedidos: { productoId: string; cantidad: number }[];
+  pedidos: {
+    productoId: string;
+    cantidad: number;
+    /** Insumos sustitutos declarados en ESTA línea de receta, en orden (docs/plan-sustitucion-insumos-receta-2026-09-26.md, D1). */
+    insumoSustitutoIds: string[];
+    /** Unidad de stock de la MP principal — la familia sustituta se filtra a esta misma unidad (D8). */
+    unidadStockId: string;
+  }[];
 }
 
 interface VentaCalculada extends LineaArmada {
   seccionId: string;
   loteVencimiento: Date | null;
-  consumos: ParteAsignada[];
+  consumos: ParteConsumo[];
 }
 
 function fallo(mensaje: string): { ok: false; mensaje: string } {
@@ -137,7 +144,12 @@ async function armarLinea(
     const receta = await tx.recetaVersion.findFirst({
       where: { productoId: producto.id },
       orderBy: { version: "desc" },
-      include: { ingredientes: { orderBy: { id: "asc" }, include: { rendimientosLocales: { where: { sucursalId } } } } },
+      include: {
+        ingredientes: {
+          orderBy: { id: "asc" },
+          include: { sustitutos: { orderBy: { orden: "asc" } }, rendimientosLocales: { where: { sucursalId } } },
+        },
+      },
     });
     for (const ing of receta?.ingredientes ?? []) {
       const mp = await obtenerProducto(ing.insumoProductoId);
@@ -155,7 +167,12 @@ async function armarLinea(
         ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
         sucursalId
       );
-      pedidos.push({ productoId: ing.insumoProductoId, cantidad: cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100) });
+      pedidos.push({
+        productoId: ing.insumoProductoId,
+        cantidad: cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100),
+        insumoSustitutoIds: ing.sustitutos.map((s) => s.insumoSustitutoId),
+        unidadStockId: mp.unidadStockId,
+      });
     }
   }
 
@@ -207,7 +224,8 @@ export async function registrarVentaEnTx(
   const mpIds = Array.from(new Set(lineas.flatMap((l) => l.pedidos.map((p) => p.productoId))));
   const pvQueSeProducenIds = Array.from(new Set(lineas.filter((l) => l.seProduce).map((l) => l.productoId)));
   const pvIds = Array.from(new Set(lineas.map((l) => l.productoId)));
-  const origenDatos = await cargarDatosDeOrigen(tx, actor.sucursalId, origen, { pvIds, mpIds, pvQueSeProducenIds });
+  const insumoSustitutoIds = Array.from(new Set(lineas.flatMap((l) => l.pedidos.flatMap((p) => p.insumoSustitutoIds))));
+  const origenDatos = await cargarDatosDeOrigen(tx, actor.sucursalId, origen, { pvIds, mpIds, pvQueSeProducenIds, insumoSustitutoIds });
   const { libro, respaldos, seccionPorDefectoId } = origenDatos;
   // Sin ninguna sección de respaldo (todas excluidas con `sirveDeRespaldoEnVentas`), un PV sin habitual no tiene de dónde salir: se
   // rechaza ANTES de escribir nada, con la salida concreta (distinto de «sin secciones activas»: la solución es otra).
@@ -220,30 +238,61 @@ export async function registrarVentaEnTx(
       );
     }
   }
-  const ventas: VentaCalculada[] = lineas.map((linea) => {
+
+  // PVs que se producen: stock PROPIO, sin sustitutos ni receta — se resuelven en su propio sub-paso, en el orden de las líneas
+  // (no interactúan con el consumo de receta de las demás: un PV que se produce nunca es MP de ninguna receta, así que el orden
+  // relativo entre este sub-paso y el de abajo no cambia ningún resultado).
+  const propiaPorLinea = new Map<number, ParteAsignada>();
+  lineas.forEach((linea, i) => {
+    if (!linea.seProduce) return;
     const habitual = origenDatos.habitualDe(linea.productoId);
-    if (linea.seProduce) {
-      // El PV vendido también puede tener lotes propios si está marcado "Se produce" — siempre el que vence antes (FEFO), nunca a
-      // elección manual; el dato ya está en el Kardex desde que se produjo, no hace falta pedírselo a quien vende.
-      const propia = elegirSeccionDeStockPropio(libro, {
+    // El PV vendido también puede tener lotes propios si está marcado "Se produce" — siempre el que vence antes (FEFO), nunca a
+    // elección manual; el dato ya está en el Kardex desde que se produjo, no hace falta pedírselo a quien vende.
+    propiaPorLinea.set(
+      i,
+      elegirSeccionDeStockPropio(libro, {
         productoId: linea.productoId,
         cantidad: linea.cantidadVendida,
         seccionHabitual: habitual,
         respaldos,
         seccionSiNingunaAlcanzaId: habitual?.id ?? origenDatos.referenciaDe(linea.productoId) ?? seccionPorDefectoId,
-      });
-      return { ...linea, seccionId: propia.seccionId, loteVencimiento: propia.loteVencimiento, consumos: [] };
-    }
-    const consumos = linea.pedidos.flatMap((p) =>
-      asignarConsumo(libro, {
+      })
+    );
+  });
+
+  // Pedidos de receta de TODAS las líneas que consumen (no seProduce), en el orden de línea e ingrediente — UN solo
+  // asignarConsumosDeVenta para la venta ENTERA (D5): una sustitución nunca le saca stock a un consumo principal de OTRA línea,
+  // porque su pasada 2 corre después de que la 1 terminó para todas. Sin sustitutos, misma secuencia que antes (demostración (a),
+  // docs/plan-sustitucion-insumos-receta-2026-09-26.md §4).
+  const pedidosPlanos: PedidoDeConsumo[] = [];
+  const rangoPorLinea = new Map<number, { desde: number; hasta: number }>();
+  lineas.forEach((linea, i) => {
+    if (linea.seProduce) return;
+    const habitual = origenDatos.habitualDe(linea.productoId);
+    const desde = pedidosPlanos.length;
+    for (const p of linea.pedidos) {
+      pedidosPlanos.push({
         productoId: p.productoId,
         familia: origenDatos.familiaDe(p.productoId),
         cantidad: p.cantidad,
         seccionHabitual: habitual,
         respaldos,
         seccionParaFaltanteId: habitual?.id ?? origenDatos.referenciaDe(p.productoId) ?? origenDatos.referenciaDe(linea.productoId) ?? seccionPorDefectoId,
-      })
-    );
+        sustitutos: p.insumoSustitutoIds.length ? p.insumoSustitutoIds.map((insumoId) => origenDatos.familiaSustitutaDe(insumoId, p.unidadStockId)) : undefined,
+      });
+    }
+    rangoPorLinea.set(i, { desde, hasta: pedidosPlanos.length });
+  });
+  const resultadosPlanos = asignarConsumosDeVenta(libro, pedidosPlanos);
+
+  const ventas: VentaCalculada[] = lineas.map((linea, i) => {
+    if (linea.seProduce) {
+      const propia = propiaPorLinea.get(i)!;
+      return { ...linea, seccionId: propia.seccionId, loteVencimiento: propia.loteVencimiento, consumos: [] };
+    }
+    const habitual = origenDatos.habitualDe(linea.productoId);
+    const { desde, hasta } = rangoPorLinea.get(i)!;
+    const consumos = resultadosPlanos.slice(desde, hasta).flat();
     const seccionId = habitual?.id ?? consumos[0]?.seccionId ?? origenDatos.referenciaDe(linea.productoId) ?? seccionPorDefectoId;
     return { ...linea, seccionId, loteVencimiento: null, consumos };
   });
@@ -251,8 +300,9 @@ export async function registrarVentaEnTx(
   // Validación de stock agregada: cada consumo de receta descuenta
   // stock real — el producto vendido en sí nunca descuenta su propio
   // stock (solo lo que consume su receta), mismo criterio que Apps
-  // Script desde "eliminar COMPRA+VENTA". El libro ya sumó todas las líneas.
-  const familiasIds = new Set(mpIds.flatMap((id) => origenDatos.familiaDe(id)));
+  // Script desde "eliminar COMPRA+VENTA". El libro ya sumó todas las líneas — familiasIds suma las familias sustitutas realmente
+  // resueltas (D6/D8) para que un faltante ahí también avise/rechace, igual que uno de la familia principal.
+  const familiasIds = new Set([...mpIds.flatMap((id) => origenDatos.familiaDe(id)), ...pedidosPlanos.flatMap((p) => (p.sustitutos ?? []).flat())]);
   const avisosStockNegativo: AvisoStockNegativo[] = [];
   for (const faltante of faltantesDe(libro, familiasIds)) {
     const producto = await obtenerProducto(faltante.productoId);
@@ -296,10 +346,16 @@ export async function registrarVentaEnTx(
     for (const c of venta.consumos) {
       const consumido = await obtenerProducto(c.productoId);
       const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
+      // D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo si esta parte vino de un sustituto — un consumo de un
+      // HERMANO del mismo Insumo (el caso de siempre) deja el objeto IDÉNTICO a hoy, sin la columna ni el detalle distinto.
+      const detalle = c.sustituyeAProductoId
+        ? `Consumo por venta de "${venta.nombre}" — SUSTITUTO de "${(await obtenerProducto(c.sustituyeAProductoId))?.nombre ?? c.sustituyeAProductoId}" (no había stock).`
+        : `Consumo por venta de "${venta.nombre}".`;
       filas.push({
         operacionId: operacion.id, productoId: c.productoId, seccionId: c.seccionId, proceso: "CONSUMO",
         cantidad: -cantidadRedondeada, loteVencimiento: c.loteVencimiento,
-        detalle: `Consumo por venta de "${venta.nombre}".`, precioTotal: 0, precioPorUnidadStock: 0,
+        detalle, precioTotal: 0, precioPorUnidadStock: 0,
+        ...(c.sustituyeAProductoId ? { sustituyeAProductoId: c.sustituyeAProductoId } : {}),
       });
 
       if (consumido?.esConsignacion) {

@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
+import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente, buscarProductoParaHistorial } from "../../src/core/reportes/historial-producto";
 
 describe("obtenerHistorialProducto", () => {
@@ -154,6 +155,28 @@ describe("obtenerHistorialProducto", () => {
 
     const historialPvProducido = await obtenerHistorialProducto(sucursalId, pvConReceta.id, undefined, undefined, undefined);
     expect(historialPvProducido?.tieneStockPropio).toBe(true);
+  });
+
+  it("D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): el historial del SUSTITUTO trae sustituyeANombre en su CONSUMO", async () => {
+    const insumoOjo = await prisma.insumo.create({ data: { nombre: "Ojo de bife" } });
+    const bife = await sembrarProductoDisponible({ codigo: "MP_BIFE", nombre: "Bife de chorizo", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const ojo = await sembrarProductoDisponible({ codigo: "MP_OJO", nombre: "Ojo de bife", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoOjo.id }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 5000 }, sucursalId);
+    await prisma.recetaVersion.create({
+      data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: bife.id, cantidad: 0.3, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoOjo.id, orden: 1 }] } }] } },
+    });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: ojo.id, cantidad: 1 }] });
+
+    const r = await registrarVenta({ fecha: new Date("2026-01-02"), seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 1 }] });
+    expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
+
+    const historialOjo = await obtenerHistorialProducto(sucursalId, ojo.id, undefined, undefined, undefined);
+    const consumo = historialOjo!.eventos.find((ev) => ev.proceso === "CONSUMO")!;
+    expect(consumo.sustituyeANombre).toBe("Bife de chorizo");
+
+    // El historial de Bife (el principal) no tiene ningún CONSUMO propio — nunca se tocó.
+    const historialBife = await obtenerHistorialProducto(sucursalId, bife.id, undefined, undefined, undefined);
+    expect(historialBife!.eventos.some((ev) => ev.proceso === "CONSUMO")).toBe(false);
   });
 });
 

@@ -49,6 +49,9 @@ export interface EventoHistorialProducto {
   precioPorUnidadStock?: number;
   /** La Operación de esta línea está anulada — mismo criterio que ItemPeriodo.anulada (periodo.ts): el Kardex la sigue mostrando (append-only, auditoría), pero "Cómo se compró"/"Cómo se vendió" la excluyen (una compra/venta anulada no ocurrió). */
   anulada?: boolean;
+  /** D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo en un CONSUMO que salió de un insumo SUSTITUTO — el nombre del
+   * producto de la receta al que reemplazó. Ausente/null en todo lo demás (incluido un consumo de un hermano del mismo Insumo). */
+  sustituyeANombre?: string | null;
   // Solo `tipo === "conteo"`:
   saldoSistema?: number;
   conteoReal?: number;
@@ -134,7 +137,7 @@ export async function obtenerHistorialProducto(
     db.conteoFisico.count({ where: whereConteo }),
     db.movimientoStock.findMany({
       where: { ...whereMov, ...filtroFechaMov },
-      include: { seccion: true, operacion: { include: { proveedor: true } } },
+      include: { seccion: true, operacion: { include: { proveedor: true } }, sustituyeAProducto: { select: { nombre: true } } },
     }),
     db.conteoFisico.findMany({
       where: { ...whereConteo, ...filtroFechaConteo },
@@ -156,6 +159,7 @@ export async function obtenerHistorialProducto(
     precioTotal: Number(m.precioTotal),
     precioPorUnidadStock: Number(m.precioPorUnidadStock),
     anulada: m.operacion.anuladaEn !== null,
+    sustituyeANombre: m.sustituyeAProducto?.nombre ?? null,
   }));
 
   const eventosConteo: EventoHistorialProducto[] = conteos.map((c) => ({
