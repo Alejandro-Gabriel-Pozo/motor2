@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta, type AccionSelectorCarta, type EstadoSelectorCarta } from "../../src/core/pos/selector-carta-estado";
 import type { ProductoPedible, SelectorCartaPos } from "../../src/core/pos/selector-carta";
 
-/** Estado del selector por sección de carta del POS (docs/plan-selector-carta-pos-2026-09-25.md, paso 3): reductor puro, sin DOM. */
+/**
+ * Estado de NAVEGACIÓN del selector por sección de carta del POS (docs/plan-selector-carta-pos-2026-09-25.md, paso 3;
+ * docs/plan-pos-agregar-varios-2026-09-26.md): reductor puro, sin DOM. Qué está EN LA LISTA para agregar es un reductor aparte
+ * (test/pos/agregar-lista-estado.test.ts) — acá solo qué sección/agrupado/carpeta está a la vista.
+ */
 
-const pedible = (productoId: string): ProductoPedible => ({ productoId, codigo: productoId, nombre: productoId, precio: 1 });
+const pedible = (productoId: string): ProductoPedible => ({ productoId, codigo: productoId, nombre: productoId, precio: 1, decimales: 0 });
 
 const selector: SelectorCartaPos = {
   seccionesCarta: [
@@ -26,8 +30,8 @@ const aplicar = (estado: EstadoSelectorCarta, ...acciones: AccionSelectorCarta[]
 describe("estado del selector por sección de carta", () => {
   const inicial = estadoInicialSelectorCarta(selector);
 
-  it("arranca en la primera sección de carta, sin agrupado ni carpeta abiertos ni nada elegido", () => {
-    expect(inicial).toEqual({ seccionActiva: "s-platos", agrupadoAbierto: null, carpetaAbierta: null, productoId: "", limpiarBuscador: 0 });
+  it("arranca en la primera sección de carta, sin agrupado ni carpeta abiertos", () => {
+    expect(inicial).toEqual({ seccionActiva: "s-platos", agrupadoAbierto: null, carpetaAbierta: null, limpiarBuscador: 0 });
   });
 
   it("sin secciones de carta arranca en «Fuera de carta»; sin nada que navegar, en ninguna", () => {
@@ -36,15 +40,9 @@ describe("estado del selector por sección de carta", () => {
     expect(estadoInicialSelectorCarta(null).seccionActiva).toBeNull();
   });
 
-  it("cambiar de sección cierra el agrupado desplegado y conserva lo elegido", () => {
-    const e = aplicar(
-      inicial,
-      { tipo: "elegirSeccion", seccionId: "s-bebidas" },
-      { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" },
-      { tipo: "elegirProducto", productoId: "p-sprite", origen: "carta" },
-      { tipo: "elegirSeccion", seccionId: SECCION_FUERA_DE_CARTA }
-    );
-    expect(e).toMatchObject({ seccionActiva: SECCION_FUERA_DE_CARTA, agrupadoAbierto: null, productoId: "p-sprite" });
+  it("cambiar de sección cierra el agrupado desplegado", () => {
+    const e = aplicar(inicial, { tipo: "elegirSeccion", seccionId: "s-bebidas" }, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" }, { tipo: "elegirSeccion", seccionId: SECCION_FUERA_DE_CARTA });
+    expect(e).toMatchObject({ seccionActiva: SECCION_FUERA_DE_CARTA, agrupadoAbierto: null });
   });
 
   it("abrir otro agrupado cierra el anterior; volver a tocar el mismo lo cierra", () => {
@@ -55,23 +53,9 @@ describe("estado del selector por sección de carta", () => {
     expect(aplicar(otro, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-agua" }).agrupadoAbierto).toBeNull();
   });
 
-  it("elegir desde la carta vacía el buscador; elegir (o tipear) en el buscador no lo toca", () => {
-    const desdeCarta = aplicar(inicial, { tipo: "elegirProducto", productoId: "p-bife", origen: "carta" });
-    expect(desdeCarta).toMatchObject({ productoId: "p-bife", limpiarBuscador: 1 });
-    const desdeBuscador = aplicar(desdeCarta, { tipo: "elegirProducto", productoId: "p-flan", origen: "buscador" });
-    expect(desdeBuscador).toMatchObject({ productoId: "p-flan", limpiarBuscador: 1 });
-    expect(aplicar(desdeBuscador, { tipo: "elegirProducto", productoId: "", origen: "buscador" })).toMatchObject({ productoId: "", limpiarBuscador: 1 });
-  });
-
-  it("después de agregar: se limpia lo elegido, se cierra el agrupado y el buscador, y se queda en la sección activa", () => {
-    const e = aplicar(
-      inicial,
-      { tipo: "elegirSeccion", seccionId: "s-bebidas" },
-      { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" },
-      { tipo: "elegirProducto", productoId: "p-sprite", origen: "carta" },
-      { tipo: "limpiarTrasAgregar" }
-    );
-    expect(e).toEqual({ seccionActiva: "s-bebidas", agrupadoAbierto: null, carpetaAbierta: null, productoId: "", limpiarBuscador: 2 });
+  it("sumar un producto vacía el buscador y cierra el agrupado suelto desplegado, quedando en la sección activa", () => {
+    const e = aplicar(inicial, { tipo: "elegirSeccion", seccionId: "s-bebidas" }, { tipo: "alternarAgrupado", itemAgrupadoCartaId: "ag-gaseosa" }, { tipo: "productoSumado" });
+    expect(e).toEqual({ seccionActiva: "s-bebidas", agrupadoAbierto: null, carpetaAbierta: null, limpiarBuscador: 1 });
   });
 
   it("carpeta de género: abrir una cierra la anterior y el agrupado suelto que estuviera abierto; volver a tocar la misma la cierra", () => {
@@ -90,14 +74,9 @@ describe("estado del selector por sección de carta", () => {
     expect(e).toMatchObject({ agrupadoAbierto: "ag-gaseosa", carpetaAbierta: null });
   });
 
-  it("después de agregar: la carpeta abierta QUEDA abierta (G3, pedir varios de adentro sin reabrir); el agrupado suelto se cierra igual que siempre", () => {
-    const e = aplicar(
-      inicial,
-      { tipo: "alternarCarpeta", generoCartaId: "gen-cerveza" },
-      { tipo: "elegirProducto", productoId: "p-bife", origen: "carta" },
-      { tipo: "limpiarTrasAgregar" }
-    );
-    expect(e).toMatchObject({ carpetaAbierta: "gen-cerveza", agrupadoAbierto: null, productoId: "" });
+  it("sumar un producto: la carpeta abierta QUEDA abierta (G3, pedir varios de adentro sin reabrir); el agrupado suelto se cierra igual que siempre", () => {
+    const e = aplicar(inicial, { tipo: "alternarCarpeta", generoCartaId: "gen-cerveza" }, { tipo: "productoSumado" });
+    expect(e).toMatchObject({ carpetaAbierta: "gen-cerveza", agrupadoAbierto: null });
   });
 
   it("cambiar de sección cierra también la carpeta de género abierta", () => {

@@ -2,9 +2,13 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { nombreDelMesero, tiempoDesde } from "./mesas";
+import { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido } from "./cantidad-pedido";
+
+// Re-exportadas: quien ya las importaba de acá (test/pos/cuenta.test.ts, esta misma Server Action) sigue andando igual. Viven en
+// `cantidad-pedido.ts` porque ESTE archivo importa `@/lib/db` a nivel de módulo — un cliente no puede importarlo ni para esto solo.
+export { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido };
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -96,21 +100,6 @@ export function agruparPorEnvio<T extends ItemAgrupable>(items: readonly T[]): I
     sinEnviar,
     envios: [...porEnvio.entries()].sort(([a], [b]) => a - b).map(([numero, grupo]) => ({ numero, items: grupo })),
   };
-}
-
-export const CANTIDAD_MAXIMA_POR_ITEM = 999;
-
-/**
- * Cantidad de un ítem al tomar el pedido (o al anularlo): número finito, mayor que cero y hasta 999, redondeada a los decimales que
- * acepta la unidad de stock del producto (igual que entra al Kardex). Si el redondeo la deja en cero, tampoco sirve.
- */
-export function validarCantidadPedido(cantidad: unknown, decimales: number): { ok: true; cantidad: number } | { ok: false; mensaje: string } {
-  const n = typeof cantidad === "number" ? cantidad : Number.NaN;
-  if (!(n > 0) || !esNumeroFinito(n)) return { ok: false, mensaje: "La cantidad tiene que ser un número mayor que cero." };
-  if (n > CANTIDAD_MAXIMA_POR_ITEM) return { ok: false, mensaje: `La cantidad no puede superar ${CANTIDAD_MAXIMA_POR_ITEM}.` };
-  const redondeada = redondearACantidadDeUnidad(n, decimales);
-  if (!(redondeada > 0)) return { ok: false, mensaje: "La cantidad tiene que ser un número mayor que cero." };
-  return { ok: true, cantidad: redondeada };
 }
 
 export const COMENSALES_MAXIMO = 99;

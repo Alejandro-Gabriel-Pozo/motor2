@@ -1115,8 +1115,9 @@ testAutenticado(
       await expect(opciones.getByRole("button")).toHaveCount(2);
       expect((await new AxeBuilder({ page }).analyze()).violations, "ítem agrupado desplegado").toEqual([]);
 
+      // Elegir una opción la suma a la lista «Por agregar» (docs/plan-pos-agregar-varios-2026-09-26.md) y cierra el agrupado.
       await opciones.getByRole("button", { name: sprite.nombre }).click();
-      await expect(page.locator("[data-elegido]")).toContainText(`Elegido: ${sprite.nombre}`);
+      await expect(page.locator(`[data-linea-por-agregar="${sprite.nombre}"]`)).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "con una opción elegida").toEqual([]);
 
       // El salón no tiene modo oscuro: con el sistema en oscuro queda claro igual.

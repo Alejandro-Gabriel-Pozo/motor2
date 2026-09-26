@@ -8,7 +8,8 @@ import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
-import { lineasDeVenta, restanteDe, validarCantidadPedido, validarComensales, validarMotivoAnulacion } from "@/core/pos/cuenta";
+import { lineasDeVenta, restanteDe, validarComensales, validarMotivoAnulacion } from "@/core/pos/cuenta";
+import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { registrarVentaEnTx, type AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { formatearNumeroBoleta, siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
@@ -27,7 +28,8 @@ import { error, ok, type ResultadoAccion, type ResultadoBoletaCorregida, type Re
  */
 
 // Sin `export`: un archivo "use server" solo puede exportar funciones async (cada export es un endpoint).
-const MAXIMO_ITEMS_POR_AGREGADO = 50;
+// MAXIMO_ITEMS_POR_AGREGADO vive en @/core/pos/cantidad-pedido (pura): así el cliente puede deshabilitar sumar el ítem #51 con el
+// MISMO número, sin duplicarlo.
 const MAXIMO_ITEMS_POR_ENVIO = 200;
 
 /** Cantidad legible («1», «0,5»), para mensajes y descripciones de auditoría. */

@@ -6,8 +6,10 @@ import { abrirComoRol } from "./fixtures/rol-pos";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA en la pantalla de la mesa (docs/plan-selector-carta-pos-2026-09-25.md): la barra de
- * secciones de la carta (más «Fuera de carta» al final), la grilla de la sección a la vista, el despliegue de un ítem agrupado con
- * sus opciones y el camino de siempre (elegir → cantidad → «Agregar»). El buscador por texto sigue andando y comparte lo elegido.
+ * secciones de la carta (más «Fuera de carta» al final), la grilla de la sección a la vista y el despliegue de un ítem agrupado
+ * con sus opciones. Tocar un producto lo suma a la lista «Por agregar» (docs/plan-pos-agregar-varios-2026-09-26.md), sin enviar
+ * nada todavía; confirmar manda todas las líneas juntas en un solo `agregarItems`. El buscador por texto sigue andando y suma a
+ * la MISMA lista, sin perder lo que ya se sumó desde la carta.
  *
  * Siembra en «Central» dos secciones de carta («E2E Platos», «E2E Bebidas»), sueltos en cada una, el agrupado «E2E Gaseosa 500cc»
  * (Coca y Sprite a $5.000; Fanta NO disponible en Central) y un PV sin carta. `pos-tomar-pedido.spec.ts` no siembra carta y por
@@ -80,7 +82,8 @@ async function abrirCuentaUI(page: Page, comensales: number) {
   await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
 }
 const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la carta" });
-const elegido = (page: Page) => page.locator("[data-elegido]");
+/** Una línea de la lista «Por agregar» (docs/plan-pos-agregar-varios-2026-09-26.md) para el producto dado. */
+const lineaPorAgregar = (page: Page, nombre: string) => page.locator(`[data-linea-por-agregar="${nombre}"]`);
 
 /** Una mesa con la cuenta abierta por el admin de las pruebas. */
 async function mesaConCuenta(sucursalId: string, numero: number) {
@@ -120,23 +123,24 @@ test("la barra sigue el orden de la carta con «Fuera de carta» al final; un ag
     await expect(opciones.getByRole("button", { name: cat.sprite.nombre })).toContainText(MONEDA.format(5000));
     await expect(page.getByRole("button", { name: cat.fanta.nombre })).toHaveCount(0);
 
+    // Elegir una opción la suma a la lista y cierra el agrupado (mismo criterio que un agrupado suelto, `selector-carta-estado.ts`).
     await opciones.getByRole("button", { name: cat.sprite.nombre }).click();
-    await expect(opciones.getByRole("button", { name: cat.sprite.nombre })).toHaveAttribute("aria-pressed", "true");
-    await expect(elegido(page)).toHaveText(`Elegido: ${cat.sprite.nombre} · ${MONEDA.format(5000)}`);
-    await page.getByLabel("Cantidad", { exact: true }).fill("2");
-    await page.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(grupo).toHaveAttribute("aria-expanded", "false");
+    await expect(lineaPorAgregar(page, cat.sprite.nombre)).toBeVisible();
+    await page.getByLabel(`Cantidad de ${cat.sprite.nombre}`, { exact: true }).fill("2");
+    await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
     await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 981.");
 
     const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
     expect(items.map((i) => [i.productoId, Number(i.cantidad), Number(i.precioUnitario)])).toEqual([[cat.sprite.id, 2, 5000]]);
 
-    // Después de agregar: sigue en Bebidas, el agrupado cerrado y nada marcado.
+    // Después de confirmar: la lista se vacía, sigue en Bebidas, el agrupado cerrado y nada marcado.
     await expect(page.locator(`[data-item-sin-enviar="${cat.sprite.nombre}"]`)).toBeVisible();
     await expect(barra(page).getByRole("button", { name: cat.bebidas.nombre })).toHaveAttribute("aria-pressed", "true");
     await expect(region.getByRole("button", { name: cat.gaseosa.nombre })).toHaveAttribute("aria-expanded", "false");
     await expect(region.locator('button[aria-pressed="true"]')).toHaveCount(0);
-    await expect(elegido(page)).not.toContainText("Elegido:");
-    await expect(page.getByRole("button", { name: "Agregar", exact: true })).toBeDisabled();
+    await expect(page.locator("[data-linea-por-agregar]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Agregar 0 al pedido", exact: true })).toBeDisabled();
   } finally {
     await cat.limpiar([mesa.id]);
   }
@@ -154,19 +158,22 @@ test("tocar un producto de la carta no envía el formulario: todos los botones d
     await barra(page).getByRole("button", { name: cat.bebidas.nombre }).click();
     await page.getByRole("region", { name: cat.bebidas.nombre }).getByRole("button", { name: cat.gaseosa.nombre }).click();
 
-    const selector = page.locator("form[aria-label='Agregar producto'] [data-elegido] ~ div");
+    const selector = page.locator("[data-selector-carta]");
     await expect(selector.locator("button")).not.toHaveCount(0);
     await expect(selector.locator('button:not([type="button"])')).toHaveCount(0);
-    // Nada se agregó ni se avisó: el formulario no se envió.
+    // Nada se agregó ni se avisó: el formulario no se envió (sumar a la lista es puramente del cliente).
     await expect(aviso(page)).toBeEmpty();
     expect(await prisma.cuentaItem.count({ where: { cuentaId: cuenta.id } })).toBe(0);
-    await expect(elegido(page)).toHaveText(`Elegido: ${cat.bife.nombre} · ${MONEDA.format(34000)}`);
+    await expect(lineaPorAgregar(page, cat.bife.nombre)).toBeVisible();
   } finally {
     await cat.limpiar([mesa.id]);
   }
 });
 
-test("el buscador por texto sigue andando y marca el botón de la carta; elegir en la carta vacía el buscador; tipear limpia lo elegido", async ({ paginaAutenticada: page, sucursalId }) => {
+test("el buscador por texto sigue andando y marca el botón de la carta; elegir en la carta TAMBIÉN suma, sin perder lo elegido por el buscador; confirmar manda las dos líneas juntas", async ({
+  paginaAutenticada: page,
+  sucursalId,
+}) => {
   const cat = await sembrarCarta(sucursalId);
   const { mesa, cuenta } = await mesaConCuenta(sucursalId, 983);
   try {
@@ -178,23 +185,26 @@ test("el buscador por texto sigue andando y marca el botón de la carta; elegir 
     await combo.fill(cat.milanesa.nombre);
     await page.getByRole("option", { name: new RegExp(cat.milanesa.nombre) }).click();
     await expect(region.getByRole("button", { name: cat.milanesa.nombre })).toHaveAttribute("aria-pressed", "true");
-    await expect(elegido(page)).toHaveText(`Elegido: ${cat.milanesa.nombre} · ${MONEDA.format(9000)}`);
+    await expect(lineaPorAgregar(page, cat.milanesa.nombre)).toBeVisible();
 
+    // Elegir de la carta vacía el buscador, y SUMA (no reemplaza): las dos quedan marcadas — mezclar sin perder lo de antes es el punto.
     await region.getByRole("button", { name: cat.bife.nombre }).click();
     await expect(combo).toHaveValue("");
     await expect(region.getByRole("button", { name: cat.bife.nombre })).toHaveAttribute("aria-pressed", "true");
-    await expect(region.getByRole("button", { name: cat.milanesa.nombre })).toHaveAttribute("aria-pressed", "false");
+    await expect(region.getByRole("button", { name: cat.milanesa.nombre })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-linea-por-agregar]")).toHaveCount(2);
 
+    // Tipear en el buscador (sin elegir nada) no toca lo que ya está en la lista.
     await combo.fill("E2E");
-    await expect(region.locator('button[aria-pressed="true"]')).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Agregar", exact: true })).toBeDisabled();
+    await expect(region.getByRole("button", { name: cat.bife.nombre })).toHaveAttribute("aria-pressed", "true");
+    await expect(region.getByRole("button", { name: cat.milanesa.nombre })).toHaveAttribute("aria-pressed", "true");
 
-    // Y por el buscador se sigue agregando como siempre.
-    await combo.fill(cat.milanesa.nombre);
-    await page.getByRole("option", { name: new RegExp(cat.milanesa.nombre) }).click();
-    await page.getByRole("button", { name: "Agregar", exact: true }).click();
-    await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 983.");
-    expect((await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } })).map((i) => [i.productoId, Number(i.precioUnitario)])).toEqual([[cat.milanesa.id, 9000]]);
+    await page.getByRole("button", { name: "Agregar 2 al pedido", exact: true }).click();
+    await expect(aviso(page)).toHaveText("Se agregaron 2 ítems a la mesa 983.");
+    expect((await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id }, orderBy: { creadoEn: "asc" } })).map((i) => [i.productoId, Number(i.precioUnitario)])).toEqual([
+      [cat.milanesa.id, 9000],
+      [cat.bife.id, 34000],
+    ]);
   } finally {
     await cat.limpiar([mesa.id]);
   }
@@ -213,8 +223,8 @@ test("un PV sin carta está en «Fuera de carta» y se puede agregar", async ({ 
     await barra(page).getByRole("button", { name: "Fuera de carta" }).click();
     const region = page.getByRole("region", { name: "Fuera de carta" });
     await region.getByRole("button", { name: cat.sinCarta.nombre }).click();
-    await expect(elegido(page)).toHaveText(`Elegido: ${cat.sinCarta.nombre} · ${MONEDA.format(3000)}`);
-    await page.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(lineaPorAgregar(page, cat.sinCarta.nombre)).toBeVisible();
+    await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
     await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 984.");
     expect((await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } })).map((i) => [i.productoId, Number(i.cantidad), Number(i.precioUnitario)])).toEqual([[cat.sinCarta.id, 1, 3000]]);
     await expect(barra(page).getByRole("button", { name: "Fuera de carta" })).toHaveAttribute("aria-pressed", "true");
@@ -235,7 +245,7 @@ test("el mozo (sin permiso de carta) elige por sección de carta y agrega", asyn
     await barra(m).getByRole("button", { name: cat.bebidas.nombre }).click();
     await m.getByRole("region", { name: cat.bebidas.nombre }).getByRole("button", { name: cat.gaseosa.nombre }).click();
     await m.getByRole("list", { name: `Opciones de ${cat.gaseosa.nombre}` }).getByRole("button", { name: cat.coca.nombre }).click();
-    await m.getByRole("button", { name: "Agregar", exact: true }).click();
+    await m.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
     await expect(aviso(m)).toHaveText("Se agregó 1 ítem a la mesa 985.");
     const items = await prisma.cuentaItem.findMany({ where: { cuenta: { mesaId: mesa.id } } });
     expect(items.map((i) => [i.productoId, i.creadoPorId])).toEqual([[cat.coca.id, mozo.usuario.id]]);
@@ -349,10 +359,10 @@ test("la carpeta de género se ve, se abre y muestra sueltos y agrupados; elegir
     await expect(contenido.getByRole("button", { name: cat.stout.nombre })).toBeVisible();
     await expect(contenido.getByRole("button", { name: cat.rubia.nombre })).toBeVisible();
 
-    // Elegir un producto de adentro (Stout) lo agrega con su propio productoId.
+    // Elegir un producto de adentro (Stout) lo suma a la lista con su propio productoId.
     await contenido.getByRole("button", { name: cat.stout.nombre }).click();
-    await expect(elegido(page)).toHaveText(`Elegido: ${cat.stout.nombre} · ${MONEDA.format(6500)}`);
-    await page.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(lineaPorAgregar(page, cat.stout.nombre)).toBeVisible();
+    await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
     await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 987.");
     const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
     expect(items.map((i) => [i.productoId, Number(i.precioUnitario)])).toEqual([[cat.stout.id, 6500]]);

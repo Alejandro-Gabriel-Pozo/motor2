@@ -28,7 +28,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
 export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma): Promise<SelectorCartaPos> {
   const [carta, productos, preciosLocales, generosActivos, contenidosConGenero, agrupadosConGenero] = await Promise.all([
     resolverMenuCarta(sucursalId, db),
-    db.producto.findMany({ where: { tipo: "PV", ...whereDisponibleEn(sucursalId) }, select: { id: true, codigo: true, nombre: true, precioVenta: true } }),
+    db.producto.findMany({ where: { tipo: "PV", ...whereDisponibleEn(sucursalId) }, select: { id: true, codigo: true, nombre: true, precioVenta: true, unidadStock: { select: { decimales: true } } } }),
     db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true }, select: { productoId: true, precio: true, habilitado: true } }),
     db.generoCarta.findMany({ where: { activo: true }, select: { id: true, nombre: true, orden: true } }),
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null } }, select: { productoId: true, generoCartaId: true } }),
@@ -40,6 +40,7 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma
     codigo: p.codigo,
     nombre: p.nombre,
     precio: precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)),
+    decimales: p.unidadStock.decimales,
   }));
   const generos: GenerosSelectorCartaPos = {
     generos: generosActivos,

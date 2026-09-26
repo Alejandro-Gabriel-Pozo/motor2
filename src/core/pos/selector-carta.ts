@@ -36,6 +36,9 @@ export interface ProductoPedible {
   codigo: string;
   nombre: string;
   precio: number;
+  /** Decimales que acepta su unidad de stock (docs/plan-pos-agregar-varios-2026-09-26.md): la lista «Por agregar» del POS lo usa
+   *  para normalizar la cantidad con la MISMA función que el servidor (`validarCantidadPedido`) ANTES de confirmar. */
+  decimales: number;
 }
 
 /** Un producto suelto, entrada de nivel superior o dentro de una carpeta de género. */
