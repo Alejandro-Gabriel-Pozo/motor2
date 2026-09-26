@@ -83,7 +83,12 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                 <tbody>
                   {v.ingredientes.map((ing) => (
                     <tr key={ing.id} className="border-b last:border-0">
-                      <td className="py-1">{ing.insumoProducto.nombre}</td>
+                      <td className="py-1">
+                        {ing.insumoProducto.nombre}
+                        {ing.sustitutos.length > 0 && (
+                          <p className="text-xs text-neutral-500">Sustitutos: {ing.sustitutos.map((s) => s.insumoSustituto.nombre).join(" → ")}</p>
+                        )}
+                      </td>
                       <td>{Number(ing.cantidad)}</td>
                       <td>{ing.unidad.nombre}</td>
                       <td>{Number(ing.mermaPorcentaje)}</td>

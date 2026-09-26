@@ -100,12 +100,29 @@ export default async function RecetaEditorPage({
   // validarIngredientes solo exige que cada MP esté disponible EN ALGUNA sucursal, nunca en todas. Acá se avisa, sin
   // impedir nada, en qué sucursales un ingrediente puntual no está disponible: ahí este plato no se va a poder vender.
   const sucursalesSinIngrediente = new Map<string, string[]>();
+  // D2 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): la sustitución automática solo aplica a lo que se consume al vender —
+  // un producto "Se produce" usa resolverConsumoPorFamilia (Producción), que no la conoce.
+  const aceptaSustitutos = !producto.seProduce;
+  const opcionesSustitutoPorIngrediente = new Map<string, { id: string; nombre: string }[]>();
   if (vigente?.ingredientes.length) {
     await Promise.all(
       vigente.ingredientes.map(async (ing) => {
         const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId);
         const faltantes = porSucursal.filter((s) => !s.disponible).map((s) => s.sucursalNombre);
         if (faltantes.length) sucursalesSinIngrediente.set(ing.insumoProductoId, faltantes);
+
+        if (aceptaSustitutos) {
+          const opciones = await prisma.insumo.findMany({
+            where: {
+              activo: true,
+              id: { not: ing.insumoProducto.insumoId ?? undefined },
+              productos: { some: { tipo: "MP", unidadStockId: ing.unidadId, ...whereDisponibleEnAlguna() } },
+            },
+            orderBy: { nombre: "asc" },
+            select: { id: true, nombre: true },
+          });
+          opcionesSustitutoPorIngrediente.set(ing.insumoProductoId, opciones);
+        }
       })
     );
   }
@@ -276,6 +293,7 @@ export default async function RecetaEditorPage({
                               cantidad: Number(formData.get("cantidad")),
                               unidadId: String(formData.get("unidadId") ?? ""),
                               mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
+                              insumoSustitutoIds: aceptaSustitutos ? formData.getAll("insumoSustitutoIds").map(String).filter((v) => v !== "") : undefined,
                             });
                             // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
                             if (resultado.ok) redirect(volver);
@@ -284,13 +302,13 @@ export default async function RecetaEditorPage({
                           className="flex flex-wrap items-end gap-2"
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                          <CampoNumero name="cantidad" defaultValue={sugerido || String(Number(ing.cantidad))} required className="w-28" />
+                          <CampoNumero name="cantidad" defaultValue={sugerido || String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
                           {sugerido && (
                             <span role="alert" className="text-xs text-amber-700 dark:text-amber-600">
                               Sugerido por Rendimiento real de recetas — tenías {Number(ing.cantidad)}.{detalleSugerido && ` (${detalleSugerido}.)`}
                             </span>
                           )}
-                          <select name="unidadId" defaultValue={ing.unidadId} required className="rounded border px-2 py-1.5 text-sm">
+                          <select name="unidadId" defaultValue={ing.unidadId} required aria-label="Unidad" className="rounded border px-2 py-1.5 text-sm">
                             {unidades.map((u) => (
                               <option key={u.id} value={u.id}>
                                 {u.nombre}
@@ -298,6 +316,35 @@ export default async function RecetaEditorPage({
                             ))}
                           </select>
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
+                          {aceptaSustitutos &&
+                            (() => {
+                              const opcionesBase = opcionesSustitutoPorIngrediente.get(ing.insumoProductoId) ?? [];
+                              const slots = [...ing.sustitutos, null]; // uno de más, vacío, para poder agregar otro
+                              return (
+                                <fieldset className="flex w-full flex-col gap-1">
+                                  <legend className="text-xs text-neutral-500">Sustitutos si no hay stock (en orden)</legend>
+                                  {slots.map((slot, i) => {
+                                    const opciones =
+                                      slot && !opcionesBase.some((o) => o.id === slot.insumoSustitutoId)
+                                        ? [{ id: slot.insumoSustitutoId, nombre: slot.insumoSustituto.nombre }, ...opcionesBase]
+                                        : opcionesBase;
+                                    return (
+                                      <label key={slot?.id ?? "nuevo"} className="flex items-center gap-1 text-xs">
+                                        {`Sustituto ${i + 1}`}
+                                        <select name="insumoSustitutoIds" defaultValue={slot?.insumoSustitutoId ?? ""} className="rounded border px-2 py-1 text-xs">
+                                          <option value="">Ninguno</option>
+                                          {opciones.map((o) => (
+                                            <option key={o.id} value={o.id}>
+                                              {o.nombre}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                    );
+                                  })}
+                                </fieldset>
+                              );
+                            })()}
                           <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
                             Guardar
                           </button>
@@ -314,6 +361,20 @@ export default async function RecetaEditorPage({
                             <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
                               No disponible en {sucursalesSinIngrediente.get(ing.insumoProductoId)!.join(", ")} — ahí este plato no se va a poder vender.
                             </p>
+                          )}
+                          {aceptaSustitutos && ing.sustitutos.length > 0 && (
+                            <>
+                              <p className="text-xs text-neutral-500">Si no hay stock, se usa: {ing.sustitutos.map((s) => s.insumoSustituto.nombre).join(" → ")}</p>
+                              {(() => {
+                                const opcionesIds = new Set((opcionesSustitutoPorIngrediente.get(ing.insumoProductoId) ?? []).map((o) => o.id));
+                                const invalidos = ing.sustitutos.filter((s) => !opcionesIds.has(s.insumoSustitutoId));
+                                return invalidos.length > 0 ? (
+                                  <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
+                                    {invalidos.map((s) => `"${s.insumoSustituto.nombre}"`).join(", ")} quedó inactivo o con otra unidad de stock — no se va a usar como sustituto hasta que se corrija.
+                                  </p>
+                                ) : null;
+                              })()}
+                            </>
                           )}
                         </td>
                         <td>{Number(ing.cantidad)}</td>
