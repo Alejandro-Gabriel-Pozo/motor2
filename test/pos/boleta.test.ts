@@ -89,6 +89,35 @@ describe("obtenerBoletasRecientes", () => {
     expect(await obtenerBoletasRecientes(s.sucursalId, s.mesa.id)).toHaveLength(1);
   });
 
+  it("cada boleta trae su número: el ejemplar A que emitió cerrarCuenta (docs/plan-numeracion-boleta-2026-09-25.md, paso 4)", async () => {
+    const primera = await cerrarUna(1);
+    const segunda = await cerrarUna(2);
+
+    const boletas = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    expect(boletas.map((b) => [b.cuentaId, b.numero])).toEqual([
+      [segunda.id, { numero: 2, ejemplar: 1 }],
+      [primera.id, { numero: 1, ejemplar: 1 }],
+    ]);
+    const enLaBase = await prisma.ejemplarBoleta.findUniqueOrThrow({ where: { cuentaId_ejemplar: { cuentaId: segunda.id, ejemplar: 1 } } });
+    expect(boletas[0].numero).toEqual({ numero: enLaBase.numero, ejemplar: enLaBase.ejemplar });
+  });
+
+  it("una cuenta cerrada antes de la numeración (sin ningún ejemplar) da `numero: null`", async () => {
+    const venta = await prisma.operacion.create({ data: { sucursalId: s.sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: s.admin.id, detalleLibre: "Mesa 4" } });
+    const vieja = await prisma.cuenta.create({
+      data: {
+        mesaId: s.mesa.id,
+        abiertaPorId: s.admin.id,
+        cerradaEn: new Date(),
+        cerradaPorId: s.admin.id,
+        items: { create: [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1, operacionId: venta.id }] },
+      },
+    });
+
+    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    expect(boleta).toMatchObject({ cuentaId: vieja.id, numero: null, total: 3000 });
+  });
+
   it("después de anular la venta (anularVenta), la boleta queda marcada como de venta anulada", async () => {
     const cuenta = await cerrarUna(2);
     const item = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id } });

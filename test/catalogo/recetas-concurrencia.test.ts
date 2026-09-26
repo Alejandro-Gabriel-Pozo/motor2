@@ -66,6 +66,11 @@ describe("guardarReceta — concurrencia real", () => {
       const ultimasDos = versiones.slice(-2).map((v) => v.ingredientes.map((ing) => ing.insumoProductoId).sort());
       expect(ultimasDos.map((ids) => ids.length), `iteración ${i}: una versión quedó con ingredientes de más o de menos`).toEqual([1, 1]);
       expect(ultimasDos.flat().sort(), `iteración ${i}`).toEqual([mp1Id, mp2Id].sort());
+
+      // Auditoría (paso 2 del plan de rendimiento por sucursal): tantos registros de RecetaVersion como versiones creadas
+      // hasta acá, uno por cada una, nunca huérfano — el reintento no debe duplicar ni saltear ningún registro.
+      const registros = await prisma.registroAuditoria.count({ where: { entidad: "RecetaVersion", entidadId: { in: versiones.map((v) => v.id) } } });
+      expect(registros, `iteración ${i}: cantidad de registros de auditoría distinta de la cantidad de versiones`).toBe(versiones.length);
     }
 
     // Guarda contra el falso verde: cada guardado lee el máximo UNA vez por intento; más de 2 lecturas por iteración = hubo reintentos.

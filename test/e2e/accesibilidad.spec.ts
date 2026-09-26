@@ -471,7 +471,7 @@ testAutenticado(
 );
 
 testAutenticado(
-  "reportes/rendimiento-recetas: la tabla en reposo (con rótulo, banda de ruido y motivoSinEstimacion) y con la confirmación de «Usar este valor» abierta (colSpan 11), sin violaciones de axe",
+  "reportes/rendimiento-recetas: la tabla en reposo (con rótulo, banda de ruido y motivoSinEstimacion), con la confirmación de «Usar este valor» abierta (colSpan 11) y con la fila ya calibrada, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     const marca = Date.now();
     const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
@@ -512,15 +512,84 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "tabla en reposo").toEqual([]);
 
       await botonUsar.click();
-      const filaConfirmacion = page.getByRole("alert").filter({ hasText: "¿Cambiar la receta" }).locator("xpath=ancestor::tr");
+      const filaConfirmacion = page.getByRole("alert").filter({ hasText: "¿Calibrar el rendimiento" }).locator("xpath=ancestor::tr");
       await expect(filaConfirmacion.locator("td")).toHaveAttribute("colspan", "11");
       expect((await new AxeBuilder({ page }).analyze()).violations, "confirmación abierta").toEqual([]);
+
+      // Fila ya calibrada — el texto "(calibrado acá; central: X)" y el botón "Volver al valor central" nuevos, sin violaciones.
+      await page.getByRole("button", { name: /Guardar como rendimiento de/ }).click();
+      await expect(fila.getByText(/calibrado acá/)).toBeVisible();
+      await expect(fila.getByRole("button", { name: "Volver al valor central" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila calibrada").toEqual([]);
     } finally {
+      await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngrediente: { insumoProductoId: mp.id } } });
+      await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
       await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id, mp2.id, pv2.id] } } });
       await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id, venta2.id] } } });
       await prisma.recetaVersion.deleteMany({ where: { productoId: { in: [pv.id, pv2.id] } } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [pv.id, mp.id, pv2.id, mp2.id] } } });
       await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id, pv2.id, mp2.id] } } });
+    }
+  }
+);
+
+testAutenticado(
+  "reportes/rendimiento-recetas/por-sucursal: central + una sucursal calibrada + una sin calibrar, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const membresiaA = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: admin.id, sucursalId } });
+    const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E A11y Norte ${marca}` } });
+    await prisma.usuarioSucursal.create({ data: { usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true } });
+
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PS-MP-${marca}`, nombre: `E2E A11y PS Salsa ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PS-PV-${marca}`, nombre: `E2E A11y PS Pizza ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    const receta = await prisma.recetaVersion.create({
+      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } },
+      include: { ingredientes: true },
+    });
+    await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: receta.ingredientes[0].id, sucursalId, cantidad: 2, mermaPorcentaje: null } });
+
+    try {
+      await page.goto("/reportes/rendimiento-recetas/por-sucursal");
+      await conTitulo(page, "Rendimiento por sucursal");
+      const fila = page.getByRole("row", { name: new RegExp(pv.nombre) });
+      await expect(fila.getByText("(calibrado)")).toBeVisible();
+      await expect(fila.getByText("(sin calibrar)")).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "por-sucursal").toEqual([]);
+    } finally {
+      await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId: receta.ingredientes[0].id } });
+      await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: admin.id, sucursalId: sucursalB.id } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+      await prisma.sucursal.delete({ where: { id: sucursalB.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "catalogo/recetas/[productoId]: la nota «Calibrado en N sucursal(es)» de un ingrediente calibrado, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-MP-${marca}`, nombre: `E2E A11y Editor Salsa ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-PV-${marca}`, nombre: `E2E A11y Editor Pizza ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+    const receta = await prisma.recetaVersion.create({
+      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } },
+      include: { ingredientes: true },
+    });
+    await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: receta.ingredientes[0].id, sucursalId, cantidad: 2, mermaPorcentaje: null } });
+
+    try {
+      await page.goto(`/catalogo/recetas/${pv.id}`);
+      await conTitulo(page, `${pv.nombre} — versión vigente: 1`);
+      await expect(page.getByText(/Calibrado en 1 sucursal\(es\)/)).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "nota de calibración").toEqual([]);
+    } finally {
+      await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId: receta.ingredientes[0].id } });
+      await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
+      await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
     }
   }
 );
@@ -1002,6 +1071,129 @@ testAutenticado(
       await prisma.movimientoStock.deleteMany({ where: { operacionId: { in: operacionIds } } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: «Agregar al pedido» por sección de carta en reposo, con un ítem agrupado desplegado, con una opción elegida y en modo oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-selector-carta-pos-2026-09-25.md, paso 6. Los dos casos de la mesa de arriba no siembran carta: sin ninguna sección de carta
+    // el navegador no se dibuja (DP3) y axe nunca lo vería. Acá se siembra una sección con un suelto y un agrupado de dos opciones.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const crear = async (clave: string, nombre: string) => {
+      const p = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CS-${clave}-${marca}`, nombre: `E2E A11y ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 5000 } });
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
+      return p;
+    };
+    const agua = await crear("AGUA", "Agua");
+    const coca = await crear("COCA", "Coca");
+    const sprite = await crear("SPRITE", "Sprite");
+    const productoIds = [agua.id, coca.id, sprite.id];
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Bebidas ${marca}`, orden: 1 } });
+    await prisma.contenidoCartaProducto.create({ data: { productoId: agua.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, orden: 1 } });
+    await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 987 } });
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
+    const secciones = page.getByRole("group", { name: "Secciones de la carta" });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 987");
+      await secciones.getByRole("button", { name: seccion.nombre }).click();
+      const region = page.getByRole("region", { name: seccion.nombre });
+      await expect(region.getByRole("button", { name: agua.nombre })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "selector por sección de carta en reposo").toEqual([]);
+
+      await region.getByRole("button", { name: gaseosa.nombre }).click();
+      const opciones = page.getByRole("list", { name: `Opciones de ${gaseosa.nombre}` });
+      await expect(opciones.getByRole("button")).toHaveCount(2);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "ítem agrupado desplegado").toEqual([]);
+
+      await opciones.getByRole("button", { name: sprite.nombre }).click();
+      await expect(page.locator("[data-elegido]")).toContainText(`Elegido: ${sprite.nombre}`);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "con una opción elegida").toEqual([]);
+
+      // El salón no tiene modo oscuro: con el sistema en oscuro queda claro igual.
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 987");
+      await secciones.getByRole("button", { name: seccion.nombre }).click();
+      await page.getByRole("region", { name: seccion.nombre }).getByRole("button", { name: gaseosa.nombre }).click();
+      await page.getByRole("list", { name: `Opciones de ${gaseosa.nombre}` }).getByRole("button", { name: coca.nombre }).click();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
+      await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: gaseosa.id } });
+      await prisma.itemAgrupadoCarta.deleteMany({ where: { id: gaseosa.id } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
+      await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
+    }
+  }
+);
+
+testAutenticado(
+  "pos/mesas/[mesaId]: «Cuentas cerradas» con una boleta desactualizada («Emitir boleta corregida» habilitado) y su diálogo abierto con el error, en modo claro y oscuro, sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    // docs/plan-numeracion-boleta-2026-09-25.md, paso 8: la fila con el número de la boleta y el botón nuevo, y el diálogo del motivo.
+    const marca = Date.now();
+    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-COR-${marca}`, nombre: `E2E A11y Plato Corrección ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 977 } });
+    const cerradaEn = new Date(Date.now() - 60 * 60_000);
+    const ventas = await Promise.all(
+      [null, new Date()].map((anuladaEn) => prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, anuladaEn } }))
+    );
+    const cuenta = await prisma.cuenta.create({
+      data: {
+        mesaId: mesa.id,
+        abiertaPorId: admin.id,
+        cerradaEn,
+        cerradaPorId: admin.id,
+        items: {
+          create: ventas.map((venta, i) => ({ productoId: producto.id, cantidad: 1, precioUnitario: 1000 + i * 500, numeroEnvio: 1, creadoPorId: admin.id, operacionId: venta.id })),
+        },
+      },
+    });
+    const { _max } = await prisma.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
+    await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero: (_max.numero ?? 0) + 1, emitidoEn: cerradaEn, emitidoPorId: admin.id } });
+    const emitir = page.getByRole("button", { name: /^Emitir la boleta corregida de la cuenta cerrada/ });
+    try {
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 977");
+      await expect(page.locator("[data-cuenta-cerrada]")).toContainText("N.º");
+      await expect(emitir).toBeEnabled();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo claro").toEqual([]);
+
+      await emitir.click();
+      const dialogo = page.getByRole("dialog", { name: /^Emitir boleta corregida/ });
+      await dialogo.getByRole("button", { name: "Emitir e imprimir" }).click();
+      await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo «Emitir boleta corregida» con el error").toEqual([]);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.goto(`/mesas/${mesa.id}`);
+      await conTitulo(page, "Mesa 977");
+      await expect(emitir).toBeEnabled();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo oscuro emulado").toEqual([]);
+      await emitir.click();
+      await expect(page.getByRole("dialog", { name: /^Emitir boleta corregida/ })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo en modo oscuro emulado").toEqual([]);
+    } finally {
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
+      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.operacion.deleteMany({ where: { id: { in: ventas.map((v) => v.id) } } });
+      await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
       await prisma.mesa.deleteMany({ where: { id: mesa.id } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });
     }

@@ -48,7 +48,7 @@ export default async function HistorialProductoPage({
   const historial = sp.productoId ? await obtenerHistorialProducto(ctx.sucursalId, sp.productoId, sp.seccionId || undefined, desde, hasta) : null;
 
   // Solo para un PV sin stock propio (§4, decisiones 7-8) — para el resto, ni se consulta.
-  const ingredientes = historial && !historial.tieneStockPropio ? await obtenerIngredientesRecetaVigente(historial.productoId) : null;
+  const ingredientes = historial && !historial.tieneStockPropio ? await obtenerIngredientesRecetaVigente(historial.productoId, undefined, ctx.sucursalId) : null;
 
   return (
     <div className="flex flex-col gap-6">

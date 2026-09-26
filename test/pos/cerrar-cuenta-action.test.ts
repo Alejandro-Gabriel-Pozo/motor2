@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, prisma, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
+import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { anularItemEnviado, cerrarCuenta } from "../../src/server/actions/pos/cuenta";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
@@ -239,6 +239,68 @@ describe("cerrarCuenta (server action)", () => {
       const r = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 1.5 }] });
       expect(r.ok).toBe(true);
       expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id)).toBe(0.5);
+    });
+  });
+
+  describe("numeración de la boleta (docs/plan-numeracion-boleta-2026-09-25.md, paso 3): max + 1 por sucursal, siempre ejemplar A", () => {
+    const ejemplaresDe = (cuentaId: string) => prisma.ejemplarBoleta.findMany({ where: { cuentaId }, orderBy: { ejemplar: "asc" } });
+    const cuentaConFlan = (mesaId = s.mesa.id) => sembrarCuenta(mesaId, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
+
+    it("el primer cierre con venta de la sucursal recibe el 1-A, el segundo el 2-A; quién lo emitió y cuándo quedan registrados", async () => {
+      const primera = await cuentaConFlan();
+      expect((await cerrarCuenta(primera.id)).ok).toBe(true);
+      const segunda = await cuentaConFlan();
+      expect((await cerrarCuenta(segunda.id)).ok).toBe(true);
+
+      const [a1] = await ejemplaresDe(primera.id);
+      const [a2] = await ejemplaresDe(segunda.id);
+      expect(a1).toMatchObject({ sucursalId: s.sucursalId, numero: 1, ejemplar: 1, corrigeAId: null, motivo: null, emitidoPorId: s.admin.id });
+      expect(a2).toMatchObject({ numero: 2, ejemplar: 1 });
+      // Se emite en el mismo instante en que se cierra la cuenta.
+      expect(a1.emitidoEn).toEqual((await prisma.cuenta.findUniqueOrThrow({ where: { id: primera.id } })).cerradaEn);
+    });
+
+    it("la numeración es por sucursal: la primera boleta de otra sucursal arranca en 1", async () => {
+      await cerrarCuenta((await cuentaConFlan()).id);
+      await cerrarCuenta((await cuentaConFlan()).id);
+
+      const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      await sembrarSeccion(norte.id, "Salón Norte");
+      await prisma.disponibilidadProducto.create({ data: { sucursalId: norte.id, productoId: s.flan.id, disponible: true } });
+      // Solo con membresía en Norte: es su sucursal activa.
+      const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+      const cajeroNorte = await crearUsuarioConMembresia({ email: "cajero-norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });
+      const mesaNorte = await prisma.mesa.create({ data: { sucursalId: norte.id, numero: 1 } });
+      const cuentaNorte = await sembrarCuenta(mesaNorte.id, cajeroNorte.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
+      await entrarComo(cajeroNorte);
+      expect((await cerrarCuenta(cuentaNorte.id)).ok).toBe(true);
+
+      expect(await ejemplaresDe(cuentaNorte.id)).toMatchObject([{ sucursalId: norte.id, numero: 1, ejemplar: 1 }]);
+      expect((await prisma.ejemplarBoleta.findMany({ where: { sucursalId: s.sucursalId }, orderBy: { numero: "asc" } })).map((e) => e.numero)).toEqual([1, 2]);
+    });
+
+    it("un cierre SIN venta (todo anulado) no consume número: el siguiente con venta recibe el 1", async () => {
+      const sinVenta = await cuentaConFlan();
+      await anularItemEnviado(sinVenta.items[0].id, 1, "Se fueron", 1);
+      expect((await cerrarCuenta(sinVenta.id)).mensaje).toBe("Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar.");
+      expect(await prisma.ejemplarBoleta.count()).toBe(0);
+
+      const conVenta = await cuentaConFlan();
+      expect((await cerrarCuenta(conVenta.id)).ok).toBe(true);
+      expect(await ejemplaresDe(conVenta.id)).toMatchObject([{ numero: 1, ejemplar: 1 }]);
+    });
+
+    it("un cierre bloqueado (ítems sin enviar) tampoco consume número", async () => {
+      const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
+      expect((await cerrarCuenta(cuenta.id)).ok).toBe(false);
+      expect(await prisma.ejemplarBoleta.count()).toBe(0);
+    });
+
+    it("el segundo cierre (idempotente, «ya estaba cerrada») no emite otro ejemplar ni otro número", async () => {
+      const cuenta = await cuentaConFlan();
+      expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
+      expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: true, mensaje: "La cuenta de la mesa 4 ya estaba cerrada." });
+      expect(await prisma.ejemplarBoleta.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
     });
   });
 

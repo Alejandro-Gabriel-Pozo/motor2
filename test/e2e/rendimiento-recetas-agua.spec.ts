@@ -94,7 +94,7 @@ test("caso real del Agua: Δ stock, banda de ruido, rótulo 'Producto de reventa
   }
 });
 
-test("con merma, «Usar este valor» lleva el estimado NETO en ?sugerido= (no el bruto)", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+test("con merma, calibrar «Usar este valor» congela el estimado NETO y la merma EFECTIVA (no el bruto)", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
   const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
@@ -105,9 +105,11 @@ test("con merma, «Usar este valor» lleva el estimado NETO en ?sugerido= (no el
   const pv = await prisma.producto.create({ data: { codigo: `E2E-MERMA-PV-${marca}`, nombre: `E2E Puré con Merma ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   // construirPools (P7) filtra whereDisponibleEn(sucursalId).
   await prisma.disponibilidadProducto.createMany({ data: [mp.id, pv.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
-  await prisma.recetaVersion.create({
+  const receta = await prisma.recetaVersion.create({
     data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 2, mermaPorcentaje: 25, unidadId: kg.id }] } },
+    include: { ingredientes: true },
   });
+  const recetaIngredienteId = receta.ingredientes[0].id;
 
   const hoy = new Date();
   const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: hoy, usuarioId: admin.id } });
@@ -124,15 +126,24 @@ test("con merma, «Usar este valor» lleva el estimado NETO en ?sugerido= (no el
 
     const botonUsar = fila.getByRole("button", { name: `Usar este valor para ${pv.nombre} — ${mp.nombre}` });
     await botonUsar.click();
-    const aviso = page.getByRole("alert").filter({ hasText: "¿Cambiar la receta" });
+    const aviso = page.getByRole("alert").filter({ hasText: "¿Calibrar el rendimiento" });
     await expect(aviso).toBeVisible();
     await expect(aviso).toContainText("de 2 a 2.4 kg");
+    // Los campos del formulario ya traen los defaults: cantidad = estimado NETO (2.4), merma = la EFECTIVA usada en el
+    // cálculo (25, la central — todavía no hay ningún override en esta sucursal).
+    await expect(page.locator('input[name="cantidad"]')).toHaveValue("2.4");
+    await expect(page.locator('input[name="mermaPorcentaje"]')).toHaveValue("25");
 
-    const enlaceAplicar = page.getByRole("link", { name: "Sí, ir a aplicarlo" });
-    await expect(enlaceAplicar).toHaveAttribute("href", /[?&]sugerido=2\.4(&|$)/);
-    await enlaceAplicar.click();
-    await expect(page).toHaveURL(/[?&]sugerido=2\.4(&|$)/);
+    await page.getByRole("button", { name: /Guardar como rendimiento de/ }).click();
+    await expect(fila.getByText(/calibrado acá; central: 2 kg/)).toBeVisible();
+
+    // En la base: se congeló el NETO (2.4) junto con la merma EFECTIVA (25) — nunca el bruto (3).
+    const override = await prisma.rendimientoLocalIngrediente.findUniqueOrThrow({ where: { recetaIngredienteId_sucursalId: { recetaIngredienteId, sucursalId } } });
+    expect(Number(override.cantidad)).toBe(2.4);
+    expect(Number(override.mermaPorcentaje)).toBe(25);
   } finally {
+    await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId } });
+    await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
     await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
     await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });

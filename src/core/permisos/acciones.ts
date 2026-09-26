@@ -102,6 +102,10 @@ export const ACCIONES: readonly AccionSemilla[] = [
   { clave: "pos_tomar_pedido", descripcion: "Tomar pedidos en el salón: abrir la cuenta de una mesa, agregar y quitar ítems sin enviar, enviarlos a cocina y liberar una mesa sin consumo (POS)", rolesEditarSemilla: ["admin"] },
   { clave: "pos_anular_item", descripcion: "Anular un ítem de una cuenta que ya se envió a cocina, con motivo (POS)", rolesEditarSemilla: ["admin"] },
   { clave: "pos_cerrar_cuenta", descripcion: "Cerrar la cuenta de una mesa: registra la venta en el stock y libera la mesa (POS)", rolesEditarSemilla: ["admin"] },
+  // Rendimiento por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, D5 — decisión del dueño, migración
+  // de datos 20260926012600_permiso_calibrar_rendimiento_local): separada de `guardar_receta` a propósito — editar la
+  // receta global es una decisión distinta de calibrar la sucursal propia.
+  { clave: "calibrar_rendimiento_local", descripcion: "Calibrar el rendimiento de las recetas en esta sucursal (cantidad y merma propias de cada ingrediente)", rolesEditarSemilla: ["admin"] },
 ] as const;
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];

@@ -16,6 +16,7 @@ import {
 import { importeDeLinea } from "@/core/moneda";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
@@ -92,15 +93,26 @@ async function calcularConsumosProduccion(
   productoId: string,
   cantidadProducida: number,
   seccionId: string,
+  sucursalId: string,
   tx: Prisma.TransactionClient,
   obtenerProducto: ReturnType<typeof crearCacheProducto>
 ): Promise<{ productoId: string; cantidad: number; loteVencimiento: Date | null }[]> {
-  const receta = await tx.recetaVersion.findFirst({ where: { productoId }, orderBy: { version: "desc" }, include: { ingredientes: true } });
+  const receta = await tx.recetaVersion.findFirst({
+    where: { productoId },
+    orderBy: { version: "desc" },
+    include: { ingredientes: { include: { rendimientosLocales: { where: { sucursalId } } } } },
+  });
   if (!receta?.ingredientes.length) return [];
 
   const partes: { productoId: string; cantidad: number; loteVencimiento: Date | null }[] = [];
   for (const ing of receta.ingredientes) {
-    const cantidadSalida = cantidadProducida * Number(ing.cantidad) * (1 + Number(ing.mermaPorcentaje) / 100);
+    // rendimientoEfectivo (D2) — misma fórmula textual, solo cambia de dónde salen cantidad/merma (ver registrar-venta.ts).
+    const ef = rendimientoEfectivo(
+      { cantidad: Number(ing.cantidad), mermaPorcentaje: Number(ing.mermaPorcentaje) },
+      ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
+      sucursalId
+    );
+    const cantidadSalida = cantidadProducida * ef.cantidad * (1 + ef.mermaPorcentaje / 100);
     const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx, obtenerProducto);
     partes.push(...reparto);
   }
@@ -214,7 +226,7 @@ async function armarLineaMovimiento(
     : cantidadStock; // Ajuste: ya viene firmado en `numCant` (aplicaFactorConversion siempre false acá).
 
   const consumosReceta = transicion.generaConsumoDeReceta
-    ? await calcularConsumosProduccion(producto.id, Math.abs(cantidadFirmada), datos.seccionId, tx, obtenerProducto)
+    ? await calcularConsumosProduccion(producto.id, Math.abs(cantidadFirmada), datos.seccionId, sucursalId, tx, obtenerProducto)
     : [];
 
   return {

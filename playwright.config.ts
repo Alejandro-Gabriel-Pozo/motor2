@@ -42,7 +42,11 @@ const base = resolverUrlE2E(process.env);
 process.env.DATABASE_URL = base.url;
 process.env.DIRECT_URL = base.url;
 
-const PUERTO = 3101;
+// Puerto propio de ESTE worktree (motor2-recetas-central): 3101 es el default que copian todos los worktrees del
+// sandbox, y con varias sesiones corriendo su propio E2E al mismo tiempo eso choca todo el tiempo
+// ("http://localhost:3101 is already used"). No es una decisión de producto — la app no expone nada real en este
+// puerto — así que se corrige acá, sin tocar ningún otro worktree.
+const PUERTO = 3193;
 const URL_BASE = `http://localhost:${PUERTO}`;
 
 /**

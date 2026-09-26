@@ -70,7 +70,7 @@ export async function obtenerReportePromociones(sucursalId: string, desde: Date,
   const { reporte: rep, productos } = await obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, {}, db);
   const marcados = await db.promocionProducto.findMany({ where: { sucursalId } });
   const marcadoPorProducto = new Map(marcados.map((m) => [m.productoId, m.activa]));
-  const { recetaPorProducto } = await construirIndiceRecetas(db);
+  const { recetaPorProducto } = await construirIndiceRecetas(db, sucursalId);
   const margenPorProducto = new Map(rep.margen.porProducto.map((m) => [m.productoId, m]));
 
   const promociones: FilaPromocion[] = [];
