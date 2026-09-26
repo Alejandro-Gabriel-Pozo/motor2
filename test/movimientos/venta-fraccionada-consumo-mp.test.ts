@@ -185,10 +185,16 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     // El mismo producto tiene que estar disponible (y comprado) en las DOS sucursales.
     await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal2.id, productoId: mp.id, disponible: true } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal2.id, productoId: pv.id, disponible: true } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion2.id, items: [{ productoId: mp.id, cantidad: 10 }] });
+    // La compra de la Sucursal 1 corre con `admin` (ya activo desde el beforeEach); la de la Sucursal 2 necesita a `admin2` — el
+    // permiso de `registrarMovimiento` exige que la sección pedida sea de LA SUCURSAL del usuario logueado (Fase 6, seguridad).
+    const compra1 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    expect(compra1.ok, compra1.mensaje).toBe(true);
+    await mockearUsuarioActual({ id: admin2.id, email: admin2.email, nombre: null });
+    const compra2 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion2.id, items: [{ productoId: mp.id, cantidad: 10 }] });
+    expect(compra2.ok, compra2.mensaje).toBe(true);
 
-    // Sucursal 1: una sola venta de 0,5 — escribe -1 (deuda queda en -0,5, sin nadie que la retire en este test).
+    // Sucursal 1: una sola venta de 0,5 — escribe -1 (deuda queda en -0,5, sin nadie que la retire en este test). Vuelve a `admin`.
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     const r1 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(r1.ok, r1.mensaje).toBe(true);
 
@@ -200,8 +206,8 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
     expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(9);
     expect(await calcularSaldoTotal(mp.id, seccion2.id)).toBe(9);
-    const consumoSucursal1 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId } });
-    const consumoSucursal2 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId: seccion2.id } });
+    const consumoSucursal1 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId, proceso: "CONSUMO" } });
+    const consumoSucursal2 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId: seccion2.id, proceso: "CONSUMO" } });
     expect(Number(consumoSucursal1.cantidad)).toBe(-1);
     expect(Number(consumoSucursal2.cantidad)).toBe(-1);
   });
