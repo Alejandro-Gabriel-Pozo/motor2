@@ -328,6 +328,7 @@ model Producto {
   contenidoCarta          ContenidoCartaProducto?
   opcionItemAgrupadoCarta OpcionItemAgrupadoCarta?
   cuentaItems             CuentaItem[]
+  consumosQueLoSustituyen MovimientoStock[]          @relation("MovimientoSustituyeA")
 
   @@index([insumoId])
   @@index([categoriaId])
@@ -999,6 +1000,11 @@ model MovimientoStock {
   /// ciegas, ver escribirMovimientoTransferenciaSucursal_).
   traspasoSucursalId String?
   traspasoSucursal   TraspasoSucursal? @relation(fields: [traspasoSucursalId], references: [id])
+
+  /// Solo filas CONSUMO de una venta cuyo consumo salió de un Insumo SUSTITUTO declarado en la línea de receta: el producto
+  /// de la receta al que reemplazó. null en todo lo demás (incluido un consumo de un hermano del mismo Insumo).
+  sustituyeAProductoId String?
+  sustituyeAProducto   Producto? @relation("MovimientoSustituyeA", fields: [sustituyeAProductoId], references: [id])
 
   creadoEn DateTime @default(now())
 
