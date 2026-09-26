@@ -10,6 +10,7 @@ import {
   validarTextoLibreCarta,
   LARGO_MAXIMO_DESCRIPCION_CARTA,
 } from "@/core/carta/validaciones";
+import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 
@@ -40,6 +41,11 @@ export interface DatosItemAgrupadoCarta {
   especial?: boolean;
   orden?: number | string | null;
   /**
+   * Carpeta de género del POS (docs/plan-genero-carta-2026-09-26.md), OPCIONAL: vacío/null = sin género (sale suelto). Las
+   * opciones del ítem agrupado heredan este género: nunca tienen uno propio.
+   */
+  generoCartaId?: string | null;
+  /**
    * SOLO en el alta (DA7, docs/plan-carta-seccion-directa-2026-09-25.md): productos a agregar como opciones apenas se crea el ítem,
    * en este orden y con la MISMA validación que `agregarOpcionItemAgrupadoCarta` (PV, que no esté en otro grupo, mismo precio D5).
    * Los que no entran no frenan el alta: el mensaje final dice cuáles y por qué. Al editar se ignora (para sumar opciones a un
@@ -64,6 +70,8 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     if (!datos.seccionCartaId) return error("Elegí la sección de carta del ítem agrupado.");
     const seccion = await prisma.seccionCarta.findUnique({ where: { id: datos.seccionCartaId }, select: { id: true } });
     if (!seccion) return error("No se encontró la sección de carta.");
+    const genero = await validarGeneroCartaOpcional(datos.generoCartaId);
+    if (!genero.ok) return error(genero.mensaje);
 
     const repetido = await prisma.itemAgrupadoCarta.findFirst({
       where: { nombre: { equals: nombre.valor, mode: "insensitive" }, ...(datos.id ? { NOT: { id: datos.id } } : {}) },
@@ -77,6 +85,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
       tags: tags.valor,
       especial: datos.especial === true,
       orden: orden.valor,
+      generoCartaId: genero.valor,
     };
     let it: { id: string; nombre: string };
     try {

@@ -77,6 +77,15 @@ export function validarNombreItemAgrupadoCarta(valor: unknown): Resultado<string
   return { ok: true, valor: v };
 }
 
+/** Nombre obligatorio de un género de carta ("Cerveza"; docs/plan-genero-carta-2026-09-26.md). Mismo charset que el resto. */
+export function validarNombreGeneroCarta(valor: unknown): Resultado<string> {
+  const v = texto(valor);
+  if (!v) return { ok: false, mensaje: "El nombre del género no puede estar vacío." };
+  const invalido = validarTextoCatalogo(v, "El nombre del género");
+  if (invalido) return { ok: false, mensaje: invalido };
+  return { ok: true, valor: v };
+}
+
 /** Orden: entero (puede ser negativo, para subir algo sin renumerar), vacío → 0. */
 export function validarOrdenCarta(valor: unknown): Resultado<number> {
   if (valor === null || valor === undefined || texto(valor) === "") return { ok: true, valor: 0 };
