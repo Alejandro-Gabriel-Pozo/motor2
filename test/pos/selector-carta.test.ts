@@ -7,7 +7,7 @@ import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedib
  * de la carta, el precio y el código de los pedibles, y todo pedible que la carta no ubica cae en «Fuera de carta».
  */
 
-const pedible = (productoId: string, nombre: string, precio: number): ProductoPedible => ({ productoId, codigo: `COD_${productoId}`, nombre, precio });
+const pedible = (productoId: string, nombre: string, precio: number, decimales = 0): ProductoPedible => ({ productoId, codigo: `COD_${productoId}`, nombre, precio, decimales });
 
 const suelto = (productoId: string, nombre: string, precio = 1): ItemCartaV1 => ({
   productoId,

@@ -87,8 +87,8 @@ describe("cargarSelectorCartaPos", () => {
         seccionCartaId: expect.any(String),
         nombre: "Platos",
         entradas: [
-          { tipo: "producto", producto: { productoId: s.milanesa.id, codigo: "PV_MILA", nombre: "Milanesa", precio: 9500 } },
-          { tipo: "producto", producto: { productoId: s.pizza.id, codigo: "PV_PIZZA", nombre: "Pizza", precio: 12000 } },
+          { tipo: "producto", producto: { productoId: s.milanesa.id, codigo: "PV_MILA", nombre: "Milanesa", precio: 9500, decimales: 0 } },
+          { tipo: "producto", producto: { productoId: s.pizza.id, codigo: "PV_PIZZA", nombre: "Pizza", precio: 12000, decimales: 0 } },
         ],
       },
       {
@@ -103,8 +103,8 @@ describe("cargarSelectorCartaPos", () => {
             precioMaximo: 5200,
             // Tres opciones, una no disponible en Central (Fanta) → dos, en su orden y con SU precio.
             opciones: [
-              { productoId: ids.coca, codigo: "PV_SEL_1", nombre: "Coca-Cola 500cc", precio: 5000 },
-              { productoId: ids.sprite, codigo: "PV_SEL_2", nombre: "Sprite 500cc", precio: 5200 },
+              { productoId: ids.coca, codigo: "PV_SEL_1", nombre: "Coca-Cola 500cc", precio: 5000, decimales: 0 },
+              { productoId: ids.sprite, codigo: "PV_SEL_2", nombre: "Sprite 500cc", precio: 5200, decimales: 0 },
             ],
           },
         ],
