@@ -4,8 +4,8 @@ import { esSignoFijo, redondearMoneda } from "@/core/movimientos/transiciones";
 import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos, redondearCantidad, type Db, type IndiceRecetas, type InfoProductoReporte } from "./comun";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo, type FilaImpactoRecetaPorPeriodo } from "./costos";
-import { claveCostoHistorico, diaUtc, reconstruirCostosDeVenta } from "./costo-historico";
 import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
+import { calcularMargenRealDelPeriodo } from "./margen-real";
 import {
   antiguedadSerieIPC,
   cargarSerieIPC,
@@ -942,52 +942,25 @@ async function calcularMargenDelPeriodo(
   const ingresoTotal = ventasDelPeriodo.totalFacturado;
   const margenTotal = redondearMoneda(ingresoTotal - costoTotal);
 
-  // Margen real: línea por línea (no por producto agregado, a diferencia de
-  // arriba) porque dos ventas del MISMO producto en fechas distintas pueden
-  // tener costoUnitarioVenta distinto si la receta cambió entre medio.
-  let ingresoConCostoReal = 0;
-  let costoRealTotal = 0;
-  let ingresoSinCostoReal = 0;
-  let ingresoRealReconstruido = 0;
-  // Las ventas que no guardaron su costo al venderse (cargadas sin ese dato) se intentan costear al día de la venta con el historial
-  // de compras (ver costo-historico.ts); las que no se pueden costear quedan en `ingresoSinCostoReal`.
-  // Una venta cargada SIN precio (`precioTotal` 0) no entra al margen Real ni al costo de lo vendido: no tiene ingreso con qué compararse, y sumar su costo
-  // sin su ingreso inflaba el costo y deformaba el margen (el bucle del ajuste por IPC, más abajo, ya las saltea por lo mismo).
-  // Una venta ANULADA tampoco entra: no ocurrió.
-  const ventasSinPrecioExcluidas = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal <= 0).length;
-  const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal > 0 && it.costoUnitarioVenta === null);
-  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos, indiceRecetas);
-  // Mismo bucle línea a línea de arriba, acumulado ADEMÁS por producto — fuente única del margen Real por fila,
-  // para que Período y cualquier otro consumidor (Promociones) lean el mismo número (docs/pendientes-*.md, hallazgo
-  // "el mismo dato calculado distinto").
-  const realPorProducto = new Map<string, { ingresoConCostoReal: number; costoRealTotal: number; ingresoRealReconstruido: number }>();
-  for (const it of items) {
-    if (it.proceso !== "VENTA" || it.anulada || it.precioTotal <= 0) continue;
-    const acc = realPorProducto.get(it.productoId) ?? { ingresoConCostoReal: 0, costoRealTotal: 0, ingresoRealReconstruido: 0 };
-    realPorProducto.set(it.productoId, acc);
-    if (it.costoUnitarioVenta !== null) {
-      ingresoConCostoReal += it.precioTotal;
-      costoRealTotal += it.cantidad * it.costoUnitarioVenta;
-      acc.ingresoConCostoReal += it.precioTotal;
-      acc.costoRealTotal += it.cantidad * it.costoUnitarioVenta;
-      continue;
-    }
-    const reconstruido = costosReconstruidos.get(claveCostoHistorico(it.productoId, diaUtc(it.fecha))) ?? null;
-    if (reconstruido !== null) {
-      ingresoConCostoReal += it.precioTotal;
-      ingresoRealReconstruido += it.precioTotal;
-      costoRealTotal += it.cantidad * reconstruido;
-      acc.ingresoConCostoReal += it.precioTotal;
-      acc.ingresoRealReconstruido += it.precioTotal;
-      acc.costoRealTotal += it.cantidad * reconstruido;
-    } else {
-      ingresoSinCostoReal += it.precioTotal;
-    }
-  }
-  const hayCostoReal = ingresoConCostoReal > 0;
-  const margenRealTotal = hayCostoReal ? redondearMoneda(ingresoConCostoReal - costoRealTotal) : null;
+  // Margen real: línea por línea (no por producto agregado, a diferencia de arriba) porque dos ventas del MISMO producto en fechas
+  // distintas pueden tener costoUnitarioVenta distinto si la receta cambió entre medio. Motor compartido, extraído a
+  // src/core/reportes/margen-real.ts (docs/plan-clientes-descuento-2026-09-26.md, punto 8) — mismo criterio línea a línea (costo
+  // congelado → reconstruido con el historial de compras → sin costear) que ya usaba este archivo, ahora reusable por otros reportes
+  // (el de descuentos por cliente lo usa igual, ver src/core/reportes/descuentos-clientes.ts).
+  const {
+    ingresoConCostoReal,
+    costoRealTotal,
+    ingresoSinCostoReal,
+    ingresoRealReconstruido,
+    ventasSinPrecioExcluidas,
+    hayCostoReal,
+    margenRealTotal,
+    coberturaCostoRealPct,
+    porProducto: realPorProducto,
+  } = await calcularMargenRealDelPeriodo(sucursalId, items, db, productos, indiceRecetas);
+  // Mismo cálculo que adentro de calcularMargenRealDelPeriodo (coberturaCostoRealPct = ingresoConCostoReal / baseCobertura): se
+  // rehace acá solo para el texto del aviso de abajo, que necesita el número entero, no el porcentaje ya redondeado.
   const baseCobertura = ingresoConCostoReal + ingresoSinCostoReal;
-  const coberturaCostoRealPct = baseCobertura > 0 ? Math.round((ingresoConCostoReal / baseCobertura) * 1000) / 10 : null;
   const avisoVentasSinPrecio =
     ventasSinPrecioExcluidas > 0
       ? ` ${ventasSinPrecioExcluidas} venta(s) cargada(s) sin precio no se cuentan (no tienen un ingreso con qué comparar su costo).`
