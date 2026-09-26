@@ -25,8 +25,10 @@ export interface FiltroBoletas {
   /** Instante UTC hasta el cual filtrar `emitidoEn` (inclusive) — ya resuelto con `finDelDiaArgentina`. */
   hasta?: Date;
   mesaId?: string;
-  // clienteId?: string; — Task #14 (clientes), todavía no existe el modelo: cuando exista, se suma acá y en el `where` de
-  // `listarBoletasEmitidas` sin tocar el resto del filtro ni la firma de `leerFiltroBoletas`/`serializarFiltroBoletas`.
+  // clienteId?: string; — el modelo Cliente ya existe (Task #14), pero el FILTRO por cliente sigue fuera de alcance de esta v1
+  // (ver docs/plan-reporte-boletas-emitidas-2026-09-26.md): agregarlo acá y al `where` de `listarBoletasEmitidas` no toca el resto
+  // del filtro ni la firma de `leerFiltroBoletas`/`serializarFiltroBoletas`. Lo que SÍ se sumó ya (independiente del filtro): cada
+  // fila muestra su cliente si tiene uno, y `importe` refleja lo COBRADO (con descuento), no el precio de lista — ver `detalle.cliente`.
   cursor?: string;
 }
 
@@ -59,6 +61,8 @@ export interface FilaBoletaEmitida {
     abiertaEn: Date;
     cerradaEn: Date;
     lineas: LineaBoletaEmitida[];
+    /** Cliente con descuento de la cuenta (Task #14), con el % congelado; null si no tiene ninguno asignado. */
+    cliente: { nombre: string; descuentoPorcentaje: number } | null;
   };
 }
 
@@ -70,8 +74,8 @@ export interface PaginaBoletas {
 /** Las líneas NETAS de la boleta «como se imprimió» en `impresaEn`, con el `operacionId` de cada una (misma agrupación que
  *  `armarBoleta`/`lineasDeVenta`: por producto y precio congelado). No toca boleta.ts: solo agrega el dato para el link a
  *  Trazabilidad, que ese módulo no necesita. */
-function lineasConOperacion(items: readonly ItemConVenta[], impresaEn: Date): LineaBoletaEmitida[] {
-  const { lineas } = armarBoletaImpresaEn(items, impresaEn);
+function lineasConOperacion(items: readonly ItemConVenta[], impresaEn: Date, descuentoPorcentaje: number | null): LineaBoletaEmitida[] {
+  const { lineas } = armarBoletaImpresaEn(items, impresaEn, descuentoPorcentaje);
   const vigentes = items.filter((i) => i.anuladaEn === null || i.anuladaEn > impresaEn);
   const operacionPorClave = new Map<string, string | null>();
   for (const i of vigentes) {
@@ -111,6 +115,8 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
           cerradaEn: true,
           abiertaPor: { select: { name: true, email: true } },
           mesa: { select: { numero: true } },
+          cliente: { select: { nombre: true } },
+          descuentoPorcentaje: true,
           items: {
             orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
             select: {
@@ -140,7 +146,9 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
     }));
-    const { total } = armarBoletaImpresaEn(items, e.emitidoEn);
+    // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
+    const descuentoPorcentaje = e.cuenta.descuentoPorcentaje !== null ? Number(e.cuenta.descuentoPorcentaje) : null;
+    const { total } = armarBoletaImpresaEn(items, e.emitidoEn, descuentoPorcentaje);
     const ultimo = e.cuenta.ejemplaresBoleta[0];
     const esUltimoEjemplar = !ultimo || ultimo.ejemplar === e.ejemplar;
 
@@ -162,7 +170,8 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
         // e.cuenta.cerradaEn no puede ser null (hay un EjemplarBoleta, que solo emite `cerrarCuenta` sobre una cuenta cerrada) —
         // el `?? e.emitidoEn` es solo una defensa de tipos, nunca se ejecuta con datos reales.
         cerradaEn: e.cuenta.cerradaEn ?? e.emitidoEn,
-        lineas: lineasConOperacion(items, e.emitidoEn),
+        lineas: lineasConOperacion(items, e.emitidoEn, descuentoPorcentaje),
+        cliente: e.cuenta.cliente && descuentoPorcentaje !== null ? { nombre: e.cuenta.cliente.nombre, descuentoPorcentaje } : null,
       },
     };
   });
