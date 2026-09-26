@@ -2,7 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
-import { importeDeLinea, redondearMoneda } from "@/core/moneda";
+import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
 import { nombreDelMesero, tiempoDesde } from "./mesas";
 import { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido } from "./cantidad-pedido";
 
@@ -149,7 +149,13 @@ export interface DetalleDeCuenta {
   tiempoAbierta: string;
   /** `null` = cuenta abierta antes de este campo (sin backfill) — ver el docstring de `Cuenta.comensales`. */
   comensales: number | null;
-  /** Σ cantidad × precio de TODAS las filas (espejos incluidos): lo que se cobraría hoy. Mismo cálculo que el mapa. */
+  /** Cliente con descuento asignado (Task #14, docs/plan-clientes-descuento-2026-09-26.md) — `null` = sin cliente, precio de lista. */
+  clienteId: string | null;
+  cliente: string | null;
+  /** El % YA CONGELADO en la cuenta (`Cuenta.descuentoPorcentaje`), no el actual del `Cliente` — ver `asignarClienteACuenta`. */
+  descuentoPorcentaje: number | null;
+  /** Σ cantidad × precio COBRADO de TODAS las filas (espejos incluidos, con el descuento de cliente ya aplicado si hay uno): lo que
+   *  se cobraría si se cerrara AHORA. Mismo cálculo que `cerrarCuenta`/la boleta (`precioConDescuento`, src/core/moneda.ts). */
   total: number;
   sinEnviar: ItemDeCuenta[];
   envios: { numero: number; items: ItemEnEnvio<ItemDeCuenta>[] }[];
@@ -174,6 +180,7 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
         where: { cerradaEn: null },
         include: {
           abiertaPor: { select: { name: true, email: true } },
+          cliente: { select: { nombre: true } },
           items: {
             orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
             include: {
@@ -204,6 +211,7 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
     creadoEn: i.creadoEn,
   }));
   const { sinEnviar, envios } = agruparPorEnvio(items);
+  const descuentoPorcentaje = fila.descuentoPorcentaje !== null ? Number(fila.descuentoPorcentaje) : null;
 
   return {
     mesa: { id: mesa.id, numero: mesa.numero },
@@ -213,9 +221,13 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
       mesero: nombreDelMesero(fila.abiertaPor),
       tiempoAbierta: tiempoDesde(fila.abiertaEn, ahora),
       comensales: fila.comensales,
-      // Σ del importe de cada línea (importeDeLinea), no la suma cruda re-redondeada: así el total en pantalla nunca difiere del que
-      // registraría un cierre inmediato (boleta y cerrarCuenta usan el mismo criterio). redondearMoneda solo limpia el ruido del float.
-      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, i.precioUnitario), 0)),
+      clienteId: fila.clienteId,
+      cliente: fila.cliente?.nombre ?? null,
+      descuentoPorcentaje,
+      // Σ del importe COBRADO de cada línea (importeDeLinea sobre precioConDescuento), no la suma cruda re-redondeada: así el total
+      // en pantalla nunca difiere del que registraría un cierre inmediato (boleta y cerrarCuenta usan el mismo criterio; sin
+      // cliente, precioConDescuento devuelve el precio de lista tal cual). redondearMoneda solo limpia el ruido del float.
+      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, precioConDescuento(i.precioUnitario, descuentoPorcentaje)), 0)),
       sinEnviar,
       envios,
       itemsTotales: items.length,
