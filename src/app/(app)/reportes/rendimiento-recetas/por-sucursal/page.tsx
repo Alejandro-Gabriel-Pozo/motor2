@@ -1,7 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { prisma } from "@/lib/db";
-import { compararRendimientosPorSucursal } from "@/core/reportes/rendimiento-por-sucursal";
+import { compararRendimientosDeSucursales } from "@/server/consultas/reportes/rendimiento-por-sucursal";
 import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursal";
 
 /**
@@ -24,7 +23,7 @@ export default async function RendimientoPorSucursalPage({
   const sucursales = ctx.membresias.map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
   const todas = sp.todas === "1";
 
-  const filas = await compararRendimientosPorSucursal(sucursales, { productoId: sp.productoId, todas }, prisma);
+  const filas = await compararRendimientosDeSucursales(sucursales, { productoId: sp.productoId, todas });
   const filasPlanas: FilaComparacionPlana[] = filas.map((f) => ({
     productoId: f.productoId,
     productoNombre: f.productoNombre,
