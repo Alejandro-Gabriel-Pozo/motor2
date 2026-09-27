@@ -91,6 +91,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Piloto de la Fase M: anularCompra → casos-de-uso/anular-compra.ts y corregirCompra → casos-de-uso/corregir-compra.ts (transacción, I3, persistencia y auditoría viven en el caso de uso).",
   },
+  {
+    ruta: "src/server/actions/movimientos/venta.ts",
+    motivo:
+      "M8: anularVenta → casos-de-uso/anular-venta.ts (transacción, hermanas de promo, persistencia y auditoría). Como la regla vale para todo el archivo, registrarVenta pasó su bloque transaccional (I3 + registrarVentaEnTx) a casos-de-uso/registrar-venta.ts; sus validaciones de entrada siguen en la acción.",
+  },
 ];
 
 module.exports = {
