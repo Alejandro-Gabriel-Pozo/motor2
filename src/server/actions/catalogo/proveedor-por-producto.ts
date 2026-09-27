@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { requerirVer } from "../con-sesion";
 
 export interface ProductoDeProveedor {

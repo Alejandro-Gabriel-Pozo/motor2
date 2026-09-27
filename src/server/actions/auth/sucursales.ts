@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/disponibilidad-producto";
+import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";

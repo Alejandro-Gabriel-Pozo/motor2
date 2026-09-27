@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { obtenerSeccionPropia } from "@/core/movimientos/stock";
-import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 import { crearLibroDeStock, type LibroDeStock, type SeccionCandidata } from "@/core/movimientos/origen-venta";
 
 /**

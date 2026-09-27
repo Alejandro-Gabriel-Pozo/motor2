@@ -3,16 +3,15 @@ import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad, redondearMoneda } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
-import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/venta-fraccionada";
+import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
 import { importeDeLinea } from "@/core/moneda";
 import { seccionesConStock } from "@/core/movimientos/stock";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
 import { cargarDatosDeOrigen, prepararOrigen, type OrigenVenta } from "@/core/movimientos/origen-venta-datos";
-import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/core/reportes/costos";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
-import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
 
 /**
  * Núcleo de la Venta, SIN permisos ni transacción propia (no es una Server Action: sin "use server"). Extraído tal cual de

@@ -6,7 +6,7 @@ import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoTotal, obtenerSeccionPropia, validarStockSuficiente } from "@/core/movimientos/stock";
-import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";

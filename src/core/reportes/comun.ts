@@ -1,8 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { clasificarGruposNoComestibles, type ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
-import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
-import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
+import { clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
+import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
 

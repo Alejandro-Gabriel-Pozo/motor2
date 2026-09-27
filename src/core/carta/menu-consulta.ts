@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { armarMenuCarta, type CartaV1, type MenuArmado } from "./armar-menu";
 
 type Db = PrismaClient | Prisma.TransactionClient;

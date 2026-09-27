@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
-import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
+import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";

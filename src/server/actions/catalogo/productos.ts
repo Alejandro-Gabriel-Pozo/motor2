@@ -6,18 +6,23 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
-import { validarUnidadInsumo } from "@/core/catalogo/producto";
-import { validarPasoVenta } from "@/core/catalogo/venta-fraccionada";
+import {
+  crearConCodigoAutogenerado,
+  esErrorDeUnicidad,
+  validarUnidadInsumo,
+  dependenciasParaDesactivar,
+  disponibilidadDeProductos,
+  productoDisponibleEn,
+  whereDisponibleEn,
+  whereDisponibleEnAlguna,
+} from "@/core/catalogo/public-servidor";
+import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import { tieneStockReal } from "@/core/movimientos/transiciones";
-import { dependenciasParaDesactivar } from "@/core/catalogo/desactivar-producto";
-import { disponibilidadDeProductos, productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirSesion } from "../con-sesion";
-import type { FiltroSelectorProducto } from "@/core/catalogo/filtro-selector-producto";
 
 export interface ProductoOpcion {
   id: string;

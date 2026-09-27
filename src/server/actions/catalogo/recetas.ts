@@ -3,21 +3,25 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
 import { conReintento } from "@/core/movimientos/reintentar";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/con-reintento";
-import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/pasos-receta";
 import {
+  esPermutacionExacta,
+  aplicarSecuencia,
+  insertarEnPosicion,
+  describirCambioVersionReceta,
+  describirDescarteArrastre,
+} from "@/core/catalogo/public";
+import {
+  esErrorDeUnicidad,
   validarIngredientes,
   validarPasos,
   validarCabecera,
   type IngredienteInput,
   type PasoInput,
   type CabeceraRecetaInput,
-} from "@/core/catalogo/receta-validacion";
+} from "@/core/catalogo/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { describirCambioVersionReceta } from "@/core/catalogo/describir-cambio-receta";
-import { describirDescarteArrastre } from "@/core/catalogo/origen-cambio-receta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
