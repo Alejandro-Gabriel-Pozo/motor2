@@ -1489,6 +1489,9 @@ model SeccionCarta {
   contenidos  ContenidoCartaProducto[]
   agrupados   ItemAgrupadoCarta[]
   promos      PromoCarta[]
+  /// Cupos de promos ARMABLES que eligen de ESTA sección (Task #16) — no es lo mismo que `promos` (la promo en sí, ubicada
+  /// en su PROPIA sección): una promo de la sección "Menús" puede tener un cupo que elige de "Postres".
+  cuposDePromo PromoCartaCupo[]
 
   @@index([activa, orden])
 }
@@ -1589,27 +1592,62 @@ model OpcionItemAgrupadoCarta {
   @@index([itemAgrupadoCartaId])
 }
 
-/// Promo INFORMATIVA de una sucursal dentro de una sección de carta
-/// (título, descripción, precio). No referencia a Producto ni mueve stock:
-/// la composición real de una promo queda para el pendiente "tomar
-/// pedido" (docs/grounding-unificacion-carta-stock-2026-09-23.md §7.1).
-/// Distinta de PromocionProducto (REPORTES), que marca qué PV cuenta como
-/// promoción para el reporte de promociones.
+/// Promo de una sucursal dentro de una sección de carta (título, descripción, precio). No referencia a `Producto` ni mueve
+/// stock directamente. Distinta de `PromocionProducto` (REPORTES), que marca qué PV cuenta como promoción para el reporte de
+/// promociones.
+///
+/// SIN ningún `PromoCartaCupo` (el caso de siempre, y el único hasta Task #16): sigue siendo puramente INFORMATIVA — el POS la
+/// ignora (`selector-carta.ts`: "las promos de la carta se ignoran") y la composición real de "qué lleva" quedaba fuera del
+/// sistema.
+///
+/// CON uno o más `PromoCartaCupo` (Task #16, docs/plan-promo-combo-2026-09-26.md): pasa a ser ARMABLE — aparece en el POS
+/// (`selector-carta-consulta.ts`, cuarto parámetro) para que el mozo elija, cupo por cupo, con qué se arma cada instancia
+/// (D1: mínimo/máximo por cupo). El precio acá sigue siendo el de la CABECERA congelada al agregarla (`PromoCuenta.precio`);
+/// el de cada componente elegido sale de prorratear ese precio (D3, `prorratearPrecioPromo`, `src/core/pos/promo-combo.ts`).
+/// Sin backfill: una promo existente sigue informativa hasta que alguien le agrega cupos a propósito. El contrato público
+/// `CartaV1` no cambia (la carta pública nunca tuvo ni tiene cupos).
 model PromoCarta {
-  id             String       @id @default(cuid())
+  id             String           @id @default(cuid())
   sucursalId     String
-  sucursal       Sucursal     @relation(fields: [sucursalId], references: [id])
+  sucursal       Sucursal         @relation(fields: [sucursalId], references: [id])
   seccionCartaId String
-  seccionCarta   SeccionCarta @relation(fields: [seccionCartaId], references: [id])
+  seccionCarta   SeccionCarta     @relation(fields: [seccionCartaId], references: [id])
   titulo         String
   descripcion    String?
-  precio         Decimal      @db.Decimal(14, 2)
-  orden          Int          @default(0)
-  activa         Boolean      @default(true)
-  creadoEn       DateTime     @default(now())
+  precio         Decimal          @db.Decimal(14, 2)
+  orden          Int              @default(0)
+  activa         Boolean          @default(true)
+  creadoEn       DateTime         @default(now())
+  cupos          PromoCartaCupo[]
 
   @@index([sucursalId, activa])
   @@index([seccionCartaId])
+}
+
+/// UN cupo de una promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): "elegí entre `cantidadMinima` y
+/// `cantidadMaxima` de la sección `seccionCarta`". Los elegibles de un cupo NO son una lista propia acá — son los mismos que
+/// el selector del POS ya ofrece en esa sección (D5: sueltos visibles + opciones de ítems agrupados activos, disponibles en
+/// la sucursal, sin "Fuera de carta"), resueltos en el momento por `selector-carta-consulta.ts`/`promo-combo.ts`; así un cupo
+/// nunca queda desincronizado de lo que la carta muestra. Un producto pertenece a lo sumo a UNA `SeccionCarta`
+/// (`ContenidoCartaProducto`/`ItemAgrupadoCarta` son cada uno de una sola sección), así que nunca cae en dos cupos de la
+/// misma promo por accidente — `@@unique([promoCartaId, seccionCartaId])` además impide dos cupos de la MISMA sección en la
+/// misma promo (se edita el que ya existe, no se duplica).
+///
+/// FK RESTRICT en las dos direcciones (mismo criterio que el resto de la carta/catálogo): ni la promo ni la sección se
+/// pueden borrar mientras tengan un cupo — se apagan (`PromoCarta.activa`/`SeccionCarta.activa`), nunca se borran.
+model PromoCartaCupo {
+  id             String       @id @default(cuid())
+  promoCartaId   String
+  promoCarta     PromoCarta   @relation(fields: [promoCartaId], references: [id])
+  seccionCartaId String
+  seccionCarta   SeccionCarta @relation(fields: [seccionCartaId], references: [id])
+  /// D1: mínimo por cupo, 0 por defecto — un cupo puede ser opcional ("elegí hasta 2 postres, o ninguno").
+  cantidadMinima Int          @default(0)
+  cantidadMaxima Int
+  /// Orden de este cupo dentro de la promo (misma escala que `PromoCarta.orden`/`ContenidoCartaProducto.orden`).
+  orden          Int          @default(0)
+
+  @@unique([promoCartaId, seccionCartaId])
 }
 
 /// Registro público de una sucursal en el portal/carta (lo que hoy es una fila de la tab "tenant" de la sheet maestra de
