@@ -372,29 +372,33 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     if (invalido) return error(invalido);
 
     const nuevos = datosParaGuardar(datos);
-    await prisma.producto.update({ where: { id: productoId }, data: nuevos });
-
-    // Auditoría administrativa (A3, Pivote 6) — solo los precios, que son
-    // los campos de mayor impacto de negocio/control interno (ver
-    // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md).
     const nombreActual = texto(datos.nombre);
-    await registrarCambioAuditado(prisma, {
-      entidad: "Producto", entidadId: productoId, campo: "precioVenta",
-      descripcion: `Producto "${nombreActual}": precio de venta`,
-      valorAnterior: Number(existente.precioVenta), valorNuevo: Number(nuevos.precioVenta), actorId: ctx.usuarioId,
-    });
-    await registrarCambioAuditado(prisma, {
-      entidad: "Producto", entidadId: productoId, campo: "precioConsignacion",
-      descripcion: `Producto "${nombreActual}": precio de consignación`,
-      valorAnterior: Number(existente.precioConsignacion), valorNuevo: Number(nuevos.precioConsignacion), actorId: ctx.usuarioId,
-    });
-    // Venta fraccionada (Task #25): se audita igual que el resto de los campos de mayor impacto de negocio.
-    await registrarCambioAuditado(prisma, {
-      entidad: "Producto", entidadId: productoId, campo: "pasoVenta",
-      descripcion: `Producto "${nombreActual}": paso de venta`,
-      valorAnterior: existente.pasoVenta !== null ? Number(existente.pasoVenta) : null,
-      valorNuevo: nuevos.pasoVenta,
-      actorId: ctx.usuarioId,
+    // El `update` y sus filas de auditoría van en UNA transacción (Task #41, M10): antes iban sueltos y, si la auditoría fallaba
+    // (o el proceso se caía en el medio), el precio quedaba cambiado sin rastro.
+    await prisma.$transaction(async (tx) => {
+      await tx.producto.update({ where: { id: productoId }, data: nuevos });
+
+      // Auditoría administrativa (A3, Pivote 6) — solo los precios, que son
+      // los campos de mayor impacto de negocio/control interno (ver
+      // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md).
+      await registrarCambioAuditado(tx, {
+        entidad: "Producto", entidadId: productoId, campo: "precioVenta",
+        descripcion: `Producto "${nombreActual}": precio de venta`,
+        valorAnterior: Number(existente.precioVenta), valorNuevo: Number(nuevos.precioVenta), actorId: ctx.usuarioId,
+      });
+      await registrarCambioAuditado(tx, {
+        entidad: "Producto", entidadId: productoId, campo: "precioConsignacion",
+        descripcion: `Producto "${nombreActual}": precio de consignación`,
+        valorAnterior: Number(existente.precioConsignacion), valorNuevo: Number(nuevos.precioConsignacion), actorId: ctx.usuarioId,
+      });
+      // Venta fraccionada (Task #25): se audita igual que el resto de los campos de mayor impacto de negocio.
+      await registrarCambioAuditado(tx, {
+        entidad: "Producto", entidadId: productoId, campo: "pasoVenta",
+        descripcion: `Producto "${nombreActual}": paso de venta`,
+        valorAnterior: existente.pasoVenta !== null ? Number(existente.pasoVenta) : null,
+        valorNuevo: nuevos.pasoVenta,
+        actorId: ctx.usuarioId,
+      });
     });
 
     const mensaje = `Producto "${nombreActual}" actualizado.`;
@@ -423,15 +427,19 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
     const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
 
-    const productos = await prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true } });
-    for (const p of productos) {
-      await prisma.producto.update({ where: { id: p.id }, data: { precioVenta: precio } });
-      await registrarCambioAuditado(prisma, {
-        entidad: "Producto", entidadId: p.id, campo: "precioVenta",
-        descripcion: `Producto "${p.nombre}": precio de venta`,
-        valorAnterior: Number(p.precioVenta), valorNuevo: precio, actorId: ctx.usuarioId,
-      });
-    }
+    // Todo el grupo en UNA transacción, con su auditoría (Task #41, M10): o quedan todos los precios con su rastro, o ninguno.
+    const productos = await prisma.$transaction(async (tx) => {
+      const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true } });
+      for (const p of productos) {
+        await tx.producto.update({ where: { id: p.id }, data: { precioVenta: precio } });
+        await registrarCambioAuditado(tx, {
+          entidad: "Producto", entidadId: p.id, campo: "precioVenta",
+          descripcion: `Producto "${p.nombre}": precio de venta`,
+          valorAnterior: Number(p.precioVenta), valorNuevo: precio, actorId: ctx.usuarioId,
+        });
+      }
+      return productos;
+    });
     return ok(`Precio de venta de ${productos.map((p) => `"${p.nombre}"`).join(", ")} actualizado a $${precio.toLocaleString("es-AR")} («${grupo.nombreItem}»).`);
   });
 }
