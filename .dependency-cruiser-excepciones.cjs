@@ -48,12 +48,15 @@ const CORE_CON_REACT_NEXT = [
  *  - D4: catalogo/recetas/[productoId] (editor) → src/server/consultas/catalogo/recetas.ts (MP disponibles, opciones de
  *    sustituto, calibraciones por sucursal) + reusa obtenerProductoPorId de src/server/consultas/catalogo/productos.ts.
  *  - D5: administracion/usuarios → src/server/consultas/permisos/roles.ts.
+ *  - D6: movimientos/[proceso] (deep-link ?productoId=) → obtenerProductoOpcion de src/server/consultas/catalogo/productos.ts.
  *  - D7: reportes/rendimiento-recetas/por-sucursal → src/server/consultas/reportes/rendimiento-por-sucursal.ts.
  *  - D8: (pos)/mesas → src/server/consultas/pos/mesas.ts.
  */
 const MOTIVO_PENDIENTE = "Lee la base directo desde la página; pendiente de migrar a src/server/consultas/ (Task #41, Fase D).";
 const PENDIENTES_DE_MIGRAR = [
-  "src/app/(app)/movimientos/[proceso]/page.tsx",
+  // Vacía desde D4 + D6: las 11 páginas ya se migraron. La regla sigue activa (dependency-cruiser no trata `pathNot: []`
+  // como "matchea todo": verificado con una página de prueba que importaba @/lib/db) y una página nueva que lea la base
+  // directo vuelve a fallar ui-sin-prisma y el complemento de Vitest.
 ].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE }));
 
 /**

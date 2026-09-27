@@ -180,6 +180,37 @@ test("un fallo tardío de un proveedor anterior no pisa al proveedor elegido des
 });
 
 /**
+ * Deep-link desde un reporte (ej. «Costo incompleto» → «cargale precio a este insumo»): `/movimientos/compra?productoId=<id>`
+ * llega con la primera fila ya cargada con ese producto, mostrado como «CÓDIGO — Nombre» (raya larga), y con el aviso de que se
+ * viene de un reporte. La página lo resuelve server-side con obtenerProductoOpcion (Task #41, Fase D6). Se confirma la compra
+ * para comprobar que la fila lleva el id del producto, no solo su etiqueta.
+ */
+test("?productoId= llega con el producto cargado en la fila («CÓDIGO — Nombre») y la compra se registra con ese producto", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const ahora = Date.now();
+  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-DL-${ahora}`, nombre: `E2E Insumo Deep Link ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  const etiqueta = `${producto.codigo} — ${producto.nombre}`;
+
+  await page.goto(`/movimientos/compra?productoId=${producto.id}`);
+
+  await expect(page.locator('input[placeholder="Código o nombre…"]').first()).toHaveValue(etiqueta);
+  await expect(page.getByText(/Viniste desde un reporte para cargar precio de/)).toContainText(etiqueta);
+
+  await elegirSelectPorOpcion(page, seccion.nombre);
+  await page.locator("label:has-text('Cantidad') input").first().fill("3");
+  await page.locator("label:has-text('Precio total') input").first().fill("450");
+  await page.getByRole("button", { name: "Confirmar" }).click();
+
+  await expect(page.getByText(/Se guardaron \d+ movimiento/)).toBeVisible();
+  const movimiento = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: producto.id, seccionId } });
+  expect(movimiento.proceso).toBe("COMPRA");
+  expect(Number(movimiento.cantidad)).toBe(3);
+  expect(Number(movimiento.precioTotal)).toBe(450);
+});
+
+/**
  * Validación de datos (docs/plan-validacion-de-datos-2026-09-25.md, Paso C3): el precio total pasa por el parser central. Antes,
  * "...,.,.,..." y "1.000.000" daban NaN y la compra se guardaba con precio 0 sin ningún aviso.
  */
