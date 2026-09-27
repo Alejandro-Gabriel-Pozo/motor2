@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
-import { redondearCantidad, type Db } from "@/core/reportes/comun";
 import {
+  redondearCantidad,
+  type Db,
   agruparVentasPorCategoria,
   obtenerReportePorPeriodoConCatalogo,
   pvSinCategoriaDe,
   type FilaCategoriaVenta,
   type generarReporteVentasPorCategoria,
-} from "@/core/reportes/periodo";
+} from "@/core/reportes/public-servidor";
 
 /**
  * Ventas por SECCIÓN DE CARTA (docs/plan-carta-catalogo-2026-09-24.md, M4; rehecho a nivel de PRODUCTO en

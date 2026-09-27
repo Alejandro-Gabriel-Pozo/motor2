@@ -4,7 +4,7 @@ import {
   compararRendimientosPorSucursal,
   type FiltroComparacionRendimiento,
   type FilaComparacionRendimiento,
-} from "@/core/reportes/rendimiento-por-sucursal";
+} from "@/core/reportes/public";
 
 /**
  * Lecturas de Reportes › Rendimiento por sucursal para los Server Components (Task #41, Fase D7). Mismo contrato que

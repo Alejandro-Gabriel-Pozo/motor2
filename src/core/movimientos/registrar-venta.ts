@@ -10,7 +10,7 @@ import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type P
 import { cargarDatosDeOrigen, prepararOrigen, type OrigenVenta } from "@/core/movimientos/origen-venta-datos";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
-import { calcularCostosYMargenes } from "@/core/reportes/costos";
+import { calcularCostosYMargenes } from "@/core/reportes/public-servidor";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
 
 /**
