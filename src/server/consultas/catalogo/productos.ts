@@ -39,3 +39,11 @@ export async function obtenerSeccionHabitualEnSucursal(sucursalId: string, produ
 export async function obtenerProductoPorId(id: string, db: Db = prisma) {
   return db.producto.findUnique({ where: { id } });
 }
+
+/**
+ * El producto como opción de un selector: SOLO `{ id, codigo, nombre }` (deep-link `/movimientos/[proceso]?productoId=` desde
+ * un reporte, que llega con el producto ya cargado en la primera fila). `null` si no existe.
+ */
+export async function obtenerProductoOpcion(id: string, db: Db = prisma) {
+  return db.producto.findUnique({ where: { id }, select: { id: true, codigo: true, nombre: true } });
+}
