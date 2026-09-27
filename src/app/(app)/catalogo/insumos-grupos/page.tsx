@@ -10,7 +10,7 @@ import {
   listarGrupos,
 } from "@/server/actions/catalogo/insumos";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
-import { textoCadenaDeGrupos } from "@/core/catalogo/grupo";
+import { textoCadenaDeGrupos } from "@/core/catalogo/public-servidor";
 import { FormRenombrarInsumo } from "@/components/catalogo/form-renombrar-insumo";
 import { FormConResultado } from "@/components/form-con-resultado";
 

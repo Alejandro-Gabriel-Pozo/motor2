@@ -7,7 +7,7 @@ import { validarCantidad } from "@/core/datos/cantidad";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/transiciones";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
-import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";

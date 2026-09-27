@@ -5,7 +5,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate"
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
-import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/public-servidor";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;

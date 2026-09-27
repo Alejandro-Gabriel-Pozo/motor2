@@ -32,10 +32,11 @@ function excepcionesDe(regla) {
 
 /**
  * Dominios de `src/core/` que ya exponen una fachada `public.ts` (y opcionalmente `public-servidor.ts`): fuera del propio
- * dominio (resto de core/, server/consultas/, server/persistencia/) solo se puede importar esa fachada. ARRANCA VACÍA a
- * propósito: hoy no bloquea nada; la Fase C la va llenando dominio por dominio, a medida que cada uno tiene su `public.ts`.
+ * dominio (resto de core/, server/consultas/, server/persistencia/) solo se puede importar esa fachada. Arrancó vacía (A3);
+ * la Fase C la va llenando dominio por dominio, a medida que cada uno tiene su `public.ts`:
+ *  - C1 (piloto): `catalogo` → core/catalogo/public.ts (puro) + core/catalogo/public-servidor.ts (toca la base).
  */
-const DOMINIOS_CON_PUBLIC = [];
+const DOMINIOS_CON_PUBLIC = ["catalogo"];
 
 const reglasSinInternalsDeOtroDominio = DOMINIOS_CON_PUBLIC.map((dominio) => ({
   name: "sin-internals-de-otro-dominio",
