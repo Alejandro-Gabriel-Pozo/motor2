@@ -144,6 +144,18 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   I3) QUEDAN en el archivo porque los usan `crearSolicitudTransferencia`/`crearEnvioDirectoTransferencia` (M11c). El test de arquitectura
   `test/arquitectura/confirmacion-en-un-solo-lugar.test.ts` ahora revisa `traspasos.ts` Y sus `casos-de-uso/` (las transiciones se
   mudaron ahí). `traspasos.ts` sigue FUERA de `ACCIONES_CON_CASO_DE_USO` hasta M11c.
+- **M12b — `emitirBoletaCorregida`** (`src/server/actions/pos/cuenta-cierre.ts`): comando + guard sumados a los de M12a en
+  `core/features/cuentas/` (`ComandoEmitirBoletaCorregida`, `CodigoEmitirBoletaCorregida`, `DatosEmitirBoletaCorregida` en
+  `cuenta.schema.ts`; `guardComandoEmitirBoletaCorregida` en `cuenta.guard.ts`: un `cuentaId` que no es string da «No se encontró esa
+  cuenta en esta sucursal.», igual que antes). El guard NO valida el motivo: `validarMotivoAnulacion` sigue corriendo en el caso de uso
+  DESPUÉS de las guardas de estado, así que un motivo vacío sobre una boleta vigente sigue respondiendo «ya refleja las anulaciones».
+  Persistencia en `server/persistencia/pos/` (`cargar-cuenta-para-corregir-boleta.ts`: la cuenta con sus ítems + `anuladaEn` de su
+  Operacion y los ejemplares del último al primero; `escribir-ejemplar-corregido.ts`: el ejemplar B/C…, archivos nuevos porque la carga
+  y la escritura no se parecen a las del cierre); caso de uso `pos/casos-de-uso/emitir-boleta-corregida.ts` (transacción serializable,
+  mismo número, `corrigeAId` SIEMPRE al A, auditoría `Cuenta`/`ejemplarBoleta`). Sin I3 (nunca la tuvo). La Server Action no usa
+  `aResultadoAccion`: su contrato (`ResultadoBoletaCorregida`) le devuelve a la pantalla además `numero` y `ejemplar` (para imprimir el
+  ejemplar confirmado), así que los copia de `datos` — los ids (`ejemplarId`, `corrigeAId`) NO se serializan. Con `cerrarCuenta` (M12a) y
+  `emitirBoletaCorregida` migradas, `cuenta-cierre.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**.
 
 ## Cómo se migra la próxima acción
 

@@ -1,15 +1,11 @@
 "use server";
 
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { validarMotivoAnulacion } from "@/core/pos/cuenta";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
-import { armarBoletaVigente, estadoDeBoleta, type ItemConVenta } from "@/core/pos/boleta";
-import { guardComandoCerrarCuenta } from "@/core/features/cuentas/cuenta.guard";
+import { guardComandoCerrarCuenta, guardComandoEmitirBoletaCorregida } from "@/core/features/cuentas/cuenta.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoBoletaCorregida } from "../tipos";
 import { cerrarCuentaCasoDeUso } from "./casos-de-uso/cerrar-cuenta";
+import { emitirBoletaCorregidaCasoDeUso } from "./casos-de-uso/emitir-boleta-corregida";
 
 /**
  * Toma de pedido en el salón — cerrar la cuenta (registra la venta y numera la boleta) y emitir la boleta corregida.
@@ -46,8 +42,8 @@ import { cerrarCuentaCasoDeUso } from "./casos-de-uso/cerrar-cuenta";
  * Desde la Task #41 (Fase M12a, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
  * (`conPermiso`) → formato (`guardComandoCerrarCuenta`, core/features/cuentas/) → caso de uso (`casos-de-uso/cerrar-cuenta.ts`:
  * transacción, carga, venta con `registrarVentaEnTx`, numeración de la boleta, enlace de ítems, cierre y auditoría; lecturas y escrituras
- * en server/persistencia/pos/) → `aResultadoAccion`. `emitirBoletaCorregida` (abajo) todavía no se migró (M12b): por eso este archivo NO
- * está aún en `ACCIONES_CON_CASO_DE_USO`.
+ * en server/persistencia/pos/) → `aResultadoAccion`. Con `emitirBoletaCorregida` (abajo, M12b) también migrada, el archivo entero está
+ * en `ACCIONES_CON_CASO_DE_USO` (.dependency-cruiser-excepciones.cjs).
  */
 export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_cerrar_cuenta", async (ctx) => {
@@ -68,67 +64,19 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
  * «desactualizada» (`estadoDeBoleta`): si el último ejemplar ya refleja las anulaciones, o la venta se anuló entera, se rechaza. Mismo
  * permiso que cerrar la cuenta. La transacción serializable arbitra dos emisiones a la vez: la segunda reintenta, ve el B ya emitido
  * (vigente) y se rechaza.
+ *
+ * Desde la Task #41 (Fase M12b, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso`) → formato del `cuentaId` (`guardComandoEmitirBoletaCorregida`, core/features/cuentas/) → caso de uso
+ * (`casos-de-uso/emitir-boleta-corregida.ts`: transacción, carga, guardas de estado, motivo, ejemplar nuevo y auditoría; lectura y
+ * escritura en server/persistencia/pos/) → `{ ok, mensaje, numero, ejemplar }`.
  */
 export async function emitirBoletaCorregida(cuentaId: string, motivo: string): Promise<ResultadoBoletaCorregida> {
   return conPermiso("pos_cerrar_cuenta", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
-      const cuenta =
-        typeof cuentaId === "string"
-          ? await tx.cuenta.findFirst({
-              where: { id: cuentaId, mesa: { sucursalId: ctx.sucursalId } },
-              include: {
-                mesa: { select: { numero: true } },
-                items: { include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } } } },
-                ejemplaresBoleta: { orderBy: { ejemplar: "desc" } },
-              },
-            })
-          : null;
-      if (!cuenta) return error("No se encontró esa cuenta en esta sucursal.");
-      const mesa = cuenta.mesa.numero;
-      if (!cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} todavía está abierta: no tiene boleta que corregir.`);
-      const [ultimo] = cuenta.ejemplaresBoleta;
-      const original = cuenta.ejemplaresBoleta.find((e) => e.ejemplar === 1);
-      if (!ultimo || !original) return error(`La cuenta de la mesa ${mesa} se cerró antes de la numeración de boletas: no tiene boleta que corregir.`);
-
-      const items: ItemConVenta[] = cuenta.items.map((i) => ({
-        productoId: i.productoId,
-        productoNombre: i.producto.nombre,
-        cantidad: Number(i.cantidad),
-        precioUnitario: Number(i.precioUnitario),
-        operacionId: i.operacionId,
-        anuladaEn: i.operacion?.anuladaEn ?? null,
-      }));
-      const estado = estadoDeBoleta(items, ultimo.emitidoEn);
-      if (estado === "anulada" || !armarBoletaVigente(items).lineas.length) return error("La venta se anuló entera: no hay boleta que corregir.");
-      if (estado === "vigente") return error(`La boleta N.º ${formatearNumeroBoleta(ultimo)} ya refleja las anulaciones.`);
-
-      const motivoValidado = validarMotivoAnulacion(motivo);
-      if (!motivoValidado.ok) return error(motivoValidado.mensaje);
-
-      const nuevo = { numero: original.numero, ejemplar: ultimo.ejemplar + 1 };
-      await tx.ejemplarBoleta.create({
-        data: {
-          sucursalId: original.sucursalId,
-          cuentaId: cuenta.id,
-          ...nuevo,
-          emitidoEn: new Date(),
-          emitidoPorId: ctx.usuarioId,
-          corrigeAId: original.id,
-          motivo: motivoValidado.motivo,
-        },
-      });
-      const [anterior, emitido, reemplazado] = [formatearNumeroBoleta(ultimo), formatearNumeroBoleta(nuevo), formatearNumeroBoleta(original)];
-      await registrarCambioAuditado(tx, {
-        entidad: "Cuenta",
-        entidadId: cuenta.id,
-        descripcion: `Mesa ${mesa}: boleta corregida N.º ${emitido} (reemplaza a N.º ${reemplazado}). Motivo: ${motivoValidado.motivo}`,
-        campo: "ejemplarBoleta",
-        valorAnterior: anterior,
-        valorNuevo: emitido,
-        actorId: ctx.usuarioId,
-        sucursalId: ctx.sucursalId,
-      });
-      return { ...ok(`Boleta N.º ${emitido} emitida: reemplaza a N.º ${reemplazado}.`), ...nuevo };
-    });
+    const comando = guardComandoEmitirBoletaCorregida({ cuentaId, motivo });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await emitirBoletaCorregidaCasoDeUso(ctx, comando.valor);
+    // Como `aResultadoAccion`, pero la pantalla necesita además QUÉ ejemplar se emitió (para imprimirlo): solo `numero` y `ejemplar` de
+    // `datos` — nunca los ids internos.
+    return r.ok ? { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } : error(r.mensaje);
   });
 }
