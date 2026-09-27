@@ -6,12 +6,14 @@ import type {
   ComandoAprobarYEnviarTraspaso,
   ComandoCancelarSolicitudTraspaso,
   ComandoConfirmarReingresoTraspaso,
+  ComandoCrearEnvioDirectoTraspaso,
+  ComandoCrearSolicitudTraspaso,
   ComandoRechazarEnvioTraspaso,
   ComandoRechazarSolicitudTraspaso,
 } from "./traspaso.schema";
 
 /**
- * Guards de los COMANDOS de traspasos (Task #41, Fases M11a y M11b —docs/arquitectura-casos-de-uso-2026-09-27.md): formato, ANTES de abrir la
+ * Guards de los COMANDOS de traspasos (Task #41, Fases M11a, M11b y M11c —docs/arquitectura-casos-de-uso-2026-09-27.md): formato, ANTES de abrir la
  * transacción. Puros: sin Prisma ni permisos. Viven aparte de `traspaso.guard.ts` (el guard de TRANSICIÓN de estado, que decide contra
  * el traspaso ya leído y lo sigue usando el caso de uso dentro de la transacción).
  *
@@ -112,4 +114,50 @@ export function guardComandoConfirmarReingresoTraspaso(entrada: unknown): Result
   const clave = claveI3(claveIdempotencia);
   if (!clave.ok) return clave;
   return aceptar({ traspasoId: traspasoId.valor, claveIdempotencia: clave.valor });
+}
+
+/*
+ * Guards de la CREACIÓN de un traspaso (Task #41, Fase M11c): pedir (PULL) y enviar directo (PUSH). Primero la sucursal de la otra punta
+ * (vacía → el mismo texto de antes), después el formato de la sección y del producto. Que la otra punta no sea ESTA sucursal, que exista
+ * y esté activa, que la sección sea propia, que el producto sea transferible y la cantidad (contra los decimales de SU unidad) lo decide
+ * el caso de uso contra la base, en el orden de siempre.
+ *
+ * Una sección o un producto que no son string daban antes un error crudo de validación de Prisma (un 500 para la pantalla); ahora dan
+ * el MISMO texto que «no es una sección propia» / «el producto no existe». Único cambio de orden, solo con entradas malformadas que la
+ * pantalla nunca manda: esos dos chequeos de formato corren antes que «a vos mismo» / «sucursal no activa».
+ */
+
+/** Mismo texto que usaba `crearSolicitudTransferencia` cuando no se eligió la sucursal a la que se le pide. */
+export const MENSAJE_FALTA_SUCURSAL_ORIGEN = "Elegí de qué sucursal lo pedís.";
+
+/** Mismo texto que usaba `crearEnvioDirectoTransferencia` cuando no se eligió la sucursal a la que se le manda. */
+export const MENSAJE_FALTA_SUCURSAL_DESTINO = "Elegí a qué sucursal se lo mandás.";
+
+/** Mismo texto que usaba `crearSolicitudTransferencia` cuando la sección de destino no es de esta sucursal. */
+export const MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA = "Elegí a qué sección propia tiene que entrar.";
+
+/** Mismo texto que usaban las dos creaciones cuando la sucursal de la otra punta no existe o está inactiva (lo decide el caso de uso). */
+export const MENSAJE_SUCURSAL_NO_DISPONIBLE = "Esa sucursal no existe o no está activa.";
+
+/** Mismo texto que usaban las dos creaciones cuando el producto no existe. */
+export const MENSAJE_PRODUCTO_NO_EXISTE = "El producto no existe.";
+
+/** Guard del comando «pedir una transferencia» (PULL). */
+export function guardComandoCrearSolicitudTraspaso(entrada: unknown): ResultadoDato<ComandoCrearSolicitudTraspaso> {
+  const { origenSucursalId, productoId, cantidad, seccionDestinoId, detalle } = (entrada ?? {}) as Record<string, unknown>;
+  const origen = texto(origenSucursalId);
+  if (!origen) return rechazar("vacio", MENSAJE_FALTA_SUCURSAL_ORIGEN);
+  if (typeof seccionDestinoId !== "string") return rechazar("formato", MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA);
+  if (typeof productoId !== "string") return rechazar("formato", MENSAJE_PRODUCTO_NO_EXISTE);
+  return aceptar({ origenSucursalId: origen, productoId, cantidad, seccionDestinoId, detalle: texto(detalle) || null });
+}
+
+/** Guard del comando «enviar directo» (PUSH). */
+export function guardComandoCrearEnvioDirectoTraspaso(entrada: unknown): ResultadoDato<ComandoCrearEnvioDirectoTraspaso> {
+  const { destinoSucursalId, productoId, cantidad, seccionOrigenId, detalle } = (entrada ?? {}) as Record<string, unknown>;
+  const destino = texto(destinoSucursalId);
+  if (!destino) return rechazar("vacio", MENSAJE_FALTA_SUCURSAL_DESTINO);
+  if (typeof seccionOrigenId !== "string") return rechazar("formato", MENSAJE_SECCION_ORIGEN_NO_PROPIA);
+  if (typeof productoId !== "string") return rechazar("formato", MENSAJE_PRODUCTO_NO_EXISTE);
+  return aceptar({ destinoSucursalId: destino, productoId, cantidad, seccionOrigenId, detalle: texto(detalle) || null });
 }

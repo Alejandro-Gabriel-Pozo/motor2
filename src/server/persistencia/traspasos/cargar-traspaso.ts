@@ -43,17 +43,36 @@ export async function cargarSucursalDelTraspaso(tx: Prisma.TransactionClient, su
   return { id: s.id, nombre: s.nombre };
 }
 
-/** Lo que hace falta del producto para decidir si es transferible (`tieneStockReal`). `null` si ya no existe. */
+/**
+ * Lo que hace falta del producto para decidir si es transferible (`tieneStockReal`), más su unidad de stock (M11c: la creación valida la
+ * cantidad contra sus decimales y la nombra en el mensaje del envío directo). `null` si ya no existe.
+ */
 export interface ProductoParaTraspaso {
   id: string;
   nombre: string;
   tipo: TipoProducto;
   seProduce: boolean;
+  unidadStock: { nombre: string; decimales: number };
 }
 
 export async function cargarProductoParaTraspaso(tx: Prisma.TransactionClient, productoId: string): Promise<ProductoParaTraspaso | null> {
   const p = await tx.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
-  return p ? { id: p.id, nombre: p.nombre, tipo: p.tipo, seProduce: p.seProduce } : null;
+  return p
+    ? { id: p.id, nombre: p.nombre, tipo: p.tipo, seProduce: p.seProduce, unidadStock: { nombre: p.unidadStock.nombre, decimales: p.unidadStock.decimales } }
+    : null;
+}
+
+/**
+ * La sucursal de la otra punta de un traspaso que se está CREANDO (Task #41, Fase M11c: la misma consulta que antes hacían en línea
+ * `crearSolicitudTransferencia` y `crearEnvioDirectoTransferencia`). A diferencia de `cargarSucursalDelTraspaso`, puede no existir
+ * (viene del formulario, no de una FK): `null` en ese caso; si está activa lo decide el caso de uso.
+ */
+export async function cargarSucursalParaTraspaso(
+  tx: Prisma.TransactionClient,
+  sucursalId: string
+): Promise<{ id: string; nombre: string; activo: boolean } | null> {
+  const s = await tx.sucursal.findUnique({ where: { id: sucursalId } });
+  return s ? { id: s.id, nombre: s.nombre, activo: s.activo } : null;
 }
 
 /**

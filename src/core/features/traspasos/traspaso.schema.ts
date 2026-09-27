@@ -119,3 +119,53 @@ export type ResultadoRechazarEnvioTraspaso = ResultadoCaso<DatosRechazoDeEnvioTr
 
 export type CodigoConfirmarReingresoTraspaso = CodigoTransicionTraspaso | "SIN_SECCION_ORIGEN" | "CONFLICTO_IDEMPOTENCIA";
 export type ResultadoConfirmarReingresoTraspaso = ResultadoCaso<DatosEntradaDeTraspaso, CodigoConfirmarReingresoTraspaso>;
+
+/*
+ * Comandos y resultados de la CREACIÓN de un traspaso (Task #41, Fase M11c — docs/arquitectura-casos-de-uso-2026-09-27.md):
+ * `src/server/actions/traspasos/casos-de-uso/` (`crear-solicitud-de-traspaso.ts`, `crear-envio-directo-de-traspaso.ts`). Los comandos
+ * llegan YA validados por los guards de `traspaso-comandos.guard.ts`.
+ */
+
+/** Comando «pedir una transferencia» (PULL; Destino = quien actúa): de qué sucursal, qué producto, cuánto y a qué sección propia entra. */
+export interface ComandoCrearSolicitudTraspaso {
+  /** La sucursal a la que se le pide (Origen), ya normalizada con `texto()` y no vacía. */
+  origenSucursalId: string;
+  /** El producto tal cual llegó (string): que exista y sea transferible lo decide el caso de uso contra la base. */
+  productoId: string;
+  /** La cantidad TAL CUAL llegó: se valida en el caso de uso contra los decimales de la unidad de stock del producto. */
+  cantidad: unknown;
+  /** La sección tal cual llegó (string): que sea de ESTA sucursal lo decide el caso de uso contra la base. */
+  seccionDestinoId: string;
+  /** Ya normalizado: `texto(detalle) || null`, igual que antes. */
+  detalle: string | null;
+}
+
+/** Comando «enviar directo» (PUSH; Origen = quien actúa): a qué sucursal, qué producto, cuánto y de qué sección propia sale. */
+export interface ComandoCrearEnvioDirectoTraspaso {
+  /** La sucursal a la que se le manda (Destino), ya normalizada con `texto()` y no vacía. */
+  destinoSucursalId: string;
+  productoId: string;
+  cantidad: unknown;
+  seccionOrigenId: string;
+  detalle: string | null;
+}
+
+/** Por qué no se pudo crear el traspaso (común a los dos sentidos). */
+export type CodigoCrearTraspaso = "MISMA_SUCURSAL" | "SUCURSAL_NO_DISPONIBLE" | "SECCION_NO_PROPIA" | "PRODUCTO_NO_TRANSFERIBLE" | "CANTIDAD_INVALIDA";
+
+/** `datos` de una creación: el traspaso nuevo y el nombre del producto (lo que la Server Action devuelve como `id`/`nombre`). */
+export interface DatosCreacionDeTraspaso {
+  traspasoId: string;
+  productoNombre: string;
+}
+
+export type ResultadoCrearSolicitudTraspaso = ResultadoCaso<DatosCreacionDeTraspaso, CodigoCrearTraspaso>;
+
+/** `datos` de un envío directo: además, la Operación de SALIDA escrita y lo que salió de la sección de origen. */
+export interface DatosEnvioDirectoDeTraspaso extends DatosCreacionDeTraspaso {
+  operacionId: string;
+  seccionOrigenId: string;
+  cantidad: number;
+}
+
+export type ResultadoCrearEnvioDirectoTraspaso = ResultadoCaso<DatosEnvioDirectoDeTraspaso, CodigoCrearTraspaso | "STOCK_INSUFICIENTE">;

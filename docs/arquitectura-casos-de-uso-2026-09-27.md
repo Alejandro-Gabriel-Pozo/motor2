@@ -172,6 +172,34 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   (nunca la tuvo: el doble clic lo frena la guarda optimista). Permiso `pos_anular_item` sin cambios. **Migración PARCIAL a propósito:**
   `cuenta-anulacion.ts` NO entra todavía en `ACCIONES_CON_CASO_DE_USO` — `anularPromoEnviada` (M12d) sigue con Prisma, reintento y
   auditoría en línea, y la regla vale para el archivo entero. Se suma cuando termine M12d.
+- **M11c — `crearSolicitudTransferencia`, `crearEnvioDirectoTransferencia`** (`src/server/actions/traspasos/traspasos.ts`, cierre de
+  M11a/M11b): guards de comando sumados a `core/features/traspasos/traspaso-comandos.guard.ts` (`guardComandoCrearSolicitudTraspaso`,
+  `guardComandoCrearEnvioDirectoTraspaso`: la sucursal de la otra punta con `texto()` —vacía da el texto de antes—, y una sección o un
+  producto que no son string dan «Elegí a qué sección propia…»/«El producto no existe.», antes un error crudo de Prisma; único cambio de
+  orden, solo con entradas malformadas que la pantalla nunca manda: esos chequeos de formato corren antes que «a vos mismo»), comandos y
+  resultados sumados a `traspaso.schema.ts` (`CodigoCrearTraspaso`, `DatosCreacionDeTraspaso`, `DatosEnvioDirectoDeTraspaso`). La
+  cantidad viaja TAL CUAL en el comando y se valida en el caso de uso contra los decimales de la unidad del producto, igual que antes.
+  Persistencia: `cargar-traspaso.ts` suma `cargarSucursalParaTraspaso` y `ProductoParaTraspaso` suma `unidadStock`; nuevo
+  `escribir-creacion-de-traspaso.ts` (`escribirSolicitudDeTraspaso`, `escribirEnvioDirectoDeTraspaso`); la SALIDA (Operación + línea de
+  Kardex) se extrajo a `escribirSalidaDeTraspaso` en `escribir-aprobacion-de-traspaso.ts`, compartida por la aprobación y el envío
+  directo. Casos de uso `crear-solicitud-de-traspaso.ts` y `crear-envio-directo-de-traspaso.ts`, los dos sobre el paso compartido
+  `producto-transferible.ts` y dentro de UNA transacción serializable: la solicitud antes no tenía transacción (lecturas sueltas + un
+  `create`), y el envío directo validaba (y chequeaba el stock una primera vez) FUERA de la transacción para volver a leer el stock
+  adentro — ahora todo se lee adentro una sola vez, mismos textos. La Server Action no usa `aResultadoAccion`: su contrato
+  (`ResultadoConId`) devuelve además `id`/`nombre`, que copia de `datos` (`okConId`). Se borraron de `traspasos.ts` los dos helpers que
+  quedaban (`obtenerProductoTransferible`, ya duplicado por `producto-transferible.ts`, y `escribirMovimientoTraspaso`, ahora
+  `escribirSalidaDeTraspaso`). **Sin I3, a propósito:** la solicitud no toca stock (un duplicado se cancela desde la Bandeja sin efecto
+  en el Kardex); el envío directo sí descuenta stock, pero (1) quedó fuera del alcance de la política I3
+  (`auditoria-motor2-plan-i3-idempotencia-2026-09-17.md`), (2) su contrato devuelve `id`/`nombre` y `resultadoMensaje` no alcanza para
+  reconstruirlos en un reenvío, (3) el formulario deshabilita el botón mientras la acción corre, y (4) un duplicado nunca deja el stock
+  inconsistente (la SALIDA y el traspaso ENVIADO se escriben juntos; se deshace con rechazo + reingreso). **Pendiente** (fuera de esta
+  fase, porque cambia el contrato y la pantalla): I3 para el envío directo ante un reintento de red, con un tag propio y el `id` del
+  traspaso recuperable desde la Operación. **Las lecturas** (`obtenerBandejaTransferencias`, `listarSucursalesDisponibles`) se mudaron
+  TAL CUAL a `src/server/actions/traspasos/lecturas.ts` (siguen siendo Server Actions con `requerirVerEnSucursal`): la regla
+  `accion-migrada-sin-orquestacion` vale para el archivo ENTERO y no admite `@/lib/db`, y una Server Action no puede importar
+  `server/consultas/` (`acciones-sin-ui`); se actualizaron solo las rutas de import de sus tres páginas y de tres tests
+  (`test/permisos/lecturas-con-permiso-de-ver.test.ts`, `lecturas-con-sesion.test.ts`, `test/traspasos/traspasos.test.ts`), sin tocar
+  lo que verifican. Con las ocho escrituras migradas, **`traspasos.ts` entra en `ACCIONES_CON_CASO_DE_USO`**.
 
 ## Cómo se migra la próxima acción
 

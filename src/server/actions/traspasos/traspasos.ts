@@ -1,36 +1,26 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
-import { texto } from "@/core/texto";
-import { validarCantidad } from "@/core/datos/cantidad";
-import { tieneStockReal } from "@/core/movimientos/public";
-import {
-  calcularSaldoTotal,
-  obtenerSeccionPropia,
-  validarStockSuficiente,
-  conTransaccionSerializable,
-} from "@/core/movimientos/public-servidor";
-import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import {
   guardComandoAceptarTraspaso,
   guardComandoAprobarYEnviarTraspaso,
   guardComandoCancelarSolicitudTraspaso,
   guardComandoConfirmarReingresoTraspaso,
+  guardComandoCrearEnvioDirectoTraspaso,
+  guardComandoCrearSolicitudTraspaso,
   guardComandoRechazarEnvioTraspaso,
   guardComandoRechazarSolicitudTraspaso,
 } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
-import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
-import { error, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirVerEnSucursal } from "../con-sesion";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { aprobarYEnviarTraspasoCasoDeUso } from "./casos-de-uso/aprobar-y-enviar-traspaso";
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/rechazar-solicitud-de-traspaso";
 import { aceptarTraspasoCasoDeUso } from "./casos-de-uso/aceptar-traspaso";
 import { rechazarEnvioDeTraspasoCasoDeUso } from "./casos-de-uso/rechazar-envio-de-traspaso";
 import { confirmarReingresoDeTraspasoCasoDeUso } from "./casos-de-uso/confirmar-reingreso-de-traspaso";
+import { crearSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/crear-solicitud-de-traspaso";
+import { crearEnvioDirectoDeTraspasoCasoDeUso } from "./casos-de-uso/crear-envio-directo-de-traspaso";
 
 /**
  * ===================================================================
@@ -55,82 +45,13 @@ import { confirmarReingresoDeTraspasoCasoDeUso } from "./casos-de-uso/confirmar-
  * anticipando esta porción) — mismo criterio que Apps Script
  * (requierePermiso_ en cada función de escritura, nunca en la lectura de
  * la Bandeja).
- */
-
-/**
- * Producto elegible para traspasar — existe, tiene stock real, y está
- * disponible en TODAS las sucursales dadas (docs/plan-disponibilidad-por-
- * sucursal-2026-09-23.md §5.5). Un traspaso tiene origen y destino: si el
- * destino no lo tiene disponible, el stock aterriza en una sucursal que lo
- * filtra de su Stock consolidado y su Valuación — stock invisible. Por eso
- * quien llama pasa las sucursales que corresponda chequear en ese punto del
- * ciclo (origen+destino al crear, la que corresponda al re-chequear en cada
- * paso siguiente).
  *
- * La misma regla, con los mismos textos, vive también en
- * `casos-de-uso/producto-transferible.ts` para los casos de uso ya migrados
- * (Task #41, M11a/M11b); esta copia queda solo para las Server Actions
- * todavía sin migrar (M11c: crearSolicitudTransferencia y
- * crearEnvioDirectoTransferencia) y se borra con la última.
+ * Desde la Task #41 (Fases M11a/M11b/M11c, docs/arquitectura-casos-de-uso-2026-09-27.md) este archivo tiene SOLO las ESCRITURAS, cada
+ * una como adaptador fino de su caso de uso (`casos-de-uso/`), y está en `ACCIONES_CON_CASO_DE_USO`
+ * (.dependency-cruiser-excepciones.cjs): no puede importar la base, Prisma en runtime, reintento/idempotencia/auditoría ni
+ * `server/persistencia/`. Las LECTURAS de la Bandeja y de los selectores (`obtenerBandejaTransferencias`,
+ * `listarSucursalesDisponibles`) se mudaron tal cual a `lecturas.ts`, al lado.
  */
-async function obtenerProductoTransferible(
-  productoId: string,
-  sucursales: { sucursalId: string; sucursalNombre: string }[],
-  tx: Prisma.TransactionClient | typeof prisma = prisma
-) {
-  const producto = await tx.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
-  if (!producto) return { ok: false as const, mensaje: "El producto no existe." };
-  if (!tieneStockReal(producto.tipo, producto.seProduce)) {
-    return { ok: false as const, mensaje: `"${producto.nombre}" no tiene stock real — no se puede transferir.` };
-  }
-  for (const s of sucursales) {
-    if (!(await productoDisponibleEn(s.sucursalId, producto.id, tx))) {
-      return { ok: false as const, mensaje: `«${producto.nombre}» no está disponible en «${s.sucursalNombre}»: activalo allá antes de enviar.` };
-    }
-  }
-  return { ok: true as const, producto };
-}
-
-/**
- * La Operación + su línea de Kardex de un traspaso. Desde la Task #41 solo la usa crearEnvioDirectoTransferencia (sin I3, M11c): la
- * SALIDA de la aprobación (M11a), la ENTRADA de la aceptación y el REINGRESO (M11b, con I3) las escriben
- * `server/persistencia/traspasos/escribir-aprobacion-de-traspaso.ts` y `escribir-entrada-de-traspaso.ts`.
- */
-async function escribirMovimientoTraspaso(
-  tx: Prisma.TransactionClient,
-  ctx: ContextoUsuario,
-  traspasoId: string,
-  proceso: "TRANSFERENCIA_SALIDA_SUCURSAL",
-  productoId: string,
-  seccionId: string,
-  cantidadFirmada: number,
-  detalle: string
-) {
-  const operacion = await tx.operacion.create({
-    data: {
-      sucursalId: ctx.sucursalId,
-      proceso,
-      fecha: new Date(),
-      usuarioId: ctx.usuarioId,
-      claveIdempotencia: null,
-      payloadHash: null,
-    },
-  });
-  await tx.movimientoStock.create({
-    data: {
-      operacionId: operacion.id,
-      productoId,
-      seccionId,
-      proceso,
-      cantidad: cantidadFirmada,
-      detalle,
-      precioTotal: 0,
-      precioPorUnidadStock: 0,
-      traspasoSucursalId: traspasoId,
-    },
-  });
-  return operacion;
-}
 
 export interface DatosSolicitudTraspaso {
   origenSucursalId: string;
@@ -140,52 +61,19 @@ export interface DatosSolicitudTraspaso {
   detalle?: string;
 }
 
-/** PULL: yo soy Destino, le pido a `origenSucursalId`. No toca stock — solo queda SOLICITADA, pendiente de que Origen decida. */
+/**
+ * PULL: yo soy Destino, le pido a `origenSucursalId`. No toca stock — solo queda SOLICITADA, pendiente de que Origen decida.
+ *
+ * Desde la Task #41 (Fase M11c, docs/arquitectura-casos-de-uso-2026-09-27.md) es un adaptador fino: permiso (`conPermiso`) → formato
+ * (`guardComandoCrearSolicitudTraspaso`) → caso de uso (`casos-de-uso/crear-solicitud-de-traspaso.ts`: sucursal, sección propia,
+ * producto transferible, cantidad y escritura, en una transacción) → `{ ok, mensaje, id, nombre }`.
+ */
 export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso): Promise<ResultadoConId> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const origenSucursalId = texto(datos.origenSucursalId);
-    if (!origenSucursalId) return error("Elegí de qué sucursal lo pedís.");
-    if (origenSucursalId === ctx.sucursalId) return error("No podés pedirte una transferencia a vos mismo.");
-
-    const origen = await prisma.sucursal.findUnique({ where: { id: origenSucursalId } });
-    if (!origen || !origen.activo) return error("Esa sucursal no existe o no está activa.");
-
-    const seccionDestino = await obtenerSeccionPropia(datos.seccionDestinoId, ctx.sucursalId);
-    if (!seccionDestino) return error("Elegí a qué sección propia tiene que entrar.");
-
-    const resProducto = await obtenerProductoTransferible(datos.productoId, [
-      { sucursalId: origenSucursalId, sucursalNombre: origen.nombre },
-      { sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
-    ]);
-    if (!resProducto.ok) return error(resProducto.mensaje);
-
-    // Mismo criterio que crearEnvioDirectoTransferencia (PUSH) y que Compra
-    // (guardLineaCompra): una cantidad con más decimales de los que admite
-    // la unidad de stock del producto se RECHAZA, no se redondea en
-    // silencio — 2,5 en una unidad entera es un error de carga, no un 3
-    // (docs/plan-validacion-de-datos-2026-09-25.md).
-    const resCantidad = validarCantidad(datos.cantidad, resProducto.producto.unidadStock, {
-      etiqueta: `La cantidad de "${resProducto.producto.nombre}"`,
-      obligatorio: true,
-    });
-    if (!resCantidad.ok) return error(resCantidad.mensaje);
-    const cantidad = resCantidad.valor!;
-
-    const traspaso = await prisma.traspasoSucursal.create({
-      data: {
-        origenSucursalId,
-        destinoSucursalId: ctx.sucursalId,
-        productoId: datos.productoId,
-        cantidad,
-        seccionDestinoId: seccionDestino.id,
-        iniciadoPor: "DESTINO",
-        estado: "SOLICITADA",
-        creadoPorId: ctx.usuarioId,
-        detalle: texto(datos.detalle) || null,
-      },
-    });
-
-    return { ok: true, mensaje: `Solicitud enviada a "${origen.nombre}".`, id: traspaso.id, nombre: resProducto.producto.nombre };
+    const comando = guardComandoCrearSolicitudTraspaso(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await crearSolicitudDeTraspasoCasoDeUso(ctx, comando.valor);
+    return r.ok ? okConId(r.mensaje, r.datos.traspasoId, r.datos.productoNombre) : error(r.mensaje);
   });
 }
 
@@ -197,73 +85,19 @@ export interface DatosEnvioDirectoTraspaso {
   detalle?: string;
 }
 
-/** PUSH: yo soy Origen, decido enviar directo a `destinoSucursalId` sin que me lo pidan. Valida y descuenta stock YA — queda ENVIADA. */
+/**
+ * PUSH: yo soy Origen, decido enviar directo a `destinoSucursalId` sin que me lo pidan. Valida y descuenta stock YA — queda ENVIADA.
+ *
+ * Desde la Task #41 (Fase M11c) es un adaptador fino: permiso → `guardComandoCrearEnvioDirectoTraspaso` → caso de uso
+ * (`casos-de-uso/crear-envio-directo-de-traspaso.ts`: sucursal, sección propia, producto transferible, cantidad, stock y escritura del
+ * traspaso ENVIADO + su SALIDA, en una transacción serializable; sin I3, ver el docstring del caso de uso) → `{ ok, mensaje, id, nombre }`.
+ */
 export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTraspaso): Promise<ResultadoConId> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const destinoSucursalId = texto(datos.destinoSucursalId);
-    if (!destinoSucursalId) return error("Elegí a qué sucursal se lo mandás.");
-    if (destinoSucursalId === ctx.sucursalId) return error("No podés mandarte una transferencia a vos mismo.");
-
-    const destino = await prisma.sucursal.findUnique({ where: { id: destinoSucursalId } });
-    if (!destino || !destino.activo) return error("Esa sucursal no existe o no está activa.");
-
-    const seccionOrigen = await obtenerSeccionPropia(datos.seccionOrigenId, ctx.sucursalId);
-    if (!seccionOrigen) return error("Elegí de qué sección propia sale.");
-
-    const resProducto = await obtenerProductoTransferible(datos.productoId, [
-      { sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
-      { sucursalId: destinoSucursalId, sucursalNombre: destino.nombre },
-    ]);
-    if (!resProducto.ok) return error(resProducto.mensaje);
-
-    // Mismo criterio que Compra (guardLineaCompra): se rechaza el exceso de
-    // decimales ANTES de chequear stock, así el mensaje de error nombra el
-    // problema real (la cantidad tecleada) y no un "stock insuficiente"
-    // calculado contra un valor que después se iba a redondear.
-    const resCantidad = validarCantidad(datos.cantidad, resProducto.producto.unidadStock, {
-      etiqueta: `La cantidad de "${resProducto.producto.nombre}"`,
-      obligatorio: true,
-    });
-    if (!resCantidad.ok) return error(resCantidad.mensaje);
-    const cantidad = resCantidad.valor!;
-
-    const chequeoStock = await validarStockSuficiente(datos.productoId, seccionOrigen.id, cantidad);
-    if (!chequeoStock.ok) {
-      return error(`Stock insuficiente de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${chequeoStock.actual}, requerido: ${chequeoStock.requerido}.`);
-    }
-
-    const resultado = await conTransaccionSerializable(async (tx) => {
-      const disponible = await calcularSaldoTotal(datos.productoId, seccionOrigen.id, tx);
-      if (disponible < cantidad) {
-        return error(`Stock insuficiente de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${disponible}, requerido: ${cantidad}.`);
-      }
-
-      const ahora = new Date();
-      const traspaso = await tx.traspasoSucursal.create({
-        data: {
-          origenSucursalId: ctx.sucursalId,
-          destinoSucursalId,
-          productoId: datos.productoId,
-          cantidad,
-          seccionOrigenId: seccionOrigen.id,
-          iniciadoPor: "ORIGEN",
-          estado: "ENVIADA",
-          creadoPorId: ctx.usuarioId,
-          detalle: texto(datos.detalle) || null,
-          fechaDecisionOrigen: ahora,
-          decididoPorOrigenId: ctx.usuarioId,
-        },
-      });
-
-      await escribirMovimientoTraspaso(
-        tx, ctx, traspaso.id, "TRANSFERENCIA_SALIDA_SUCURSAL", datos.productoId, seccionOrigen.id, -cantidad,
-        `Transferencia a sucursal "${destino.nombre}".`
-      );
-
-      return { ok: true as const, mensaje: `Enviado a "${destino.nombre}". Se descontó ${cantidad} ${resProducto.producto.unidadStock.nombre} de "${resProducto.producto.nombre}" en "${seccionOrigen.nombre}".`, id: traspaso.id, nombre: resProducto.producto.nombre };
-    });
-
-    return resultado;
+    const comando = guardComandoCrearEnvioDirectoTraspaso(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await crearEnvioDirectoDeTraspasoCasoDeUso(ctx, comando.valor);
+    return r.ok ? okConId(r.mensaje, r.datos.traspasoId, r.datos.productoNombre) : error(r.mensaje);
   });
 }
 
@@ -381,93 +215,4 @@ export async function confirmarReingresoTransferencia(id: string, claveIdempoten
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await confirmarReingresoDeTraspasoCasoDeUso(ctx, comando.valor));
   });
-}
-
-const INCLUDE_BANDEJA = {
-  producto: { include: { unidadStock: true } },
-  origenSucursal: true,
-  destinoSucursal: true,
-  seccionOrigen: true,
-  seccionDestino: true,
-  creadoPor: true,
-} satisfies Prisma.TraspasoSucursalInclude;
-
-const TAMANO_PAGINA_HISTORIAL = 30;
-
-/**
- * Todo lo que sigue "en curso" — quien las cumple nunca es historial. Las
- * primeras 3 son "hay algo para ACCIONAR" de este lado (paraAprobar/
- * paraAceptar/paraReingreso); las últimas 2 son lo que ESTA sucursal
- * INICIÓ (iniciadoPor) y sigue esperando que decida la otra — antes
- * faltaban del todo, así que una solicitud/envío propio en curso se
- * mezclaba con el historial ya resuelto (hallazgo de la auditoría de
- * motor2). `iniciadoPor` es necesario en la condición de ENVIADA: un PULL
- * que Origen ya aprobó también queda ENVIADA con origenSucursalId=yo,
- * pero ahí lo inició Destino (paraAceptar del otro lado) — yo ya hice lo
- * mío, no estoy "esperando" en el mismo sentido que un PUSH propio.
- */
-function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInput[] {
-  return [
-    { origenSucursalId: sucursalId, estado: "SOLICITADA" },
-    { destinoSucursalId: sucursalId, estado: "ENVIADA" },
-    { origenSucursalId: sucursalId, estado: "RECHAZADA_DESTINO" },
-    { destinoSucursalId: sucursalId, estado: "SOLICITADA", iniciadoPor: "DESTINO" }, // mi propia solicitud PULL, esperando que Origen decida
-    { origenSucursalId: sucursalId, estado: "ENVIADA", iniciadoPor: "ORIGEN" }, // mi propio envío PUSH, esperando que Destino decida
-  ];
-}
-
-/**
- * Lectura de la Bandeja — abierta (leer no necesita el permiso de
- * escritura, mismo criterio que el resto del proyecto). Separa lo que hay
- * que ACCIONAR (siempre un puñado de traspasos en tránsito, sin límite:
- * por diseño de negocio nunca crece) del historial (crece con cada
- * traspaso resuelto desde que existe la sucursal — paginado por cursor,
- * hallazgo de la diligencia de motor2: "bandeja de traspasos sin límite").
- */
-export async function obtenerBandejaTransferencias(sucursalId: string, cursorHistorial?: string) {
-  await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
-  const [enCurso, historialMasUno] = await Promise.all([
-    prisma.traspasoSucursal.findMany({
-      where: { OR: condicionesEnCurso(sucursalId) },
-      include: INCLUDE_BANDEJA,
-      orderBy: { creadoEn: "desc" },
-    }),
-    prisma.traspasoSucursal.findMany({
-      where: {
-        AND: [{ OR: [{ origenSucursalId: sucursalId }, { destinoSucursalId: sucursalId }] }, { NOT: { OR: condicionesEnCurso(sucursalId) } }],
-      },
-      include: INCLUDE_BANDEJA,
-      orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
-      take: TAMANO_PAGINA_HISTORIAL + 1,
-      ...(cursorHistorial ? { cursor: { id: cursorHistorial }, skip: 1 } : {}),
-    }),
-  ]);
-
-  const paraAprobar = enCurso.filter((t) => t.origenSucursalId === sucursalId && t.estado === "SOLICITADA");
-  const paraAceptar = enCurso.filter((t) => t.destinoSucursalId === sucursalId && t.estado === "ENVIADA");
-  const paraReingreso = enCurso.filter((t) => t.origenSucursalId === sucursalId && t.estado === "RECHAZADA_DESTINO");
-  // Lo que ESTA sucursal inició y sigue esperando que decida la otra — nada para accionar acá, solo visibilidad (y, para la solicitud PULL propia, poder cancelarla).
-  const esperando = enCurso.filter(
-    (t) =>
-      (t.destinoSucursalId === sucursalId && t.estado === "SOLICITADA" && t.iniciadoPor === "DESTINO") ||
-      (t.origenSucursalId === sucursalId && t.estado === "ENVIADA" && t.iniciadoPor === "ORIGEN")
-  );
-
-  const hayMasHistorial = historialMasUno.length > TAMANO_PAGINA_HISTORIAL;
-  const historial = hayMasHistorial ? historialMasUno.slice(0, TAMANO_PAGINA_HISTORIAL) : historialMasUno;
-
-  return {
-    paraAprobar,
-    paraAceptar,
-    paraReingreso,
-    esperando,
-    historial,
-    nextCursorHistorial: hayMasHistorial ? historial[historial.length - 1].id : null,
-  };
-}
-
-/** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. */
-export async function listarSucursalesDisponibles(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
-  return prisma.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
 }
