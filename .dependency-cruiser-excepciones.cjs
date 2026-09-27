@@ -42,6 +42,7 @@ const CORE_CON_REACT_NEXT = [
  * (el complemento de Vitest falla si una página listada deja de importar `@/lib/db`). Verificado el 2026-09-27: las 11
  * existían y las 11 hacían `import { prisma } from "@/lib/db"` (no de solo tipo). Migradas (fuera de la lista):
  *  - D1 (piloto): catalogo/productos/[id] y catalogo/productos/[id]/editar → src/server/consultas/catalogo/productos.ts.
+ *  - D7: reportes/rendimiento-recetas/por-sucursal → src/server/consultas/reportes/rendimiento-por-sucursal.ts.
  */
 const MOTIVO_PENDIENTE = "Lee la base directo desde la página; pendiente de migrar a src/server/consultas/ (Task #41, Fase D).";
 const PENDIENTES_DE_MIGRAR = [
@@ -52,7 +53,6 @@ const PENDIENTES_DE_MIGRAR = [
   "src/app/(app)/catalogo/recetas/[productoId]/page.tsx",
   "src/app/(app)/administracion/usuarios/page.tsx",
   "src/app/(app)/movimientos/[proceso]/page.tsx",
-  "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page.tsx",
   "src/app/(pos)/mesas/page.tsx",
 ].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE }));
 
