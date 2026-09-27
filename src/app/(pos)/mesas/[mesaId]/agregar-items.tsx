@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useReducer } from "react";
+import { useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta";
-import { pediblesDeEntrada, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/selector-carta";
+import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/selector-carta";
 import { estadoInicialSelectorCarta, reducirSelectorCarta } from "@/core/pos/selector-carta-estado";
 import {
   estadoInicialListaPorAgregar,
@@ -12,11 +12,23 @@ import {
   puedeConfirmarListaPorAgregar,
   reducirListaPorAgregar,
 } from "@/core/pos/agregar-lista-estado";
+import type { EleccionParaAgregar } from "@/core/pos/armar-promo-estado";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
 import { BOTON_CHICO, BOTON_PRIMARIO, CAMPO } from "./estilos";
 import { formatearCantidad, formatearMonto } from "@/core/pos/formato";
 import { SelectorCarta } from "./selector-carta";
+import { ArmarPromo } from "./armar-promo";
 import { useAccionMesa } from "./usar-accion";
+
+/** Una promo ya armada, esperando en «Por agregar» junto con los sueltos (Task #16) — cada instancia es una línea propia, sin
+ *  acumularse (dos menús pueden llevar elecciones distintas): `id` interno del cliente, nunca viaja al servidor. */
+interface PromoPorAgregar {
+  id: string;
+  promoCartaId: string;
+  titulo: string;
+  precio: number;
+  elecciones: EleccionParaAgregar[];
+}
 
 /**
  * Suma productos a una lista «Por agregar» DEL CLIENTE (nunca guardada hasta confirmar, docs/plan-pos-agregar-varios-2026-09-26.md)
@@ -42,11 +54,21 @@ import { useAccionMesa } from "./usar-accion";
  * Dos reductores puros, independientes (`selector-carta-estado.ts` para qué sección/agrupado/carpeta está a la vista;
  * `agregar-lista-estado.ts` para qué hay en la lista): coexisten, uno no reemplaza al otro. Sin `pos_tomar_pedido` todo el
  * formulario queda deshabilitado (un solo `<fieldset>`).
+ *
+ * Promos armables (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11): tocar una en `SelectorCarta` abre `ArmarPromo`
+ * (otro diálogo, otro reductor puro); confirmarla la agrega a `promosPorAgregar` (estado LOCAL de este componente, sin
+ * reductor propio — cada instancia es una línea aparte, sin acumularse, así que alcanza con un array simple). Al confirmar
+ * TODO junto se manda en una sola llamada, `agregarItems(cuentaId, items, promos)` — el tercer parámetro es opcional, así
+ * que sin ninguna promo armada el llamado es idéntico al de siempre.
  */
 export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: string; puede: boolean; selectorCarta: SelectorCartaPos | null }) {
   const { ejecutar, pending, error } = useAccionMesa();
   const [estado, despachar] = useReducer(reducirSelectorCarta, selectorCarta, estadoInicialSelectorCarta);
   const [lista, despacharLista] = useReducer(reducirListaPorAgregar, estadoInicialListaPorAgregar());
+  // Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): promos ya armadas, esperando junto con los sueltos — `promoAbierta`
+  // es la que está siendo armada AHORA en el diálogo (null = cerrado).
+  const [promosPorAgregar, setPromosPorAgregar] = useState<PromoPorAgregar[]>([]);
+  const [promoAbierta, setPromoAbierta] = useState<EntradaPromoSelectorCarta | null>(null);
   const hayCarta = !!selectorCarta && selectorCarta.seccionesCarta.length > 0;
 
   // Para mostrar nombre/precio/decimales de cada línea: cualquier pedible, lo haya sumado la carta o el buscador — la carta
@@ -60,7 +82,9 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
   }, [selectorCarta]);
 
   const llena = listaPorAgregarLlena(lista, MAXIMO_ITEMS_POR_AGREGADO);
-  const puedeConfirmar = puedeConfirmarListaPorAgregar(lista);
+  // Con al menos una promo armada, siempre se puede confirmar (aunque la lista de sueltos esté vacía) — mismo criterio que
+  // "elegí al menos un producto" del servidor, que también acepta solo promos.
+  const puedeConfirmar = puedeConfirmarListaPorAgregar(lista) || promosPorAgregar.length > 0;
 
   /** Tocar un producto —desde la carta o el buscador—: lo suma a la lista y limpia el buscador / cierra el agrupado suelto (G3). */
   const sumar = (productoId: string) => {
@@ -68,10 +92,24 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
     despachar({ tipo: "productoSumado" });
   };
 
+  const confirmarPromo = (elecciones: EleccionParaAgregar[]) => {
+    if (!promoAbierta) return;
+    setPromosPorAgregar((antes) => [...antes, { id: `${promoAbierta.promoCartaId}-${antes.length}-${Date.now()}`, promoCartaId: promoAbierta.promoCartaId, titulo: promoAbierta.titulo, precio: promoAbierta.precio, elecciones }]);
+    setPromoAbierta(null);
+  };
+
   const confirmar = () => {
     ejecutar(
-      () => agregarItems(cuentaId, itemsDeListaPorAgregar(lista)),
-      () => despacharLista({ tipo: "vaciar" })
+      () =>
+        agregarItems(
+          cuentaId,
+          itemsDeListaPorAgregar(lista),
+          promosPorAgregar.map((p) => ({ promoCartaId: p.promoCartaId, elecciones: p.elecciones }))
+        ),
+      () => {
+        despacharLista({ tipo: "vaciar" });
+        setPromosPorAgregar([]);
+      }
     );
   };
 
@@ -100,14 +138,32 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
             />
           </div>
         </div>
-        {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} />}
+        {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} abrirPromo={setPromoAbierta} />}
         {llena && <p className="text-[13px] text-[var(--ink-soft)]">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
 
         <div className="flex flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[#F1EFEA] p-3">
-          <h2 className="text-[14px] font-bold">Por agregar · {lista.lineas.length}</h2>
-          {lista.lineas.length === 0 ? (
+          <h2 className="text-[14px] font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
+          {promosPorAgregar.length > 0 && (
+            <ul className="flex flex-col divide-y divide-[var(--border)]">
+              {promosPorAgregar.map((p) => (
+                <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-[#FFF7E6] px-2 py-2 first:rounded-t-lg">
+                  <span className="min-w-0 flex-1 text-[14px] font-semibold">{p.titulo}</span>
+                  <span className="text-[13.5px] tabular-nums">{formatearMonto(p.precio)}</span>
+                  <button
+                    type="button"
+                    className={BOTON_CHICO}
+                    aria-label={`Quitar ${p.titulo} de la lista`}
+                    onClick={() => setPromosPorAgregar((antes) => antes.filter((x) => x.id !== p.id))}
+                  >
+                    Quitar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {lista.lineas.length === 0 && promosPorAgregar.length === 0 ? (
             <p className="text-[13px] text-[var(--ink-soft)]">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
-          ) : (
+          ) : lista.lineas.length === 0 ? null : (
             <ul className="flex flex-col divide-y divide-[var(--border)]">
               {lista.lineas.flatMap((l) => {
                 const p = pediblePorId.get(l.productoId);
@@ -172,7 +228,7 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
             </ul>
           )}
           <button type="button" className={BOTON_PRIMARIO} disabled={pending || !puedeConfirmar} onClick={confirmar}>
-            {pending ? "Agregando…" : `Agregar ${lista.lineas.length} al pedido`}
+            {pending ? "Agregando…" : `Agregar ${lista.lineas.length + promosPorAgregar.length} al pedido`}
           </button>
         </div>
       </fieldset>
@@ -181,6 +237,7 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
           {error}
         </p>
       )}
+      {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} />}
     </form>
   );
 }

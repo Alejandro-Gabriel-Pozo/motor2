@@ -39,6 +39,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/reportes/historial",
   "/reportes/huecos-catalogo",
   "/reportes/insumos-sin-receta",
+  "/reportes/margen-promociones",
   "/reportes/perdidas",
   "/reportes/periodo",
   "/reportes/promociones",

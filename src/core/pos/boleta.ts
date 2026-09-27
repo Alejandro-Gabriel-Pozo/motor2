@@ -30,6 +30,14 @@ export interface LineaDeBoleta {
   /** Precio de LISTA de esta línea, SOLO cuando el descuento del cliente hizo que difiera de `precioUnitario`. */
   precioListaUnitario?: number;
   subtotal: number;
+  /** Task #16 (promo-combo, paso 2.6/3): la `PromoCuenta` de la que forma parte esta línea — la cabecera ("1 × Menú del
+   *  día") y cada uno de sus componentes (con `indentado: true`) comparten el mismo id. Ausente = un suelto de siempre. */
+  promoCuentaId?: string;
+  /** true SOLO en un componente de promo (nunca en su cabecera ni en un suelto): sangría en el papel ("2 × Empanada de
+   *  carne"), sin precio propio impreso (D del paso 2.6) — `precioUnitario`/`subtotal` siguen siendo el prorrateo real
+   *  (paso 8c), para quien necesite el número exacto (ej. el detalle de `/reportes/boletas`); la vista de cliente/cocina
+   *  no lo muestra. */
+  indentado?: boolean;
 }
 
 /**
@@ -68,6 +76,10 @@ export interface ItemConVenta {
   precioUnitario: number;
   operacionId: string | null;
   anuladaEn: Date | null;
+  /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): la promo de la que este ítem es un componente — AUSENTE en un
+   *  suelto de siempre (nunca `null`: mismo criterio que `armarBoleta`). Pasa TAL CUAL a `armarBoleta` (mismo campo, mismo
+   *  nombre). */
+  promo?: PromoDeItemBoleta;
 }
 
 /**
@@ -100,6 +112,13 @@ export function estadoDeBoleta(items: readonly Pick<ItemConVenta, "operacionId" 
   return anulaciones.some((a) => a !== null && a > impresaEn) ? "desactualizada" : "vigente";
 }
 
+/** Un ítem con promo, para `armarBoleta` (Task #16, paso 2.6/3): la promo de la que este ítem es un componente — `titulo` es
+ *  el snapshot congelado de `PromoCuenta.titulo` (la carta pudo cambiar el nombre después). */
+export interface PromoDeItemBoleta {
+  promoCuentaId: string;
+  titulo: string;
+}
+
 /**
  * Líneas netas y total de la boleta, a partir de TODOS los ítems de la cuenta (originales y anulaciones), igual que `cerrarCuenta`.
  *
@@ -109,26 +128,65 @@ export function estadoDeBoleta(items: readonly Pick<ItemConVenta, "operacionId" 
  * se recalcula con `precioConDescuento` (src/core/moneda.ts, MISMA función y MISMOS argumentos que usó `cerrarCuenta` al registrar
  * la venta): el resultado es determinístico, así que reproduce centavo a centavo lo que de verdad se cobró, sin tener que leer el
  * `MovimientoStock` de cada línea.
+ *
+ * `promo` por ítem (Task #16, paso 2.6/3): SIN ningún ítem con `promo`, la salida es EXACTAMENTE la de antes de esta Task (mismo
+ * criterio aditivo del resto del plan). Con `promo`, los componentes de la MISMA `promoCuentaId` se agrupan bajo UNA línea
+ * cabecera ("1 × Menú del día", `subtotal` = suma de lo cobrado por sus componentes) seguida de sus componentes, cada uno
+ * `indentado: true` y sin precio propio impreso (el precio ya está en la cabecera) — el TOTAL de la boleta no cambia: sigue
+ * siendo la suma de TODOS los subtotales NETOS (`lineasDeVenta`), calculada ANTES de agrupar para mostrar, así que agrupar o no
+ * agrupar nunca mueve un centavo del total.
  */
 export function armarBoleta(
-  items: readonly { productoId: string; productoNombre: string; cantidad: number; precioUnitario: number }[],
+  items: readonly { productoId: string; productoNombre: string; cantidad: number; precioUnitario: number; promo?: PromoDeItemBoleta }[],
   descuentoPorcentaje: number | null = null
 ): { lineas: LineaDeBoleta[]; total: number } {
-  const nombres = new Map(items.map((i) => [`${i.productoId}|${i.precioUnitario}`, i.productoNombre]));
-  const lineas = lineasDeVenta(items).map((l) => {
+  const claveDe = (i: { productoId: string; precioUnitario: number; promo?: PromoDeItemBoleta }) => `${i.productoId}|${i.precioUnitario}|${i.promo?.promoCuentaId ?? ""}`;
+  const nombres = new Map(items.map((i) => [claveDe(i), i.productoNombre]));
+  const tituloPorPromo = new Map(items.flatMap((i) => (i.promo ? [[i.promo.promoCuentaId, i.promo.titulo] as const] : [])));
+
+  const netas = lineasDeVenta(items.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId })));
+  // `promoCuentaId` de cada neta se guarda APARTE (no en `componentes`, que es exactamente `LineaDeBoleta` sin promo): así, sin
+  // ninguna promo, `componentes` sale IDÉNTICO al de antes de esta Task, sin ningún campo de más que limpiar.
+  const promoCuentaIdDeLaNeta = netas.map((l) => l.promoCuentaId);
+  const componentes: LineaDeBoleta[] = netas.map((l) => {
     const precioLista = l.precioUnitario;
     const precioCobrado = precioConDescuento(precioLista, descuentoPorcentaje);
     return {
-      producto: nombres.get(`${l.productoId}|${l.precioUnitario}`) ?? "",
+      producto: nombres.get(`${l.productoId}|${l.precioUnitario}|${l.promoCuentaId ?? ""}`) ?? "",
       cantidad: l.cantidad,
       precioUnitario: precioCobrado,
       ...(precioCobrado !== precioLista ? { precioListaUnitario: precioLista } : {}),
       subtotal: importeDeLinea(l.cantidad, precioCobrado),
     };
   });
-  // El total es la suma de los subtotales — el mismo importe por línea que `cerrarCuenta` registra en cada VENTA —, no la suma cruda
-  // re-redondeada: así coincide centavo a centavo con lo registrado. redondearMoneda solo limpia el ruido de sumar centavos en float.
-  return { lineas, total: redondearMoneda(lineas.reduce((suma, l) => suma + l.subtotal, 0)) };
+  // El total es la suma de los subtotales NETOS — el mismo importe por línea que `cerrarCuenta` registra en cada VENTA —, no la
+  // suma cruda re-redondeada: así coincide centavo a centavo con lo registrado, y no cambia si después se agrupan para mostrar.
+  const total = redondearMoneda(componentes.reduce((suma, c) => suma + c.subtotal, 0));
+
+  if (!tituloPorPromo.size) return { lineas: componentes, total };
+
+  const totalPorPromo = new Map<string, number>();
+  componentes.forEach((c, i) => {
+    const promoCuentaId = promoCuentaIdDeLaNeta[i];
+    if (promoCuentaId) totalPorPromo.set(promoCuentaId, redondearMoneda((totalPorPromo.get(promoCuentaId) ?? 0) + c.subtotal));
+  });
+
+  const lineas: LineaDeBoleta[] = [];
+  const cabeceraEmitida = new Set<string>();
+  componentes.forEach((c, i) => {
+    const promoCuentaId = promoCuentaIdDeLaNeta[i];
+    if (!promoCuentaId) {
+      lineas.push(c);
+      return;
+    }
+    if (!cabeceraEmitida.has(promoCuentaId)) {
+      cabeceraEmitida.add(promoCuentaId);
+      const totalPromo = totalPorPromo.get(promoCuentaId)!;
+      lineas.push({ producto: tituloPorPromo.get(promoCuentaId) ?? "", cantidad: 1, precioUnitario: totalPromo, subtotal: totalPromo, promoCuentaId });
+    }
+    lineas.push({ ...c, promoCuentaId, indentado: true });
+  });
+  return { lineas, total };
 }
 
 /**
@@ -145,7 +203,7 @@ export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string
       cliente: { select: { nombre: true } },
       items: {
         orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
-        include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } } },
+        include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } }, promoCuenta: { select: { id: true, titulo: true } } },
       },
       ejemplaresBoleta: {
         orderBy: { ejemplar: "desc" },
@@ -164,6 +222,7 @@ export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string
       precioUnitario: Number(i.precioUnitario),
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
     }));
     // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
     const descuentoPorcentaje = cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null;

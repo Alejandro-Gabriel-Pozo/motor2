@@ -16,6 +16,7 @@ import { ClienteCuenta } from "./cliente-cuenta";
 import { AgregarItems } from "./agregar-items";
 import { SinEnviar } from "./sin-enviar";
 import { AnularItem } from "./anular-item";
+import { AnularPromo } from "./anular-promo";
 import { CerrarCuenta } from "./cerrar-cuenta";
 import { LiberarMesa } from "./liberar-mesa";
 import { formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/formato";
@@ -135,7 +136,14 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
 
               <SinEnviar
                 cuentaId={cuenta.id}
-                items={cuenta.sinEnviar.map((i) => ({ id: i.id, productoNombre: i.productoNombre, cantidad: i.cantidad, precioUnitario: i.precioUnitario }))}
+                items={cuenta.sinEnviar.map((i) => ({
+                  id: i.id,
+                  productoNombre: i.productoNombre,
+                  cantidad: i.cantidad,
+                  precioUnitario: i.precioUnitario,
+                  promoCuentaId: i.promoCuentaId,
+                  promoTitulo: i.promoTitulo,
+                }))}
                 puede={tomarPedido.editar}
               />
 
@@ -148,9 +156,13 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                     <ReimprimirEnvio numero={envio.numero} puede={tomarPedido.editar} />
                   </div>
                   <ul className="divide-y divide-[var(--border)]">
-                    {envio.items.map((item) => (
-                      <ItemEnviado key={item.id} item={item} puedeAnular={anularItem.editar} />
-                    ))}
+                    {agruparEnvioPorPromo(envio.items).map((fila) =>
+                      fila.tipo === "suelto" ? (
+                        <ItemEnviado key={fila.item.id} item={fila.item} puedeAnular={anularItem.editar} />
+                      ) : (
+                        <PromoEnviada key={fila.promoCuentaId} promoCuentaId={fila.promoCuentaId} titulo={fila.titulo} items={fila.items} puedeAnular={anularItem.editar} />
+                      )
+                    )}
                   </ul>
                 </section>
               ))}
@@ -206,6 +218,71 @@ function ItemEnviado({ item, puedeAnular }: { item: ItemEnEnvio<ItemDeCuenta>; p
           ))}
         </ul>
       )}
+    </li>
+  );
+}
+
+/** Un renglón de un envío a mostrar: un suelto de siempre, o el grupo entero de los componentes de UNA promo (Task #16, D4). */
+type FilaEnvio = { tipo: "suelto"; item: ItemEnEnvio<ItemDeCuenta> } | { tipo: "promo"; promoCuentaId: string; titulo: string; items: ItemEnEnvio<ItemDeCuenta>[] };
+
+/** Agrupa los ítems de UN envío por `promoCuentaId` (D4: la promo se anula entera, nunca un componente solo), en el orden recibido. */
+function agruparEnvioPorPromo(items: ItemEnEnvio<ItemDeCuenta>[]): FilaEnvio[] {
+  const filas: FilaEnvio[] = [];
+  const indicePorPromo = new Map<string, number>();
+  for (const item of items) {
+    if (!item.promoCuentaId) {
+      filas.push({ tipo: "suelto", item });
+      continue;
+    }
+    const indice = indicePorPromo.get(item.promoCuentaId);
+    if (indice === undefined) {
+      indicePorPromo.set(item.promoCuentaId, filas.length);
+      filas.push({ tipo: "promo", promoCuentaId: item.promoCuentaId, titulo: item.promoTitulo ?? "Promo", items: [item] });
+    } else {
+      (filas[indice] as { tipo: "promo"; items: ItemEnEnvio<ItemDeCuenta>[] }).items.push(item);
+    }
+  }
+  return filas;
+}
+
+/**
+ * Los componentes de UNA promo ya enviada a cocina, agrupados bajo su título (Task #16, D4): un único «Anular promo» para
+ * TODOS juntos (nunca un «Anular» por componente — a diferencia de `ItemEnviado`), visible mientras quede al menos uno
+ * vigente. Cada componente muestra su propia cantidad/importe restante y sus anulaciones, igual que un suelto.
+ */
+function PromoEnviada({ promoCuentaId, titulo, items, puedeAnular }: { promoCuentaId: string; titulo: string; items: ItemEnEnvio<ItemDeCuenta>[]; puedeAnular: boolean }) {
+  const quedaAlgo = items.some((i) => i.restante > 0);
+  return (
+    <li data-promo-enviada={titulo} className="py-2 text-[14px]">
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <span className="font-semibold">{titulo}</span>
+        {quedaAlgo && <AnularPromo promoCuentaId={promoCuentaId} titulo={titulo} puede={puedeAnular} />}
+      </div>
+      <ul className="space-y-1 pl-4">
+        {items.map((item) => {
+          const anuladoEntero = item.restante <= 0;
+          return (
+            <li key={item.id} data-item-enviado={item.productoNombre}>
+              <div className="flex items-center justify-between gap-3">
+                <span className={anuladoEntero ? "text-[var(--ink-soft)] line-through" : undefined}>
+                  <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
+                  {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-[var(--ink-soft)]"> (pedido {formatearCantidad(item.cantidad)})</span>}
+                </span>
+                <span className="tabular-nums">{anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}</span>
+              </div>
+              {item.anulaciones.length > 0 && (
+                <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-[var(--ink-soft)]">
+                  {item.anulaciones.map((a) => (
+                    <li key={a.id} data-anulacion className="line-through">
+                      {formatearCantidad(a.cantidad).replace("-", "−")} · {a.motivoAnulacion} · por {a.creadoPor ?? "—"}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </li>
   );
 }

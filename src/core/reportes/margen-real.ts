@@ -20,8 +20,14 @@ import type { Db, IndiceRecetas, InfoProductoReporte } from "./comun";
  * `ventasSinPrecioExcluidas` cuenta cuántas quedaron afuera por lo primero (para el aviso de quien llama).
  *
  * Primer consumidor nuevo: el reporte de descuentos por cliente (Task #14, `/reportes/descuentos-clientes`), que compara el margen
- * COBRADO (con el descuento del cliente) contra el margen A LISTA de la misma venta, con el mismo costo real de este módulo. Task #16
- * (promociones/combos) también lo va a importar por nombre — ver el reporte final del plan.
+ * COBRADO (con el descuento del cliente) contra el margen A LISTA de la misma venta, con el mismo costo real de este módulo.
+ *
+ * Extensión ADITIVA (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 2): `costoPorItem` devuelve el costo REAL resuelto de
+ * CADA línea de `items`, alineado por índice con la entrada — ningún consumidor existente lo lee, así que no cambia ni un
+ * número de los que ya se devolvían (test/reportes/periodo.test.ts, promociones.test.ts y descuentos-clientes.test.ts siguen
+ * en verde sin tocarlos). Lo usa `/reportes/margen-promociones` (paso 12) para agregar el costo por INSTANCIA de
+ * `PromoCuenta` — algo que los totales/por-producto de arriba no permiten reconstruir (una promo mezcla varios productos en
+ * una sola venta armada).
  */
 
 export interface ItemParaMargenReal {
@@ -55,6 +61,10 @@ export interface MargenRealDelPeriodo {
   coberturaCostoRealPct: number | null;
   /** Acumulado por producto — SIN redondear (quien consume redondea al usarlo, mismo criterio que el resto de este módulo). */
   porProducto: Map<string, FilaMargenRealProducto>;
+  /** Costo REAL de cada línea de `items`, en el MISMO orden/índice que la entrada (ver el docstring del módulo) — `null` en una
+   *  línea que quedó fuera (no es VENTA, anulada, sin precio, o sin costo real ni reconstruido). SIN redondear, mismo criterio
+   *  que `porProducto`. */
+  costoPorItem: (number | null)[];
 }
 
 /**
@@ -81,34 +91,39 @@ export async function calcularMargenRealDelPeriodo(
   const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos, indiceRecetas);
 
   const porProducto = new Map<string, FilaMargenRealProducto>();
-  for (const it of items) {
-    if (it.proceso !== "VENTA" || it.anulada || it.precioTotal <= 0) continue;
+  const costoPorItem: (number | null)[] = new Array(items.length).fill(null);
+  items.forEach((it, i) => {
+    if (it.proceso !== "VENTA" || it.anulada || it.precioTotal <= 0) return;
     const acc = porProducto.get(it.productoId) ?? { ingresoConCostoReal: 0, costoRealTotal: 0, ingresoRealReconstruido: 0 };
     porProducto.set(it.productoId, acc);
     if (it.costoUnitarioVenta !== null) {
+      const costo = it.cantidad * it.costoUnitarioVenta;
       ingresoConCostoReal += it.precioTotal;
-      costoRealTotal += it.cantidad * it.costoUnitarioVenta;
+      costoRealTotal += costo;
       acc.ingresoConCostoReal += it.precioTotal;
-      acc.costoRealTotal += it.cantidad * it.costoUnitarioVenta;
-      continue;
+      acc.costoRealTotal += costo;
+      costoPorItem[i] = costo;
+      return;
     }
     const reconstruido = costosReconstruidos.get(claveCostoHistorico(it.productoId, diaUtc(it.fecha))) ?? null;
     if (reconstruido !== null) {
+      const costo = it.cantidad * reconstruido;
       ingresoConCostoReal += it.precioTotal;
       ingresoRealReconstruido += it.precioTotal;
-      costoRealTotal += it.cantidad * reconstruido;
+      costoRealTotal += costo;
       acc.ingresoConCostoReal += it.precioTotal;
       acc.ingresoRealReconstruido += it.precioTotal;
-      acc.costoRealTotal += it.cantidad * reconstruido;
+      acc.costoRealTotal += costo;
+      costoPorItem[i] = costo;
     } else {
       ingresoSinCostoReal += it.precioTotal;
     }
-  }
+  });
 
   const hayCostoReal = ingresoConCostoReal > 0;
   const margenRealTotal = hayCostoReal ? redondearMoneda(ingresoConCostoReal - costoRealTotal) : null;
   const baseCobertura = ingresoConCostoReal + ingresoSinCostoReal;
   const coberturaCostoRealPct = baseCobertura > 0 ? Math.round((ingresoConCostoReal / baseCobertura) * 1000) / 10 : null;
 
-  return { ingresoConCostoReal, costoRealTotal, ingresoSinCostoReal, ingresoRealReconstruido, ventasSinPrecioExcluidas, hayCostoReal, margenRealTotal, coberturaCostoRealPct, porProducto };
+  return { ingresoConCostoReal, costoRealTotal, ingresoSinCostoReal, ingresoRealReconstruido, ventasSinPrecioExcluidas, hayCostoReal, margenRealTotal, coberturaCostoRealPct, porProducto, costoPorItem };
 }

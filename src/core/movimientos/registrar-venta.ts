@@ -35,6 +35,13 @@ import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
  * - `opciones.permitirStockNegativo` (B6bis, decisión del dueño): con `true`, un insumo sin stock suficiente NO aborta la venta; el
  *   movimiento se escribe igual (el Kardex es un ledger por suma: el saldo queda negativo) y se devuelve en `avisosStockNegativo`.
  *   Ausente o `false` (el caso de `registrarVenta`): rechaza igual que siempre.
+ * - `promoCuentaId` por línea (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 7): la `PromoCuenta` de la que ese componente
+ *   forma parte, si la línea viene de armar una promo en el POS — va en la `Operacion` que registra ESA línea (`Operacion.
+ *   promoCuentaId`, FK RESTRICT), igual patrón que `datos.clienteId`. `undefined`/`null` = un suelto de siempre (el caso de
+ *   `registrarVenta`, D7: la venta de mostrador nunca lo pasa — mapea cada línea a mano a `{ productoId, cantidadVendida }`,
+ *   ver `src/server/actions/movimientos/venta.ts`). Convive con el arrastre de redondeo de la Task #27 (`cargarDeudaDeRedondeo`/
+ *   `crearArrastreDeRedondeo`, más abajo) sin tocarlo: son dos campos independientes de la misma `Operacion`/línea, y el
+ *   arrastre se calcula por (sucursal, producto CONSUMIDO), nunca por promo.
  *
  * DE QUÉ SECCIÓN SALE cada consumo lo decide `origen` (docs/plan-seccion-habitual-stock-2026-09-25.md, C5): `{ tipo: "seccion" }` (la
  * elegida por una persona: mostrador) o `{ tipo: "automatico" }` (el cierre del POS). En los dos casos los consumos se asignan con el
@@ -56,6 +63,8 @@ export interface LineaVentaEnTx {
   precioUnitario?: number;
   /** Precio de LISTA, si difiere de `precioUnitario` (Task #14 — ver el docstring del módulo). Ausente = coinciden, no se guarda. */
   precioListaUnitario?: number;
+  /** La `PromoCuenta` de la que este componente forma parte (Task #16 — ver el docstring del módulo). Ausente/null = un suelto. */
+  promoCuentaId?: string | null;
 }
 
 export interface DatosVentaEnTx {
@@ -104,6 +113,8 @@ interface LineaArmada {
   precioListaVenta: number | null;
   /** Costo de receta resuelto AL MOMENTO de esta venta (docstring en schema.prisma, MovimientoStock.costoUnitarioVenta) — null si el costeo estaba incompleto ese día. */
   costoUnitarioAlVender: number | null;
+  /** La `PromoCuenta` de la que esta línea es un componente (Task #16) — null = un suelto. */
+  promoCuentaId: string | null;
   /** Consumo de receta por ingrediente, en el orden de los ingredientes (id ascendente: determinístico para el libro). */
   pedidos: {
     productoId: string;
@@ -207,7 +218,7 @@ async function armarLinea(
 
   return {
     ok: true,
-    linea: { productoId: producto.id, nombre: producto.nombre, seProduce: producto.seProduce, cantidadVendida: cantidad, precioVenta, precioListaVenta, costoUnitarioAlVender, pedidos },
+    linea: { productoId: producto.id, nombre: producto.nombre, seProduce: producto.seProduce, cantidadVendida: cantidad, precioVenta, precioListaVenta, costoUnitarioAlVender, promoCuentaId: item.promoCuentaId ?? null, pedidos },
   };
 }
 
@@ -389,6 +400,7 @@ export async function registrarVentaEnTx(
         fecha: datos.fecha,
         proveedorId: datos.proveedorId ?? null,
         clienteId: datos.clienteId ?? null,
+        promoCuentaId: venta.promoCuentaId,
         nroFactura: texto(datos.nroFactura) || null,
         detalleLibre: texto(datos.detalle) || null,
         usuarioId: actor.usuarioId,

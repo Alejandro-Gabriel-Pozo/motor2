@@ -42,11 +42,11 @@ const base = resolverUrlE2E(process.env);
 process.env.DATABASE_URL = base.url;
 process.env.DIRECT_URL = base.url;
 
-// Puerto propio de ESTE worktree (fix/redondeo-consumo-fraccionado): 53219, distinto de los ya tomados por ramas
-// anteriores en este mismo sandbox compartido (48213, 45677, 47391 — ver el historial de este archivo). No es una
-// decisión de producto — la app no expone nada real en este puerto — así que se corrige acá, sin tocar ningún otro
-// worktree.
-const PUERTO = 53219;
+// Puerto propio de ESTE worktree (feat/promo-combo, Task #16): 56471, distinto de los ya tomados por ramas
+// anteriores en este mismo sandbox compartido (48213, 45677, 47391, 53219 — ver el historial de este archivo). No
+// es una decisión de producto — la app no expone nada real en este puerto — así que se corrige acá, sin tocar
+// ningún otro worktree.
+const PUERTO = 56471;
 const URL_BASE = `http://localhost:${PUERTO}`;
 
 /**

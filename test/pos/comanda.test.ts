@@ -5,9 +5,9 @@ import { armarComandas, documentoDeReimpresion, type ItemParaComanda } from "../
 
 type Espejo = ItemParaComanda["anulaciones"][number];
 
-function item(id: string, productoNombre: string, restante: number, creadoPor: string | null, anulaciones: Espejo[] = []): ItemParaComanda & { precioUnitario: number } {
+function item(id: string, productoNombre: string, restante: number, creadoPor: string | null, anulaciones: Espejo[] = [], promoTitulo: string | null = null): ItemParaComanda & { precioUnitario: number } {
   // `precioUnitario` viene como en la página (ItemDeCuenta): la comanda no tiene que dejarlo pasar.
-  return { id, productoNombre, restante, creadoPor, anulaciones, precioUnitario: 9000 };
+  return { id, productoNombre, restante, creadoPor, anulaciones, promoTitulo, precioUnitario: 9000 };
 }
 
 describe("armarComandas", () => {
@@ -76,6 +76,26 @@ describe("armarComandas", () => {
   it("no deja pasar ningún precio, aunque el ítem de entrada lo traiga", () => {
     const comandas = armarComandas([{ numero: 1, items: [item("a", "Milanesa", 1, "Juan", [{ id: "e1", cantidad: -1, motivoAnulacion: "x", creadoPor: "Ana" }])] }], "Juan");
     expect(JSON.stringify(comandas)).not.toMatch(/precio|9000/i);
+  });
+
+  /** Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, paso 10): la cocina ve la anotación de la promo, sin precios. */
+  describe("promoTitulo (Task #16)", () => {
+    it("un componente de promo lleva la anotación en su línea; un suelto no trae el campo (idéntico a antes)", () => {
+      const [comanda] = armarComandas([{ numero: 1, items: [item("a", "Empanada", 2, "Juan", [], "Menú del día"), item("b", "Agua", 1, "Juan")] }], "Juan");
+      expect(comanda.lineas).toEqual([
+        { itemId: "a", producto: "Empanada", cantidad: 2, promoTitulo: "Menú del día" },
+        { itemId: "b", producto: "Agua", cantidad: 1 },
+      ]);
+      expect(comanda.lineas[1]).not.toHaveProperty("promoTitulo");
+    });
+
+    it("una anulación de un componente de promo también lleva la anotación", () => {
+      const [comanda] = armarComandas(
+        [{ numero: 1, items: [item("a", "Empanada", 1, "Juan", [{ id: "e1", cantidad: -1, motivoAnulacion: "Se cayó la mesa", creadoPor: "Ana" }], "Menú del día")] }],
+        "Juan"
+      );
+      expect(comanda.anulaciones).toEqual([{ id: "e1", itemId: "a", producto: "Empanada", cantidad: 1, motivo: "Se cayó la mesa", por: "Ana", quedan: 1, promoTitulo: "Menú del día" }]);
+    });
   });
 });
 

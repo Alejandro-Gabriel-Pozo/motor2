@@ -8,30 +8,33 @@ export { prisma };
 
 /** Borra todo (orden respetando FKs) — se llama en beforeEach de cada test file. */
 export async function limpiarBaseDeTest() {
-  // Carta antes que nada: sus 8 tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
+  // Carta antes que nada: sus tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
   // Las opciones de un ítem agrupado primero: referencian al ítem agrupado (RESTRICT) y a Producto.
+  // OJO: PromoCartaCupo, PromoCarta y SeccionCarta NO se borran acá (Task #16, docs/plan-promo-combo-2026-09-26.md, M2) —
+  // desde que `PromoCuenta` existe, PromoCarta depende TRANSITIVAMENTE de que la cuenta del POS ya esté vacía (ver más abajo,
+  // junto a `promoCuenta.deleteMany()`), así que las tres se movieron a ese bloque.
   await prisma.opcionItemAgrupadoCarta.deleteMany();
   await prisma.itemAgrupadoCarta.deleteMany();
   await prisma.temaCartaSucursal.deleteMany();
   await prisma.sucursalPublica.deleteMany();
-  await prisma.promoCarta.deleteMany();
   await prisma.contenidoCartaProducto.deleteMany();
-  await prisma.seccionCarta.deleteMany();
   // GeneroCarta (docs/plan-genero-carta-2026-09-26.md): DESPUÉS de ItemAgrupadoCarta y ContenidoCartaProducto, que lo referencian
   // (ON DELETE SET NULL, por ser `generoCartaId` opcional — el orden no es estrictamente necesario, pero mantiene el mismo
   // criterio "quien referencia se borra antes" del resto de esta función).
   await prisma.generoCarta.deleteMany();
 
-  // POS antes que nada: CuentaItem referencia Cuenta, Producto, User y Operacion; Cuenta referencia Mesa y User; Mesa referencia
-  // Sucursal. Las filas espejo (anulaciones) primero: referencian a su ítem original con ON DELETE RESTRICT.
+  // POS antes que nada: CuentaItem referencia Cuenta, Producto, User, Operacion y PromoCuenta; Cuenta referencia Mesa y User;
+  // Mesa referencia Sucursal. Las filas espejo (anulaciones) primero: referencian a su ítem original con ON DELETE RESTRICT.
   // EjemplarBoleta referencia Cuenta, Sucursal y User (RESTRICT): antes que la cuenta. Los ejemplares de corrección (B, C…) primero:
   // referencian a su ejemplar A con ON DELETE RESTRICT.
   await prisma.ejemplarBoleta.deleteMany({ where: { corrigeAId: { not: null } } });
   await prisma.ejemplarBoleta.deleteMany();
   await prisma.cuentaItem.deleteMany({ where: { anulaAItemId: { not: null } } });
   await prisma.cuentaItem.deleteMany();
-  await prisma.cuenta.deleteMany();
-  await prisma.mesa.deleteMany();
+  // Cuenta/Mesa se borran MÁS ABAJO (después de Operacion): PromoCuenta (Task #16) referencia Cuenta con RESTRICT, y tanto
+  // CuentaItem (ya vacío acá) como Operacion (recién se vacía abajo) referencian PromoCuenta con RESTRICT — así que
+  // PromoCuenta no se puede borrar hasta después de operacion.deleteMany(), y Cuenta no se puede borrar hasta después de
+  // PromoCuenta.
 
   // Movimientos primero: Operacion/ConteoFisico referencian User/Sucursal/
   // Proveedor, que se borran más abajo — y MovimientoStock referencia a
@@ -39,6 +42,16 @@ export async function limpiarBaseDeTest() {
   await prisma.movimientoStock.deleteMany();
   await prisma.conteoFisico.deleteMany();
   await prisma.operacion.deleteMany();
+  // PromoCuenta (Task #16, docs/plan-promo-combo-2026-09-26.md): DESPUÉS de CuentaItem (arriba) y Operacion (recién), que la
+  // referencian con RESTRICT. A su vez PromoCarta/PromoCartaCupo (que PromoCuenta referencia RESTRICT) y SeccionCarta (que
+  // PromoCarta/PromoCartaCupo referencian RESTRICT) tienen que esperar a que ESTA se vacíe — por eso viven acá y no arriba
+  // con el resto de la carta. Cuenta/Mesa van DESPUÉS de todo esto (PromoCuenta la referencia RESTRICT).
+  await prisma.promoCuenta.deleteMany();
+  await prisma.promoCartaCupo.deleteMany();
+  await prisma.promoCarta.deleteMany();
+  await prisma.seccionCarta.deleteMany();
+  await prisma.cuenta.deleteMany();
+  await prisma.mesa.deleteMany();
   // DESPUÉS de operacion.deleteMany() — Operacion.motivoId/destinoId referencian estas dos con ON DELETE RESTRICT
   // (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23, P3).
   await prisma.motivoMerma.deleteMany();

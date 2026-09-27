@@ -5,7 +5,8 @@ import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-co
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
-import { actualizarActivaPromoCarta, guardarPromoCarta } from "@/server/actions/carta/promos";
+import { actualizarActivaPromoCarta, guardarCuposPromoCarta, guardarPromoCarta } from "@/server/actions/carta/promos";
+import { precioMinimoPromo } from "@/core/pos/promo-combo";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -287,7 +288,14 @@ export default async function CartaPage() {
               <li key={pr.id} className="rounded border p-3" data-promo-carta={pr.titulo}>
                 <details>
                   <summary className="cursor-pointer text-sm">
-                    <span className="font-medium">{pr.titulo}</span> · ${pr.precio.toLocaleString("es-AR")} · {pr.seccionCarta} · {pr.activa ? "activa" : "apagada"}
+                    <span className="font-medium">{pr.titulo}</span> · ${pr.precio.toLocaleString("es-AR")} · {pr.seccionCarta} · {pr.activa ? "activa" : "apagada"} ·{" "}
+                    {pr.cupos.length ? (
+                      <>
+                        Armable — {pr.cupos.length} cupo{pr.cupos.length === 1 ? "" : "s"}
+                      </>
+                    ) : (
+                      "Informativa (sin cupos)"
+                    )}
                   </summary>
                   {puedeEditarCarta ? (
                     <FormConResultado
@@ -316,6 +324,56 @@ export default async function CartaPage() {
                       <Dato etiqueta="Precio">${pr.precio.toLocaleString("es-AR")}</Dato>
                       <Dato etiqueta="Orden">{pr.orden}</Dato>
                     </DatosSoloLectura>
+                  )}
+
+                  {/* Cupos (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): con uno o más, la promo pasa a ser ARMABLE en el POS. */}
+                  <h3 className="mt-3 text-sm font-medium">Cupos</h3>
+                  {puedeEditarCarta ? (
+                    <FormConResultado
+                      accion={async (fd: FormData) => {
+                        "use server";
+                        const cupos = datos.secciones.flatMap((s) => {
+                          if (!fd.get(`incluir_${s.id}`)) return [];
+                          return [{ seccionCartaId: s.id, cantidadMinima: campo(fd, `min_${s.id}`), cantidadMaxima: campo(fd, `max_${s.id}`) }];
+                        });
+                        return refrescarSiOk(await guardarCuposPromoCarta(id, cupos));
+                      }}
+                      className="mt-1 flex flex-col gap-2"
+                    >
+                      <p className="text-sm text-neutral-500">Tildá de qué secciones se arma esta promo, con cuántas unidades mínimas y máximas de cada una (D1).</p>
+                      {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
+                          $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
+                          ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
+                      {pr.cupos.length > 0 &&
+                        (() => {
+                          const unidadesEnElPeorCaso = pr.cupos.reduce((suma, c) => suma + c.cantidadMaxima, 0);
+                          const minimo = precioMinimoPromo([{ cantidad: unidadesEnElPeorCaso }]);
+                          const holgura = pr.precio - minimo;
+                          return (
+                            <p className="text-xs text-neutral-500" data-aviso-peor-caso={pr.titulo}>
+                              Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es $
+                              {minimo.toLocaleString("es-AR")}
+                              {holgura > 0 ? ` — hay $${holgura.toLocaleString("es-AR")} de margen antes de ese piso si subís algún máximo.` : "."}
+                            </p>
+                          );
+                        })()}
+                      <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />
+                      <div>
+                        <button type="submit" className={CLASE_BOTON}>
+                          Guardar cupos
+                        </button>
+                      </div>
+                    </FormConResultado>
+                  ) : pr.cupos.length ? (
+                    <DatosSoloLectura className="mt-1">
+                      {pr.cupos.map((c) => (
+                        <Dato key={c.id} etiqueta={c.seccionCarta}>
+                          {c.cantidadMinima} a {c.cantidadMaxima}
+                        </Dato>
+                      ))}
+                    </DatosSoloLectura>
+                  ) : (
+                    <p className="mt-1 text-sm text-neutral-500">Sin cupos: esta promo es solo informativa, el POS la ignora.</p>
                   )}
                 </details>
                 {puedeEditarCarta && (
@@ -475,6 +533,47 @@ function CamposPromo({
         <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} className={CLASE_INPUT} />
       </label>
     </>
+  );
+}
+
+/**
+ * Cupos de una promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): una fila por CADA sección de carta, con un
+ * checkbox "incluir" + mínimo/máximo — full-replace al guardar (`guardarCuposPromoCarta`): la sección tildada con sus
+ * cantidades entra, la que no queda tildada se borra si ya era un cupo. Sin cliente propio: los checkboxes e inputs son HTML
+ * nativo, `FormConResultado` ya resetea el form entero cuando la acción sale bien (vuelve a los `defaultValue`/`defaultChecked`
+ * de lo recién guardado, en el próximo render del servidor).
+ */
+function CamposCupos({
+  secciones,
+  guardados,
+}: {
+  secciones: { id: string; nombre: string; activa: boolean }[];
+  guardados: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number }[];
+}) {
+  const porSeccion = new Map(guardados.map((c) => [c.seccionCartaId, c]));
+  return (
+    <div className="flex flex-col gap-1">
+      {secciones.map((s) => {
+        const g = porSeccion.get(s.id);
+        return (
+          <div key={s.id} data-cupo-seccion={s.nombre} className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex min-w-[10rem] items-center gap-2">
+              <input type="checkbox" name={`incluir_${s.id}`} defaultChecked={!!g} />
+              {s.nombre}
+              {s.activa ? "" : " (apagada)"}
+            </label>
+            <label className="flex items-center gap-1">
+              mín.
+              <input type="number" name={`min_${s.id}`} min={0} step={1} defaultValue={g?.cantidadMinima ?? 0} className={`${CLASE_INPUT} w-16`} />
+            </label>
+            <label className="flex items-center gap-1">
+              máx.
+              <input type="number" name={`max_${s.id}`} min={1} step={1} defaultValue={g?.cantidadMaxima ?? 1} className={`${CLASE_INPUT} w-16`} />
+            </label>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

@@ -77,6 +77,43 @@ export function precioConDescuento(precioLista: number, porcentaje: number | nul
 }
 
 /**
+ * Reparte `importe` (dinero, se redondea a centavos primero) entre `pesos.length` partes, proporcional a cada peso, con
+ * aritmética Decimal EXACTA y el resto de redondeo asignado por MAYOR RESIDUO (largest remainder method): la suma de las
+ * partes devueltas da SIEMPRE, exacto, `redondearMoneda(importe)` — nunca de más ni de menos por acumulación de redondeos
+ * independientes de cada parte (Task #16, docs/plan-promo-combo-2026-09-26.md, D3).
+ *
+ * Determinístico: a igual resto fraccionario, gana el índice más bajo (para que dos corridas con el mismo pedido den
+ * SIEMPRE el mismo resultado, sin depender del orden de sort que use el motor de JS con empates).
+ *
+ * Pesos negativos o no finitos se tratan como 0 (no participan del reparto, pero SÍ cuentan como una parte more — reciben
+ * 0 salvo que les toque un centavo de resto, lo que no debería pasar con resto ≥ 0 y peso 0 salvo que TODOS los pesos sean
+ * 0: ahí se reparte en partes iguales, ver abajo). `importe` negativo o no finito, o sin partes, no tiene un reparto
+ * sensato: `NaN` en cada parte.
+ */
+export function repartirImporte(importe: number, pesos: readonly number[]): number[] {
+  if (pesos.length === 0) return [];
+  if (!Number.isFinite(importe) || importe < 0) return pesos.map(() => Number.NaN);
+
+  const centavosTotal = new D(redondearMoneda(importe)).times(100).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
+  const pesosPositivos = pesos.map((p) => (Number.isFinite(p) && p > 0 ? p : 0));
+  const sumaPesos = pesosPositivos.reduce((s, p) => s + p, 0);
+  // Sin ningún peso positivo (todos 0, o el llamador no distingue entre componentes): partes iguales — mismo criterio que D3
+  // para "suma a la carta 0".
+  const pesosEfectivos = sumaPesos > 0 ? pesosPositivos : pesos.map(() => 1);
+  const sumaEfectiva = sumaPesos > 0 ? sumaPesos : pesos.length;
+
+  const exactos = pesosEfectivos.map((p) => new D(centavosTotal).times(p).dividedBy(sumaEfectiva));
+  const pisos = exactos.map((e) => e.toDecimalPlaces(0, Decimal.ROUND_DOWN).toNumber());
+  const restante = centavosTotal - pisos.reduce((s, v) => s + v, 0);
+  const orden = exactos
+    .map((e, i) => ({ i, resto: e.minus(pisos[i]).toNumber() }))
+    .sort((a, b) => b.resto - a.resto || a.i - b.i);
+  const centavos = [...pisos];
+  for (let k = 0; k < restante; k++) centavos[orden[k].i] += 1;
+  return centavos.map((c) => sinCeroNegativo(c / 100));
+}
+
+/**
  * Total de varias líneas: suma EXACTA de los productos cantidad × precio y UN SOLO redondeo al final (la política de redondeo que ya
  * tenía el POS para sus totales, ahora sin el error del float).
  */

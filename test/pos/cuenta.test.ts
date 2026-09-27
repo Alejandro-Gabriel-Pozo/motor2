@@ -59,6 +59,46 @@ describe("lineasDeVenta (neto por producto + precio congelado)", () => {
     ).toEqual([{ productoId: "b", precioUnitario: 50, cantidad: 1 }]);
     expect(lineasDeVenta([])).toEqual([]);
   });
+
+  it("Task #16: un suelto y un componente de promo del MISMO producto al MISMO precio quedan en líneas separadas (D4)", () => {
+    expect(
+      lineasDeVenta([
+        { productoId: "a", cantidad: 1, precioUnitario: 100 },
+        { productoId: "a", cantidad: 1, precioUnitario: 100, promoCuentaId: "promo-1" },
+      ])
+    ).toEqual([
+      { productoId: "a", precioUnitario: 100, cantidad: 1 },
+      { productoId: "a", precioUnitario: 100, cantidad: 1, promoCuentaId: "promo-1" },
+    ]);
+  });
+
+  it("Task #16: componentes de DOS promos distintas, mismo producto y precio, no se mezclan entre sí", () => {
+    expect(
+      lineasDeVenta([
+        { productoId: "a", cantidad: 1, precioUnitario: 100, promoCuentaId: "promo-1" },
+        { productoId: "a", cantidad: 1, precioUnitario: 100, promoCuentaId: "promo-2" },
+      ])
+    ).toEqual([
+      { productoId: "a", precioUnitario: 100, cantidad: 1, promoCuentaId: "promo-1" },
+      { productoId: "a", precioUnitario: 100, cantidad: 1, promoCuentaId: "promo-2" },
+    ]);
+  });
+
+  it("Task #16: originales y espejos de un MISMO componente de promo se suman igual que un suelto", () => {
+    expect(
+      lineasDeVenta([
+        { productoId: "a", cantidad: 2, precioUnitario: 100, promoCuentaId: "promo-1" },
+        { productoId: "a", cantidad: -1, precioUnitario: 100, promoCuentaId: "promo-1" },
+      ])
+    ).toEqual([{ productoId: "a", precioUnitario: 100, cantidad: 1, promoCuentaId: "promo-1" }]);
+  });
+
+  it("Task #16: `promoCuentaId` null o ausente es EXACTAMENTE lo mismo — sin la clave en la salida", () => {
+    const conNull = lineasDeVenta([{ productoId: "a", cantidad: 1, precioUnitario: 100, promoCuentaId: null }]);
+    const sinCampo = lineasDeVenta([{ productoId: "a", cantidad: 1, precioUnitario: 100 }]);
+    expect(conNull).toEqual(sinCampo);
+    expect(conNull[0]).not.toHaveProperty("promoCuentaId");
+  });
 });
 
 describe("agruparPorEnvio", () => {

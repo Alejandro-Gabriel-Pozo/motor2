@@ -133,4 +133,77 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
       expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(3.5);
     });
   });
+
+  /** Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, paso 7): promoCuentaId opcional por línea, sin romper el
+   *  arrastre de redondeo de la Task #27 (las líneas de arriba, con receta y consumo fraccionado, siguen pasando). */
+  describe("promoCuentaId por línea (Task #16)", () => {
+    async function sembrarPromoCuenta() {
+      const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 99 } });
+      const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: actor.usuarioId } });
+      const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús E2E promoCuentaId" } });
+      const promoCarta = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 150 } });
+      return prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 150, titulo: "Menú del día", creadoPorId: actor.usuarioId } });
+    }
+
+    it("una línea con promoCuentaId escribe la Operacion enlazada a esa PromoCuenta; sin el campo, queda null (igual que siempre)", async () => {
+      const promoCuenta = await sembrarPromoCuenta();
+      const r = await prisma.$transaction((tx) =>
+        registrarVentaEnTx(tx, actor, {
+          fecha: new Date(),
+          origen: { tipo: "seccion", seccionId },
+          lineas: [
+            { productoId: pvGaseosaId, cantidadVendida: 1, promoCuentaId: promoCuenta.id },
+            { productoId: pvGaseosaId, cantidadVendida: 1 }, // suelto, mismo producto: Operacion aparte igual (una por línea)
+          ],
+        })
+      );
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.operacionIds).toHaveLength(2);
+      const [conPromo, suelto] = await Promise.all(r.operacionIds.map((id) => prisma.operacion.findUniqueOrThrow({ where: { id } })));
+      expect(conPromo.promoCuentaId).toBe(promoCuenta.id);
+      expect(suelto.promoCuentaId).toBeNull();
+    });
+
+    it("promoCuentaId null/ausente es EXACTAMENTE lo mismo: Operacion.promoCuentaId queda null", async () => {
+      const r = await prisma.$transaction((tx) =>
+        registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvGaseosaId, cantidadVendida: 1, promoCuentaId: null }] })
+      );
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const operacion = await prisma.operacion.findUniqueOrThrow({ where: { id: r.operacionIds[0] } });
+      expect(operacion.promoCuentaId).toBeNull();
+    });
+
+    it("convive con el arrastre de redondeo de la Task #27: una venta con promoCuentaId y consumo fraccionado sigue arrastrando el resto igual que un suelto", async () => {
+      // Unidad de 0 decimales (mismo escenario que arrastre-redondeo/venta-fraccionada-consumo-mp): dos partes de 0,5 del mismo
+      // insumo consumen 1 en total, no 2 — con o sin promo de por medio.
+      const catalogo = await prisma.producto.findUniqueOrThrow({ where: { id: mpHarinaId }, include: { unidadStock: true } });
+      await prisma.unidad.update({ where: { id: catalogo.unidadStockId }, data: { decimales: 0 } });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 10 }] });
+      const promoCuenta = await sembrarPromoCuenta();
+
+      // Receta de pvPanId pide 0,5 de harina por unidad (ver beforeEach) — dos ventas de 1 unidad cada una, la primera con
+      // promoCuentaId, la segunda suelta: el arrastre es por (sucursal, producto CONSUMIDO), no por promo, así que las dos
+      // páginas comparten la MISMA deuda.
+      const r1 = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 1, promoCuentaId: promoCuenta.id }] }));
+      expect(r1.ok).toBe(true);
+      const r2 = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 1 }] }));
+      expect(r2.ok).toBe(true);
+
+      // 2 × 0,5 = 1 exacto, aunque cada parte redondeada individualmente (a 0 decimales) diera 1 + 0 o 0 + 1 según el arrastre.
+      expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(9);
+      if (!r1.ok || !r2.ok) return;
+      const operacionConPromo = await prisma.operacion.findUniqueOrThrow({ where: { id: r1.operacionIds[0] } });
+      expect(operacionConPromo.promoCuentaId).toBe(promoCuenta.id);
+    });
+  });
+
+  /** D7 (mismo criterio que Task #14 con clienteId): la venta de MOSTRADOR nunca deja pasar un promoCuentaId. */
+  it("registrarVenta (mostrador): un promoCuentaId colado en el payload se ignora, Operacion.promoCuentaId queda null (D7)", async () => {
+    const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pvGaseosaId, cantidadVendida: 1, promoCuentaId: "id-bogus-colado" } as never] });
+    expect(r.ok).toBe(true);
+    const operacion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", movimientos: { some: { productoId: pvGaseosaId } } } });
+    expect(operacion.promoCuentaId).toBeNull();
+  });
 });

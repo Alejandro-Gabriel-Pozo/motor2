@@ -103,6 +103,22 @@ export function validarPrecioCarta(valor: unknown): Resultado<number> {
   return { ok: true, valor: Math.round(n * 100) / 100 };
 }
 
+/**
+ * Cantidad de un cupo de promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): entero entre 0 y 999 (mismo tope
+ * que `CANTIDAD_MAXIMA_POR_ITEM` del POS). `valorSiVacio` (D1: el mínimo por defecto es 0) — sin pasarlo, un valor vacío es un
+ * error, para exigir la cantidad máxima siempre explícita.
+ */
+export function validarCantidadCupoPromo(valor: unknown, etiqueta: string, valorSiVacio?: number): Resultado<number> {
+  const v = texto(valor);
+  if (v === "") {
+    if (valorSiVacio !== undefined) return { ok: true, valor: valorSiVacio };
+    return { ok: false, mensaje: `Falta ${etiqueta}.` };
+  }
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 0 || n > 999) return { ok: false, mensaje: `${etiqueta} tiene que ser un número entero entre 0 y 999.` };
+  return { ok: true, valor: n };
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------
 // Registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M2): lo que se carga en `SucursalPublica`. También
 // los usa `armarRegistroTenants` para sanear la salida del endpoint (una fila cargada a mano por `db:studio` no pasa por acá).

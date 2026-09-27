@@ -148,6 +148,69 @@ describe("armarBoleta — importes exactos", () => {
   });
 });
 
+/** Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, paso 2.6/3): agrupación de los componentes de una promo bajo una
+ *  cabecera, sin cambiar el total. */
+describe("armarBoleta — Task #16, promos armables", () => {
+  it("sin ningún ítem con `promo`, la salida es EXACTAMENTE la de siempre (sin la clave `promoCuentaId` en ninguna línea)", () => {
+    const items = [
+      { productoId: "p1", productoNombre: "Milanesa", cantidad: 1, precioUnitario: 9000 },
+      { productoId: "p2", productoNombre: "Flan", cantidad: 1, precioUnitario: 3000 },
+    ];
+    const conPromoAusente = armarBoleta(items);
+    for (const l of conPromoAusente.lineas) {
+      expect(l).not.toHaveProperty("promoCuentaId");
+      expect(l).not.toHaveProperty("indentado");
+    }
+  });
+
+  it("agrupa los componentes de la MISMA promoCuentaId bajo una cabecera con el título y el total cobrado", () => {
+    const boleta = armarBoleta([
+      { productoId: "empanada", productoNombre: "Empanada de carne", cantidad: 2, precioUnitario: 500, promo: { promoCuentaId: "promo-1", titulo: "Menú del día" } },
+      { productoId: "milanesa", productoNombre: "Milanesa", cantidad: 1, precioUnitario: 1000, promo: { promoCuentaId: "promo-1", titulo: "Menú del día" } },
+    ]);
+    expect(boleta.lineas).toEqual([
+      { producto: "Menú del día", cantidad: 1, precioUnitario: 2000, subtotal: 2000, promoCuentaId: "promo-1" },
+      { producto: "Empanada de carne", cantidad: 2, precioUnitario: 500, subtotal: 1000, promoCuentaId: "promo-1", indentado: true },
+      { producto: "Milanesa", cantidad: 1, precioUnitario: 1000, subtotal: 1000, promoCuentaId: "promo-1", indentado: true },
+    ]);
+    // El total NO cambia por agrupar: sigue siendo la suma de los componentes netos, no de las cabeceras (que ya son esa suma).
+    expect(boleta.total).toBe(2000);
+  });
+
+  it("una promo y un suelto en la misma boleta: el suelto queda tal cual, sin sangría ni cabecera", () => {
+    const boleta = armarBoleta([
+      { productoId: "empanada", productoNombre: "Empanada de carne", cantidad: 1, precioUnitario: 500, promo: { promoCuentaId: "promo-1", titulo: "Menú del día" } },
+      { productoId: "gaseosa", productoNombre: "Gaseosa", cantidad: 1, precioUnitario: 800 },
+    ]);
+    expect(boleta.lineas).toEqual([
+      { producto: "Menú del día", cantidad: 1, precioUnitario: 500, subtotal: 500, promoCuentaId: "promo-1" },
+      { producto: "Empanada de carne", cantidad: 1, precioUnitario: 500, subtotal: 500, promoCuentaId: "promo-1", indentado: true },
+      { producto: "Gaseosa", cantidad: 1, precioUnitario: 800, subtotal: 800 },
+    ]);
+    expect(boleta.total).toBe(1300);
+  });
+
+  it("dos instancias de la MISMA promo en la cuenta (dos menús con elecciones distintas): cada una su propia cabecera", () => {
+    const boleta = armarBoleta([
+      { productoId: "empanada", productoNombre: "Empanada de carne", cantidad: 1, precioUnitario: 500, promo: { promoCuentaId: "promo-1", titulo: "Menú del día" } },
+      { productoId: "flan", productoNombre: "Flan", cantidad: 1, precioUnitario: 1500, promo: { promoCuentaId: "promo-2", titulo: "Menú del día" } },
+    ]);
+    expect(boleta.lineas.filter((l) => l.producto === "Menú del día")).toHaveLength(2);
+    expect(boleta.total).toBe(2000);
+  });
+
+  it("un suelto y un componente de promo del MISMO producto al MISMO precio no se mezclan (D4)", () => {
+    const boleta = armarBoleta([
+      { productoId: "empanada", productoNombre: "Empanada de carne", cantidad: 3, precioUnitario: 500 },
+      { productoId: "empanada", productoNombre: "Empanada de carne", cantidad: 1, precioUnitario: 500, promo: { promoCuentaId: "promo-1", titulo: "Menú del día" } },
+    ]);
+    const sueltas = boleta.lineas.filter((l) => l.producto === "Empanada de carne" && !l.promoCuentaId);
+    const deLaPromo = boleta.lineas.filter((l) => l.producto === "Empanada de carne" && l.promoCuentaId);
+    expect(sueltas).toEqual([{ producto: "Empanada de carne", cantidad: 3, precioUnitario: 500, subtotal: 1500 }]);
+    expect(deLaPromo).toEqual([{ producto: "Empanada de carne", cantidad: 1, precioUnitario: 500, subtotal: 500, promoCuentaId: "promo-1", indentado: true }]);
+  });
+});
+
 /**
  * `armarBoletaImpresaEn` (Task #17, reporte de boletas emitidas): la boleta como se veía en el instante de esa impresión, no como
  * está la cuenta ahora. `armarBoletaVigente` es el caso "ahora" sobre la misma base (ver su docstring).

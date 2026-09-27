@@ -92,4 +92,31 @@ describe("obtenerBoletasRecientes — estado derivado (vigente / desactualizada 
     await prisma.operacion.update({ where: { id: ventaFlan.id }, data: { anuladaEn: new Date() } });
     expect(await laBoleta()).toMatchObject({ estado: "desactualizada", numero: null, total: 9000 });
   });
+
+  /** Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, D4, paso 9): anular UN componente de una promo cerrada anula
+   *  a su hermano también — la boleta pasa directo a "anulada" (nunca queda "desactualizada" a medias con solo la mitad
+   *  de la promo vigente). */
+  it("promo con dos componentes: anular UNO anula el otro también (D4) — la boleta pasa directo a «anulada», nunca a medias", async () => {
+    const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús boleta-estado" } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, []);
+    const promoCuenta = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 10000, titulo: "Menú del día", creadoPorId: s.admin.id } });
+    await prisma.cuentaItem.createMany({
+      data: [
+        { cuentaId: cuenta.id, productoId: s.milanesa.id, cantidad: 1, precioUnitario: 7500, numeroEnvio: 1, promoCuentaId: promoCuenta.id, creadoPorId: s.admin.id },
+        { cuentaId: cuenta.id, productoId: s.flan.id, cantidad: 1, precioUnitario: 2500, numeroEnvio: 1, promoCuentaId: promoCuenta.id, creadoPorId: s.admin.id },
+      ],
+    });
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
+
+    const itemMila = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.milanesa.id } });
+    expect((await anularVenta(itemMila.operacionId!)).ok).toBe(true);
+
+    const itemFlan = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.flan.id } });
+    const operacionFlan = await prisma.operacion.findUniqueOrThrow({ where: { id: itemFlan.operacionId! } });
+    expect(operacionFlan.anuladaEn).not.toBeNull(); // el hermano se anuló también, sin que nadie lo pidiera a mano
+
+    const boleta = (await obtenerBoletasRecientes(s.sucursalId, s.mesa.id))[0];
+    expect(boleta).toMatchObject({ estado: "anulada", ventaAnulada: true, lineas: [], total: 0 });
+  });
 });

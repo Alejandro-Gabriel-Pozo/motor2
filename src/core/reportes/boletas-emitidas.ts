@@ -72,20 +72,30 @@ export interface PaginaBoletas {
 }
 
 /** Las líneas NETAS de la boleta «como se imprimió» en `impresaEn`, con el `operacionId` de cada una (misma agrupación que
- *  `armarBoleta`/`lineasDeVenta`: por producto y precio congelado). No toca boleta.ts: solo agrega el dato para el link a
- *  Trazabilidad, que ese módulo no necesita. */
+ *  `armarBoleta`/`lineasDeVenta`: por producto, precio congelado Y promo, Task #16). No toca boleta.ts: solo agrega el dato
+ *  para el link a Trazabilidad, que ese módulo no necesita.
+ *
+ * `lineasDeVenta` agrupa por (productoId, precioUnitario, promoCuentaId) — misma clave que `nombres` de `armarBoleta` — así que
+ * `netas` tiene, EN ORDEN, exactamente una entrada por cada línea de dato de `lineas` (un suelto, o un componente indentado):
+ * `armarBoleta` inserta la cabecera de una promo COMO EXTRA, sin consumir ningún `componentes`/`netas` — se filtra acá antes de
+ * asociar por posición. Una cabecera agrupa VARIAS Operaciones (una por componente): sin una sola que enlazar, queda en `null`.
+ */
 function lineasConOperacion(items: readonly ItemConVenta[], impresaEn: Date, descuentoPorcentaje: number | null): LineaBoletaEmitida[] {
   const { lineas } = armarBoletaImpresaEn(items, impresaEn, descuentoPorcentaje);
   const vigentes = items.filter((i) => i.anuladaEn === null || i.anuladaEn > impresaEn);
   const operacionPorClave = new Map<string, string | null>();
   for (const i of vigentes) {
-    const clave = `${i.productoId}|${i.precioUnitario}`;
+    const clave = `${i.productoId}|${i.precioUnitario}|${i.promo?.promoCuentaId ?? ""}`;
     if (!operacionPorClave.has(clave)) operacionPorClave.set(clave, i.operacionId);
   }
-  // lineasDeVenta agrupa por (productoId, precioUnitario) — misma clave que arriba y que `nombres` de armarBoleta — así que
-  // `lineas` (ya sin productoId) se puede volver a asociar por posición: mismo orden, mismo largo, misma clave subyacente.
-  const netas = lineasDeVenta(vigentes);
-  return lineas.map((l, i) => ({ ...l, operacionId: operacionPorClave.get(`${netas[i].productoId}|${netas[i].precioUnitario}`) ?? null }));
+  const netas = lineasDeVenta(vigentes.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId })));
+  let cursor = 0;
+  return lineas.map((l): LineaBoletaEmitida => {
+    const esCabecera = !l.indentado && l.promoCuentaId !== undefined;
+    if (esCabecera) return { ...l, operacionId: null };
+    const neta = netas[cursor++];
+    return { ...l, operacionId: operacionPorClave.get(`${neta.productoId}|${neta.precioUnitario}|${neta.promoCuentaId ?? ""}`) ?? null };
+  });
 }
 
 /**
@@ -126,6 +136,7 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
               precioUnitario: true,
               operacionId: true,
               operacion: { select: { anuladaEn: true } },
+              promoCuenta: { select: { id: true, titulo: true } },
             },
           },
           ejemplaresBoleta: { orderBy: { ejemplar: "desc" }, take: 1, select: { numero: true, ejemplar: true } },
@@ -145,6 +156,7 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
       precioUnitario: Number(i.precioUnitario),
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
     }));
     // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
     const descuentoPorcentaje = e.cuenta.descuentoPorcentaje !== null ? Number(e.cuenta.descuentoPorcentaje) : null;

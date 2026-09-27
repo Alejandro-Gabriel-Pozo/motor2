@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProduc
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "../../src/server/actions/carta/secciones";
 import { actualizarVisibleEnCarta, guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
-import { actualizarActivaPromoCarta, guardarPromoCarta } from "../../src/server/actions/carta/promos";
+import { actualizarActivaPromoCarta, guardarCuposPromoCarta, guardarPromoCarta } from "../../src/server/actions/carta/promos";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 import { normalizarTagsCarta, validarImagenUrlCarta, validarOrdenCarta, validarPrecioCarta } from "../../src/core/carta/validaciones";
 
@@ -192,6 +192,91 @@ describe("Server Actions de la carta", () => {
       expect((await guardarPromoCarta({ seccionCartaId, titulo: "X", precio: -1 })).ok).toBe(false);
       expect((await guardarPromoCarta({ seccionCartaId: "no-existe", titulo: "X", precio: 1 })).ok).toBe(false);
       expect(await prisma.promoCarta.count()).toBe(0);
+    });
+  });
+
+  /** Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, paso 5): cupos de una promo ARMABLE (D1). */
+  describe("cupos de una promo (guardarCuposPromoCarta)", () => {
+    async function sembrarPromoConDosSecciones(precio: number | string = 20000) {
+      const entradas = await guardarSeccionCarta({ nombre: "Entradas" });
+      const postres = await guardarSeccionCarta({ nombre: "Postres" });
+      const menu = await guardarSeccionCarta({ nombre: "Menús" });
+      const seccionEntradasId = entradas.ok ? entradas.id : "";
+      const seccionPostresId = postres.ok ? postres.id : "";
+      const r = await guardarPromoCarta({ seccionCartaId: menu.ok ? menu.id : "", titulo: "Menú del día", precio });
+      const promoId = (await prisma.promoCarta.findFirstOrThrow({ where: { titulo: "Menú del día" } })).id;
+      expect(r.ok).toBe(true);
+      return { promoId, seccionEntradasId, seccionPostresId };
+    }
+
+    it("guarda uno o más cupos: la promo pasa a ser ARMABLE (D1)", async () => {
+      const { promoId, seccionEntradasId, seccionPostresId } = await sembrarPromoConDosSecciones();
+      const r = await guardarCuposPromoCarta(promoId, [
+        { seccionCartaId: seccionEntradasId, cantidadMinima: 1, cantidadMaxima: 2 },
+        { seccionCartaId: seccionPostresId, cantidadMaxima: 1 },
+      ]);
+      expect(r.ok).toBe(true);
+      const cupos = await prisma.promoCartaCupo.findMany({ where: { promoCartaId: promoId }, orderBy: { orden: "asc" } });
+      expect(cupos).toHaveLength(2);
+      expect(cupos[0]).toMatchObject({ seccionCartaId: seccionEntradasId, cantidadMinima: 1, cantidadMaxima: 2, orden: 0 });
+      // D1: mínimo 0 por defecto cuando no se manda.
+      expect(cupos[1]).toMatchObject({ seccionCartaId: seccionPostresId, cantidadMinima: 0, cantidadMaxima: 1, orden: 1 });
+    });
+
+    it("reemplaza TODO el conjunto: un cupo que ya no viene en la lista se borra, y una lista vacía vuelve la promo a informativa", async () => {
+      const { promoId, seccionEntradasId, seccionPostresId } = await sembrarPromoConDosSecciones();
+      await guardarCuposPromoCarta(promoId, [
+        { seccionCartaId: seccionEntradasId, cantidadMaxima: 2 },
+        { seccionCartaId: seccionPostresId, cantidadMaxima: 1 },
+      ]);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(2);
+
+      const r2 = await guardarCuposPromoCarta(promoId, [{ seccionCartaId: seccionEntradasId, cantidadMaxima: 3 }]);
+      expect(r2.ok).toBe(true);
+      const cuposRestantes = await prisma.promoCartaCupo.findMany({ where: { promoCartaId: promoId } });
+      expect(cuposRestantes).toHaveLength(1);
+      expect(cuposRestantes[0]).toMatchObject({ seccionCartaId: seccionEntradasId, cantidadMaxima: 3 });
+
+      const r3 = await guardarCuposPromoCarta(promoId, []);
+      expect(r3.ok).toBe(true);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(0);
+    });
+
+    it("rechaza dos cupos de la MISMA sección en la misma promo, sin escribir nada", async () => {
+      const { promoId, seccionEntradasId } = await sembrarPromoConDosSecciones();
+      const r = await guardarCuposPromoCarta(promoId, [
+        { seccionCartaId: seccionEntradasId, cantidadMaxima: 1 },
+        { seccionCartaId: seccionEntradasId, cantidadMaxima: 2 },
+      ]);
+      expect(r.ok).toBe(false);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(0);
+    });
+
+    it("rechaza mínimo > máximo, máximo < 1, o una sección que no existe", async () => {
+      const { promoId, seccionEntradasId } = await sembrarPromoConDosSecciones();
+      expect((await guardarCuposPromoCarta(promoId, [{ seccionCartaId: seccionEntradasId, cantidadMinima: 3, cantidadMaxima: 2 }])).ok).toBe(false);
+      expect((await guardarCuposPromoCarta(promoId, [{ seccionCartaId: seccionEntradasId, cantidadMaxima: 0 }])).ok).toBe(false);
+      expect((await guardarCuposPromoCarta(promoId, [{ seccionCartaId: "no-existe", cantidadMaxima: 1 }])).ok).toBe(false);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(0);
+    });
+
+    it("rechaza cuando el precio no alcanza el piso de $0,01 por unidad en el PEOR CASO (D3)", async () => {
+      // Precio $0,03: con dos cupos de máximo 2 cada uno, el peor caso son 4 unidades — hacen falta al menos $0,04.
+      const { promoId, seccionEntradasId, seccionPostresId } = await sembrarPromoConDosSecciones(0.03);
+      const r = await guardarCuposPromoCarta(promoId, [
+        { seccionCartaId: seccionEntradasId, cantidadMaxima: 2 },
+        { seccionCartaId: seccionPostresId, cantidadMaxima: 2 },
+      ]);
+      expect(r.ok).toBe(false);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(0);
+    });
+
+    it("una promo de OTRA sucursal no se puede tocar pasando su id", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Postres" });
+      const ajena = await prisma.promoCarta.create({ data: { sucursalId: otraSucursalId, seccionCartaId: s.ok ? s.id : "", titulo: "Ajena", precio: 1000 } });
+      const r = await guardarCuposPromoCarta(ajena.id, [{ seccionCartaId: s.ok ? s.id : "", cantidadMaxima: 1 }]);
+      expect(r).toMatchObject({ ok: false, mensaje: "No se encontró la promo en esta sucursal." });
+      expect(await prisma.promoCartaCupo.count()).toBe(0);
     });
   });
 

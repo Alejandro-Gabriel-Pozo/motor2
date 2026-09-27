@@ -17,6 +17,10 @@ type DocumentoDeBoleta = Extract<DocumentoImprimible, { boleta: unknown }>;
  * Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md): con `boleta.cliente`, un renglón «Cliente: X
  * (−Y% dto.)» y, en cada línea con descuento, el precio de lista tachado antes del precio cobrado — así el ticket deja registro de
  * cuánto se descontó, no solo el total final.
+ *
+ * Promo armada (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 2.6/10): la cabecera («1 × Menú del día») muestra el precio
+ * cobrado por la promo entera; sus componentes van indentados, SIN precio propio impreso (ya está en la cabecera). `key` incluye
+ * `promoCuentaId` — dos instancias de la misma promo (o dos promos con el mismo total, por casualidad) no colisionan.
  */
 export function BoletaCuenta({ documento, mesa, sucursal }: { documento: DocumentoDeBoleta; mesa: string; sucursal: string }) {
   const { boleta } = documento;
@@ -41,16 +45,18 @@ export function BoletaCuenta({ documento, mesa, sucursal }: { documento: Documen
       )}
       <ul className="ticket-separador">
         {boleta.lineas.map((l) => (
-          <li key={`${l.producto}|${l.precioUnitario}`} className="ticket-linea">
+          <li key={`${l.producto}|${l.precioUnitario}|${l.promoCuentaId ?? ""}`} className={`ticket-linea${l.indentado ? " ticket-linea-indentada" : ""}`}>
             <p className="ticket-item">
               {formatearCantidad(l.cantidad)} × {l.producto}
             </p>
-            <p className="ticket-monto">
-              <span>
-                {l.precioListaUnitario !== undefined && <s>{formatearMonto(l.precioListaUnitario)}</s>} {formatearMonto(l.precioUnitario)} c/u
-              </span>{" "}
-              <span>{formatearMonto(l.subtotal)}</span>
-            </p>
+            {!l.indentado && (
+              <p className="ticket-monto">
+                <span>
+                  {l.precioListaUnitario !== undefined && <s>{formatearMonto(l.precioListaUnitario)}</s>} {formatearMonto(l.precioUnitario)} c/u
+                </span>{" "}
+                <span>{formatearMonto(l.subtotal)}</span>
+              </p>
+            )}
           </li>
         ))}
       </ul>

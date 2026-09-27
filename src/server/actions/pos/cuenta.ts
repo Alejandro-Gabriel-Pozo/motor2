@@ -14,6 +14,8 @@ import { registrarVentaEnTx, type AvisoStockNegativo } from "@/core/movimientos/
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { formatearNumeroBoleta, siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { armarBoletaVigente, estadoDeBoleta, type ItemConVenta } from "@/core/pos/boleta";
+import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
+import { cargarPromoCartaParaAgregar } from "@/core/pos/promo-combo-consulta";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoBoletaCorregida, type ResultadoEnvioACocina } from "../tipos";
 
@@ -152,22 +154,40 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
   });
 }
 
+/** Una promo armada por el mozo, para el tercer parámetro de `agregarItems` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a). */
+export interface PromoParaAgregar {
+  promoCartaId: string;
+  elecciones: EleccionDeCupo[];
+}
+
 /**
  * Agrega ítems SIN ENVIAR a una cuenta abierta: todo o nada. Cada producto tiene que ser un PV disponible en la sucursal; la cantidad
  * se valida y redondea a los decimales de su unidad (`validarCantidadPedido`). El precio se CONGELA acá (Precio Local habilitado o, si
  * no, el global — `resolverPrecioVenta`): es el que se cobra al cerrar la cuenta aunque cambie después.
+ *
+ * `promos` (Task #16, tercer parámetro OPCIONAL): cada promo se re-valida servidor-side con la MISMA fuente que el selector
+ * (`cargarPromoCartaParaAgregar`, D5) — nunca se confía en lo que mandó el cliente sobre cupos/elegibles/precios —, se prorratea
+ * (D3, `prorratearPrecioPromo`) y entra como una `PromoCuenta` nueva más sus `CuentaItem` componentes, cada uno con
+ * `promoCuentaId` y `precioCartaUnitario`. TODA la validación (de los ítems sueltos Y de las promos) ocurre ANTES de la primera
+ * escritura, mismo criterio que `registrarVentaEnTx`: un rechazo no deja nada escrito, sin importar en qué promo/ítem ocurrió.
+ * `MAXIMO_ITEMS_POR_AGREGADO` cuenta también los componentes de cada promo (una elección con 3 productos elegidos cuenta 3),
+ * no las promos en sí.
  */
-export async function agregarItems(cuentaId: string, items: { productoId: string; cantidad: number }[]): Promise<ResultadoAccion> {
+export async function agregarItems(cuentaId: string, items: { productoId: string; cantidad: number }[], promos?: PromoParaAgregar[]): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    if (!Array.isArray(items) || items.length === 0) return error("Elegí al menos un producto.");
-    if (items.length > MAXIMO_ITEMS_POR_AGREGADO) return error(`No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez.`);
+    const items_ = Array.isArray(items) ? items : [];
+    const promos_ = Array.isArray(promos) ? promos : [];
+    if (items_.length === 0 && promos_.length === 0) return error("Elegí al menos un producto.");
+    const cantidadDeLineas = items_.length + promos_.reduce((suma, p) => suma + componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).length, 0);
+    if (cantidadDeLineas > MAXIMO_ITEMS_POR_AGREGADO) return error(`No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez.`);
 
     return conTransaccionSerializable(async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
-      const filas: Prisma.CuentaItemCreateManyInput[] = [];
-      for (const item of items) {
+      // Fase 1: VALIDAR todo, sin escribir nada — ni los sueltos ni las promos (mismo criterio que registrarVentaEnTx).
+      const filasSueltas: Prisma.CuentaItemCreateManyInput[] = [];
+      for (const item of items_) {
         const producto = typeof item?.productoId === "string" ? await tx.producto.findUnique({ where: { id: item.productoId }, include: { unidadStock: { select: { decimales: true } } } }) : null;
         if (!producto) return error("El producto no existe.");
         if (producto.tipo !== "PV") return error(`«${producto.nombre}» no se puede pedir: solo se piden productos de venta (PV).`);
@@ -176,11 +196,70 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
         const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
         if (!cantidad.ok) return error(`«${producto.nombre}»: ${cantidad.mensaje}`);
         const precioUnitario = redondearMoneda(await resolverPrecioVenta(ctx.sucursalId, producto.id, Number(producto.precioVenta), tx));
-        filas.push({ cuentaId: abierta.cuenta.id, productoId: producto.id, cantidad: cantidad.cantidad, precioUnitario, numeroEnvio: null, creadoPorId: ctx.usuarioId });
+        filasSueltas.push({ cuentaId: abierta.cuenta.id, productoId: producto.id, cantidad: cantidad.cantidad, precioUnitario, numeroEnvio: null, creadoPorId: ctx.usuarioId });
+      }
+
+      const promosValidadas: { titulo: string; promoCartaId: string; precio: number; componentes: (ComponentePromoElegido & { precioCarta: number })[]; filas: FilaPromoProrrateada[] }[] = [];
+      for (const p of promos_) {
+        const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(ctx.sucursalId, p.promoCartaId, tx) : null;
+        if (!def) return error("No se encontró esa promo, o ya no está disponible.");
+        const elecciones = Array.isArray(p.elecciones) ? p.elecciones : [];
+        const validacion = validarEleccionPromo(def.cupos, elecciones);
+        if (!validacion.ok) return error(`«${def.titulo}»: ${validacion.mensaje}`);
+        const componentes = componentesDeEleccion(elecciones).map((c) => ({ ...c, precioCarta: def.precioCartaPorProducto.get(c.productoId) ?? 0 }));
+        const prorrateo = prorratearPrecioPromo(def.precio, componentes);
+        if (!prorrateo.ok) return error(`«${def.titulo}»: ${prorrateo.mensaje}`);
+        promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas });
+      }
+
+      // Fase 2: ESCRIBIR — recién acá, con todo ya validado. Una PromoCuenta por promo (necesita su id antes de poder crear los
+      // CuentaItem que la referencian); todos los CuentaItem (sueltos y componentes) en UN solo createMany al final.
+      const filas = [...filasSueltas];
+      for (const p of promosValidadas) {
+        const promoCuenta = await tx.promoCuenta.create({ data: { cuentaId: abierta.cuenta.id, promoCartaId: p.promoCartaId, precio: p.precio, titulo: p.titulo, creadoPorId: ctx.usuarioId } });
+        const precioCartaDe = (productoId: string) => p.componentes.find((c) => c.productoId === productoId)?.precioCarta ?? null;
+        for (const fila of p.filas) {
+          filas.push({
+            cuentaId: abierta.cuenta.id,
+            productoId: fila.productoId,
+            cantidad: fila.cantidad,
+            precioUnitario: fila.precioUnitario,
+            numeroEnvio: null,
+            creadoPorId: ctx.usuarioId,
+            promoCuentaId: promoCuenta.id,
+            precioCartaUnitario: precioCartaDe(fila.productoId),
+          });
+        }
       }
 
       await tx.cuentaItem.createMany({ data: filas });
-      return ok(`${filas.length === 1 ? "Se agregó 1 ítem" : `Se agregaron ${filas.length} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`);
+      const mensaje = `${filas.length === 1 ? "Se agregó 1 ítem" : `Se agregaron ${filas.length} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`;
+      const nombresPromos = promosValidadas.map((p) => `«${p.titulo}»`);
+      return ok(nombresPromos.length ? `${mensaje} Incluye ${nombresPromos.join(", ")}.` : mensaje);
+    });
+  });
+}
+
+/**
+ * Quita una promo entera que TODAVÍA NO SALIÓ a cocina: borra la `PromoCuenta` y TODOS sus `CuentaItem` componentes juntos, de
+ * verdad (borradores, sin motivo ni auditoría — mismo criterio que `quitarItemSinEnviar`). Si algún componente ya salió a
+ * cocina, no se borra nada: hay que anular la promo entera (`anularPromoEnviada`, D4).
+ */
+export async function quitarPromoSinEnviar(promoCuentaId: string): Promise<ResultadoAccion> {
+  return conPermiso("pos_tomar_pedido", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const promoCuenta =
+        typeof promoCuentaId === "string"
+          ? await tx.promoCuenta.findFirst({ where: { id: promoCuentaId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } }, include: { cuenta: { include: { mesa: { select: { numero: true } } } }, items: true } })
+          : null;
+      if (!promoCuenta) return error("No se encontró esa promo en esta sucursal.");
+      if (promoCuenta.cuenta.cerradaEn) return error(`La cuenta de la mesa ${promoCuenta.cuenta.mesa.numero} ya está cerrada.`);
+      if (promoCuenta.items.some((i) => i.numeroEnvio !== null || i.anulaAItemId !== null)) {
+        return error("Esa promo ya salió a cocina: anulala con motivo.");
+      }
+      await tx.cuentaItem.deleteMany({ where: { promoCuentaId: promoCuenta.id } });
+      await tx.promoCuenta.delete({ where: { id: promoCuenta.id } });
+      return ok(`Se quitó «${promoCuenta.titulo}» de la mesa ${promoCuenta.cuenta.mesa.numero}.`);
     });
   });
 }
@@ -193,8 +272,13 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
 export async function quitarItemSinEnviar(cuentaItemId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
     return conTransaccionSerializable(async (tx) => {
-      const item = typeof cuentaItemId === "string" ? await tx.cuentaItem.findFirst({ where: { id: cuentaItemId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } }, include: { producto: { select: { nombre: true } } } }) : null;
+      const item =
+        typeof cuentaItemId === "string"
+          ? await tx.cuentaItem.findFirst({ where: { id: cuentaItemId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } }, include: { producto: { select: { nombre: true } }, promoCuenta: { select: { titulo: true } } } })
+          : null;
       if (!item) return error("No se encontró ese ítem en esta sucursal.");
+      // Task #16 (D4, "una promo se anula/quita entera"): un componente no se quita suelto — usá quitarPromoSinEnviar con la promo.
+      if (item.promoCuenta) return error(`«${item.producto.nombre}» es parte de la promo «${item.promoCuenta.titulo}»: quitá la promo entera.`);
       const abierta = await cuentaAbiertaDeSucursal(tx, item.cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
@@ -222,15 +306,25 @@ export async function enviarACocina(cuentaId: string, itemIds: string[]): Promis
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
+      // Task #16 (docs/plan-promo-combo-2026-09-26.md, D del paso 2.5, "una promo nunca sale a medias"): si algún id pedido es
+      // un componente de una promo, se suman TODOS los hermanos de esa MISMA PromoCuenta que sigan sin enviar — el mozo pudo
+      // no tenerlos a todos en pantalla (o no haberlos tocado), pero una promo nunca se manda parcial a cocina.
+      const pedidos = await tx.cuentaItem.findMany({ where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id }, select: { promoCuentaId: true } });
+      const promoCuentaIds = [...new Set(pedidos.flatMap((i) => (i.promoCuentaId ? [i.promoCuentaId] : [])))];
+      const hermanos = promoCuentaIds.length
+        ? await tx.cuentaItem.findMany({ where: { promoCuentaId: { in: promoCuentaIds }, cuentaId: abierta.cuenta.id, numeroEnvio: null, anulaAItemId: null }, select: { id: true } })
+        : [];
+      const idsAEnviar = [...new Set([...itemIds, ...hermanos.map((h) => h.id)])];
+
       const { _max } = await tx.cuentaItem.aggregate({ where: { cuentaId: abierta.cuenta.id }, _max: { numeroEnvio: true } });
       const numeroEnvio = (_max.numeroEnvio ?? 0) + 1;
       const enviados = await tx.cuentaItem.updateMany({
-        where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id, numeroEnvio: null, anulaAItemId: null },
+        where: { id: { in: idsAEnviar }, cuentaId: abierta.cuenta.id, numeroEnvio: null, anulaAItemId: null },
         data: { numeroEnvio },
       });
       if (enviados.count === 0) {
         const previo = await tx.cuentaItem.aggregate({
-          where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id, anulaAItemId: null, numeroEnvio: { not: null } },
+          where: { id: { in: idsAEnviar }, cuentaId: abierta.cuenta.id, anulaAItemId: null, numeroEnvio: { not: null } },
           _max: { numeroEnvio: true },
         });
         return { ...ok("Esos ítems ya estaban enviados."), numeroEnvio: previo._max.numeroEnvio, envioNuevo: false };
@@ -284,6 +378,7 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
                 producto: { select: { tipo: true, nombre: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } } },
                 cuenta: { include: { mesa: { select: { numero: true } } } },
                 anulaciones: { select: { cantidad: true } },
+                promoCuenta: { select: { id: true, titulo: true } },
               },
             })
           : null;
@@ -292,6 +387,8 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
       if (item.anulaAItemId !== null) return error("Eso ya es una anulación: no se puede anular.");
       if (item.cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
       if (item.numeroEnvio === null) return error("Ese ítem todavía no salió a cocina: usá «Quitar».");
+      // Task #16 (D4, "una promo se anula entera"): un componente no se anula suelto — usá anularPromoEnviada con la promo.
+      if (item.promoCuenta) return error(`«${item.producto.nombre}» es parte de la promo «${item.promoCuenta.titulo}»: anulá la promo entera.`);
 
       const motivoValidado = validarMotivoAnulacion(motivo);
       if (!motivoValidado.ok) return error(motivoValidado.mensaje);
@@ -330,6 +427,73 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
         sucursalId: ctx.sucursalId,
       });
       return ok(`Se anuló ${formatearCantidad(aAnular.cantidad)} × «${item.producto.nombre}» de la mesa ${mesa}.`);
+    });
+  });
+}
+
+/**
+ * Anula la promo ENTERA ya enviada a cocina (Task #16, D4: "una promo se anula entera, nunca un componente suelto"): crea una
+ * fila ESPEJO por CADA componente vigente (el resto que le quedaba, íntegro), cada una con el MISMO `promoCuentaId` — mismo
+ * patrón que `anularItemEnviado` (fila espejo + auditoría), pero para TODOS los componentes juntos en una sola llamada, todo
+ * o nada. Mismo permiso (`pos_anular_item`, más restrictivo que tomar pedido). Una cuenta ya cerrada no se toca: su venta se
+ * anula por el camino de siempre (`anularVenta`, paso 9), que también anula los hermanos.
+ */
+export async function anularPromoEnviada(promoCuentaId: string, motivo: string): Promise<ResultadoAccion> {
+  return conPermiso("pos_anular_item", async (ctx) => {
+    return conTransaccionSerializable(async (tx) => {
+      const promoCuenta =
+        typeof promoCuentaId === "string"
+          ? await tx.promoCuenta.findFirst({
+              where: { id: promoCuentaId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } },
+              include: {
+                cuenta: { include: { mesa: { select: { numero: true } } } },
+                items: { include: { producto: { select: { nombre: true } }, anulaciones: { select: { cantidad: true } } } },
+              },
+            })
+          : null;
+      if (!promoCuenta) return error("No se encontró esa promo en esta sucursal.");
+      const mesa = promoCuenta.cuenta.mesa.numero;
+      if (promoCuenta.cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
+
+      const originales = promoCuenta.items.filter((i) => i.anulaAItemId === null);
+      if (originales.length === 0) return error("Esa promo no tiene ningún componente.");
+      if (originales.some((i) => i.numeroEnvio === null)) return error("Esa promo todavía no salió a cocina: usá «Quitar promo».");
+
+      const motivoValidado = validarMotivoAnulacion(motivo);
+      if (!motivoValidado.ok) return error(motivoValidado.mensaje);
+
+      const aAnular = originales
+        .map((item) => ({ item, restante: restanteDe({ cantidad: Number(item.cantidad) }, item.anulaciones.map((a) => ({ cantidad: Number(a.cantidad) }))) }))
+        .filter((x) => x.restante > 0);
+      if (!aAnular.length) return error(`La promo «${promoCuenta.titulo}» ya está anulada entera.`);
+
+      for (const { item, restante } of aAnular) {
+        await tx.cuentaItem.create({
+          data: {
+            cuentaId: item.cuentaId,
+            productoId: item.productoId,
+            cantidad: -restante,
+            precioUnitario: item.precioUnitario,
+            numeroEnvio: item.numeroEnvio,
+            anulaAItemId: item.id,
+            motivoAnulacion: motivoValidado.motivo,
+            creadoPorId: ctx.usuarioId,
+            promoCuentaId: promoCuenta.id,
+            precioCartaUnitario: item.precioCartaUnitario,
+          },
+        });
+        await registrarCambioAuditado(tx, {
+          entidad: "CuentaItem",
+          entidadId: item.id,
+          descripcion: `Mesa ${mesa}, envío ${item.numeroEnvio}: anulación de la promo «${promoCuenta.titulo}» ya enviada a cocina — ${formatearCantidad(restante)} × "${item.producto.nombre}". Motivo: ${motivoValidado.motivo}`,
+          campo: "cantidadVigente",
+          valorAnterior: restante,
+          valorNuevo: 0,
+          actorId: ctx.usuarioId,
+          sucursalId: ctx.sucursalId,
+        });
+      }
+      return ok(`Se anuló la promo «${promoCuenta.titulo}» de la mesa ${mesa} (${aAnular.length} componente${aAnular.length === 1 ? "" : "s"}).`);
     });
   });
 }
@@ -379,9 +543,11 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
 
       const ahora = new Date();
       const cerrar = () => tx.cuenta.update({ where: { id: cuenta.id }, data: { cerradaEn: ahora, cerradaPorId: ctx.usuarioId } });
-      // `lineas`: precio de LISTA (congelado al pedir), agrupado por (producto, precio) — es la clave con la que se busca cada
-      // CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14).
-      const lineas = lineasDeVenta(cuenta.items.map((i) => ({ productoId: i.productoId, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario) })));
+      // `lineas`: precio de LISTA (congelado al pedir), agrupado por (producto, precio, promo) — es la clave con la que se busca
+      // cada CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14).
+      // `promoCuentaId` (Task #16, D4) evita mezclar un suelto con un componente del mismo producto al mismo precio en la MISMA
+      // Operacion — cada uno queda en su propia línea/Operacion, aunque el precio congelado coincida.
+      const lineas = lineasDeVenta(cuenta.items.map((i) => ({ productoId: i.productoId, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario), promoCuentaId: i.promoCuentaId })));
       if (!lineas.length) {
         await cerrar();
         return ok(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`);
@@ -394,7 +560,13 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
       const descuento = cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null;
       const lineasVenta = lineas.map((l) => {
         const precioCobrado = precioConDescuento(l.precioUnitario, descuento);
-        return { productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: precioCobrado, precioListaUnitario: precioCobrado !== l.precioUnitario ? l.precioUnitario : undefined };
+        return {
+          productoId: l.productoId,
+          cantidadVendida: l.cantidad,
+          precioUnitario: precioCobrado,
+          precioListaUnitario: precioCobrado !== l.precioUnitario ? l.precioUnitario : undefined,
+          promoCuentaId: l.promoCuentaId,
+        };
       });
 
       const venta = await registrarVentaEnTx(
@@ -423,8 +595,10 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
       });
 
       for (const [i, linea] of lineas.entries()) {
+        // `promoCuentaId ?? null` explícito (Task #16): un `undefined` en el `where` de Prisma OMITE el filtro entero, no
+        // filtra por null — con eso, un suelto mezclaría con un componente de promo del mismo producto y precio (D4).
         await tx.cuentaItem.updateMany({
-          where: { cuentaId: cuenta.id, productoId: linea.productoId, precioUnitario: linea.precioUnitario },
+          where: { cuentaId: cuenta.id, productoId: linea.productoId, precioUnitario: linea.precioUnitario, promoCuentaId: linea.promoCuentaId ?? null },
           data: { operacionId: venta.operacionIds[i] },
         });
       }

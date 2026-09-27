@@ -60,7 +60,7 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await nuevaPromo.getByRole("button", { name: "Crear promo" }).click();
     await expect(nuevaPromo.getByRole("status")).toHaveText(`Promo "${nombrePromo}" creada en "${nombreSeccion}".`);
 
-    // Y la carta pública lo refleja.
+    // Y la carta pública lo refleja (sin cupos: `CartaV1` nunca los expone, D3 del paso 4 — el contrato público no cambia).
     const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
     expect(r.status()).toBe(200);
     const carta = await r.json();
@@ -71,9 +71,33 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
       { productoId: producto.id, nombre: producto.nombre, categoria: categoria.nombre, descripcion: "400 g a las brasas", precio: 12345, tags: ["Regional", "Sin TACC"], especial: true, imagenUrl: null },
     ]);
     expect(seccion.promos).toEqual([{ id: expect.any(String), titulo: nombrePromo, descripcion: null, precio: 25000, orden: 0 }]);
+
+    // 4. Cupos de esa promo (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): sin cupos empieza informativa; se tilda su propia
+    // sección con mínimo 1 y máximo 2, y pasa a ser armable — sin que el contrato público (CartaV1) se entere.
+    const filaPromo = page.locator(`[data-promo-carta="${nombrePromo}"]`);
+    await expect(filaPromo.getByText("Informativa (sin cupos)")).toBeVisible();
+    await filaPromo.getByText("Informativa (sin cupos)").click();
+    const filaCupoSeccion = filaPromo.locator(`[data-cupo-seccion="${nombreSeccion}"]`);
+    await filaCupoSeccion.getByLabel(new RegExp(`^${nombreSeccion}`)).check();
+    await filaCupoSeccion.getByLabel("mín.").fill("1");
+    await filaCupoSeccion.getByLabel("máx.").fill("2");
+    await filaPromo.getByRole("button", { name: "Guardar cupos" }).click();
+    await expect(filaPromo.getByRole("status")).toHaveText(`Cupos de "${nombrePromo}" guardados (1): ahora es una promo armable en el POS.`);
+    await expect(filaPromo.getByText("Armable — 1 cupo")).toBeVisible();
+
+    // Paso 13 (opcional, no bloqueante): con máximo 2, el peor caso son 2 unidades — el piso de D3 es $0,02, muy por debajo del
+    // precio de esta promo ($25.000): el aviso lo dice, sin bloquear nada (guardarCuposPromoCarta ya lo hace duro si se cruza).
+    await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("el peor caso son 2 unidades y el precio mínimo permitido es $0,02");
+    await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("de margen antes de ese piso si subís algún máximo");
+
+    const r2 = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
+    const carta2 = await r2.json();
+    const seccion2 = carta2.secciones.find((s: { nombre: string }) => s.nombre === nombreSeccion);
+    expect(seccion2.promos).toEqual([{ id: expect.any(String), titulo: nombrePromo, descripcion: null, precio: 25000, orden: 0 }]);
   } finally {
     const secciones = await prisma.seccionCarta.findMany({ where: { nombre: nombreSeccion }, select: { id: true } });
     const seccionIds = secciones.map((s) => s.id);
+    await prisma.promoCartaCupo.deleteMany({ where: { promoCarta: { seccionCartaId: { in: seccionIds } } } });
     await prisma.promoCarta.deleteMany({ where: { seccionCartaId: { in: seccionIds } } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: { in: seccionIds } } });
