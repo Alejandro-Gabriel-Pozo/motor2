@@ -7,7 +7,7 @@
  * append-only" — reordenar es un cambio de receta como cualquier otro).
  *
  * Dos invariantes que hay que preservar siempre, verificados con tests:
- * 1. `validarPasos` (recetas.ts) rechaza dos pasos con el mismo `orden` en
+ * 1. `validarPasos` (receta-validacion.ts) rechaza dos pasos con el mismo `orden` en
  *    el mismo payload — por eso un reordenamiento es SIEMPRE una secuencia
  *    completa, nunca dos updates sueltos.
  * 2. Al reordenar hay que mover el objeto paso ENTERO (con su
