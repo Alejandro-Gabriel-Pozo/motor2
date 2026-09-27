@@ -118,6 +118,11 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
  * Gate: 'anular_venta', admin-only en la semilla — mismo criterio que
  * 'cancelar_conteo' (más restrictivo que el permiso para CARGAR el proceso
  * original, a propósito).
+ *
+ * Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, D4, paso 9): si la Operacion tiene `promoCuentaId`, ES un
+ * componente de una promo — se anulan TODAS las Operaciones VENTA hermanas (misma `PromoCuenta`, todavía vigentes) en la
+ * MISMA transacción, cada una con su propia Operacion AJUSTE de reversión: una promo nunca queda anulada a medias, se elija
+ * la que se elija de sus componentes para anular.
  */
 export async function anularVenta(operacionId: string): Promise<ResultadoAccion> {
   return conPermiso("anular_venta", async (ctx) => {
@@ -130,50 +135,65 @@ export async function anularVenta(operacionId: string): Promise<ResultadoAccion>
       if (operacion.proceso !== "VENTA") return error(`La operación "${operacionId}" no es una Venta — es "${operacion.proceso}".`);
       if (operacion.anuladaEn) return error("Esta venta ya está anulada.");
 
+      const hermanas = operacion.promoCuentaId
+        ? await tx.operacion.findMany({
+            where: { promoCuentaId: operacion.promoCuentaId, anuladaEn: null, id: { not: operacion.id } },
+            include: { movimientos: { include: { producto: true } } },
+          })
+        : [];
+      const aAnular = [operacion, ...hermanas];
+
       const ahora = new Date();
-      const reversion = await tx.operacion.create({
-        data: {
+      let totalMovimientos = 0;
+      let huboLiquidacion = false;
+      for (const op of aAnular) {
+        const reversion = await tx.operacion.create({
+          data: {
+            sucursalId: ctx.sucursalId,
+            proceso: "AJUSTE",
+            fecha: ahora,
+            detalleLibre: detalleReversionDeVenta(op.id, op.fecha),
+            usuarioId: ctx.usuarioId,
+          },
+        });
+
+        const filas: Prisma.MovimientoStockCreateManyInput[] = op.movimientos.map((m) => ({
+          operacionId: reversion.id,
+          productoId: m.productoId,
+          seccionId: m.seccionId,
+          proceso: m.proceso === "LIQUIDACION_CONSIGNACION" ? "LIQUIDACION_CONSIGNACION" : "AJUSTE",
+          cantidad: -Number(m.cantidad),
+          // Arrastre de redondeo (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): invertida igual que `cantidad`, para
+          // que la deuda de redondeo del producto (`D = Σcantidad − ΣcantidadExacta`, MovimientoStock.cantidadExacta) vuelva EXACTAMENTE
+          // al estado que corresponde a las ventas que siguen vigentes — hoy esta columna siempre es `null` (se llena recién en el paso
+          // 4 de la Task #27), así que este cambio, por sí solo, no altera ningún comportamiento observable todavía.
+          cantidadExacta: m.cantidadExacta === null ? null : -Number(m.cantidadExacta),
+          loteVencimiento: m.loteVencimiento,
+          detalle: `Anulación de venta: revierte "${m.detalle}".`,
+          precioTotal: -Number(m.precioTotal),
+          precioPorUnidadStock: Number(m.precioPorUnidadStock),
+        }));
+        await tx.movimientoStock.createMany({ data: filas });
+        totalMovimientos += filas.length;
+        if (filas.some((f) => f.proceso === "LIQUIDACION_CONSIGNACION")) huboLiquidacion = true;
+
+        await tx.operacion.update({ where: { id: op.id }, data: { anuladaEn: ahora, anuladaPorId: ctx.usuarioId } });
+
+        // Auditoría administrativa (igual que `anularCompra`): anular una venta mueve stock e ingreso, así que queda quién, cuándo y de cuál.
+        await registrarCambioAuditado(tx, {
+          entidad: "Operacion",
+          entidadId: op.id,
+          descripcion: `Venta del ${op.fecha.toISOString().slice(0, 10)}${op.nroFactura ? ` (factura ${op.nroFactura})` : ""}: anulación${hermanas.length ? " (promo, junto con sus otros componentes)" : ""}`,
+          campo: "anuladaEn",
+          valorAnterior: null,
+          valorNuevo: ahora.toISOString(),
+          actorId: ctx.usuarioId,
           sucursalId: ctx.sucursalId,
-          proceso: "AJUSTE",
-          fecha: ahora,
-          detalleLibre: detalleReversionDeVenta(operacion.id, operacion.fecha),
-          usuarioId: ctx.usuarioId,
-        },
-      });
+        });
+      }
 
-      const filas: Prisma.MovimientoStockCreateManyInput[] = operacion.movimientos.map((m) => ({
-        operacionId: reversion.id,
-        productoId: m.productoId,
-        seccionId: m.seccionId,
-        proceso: m.proceso === "LIQUIDACION_CONSIGNACION" ? "LIQUIDACION_CONSIGNACION" : "AJUSTE",
-        cantidad: -Number(m.cantidad),
-        // Arrastre de redondeo (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): invertida igual que `cantidad`, para
-        // que la deuda de redondeo del producto (`D = Σcantidad − ΣcantidadExacta`, MovimientoStock.cantidadExacta) vuelva EXACTAMENTE
-        // al estado que corresponde a las ventas que siguen vigentes — hoy esta columna siempre es `null` (se llena recién en el paso
-        // 4 de la Task #27), así que este cambio, por sí solo, no altera ningún comportamiento observable todavía.
-        cantidadExacta: m.cantidadExacta === null ? null : -Number(m.cantidadExacta),
-        loteVencimiento: m.loteVencimiento,
-        detalle: `Anulación de venta: revierte "${m.detalle}".`,
-        precioTotal: -Number(m.precioTotal),
-        precioPorUnidadStock: Number(m.precioPorUnidadStock),
-      }));
-      await tx.movimientoStock.createMany({ data: filas });
-
-      await tx.operacion.update({ where: { id: operacion.id }, data: { anuladaEn: ahora, anuladaPorId: ctx.usuarioId } });
-
-      // Auditoría administrativa (igual que `anularCompra`): anular una venta mueve stock e ingreso, así que queda quién, cuándo y de cuál.
-      await registrarCambioAuditado(tx, {
-        entidad: "Operacion",
-        entidadId: operacion.id,
-        descripcion: `Venta del ${operacion.fecha.toISOString().slice(0, 10)}${operacion.nroFactura ? ` (factura ${operacion.nroFactura})` : ""}: anulación`,
-        campo: "anuladaEn",
-        valorAnterior: null,
-        valorNuevo: ahora.toISOString(),
-        actorId: ctx.usuarioId,
-        sucursalId: ctx.sucursalId,
-      });
-
-      return ok(`Venta anulada. Se revirtieron ${filas.length} movimiento(s) de stock${filas.some((f) => f.proceso === "LIQUIDACION_CONSIGNACION") ? " y la liquidación de consignación" : ""}.`);
+      const mensajePromo = hermanas.length ? ` Era una promo con ${aAnular.length} componentes: se anularon todos juntos.` : "";
+      return ok(`Venta anulada. Se revirtieron ${totalMovimientos} movimiento(s) de stock${huboLiquidacion ? " y la liquidación de consignación" : ""}.${mensajePromo}`);
     });
   });
 }
