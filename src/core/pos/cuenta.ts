@@ -37,20 +37,30 @@ export interface LineaDeVenta {
   productoId: string;
   precioUnitario: number;
   cantidad: number;
+  /** Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, paso 3): la `PromoCuenta` de la que este componente forma
+   *  parte — SOLO presente cuando el ítem que lo originó tenía uno. Ausente = un suelto de siempre, salida IDÉNTICA a antes
+   *  de esta Task. Suma a la CLAVE de agrupación (ver abajo) para que un suelto y un componente de promo del MISMO producto
+   *  al MISMO precio nunca se mezclen en una sola línea/Operacion (`cerrarCuenta`, paso 8c). */
+  promoCuentaId?: string;
 }
 
 /**
- * Líneas NETAS para registrar la venta de una cuenta: suma originales y espejos por (producto, precio congelado) — el mismo producto
- * cargado a dos precios distintos (cambió el Precio Local entre una ronda y otra) queda en dos líneas, cada una a su precio. Una línea
- * neta ≤ 0 (anulada entera) se descarta: no se vende. Orden: el de la primera aparición de cada línea.
+ * Líneas NETAS para registrar la venta de una cuenta: suma originales y espejos por (producto, precio congelado, promo) — el
+ * mismo producto cargado a dos precios distintos (cambió el Precio Local entre una ronda y otra) queda en dos líneas, cada una
+ * a su precio; el mismo producto al MISMO precio pero uno suelto y otro como componente de una promo (o de dos promos
+ * distintas) también queda en líneas separadas (Task #16, D4: una promo se anula ENTERA, nunca mezclada con un suelto en la
+ * misma Operacion). Una línea neta ≤ 0 (anulada entera) se descarta: no se vende. Orden: el de la primera aparición de cada
+ * línea. Sin ningún `promoCuentaId` en la entrada, la salida es EXACTAMENTE la de antes de esta Task (mismo criterio aditivo
+ * que el resto del plan).
  */
-export function lineasDeVenta(items: readonly { productoId: string; cantidad: number; precioUnitario: number }[]): LineaDeVenta[] {
+export function lineasDeVenta(items: readonly { productoId: string; cantidad: number; precioUnitario: number; promoCuentaId?: string | null }[]): LineaDeVenta[] {
   const porClave = new Map<string, LineaDeVenta>();
   for (const item of items) {
-    const clave = `${item.productoId}|${item.precioUnitario}`;
+    const promoCuentaId = item.promoCuentaId ?? undefined;
+    const clave = `${item.productoId}|${item.precioUnitario}|${promoCuentaId ?? ""}`;
     const previa = porClave.get(clave);
     if (previa) previa.cantidad = redondearCantidad(previa.cantidad + item.cantidad);
-    else porClave.set(clave, { productoId: item.productoId, precioUnitario: item.precioUnitario, cantidad: redondearCantidad(item.cantidad) });
+    else porClave.set(clave, { productoId: item.productoId, precioUnitario: item.precioUnitario, cantidad: redondearCantidad(item.cantidad), ...(promoCuentaId ? { promoCuentaId } : {}) });
   }
   return [...porClave.values()].filter((l) => l.cantidad > 0);
 }
