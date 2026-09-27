@@ -115,3 +115,70 @@ gate único antes de dar por cerrado el cambio.
   tiene esa maquinaria today; si este reordenamiento se retoma, evaluar
   aparte si vale la pena sumarla (`app` la usa para verificar cada paso
   del movimiento sin depender de revisión manual).
+
+## Estado al 2026-09-27
+
+Las cifras de arriba ("24 archivos", "7 subcarpetas", "353/353") son las
+del reordenamiento del 17/09 y quedan como historial. Contado de nuevo
+sobre el repo real el 2026-09-27 (`find src/server/actions -name '*.ts'`
+y `grep '^"use server"'` por archivo), en la rama de la Task #41, Fase A:
+
+**`src/server/actions/`: 44 archivos `.ts`** — 38 llevan `"use server"`
+(son Server Actions, endpoints invocables) y 6 NO lo llevan, porque son
+ayudantes internos (en un archivo `"use server"` todo lo exportado queda
+expuesto como endpoint, así que las piezas sin guarda propia viven
+aparte a propósito):
+
+- `con-permiso.ts` — envoltorio obligatorio de las mutaciones (`conPermiso`).
+- `con-sesion.ts` — guarda de las lecturas (`requerirSesion`/`requerirVer`/…).
+- `tipos.ts` — tipos de resultado (`ResultadoAccion`, `ResultadoConId`, …).
+- `refrescar.ts` — `refresh()` de la ruta tras una mutación exitosa.
+- `carta/generos-compartido.ts` — validación de género compartida entre
+  dos acciones de la carta.
+- `catalogo/upsert-proveedor-por-producto.ts` — escritura sin gate propio
+  (la gatea quien la llama).
+
+Subcarpetas (10, antes 7 — se sumaron `carta/`, `clientes/` y `pos/`) y
+cantidad de archivos `.ts` en cada una; los 4 restantes están en la raíz
+(`con-permiso.ts`, `con-sesion.ts`, `refrescar.ts`, `tipos.ts`):
+
+| Subcarpeta | Archivos | Contenido |
+|---|---|---|
+| `auth/` | 3 | `sucursal-activa`, `sucursales`, `usuarios` |
+| `carta/` | 8 | `contenido-producto`, `generos`, `generos-compartido`, `items-agrupados`, `promos`, `registro-publico`, `secciones`, `tema` |
+| `catalogo/` | 9 | `categorias-producto`, `insumos`, `productos`, `proveedor-por-producto`, `proveedores`, `recetas`, `rendimiento-local`, `unidades`, `upsert-proveedor-por-producto` |
+| `clientes/` | 1 | `cliente` |
+| `movimientos/` | 7 | `compras`, `conteo-fisico`, `motivos`, `movimientos`, `precio-local`, `secciones`, `venta` |
+| `permisos/` | 3 | `capacidades-sucursal`, `permisos`, `roles` |
+| `pos/` | 2 | `cuenta`, `mesas` |
+| `reportes/` | 2 | `consignacion`, `promociones` |
+| `stock/` | 4 | `frecuencia-conteo`, `reclasificacion`, `seccion-habitual`, `stock-minimo` |
+| `traspasos/` | 1 | `traspasos` |
+
+**`src/core/`: 13 dominios** (subcarpetas, con su cantidad de archivos):
+`auth/` (6), `carta/` (15), `catalogo/` (12), `compras/` (2), `datos/` (7),
+`estadistica/` (2), `features/` (5), `movimientos/` (15), `navegacion/` (3),
+`permisos/` (6), `pos/` (15), `reportes/` (36), `stock/` (7). Más 4 archivos
+sueltos en la raíz de `core/`, transversales a todos los dominios:
+`excel.ts`, `moneda.ts`, `numero.ts`, `texto.ts`.
+
+**`src/components/`: 3 subcarpetas** — `carta/` (5), `catalogo/` (5) y
+`mesas/` (1) — más 19 componentes sueltos en la raíz (sigue siendo
+mayormente plano).
+
+### Herramientas descartadas
+
+Evaluadas para la Task #41 y NO adoptadas; queda registrado el motivo
+para no reabrir la discusión sin un hecho nuevo:
+
+| Herramienta | Motivo del descarte |
+|---|---|
+| `eslint-plugin-boundaries` | Redundante con `dependency-cruiser` (se agrega en A3): dos fuentes de reglas de fronteras es justo el problema que se quiere evitar. |
+| `Zod` | Las validaciones propias de `core/datos/` ya funcionan, tienen tests y guard propio. Hoy es dependencia transitiva, no directa (y `dependency-cruiser` impide importarla sin declararla). |
+| `next-safe-action` | Ya existe `conPermiso`/`requerirSesion`/`requerirVer`; agregarlo crearía un segundo sistema paralelo de guardas. |
+| `tRPC` | No hay consumidor externo real hoy. |
+| `TanStack Query` | No hay un problema de cache de cliente demostrado; se usa `router.refresh()`. |
+| `Redux` / `Zustand` | El estado de negocio vive en el servidor. |
+| Otra librería decimal (`decimal.js`, etc.) | Ya existe `core/moneda.ts` sobre `Prisma.Decimal`. |
+
+La maquinaria de control de fronteras entre módulos pasa a ser `dependency-cruiser` (ver A3).

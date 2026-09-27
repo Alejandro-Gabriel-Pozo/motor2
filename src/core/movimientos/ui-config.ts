@@ -1,7 +1,7 @@
 import type { Proceso } from "@prisma/client";
 import { TRANSICIONES } from "./transiciones";
 import type { AccionClave } from "@/core/permisos/acciones";
-import type { FiltroSelectorProducto } from "@/server/actions/catalogo/productos";
+import type { FiltroSelectorProducto } from "@/core/catalogo/filtro-selector-producto";
 
 /**
  * Config de UI para los 9 procesos que comparten el panel genérico

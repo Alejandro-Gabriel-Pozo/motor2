@@ -19,6 +19,12 @@ planificación por pendiente (`Agent`, `subagent_type: "Plan"`, `model:
 instrucción de verificar el código real antes de proponer nada (un
 pendiente descrito en un documento puede estar resuelto o mal atribuido) y
 con un paso final obligatorio de verificación end-to-end contra la suite
-TOTAL del proyecto (tipos, lint, tests unitarios/integración, build y e2e
-con Playwright — comandos concretos y criterio de éxito, nunca "correr los
-tests" en abstracto).
+TOTAL del proyecto (tipos, lint, arquitectura, tests unitarios/integración,
+build y e2e con Playwright — comandos concretos y criterio de éxito, nunca
+"correr los tests" en abstracto).
+
+Gate de verificación obligatorio (desde 2026-09-27, Task #41 Fase A3): 6
+comandos, en la MISMA corrida y todos limpios — `npx tsc --noEmit`, `npm run
+lint`, `npm run arquitectura` (dependency-cruiser, `.dependency-cruiser.cjs`;
+excepciones con motivo en `.dependency-cruiser-excepciones.cjs`), `npm test`,
+`npm run build` y `npm run test:e2e`.
