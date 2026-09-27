@@ -3,7 +3,9 @@ import {
   LARGO_MAXIMO_DETALLE_COMPRA,
   cabeceraCoincide,
   clavesDeFactura,
+  descripcionAuditoriaCorreccion,
   diferenciasDeCabecera,
+  mensajeCompraCorregida,
   normalizarCorreccion,
   validarCorreccion,
   type CabeceraCompra,
@@ -93,5 +95,25 @@ describe("clavesDeFactura", () => {
     expect(clavesDeFactura(cabecera())).toEqual({ proveedorId: "prov1", nroFactura: "A-0001" });
     expect(clavesDeFactura(cabecera({ proveedorId: null }))).toBeNull();
     expect(clavesDeFactura(cabecera({ nroFactura: null }))).toBeNull();
+  });
+});
+
+/** Armadores de textos (Task #41, Fase M): EXACTAMENTE los que armaba en línea la Server Action `corregirCompra`. */
+describe("mensajeCompraCorregida / descripcionAuditoriaCorreccion", () => {
+  it("mensaje de éxito con las etiquetas de los campos que cambiaron, en orden", () => {
+    expect(mensajeCompraCorregida([{ campo: "proveedorId", anterior: null, nuevo: "p" }])).toBe("Compra corregida: proveedor.");
+    expect(
+      mensajeCompraCorregida([
+        { campo: "nroFactura", anterior: "A", nuevo: "B" },
+        { campo: "detalleLibre", anterior: null, nuevo: "x" },
+      ])
+    ).toBe("Compra corregida: N.º de factura, detalle.");
+  });
+
+  it("descripción de auditoría, con y sin el N.º de factura anterior", () => {
+    const fecha = new Date("2026-08-10T12:00:00Z");
+    expect(descripcionAuditoriaCorreccion(fecha, "A-0001", "proveedorId")).toBe("Compra del 2026-08-10 (factura A-0001): proveedor");
+    expect(descripcionAuditoriaCorreccion(fecha, null, "nroFactura")).toBe("Compra del 2026-08-10: N.º de factura");
+    expect(descripcionAuditoriaCorreccion(fecha, null, "detalleLibre")).toBe("Compra del 2026-08-10: detalle");
   });
 });

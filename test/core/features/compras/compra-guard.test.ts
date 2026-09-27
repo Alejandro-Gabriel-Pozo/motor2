@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guardComandoAnularCompra, guardLineaCompra, guardNroFacturaCompra } from "../../../../src/core/features/compras/compra.guard";
+import { guardComandoAnularCompra, guardComandoCorregirCompra, guardLineaCompra, guardNroFacturaCompra } from "../../../../src/core/features/compras/compra.guard";
 
 /** Guard de la feature Compra/Devolución a proveedor (src/core/features/compras/compra.guard.ts): formato + normalización, puro. */
 
@@ -92,5 +92,21 @@ describe("guardComandoAnularCompra", () => {
     { caso: "entrada null", entrada: null, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
   ])("$caso", ({ entrada, esperado }) => {
     expect(guardComandoAnularCompra(entrada)).toStrictEqual(esperado);
+  });
+});
+
+/** Guard del comando «corregir la cabecera de una compra» (Task #41, Fase M): solo el operacionId; nueva/esperado pasan tal cual. */
+describe("guardComandoCorregirCompra", () => {
+  const nueva = { proveedorId: null, nroFactura: "A-1", detalleLibre: "" };
+  const esperado = { proveedorId: null, nroFactura: null, detalleLibre: null };
+  const NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
+
+  it.each([
+    { caso: "válida", entrada: { operacionId: "op-1", nueva, esperado }, esperado: { ok: true, valor: { operacionId: "op-1", nueva, esperado } } },
+    { caso: "operacionId número", entrada: { operacionId: 123, nueva, esperado }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+    { caso: "operacionId null", entrada: { operacionId: null, nueva, esperado }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+    { caso: "operacionId undefined", entrada: { operacionId: undefined, nueva, esperado }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+  ])("$caso", ({ entrada, esperado: resultado }) => {
+    expect(guardComandoCorregirCompra(entrada)).toStrictEqual(resultado);
   });
 });

@@ -49,3 +49,47 @@ export interface DatosAnularCompra {
 }
 
 export type ResultadoAnularCompra = ResultadoCaso<DatosAnularCompra, CodigoAnularCompra>;
+
+/** Lo que se puede corregir de una compra ya confirmada: solo la cabecera (ver `src/core/compras/correccion.ts`). */
+export interface CorreccionCompraInput {
+  /** Vacío o null = sin proveedor. */
+  proveedorId: string | null;
+  nroFactura: string;
+  detalleLibre: string;
+}
+
+/** Lo que la persona vio al abrir el formulario: es la guarda optimista contra pisar una corrección hecha por otra persona. */
+export interface CabeceraVista {
+  proveedorId: string | null;
+  nroFactura: string | null;
+  detalleLibre: string | null;
+}
+
+/** Comando «corregir la cabecera de una compra»: lo que recibe `corregirCompraCasoDeUso`, con el `operacionId` ya validado. */
+export interface ComandoCorregirCompra {
+  operacionId: string;
+  nueva: CorreccionCompraInput;
+  esperado: CabeceraVista;
+}
+
+export type CodigoCorregirCompra =
+  | "NO_ENCONTRADA"
+  | "NO_ES_COMPRA"
+  | "YA_ANULADA"
+  | "CAMBIO_CONCURRENTE"
+  | "ENTRADA_INVALIDA"
+  | "PROVEEDOR_INEXISTENTE"
+  | "PROVEEDOR_INACTIVO"
+  | "FACTURA_DUPLICADA";
+
+/**
+ * `datos` de una corrección exitosa: qué campos cambiaron, en el orden fijo de `diferenciasDeCabecera` (vacío si ya tenía esos datos).
+ * `keyof CabeceraVista` y no `CampoCabecera` de correccion.ts: importar ese módulo acá cerraría un ciclo (correccion.ts → compra.guard.ts
+ * → este archivo); las claves son las mismas tres.
+ */
+export interface DatosCorregirCompra {
+  compraId: string;
+  camposCorregidos: (keyof CabeceraVista)[];
+}
+
+export type ResultadoCorregirCompra = ResultadoCaso<DatosCorregirCompra, CodigoCorregirCompra>;
