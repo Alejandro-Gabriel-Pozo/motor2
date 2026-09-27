@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { tieneStockReal } from "@/core/movimientos/transiciones";
-import { disponibilidadDeProductos } from "@/core/catalogo/disponibilidad-producto-consulta";
-import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
+import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { redondearCantidad, type Db } from "./comun";
 
 export interface FilaBusquedaProducto {

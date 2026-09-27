@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
+import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";

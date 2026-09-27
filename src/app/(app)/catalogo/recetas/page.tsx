@@ -2,7 +2,7 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { prisma } from "@/lib/db";
-import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 import { NuevaReceta } from "./nueva-receta";
 
 /**

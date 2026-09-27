@@ -12,7 +12,7 @@ import {
   type IngredienteRecetaReporte,
   type InfoProductoReporte,
 } from "./comun";
-import type { ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
+import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
 
 export type EstadoCosto = "MARGEN_NEGATIVO" | "FOOD_COST_ALTO" | "COSTO_INCOMPLETO" | "SIN_PRECIO_VENTA" | "SIN_RECETA" | "OK";
 

@@ -6,7 +6,7 @@ import { validarCantidad } from "@/core/datos/cantidad";
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
-import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { conPermiso } from "../con-permiso";
 import { requerirSesion } from "../con-sesion";
 import { error, ok, type ResultadoAccion } from "../tipos";
