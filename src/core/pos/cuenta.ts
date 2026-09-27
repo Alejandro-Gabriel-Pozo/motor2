@@ -150,6 +150,10 @@ export interface ItemDeCuenta {
   /** Quién cargó el ítem (o quién anuló, en un espejo); null en filas anteriores a «tomar pedido». */
   creadoPor: string | null;
   creadoEn: Date;
+  /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): la promo de la que este ítem es un componente — null en un
+   *  suelto de siempre. `promoTitulo` es el snapshot congelado (`PromoCuenta.titulo`), no el título actual de `PromoCarta`. */
+  promoCuentaId: string | null;
+  promoTitulo: string | null;
 }
 
 export interface DetalleDeCuenta {
@@ -196,6 +200,7 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
             include: {
               producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } },
               creadoPor: { select: { name: true, email: true } },
+              promoCuenta: { select: { id: true, titulo: true } },
             },
           },
         },
@@ -219,6 +224,8 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
     motivoAnulacion: i.motivoAnulacion,
     creadoPor: i.creadoPor ? nombreDelMesero(i.creadoPor) : null,
     creadoEn: i.creadoEn,
+    promoCuentaId: i.promoCuenta?.id ?? null,
+    promoTitulo: i.promoCuenta?.titulo ?? null,
   }));
   const { sinEnviar, envios } = agruparPorEnvio(items);
   const descuentoPorcentaje = fila.descuentoPorcentaje !== null ? Number(fila.descuentoPorcentaje) : null;

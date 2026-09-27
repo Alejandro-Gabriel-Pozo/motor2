@@ -143,6 +143,14 @@ body {
   margin-top: 1mm;
 }
 
+/* Componente de una promo armada (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 2.6/10): sangría, sin precio propio
+   impreso (ese ya está en la cabecera, la línea justo arriba). */
+[data-imprimible] .ticket-linea-indentada .ticket-item {
+  padding-left: 4mm;
+  font-size: 11pt;
+  font-weight: 400;
+}
+
 [data-imprimible] .ticket-monto {
   display: flex;
   flex-wrap: wrap;

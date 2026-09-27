@@ -12,6 +12,9 @@ const ENCABEZADO: Record<DocumentoDeCocina["tipo"], string> = {
 /**
  * La comanda de cocina impresa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B1): solo presentación. SIN PRECIOS — los datos
  * (`ComandaDeEnvio`) no los tienen. La hora es la de impresión (la del envío no se guarda). Estilos de papel en src/app/globals.css.
+ *
+ * Componente de una promo (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 10): `promoTitulo` anota "(Menú del día)" al
+ * lado del ítem — la cocina lo prepara igual (es un PV real, con su propia receta), pero sabe que forma parte de un combo.
  */
 export function TicketCocina({ documento, mesa, impresoEn }: { documento: DocumentoDeCocina; mesa: string; impresoEn: Date }) {
   const { comanda } = documento;
@@ -28,6 +31,7 @@ export function TicketCocina({ documento, mesa, impresoEn }: { documento: Docume
           <p className="ticket-dato">Anuló: {documento.anulacion.por}</p>
           <p className="ticket-item ticket-separador">
             {formatearCantidad(documento.anulacion.cantidad)} × {documento.anulacion.producto}
+            {documento.anulacion.promoTitulo && ` (${documento.anulacion.promoTitulo})`}
           </p>
           <p className="ticket-dato">Motivo: {documento.anulacion.motivo}</p>
           <p className="ticket-item">Quedan: {formatearCantidad(documento.anulacion.quedan)}</p>
@@ -39,6 +43,7 @@ export function TicketCocina({ documento, mesa, impresoEn }: { documento: Docume
             {comanda.lineas.map((l) => (
               <li key={l.itemId} className="ticket-item">
                 {formatearCantidad(l.cantidad)} × {l.producto}
+                {l.promoTitulo && ` (${l.promoTitulo})`}
               </li>
             ))}
           </ul>
@@ -48,7 +53,8 @@ export function TicketCocina({ documento, mesa, impresoEn }: { documento: Docume
               <ul>
                 {comanda.anulaciones.map((a) => (
                   <li key={a.id} className="ticket-dato">
-                    {formatearCantidad(a.cantidad)} × {a.producto} · {a.motivo}
+                    {formatearCantidad(a.cantidad)} × {a.producto}
+                    {a.promoTitulo && ` (${a.promoTitulo})`} · {a.motivo}
                   </li>
                 ))}
               </ul>

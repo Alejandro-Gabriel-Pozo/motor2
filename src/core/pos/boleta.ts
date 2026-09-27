@@ -76,6 +76,10 @@ export interface ItemConVenta {
   precioUnitario: number;
   operacionId: string | null;
   anuladaEn: Date | null;
+  /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): la promo de la que este ítem es un componente — AUSENTE en un
+   *  suelto de siempre (nunca `null`: mismo criterio que `armarBoleta`). Pasa TAL CUAL a `armarBoleta` (mismo campo, mismo
+   *  nombre). */
+  promo?: PromoDeItemBoleta;
 }
 
 /**
@@ -199,7 +203,7 @@ export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string
       cliente: { select: { nombre: true } },
       items: {
         orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
-        include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } } },
+        include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } }, promoCuenta: { select: { id: true, titulo: true } } },
       },
       ejemplaresBoleta: {
         orderBy: { ejemplar: "desc" },
@@ -218,6 +222,7 @@ export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string
       precioUnitario: Number(i.precioUnitario),
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
     }));
     // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
     const descuentoPorcentaje = cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null;

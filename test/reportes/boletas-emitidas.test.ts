@@ -198,4 +198,32 @@ describe("listarBoletasEmitidas", () => {
     const todas = [...p1.items, ...p2.items].map((b) => b.ejemplarId);
     expect(new Set(todas).size).toBe(total);
   });
+
+  /** Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, paso 10): la clave de `lineasConOperacion` suma promoCuentaId —
+   *  la cabecera de la promo no tiene una única Operacion (queda null), cada componente sigue con la suya. */
+  it("una promo de dos componentes: la cabecera agrupa el total, cada componente trae SU propia operacionId", async () => {
+    const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús boletas-emitidas" } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, []);
+    const promoCuenta = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 10000, titulo: "Menú del día", creadoPorId: s.admin.id } });
+    await prisma.cuentaItem.createMany({
+      data: [
+        { cuentaId: cuenta.id, productoId: s.milanesa.id, cantidad: 1, precioUnitario: 7500, numeroEnvio: 1, promoCuentaId: promoCuenta.id, creadoPorId: s.admin.id },
+        { cuentaId: cuenta.id, productoId: s.flan.id, cantidad: 1, precioUnitario: 2500, numeroEnvio: 1, promoCuentaId: promoCuenta.id, creadoPorId: s.admin.id },
+      ],
+    });
+    expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
+
+    const { items } = await listarBoletasEmitidas(s.sucursalId);
+    const [fila] = items;
+    expect(fila.importe).toBe(10000);
+    expect(fila.detalle.lineas).toHaveLength(3); // cabecera + 2 componentes
+    const [cabecera, compMila, compFlan] = fila.detalle.lineas;
+    expect(cabecera).toMatchObject({ producto: "Menú del día", subtotal: 10000, operacionId: null });
+    expect(compMila).toMatchObject({ producto: "Milanesa", subtotal: 7500, indentado: true });
+    expect(compFlan).toMatchObject({ producto: "Flan", subtotal: 2500, indentado: true });
+    expect(compMila.operacionId).not.toBeNull();
+    expect(compFlan.operacionId).not.toBeNull();
+    expect(compMila.operacionId).not.toBe(compFlan.operacionId);
+  });
 });

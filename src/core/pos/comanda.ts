@@ -22,6 +22,10 @@ export interface LineaDeComanda {
   producto: string;
   /** Lo vigente del ítem (cantidad pedida menos sus anulaciones). */
   cantidad: number;
+  /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): "Menú del día" si este ítem es un componente de esa promo —
+   *  la cocina lo ve anotado, sin precios (esta comanda nunca los tiene). AUSENTE = un suelto de siempre (salida idéntica a
+   *  antes de esta Task). */
+  promoTitulo?: string;
 }
 
 export interface AnulacionDeComanda {
@@ -37,6 +41,8 @@ export interface AnulacionDeComanda {
   por: string;
   /** Lo que quedó del ítem después de ESTA anulación (las anteriores incluidas). */
   quedan: number;
+  /** Task #16: igual que en `LineaDeComanda` — la promo de la que este ítem anulado era un componente. Ausente = un suelto. */
+  promoTitulo?: string;
 }
 
 export interface ComandaDeEnvio {
@@ -56,6 +62,9 @@ export interface ItemParaComanda {
   productoNombre: string;
   restante: number;
   creadoPor: string | null;
+  /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): "Menú del día" si es un componente de esa promo. Ausente/null =
+   *  un suelto de siempre. */
+  promoTitulo?: string | null;
   anulaciones: readonly { id: string; cantidad: number; motivoAnulacion: string | null; creadoPor: string | null }[];
 }
 
@@ -63,7 +72,9 @@ export interface ItemParaComanda {
 export function armarComandas(envios: readonly { numero: number; items: readonly ItemParaComanda[] }[], mesero: string): ComandaDeEnvio[] {
   return envios.map((envio) => {
     const autores = [...new Set(envio.items.flatMap((i) => (i.creadoPor ? [i.creadoPor] : [])))];
-    const lineas: LineaDeComanda[] = envio.items.filter((i) => i.restante > 0).map((i) => ({ itemId: i.id, producto: i.productoNombre, cantidad: i.restante }));
+    const lineas: LineaDeComanda[] = envio.items
+      .filter((i) => i.restante > 0)
+      .map((i) => ({ itemId: i.id, producto: i.productoNombre, cantidad: i.restante, ...(i.promoTitulo ? { promoTitulo: i.promoTitulo } : {}) }));
     const anulaciones: AnulacionDeComanda[] = envio.items.flatMap((item) =>
       item.anulaciones.map((a, n) => ({
         id: a.id,
@@ -74,6 +85,7 @@ export function armarComandas(envios: readonly { numero: number; items: readonly
         por: a.creadoPor ?? "—",
         // Lo vigente hoy más lo que anularon las posteriores (espejos en orden de creación).
         quedan: redondearCantidad(item.anulaciones.slice(n + 1).reduce((suma, posterior) => suma - posterior.cantidad, item.restante)),
+        ...(item.promoTitulo ? { promoTitulo: item.promoTitulo } : {}),
       }))
     );
     return { numero: envio.numero, itemIds: envio.items.map((i) => i.id), tomo: autores.length ? autores : [mesero], lineas, anulaciones };
