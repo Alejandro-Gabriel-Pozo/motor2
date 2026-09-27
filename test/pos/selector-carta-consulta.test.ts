@@ -152,4 +152,66 @@ describe("cargarSelectorCartaPos", () => {
       expect(p.precio, p.nombre).toBe(await resolverPrecioVenta(s.sucursalId, p.productoId, Number(producto.precioVenta)));
     }
   });
+
+  describe("promos armables (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11)", () => {
+    let platosId: string;
+    let bebidasId: string;
+
+    beforeEach(async () => {
+      platosId = (await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: "Platos" } })).id;
+      bebidasId = (await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: "Bebidas" } })).id;
+    });
+
+    it("una promo activa con cupos aparece PRIMERO en su sección, con los elegibles YA resueltos (D5)", async () => {
+      const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Combo Milanesa", precio: 12000 } });
+      await prisma.promoCartaCupo.createMany({
+        data: [
+          { promoCartaId: promo.id, seccionCartaId: platosId, cantidadMinima: 1, cantidadMaxima: 1, orden: 0 },
+          { promoCartaId: promo.id, seccionCartaId: bebidasId, cantidadMinima: 0, cantidadMaxima: 2, orden: 1 },
+        ],
+      });
+      const sel = await cargarSelectorCartaPos(s.sucursalId);
+      const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
+      expect(platos.entradas[0]).toMatchObject({ tipo: "promo", promoCartaId: promo.id, titulo: "Combo Milanesa", precio: 12000 });
+      const entradaPromo = platos.entradas[0] as { tipo: "promo"; cupos: { seccionCartaId: string; nombreSeccion: string; cantidadMinima: number; cantidadMaximaCupo: number; elegibles: { nombre: string }[] }[] };
+      expect(entradaPromo.cupos).toEqual([
+        { seccionCartaId: platosId, nombreSeccion: "Platos", cantidadMinima: 1, cantidadMaximaCupo: 1, elegibles: [{ nombre: "Milanesa" }, { nombre: "Pizza" }].map((o) => expect.objectContaining(o)) },
+        {
+          seccionCartaId: bebidasId,
+          nombreSeccion: "Bebidas",
+          cantidadMinima: 0,
+          cantidadMaximaCupo: 2,
+          // D5: los elegibles de un cupo son los PV reales que el selector ya ofrece en esa sección — acá, las DOS opciones
+          // del agrupado "Gaseosa 500cc" (nunca el agrupado como tal: un cupo elige PRODUCTOS, no ítems agrupados).
+          elegibles: [{ nombre: "Coca-Cola 500cc" }, { nombre: "Sprite 500cc" }].map((o) => expect.objectContaining(o)),
+        },
+      ]);
+      // La promo no es un pedible: no aparece nunca como `productoId` (invariante de `selector-carta.ts`).
+      const todos = sel.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId));
+      expect(todos).not.toContain(promo.id);
+    });
+
+    it("una promo SIN cupos (informativa) no se ofrece acá: solo el admin de carta la muestra", async () => {
+      await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Solo informativa", precio: 1 } });
+      const sel = await cargarSelectorCartaPos(s.sucursalId);
+      const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
+      expect(platos.entradas.every((e) => e.tipo !== "promo")).toBe(true);
+    });
+
+    it("una promo APAGADA no se ofrece", async () => {
+      const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Apagada", precio: 1, activa: false } });
+      await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, seccionCartaId: platosId, cantidadMinima: 1, cantidadMaxima: 1 } });
+      const sel = await cargarSelectorCartaPos(s.sucursalId);
+      const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
+      expect(platos.entradas.every((e) => e.tipo !== "promo")).toBe(true);
+    });
+
+    it("una promo de OTRA sucursal no se mezcla", async () => {
+      const seccionNorte = await prisma.seccionCarta.create({ data: { nombre: "Platos Norte" } });
+      const promoNorte = await prisma.promoCarta.create({ data: { sucursalId: norte, seccionCartaId: seccionNorte.id, titulo: "Solo Norte", precio: 1 } });
+      await prisma.promoCartaCupo.create({ data: { promoCartaId: promoNorte.id, seccionCartaId: seccionNorte.id, cantidadMinima: 1, cantidadMaxima: 1 } });
+      const central = await cargarSelectorCartaPos(s.sucursalId);
+      expect(central.seccionesCarta.flatMap((sc) => sc.entradas).some((e) => e.tipo === "promo")).toBe(false);
+    });
+  });
 });

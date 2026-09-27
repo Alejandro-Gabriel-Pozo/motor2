@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import type { EntradaCarpetaSelectorCarta, EntradaSelectorCarta, ProductoPedible, SelectorCartaPos } from "@/core/pos/selector-carta";
+import type { EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, ProductoPedible, SelectorCartaPos } from "@/core/pos/selector-carta";
 import { SECCION_FUERA_DE_CARTA, type AccionSelectorCarta, type EstadoSelectorCarta } from "@/core/pos/selector-carta-estado";
 import { estaEnListaPorAgregar, listaPorAgregarLlena, type EstadoListaPorAgregar } from "@/core/pos/agregar-lista-estado";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
@@ -24,6 +24,10 @@ import { formatearMonto } from "@/core/pos/formato";
  * que TODAVÍA no está en la lista queda deshabilitado (uno que ya está sigue pudiendo sumar de nuevo: se acumula en su línea, no
  * abre otra).
  *
+ * Promo armable (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11): aparece PRIMERO dentro de su propia sección
+ * (`tipo: "promo"`), destacada con otro color — tocarla NO la suma directo (no es un solo producto): abre el diálogo "Armar
+ * promo" (`abrirPromo`, manejado por el padre) para elegir, cupo por cupo, con qué se arma esa instancia.
+ *
  * Todos los botones son `type="button"`: viven dentro del `<form>` de agregar, y un toque no tiene que enviarlo. Ninguno se llama
  * «Agregar». Colores del salón (siempre claro, sin `dark:`).
  */
@@ -41,6 +45,9 @@ const BOTON_AGRUPADO =
 // test/e2e/pos-carta-secciones.spec.ts, «accesibilidad: con la carpeta de género abierta»).
 const BOTON_CARPETA =
   "col-span-full flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-[var(--brand)] bg-white px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-[#F1EFEA] aria-expanded:bg-[var(--brand)] aria-expanded:text-white aria-expanded:enabled:hover:bg-[var(--brand-hover)] disabled:cursor-not-allowed disabled:opacity-50";
+/** Task #16 (promo-combo): una promo armable, destacada — fondo distinto para que no se confunda con un producto suelto. */
+const BOTON_PROMO =
+  "col-span-full flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border-2 border-[var(--brand)] bg-[#FFF7E6] px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-[#FCEFC7] disabled:cursor-not-allowed disabled:opacity-50";
 const PRECIO = "text-[12.5px] font-normal tabular-nums text-[var(--ink-soft)] group-aria-pressed:text-white";
 
 /** «$ 5.000», o «$ 5.000 a $ 5.500» si las opciones de un agrupado no cuestan lo mismo. */
@@ -55,9 +62,12 @@ interface Props {
   despachar: (accion: AccionSelectorCarta) => void;
   /** Suma un producto a la lista «Por agregar» (y avisa acá para vaciar el buscador y cerrar el agrupado suelto, G3). */
   sumar: (productoId: string) => void;
+  /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): toca una promo armable — abre el diálogo "Armar promo"
+   *  (`ArmarPromo`, en el padre: una promo no se suma directo como un producto). */
+  abrirPromo: (entrada: EntradaPromoSelectorCarta) => void;
 }
 
-export function SelectorCarta({ selector, estado, lista, despachar, sumar }: Props) {
+export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrirPromo }: Props) {
   const idBase = useId();
   const llena = listaPorAgregarLlena(lista, MAXIMO_ITEMS_POR_AGREGADO);
   const pestanas = [
@@ -161,6 +171,16 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar }: Pro
           {entradas.flatMap((e) => {
             if (e.tipo === "producto") return [<li key={e.producto.productoId}>{botonProducto(e.producto)}</li>];
             if (e.tipo === "agrupado") return entradaAgrupadoSuelto(e);
+            if (e.tipo === "promo") {
+              return [
+                <li key={e.promoCartaId} className="col-span-full">
+                  <button type="button" data-promo-pos={e.promoCartaId} onClick={() => abrirPromo(e)} className={BOTON_PROMO}>
+                    <span>{e.titulo}</span>
+                    <span className={PRECIO}>{formatearMonto(e.precio)}</span>
+                  </button>
+                </li>,
+              ];
+            }
 
             // Carpeta de género (docs/plan-genero-carta-2026-09-26.md): mismo patrón disclosure que un agrupado.
             const abierta = estado.carpetaAbierta === e.generoCartaId;

@@ -77,7 +77,31 @@ export interface EntradaCarpetaGeneroSelectorCarta {
   entradas: EntradaCarpetaSelectorCarta[];
 }
 
-export type EntradaSelectorCarta = EntradaProductoSelectorCarta | EntradaAgrupadoSelectorCarta | EntradaCarpetaGeneroSelectorCarta;
+/** UN cupo de una promo ARMABLE, con sus elegibles YA resueltos (Task #16, docs/plan-promo-combo-2026-09-26.md, D1/D5). */
+export interface CupoSelectorCarta {
+  seccionCartaId: string;
+  nombreSeccion: string;
+  cantidadMinima: number;
+  cantidadMaximaCupo: number;
+  /** Los mismos pedibles que el selector ya ofrece en esa sección (sueltos visibles + opciones de agrupados activos) — nunca
+   *  una lista propia. Vacío = esa sección no tiene nada pedible hoy (el cupo queda igual, sin opciones para elegir). */
+  elegibles: ProductoPedible[];
+}
+
+/** Una promo ARMABLE, entrada de nivel de sección (Task #16) — SOLO en la sección donde vive la promo (`PromoCarta.
+ *  seccionCartaId`), nunca dentro de una carpeta de género (una promo no tiene género propio). */
+export interface EntradaPromoSelectorCarta {
+  tipo: "promo";
+  promoCartaId: string;
+  titulo: string;
+  /** Precio de la promo entera, ya congelado en `PromoCarta.precio` — se prorratea recién al agregarla (D3). */
+  precio: number;
+  /** En el orden de `PromoCartaCupo.orden`. Nunca vacío (una promo sin cupos es informativa: `armarSelectorCartaPos` nunca la
+   *  recibe acá — ver `PromosSelectorCartaPos`). */
+  cupos: CupoSelectorCarta[];
+}
+
+export type EntradaSelectorCarta = EntradaProductoSelectorCarta | EntradaAgrupadoSelectorCarta | EntradaCarpetaGeneroSelectorCarta | EntradaPromoSelectorCarta;
 
 export interface SeccionSelectorCarta {
   seccionCartaId: string;
@@ -113,9 +137,34 @@ export interface GenerosSelectorCartaPos {
   generoPorAgrupado: ReadonlyMap<string, string>;
 }
 
+/** Una promo ARMABLE (con uno o más cupos) activa de la sucursal, tal como la carga la consulta (Task #16). */
+export interface PromoSelectorCartaPos {
+  promoCartaId: string;
+  /** La sección de carta donde se UBICA la promo (`PromoCarta.seccionCartaId`) — no confundir con las secciones de sus
+   *  cupos: una promo de "Menús" puede tener un cupo que elige de "Postres". */
+  seccionCartaId: string;
+  titulo: string;
+  precio: number;
+  /** Sin resolver los elegibles todavía — `armarSelectorCartaPos` los resuelve con los MISMOS pedibles que ya ubicó en cada
+   *  sección (D5), no con una fuente propia. */
+  cupos: readonly { seccionCartaId: string; nombreSeccion: string; cantidadMinima: number; cantidadMaximaCupo: number }[];
+}
+
 const comparar = (a: string, b: string) => a.localeCompare(b, "es");
 
-export function armarSelectorCartaPos(carta: CartaV1 | null, pedibles: readonly ProductoPedible[], generos?: GenerosSelectorCartaPos): SelectorCartaPos {
+/**
+ * El cuarto parámetro OPCIONAL (Task #16, docs/plan-promo-combo-2026-09-26.md): las promos ARMABLES activas de la sucursal.
+ * Sin él (u omitiendo el parámetro), la salida es IDÉNTICA a la de antes de que existieran las promos armables — mismo
+ * criterio aditivo que se usó con los géneros (Task #23). Cada promo aparece como una entrada `tipo: "promo"` en la sección
+ * donde vive (`seccionCartaId`), PRIMERO dentro de esa sección (antes que las carpetas de género y los sueltos) — se
+ * descarta en silencio si esa sección no está en la carta pública de la sucursal (apagada, o la sucursal no tiene carta).
+ */
+export function armarSelectorCartaPos(
+  carta: CartaV1 | null,
+  pedibles: readonly ProductoPedible[],
+  generos?: GenerosSelectorCartaPos,
+  promos?: readonly PromoSelectorCartaPos[]
+): SelectorCartaPos {
   const pediblePorId = new Map(pedibles.map((p) => [p.productoId, p]));
   const ubicados = new Set<string>();
   /** El pedible, si existe y todavía no se ubicó (un `productoId` repetido se ubica una sola vez). */
@@ -133,7 +182,9 @@ export function armarSelectorCartaPos(carta: CartaV1 | null, pedibles: readonly 
     return generoId ? generoPorId.get(generoId) : undefined;
   };
 
-  const seccionesCarta: SeccionSelectorCarta[] = [];
+  // Task #16: se guarda por sección ANTES de filtrar las vacías — una promo puede vivir en una sección sin ningún producto
+  // propio, y los elegibles de un cupo (D5) se leen de acá sin importar el orden de iteración entre secciones.
+  const entradasPorSeccion = new Map<string, EntradaSelectorCarta[]>();
   for (const seccion of carta?.secciones ?? []) {
     const sueltas: EntradaSelectorCarta[] = [];
     const porCarpeta = new Map<string, EntradaCarpetaSelectorCarta[]>();
@@ -177,7 +228,36 @@ export function armarSelectorCartaPos(carta: CartaV1 | null, pedibles: readonly 
       .map(([generoId, entradas]): EntradaCarpetaGeneroSelectorCarta => ({ tipo: "carpeta", generoCartaId: generoId, nombre: generoPorId.get(generoId)!.nombre, entradas }))
       .sort((a, b) => generoPorId.get(a.generoCartaId)!.orden - generoPorId.get(b.generoCartaId)!.orden || comparar(a.nombre, b.nombre));
 
-    const entradas = [...carpetas, ...sueltas];
+    entradasPorSeccion.set(seccion.id, [...carpetas, ...sueltas]);
+  }
+
+  // Task #16: cada promo se resuelve con los elegibles YA ubicados en la sección de cada uno de sus cupos (D5) — nunca una
+  // fuente propia. Se agrupan por la sección donde vive CADA promo (`PromoCarta.seccionCartaId`, no la de sus cupos).
+  const promoEntradasPorSeccion = new Map<string, EntradaPromoSelectorCarta[]>();
+  for (const promo of promos ?? []) {
+    if (!entradasPorSeccion.has(promo.seccionCartaId)) continue; // su sección no está en la carta pública: se ignora, como hoy.
+    const entrada: EntradaPromoSelectorCarta = {
+      tipo: "promo",
+      promoCartaId: promo.promoCartaId,
+      titulo: promo.titulo,
+      precio: promo.precio,
+      cupos: promo.cupos.map((c) => ({
+        seccionCartaId: c.seccionCartaId,
+        nombreSeccion: c.nombreSeccion,
+        cantidadMinima: c.cantidadMinima,
+        cantidadMaximaCupo: c.cantidadMaximaCupo,
+        elegibles: (entradasPorSeccion.get(c.seccionCartaId) ?? []).flatMap(pediblesDeEntrada),
+      })),
+    };
+    const lista = promoEntradasPorSeccion.get(promo.seccionCartaId) ?? [];
+    lista.push(entrada);
+    promoEntradasPorSeccion.set(promo.seccionCartaId, lista);
+  }
+
+  const seccionesCarta: SeccionSelectorCarta[] = [];
+  for (const seccion of carta?.secciones ?? []) {
+    // Las promos van PRIMERO (antes que las carpetas de género y los sueltos) dentro de su propia sección.
+    const entradas = [...(promoEntradasPorSeccion.get(seccion.id) ?? []), ...(entradasPorSeccion.get(seccion.id) ?? [])];
     if (entradas.length > 0) seccionesCarta.push({ seccionCartaId: seccion.id, nombre: seccion.nombre, entradas });
   }
 
@@ -198,5 +278,8 @@ export function armarSelectorCartaPos(carta: CartaV1 | null, pedibles: readonly 
 export function pediblesDeEntrada(e: EntradaSelectorCarta): ProductoPedible[] {
   if (e.tipo === "producto") return [e.producto];
   if (e.tipo === "agrupado") return e.opciones;
+  // Task #16: una promo NO es un pedible — sus componentes elegibles ya están contados en SU propia sección (D5), aparte;
+  // devolver algo acá los duplicaría en el invariante "cada pedible aparece exactamente una vez".
+  if (e.tipo === "promo") return [];
   return e.entradas.flatMap(pediblesDeEntrada);
 }

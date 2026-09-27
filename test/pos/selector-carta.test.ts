@@ -50,6 +50,9 @@ const carta = (secciones: SeccionCartaV1[]): CartaV1 => ({ version: 1, generadoE
 function productoIdsDeEntrada(e: SelectorCartaPos["seccionesCarta"][number]["entradas"][number]): string[] {
   if (e.tipo === "producto") return [e.producto.productoId];
   if (e.tipo === "agrupado") return e.opciones.map((o) => o.productoId);
+  // Task #16: una promo no es un pedible — sus elegibles ya están contados en su propia sección, aparte (mismo criterio que
+  // `pediblesDeEntrada`, que el invariante de este archivo ejercita indirectamente).
+  if (e.tipo === "promo") return [];
   return e.entradas.flatMap(productoIdsDeEntrada);
 }
 
@@ -216,7 +219,7 @@ describe("armarSelectorCartaPos", () => {
         generoPorAgrupado: new Map(),
       };
       const s = armarSelectorCartaPos(cartaOrden, pedibles, generos);
-      expect(s.seccionesCarta[0].entradas.map((e) => (e.tipo === "carpeta" ? e.nombre : (e.tipo === "producto" ? e.producto.nombre : e.nombre)))).toEqual([
+      expect(s.seccionesCarta[0].entradas.map((e) => (e.tipo === "carpeta" ? e.nombre : e.tipo === "producto" ? e.producto.nombre : e.tipo === "promo" ? e.titulo : e.nombre))).toEqual([
         "Alfa (orden 1)",
         "Zeta (orden 5)",
         "Agua",
