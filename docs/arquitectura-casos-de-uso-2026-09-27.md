@@ -122,6 +122,13 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   mutaciones sin migrar (M11b: aceptar/rechazar envío/reingreso; M11c: crear solicitud/envío directo) que tocan Prisma directo, y la
   regla vale para el archivo entero. Se suma cuando termine M11c; hasta entonces, `obtenerProductoTransferible`, `buscarTraspaso` y
   `escribirMovimientoTraspaso` siguen en el archivo para esas acciones.
+- **M12a — `cerrarCuenta`** (`src/server/actions/pos/cuenta-cierre.ts`): comando + guard en `core/features/cuentas/` (`cuenta.schema.ts`,
+  `cuenta.guard.ts`: un `cuentaId` que no es string da «No se encontró esa cuenta en esta sucursal.», igual que antes); persistencia en
+  `server/persistencia/pos/` (`cargar-cuenta-para-cerrar.ts`: la cuenta, el último número de boleta de la sucursal y la Operacion del
+  consumo para la auditoría de stock negativo; `cerrar-cuenta.ts`: ejemplar A de la boleta, enlace ítem → Operacion, cierre de la cuenta);
+  caso de uso `pos/casos-de-uso/cerrar-cuenta.ts`, que llama a `registrarVentaEnTx` sin tocar ese núcleo y numera DESPUÉS de que la venta
+  salió bien (un `fracaso` devuelto adentro confirma la transacción). Sin I3: sigue idempotente por estado (`YA_CERRADA`). El archivo NO
+  entra todavía en `ACCIONES_CON_CASO_DE_USO`: `emitirBoletaCorregida` (mismo archivo) se migra en M12b.
 
 ## Cómo se migra la próxima acción
 

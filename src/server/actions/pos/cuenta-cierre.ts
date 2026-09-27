@@ -1,14 +1,15 @@
 "use server";
 
-import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
-import { conTransaccionSerializable, registrarVentaEnTx } from "@/core/movimientos/public-servidor";
-import { lineasDeVenta, validarMotivoAnulacion } from "@/core/pos/cuenta";
+import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { formatearNumeroBoleta, siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
+import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { armarBoletaVigente, estadoDeBoleta, type ItemConVenta } from "@/core/pos/boleta";
+import { guardComandoCerrarCuenta } from "@/core/features/cuentas/cuenta.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoBoletaCorregida } from "../tipos";
-import { describirAviso, formatearCantidad, MONEDA } from "./cuenta-comun";
+import { cerrarCuentaCasoDeUso } from "./casos-de-uso/cerrar-cuenta";
 
 /**
  * Toma de pedido en el salón — cerrar la cuenta (registra la venta y numera la boleta) y emitir la boleta corregida.
@@ -41,117 +42,18 @@ import { describirAviso, formatearCantidad, MONEDA } from "./cuenta-comun";
  * Bloquea si queda algún ítem sin enviar (hay que enviarlo o quitarlo: lo que no salió a cocina no se cobra). Con neto cero (todo
  * anulado) cierra sin venta. Idempotente: una cuenta ya cerrada devuelve ok sin volver a vender (la transacción serializable arbitra el
  * doble clic: el segundo reintenta, la ve cerrada y no escribe nada).
+ *
+ * Desde la Task #41 (Fase M12a, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso`) → formato (`guardComandoCerrarCuenta`, core/features/cuentas/) → caso de uso (`casos-de-uso/cerrar-cuenta.ts`:
+ * transacción, carga, venta con `registrarVentaEnTx`, numeración de la boleta, enlace de ítems, cierre y auditoría; lecturas y escrituras
+ * en server/persistencia/pos/) → `aResultadoAccion`. `emitirBoletaCorregida` (abajo) todavía no se migró (M12b): por eso este archivo NO
+ * está aún en `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_cerrar_cuenta", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
-      const cuenta =
-        typeof cuentaId === "string"
-          ? await tx.cuenta.findFirst({
-              where: { id: cuentaId, mesa: { sucursalId: ctx.sucursalId } },
-              include: { mesa: { select: { numero: true } }, items: true, cliente: { select: { nombre: true } } },
-            })
-          : null;
-      if (!cuenta) return error("No se encontró esa cuenta en esta sucursal.");
-      const mesa = cuenta.mesa.numero;
-      if (cuenta.cerradaEn) return ok(`La cuenta de la mesa ${mesa} ya estaba cerrada.`);
-
-      const sinEnviar = cuenta.items.filter((i) => i.numeroEnvio === null).length;
-      if (sinEnviar > 0) return error(sinEnviar === 1 ? "Hay 1 ítem sin enviar: envialo o quitalo." : `Hay ${sinEnviar} ítems sin enviar: envialos o quitalos.`);
-
-      const ahora = new Date();
-      const cerrar = () => tx.cuenta.update({ where: { id: cuenta.id }, data: { cerradaEn: ahora, cerradaPorId: ctx.usuarioId } });
-      // `lineas`: precio de LISTA (congelado al pedir), agrupado por (producto, precio, promo) — es la clave con la que se busca
-      // cada CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14).
-      // `promoCuentaId` (Task #16, D4) evita mezclar un suelto con un componente del mismo producto al mismo precio en la MISMA
-      // Operacion — cada uno queda en su propia línea/Operacion, aunque el precio congelado coincida.
-      const lineas = lineasDeVenta(cuenta.items.map((i) => ({ productoId: i.productoId, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario), promoCuentaId: i.promoCuentaId })));
-      if (!lineas.length) {
-        await cerrar();
-        return ok(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`);
-      }
-
-      // Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, D7): `descuentoPorcentaje` es el SNAPSHOT
-      // congelado al asignarlo (`asignarClienteACuenta`), nunca el % actual de `Cliente` — para esta cuenta ya no importa si el
-      // cliente cambió su % después. `precioConDescuento` (src/core/moneda.ts) hace la aritmética exacta y el piso de 0,01; sin
-      // cliente asignado (el caso de siempre) devuelve el precio de lista tal cual, sin pasar por Decimal.
-      const descuento = cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null;
-      const lineasVenta = lineas.map((l) => {
-        const precioCobrado = precioConDescuento(l.precioUnitario, descuento);
-        return {
-          productoId: l.productoId,
-          cantidadVendida: l.cantidad,
-          precioUnitario: precioCobrado,
-          precioListaUnitario: precioCobrado !== l.precioUnitario ? l.precioUnitario : undefined,
-          promoCuentaId: l.promoCuentaId,
-        };
-      });
-
-      const venta = await registrarVentaEnTx(
-        tx,
-        { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
-        {
-          fecha: ahora,
-          origen: { tipo: "automatico" },
-          proveedorId: null,
-          clienteId: cuenta.clienteId,
-          detalle: `Mesa ${mesa}`,
-          lineas: lineasVenta,
-        },
-        { permitirStockNegativo: true }
-      );
-      // El núcleo valida todo antes de escribir: un rechazo no dejó nada escrito y la cuenta sigue abierta.
-      if (!venta.ok) return error(venta.mensaje);
-      if (venta.operacionIds.length !== lineas.length) throw new Error("cerrarCuenta: la venta no devolvió una Operacion por línea.");
-
-      // Número de la boleta (docs/plan-numeracion-boleta-2026-09-25.md): max + 1 de la sucursal, ejemplar A. Recién DESPUÉS de que la venta
-      // salió bien — devolver `error(...)` desde acá CONFIRMA la transacción, así que numerar antes gastaría un número en un cierre
-      // rechazado. Dos cierres simultáneos de la misma sucursal chocan (índice único + SERIALIZABLE) y uno reintenta: sin huecos ni repetidos.
-      const { _max } = await tx.ejemplarBoleta.aggregate({ where: { sucursalId: ctx.sucursalId }, _max: { numero: true } });
-      await tx.ejemplarBoleta.create({
-        data: { sucursalId: ctx.sucursalId, cuentaId: cuenta.id, numero: siguienteNumeroBoleta(_max.numero), ejemplar: 1, emitidoEn: ahora, emitidoPorId: ctx.usuarioId },
-      });
-
-      for (const [i, linea] of lineas.entries()) {
-        // `promoCuentaId ?? null` explícito (Task #16): un `undefined` en el `where` de Prisma OMITE el filtro entero, no
-        // filtra por null — con eso, un suelto mezclaría con un componente de promo del mismo producto y precio (D4).
-        await tx.cuentaItem.updateMany({
-          where: { cuentaId: cuenta.id, productoId: linea.productoId, precioUnitario: linea.precioUnitario, promoCuentaId: linea.promoCuentaId ?? null },
-          data: { operacionId: venta.operacionIds[i] },
-        });
-      }
-      await cerrar();
-
-      // Σ del importe COBRADO de cada línea VENTA registrada (importeDeLinea, igual que registrarVentaEnTx y la boleta — con
-      // descuento ya aplicado si hay cliente), no la suma cruda re-redondeada: el total del mensaje coincide centavo a centavo con
-      // lo registrado. redondearMoneda solo limpia el ruido del float.
-      const total = redondearMoneda(lineasVenta.reduce((suma, l) => suma + importeDeLinea(l.cantidadVendida, l.precioUnitario), 0));
-      const conCliente = cuenta.cliente ? ` (con ${descuento}% de descuento a «${cuenta.cliente.nombre}»)` : "";
-      const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}${conCliente}.`;
-      if (!venta.avisosStockNegativo.length) return ok(mensaje);
-
-      for (const aviso of venta.avisosStockNegativo) {
-        const consumo = await tx.movimientoStock.findFirst({
-          where: { operacionId: { in: venta.operacionIds }, productoId: aviso.productoId, seccionId: aviso.seccionId, proceso: "CONSUMO" },
-          select: { operacionId: true },
-          orderBy: { creadoEn: "asc" },
-        });
-        await registrarCambioAuditado(tx, {
-          entidad: "Operacion",
-          entidadId: consumo?.operacionId ?? venta.operacionIds[0],
-          descripcion:
-            `Mesa ${mesa}: al cerrar la cuenta (${ctx.email}) el stock de "${aviso.nombre}" en «${aviso.seccionNombre}» quedó en negativo — ` +
-            `tenía ${formatearCantidad(aviso.actual)}, la venta consumió ${formatearCantidad(aviso.requerido)}, faltaron ${formatearCantidad(aviso.requerido - Math.max(aviso.actual, 0))}. ` +
-            "La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste.",
-          campo: "saldoStock",
-          valorAnterior: aviso.actual,
-          valorNuevo: aviso.resultante,
-          actorId: ctx.usuarioId,
-          sucursalId: ctx.sucursalId,
-        });
-      }
-      return ok(`${mensaje} ⚠ Quedó stock negativo: ${venta.avisosStockNegativo.map(describirAviso).join(", ")}. Corregilo con un Conteo Físico o un Ajuste.`);
-    });
+    const comando = guardComandoCerrarCuenta({ cuentaId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await cerrarCuentaCasoDeUso(ctx, comando.valor));
   });
 }
 

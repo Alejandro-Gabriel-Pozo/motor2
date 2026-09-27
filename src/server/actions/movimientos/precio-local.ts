@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { validarImporte } from "@/core/datos/importe";
@@ -25,23 +26,26 @@ export async function listarPreciosLocales(sucursalId: string) {
   return prisma.precioLocalProducto.findMany({ where: { sucursalId }, include: { producto: true }, orderBy: { producto: { nombre: "asc" } } });
 }
 
-/** Upsert del precio local de un producto en la sucursal activa, con su auditoría (A3, Pivote 6). Sin guarda: la ponen quienes lo llaman. */
-async function guardarPrecioLocal(ctx: ContextoUsuario, producto: { id: string; nombre: string }, precio: number, habilitado: boolean) {
+/**
+ * Upsert del precio local de un producto en la sucursal activa, con su auditoría (A3, Pivote 6). Sin guarda: la ponen quienes lo llaman.
+ * Recibe el cliente de la transacción de quien llama (Task #41, M10): el upsert y sus dos filas de auditoría quedan o todos o ninguno.
+ */
+async function guardarPrecioLocal(tx: Prisma.TransactionClient, ctx: ContextoUsuario, producto: { id: string; nombre: string }, precio: number, habilitado: boolean) {
   const productoId = producto.id;
-  const existente = await prisma.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } } });
-  const fila = await prisma.precioLocalProducto.upsert({
+  const existente = await tx.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } } });
+  const fila = await tx.precioLocalProducto.upsert({
     where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
     update: { precio, habilitado },
     create: { sucursalId: ctx.sucursalId, productoId, precio, habilitado },
   });
 
   // Auditoría administrativa (A3, Pivote 6).
-  await registrarCambioAuditado(prisma, {
+  await registrarCambioAuditado(tx, {
     entidad: "PrecioLocalProducto", entidadId: fila.id, campo: "precio",
     descripcion: `Precio local de "${producto.nombre}"`,
     valorAnterior: existente ? Number(existente.precio) : null, valorNuevo: Number(precio), actorId: ctx.usuarioId, sucursalId: ctx.sucursalId,
   });
-  await registrarCambioAuditado(prisma, {
+  await registrarCambioAuditado(tx, {
     entidad: "PrecioLocalProducto", entidadId: fila.id, campo: "habilitado",
     descripcion: `Precio local de "${producto.nombre}": habilitado`,
     valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId: ctx.sucursalId,
@@ -63,7 +67,7 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
 
-    await guardarPrecioLocal(ctx, producto, precio, habilitado);
+    await prisma.$transaction((tx) => guardarPrecioLocal(tx, ctx, producto, precio, habilitado));
 
     const mensaje = `Precio local de "${producto.nombre}" ${habilitado ? `fijado en ${precio}` : "cargado (deshabilitado, se usa el precio global)"}.`;
     if (habilitado) {
@@ -94,7 +98,10 @@ export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, produ
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
 
     const productos = await prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true } });
-    for (const p of productos) await guardarPrecioLocal(ctx, p, precio, habilitado);
+    // Todo el grupo en UNA transacción (Task #41, M10): o quedan todos los precios locales con su auditoría, o ninguno.
+    await prisma.$transaction(async (tx) => {
+      for (const p of productos) await guardarPrecioLocal(tx, ctx, p, precio, habilitado);
+    });
     return ok(`Precio local de ${productos.map((p) => `"${p.nombre}"`).join(", ")} fijado en ${precio} en "${ctx.sucursalNombre}" («${grupo.nombreItem}»).`);
   });
 }
