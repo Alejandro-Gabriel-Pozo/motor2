@@ -26,3 +26,4 @@ export { NAV_MOVIMIENTOS, obtenerConfigProceso } from "./ui-config";
 export type { ProcesoUiConfig } from "./ui-config";
 export { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION, detalleReversionDeCompra, detalleReversionDeVenta } from "./anulaciones";
 export type { ResultadoAnulacionDeVenta, LineaVendida, LineaDeReversionDeVenta } from "./anulaciones";
+export type { AccionConteo } from "@prisma/client";

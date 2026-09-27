@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { AccionConteo } from "@prisma/client";
+import type { AccionConteo } from "@/core/movimientos/public";
 import { registrarConteosFisicos } from "@/server/actions/movimientos/conteo-fisico";
 import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
