@@ -69,9 +69,25 @@ const CICLOS_CONOCIDOS = [
   },
 ];
 
+/**
+ * `accion-migrada-sin-orquestacion` (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md): NO es una lista de
+ * excepciones sino la de las Server Actions YA MIGRADAS a casos de uso — la regla se aplica SOLO a estos archivos. Cada uno quedó
+ * como adaptador fino (conPermiso → guard → caso de uso → aResultadoAccion): no puede volver a importar la base, Prisma en
+ * runtime, reintento/idempotencia/auditoría ni server/persistencia/ directo. Al migrar otra acción, se suma acá en el mismo commit
+ * (el complemento de Vitest exige que cada archivo exista y lleve "use server").
+ */
+const ACCIONES_CON_CASO_DE_USO = [
+  {
+    ruta: "src/server/actions/movimientos/compras.ts",
+    motivo:
+      "Piloto de la Fase M: anularCompra → casos-de-uso/anular-compra.ts y corregirCompra → casos-de-uso/corregir-compra.ts (transacción, I3, persistencia y auditoría viven en el caso de uso).",
+  },
+];
+
 module.exports = {
   "core-sin-react-next": CORE_CON_REACT_NEXT,
   "ui-sin-prisma": PENDIENTES_DE_MIGRAR,
   "sin-ciclos": CICLOS_CONOCIDOS,
   PENDIENTES_DE_MIGRAR,
+  ACCIONES_CON_CASO_DE_USO,
 };
