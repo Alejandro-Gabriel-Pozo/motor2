@@ -72,6 +72,7 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 - **C3** (`core/reportes/public.ts` + `public-servidor.ts`) — mergeado a `main` (2026-09-27, misma sesión). `"reportes"` ya está en `DOMINIOS_CON_PUBLIC`. Ver detalle y hallazgo real (no anticipado por esta descripción) más abajo.
 - **M9** (caso de uso `registrarVenta` de mostrador) — resultó YA HECHA como efecto colateral de M8 (verificado 2026-09-27). Nada pendiente.
 - **Fase M, piloto + M8** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio — PR #40; M8: caso de uso `anularVenta` — PR #48, mergeado ya antes de este checkpoint). De paso el piloto corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada. **M9 queda desbloqueada.**
+- **D9, M10, M11a, M12a** — 4 tareas lanzadas en paralelo (4 agentes, worktrees/DBs propios, este mismo día, máquina local) y mergeadas: D9 (`AccionConteo` vía fachada), M10 (transacción atómica en cambios de precio, con test rojo→verde), M11a (traspasos: aprobar/cancelar/rechazar solicitud, migración parcial a propósito) y M12a (POS: `cerrarCuenta`, migración parcial a propósito). Cada una reverificada de forma independiente (gate completo + lectura del diff) antes de mergear. Ver detalle de cada una más abajo — M11a y M12a dejan sub-tareas encadenadas pendientes (M11b/c, M12b/c/d).
 
 **Nota de continuidad (2026-09-27, tarde):** D4, D6, C2 y M8 se lanzaron como 4 agentes en paralelo en una sesión cloud; la sesión se cortó antes de que D6/C2/M8 terminaran de reportarse (D6 y M8 en realidad ya habían mergeado; C2 había pusheado su rama sin mergear; D4 no llegó a pushear nada — se rehízo desde cero). Al continuar en una máquina local se verificó cada uno contra el estado real de `main` (nunca contra la descripción de esta tarea) antes de tocar nada — ver "Lección aprendida" de `plan-con-verificacion-e2e/SKILL.md`.
 
@@ -112,15 +113,12 @@ declarando `Db` localmente desde `@prisma/client`.
 diferidos (C4/C5) porque casi todos sus consumidores están en `app/`, exento
 de la regla por ahora — dejarlo solo anotado en E1.
 
-#### D9 (opcional) — sacar `@prisma/client` de `conteo-fisico-grid.tsx`
-Componente cliente con `import type { AccionConteo } from "@prisma/client"`
-(de solo tipo, sin riesgo real de bundle, pero sí aparece en el grafo de
-dependency-cruiser como `app/` → `@prisma/client`). Si se quiere cero
-referencias, reexportar `AccionConteo` como tipo desde `core/movimientos/public.ts`
-(C2 ya mergeada, así que ya es viable) y que el componente importe de ahí.
-Bloqueada por: nada. Descartable sin costo si un `import type` a
-`@prisma/client` desde un componente cliente se considera aceptable. Tamaño
-chica.
+#### D9 — YA MERGEADA
+`conteo-fisico-grid.tsx` importa `AccionConteo` desde `core/movimientos/public.ts`
+(reexport de tipo puro del paquete `@prisma/client`, no de `@/lib/db.ts` — no
+rompe `publico-puro`). `server/actions/movimientos/conteo-fisico.ts` sigue
+importando directo de `@prisma/client` a propósito (no es `app/`, la regla no
+lo alcanza).
 
 #### K2 — borrar código muerto aprobado
 Borrar SOLO lo que K1 clasificó como "muerto real" (34 hallazgos, ver el
@@ -241,30 +239,48 @@ completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
   cubriéndolo. `DatosVentaInput` (`core/features/ventas/venta.schema.ts`) ya
   nace sin `precioUnitario` (se mapea a mano en el caso de uso). Nada
   pendiente acá.
-- **M10** — transacción en cambios de precio (`actualizarProducto`,
-  `setPrecioLocalProducto`, sincronización de precio): HOY auditan pero SIN
-  transacción — el `update` y la auditoría no son atómicos (hueco real, no
-  reportado por el dueño). **CAMBIA COMPORTAMIENTO** (a diferencia de M2-M9):
-  hace falta un test nuevo que fuerce la falla de la auditoría a mitad de
-  camino y compruebe que el precio también hace rollback (hoy no lo haría).
-  Bloqueada por M7 (mergeado). Tamaño chica-mediana.
-- **M11a/b/c** — traspasos (`server/actions/traspasos/traspasos.ts`), 3
-  sub-tareas secuenciales sobre el mismo archivo (la guarda de transición ya
-  está extraída en `core/features/traspasos/traspaso.guard.ts`, no se toca):
-  (a) aprobar/cancelar/rechazar solicitud; (b) aceptar traspaso y reingreso
-  (ya tienen I3 hoy); (c) creación y envío directo (hoy sin I3 — evaluar si
-  corresponde agregarla). Bloqueadas en cadena (M11a→M11b→M11c), M11a
-  bloqueada por M7. Cierre: specs `traspasos-*` en verde. Tamaño mediana
-  cada una.
-- **M12a/b/c/d** — POS (`pos/cuenta-cierre.ts`/`cuenta-anulacion.ts`, ya
-  divididos por B2, mergeado): (a) `cerrarCuenta` (idempotente por estado,
-  llama a `registrarVentaEnTx` sin tocarlo, numera boleta); (b)
-  `emitirBoletaCorregida` (después de a, mismo archivo); (c)
-  `anularItemEnviado`; (d) `anularPromoEnviada` (después de c, mismo
-  archivo; evaluar si sumar `abrirCuenta` opcional acá o dejarla fuera).
-  Bloqueadas por B2 (ya mergeado, sin bloqueo real) y en cadena entre sí
-  donde compartan archivo. Cierre: `test/pos/*` y specs `pos-*` en verde.
+- **M10 — YA MERGEADA**: las 4 funciones (`actualizarProducto`,
+  `sincronizarPrecioGrupoCarta`, `setPrecioLocalProducto`,
+  `sincronizarPrecioLocalGrupoCarta`) tenían el hueco (auditaban con `prisma`
+  suelto, sin transacción) — ahora cada una envuelve su `update`/`upsert` +
+  auditoría en un `prisma.$transaction`. Demostrado rojo→verde en
+  `test/catalogo/precio-auditoria-atomica.test.ts` (7 tests: sin el fix,
+  6/7 mostraban el precio cambiado sin su auditoría; con el fix, rollback
+  completo). Quedó señalado, fuera de alcance, que
+  `actualizarDisponibilidadProducto`, `permisos/capacidades-sucursal.ts`,
+  `permisos/roles.ts` y `pos/mesas.ts` tienen el mismo patrón sin transacción
+  — no son de precio, pendiente aparte si se quiere.
+- **M11a — YA MERGEADA** (`aprobarYEnviarTransferencia`,
+  `cancelarSolicitudTransferencia`, `rechazarSolicitudTransferencia` a caso
+  de uso). Migración PARCIAL a propósito: `traspasos.ts` todavía NO entra en
+  `ACCIONES_CON_CASO_DE_USO` (M11b/M11c le faltan). Cambio de comportamiento
+  menor: un `seccionOrigenId` que no es string ahora da un mensaje claro en
+  vez de un error crudo de Prisma (mismo criterio que M8). **M11b/c siguen
+  pendientes**, encadenadas sobre el mismo archivo:
+  - **M11b** — aceptar traspaso y reingreso (`aceptarTransferencia`,
+    `confirmarReingresoTransferencia`, `rechazarTransferencia`; ya tienen I3
+    hoy). Puede reusar `producto-transferible.ts` (paso compartido que dejó
+    M11a) y debería poder borrar `obtenerProductoTransferible` del archivo
+    viejo si ya no lo usa nadie más.
+  - **M11c** — creación y envío directo (`crearSolicitudTransferencia`,
+    `crearEnvioDirectoTransferencia`; hoy sin I3 — evaluar si corresponde
+    agregarla). Recién acá `traspasos.ts` entra a `ACCIONES_CON_CASO_DE_USO`.
   Tamaño mediana cada una.
+- **M12a — YA MERGEADA** (`cerrarCuenta` a caso de uso: comando+guard en
+  `core/features/cuentas/`, persistencia nueva en `server/persistencia/pos/`
+  — no existía, se armó desde cero, cerrando de paso el ítem P2 opcional del
+  backlog —, caso de uso en `server/actions/pos/casos-de-uso/cerrar-cuenta.ts`).
+  Idempotencia por estado y numeración de boleta verificadas contra el
+  comportamiento original. **M12b/c/d siguen pendientes**, encadenadas:
+  - **M12b** — `emitirBoletaCorregida` (mismo archivo que M12a). Recién acá
+    `cuenta-cierre.ts` entra a `ACCIONES_CON_CASO_DE_USO`.
+  - **M12c** — `anularItemEnviado` (`pos/cuenta-anulacion.ts`).
+  - **M12d** — `anularPromoEnviada` (mismo archivo que M12c, después de c;
+    evaluar si sumar `abrirCuenta` opcional acá o dejarla fuera). Recién acá
+    `cuenta-anulacion.ts` entra a `ACCIONES_CON_CASO_DE_USO`.
+  Bloqueadas por B2 (ya mergeado) y en cadena entre sí donde compartan
+  archivo. Cierre: `test/pos/*` y specs `pos-*` en verde. Tamaño mediana cada
+  una.
 - **M13a/b/c/d/e** — el motor genérico `registrarMovimiento`
   (`server/actions/movimientos/movimientos.ts`, 512 líneas, 9 procesos): UN
   caso de uso genérico, no una fachada por proceso (la UI ya es genérica).
