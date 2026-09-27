@@ -51,6 +51,17 @@ export interface GeneroCartaAdmin {
   activo: boolean;
 }
 
+/** Un cupo de una promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1), para el editor del admin. */
+export interface CupoPromoCartaAdmin {
+  id: string;
+  seccionCartaId: string;
+  /** Nombre de la sección elegida (aunque esté apagada: el admin necesita verla para poder corregirla). */
+  seccionCarta: string;
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  orden: number;
+}
+
 export interface PromoCartaAdmin {
   id: string;
   seccionCartaId: string;
@@ -60,6 +71,8 @@ export interface PromoCartaAdmin {
   precio: number;
   orden: number;
   activa: boolean;
+  /** Vacío = puramente informativa (el POS la ignora). Uno o más = ARMABLE (D1). */
+  cupos: CupoPromoCartaAdmin[];
 }
 
 export interface DatosAdminCarta {
@@ -137,7 +150,14 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
       },
       orderBy: { nombre: "asc" },
     }),
-    db.promoCarta.findMany({ where: { sucursalId }, include: { seccionCarta: { select: { nombre: true } } }, orderBy: [{ activa: "desc" }, { orden: "asc" }, { titulo: "asc" }] }),
+    db.promoCarta.findMany({
+      where: { sucursalId },
+      include: {
+        seccionCarta: { select: { nombre: true } },
+        cupos: { select: { id: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, orden: true, seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } },
+      },
+      orderBy: [{ activa: "desc" }, { orden: "asc" }, { titulo: "asc" }],
+    }),
     resolverMenuCartaConDiagnostico(sucursalId, db),
   ]);
 
@@ -177,6 +197,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
       precio: Number(pr.precio),
       orden: pr.orden,
       activa: pr.activa,
+      cupos: pr.cupos.map((c) => ({ id: c.id, seccionCartaId: c.seccionCartaId, seccionCarta: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
     })),
   };
 }
