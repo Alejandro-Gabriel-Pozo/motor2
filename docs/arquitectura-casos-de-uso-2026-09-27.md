@@ -98,6 +98,20 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   por su caso de uso. Complemento en Vitest: cada archivo de la lista existe
   y lleva `"use server"`.
 
+## Acciones migradas después del piloto
+
+- **M8 — `anularVenta`** (`src/server/actions/movimientos/venta.ts`): comando + guard en `core/features/ventas/` (`venta.schema.ts`,
+  `venta.guard.ts`: un `operacionId` que no es string da «no encontrada»; antes, con `undefined`, Prisma ignoraba el filtro y cargaba la
+  primera operación de la sucursal); reglas puras (`evaluarAnulacionDeVenta`, `construirReversionDeVenta`, textos de mensaje y de
+  auditoría) en `core/movimientos/anulaciones.ts` — es la guarda "F3" de ventas de `plan-mutaciones-controladas-2026-09-25.md`, antes en
+  línea; persistencia en `server/persistencia/movimientos/` (`cargar-venta-para-anular.ts`, con `cargarVentaParaAnular` y
+  `cargarHermanasDePromo`, y `escribir-anulacion-de-venta.ts`, una llamada por Operación anulada); caso de uso
+  `casos-de-uso/anular-venta.ts`. Sin I3: `anularVenta` nunca la tuvo y no se agregó. Las hermanas de promo (Task #16, D4) se cargan
+  recién después de las guardas, igual que antes, y cada Operación escribe su contra-asiento y su fila de auditoría en el mismo orden.
+- **Efecto colateral en `registrarVenta`** (mismo archivo): la regla `accion-migrada-sin-orquestacion` se aplica al archivo entero, así que
+  su bloque transaccional (I3 + `registrarVentaEnTx`) pasó TAL CUAL a `casos-de-uso/registrar-venta.ts`. Sus validaciones de entrada
+  siguen en la Server Action; pasarlas a un guard de comando queda para la migración propia de `registrarVenta`.
+
 ## Cómo se migra la próxima acción
 
 1. Comando + `Resultado*` en `<f>.schema.ts`, `guardComando*` en `<f>.guard.ts`, armadores puros de mensajes en `core/<dominio>/`.
