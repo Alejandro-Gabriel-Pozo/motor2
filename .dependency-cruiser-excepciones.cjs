@@ -97,6 +97,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "M8: anularVenta → casos-de-uso/anular-venta.ts (transacción, hermanas de promo, persistencia y auditoría). Como la regla vale para todo el archivo, registrarVenta pasó su bloque transaccional (I3 + registrarVentaEnTx) a casos-de-uso/registrar-venta.ts; sus validaciones de entrada siguen en la acción.",
   },
+  {
+    ruta: "src/server/actions/pos/cuenta-cierre.ts",
+    motivo:
+      "M12a + M12b: cerrarCuenta → pos/casos-de-uso/cerrar-cuenta.ts y emitirBoletaCorregida → pos/casos-de-uso/emitir-boleta-corregida.ts (transacción, carga, numeración/ejemplar de la boleta, persistencia y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
+  },
 ];
 
 module.exports = {

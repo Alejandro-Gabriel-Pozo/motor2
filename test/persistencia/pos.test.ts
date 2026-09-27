@@ -3,6 +3,8 @@ import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDeBoleta } from "../../src/server/persistencia/pos/cargar-cuenta-para-cerrar";
 import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeBoleta, marcarCuentaCerrada } from "../../src/server/persistencia/pos/cerrar-cuenta";
+import { cargarCuentaParaCorregirBoleta } from "../../src/server/persistencia/pos/cargar-cuenta-para-corregir-boleta";
+import { escribirEjemplarCorregido } from "../../src/server/persistencia/pos/escribir-ejemplar-corregido";
 
 /**
  * `src/server/persistencia/pos/` (Task #41, Fase M12a) contra Postgres real. Cada función recibe el `tx` de quien la llama: acá se la
@@ -119,5 +121,77 @@ describe("persistencia del cierre de cuenta", () => {
       prisma.$transaction((tx) => cargarOperacionDelConsumo(tx, { operacionIds: [venta1.id, venta2.id], productoId, seccionId: s.seccion.id }));
     expect(await buscar(s.muzzarella.id)).toBe(venta2.id);
     expect(await buscar(s.flan.id)).toBeNull();
+  });
+});
+
+/** `src/server/persistencia/pos/` de la boleta corregida (Task #41, Fase M12b), contra Postgres real y con el `tx` de un `$transaction` del test. */
+describe("persistencia de la boleta corregida", () => {
+  let s: Awaited<ReturnType<typeof sembrarSalon>>;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    s = await sembrarSalon();
+  });
+
+  it("cargarCuentaParaCorregirBoleta: ítems con la anulación de su Operacion (Decimal → number) y ejemplares del último al primero", async () => {
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [
+      { productoId: s.flan.id, cantidad: 1.5, precioUnitario: 3000.5, numeroEnvio: 1 },
+      { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000, numeroEnvio: 1 },
+    ]);
+    const anuladaEn = new Date("2026-09-27T22:00:00.000Z");
+    const venta = await prisma.operacion.create({ data: { sucursalId: s.sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: s.admin.id, anuladaEn } });
+    await prisma.cuentaItem.update({ where: { id: cuenta.items[0].id }, data: { operacionId: venta.id } });
+    const cerradaEn = new Date("2026-09-27T21:00:00.000Z");
+    await prisma.cuenta.update({ where: { id: cuenta.id }, data: { cerradaEn, cerradaPorId: s.admin.id } });
+    const a = await prisma.ejemplarBoleta.create({ data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 9, ejemplar: 1, emitidoEn: cerradaEn, emitidoPorId: s.admin.id } });
+    const b = await prisma.ejemplarBoleta.create({
+      data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 9, ejemplar: 2, emitidoEn: anuladaEn, emitidoPorId: s.admin.id, corrigeAId: a.id, motivo: "x" },
+    });
+
+    const c = await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: cuenta.id, sucursalId: s.sucursalId }));
+
+    expect(c).toEqual({
+      id: cuenta.id,
+      mesaNumero: 4,
+      cerradaEn,
+      items: expect.arrayContaining([
+        { productoId: s.flan.id, productoNombre: "Flan", cantidad: 1.5, precioUnitario: 3000.5, operacionId: venta.id, anuladaEn },
+        { productoId: s.milanesa.id, productoNombre: "Milanesa", cantidad: 1, precioUnitario: 9000, operacionId: null, anuladaEn: null },
+      ]),
+      ejemplares: [
+        { id: b.id, sucursalId: s.sucursalId, numero: 9, ejemplar: 2, emitidoEn: anuladaEn },
+        { id: a.id, sucursalId: s.sucursalId, numero: 9, ejemplar: 1, emitidoEn: cerradaEn },
+      ],
+    });
+    expect(c!.items).toHaveLength(2);
+  });
+
+  it("cargarCuentaParaCorregirBoleta: null si el id no existe o la mesa es de OTRA sucursal", async () => {
+    const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
+    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: "no-existe", sucursalId: s.sucursalId }))).toBeNull();
+    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: cuenta.id, sucursalId: norte.id }))).toBeNull();
+    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: cuenta.id, sucursalId: s.sucursalId }))).toMatchObject({ items: [], ejemplares: [] });
+  });
+
+  it("escribirEjemplarCorregido: el ejemplar pedido, con corrigeAId y motivo, y devuelve su id", async () => {
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
+    const emitidoEn = new Date("2026-09-27T20:00:00.000Z");
+    const a = await prisma.ejemplarBoleta.create({ data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, ejemplar: 1, emitidoEn, emitidoPorId: s.admin.id } });
+
+    const id = await prisma.$transaction((tx) =>
+      escribirEjemplarCorregido(tx, { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, ejemplar: 2, emitidoEn, emitidoPorId: s.admin.id, corrigeAId: a.id, motivo: "No quiso el flan" })
+    );
+
+    expect(await prisma.ejemplarBoleta.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      sucursalId: s.sucursalId,
+      cuentaId: cuenta.id,
+      numero: 3,
+      ejemplar: 2,
+      emitidoEn,
+      emitidoPorId: s.admin.id,
+      corrigeAId: a.id,
+      motivo: "No quiso el flan",
+    });
   });
 });
