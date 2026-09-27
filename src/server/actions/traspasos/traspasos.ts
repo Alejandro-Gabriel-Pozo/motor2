@@ -10,26 +10,27 @@ import {
   obtenerSeccionPropia,
   validarStockSuficiente,
   conTransaccionSerializable,
-  calcularPayloadHash,
-  chequearIdempotencia,
-  esClaveIdempotenciaValida,
-  MENSAJE_CONFLICTO_IDEMPOTENCIA,
 } from "@/core/movimientos/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
-import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import {
+  guardComandoAceptarTraspaso,
   guardComandoAprobarYEnviarTraspaso,
   guardComandoCancelarSolicitudTraspaso,
+  guardComandoConfirmarReingresoTraspaso,
+  guardComandoRechazarEnvioTraspaso,
   guardComandoRechazarSolicitudTraspaso,
 } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 import { aprobarYEnviarTraspasoCasoDeUso } from "./casos-de-uso/aprobar-y-enviar-traspaso";
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/rechazar-solicitud-de-traspaso";
+import { aceptarTraspasoCasoDeUso } from "./casos-de-uso/aceptar-traspaso";
+import { rechazarEnvioDeTraspasoCasoDeUso } from "./casos-de-uso/rechazar-envio-de-traspaso";
+import { confirmarReingresoDeTraspasoCasoDeUso } from "./casos-de-uso/confirmar-reingreso-de-traspaso";
 
 /**
  * ===================================================================
@@ -68,8 +69,9 @@ import { rechazarSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/rechazar-so
  *
  * La misma regla, con los mismos textos, vive también en
  * `casos-de-uso/producto-transferible.ts` para los casos de uso ya migrados
- * (Task #41, M11a); esta copia queda solo para las Server Actions todavía
- * sin migrar (M11b/M11c) y se borra con la última.
+ * (Task #41, M11a/M11b); esta copia queda solo para las Server Actions
+ * todavía sin migrar (M11c: crearSolicitudTransferencia y
+ * crearEnvioDirectoTransferencia) y se borra con la última.
  */
 async function obtenerProductoTransferible(
   productoId: string,
@@ -89,17 +91,20 @@ async function obtenerProductoTransferible(
   return { ok: true as const, producto };
 }
 
+/**
+ * La Operación + su línea de Kardex de un traspaso. Desde la Task #41 solo la usa crearEnvioDirectoTransferencia (sin I3, M11c): la
+ * SALIDA de la aprobación (M11a), la ENTRADA de la aceptación y el REINGRESO (M11b, con I3) las escriben
+ * `server/persistencia/traspasos/escribir-aprobacion-de-traspaso.ts` y `escribir-entrada-de-traspaso.ts`.
+ */
 async function escribirMovimientoTraspaso(
   tx: Prisma.TransactionClient,
   ctx: ContextoUsuario,
   traspasoId: string,
-  proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" | "TRANSFERENCIA_ENTRADA_SUCURSAL" | "REINGRESO_TRANSFERENCIA_SUCURSAL",
+  proceso: "TRANSFERENCIA_SALIDA_SUCURSAL",
   productoId: string,
   seccionId: string,
   cantidadFirmada: number,
-  detalle: string,
-  /** I3 — solo lo mandan aceptarTransferencia/confirmarReingresoTransferencia (las 2 llamadas a este helper que están en el alcance de la política, docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §11.5); crearEnvioDirectoTransferencia no manda nada. La SALIDA de aprobarYEnviarTransferencia ya no pasa por acá: la escribe `server/persistencia/traspasos/escribir-aprobacion-de-traspaso.ts` (Task #41, M11a), también sin I3. */
-  idempotencia?: { claveIdempotencia: string; payloadHash: string }
+  detalle: string
 ) {
   const operacion = await tx.operacion.create({
     data: {
@@ -107,8 +112,8 @@ async function escribirMovimientoTraspaso(
       proceso,
       fecha: new Date(),
       usuarioId: ctx.usuarioId,
-      claveIdempotencia: idempotencia?.claveIdempotencia ?? null,
-      payloadHash: idempotencia?.payloadHash ?? null,
+      claveIdempotencia: null,
+      payloadHash: null,
     },
   });
   await tx.movimientoStock.create({
@@ -262,10 +267,6 @@ export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTra
   });
 }
 
-async function buscarTraspaso(id: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
-  return tx.traspasoSucursal.findUnique({ where: { id }, include: { producto: { include: { unidadStock: true } } } });
-}
-
 /**
  * Origen aprueba una SOLICITADA: valida stock, resta en SU Kardex local, pasa a ENVIADA.
  *
@@ -331,51 +332,18 @@ export async function rechazarSolicitudTransferencia(id: string, motivo?: string
   });
 }
 
-/** Destino acepta una ENVIADA: suma en SU Kardex local, pasa a ACEPTADA. */
+/**
+ * Destino acepta una ENVIADA: suma en SU Kardex local, pasa a ACEPTADA. Con idempotencia I3 (clave opcional).
+ *
+ * Desde la Task #41 (Fase M11b, docs/arquitectura-casos-de-uso-2026-09-27.md) es un adaptador fino: permiso → formato
+ * (`guardComandoAceptarTraspaso`: id, clave I3, sección) → caso de uso (`casos-de-uso/aceptar-traspaso.ts`: sección propia, transacción,
+ * I3, guard de transición, re-chequeo de disponibilidad, escritura) → `aResultadoAccion`.
+ */
 export async function aceptarTransferencia(id: string, seccionDestinoId: string, claveIdempotencia?: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const idTraspaso = texto(id);
-    if (!idTraspaso) return error("Falta el traspaso.");
-    if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
-      return error("Clave de reintento inválida.");
-    }
-
-    const seccionDestino = await obtenerSeccionPropia(seccionDestinoId, ctx.sucursalId);
-    if (!seccionDestino) return error("Elegí a qué sección propia entra.");
-
-    return conTransaccionSerializable(async (tx) => {
-      const payloadHash = claveIdempotencia ? calcularPayloadHash("ACEPTAR_TRASPASO", ctx.sucursalId, { id: idTraspaso, seccionDestinoId }) : "";
-      const chequeo = await chequearIdempotencia(tx, claveIdempotencia, payloadHash);
-      if (chequeo.estado === "duplicado") return ok(chequeo.mensaje);
-      if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
-
-      const traspaso = await buscarTraspaso(idTraspaso, tx);
-      if (!traspaso) return error("No se encontró ese traspaso.");
-      const transicion = guardTransicionTraspaso(traspaso, "aceptar", ctx.sucursalId);
-      if (!transicion.ok) return error(transicion.mensaje);
-      // El stock entra a ESTA sucursal recién ahora — re-chequea disponibilidad acá (pudo haber cambiado desde el envío).
-      const resProducto = await obtenerProductoTransferible(traspaso.productoId, [{ sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre }], tx);
-      if (!resProducto.ok) return error(resProducto.mensaje);
-
-      const cantidad = Number(traspaso.cantidad);
-      const origen = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.origenSucursalId } });
-      const operacion = await escribirMovimientoTraspaso(
-        tx, ctx, traspaso.id, "TRANSFERENCIA_ENTRADA_SUCURSAL", traspaso.productoId, seccionDestino.id, cantidad,
-        `Transferencia recibida de sucursal "${origen.nombre}".`,
-        claveIdempotencia ? { claveIdempotencia, payloadHash } : undefined
-      );
-
-      await tx.traspasoSucursal.update({
-        where: { id: traspaso.id },
-        data: { seccionDestinoId: seccionDestino.id, estado: transicion.estadoNuevo, fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId },
-      });
-
-      const mensaje = `Recibido de "${origen.nombre}".`;
-      if (claveIdempotencia) {
-        await tx.operacion.update({ where: { id: operacion.id }, data: { resultadoMensaje: mensaje } });
-      }
-      return ok(mensaje);
-    });
+    const comando = guardComandoAceptarTraspaso({ id, seccionDestinoId, claveIdempotencia });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await aceptarTraspasoCasoDeUso(ctx, comando.valor));
   });
 }
 
@@ -385,76 +353,33 @@ export async function aceptarTransferencia(id: string, seccionDestinoId: string,
  * (I3): no crea ninguna Operacion donde guardarla (docs/auditoria-motor2-
  * plan-i3-idempotencia-2026-09-17.md §6.2) — el riesgo acá no era "reenvío
  * del mismo intento", era el check-then-act SIN transacción confirmado
- * racy (§6.3, traspasos-en-transito.test.ts "rechazo simultáneo": dos
- * rechazos simultáneos con motivo distinto respondían los DOS ok:true, el
- * segundo pisaba el motivo del primero sin que nadie se enterara). Se
+ * racy (§6.3, traspasos-en-transito.test.ts "rechazo simultáneo"). Se
  * cierra con la misma guarda de estado atómica que ya usan
- * aceptarTransferencia/confirmarReingresoTransferencia — SERIALIZABLE hace
- * que el segundo, al reintentar, vea el estado ya cambiado por el primero
- * y falle con un error explícito en vez de pisarlo en silencio.
+ * aceptarTransferencia/confirmarReingresoTransferencia.
+ *
+ * Desde la Task #41 (Fase M11b) es un adaptador fino: permiso → `guardComandoRechazarEnvioTraspaso` (normaliza también el motivo) →
+ * caso de uso (`casos-de-uso/rechazar-envio-de-traspaso.ts`, donde viven la transacción, el guard de transición y la escritura) →
+ * `aResultadoAccion`.
  */
 export async function rechazarTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const idTraspaso = texto(id);
-    if (!idTraspaso) return error("Falta el traspaso.");
-
-    return conTransaccionSerializable(async (tx) => {
-      const traspaso = await buscarTraspaso(idTraspaso, tx);
-      if (!traspaso) return error("No se encontró ese traspaso.");
-      const transicion = guardTransicionTraspaso(traspaso, "rechazar_envio", ctx.sucursalId);
-      if (!transicion.ok) return error(transicion.mensaje);
-
-      await tx.traspasoSucursal.update({
-        where: { id: idTraspaso },
-        data: { estado: transicion.estadoNuevo, fechaDecisionDestino: new Date(), decididoPorDestinoId: ctx.usuarioId, motivoRechazoDestino: texto(motivo) || null },
-      });
-
-      return ok("Transferencia rechazada — queda pendiente que el origen confirme el reingreso a su stock.");
-    });
+    const comando = guardComandoRechazarEnvioTraspaso({ id, motivo });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await rechazarEnvioDeTraspasoCasoDeUso(ctx, comando.valor));
   });
 }
 
-/** Origen confirma el reingreso tras un rechazo de destino: vuelve a sumar en SU Kardex local, pasa a CERRADA. */
+/**
+ * Origen confirma el reingreso tras un rechazo de destino: vuelve a sumar en SU Kardex local, pasa a CERRADA. Con idempotencia I3.
+ *
+ * Desde la Task #41 (Fase M11b) es un adaptador fino: permiso → `guardComandoConfirmarReingresoTraspaso` (id, clave I3) → caso de uso
+ * (`casos-de-uso/confirmar-reingreso-de-traspaso.ts`) → `aResultadoAccion`.
+ */
 export async function confirmarReingresoTransferencia(id: string, claveIdempotencia?: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const idTraspaso = texto(id);
-    if (!idTraspaso) return error("Falta el traspaso.");
-    if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
-      return error("Clave de reintento inválida.");
-    }
-
-    return conTransaccionSerializable(async (tx) => {
-      const payloadHash = claveIdempotencia ? calcularPayloadHash("REINGRESO_TRASPASO", ctx.sucursalId, { id: idTraspaso }) : "";
-      const chequeo = await chequearIdempotencia(tx, claveIdempotencia, payloadHash);
-      if (chequeo.estado === "duplicado") return ok(chequeo.mensaje);
-      if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
-
-      const traspaso = await buscarTraspaso(idTraspaso, tx);
-      if (!traspaso) return error("No se encontró ese traspaso.");
-      const transicion = guardTransicionTraspaso(traspaso, "confirmar_reingreso", ctx.sucursalId);
-      if (!transicion.ok) return error(transicion.mensaje);
-      if (!traspaso.seccionOrigenId) return error("Este traspaso no tiene una sección de origen registrada — no se puede reingresar.");
-
-      const cantidad = Number(traspaso.cantidad);
-      const destino = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.destinoSucursalId } });
-      const seccionOrigen = await tx.seccion.findUniqueOrThrow({ where: { id: traspaso.seccionOrigenId } });
-      const operacion = await escribirMovimientoTraspaso(
-        tx, ctx, traspaso.id, "REINGRESO_TRANSFERENCIA_SUCURSAL", traspaso.productoId, traspaso.seccionOrigenId, cantidad,
-        `Reingreso — rechazado por sucursal "${destino.nombre}".`,
-        claveIdempotencia ? { claveIdempotencia, payloadHash } : undefined
-      );
-
-      await tx.traspasoSucursal.update({
-        where: { id: traspaso.id },
-        data: { estado: transicion.estadoNuevo, fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
-      });
-
-      const mensaje = `Reingreso confirmado: se sumó de nuevo ${cantidad} de "${traspaso.producto.nombre}" en "${seccionOrigen.nombre}".`;
-      if (claveIdempotencia) {
-        await tx.operacion.update({ where: { id: operacion.id }, data: { resultadoMensaje: mensaje } });
-      }
-      return ok(mensaje);
-    });
+    const comando = guardComandoConfirmarReingresoTraspaso({ id, claveIdempotencia });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await confirmarReingresoDeTraspasoCasoDeUso(ctx, comando.valor));
   });
 }
 

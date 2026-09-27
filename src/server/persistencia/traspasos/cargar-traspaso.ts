@@ -55,3 +55,12 @@ export async function cargarProductoParaTraspaso(tx: Prisma.TransactionClient, p
   const p = await tx.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
   return p ? { id: p.id, nombre: p.nombre, tipo: p.tipo, seProduce: p.seProduce } : null;
 }
+
+/**
+ * La sección de origen registrada en el traspaso, para el mensaje del reingreso (Task #41, Fase M11b: la misma consulta que antes hacía
+ * en línea `confirmarReingresoTransferencia`). Siempre existe: la FK del traspaso la garantiza, así que falla si no está.
+ */
+export async function cargarSeccionDelTraspaso(tx: Prisma.TransactionClient, seccionId: string): Promise<{ id: string; nombre: string }> {
+  const s = await tx.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  return { id: s.id, nombre: s.nombre };
+}
