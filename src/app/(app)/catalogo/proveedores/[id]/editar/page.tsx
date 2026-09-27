@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { prisma } from "@/lib/db";
+import { obtenerProveedorPorId } from "@/server/consultas/catalogo/proveedores";
 import { ProveedorForm, type ProveedorExistente } from "../../proveedor-form";
 
 /** Edición de un proveedor. Al guardar, vuelve a su ficha, que muestra el aviso de que se guardó. */
@@ -14,7 +14,7 @@ export default async function EditarProveedorPage({ params }: { params: Promise<
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { id } = await params;
-  const p = await prisma.proveedor.findUnique({ where: { id } });
+  const p = await obtenerProveedorPorId(id);
   if (!p) notFound();
 
   const proveedorExistente: ProveedorExistente = {
