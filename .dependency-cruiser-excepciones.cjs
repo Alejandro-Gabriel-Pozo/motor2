@@ -60,6 +60,16 @@ const PENDIENTES_DE_MIGRAR = [
  * NO se arreglan en esta fase; cada entrada lista los archivos EXACTOS del ciclo (el complemento de Vitest exige que el
  * conjunto de ciclos reales sea exactamente el de esta lista).
  */
+/*
+ * Ciclo entre DOMINIOS de `core/` (no de archivos), documentado acá aunque no lleve entrada — Task #41, Fase C2:
+ * `core/movimientos/registrar-venta.ts` → `core/reportes/costos.ts` (`calcularCostosYMargenes`) mientras `core/reportes/`
+ * importa `core/movimientos/public.ts` (`esSignoFijo`, `tieneStockReal`, `OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION`).
+ * Es LEGÍTIMO (la venta congela su costo dentro de la misma transacción) y es el ÚNICO ciclo real entre dominios de `core/`.
+ * No es un ciclo de ARCHIVOS (`costos.ts` no alcanza nada de `core/movimientos/`), así que `sin-ciclos` no lo ve y no va en
+ * CICLOS_CONOCIDOS: el complemento de Vitest exige que esa lista sea exactamente la de los ciclos de archivos reales. Mientras
+ * `reportes` no tenga fachada (no está en DOMINIOS_CON_PUBLIC), `sin-internals-de-otro-dominio` tampoco lo marca. Se resuelve
+ * en C3 (fachada de `reportes`); hasta entonces, NO sumar otra arista de movimientos hacia reportes.
+ */
 const CICLOS_CONOCIDOS = [
   {
     ciclo: ["src/core/pos/comanda.ts", "src/core/pos/impresion.ts"],

@@ -3,9 +3,15 @@
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/stock";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
-import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
+import {
+  calcularSaldoPorLote,
+  obtenerSeccionPropia,
+  conTransaccionSerializable,
+  calcularPayloadHash,
+  chequearIdempotencia,
+  esClaveIdempotenciaValida,
+  MENSAJE_CONFLICTO_IDEMPOTENCIA,
+} from "@/core/movimientos/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { conPermiso } from "../con-permiso";
 import { requerirSesion } from "../con-sesion";

@@ -3,9 +3,14 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada } from "@/core/compras/anulacion";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularCompra, ResultadoAnularCompra } from "@/core/features/compras/compra.schema";
-import { detalleReversionDeCompra } from "@/core/movimientos/anulaciones";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
-import { calcularPayloadHash, chequearIdempotencia, MENSAJE_CONFLICTO_IDEMPOTENCIA, registrarResultadoIdempotente } from "@/core/movimientos/idempotencia";
+import { detalleReversionDeCompra } from "@/core/movimientos/public";
+import {
+  conTransaccionSerializable,
+  calcularPayloadHash,
+  chequearIdempotencia,
+  MENSAJE_CONFLICTO_IDEMPOTENCIA,
+  registrarResultadoIdempotente,
+} from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarCompraParaAnular } from "@/server/persistencia/compras/cargar-compra-para-anular";

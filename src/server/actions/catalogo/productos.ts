@@ -17,7 +17,7 @@ import {
   whereDisponibleEnAlguna,
 } from "@/core/catalogo/public-servidor";
 import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
-import { tieneStockReal } from "@/core/movimientos/transiciones";
+import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
 import { conPermiso } from "../con-permiso";

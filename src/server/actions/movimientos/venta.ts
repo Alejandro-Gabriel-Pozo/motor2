@@ -2,11 +2,16 @@
 
 import type { Prisma } from "@prisma/client";
 import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
-import { obtenerSeccionPropia } from "@/core/movimientos/stock";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
-import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
-import { registrarVentaEnTx } from "@/core/movimientos/registrar-venta";
-import { detalleReversionDeVenta } from "@/core/movimientos/anulaciones";
+import {
+  obtenerSeccionPropia,
+  conTransaccionSerializable,
+  calcularPayloadHash,
+  chequearIdempotencia,
+  esClaveIdempotenciaValida,
+  MENSAJE_CONFLICTO_IDEMPOTENCIA,
+  registrarVentaEnTx,
+} from "@/core/movimientos/public-servidor";
+import { detalleReversionDeVenta } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
