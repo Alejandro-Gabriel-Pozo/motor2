@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { redondearMoneda } from "@/core/moneda";
 import { redondearCantidad, type Db } from "@/core/reportes/comun";
 import {
   agruparVentasPorCategoria,

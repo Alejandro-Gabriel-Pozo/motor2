@@ -2,7 +2,7 @@
 
 import { esNumeroFinito } from "@/core/numero";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/con-reintento";
+import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { describirCalibracion, describirVueltaAlCentral, normalizarOrigen, type OrigenCalibracionInput } from "@/core/catalogo/public";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";

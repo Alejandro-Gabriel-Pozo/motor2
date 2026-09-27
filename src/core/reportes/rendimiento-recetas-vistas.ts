@@ -1,4 +1,4 @@
-import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
 
 /**

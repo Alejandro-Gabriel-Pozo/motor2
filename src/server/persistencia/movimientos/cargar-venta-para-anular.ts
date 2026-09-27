@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { LineaVendida } from "@/core/movimientos/anulaciones";
+import type { LineaVendida } from "@/core/movimientos/public";
 
 /**
  * Carga de una venta para ANULARLA (Task #41, Fase M — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo contrato que

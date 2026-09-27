@@ -1,10 +1,8 @@
 "use server";
 
-import { redondearMoneda } from "@/core/movimientos/transiciones";
-import { importeDeLinea, precioConDescuento } from "@/core/moneda";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
+import { conTransaccionSerializable, registrarVentaEnTx } from "@/core/movimientos/public-servidor";
 import { lineasDeVenta, validarMotivoAnulacion } from "@/core/pos/cuenta";
-import { registrarVentaEnTx } from "@/core/movimientos/registrar-venta";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { formatearNumeroBoleta, siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { armarBoletaVigente, estadoDeBoleta, type ItemConVenta } from "@/core/pos/boleta";

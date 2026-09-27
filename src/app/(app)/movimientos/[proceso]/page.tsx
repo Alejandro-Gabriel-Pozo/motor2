@@ -1,13 +1,12 @@
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { ACCION_POR_PROCESO } from "@/core/movimientos/transiciones";
-import { obtenerConfigProceso } from "@/core/movimientos/ui-config";
+import { ACCION_POR_PROCESO, obtenerConfigProceso } from "@/core/movimientos/public";
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarMotivosMermaActivos, listarDestinosConsumoActivos } from "@/server/actions/movimientos/motivos";
-import { prisma } from "@/lib/db";
+import { obtenerProductoOpcion } from "@/server/consultas/catalogo/productos";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
 
 export default async function MovimientoPage({
@@ -44,7 +43,7 @@ export default async function MovimientoPage({
     // Deep-link accionable desde un reporte (ej. "Costo incompleto" ->
     // "cargale precio a este insumo") — resuelto server-side así el form
     // cliente no tiene que pedirlo aparte.
-    productoId ? prisma.producto.findUnique({ where: { id: productoId }, select: { id: true, codigo: true, nombre: true } }) : Promise.resolve(null),
+    productoId ? obtenerProductoOpcion(productoId) : Promise.resolve(null),
   ]);
 
   return (

@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { LineaDeReversionDeVenta } from "@/core/movimientos/anulaciones";
+import type { LineaDeReversionDeVenta } from "@/core/movimientos/public";
 
 /**
  * Escritura de la ANULACIÓN de UNA Operación VENTA (Task #41, Fase M; mismo contrato que `cargar-venta-para-anular.ts`: `tx`

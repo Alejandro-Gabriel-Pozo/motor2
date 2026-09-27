@@ -4,7 +4,7 @@ import type { CostoMP, Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
-import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/anulaciones";
+import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import {
   bandaDeRuidoDeLote,
   calcularCantidadEstimadaNeta,

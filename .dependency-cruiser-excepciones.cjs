@@ -46,19 +46,29 @@ const CORE_CON_REACT_NEXT = [
  *  - D3: catalogo/recetas (listado) → src/server/consultas/catalogo/recetas.ts; catalogo/recetas/[productoId]/historial →
  *    reusa obtenerProductoPorId de src/server/consultas/catalogo/productos.ts.
  *  - D5: administracion/usuarios → src/server/consultas/permisos/roles.ts.
+ *  - D6: movimientos/[proceso] (deep-link ?productoId=) → obtenerProductoOpcion de src/server/consultas/catalogo/productos.ts.
  *  - D7: reportes/rendimiento-recetas/por-sucursal → src/server/consultas/reportes/rendimiento-por-sucursal.ts.
  *  - D8: (pos)/mesas → src/server/consultas/pos/mesas.ts.
  */
 const MOTIVO_PENDIENTE = "Lee la base directo desde la página; pendiente de migrar a src/server/consultas/ (Task #41, Fase D).";
 const PENDIENTES_DE_MIGRAR = [
   "src/app/(app)/catalogo/recetas/[productoId]/page.tsx",
-  "src/app/(app)/movimientos/[proceso]/page.tsx",
 ].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE }));
 
 /**
  * `sin-ciclos`: ciclos que ya existían al activar la regla (corrida en modo informe el 2026-09-27: 1 ciclo en todo `src/`).
  * NO se arreglan en esta fase; cada entrada lista los archivos EXACTOS del ciclo (el complemento de Vitest exige que el
  * conjunto de ciclos reales sea exactamente el de esta lista).
+ */
+/*
+ * Ciclo entre DOMINIOS de `core/` (no de archivos), documentado acá aunque no lleve entrada — Task #41, Fase C2:
+ * `core/movimientos/registrar-venta.ts` → `core/reportes/costos.ts` (`calcularCostosYMargenes`) mientras `core/reportes/`
+ * importa `core/movimientos/public.ts` (`esSignoFijo`, `tieneStockReal`, `OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION`).
+ * Es LEGÍTIMO (la venta congela su costo dentro de la misma transacción) y es el ÚNICO ciclo real entre dominios de `core/`.
+ * No es un ciclo de ARCHIVOS (`costos.ts` no alcanza nada de `core/movimientos/`), así que `sin-ciclos` no lo ve y no va en
+ * CICLOS_CONOCIDOS: el complemento de Vitest exige que esa lista sea exactamente la de los ciclos de archivos reales. Mientras
+ * `reportes` no tenga fachada (no está en DOMINIOS_CON_PUBLIC), `sin-internals-de-otro-dominio` tampoco lo marca. Se resuelve
+ * en C3 (fachada de `reportes`); hasta entonces, NO sumar otra arista de movimientos hacia reportes.
  */
 const CICLOS_CONOCIDOS = [
   {

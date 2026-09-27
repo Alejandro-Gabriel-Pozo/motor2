@@ -4,12 +4,19 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { tieneStockReal } from "@/core/movimientos/transiciones";
-import { calcularSaldoTotal, obtenerSeccionPropia, validarStockSuficiente } from "@/core/movimientos/stock";
+import { tieneStockReal } from "@/core/movimientos/public";
+import {
+  calcularSaldoTotal,
+  obtenerSeccionPropia,
+  validarStockSuficiente,
+  conTransaccionSerializable,
+  calcularPayloadHash,
+  chequearIdempotencia,
+  esClaveIdempotenciaValida,
+  MENSAJE_CONFLICTO_IDEMPOTENCIA,
+} from "@/core/movimientos/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
-import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoConId } from "../tipos";

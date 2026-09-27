@@ -11,8 +11,7 @@ import {
 } from "@/core/compras/correccion";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoCorregirCompra, ResultadoCorregirCompra } from "@/core/features/compras/compra.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
-import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/factura-unica";
+import { conTransaccionSerializable, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarCompraParaCorregir, cargarProveedorParaCorreccion, hayOtraCompraVigenteConFactura } from "@/server/persistencia/compras/cargar-compra-para-corregir";

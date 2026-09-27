@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/anulaciones";
+import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import { construirIndiceRecetas, construirMapaProductos, redondearCantidad, type Db } from "./comun";
 import { resolverProximoConteo } from "@/core/stock/frecuencia-conteo";
 

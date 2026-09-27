@@ -1,4 +1,4 @@
-import type { ResultadoAnulacionDeVenta } from "@/core/movimientos/anulaciones";
+import type { ResultadoAnulacionDeVenta } from "@/core/movimientos/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { tieneStockReal } from "@/core/movimientos/transiciones";
+import { tieneStockReal } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { redondearCantidad, type Db } from "./comun";

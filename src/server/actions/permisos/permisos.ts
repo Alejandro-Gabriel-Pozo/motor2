@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { MENSAJE_GUARDADO_EN_CONFLICTO, mismoEstado, normalizarPermiso, PREFIJO_CONFLICTO_DE_EDICION, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/con-reintento";
+import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";

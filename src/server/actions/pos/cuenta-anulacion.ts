@@ -1,7 +1,7 @@
 "use server";
 
-import { tieneStockReal } from "@/core/movimientos/transiciones";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+import { tieneStockReal } from "@/core/movimientos/public";
+import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { restanteDe, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";

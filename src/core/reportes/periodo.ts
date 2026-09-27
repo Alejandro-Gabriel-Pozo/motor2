@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { esSignoFijo } from "@/core/movimientos/transiciones";
+import { esSignoFijo } from "@/core/movimientos/public";
 import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
 import { calcularImpactoRecetasPorPeriodo } from "./costos";
 import { rangoUtc, type FiltrosPeriodo, type ItemPeriodo } from "./periodo-tipos";
