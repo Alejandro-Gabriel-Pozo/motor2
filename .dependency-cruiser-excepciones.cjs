@@ -43,6 +43,7 @@ const CORE_CON_REACT_NEXT = [
  * existían y las 11 hacían `import { prisma } from "@/lib/db"` (no de solo tipo). Migradas (fuera de la lista):
  *  - D1 (piloto): catalogo/productos/[id] y catalogo/productos/[id]/editar → src/server/consultas/catalogo/productos.ts.
  *  - D5: administracion/usuarios → src/server/consultas/permisos/roles.ts.
+ *  - D8: (pos)/mesas → src/server/consultas/pos/mesas.ts.
  */
 const MOTIVO_PENDIENTE = "Lee la base directo desde la página; pendiente de migrar a src/server/consultas/ (Task #41, Fase D).";
 const PENDIENTES_DE_MIGRAR = [
@@ -53,7 +54,6 @@ const PENDIENTES_DE_MIGRAR = [
   "src/app/(app)/catalogo/recetas/[productoId]/page.tsx",
   "src/app/(app)/movimientos/[proceso]/page.tsx",
   "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page.tsx",
-  "src/app/(pos)/mesas/page.tsx",
 ].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE }));
 
 /**
@@ -69,9 +69,25 @@ const CICLOS_CONOCIDOS = [
   },
 ];
 
+/**
+ * `accion-migrada-sin-orquestacion` (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md): NO es una lista de
+ * excepciones sino la de las Server Actions YA MIGRADAS a casos de uso — la regla se aplica SOLO a estos archivos. Cada uno quedó
+ * como adaptador fino (conPermiso → guard → caso de uso → aResultadoAccion): no puede volver a importar la base, Prisma en
+ * runtime, reintento/idempotencia/auditoría ni server/persistencia/ directo. Al migrar otra acción, se suma acá en el mismo commit
+ * (el complemento de Vitest exige que cada archivo exista y lleve "use server").
+ */
+const ACCIONES_CON_CASO_DE_USO = [
+  {
+    ruta: "src/server/actions/movimientos/compras.ts",
+    motivo:
+      "Piloto de la Fase M: anularCompra → casos-de-uso/anular-compra.ts y corregirCompra → casos-de-uso/corregir-compra.ts (transacción, I3, persistencia y auditoría viven en el caso de uso).",
+  },
+];
+
 module.exports = {
   "core-sin-react-next": CORE_CON_REACT_NEXT,
   "ui-sin-prisma": PENDIENTES_DE_MIGRAR,
   "sin-ciclos": CICLOS_CONOCIDOS,
   PENDIENTES_DE_MIGRAR,
+  ACCIONES_CON_CASO_DE_USO,
 };
