@@ -15,8 +15,8 @@ import {
   rechazarTransferencia,
   confirmarReingresoTransferencia,
   cancelarSolicitudTransferencia,
-  obtenerBandejaTransferencias,
 } from "../../src/server/actions/traspasos/traspasos";
+import { obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
 
 describe("Traspasos entre sucursales", () => {
   let sucursalAId: string;

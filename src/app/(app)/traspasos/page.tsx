@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
-import { obtenerBandejaTransferencias } from "@/server/actions/traspasos/traspasos";
+import { obtenerBandejaTransferencias } from "@/server/actions/traspasos/lecturas";
 import { Bandeja, type FilaBandeja } from "./bandeja";
 
 const LABEL_ESTADO: Record<string, string> = {

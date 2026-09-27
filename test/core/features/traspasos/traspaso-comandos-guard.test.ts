@@ -4,12 +4,14 @@ import {
   guardComandoAprobarYEnviarTraspaso,
   guardComandoCancelarSolicitudTraspaso,
   guardComandoConfirmarReingresoTraspaso,
+  guardComandoCrearEnvioDirectoTraspaso,
+  guardComandoCrearSolicitudTraspaso,
   guardComandoRechazarEnvioTraspaso,
   guardComandoRechazarSolicitudTraspaso,
 } from "../../../../src/core/features/traspasos/traspaso-comandos.guard";
 
 /**
- * Guards de los comandos de traspasos (src/core/features/traspasos/traspaso-comandos.guard.ts; Task #41, Fases M11a y M11b): formato,
+ * Guards de los comandos de traspasos (src/core/features/traspasos/traspaso-comandos.guard.ts; Task #41, Fases M11a, M11b y M11c): formato,
  * puros.
  * Los textos son los que ya devolvían las Server Actions (test/traspasos/traspasos.test.ts los sigue cubriendo de punta a punta).
  */
@@ -108,5 +110,71 @@ describe("guardComandoConfirmarReingresoTraspaso", () => {
   it("id vacío antes que la clave; clave inválida después", () => {
     expect(guardComandoConfirmarReingresoTraspaso({ id: "", claveIdempotencia: "x" })).toEqual(FALTA);
     expect(guardComandoConfirmarReingresoTraspaso({ id: "t-1", claveIdempotencia: "x" })).toEqual(CLAVE_INVALIDA);
+  });
+});
+
+/*
+ * Creación (Task #41, Fase M11c): la sucursal de la otra punta primero (vacía → el texto de antes), después el formato de la sección y del
+ * producto (antes: error crudo de Prisma). La cantidad pasa TAL CUAL (se valida contra la unidad del producto en el caso de uso).
+ */
+describe("guardComandoCrearSolicitudTraspaso", () => {
+  const BASE = { origenSucursalId: "suc-a", productoId: "p-1", cantidad: 3, seccionDestinoId: "sec-b" };
+
+  it("normaliza la sucursal y el detalle con texto(); deja pasar producto, sección y cantidad tal cual", () => {
+    expect(guardComandoCrearSolicitudTraspaso({ ...BASE, origenSucursalId: "  suc-a ", detalle: "  urgente " })).toEqual({
+      ok: true,
+      valor: { origenSucursalId: "suc-a", productoId: "p-1", cantidad: 3, seccionDestinoId: "sec-b", detalle: "urgente" },
+    });
+    expect(guardComandoCrearSolicitudTraspaso({ ...BASE, cantidad: "abc", detalle: "   " })).toEqual({
+      ok: true,
+      valor: { origenSucursalId: "suc-a", productoId: "p-1", cantidad: "abc", seccionDestinoId: "sec-b", detalle: null },
+    });
+  });
+
+  it.each([undefined, null, "", "   "])("origenSucursalId %j: «Elegí de qué sucursal lo pedís.» — antes que todo lo demás", (origenSucursalId) => {
+    expect(guardComandoCrearSolicitudTraspaso({ origenSucursalId, productoId: 42, seccionDestinoId: 42 })).toEqual({
+      ok: false,
+      codigo: "vacio",
+      mensaje: "Elegí de qué sucursal lo pedís.",
+    });
+  });
+
+  it.each([undefined, null, 42])("seccionDestinoId %j: el mismo texto que «no es una sección propia»", (seccionDestinoId) => {
+    expect(guardComandoCrearSolicitudTraspaso({ ...BASE, seccionDestinoId, productoId: 42 })).toEqual({
+      ok: false,
+      codigo: "formato",
+      mensaje: "Elegí a qué sección propia tiene que entrar.",
+    });
+  });
+
+  it.each([undefined, null, 42])("productoId %j: «El producto no existe.»", (productoId) => {
+    expect(guardComandoCrearSolicitudTraspaso({ ...BASE, productoId })).toEqual({ ok: false, codigo: "formato", mensaje: "El producto no existe." });
+  });
+
+  it("sin entrada: rechaza por la sucursal", () => {
+    expect(guardComandoCrearSolicitudTraspaso(undefined)).toMatchObject({ ok: false, mensaje: "Elegí de qué sucursal lo pedís." });
+  });
+});
+
+describe("guardComandoCrearEnvioDirectoTraspaso", () => {
+  const BASE = { destinoSucursalId: "suc-b", productoId: "p-1", cantidad: 3, seccionOrigenId: "sec-a" };
+
+  it("normaliza la sucursal y el detalle con texto(); deja pasar producto, sección y cantidad tal cual", () => {
+    expect(guardComandoCrearEnvioDirectoTraspaso({ ...BASE, destinoSucursalId: " suc-b " })).toEqual({
+      ok: true,
+      valor: { destinoSucursalId: "suc-b", productoId: "p-1", cantidad: 3, seccionOrigenId: "sec-a", detalle: null },
+    });
+  });
+
+  it.each([undefined, null, "", "  "])("destinoSucursalId %j: «Elegí a qué sucursal se lo mandás.»", (destinoSucursalId) => {
+    expect(guardComandoCrearEnvioDirectoTraspaso({ ...BASE, destinoSucursalId })).toEqual({ ok: false, codigo: "vacio", mensaje: "Elegí a qué sucursal se lo mandás." });
+  });
+
+  it.each([undefined, null, 42])("seccionOrigenId %j: «Elegí de qué sección propia sale.»", (seccionOrigenId) => {
+    expect(guardComandoCrearEnvioDirectoTraspaso({ ...BASE, seccionOrigenId })).toEqual({ ok: false, codigo: "formato", mensaje: "Elegí de qué sección propia sale." });
+  });
+
+  it.each([undefined, null, 42])("productoId %j: «El producto no existe.»", (productoId) => {
+    expect(guardComandoCrearEnvioDirectoTraspaso({ ...BASE, productoId })).toEqual({ ok: false, codigo: "formato", mensaje: "El producto no existe." });
   });
 });

@@ -30,7 +30,7 @@ import { listarRoles } from "../../src/server/actions/permisos/roles";
 import { buscarProductoParaPromocion, obtenerPromocionesHabilitadas } from "../../src/server/actions/reportes/promociones";
 import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/reclasificacion";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
-import { listarSucursalesDisponibles, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/traspasos";
+import { listarSucursalesDisponibles, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
 
 /**
  * Las lecturas de servidor (server actions que devuelven datos) se pueden invocar directo, sin pasar por la página que
