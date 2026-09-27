@@ -1,12 +1,13 @@
 "use server";
 
-import { tieneStockReal } from "@/core/movimientos/public";
+import { guardComandoAnularItemEnviado } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { restanteDe, validarMotivoAnulacion } from "@/core/pos/cuenta";
-import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { anularItemEnviadoCasoDeUso } from "./casos-de-uso/anular-item-enviado";
 import { formatearCantidad } from "./cuenta-comun";
 
 /**
@@ -24,68 +25,18 @@ import { formatearCantidad } from "./cuenta-comun";
  * `restanteVisto` es la guarda optimista (mismo criterio que el `esperado` de `corregirCompra`): lo que quedaba del ítem cuando el
  * usuario abrió el diálogo. Si otro lo anuló mientras tanto, se rechaza en vez de anular sobre un número que ya no es el que vio.
  * Una cuenta ya cerrada no se toca: su venta se anula por el camino de siempre (`anularVenta`).
+ *
+ * Desde la Task #41 (Fase M12c, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso`) → formato del `cuentaItemId` (`guardComandoAnularItemEnviado`, core/features/cuentas/cuenta-anulacion.guard.ts) → caso de
+ * uso (`casos-de-uso/anular-item-enviado.ts`: transacción serializable, carga, guardas de estado, motivo, guarda optimista, cantidad, fila
+ * espejo y auditoría; lectura y escritura en server/persistencia/pos/) → `aResultadoAccion`. El archivo todavía NO está en
+ * `ACCIONES_CON_CASO_DE_USO`: `anularPromoEnviada` (abajo) se migra en M12d.
  */
 export async function anularItemEnviado(cuentaItemId: string, cantidad: number, motivo: string, restanteVisto: number): Promise<ResultadoAccion> {
   return conPermiso("pos_anular_item", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
-      const item =
-        typeof cuentaItemId === "string"
-          ? await tx.cuentaItem.findFirst({
-              where: { id: cuentaItemId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } },
-              include: {
-                producto: { select: { tipo: true, nombre: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } } },
-                cuenta: { include: { mesa: { select: { numero: true } } } },
-                anulaciones: { select: { cantidad: true } },
-                promoCuenta: { select: { id: true, titulo: true } },
-              },
-            })
-          : null;
-      if (!item) return error("No se encontró ese ítem en esta sucursal.");
-      const mesa = item.cuenta.mesa.numero;
-      if (item.anulaAItemId !== null) return error("Eso ya es una anulación: no se puede anular.");
-      if (item.cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
-      if (item.numeroEnvio === null) return error("Ese ítem todavía no salió a cocina: usá «Quitar».");
-      // Task #16 (D4, "una promo se anula entera"): un componente no se anula suelto — usá anularPromoEnviada con la promo.
-      if (item.promoCuenta) return error(`«${item.producto.nombre}» es parte de la promo «${item.promoCuenta.titulo}»: anulá la promo entera.`);
-
-      const motivoValidado = validarMotivoAnulacion(motivo);
-      if (!motivoValidado.ok) return error(motivoValidado.mensaje);
-
-      const restante = restanteDe({ cantidad: Number(item.cantidad) }, item.anulaciones.map((a) => ({ cantidad: Number(a.cantidad) })));
-      if (typeof restanteVisto !== "number" || restanteVisto !== restante) {
-        return error(`«${item.producto.nombre}» cambió mientras lo mirabas (ahora quedan ${formatearCantidad(restante)}): revisá y volvé a intentar.`);
-      }
-      const pasoDelItem =
-        item.producto.pasoVenta !== null ? { pasoVenta: Number(item.producto.pasoVenta), tieneStockReal: tieneStockReal(item.producto.tipo, item.producto.seProduce) } : null;
-      const aAnular = validarCantidadPedido(cantidad, item.producto.unidadStock.decimales, pasoDelItem);
-      if (!aAnular.ok) return error(aAnular.mensaje);
-      if (aAnular.cantidad > restante) return error(`No se puede anular más de lo que queda de «${item.producto.nombre}» (${formatearCantidad(restante)}).`);
-
-      await tx.cuentaItem.create({
-        data: {
-          cuentaId: item.cuentaId,
-          productoId: item.productoId,
-          cantidad: -aAnular.cantidad,
-          precioUnitario: item.precioUnitario,
-          numeroEnvio: item.numeroEnvio,
-          anulaAItemId: item.id,
-          motivoAnulacion: motivoValidado.motivo,
-          creadoPorId: ctx.usuarioId,
-        },
-      });
-      const quedan = restanteDe({ cantidad: restante }, [{ cantidad: -aAnular.cantidad }]);
-      await registrarCambioAuditado(tx, {
-        entidad: "CuentaItem",
-        entidadId: item.id,
-        descripcion: `Mesa ${mesa}, envío ${item.numeroEnvio}: anulación de ${formatearCantidad(aAnular.cantidad)} × "${item.producto.nombre}" ya enviado a cocina. Motivo: ${motivoValidado.motivo}`,
-        campo: "cantidadVigente",
-        valorAnterior: restante,
-        valorNuevo: quedan,
-        actorId: ctx.usuarioId,
-        sucursalId: ctx.sucursalId,
-      });
-      return ok(`Se anuló ${formatearCantidad(aAnular.cantidad)} × «${item.producto.nombre}» de la mesa ${mesa}.`);
-    });
+    const comando = guardComandoAnularItemEnviado({ cuentaItemId, cantidad, motivo, restanteVisto });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await anularItemEnviadoCasoDeUso(ctx, comando.valor));
   });
 }
 
