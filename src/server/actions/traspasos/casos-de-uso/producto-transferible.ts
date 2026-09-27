@@ -5,10 +5,10 @@ import { tieneStockReal } from "@/core/movimientos/public";
 import { cargarProductoParaTraspaso, type ProductoParaTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
 
 /**
- * Re-chequeo «el producto sigue siendo transferible» DENTRO de la transacción de un caso de uso de traspasos (Task #41, Fase M11a).
- * Es la misma regla, con los mismos textos, que `obtenerProductoTransferible` de src/server/actions/traspasos/traspasos.ts — que sigue
- * ahí para las Server Actions todavía sin migrar (M11b/M11c) y se borra cuando la última deje de usarla: existe, tiene stock real, y
- * está disponible en TODAS las sucursales dadas (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.5), en ese orden.
+ * Re-chequeo «el producto sigue siendo transferible» DENTRO de la transacción de un caso de uso de traspasos (Task #41, Fase M11a; lo
+ * reusa `aceptar-traspaso.ts`, M11b). Es la misma regla, con los mismos textos, que `obtenerProductoTransferible` de
+ * src/server/actions/traspasos/traspasos.ts — que sigue ahí para las Server Actions todavía sin migrar (M11c) y se borra cuando la
+ * última deje de usarla: existe, tiene stock real, y está disponible en TODAS las sucursales dadas (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.5), en ese orden.
  *
  * No es un endpoint ni un caso de uso propio: es un paso compartido por los casos de uso de `casos-de-uso/` (por eso vive acá, con
  * `import "server-only"`, y puede leer `server/persistencia/`).

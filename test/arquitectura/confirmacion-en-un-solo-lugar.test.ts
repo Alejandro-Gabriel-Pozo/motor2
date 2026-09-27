@@ -10,13 +10,15 @@ import { describe, expect, it } from "vitest";
  *    diálogos y no es accesible del mismo modo; la confirmación es `BotonConConfirmacion` (src/components/boton-con-confirmacion.tsx).
  *  - En los archivos YA MIGRADOS a `BotonConConfirmacion` (lista `MIGRADOS`): no vuelve a aparecer un estado `confirmando` armado a mano
  *    (`[confirmando, setConfirmando] = useState…`). Cada fase siguiente agrega a la lista los archivos que migra (la variante básica, F2).
- *  - En `src/server/actions/traspasos/traspasos.ts`: nada de comparar el estado contra un literal (`estado !== "…"`). De qué estado a qué
- *    estado se puede pasar lo decide `guardTransicionTraspaso` (src/core/features/traspasos/traspaso.guard.ts).
+ *  - En `src/server/actions/traspasos/traspasos.ts` y sus casos de uso (`casos-de-uso/`, adonde se mudaron las transiciones en la Task #41,
+ *    Fases M11a/M11b): nada de comparar el estado contra un literal (`estado !== "…"`). De qué estado a qué estado se puede pasar lo decide
+ *    `guardTransicionTraspaso` (src/core/features/traspasos/traspaso.guard.ts).
  */
 const RAIZ = join(__dirname, "../../src");
 
 const MIGRADOS = ["app/(app)/traspasos/bandeja.tsx", "app/(app)/reportes/compras/boton-anular-compra.tsx"];
 const ACCIONES_TRASPASOS = "server/actions/traspasos/traspasos.ts";
+const CASOS_DE_USO_TRASPASOS = "server/actions/traspasos/casos-de-uso";
 
 const WINDOW_CONFIRM = /\bwindow\.confirm\s*\(/;
 const CONFIRMANDO_A_MANO = /\bsetConfirmando\b|\[\s*confirmando\s*,/;
@@ -63,11 +65,16 @@ describe("confirmación y transición de traspasos en un solo lugar", () => {
     expect(problemas, `${archivo} volvió a armar la confirmación a mano:\n${problemas.join("\n")}`).toEqual([]);
   });
 
-  it(`${ACCIONES_TRASPASOS} no compara el estado contra un literal (lo decide guardTransicionTraspaso)`, () => {
-    const fuente = leer(ACCIONES_TRASPASOS);
-    expect(fuente).toContain("guardTransicionTraspaso(");
-    const problemas = usos(fuente, ESTADO_CONTRA_LITERAL);
-    expect(problemas, `${ACCIONES_TRASPASOS} volvió a chequear el estado a mano:\n${problemas.join("\n")}`).toEqual([]);
+  it(`${ACCIONES_TRASPASOS} y sus casos de uso no comparan el estado contra un literal (lo decide guardTransicionTraspaso)`, () => {
+    const archivos = [
+      ACCIONES_TRASPASOS,
+      ...archivosDeCodigo(join(RAIZ, CASOS_DE_USO_TRASPASOS)).map((ruta) => relative(RAIZ, ruta).replace(/\\/g, "/")),
+    ];
+    expect(archivos.map(leer).join("\n")).toContain("guardTransicionTraspaso(");
+    for (const archivo of archivos) {
+      const problemas = usos(leer(archivo), ESTADO_CONTRA_LITERAL);
+      expect(problemas, `${archivo} volvió a chequear el estado a mano:\n${problemas.join("\n")}`).toEqual([]);
+    }
   });
 
   describe("los detectores (con fuentes sintéticas)", () => {

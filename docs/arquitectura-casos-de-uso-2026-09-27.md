@@ -129,6 +129,21 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   caso de uso `pos/casos-de-uso/cerrar-cuenta.ts`, que llama a `registrarVentaEnTx` sin tocar ese núcleo y numera DESPUÉS de que la venta
   salió bien (un `fracaso` devuelto adentro confirma la transacción). Sin I3: sigue idempotente por estado (`YA_CERRADA`). El archivo NO
   entra todavía en `ACCIONES_CON_CASO_DE_USO`: `emitirBoletaCorregida` (mismo archivo) se migra en M12b.
+- **M11b — `aceptarTransferencia`, `rechazarTransferencia`, `confirmarReingresoTransferencia`**
+  (`src/server/actions/traspasos/traspasos.ts`, continuación de M11a): guards de comando sumados a
+  `core/features/traspasos/traspaso-comandos.guard.ts` (`guardComandoAceptarTraspaso`, `guardComandoRechazarEnvioTraspaso`,
+  `guardComandoConfirmarReingresoTraspaso`; mismo orden de chequeos que antes: id → clave I3 → sección), comandos y resultados sumados a
+  `traspaso.schema.ts`; persistencia en `server/persistencia/traspasos/` (`cargar-traspaso.ts` suma `cargarSeccionDelTraspaso`; nuevos
+  `escribir-entrada-de-traspaso.ts`, con `escribirAceptacionDeTraspaso` y `escribirReingresoDeTraspaso`, y `escribir-rechazo-de-envio.ts`);
+  casos de uso `aceptar-traspaso.ts` (reusa el paso compartido `producto-transferible.ts` para re-chequear la disponibilidad en destino),
+  `rechazar-envio-de-traspaso.ts` y `confirmar-reingreso-de-traspaso.ts`. **I3 conservada** en aceptar y reingreso: mismos tags
+  (`ACEPTAR_TRASPASO`, `REINGRESO_TRASPASO`) y mismo payload del hash (la sección de destino TAL CUAL llegó), `resultadoMensaje` vía
+  `registrarResultadoIdempotente`; un reenvío exacto devuelve `datos.repetida: true`. `rechazarTransferencia` sigue sin I3 (no escribe
+  Operación). Una `seccionDestinoId` que no es string da «Elegí a qué sección propia entra.» (antes: error crudo de Prisma). Se borró
+  `buscarTraspaso` (ya no lo usa nadie); `obtenerProductoTransferible` y `escribirMovimientoTraspaso` (este último ya sin el parámetro de
+  I3) QUEDAN en el archivo porque los usan `crearSolicitudTransferencia`/`crearEnvioDirectoTransferencia` (M11c). El test de arquitectura
+  `test/arquitectura/confirmacion-en-un-solo-lugar.test.ts` ahora revisa `traspasos.ts` Y sus `casos-de-uso/` (las transiciones se
+  mudaron ahí). `traspasos.ts` sigue FUERA de `ACCIONES_CON_CASO_DE_USO` hasta M11c.
 
 ## Cómo se migra la próxima acción
 

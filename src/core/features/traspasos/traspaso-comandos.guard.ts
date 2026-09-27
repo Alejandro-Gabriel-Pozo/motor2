@@ -1,9 +1,17 @@
 import { texto } from "@/core/texto";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import type { ComandoAprobarYEnviarTraspaso, ComandoCancelarSolicitudTraspaso, ComandoRechazarSolicitudTraspaso } from "./traspaso.schema";
+import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import type {
+  ComandoAceptarTraspaso,
+  ComandoAprobarYEnviarTraspaso,
+  ComandoCancelarSolicitudTraspaso,
+  ComandoConfirmarReingresoTraspaso,
+  ComandoRechazarEnvioTraspaso,
+  ComandoRechazarSolicitudTraspaso,
+} from "./traspaso.schema";
 
 /**
- * Guards de los COMANDOS de traspasos (Task #41, Fase M11a — docs/arquitectura-casos-de-uso-2026-09-27.md): formato, ANTES de abrir la
+ * Guards de los COMANDOS de traspasos (Task #41, Fases M11a y M11b —docs/arquitectura-casos-de-uso-2026-09-27.md): formato, ANTES de abrir la
  * transacción. Puros: sin Prisma ni permisos. Viven aparte de `traspaso.guard.ts` (el guard de TRANSICIÓN de estado, que decide contra
  * el traspaso ya leído y lo sigue usando el caso de uso dentro de la transacción).
  *
@@ -52,4 +60,56 @@ export function guardComandoRechazarSolicitudTraspaso(entrada: unknown): Resulta
   const traspasoId = idDeTraspaso(id);
   if (!traspasoId.ok) return traspasoId;
   return aceptar({ traspasoId: traspasoId.valor, motivo: texto(motivo) || null });
+}
+
+/*
+ * Guards de la RECEPCIÓN de un envío (Task #41, Fase M11b): aceptar, rechazar el envío, confirmar el reingreso. Mismo orden de
+ * chequeos que tenían las Server Actions: primero el id, después la clave I3, después (aceptar) la sección.
+ */
+
+/** Mismo texto que usaban `aceptarTransferencia` y `confirmarReingresoTransferencia` para una clave I3 que no es un UUID. */
+export const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
+
+/** Mismo texto que usaba `aceptarTransferencia` cuando la sección de destino no es de esta sucursal. */
+export const MENSAJE_SECCION_DESTINO_NO_PROPIA = "Elegí a qué sección propia entra.";
+
+/** Mismo texto que usaba `confirmarReingresoTransferencia` cuando el traspaso no tiene sección de origen. */
+export const MENSAJE_SIN_SECCION_ORIGEN = "Este traspaso no tiene una sección de origen registrada — no se puede reingresar.";
+
+/** Clave I3: ausente (`undefined`) → sin clave (`null`); cualquier otra cosa que no sea un UUID (un `null` o un `""` también) → inválida, como antes. */
+function claveI3(claveIdempotencia: unknown): ResultadoDato<string | null> {
+  if (claveIdempotencia === undefined) return aceptar(null);
+  return esClaveIdempotenciaValida(claveIdempotencia) ? aceptar(claveIdempotencia) : rechazar("formato", MENSAJE_CLAVE_REINTENTO_INVALIDA);
+}
+
+/**
+ * Guard del comando «aceptar un envío». La sección: si no es un string, el MISMO mensaje que «no es una sección propia» (antes llegaba
+ * así al `findUnique` y Prisma la rechazaba con un error crudo de validación). Un string pasa tal cual: lo decide el caso de uso.
+ */
+export function guardComandoAceptarTraspaso(entrada: unknown): ResultadoDato<ComandoAceptarTraspaso> {
+  const { id, seccionDestinoId, claveIdempotencia } = (entrada ?? {}) as { id?: unknown; seccionDestinoId?: unknown; claveIdempotencia?: unknown };
+  const traspasoId = idDeTraspaso(id);
+  if (!traspasoId.ok) return traspasoId;
+  const clave = claveI3(claveIdempotencia);
+  if (!clave.ok) return clave;
+  if (typeof seccionDestinoId !== "string") return rechazar("formato", MENSAJE_SECCION_DESTINO_NO_PROPIA);
+  return aceptar({ traspasoId: traspasoId.valor, seccionDestinoId, claveIdempotencia: clave.valor });
+}
+
+/** Guard del comando «rechazar un envío»: el id, y el motivo normalizado como antes (`texto(motivo) || null`). */
+export function guardComandoRechazarEnvioTraspaso(entrada: unknown): ResultadoDato<ComandoRechazarEnvioTraspaso> {
+  const { id, motivo } = (entrada ?? {}) as { id?: unknown; motivo?: unknown };
+  const traspasoId = idDeTraspaso(id);
+  if (!traspasoId.ok) return traspasoId;
+  return aceptar({ traspasoId: traspasoId.valor, motivo: texto(motivo) || null });
+}
+
+/** Guard del comando «confirmar el reingreso»: el id y la clave I3. */
+export function guardComandoConfirmarReingresoTraspaso(entrada: unknown): ResultadoDato<ComandoConfirmarReingresoTraspaso> {
+  const { id, claveIdempotencia } = (entrada ?? {}) as { id?: unknown; claveIdempotencia?: unknown };
+  const traspasoId = idDeTraspaso(id);
+  if (!traspasoId.ok) return traspasoId;
+  const clave = claveI3(claveIdempotencia);
+  if (!clave.ok) return clave;
+  return aceptar({ traspasoId: traspasoId.valor, claveIdempotencia: clave.valor });
 }
