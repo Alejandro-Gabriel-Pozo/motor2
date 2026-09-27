@@ -1,0 +1,553 @@
+# Pendientes de la sesión del 2026-09-27 (hand-off a terminal)
+
+Este documento es el traspaso completo de una sesión de Claude Code en la nube
+que trabajó sobre `main` gran parte del 2026-09-27. Se genera porque el
+sistema de tareas de esa sesión (`TaskCreate`/`TaskList`) **no es visible
+desde otra sesión** — todo lo que había que conservar está transcripto acá,
+tal cual estaba en el tracker al momento de cerrar la sesión.
+
+**Estado de `main` al cerrar esta sesión:** todo lo de abajo marcado como
+"mergeado" ya está en `main`. El resto está sin empezar o a medio camino
+(ver cada sección).
+
+**Convención de verificación vigente** (Task #41, Fase A3, ya mergeada):
+6 comandos obligatorios en la MISMA corrida antes de mergear cualquier PR —
+`npx tsc --noEmit`, `npm run lint`, `npm run arquitectura` (dependency-cruiser),
+`npm test` (Vitest contra Postgres real), `npm run build`, `npm run test:e2e`
+(Playwright). Cuando K3 (más abajo) se mergee, se suma un 7º comando,
+`npm run analizar:muerto` (knip). Tabla completa en
+`.claude/skills/plan-con-verificacion-e2e/SKILL.md` y en `AGENTS.md`.
+
+**Convención de worktrees** (usada toda la sesión, para poder trabajar varias
+cosas en paralelo sin pisarse): cada tarea en su propio
+`git worktree add /tmp-o-donde-sea/motor2-<slug> -b feat/<rama> origin/main`,
+con un `.env` propio apuntando a DOS bases Postgres dedicadas y vacías
+(`motor2_<slug>` y `motor2_<slug>_e2e`), nunca compartidas entre worktrees.
+Antes de correr `test:e2e`, cambiar temporalmente el puerto en
+`playwright.config.ts` (línea `const PUERTO = 56471`) a uno propio si hay
+otro worktree corriendo e2e al mismo tiempo — y **revertirlo siempre antes de
+commitear** (no forma parte del pendiente A0 de abajo, es solo higiene de
+sandbox compartido).
+
+**Aviso sobre el archivo `.dependency-cruiser-excepciones.cjs`:** casi todas
+las sub-tareas de la Fase D y las reglas nuevas de la Fase M lo tocan (una
+lista compartida `PENDIENTES_DE_MIGRAR` y un comentario con el historial de
+migraciones). Si dos ramas lo tocan en paralelo, el conflicto de merge es
+trivial (combinar las dos líneas de comentario, y confirmar que la página
+recién migrada salió de la lista) — se resolvió así varias veces esta sesión,
+nunca hizo falta rehacer nada a mano más allá de eso.
+
+---
+
+## PARTE 1 — Task #41: refactor arquitectónico (comandos+casos de uso, fronteras de módulos, dependency-guard)
+
+### Ya mergeado en `main` (para contexto, no hay nada que hacer acá)
+
+- **Fase A** (guard de `dependency-cruiser`, 9→10 reglas en `.dependency-cruiser.cjs`, corrección del único caso `core→server/actions`, doc de arquitectura actualizada) — PR #33.
+- **Fase B** (los 3 archivos grandes divididos: `pos/cuenta.ts` → 5 archivos, `core/reportes/periodo.ts` → 8 archivos con fachada, `server/actions/catalogo/recetas.ts` recortado) — PRs #35, #37, #38.
+- **K1** (informe de `knip`: 112 hallazgos, 34 candidatos a "código muerto real", 5 falsos positivos ya corregidos en `knip.jsonc`, 73 reservados con motivo) — PR #36. **El dueño todavía no revisó/aprobó la lista de 34** — ver K2 abajo.
+- **Fase D, 7 de 9 páginas migradas** a `server/consultas/` (D1 productos, D2 proveedores, D3 recetas-listado, D5 roles/usuarios, D7 rendimiento-por-sucursal, D8 mesas) — PRs #34, #42, #41, #44, #45, #39. Faltan D4 y D6 (ver abajo).
+- **C1** (`core/catalogo/public.ts` + `public-servidor.ts`, primer dominio con fronteras públicas) — PR #43.
+- **Fase M, piloto completo** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio) — PR #40. De paso corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada.
+
+### Pendiente — orden sugerido de abajo hacia arriba (cada ítem dice sus bloqueos reales)
+
+#### A0 (opcional) — puerto E2E configurable por env var
+`playwright.config.ts`: `PUERTO` pasa de constante fija (56471) a
+`Number(process.env.MOTOR2_E2E_PUERTO ?? 56471)`. Sumar la variable a
+`.env.example`. Sin bloqueos. Tamaño chico. Si no se hace, seguir con la
+disciplina manual de puerto-por-worktree descripta arriba.
+
+#### D6 — `server/consultas/catalogo/productos.ts`: `obtenerProductoOpcion`
+Página `src/app/(app)/movimientos/[proceso]/page.tsx`: hoy hace
+`producto.findUnique({ select: { id, codigo, nombre } })` solo si viene
+`?productoId=`. Agregar `obtenerProductoOpcion(id, db=prisma)` al mismo
+archivo de D1 (`src/server/consultas/catalogo/productos.ts`). Sacar la
+página de `PENDIENTES_DE_MIGRAR` en el mismo commit.
+**Hueco de cobertura a llenar en esta misma tarea:** ningún spec de
+Playwright cubre el caso `?productoId=` — agregar un caso nuevo en
+`movimientos-compra-wizard` navegando a `/movimientos/compra?productoId=<mp>`
+y confirmando que el selector ya viene cargado con "COD — Nombre" (por eso
+esta es la ÚNICA sub-tarea D con Playwright +1 en vez de "línea de base
+exacta"). Specs a mirar además: `movimientos-venta-fraccionada`,
+`lecturas-sesion-vencida`, `catalogo-disponibilidad-por-sucursal`,
+`maquetacion-general`. Tests estáticos: `lecturas-con-permiso-de-ver`
+(`ACCION_POR_PROCESO[config.proceso]`), `enlaces-con-permiso`.
+Bloqueada por: nada (D1 ya mergeado). Tamaño chica.
+
+#### D4 — `server/consultas/catalogo/recetas.ts`: editor
+Página `src/app/(app)/catalogo/recetas/[productoId]/page.tsx` (el editor,
+667 líneas — el page.tsx más grande tocado por #41; dividirlo queda FUERA de
+alcance). Hoy hace `producto.findUnique`, `producto.findMany` de MP
+disponibles, `insumo.findMany` de sustitutos (**una consulta por
+ingrediente** — el N+1 queda fuera de alcance, no se arregla acá) y
+`rendimientoLocalIngrediente.findMany`. Agregar al mismo archivo que D3
+(`src/server/consultas/catalogo/recetas.ts`):
+
+```ts
+export async function listarMpDisponiblesEnAlguna(db: Db = prisma) {
+  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, orderBy: { nombre: "asc" } });
+}
+
+export async function listarOpcionesDeSustituto(
+  ing: { insumoIdExcluido: string | null; unidadId: string },
+  db: Db = prisma,
+) {
+  return db.insumo.findMany({
+    where: {
+      activo: true,
+      id: { not: ing.insumoIdExcluido ?? undefined }, // conservar `?? undefined` tal cual
+      productos: { some: { tipo: "MP", unidadStockId: ing.unidadId, ...whereDisponibleEnAlguna() } },
+    },
+    orderBy: { nombre: "asc" },
+    select: { id: true, nombre: true },
+  });
+}
+
+export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db = prisma) {
+  return db.rendimientoLocalIngrediente.findMany({
+    where: { recetaIngredienteId: { in: recetaIngredienteIds }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
+    include: { sucursal: { select: { nombre: true } } },
+  });
+}
+```
+En el editor quedan: el `Promise.all` por ingrediente, `if (aceptaSustitutos)`,
+`if (vigente?.ingredientes.length)`, `obtenerRecetaVigente` (Server Action,
+sin cambios), `obtenerProductoPorId` (de D1). Sacar la página de
+`PENDIENTES_DE_MIGRAR`. Confirmar contra `lectores-de-receta.test.ts` que la
+lista `ARCHIVOS_CLASIFICADOS` no necesita otro cambio más allá del que ya
+hizo D3. Specs: `recetas-pasos-reordenar`, `recetas-sustitutos`,
+`accesibilidad` (el texto "Calibrado en 1 sucursal(es)" viene de la consulta
+de calibraciones), `volver-tras-login` (`/catalogo/recetas/abc123` inexistente),
+`catalogo-ficha-producto`. Bloqueada por: nada (D3 ya mergeado, mismo
+archivo). Tamaño mediana.
+
+#### C2 — `core/movimientos/public.ts` / `public-servidor.ts`
+Dominio con 22 aristas entrantes (16 desde reportes, 13 de esas son solo
+`redondearMoneda`). **Primer commit, separado:** `redondearMoneda` pasa a
+importarse directo de `@/core/moneda` en ~15 archivos de `core` (B1 ya cortó
+la reexportación transitiva en `periodo.ts` específicamente; este commit
+generaliza el cambio al resto). Después crear:
+- `core/movimientos/public.ts`: `transiciones`, `anulaciones`, `ui-config`,
+  `arrastre-redondeo` (los módulos puros).
+- `core/movimientos/public-servidor.ts`: `registrar-venta`, `con-reintento`,
+  `idempotencia`, `stock`, `precio-venta` y los demás que tocan la base.
+
+`navegacion/estructura.ts` y `pos/cantidad-pedido.ts` (los dos módulos de
+`core` que hoy terminan en el bundle del cliente) deben importar desde el
+`public.ts` puro, nunca desde `public-servidor`. Dos contratos a documentar
+explícitos (ya verificados, no hace falta reverificar):
+- `movimientos/registrar-venta → reportes/costos` (`calcularCostosYMargenes`):
+  legítimo, único ciclo real entre dominios de `core` — pasa a
+  `reportes/public-servidor.ts` (ver C3) y queda en `CICLOS_ACEPTADOS` de
+  `dependencias.test.ts`.
+- `stock/consolidado → movimientos/transiciones` (`tieneStockReal`):
+  legítimo, se vuelve contrato en `movimientos/public.ts`.
+
+Agregar `"movimientos"` a `DOMINIOS_CON_PUBLIC` en `.dependency-cruiser.cjs`.
+Bloqueada por: nada (A3, B1, C1 ya mergeados). Cierre: conteos EXACTOS +
+demostración obligatoria rojo→verde de `sin-internals-de-otro-dominio` y
+`publico-puro`. Tamaño mediana.
+
+#### C3 — `core/reportes/public.ts` / `public-servidor.ts`
+Dominio con 3 aristas entrantes. Crear `core/reportes/public-servidor.ts`
+(la fachada `periodo`, de B1, y `costos` — el contrato con `registrar-venta`
+de C2) y `core/reportes/public.ts` (los módulos `*-vistas` y
+`rango-por-defecto`, puros). Actualizar `carta/reporte-secciones` y
+`movimientos/registrar-venta` para pasar por estos archivos. Agregar
+`"reportes"` a `DOMINIOS_CON_PUBLIC`. Bloqueada por: C2 (arriba). Cierre:
+conteos EXACTOS + demostración rojo→verde. Tamaño chica.
+**Nota, no crear tarea aparte:** `public.ts` de `pos` y `stock` quedan
+diferidos (C4/C5) porque casi todos sus consumidores están en `app/`, exento
+de la regla por ahora — dejarlo solo anotado en E1.
+
+#### D9 (opcional) — sacar `@prisma/client` de `conteo-fisico-grid.tsx`
+Componente cliente con `import type { AccionConteo } from "@prisma/client"`
+(de solo tipo, sin riesgo real de bundle, pero sí aparece en el grafo de
+dependency-cruiser como `app/` → `@prisma/client`). Si se quiere cero
+referencias, reexportar `AccionConteo` como tipo desde `core/movimientos/public.ts`
+(requiere C2 ya mergeada) y que el componente importe de ahí. Bloqueada por:
+C2. Descartable sin costo si un `import type` a `@prisma/client` desde un
+componente cliente se considera aceptable. Tamaño chica.
+
+#### K2 — borrar código muerto aprobado
+Borrar SOLO lo que K1 clasificó como "muerto real" (34 hallazgos, ver el
+informe en `docs/informe-knip-2026-09-27.md`) y que **el dueño aprobó
+explícitamente antes de arrancar** — esa revisión todavía no pasó. Puede
+partirse en una sub-tarea por dominio si el volumen lo justifica. Si algún
+hallazgo toca un archivo que también toca D4, D6, C2 o C3, esa porción va
+DESPUÉS de la tarea que tenga ese archivo. Cierre: Vitest/Playwright iguales
+o MENORES solo si lo borrado es un test de código muerto (cada test que
+desaparece se documenta por nombre y motivo) — cualquier otra caída de
+conteo es regresión, no limpieza. Tamaño chica-mediana.
+
+#### K3 — knip obligatorio en el gate
+`analizar:muerto` corre `knip` CON código de salida (quitar `--no-exit-code`
+de `package.json`) y debe dar 0 hallazgos. Toda excepción legítima que quede
+vive en `knip.jsonc` con motivo. Sumar el comando a la tabla de
+`.claude/skills/plan-con-verificacion-e2e/SKILL.md` y a `AGENTS.md` — el gate
+pasa a 7 comandos desde esta tarea. Bloqueada por K2 y C3 (los barriles
+`public*.ts` tienen que existir ya para que la config de knip quede
+estable). Tamaño chica.
+
+#### F1-F4 — `fast-check` (property-based testing)
+Bloqueadas por K3 (orden pedido por el dueño; técnicamente F1/F2 no dependen
+de nada). Instalar `fast-check` como devDependency DIRECTA en F1 (hoy es
+transitiva vía `effect`). **Presupuesto: las 4 juntas no pueden sumarle más
+de ~60s a `npm test`.** Cada una exige, por ser tareas de testing, la
+demostración de que el test detecta lo que dice: mutación temporal → rojo
+con el contraejemplo → revertir → verde.
+
+- **F1** (`test/core/moneda.propiedades.test.ts`, chica): `redondearMoneda`
+  (idempotente, diferencia ≤0,005 del original, centavos exactos, nunca
+  `-0`, simétrico), `importeDeLinea` (orden de factores no importa, exacto
+  con enteros), `precioConDescuento` (0-100%, entre 0,01 y el precio; sin
+  porcentaje devuelve igual; no sube con más porcentaje), `repartirImporte`
+  (suma en centavos EXACTA a `redondearMoneda(importe)`, largo correcto,
+  partes ≥0 y en centavos, cada una a ≤1 centavo de su proporción exacta,
+  determinista, reparte igual con pesos todos 0, `NaN` si el importe es
+  negativo).
+- **F2** (`test/movimientos/arrastre-redondeo.propiedades.test.ts`, chica):
+  cubre la Task #27 ya mergeada. Para `decimales` 0-3 y secuencias
+  generadas: deuda siempre en `[−u/2, u/2)`, diferencia escrito-vs-exacto
+  <u/2 en todo momento, `cantidad` siempre múltiplo de u, `cantidadExacta`
+  es `null` exactamente cuando coincide con `cantidad`, con deuda 0 el
+  primer resultado = `redondearACantidadDeUnidad`, productos intercalados =
+  procesados por separado, `deudaInicial` no se muta.
+- **F3** (`test/movimientos/idempotencia.propiedades.test.ts`, mediana, usa
+  Postgres, numRuns 10-20): `calcularPayloadHash` determinista,
+  `esClaveIdempotenciaValida`; repetir la misma clave+payload no duplica el
+  efecto; misma clave con otro payload → `MENSAJE_CONFLICTO_IDEMPOTENCIA` sin
+  crear filas.
+- **F4** (`test/reportes/saldo.propiedades.test.ts`, mediana, usa Postgres,
+  numRuns 10-20): generar una secuencia de movimientos con signo sobre un
+  producto nuevo por corrida; `calcularSaldoTotal` = suma con signo;
+  `saldoCorriente` final del historial = `saldoActual` = `calcularSaldoTotal`.
+
+#### P1 (piloto de `server/persistencia/`) — completar el recorte de `recetas.ts`
+**Ya se decidió unificarla con el patrón de casos de uso de la Fase M**
+(ver más abajo): `server/actions/catalogo/recetas.ts` NO llama directo a
+`server/persistencia/`, llama a un archivo nuevo
+`server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts` (mismo
+patrón que `casos-de-uso/anular-compra.ts` del piloto M) que orquesta
+idempotencia si aplica, carga, guard/versionado, llamada a persistencia,
+auditoría, y devuelve `ResultadoCaso`. Mover TAL CUAL (sin reescribir) el
+cuerpo transaccional de `guardarReceta` (líneas ~300-450 de
+`server/actions/catalogo/recetas.ts`: versionado, reintento SERIALIZABLE,
+arrastre de calibraciones locales, auditoría) — la parte de PERSISTENCIA
+pura a `src/server/persistencia/catalogo/guardar-version-de-receta.ts`, la
+de ORQUESTACIÓN al caso de uso nuevo. Actualizar
+`test/arquitectura/lectores-de-receta.test.ts` (agregar el archivo de
+persistencia como "central"). Bloqueada por: toda la Fase F (arriba) y por
+el patrón de casos de uso ya probado en compras (mergeado). Cierre: conteos
+EXACTOS; en Vitest lo cubren `recetas-concurrencia`, `recetas-auditoria`,
+`recetas`, `recetas-sustitutos`, `rendimiento-local-acciones`,
+`precision-roundtrip-y-reparto`; en Playwright los specs `recetas-*`.
+Tamaño mediana.
+
+#### P2 (opcional) — `server/persistencia/pos/cerrar-cuenta.ts`
+Mismo patrón que P1, aplicado a `cerrarCuenta`. Bloqueada por P1. Cierre:
+conteos EXACTOS, lo cubre todo `test/pos`. Tamaño mediana.
+
+#### E1 — cierre y verificación total (última tarea de #41)
+Actualizar la doc de arquitectura con: las capas `server/consultas` y
+`server/persistencia` y su contrato completo; la convención
+`public.ts`/`public-servidor.ts`; las reglas de dependency-cruiser y de
+knip; la tabla de herramientas descartadas (`eslint-plugin-boundaries`,
+Zod, `next-safe-action`, tRPC, TanStack Query, Redux/Zustand, otra
+librería decimal — con motivo cada una); confirmar que
+`PENDIENTES_DE_MIGRAR` quedó VACÍA. Documentar como "fuera de alcance,
+pendiente aparte": dividir `core/reportes/rendimiento-recetas.ts` (43,5K);
+dividir la página del editor de recetas (35,7K); pasar `server/actions`,
+`app` y `components` a usar `public*`; `public.ts` de `pos`/`stock` (C4/C5);
+mover el costeo a `core/costos/` para romper el ciclo movimientos↔reportes;
+mudar `core/auth/{contexto,session,ir-al-login}` a `server/`; resolver el
+N+1 del editor de recetas; DTOs mínimos en las consultas; centralizar las
+~20 copias de `type Db` en `core`; enseñarle al analizador de guardas a
+seguir la delegación entre archivos. Bloqueada por TODO lo anterior de #41.
+Cierre: los 7 comandos en verde en la MISMA corrida sobre `origin/main` con
+todo mergeado. Tamaño chica.
+
+### Fase M — casos de uso de mutación (generalizar el patrón del piloto)
+
+El piloto (`anularCompra`/`corregirCompra`) ya está mergeado y estableció el
+patrón: `core/resultado-caso.ts` (`ResultadoCaso`/`exito`/`fracaso`/
+`aResultadoAccion`), comando+guard en `core/features/<f>/`, persistencia en
+`server/persistencia/<dominio>/<verbo>.ts` (recibe `tx` OBLIGATORIO, nunca
+`db=prisma` opcional), caso de uso en
+`server/actions/<dominio>/casos-de-uso/<verbo>.ts` (`import "server-only"`,
+SIN `"use server"`), Server Action como adaptador fino. Convenciones
+completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
+
+- **M8** — caso de uso `anularVenta` (`server/actions/movimientos/venta.ts`):
+  guarda pura (absorbe la fase F3 pendiente de `plan-mutaciones-controladas`,
+  hoy en línea), carga con las hermanas de promo, escritura, caso de uso.
+  Transacción+contra-asiento+auditoría ya existen, se reorganizan sin
+  cambiar comportamiento. Bloqueada por M7 (ya mergeado, sin bloqueo real).
+  Cierre: `test/movimientos/venta-anular-auditoria*` sin tocar y en verde.
+  Tamaño mediana.
+- **M9** — caso de uso `registrarVenta` de mostrador (**cierra el "tramo 1"**
+  de la Fase M): `ComandoRegistrarVenta` SIN `precioUnitario` por
+  construcción (evita que el cliente mande un precio arbitrario). Caso de
+  uso con I3, transacción, llamada a `registrarVentaEnTx` — **el núcleo de
+  `registrarVentaEnTx` NO se toca** (~400 líneas críticas; partirlo queda
+  diferido hasta que C2 defina `public-servidor` de movimientos). `venta.ts`
+  entra a `ACCIONES_CON_CASO_DE_USO`. Bloqueada por M8. Cierre: tests
+  `venta*` y `movimientos-venta-*` en verde. Tamaño mediana.
+- **M10** — transacción en cambios de precio (`actualizarProducto`,
+  `setPrecioLocalProducto`, sincronización de precio): HOY auditan pero SIN
+  transacción — el `update` y la auditoría no son atómicos (hueco real, no
+  reportado por el dueño). **CAMBIA COMPORTAMIENTO** (a diferencia de M2-M9):
+  hace falta un test nuevo que fuerce la falla de la auditoría a mitad de
+  camino y compruebe que el precio también hace rollback (hoy no lo haría).
+  Bloqueada por M7 (mergeado). Tamaño chica-mediana.
+- **M11a/b/c** — traspasos (`server/actions/traspasos/traspasos.ts`), 3
+  sub-tareas secuenciales sobre el mismo archivo (la guarda de transición ya
+  está extraída en `core/features/traspasos/traspaso.guard.ts`, no se toca):
+  (a) aprobar/cancelar/rechazar solicitud; (b) aceptar traspaso y reingreso
+  (ya tienen I3 hoy); (c) creación y envío directo (hoy sin I3 — evaluar si
+  corresponde agregarla). Bloqueadas en cadena (M11a→M11b→M11c), M11a
+  bloqueada por M7. Cierre: specs `traspasos-*` en verde. Tamaño mediana
+  cada una.
+- **M12a/b/c/d** — POS (`pos/cuenta-cierre.ts`/`cuenta-anulacion.ts`, ya
+  divididos por B2, mergeado): (a) `cerrarCuenta` (idempotente por estado,
+  llama a `registrarVentaEnTx` sin tocarlo, numera boleta); (b)
+  `emitirBoletaCorregida` (después de a, mismo archivo); (c)
+  `anularItemEnviado`; (d) `anularPromoEnviada` (después de c, mismo
+  archivo; evaluar si sumar `abrirCuenta` opcional acá o dejarla fuera).
+  Bloqueadas por B2 (ya mergeado, sin bloqueo real) y en cadena entre sí
+  donde compartan archivo. Cierre: `test/pos/*` y specs `pos-*` en verde.
+  Tamaño mediana cada una.
+- **M13a/b/c/d/e** — el motor genérico `registrarMovimiento`
+  (`server/actions/movimientos/movimientos.ts`, 512 líneas, 9 procesos): UN
+  caso de uso genérico, no una fachada por proceso (la UI ya es genérica).
+  (a) extraer cargas a `server/persistencia/movimientos/cargar-*.ts`; (b)
+  extraer escritura a `escribir-*.ts`; (c) el caso de uso genérico en sí
+  (orquesta a+b, con el efecto posterior `upsertProveedorPorProducto`
+  explícito como paso nombrado); (d) `reclasificarStock` (evaluar si
+  reutiliza el caso de uso genérico de (c) o necesita uno propio); (e)
+  conteo físico. Bloqueadas en cadena (a→b→c→{d,e}); (a) además bloqueada
+  por M9 (patrón probado en ventas) y por que P1 esté mergeada (para no
+  fijar dos convenciones de persistencia en paralelo). Cierre: tests de los
+  9 procesos sin tocar y en verde. Tamaño mediana cada una.
+- **M14** — caso de uso `registrarPagoConsignante`
+  (`reportes/consignacion.ts`): HOY sin transacción, sin I3, sin auditoría —
+  un doble clic registra dos pagos (hueco real). **BLOQUEADA POR UNA
+  MIGRACIÓN DE SCHEMA** (agregar la clave I3 requiere un campo nuevo en
+  `PagoConsignante`) — **requiere autorización expresa del dueño antes de
+  tocar el schema.** Cierre: test de doble-clic en rojo antes del fix y en
+  verde después, más los 6/7 comandos. Tamaño mediana.
+
+---
+
+## PARTE 2 — Backlog #15 a #40 (independiente de #41, sin tocar todavía)
+
+Todos estos ya tienen grounding contra un sistema de referencia (Odoo,
+POSR/ahmedali5530) hecho por un agente esta sesión, guardado en `docs/` del
+repo salvo que se indique lo contrario. Ninguno tiene código escrito
+todavía. Usar la skill `plan-con-verificacion-e2e` para diseñar el plan de
+cada uno antes de tocar código (un agente `Plan`, modelo Opus, por
+pendiente, verificando el código real antes de proponer nada).
+
+### #15 — Apertura y cierre de salón/turno (grounding contra ahmedali5530/restaurant-pos)
+El dueño preguntó por esto comparando contra
+https://github.com/ahmedali5530/restaurant-pos (ya usado como grounding para
+impresión). Investigar antes de proponer: si existe algo parecido hoy en
+motor2 (buscar "turno"/"shift"/"apertura"/"cierre de caja" — probablemente
+no exista nada), cómo lo resuelve el repo de referencia y los demás citados
+en `docs/grounding-pos-mesas-comandas-2026-09-24.md`, si tiene sentido para
+La Cuadra dado que ya existen Cuenta/Mesa por separado, y si un "turno" es
+más una agrupación de reportes (boletas entre las 12:00 y el cierre) que una
+entidad con ciclo de vida propio. Relación con la numeración de boleta
+(Task #1, ya mergeada): capaz alcanza con "boletas emitidas en un rango de
+fecha/hora", sin tabla nueva. **Ojo con no sobre-diseñar** — evaluar primero
+si alcanza con un reporte/filtro por fecha en vez de una entidad "Turno"
+completa. *(Nota: si #37 de abajo, "caja/turno con conciliación", avanza
+primero, puede que ya resuelva esto — revisar solapamiento antes de
+diseñar los dos por separado.)*
+
+### #18 — Acceso directo a "anular esta línea" desde la boleta
+Hoy la única forma de corregir una venta cerrada es Reportes → Trazabilidad,
+buscar la operación a mano (permiso `ver_reportes_operativos`). El dueño
+quiere que Reportes pueda seguir siendo el mecanismo de fondo, pero no el
+ÚNICO camino para una tarea cotidiana. **Solución simple ya identificada:**
+`src/app/(app)/reportes/trazabilidad/page.tsx` YA soporta un deep-link por
+operación vía `?idOperacion=X`. Se podría agregar, desde "Cuentas cerradas"
+de la mesa, un enlace directo "¿Algo salió mal en esta línea? Corregirla →"
+apuntando a ese deep-link. Investigar antes: si `BoletaDeCuenta`/
+`LineaDeBoleta` (`src/core/pos/boleta.ts`) expone el `operacionId` de cada
+línea (probablemente NO, `armarBoleta` agrupa por `productoId+precioUnitario`
+sin traer `operacionId` — habría que sumarlo al join); qué permiso necesita
+el enlace (¿`pos_cerrar_cuenta`, el mismo que ya gatea "Cuentas cerradas", o
+también `ver_reportes_operativos` porque el destino es Trazabilidad?); si
+conviene el enlace solo en pantalla (no en la boleta impresa, no tiene
+sentido en papel).
+
+### #21 — Investigar: "Emitir boleta corregida" deshabilitado en producción
+El dueño reportó (screenshot 2026-09-26 23:41, motor2-demo) que en 3 cuentas
+cerradas de Mesa 01 el botón aparece deshabilitado. **Hipótesis a verificar
+contra el código antes de asumir bug:** el botón solo se habilita cuando
+`estadoDeBoleta === "desactualizada"` (hubo una anulación de línea DESPUÉS
+de imprimir/cerrar) — si ninguna de esas 3 cuentas tuvo una anulación
+posterior al cierre, el disabled es el comportamiento esperado. Además, 2 de
+las 3 no muestran "N.º X-Y" (se cerraron antes de que existiera la
+numeración — Task #1 —, sin `EjemplarBoleta`, no corregibles por diseño).
+**Confirmar con el dueño qué acción esperaba poder hacer exactamente antes
+de tocar código.**
+
+### #22 — UX de "anular venta" por producto: no aclara efecto sobre la boleta
+Al buscar "anular venta" por producto (en Trazabilidad) no queda claro si
+afecta un ítem puntual de una boleta específica, ni qué efecto tiene sobre
+esa boleta (¿queda "desactualizada"? ¿hay que emitir boleta corregida
+después?). Investigar el flujo real de `/reportes/trazabilidad` y
+`anularVenta` antes de proponer cambios de UX. Se relaciona con #18 y #21 —
+diseñar los tres juntos tiene sentido, comparten la misma pantalla y el
+mismo concepto de "boleta desactualizada".
+
+### #34 — Desborde real (no flake) en `/stock/minimo` a 1024px
+**IMPORTANTE — esta sesión encontró evidencia de que SÍ es un flake real de
+carga, no una regresión de CSS fija:** el spec
+`test/e2e/maquetacion-general.spec.ts` (`/stock/minimo: nada se sale de su
+caja a 1024 px`) falló repetidas veces esta sesión SOLO cuando había 4-5
+suites de Playwright corriendo en paralelo en el mismo sandbox (carga alta),
+y pasó limpio, de forma reproducible, en TODAS las corridas aisladas (sin
+concurrencia) — confirmado independientemente por al menos 5 agentes
+distintos en worktrees separados. Overflow real medido: ~2-4px, borderline,
+consistente con una condición de carrera de layout bajo contención de CPU
+(fuente cargando tarde, medición de ancho antes del reflow), no con una
+regla CSS rota. **Antes de invertir en arreglar el layout:** confirmar que
+de verdad falla en un entorno SIN concurrencia artificial (CI real, o local
+sin otros procesos pesados) — si nunca falla aislado, el pendiente real
+podría ser "hacer el test más tolerante a latencia de fuente" en vez de
+"arreglar el desborde". No descartar la hipótesis original sin volver a
+medir: hay reportes previos (de antes de esta sesión) de fallos
+deterministas, así que confirmar el patrón real antes de cerrar esto como
+"solo flake".
+
+### #35 — Compras: nota de crédito de proveedor (K1d)
+Grounding completo contra Odoo (`accounting`/`purchase`) en
+`docs/propuesta-nota-credito-proveedor-cuenta-corriente-2026-09-26.md`
+§2.2. Reafirma la Opción B ya decidida antes de esta sesión (tabla propia de
+NC separada del Kardex; solo si hay devolución física se genera una
+`DEVOLUCION_PROVEEDOR` vinculada). Aportes de Odoo: vínculo FK a la
+`Operacion` COMPRA y a la `MovimientoStock` de línea (tope "comprado − ya
+devuelto" por renglón); patrón "NC suelta, vinculada después"; el tope de
+cantidad sigue siendo BLOQUEO (no aviso); valuar la devolución física al
+precio de línea comprada (como ya hace `anularCompra`), no al costo de
+reposición de hoy; FK real en vez de texto en `detalleLibre`; precedente
+interno más cercano: `CuentaItem.anulaAItemId`.
+**DECISIÓN DE NEGOCIO ABIERTA (no la resuelve Odoo):** ¿una bonificación de
+precio en la NC cambia el costo de reposición del producto? Depende
+conceptualmente de #36 (comparten el registro de pago a proveedor) pero
+puede implementarse antes si se elige Opción B sin cuenta corriente todavía.
+Documento fuente completo: `propuesta-nota-credito-proveedor-cuenta-corriente-2026-09-26.md`
+(subido por el usuario, fuera del repo).
+
+### #36 — Compras: cuenta corriente / saldo a pagar de proveedores
+Grounding contra Odoo (`account.payment`, `account.partial.reconcile`) en
+el mismo documento, §2.3. Hoy no existe ningún registro de pago a proveedor
+de compra normal (el único precedente es `PagoConsignante`, solo para
+consignación). Dos enfoques evaluados — **L (liviano)**: saldo calculado por
+reporte (Σcompras − ΣNC − Σpagos), sin conciliación por documento; **C
+(conciliación)**: entidad de "aplicación" tipo `account.partial.reconcile`,
+da estado por compra y antigüedad de deuda. C es superconjunto de L (se
+puede empezar por L y agregar C después sin migrar pagos).
+**10 DECISIONES DE NEGOCIO ABIERTAS** (nivel de detalle L vs C, si un pago
+lleva medio de pago, cómo se aplica una NC, compras de contado, desde cuándo
+se lleva la cuenta corriente, alcance por sucursal o global, si se unifica
+con `PagoConsignante`, si se bloquea anular una compra con pagos aplicados,
+crédito a favor, permisos — el detalle completo de cada una está en el
+documento fuente). Depende de resolver primero la decisión de #35 (ambas
+comparten el pendiente de fondo K1d). Documento fuente: el mismo de #35,
+§2.3-2.5.
+
+### #37 — POS: caja/turno con conciliación de efectivo (arqueo)
+Grounding contra POSR en
+`docs/propuesta-pos-incrementales-sin-cambio-arquitectura-2026-09-26.md`
+§2.2. **Es EXPANSIÓN DE ALCANCE, no bugfix:** revierte la decisión B5
+explícita ("motor2 no tiene entidad de caja/pago" — pagar y cerrar son una
+sola acción atómica). Obliga a tocar `cerrarCuenta` (hay que preguntar el
+medio de pago al cerrar). Dos enfoques — **A (turno completo, patrón
+`day_closing` de POSR)**: entidad `TurnoCaja` (fondo inicial, efectivo
+contado, esperado calculado y congelado al cerrar, diferencia, motivo
+obligatorio si supera un umbral) + movimientos manuales de caja + registro
+de pago por cierre; **B (solo medio de pago, sin turno)**: un pago por
+cierre + reporte por medio de pago, sin fondo inicial ni esperado-vs-contado
+(B es subconjunto de A). **6 DECISIONES DE NEGOCIO ABIERTAS** (¿se revierte
+B5?, quién opera la caja, qué pasa con cuentas abiertas al cerrar turno, si
+la venta de mostrador entra en la caja, anulación posterior al cierre de un
+turno, si se bloquea cerrar sin turno abierto). Si también avanza #38
+(dividir cuentas), conviene diseñar juntos el mismo diálogo de cierre — el
+"dividir por monto" de #38 DEPENDE de esta task. También comparte el diseño
+del "registro de pago" con #36. Documento fuente:
+`propuesta-pos-incrementales-sin-cambio-arquitectura-2026-09-26.md` §2.2.
+
+### #38 — POS: dividir y unir cuentas
+Grounding contra POSR, mismo documento, §2.1. Hoy NO existe ninguna
+operación de dividir ni unir cuentas. **Dividir cuenta NO es un hueco
+técnico: revierte una decisión de producto tomada A PROPÓSITO** (el schema
+dice literalmente que `Cuenta.comensales` NO habilita dividir por persona) —
+el dueño tiene que revertirla explícitamente. Unir cuentas no revierte nada,
+solo estaba postergado. Dos enfoques — **A (cuenta hija/nueva, patrón
+`splitOrder`/`mergeOrders` de POSR)**, con una variante más acotada
+("dividir solo al cobrar, con filas enteras", sin abrir el índice único de
+"una cuenta por mesa" ni tocar `numeroEnvio`/KOT); **B (subcuentas dentro de
+la misma Cuenta)**, más frágil (rompe `@@unique([cuentaId, ejemplar])` de
+`EjemplarBoleta`, no sirve para unir). "Dividir por monto" NO es viable solo
+con `CuentaItem` (duplicaría el descuento de stock) — depende de #37.
+**5 DECISIONES DE NEGOCIO ABIERTAS** (¿se revierte `Cuenta.comensales`?,
+¿solo al cobrar o cuentas divididas siguen abiertas?, ¿cantidades parciales
+de una fila ya enviada?, qué mesa conserva la cuenta al unir, quién puede
+dividir/unir). Documento fuente: el mismo de #37, §2.1.
+
+### #39 — POS: impresión real (agente local / cola en vez de `window.print`)
+Grounding contra POSR, mismo documento, §2.3. **Revisa una premisa
+operativa ya validada y documentada** ("hay una sola PC que ve las dos
+impresoras, por eso no hay agente local") y agrega infraestructura nueva que
+hoy no existe (motor2 es 100% Vercel serverless, cero procesos extra). Un
+daemon ESC/POS real necesita proceso persistente, acceso al dispositivo y
+alcance de red — ninguno lo tiene una función serverless. Dos enfoques — **A
+(push, navegador→agente local)**: cambio mínimo en servidor, pero choca con
+restricciones del navegador para llamar a `localhost`/IP privada desde
+HTTPS público; **B (pull, cola en Postgres, agente consulta por HTTPS
+saliente)**: durable, compatible con serverless, pero necesita canal de
+autenticación de dispositivos nuevo y operar un agente en cada local. **Es
+el cambio de MAYOR COSTO OPERATIVO de todo el lote de backlog**, aunque no
+toque el modelo de dominio. **Alternativa ya documentada sin infraestructura
+nueva:** `--kiosk-printing` (si lo que molesta es el diálogo del navegador,
+no el ruteo automático). **4 DECISIONES DE NEGOCIO ABIERTAS** (¿sigue
+siendo cierta la premisa de una sola PC?, qué molesta realmente hoy, si
+vale la pena el costo operativo de un agente nuevo, push vs. pull).
+Documento fuente: el mismo de #37/#38, §2.3.
+
+### #40 — Facturación fiscal de venta (grounding contra Odoo)
+Grounding completo (motor2 real + Odoo 20.0 `sale`/`account`/`sale_stock`/
+`point_of_sale`, código fuente, sin WebFetch), documento fuera del repo:
+`grounding-facturacion-ventas-odoo-2026-09-26.md` (con un anexo §2.10 de
+re-verificación cruzada independiente por un segundo modelo — confirmó todo
+lo original y sumó 3 precisiones menores). **Estado actual confirmado:**
+motor2 no tiene NINGÚN circuito de facturación fiscal (cero AFIP/CAE en todo
+el repo); `nroFactura` en `Operacion` VENTA es texto libre sin semántica
+fiscal; `EjemplarBoleta` está documentado explícitamente como "NO
+comprobante fiscal"; no existen medios de pago, cuenta corriente de cliente,
+IVA desagregado, ni un `Cliente` completo (sin CUIT/DNI/condición de IVA).
+**Recomendación del grounding (no decisión tomada):** tomar el modelo POS de
+Odoo (`pos.order`) como referencia, NO el flujo B2B completo (`sale.order`)
+— motor2 ya une venta+stock en un paso, como POS. Cualquier dato nuevo
+cuelga de la `Operacion` VENTA existente. Numeración fiscal siguiendo el
+patrón que ya existe para `nroFactura` de COMPRA, extendido a VENTA, con
+"talonario/punto de venta" como entidad propia. Medios de pago: modelo
+simple "pago" (tipo+monto) 1:N con la Operacion VENTA. Anulación: mismo
+principio append-only que `anularVenta` ya usa. **Técnica de rollout ya
+validada, sin decisión de negocio:** motor2 ya oculta pantallas enteras por
+permiso (gate real en servidor vía `conPermiso`/`requerirVer`) — se puede
+construir el módulo entero sin asignarle permiso a ningún rol todavía,
+queda invisible y se activa después como cambio de datos, no de deploy.
+**6 DECISIONES DE NEGOCIO ABIERTAS** (¿facturación fiscal real con AFIP/CAE
+o comprobante interno ampliado?, tipo de comprobante A/B/C/M y condición de
+IVA, si se factura antes o después de vender, medios de pago habilitados,
+si se permite cuenta corriente/fiado de cliente, alcance del `Cliente`).
+Depende del mismo "registro de pago" que #36/#37 — conviene diseñar el
+medio de pago una sola vez si varias de estas tres avanzan. Documento
+fuente completo: `grounding-facturacion-ventas-odoo-2026-09-26.md`
+(hay una versión anterior sin el anexo §2.10, usar la que lo tiene).
