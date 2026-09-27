@@ -42,6 +42,7 @@ model User {
   cuentasCerradas           Cuenta[]            @relation("CuentaCerradaPor")
   cuentaItemsCreados        CuentaItem[]        @relation("CuentaItemCreadoPor")
   ejemplaresBoletaEmitidos  EjemplarBoleta[]    @relation("EjemplarBoletaEmitidoPor")
+  promosCreadas             PromoCuenta[]
 }
 
 model Account {
@@ -865,6 +866,15 @@ model Operacion {
   /// esa extensión, cuando llegue, no pida otra migración.
   clienteId  String?
   cliente    Cliente? @relation(fields: [clienteId], references: [id])
+
+  /// La `PromoCuenta` de la que esta Operacion VENTA es un COMPONENTE (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 7):
+  /// hay UNA Operacion por componente neto, igual que hoy hay una por línea. `null` = una venta suelta de siempre (o
+  /// cualquier proceso que no sea VENTA de mesa). FK RESTRICT: una Operacion vieja sigue apuntando a su promo aunque se
+  /// anule (D4: `anularVenta` anula TODAS las Operaciones hermanas de la misma `PromoCuenta`, nunca las borra). SOLO mesas en
+  /// v1 (D7, mismo criterio que `clienteId`): `registrarVenta` (mostrador) nunca lo pasa.
+  promoCuentaId String?
+  promoCuenta   PromoCuenta? @relation(fields: [promoCuentaId], references: [id])
+
   /// Índice único parcial "Operacion_factura_unica_vigente_key" (sucursalId, proveedorId, nroFactura) WHERE
   /// nroFactura IS NOT NULL AND proceso = 'COMPRA' AND anuladaEn IS NULL — definido FUERA de este schema (Prisma
   /// no declara índices parciales, ver prisma/migrations/20260921230000_factura_unica_vigente/ y el precedente
@@ -952,6 +962,7 @@ model Operacion {
 
   @@unique([claveIdempotencia])
   @@index([sucursalId, proceso, fecha])
+  @@index([promoCuentaId])
 }
 
 /// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
@@ -1619,6 +1630,7 @@ model PromoCarta {
   activa         Boolean          @default(true)
   creadoEn       DateTime         @default(now())
   cupos          PromoCartaCupo[]
+  instancias     PromoCuenta[]
 
   @@index([sucursalId, activa])
   @@index([seccionCartaId])
@@ -1747,6 +1759,7 @@ model Cuenta {
   cerradaPor       User?            @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
   items            CuentaItem[]
   ejemplaresBoleta EjemplarBoleta[]
+  promos           PromoCuenta[]
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
   /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
@@ -1772,6 +1785,33 @@ model Cuenta {
   @@index([mesaId])
 }
 
+/// Una instancia de promo ARMABLE agregada a una cuenta (Task #16, docs/plan-promo-combo-2026-09-26.md, análoga a `Cliente` en
+/// `Cuenta`: la referencia de CATÁLOGO — `PromoCarta` — puede cambiar título/precio después; esta fila congela el snapshot con
+/// el que se cobró ESTA instancia, mismo criterio que `Cuenta.descuentoPorcentaje`). Cada vez que se arma la promo en el POS
+/// (paso 8a) es una fila NUEVA: dos menús del día en la misma cuenta, con elecciones distintas, son dos `PromoCuenta`
+/// separadas, cada una con sus propios `CuentaItem.promoCuentaId`. FK RESTRICT a `PromoCarta`: no se borra mientras haya
+/// alguna instancia vendida con ella (`PromoCarta` de por sí nunca se borra, se apaga). Sin `cerradaEn`/estado propio: el
+/// estado de una promo se deriva de sus `CuentaItem` y de las `Operacion` que enlazan, igual que el resto del POS.
+model PromoCuenta {
+  id           String       @id @default(cuid())
+  cuentaId     String
+  cuenta       Cuenta       @relation(fields: [cuentaId], references: [id])
+  promoCartaId String
+  promoCarta   PromoCarta   @relation(fields: [promoCartaId], references: [id])
+  /// Precio CONGELADO al agregarla (`PromoCarta.precio` en ese momento) — lo que se prorratea entre los componentes (D3).
+  precio       Decimal      @db.Decimal(14, 2)
+  /// Snapshot del título en ese momento — la boleta ("1 × Menú del día") usa este, no el actual de `PromoCarta` (que puede
+  /// haber cambiado de nombre después).
+  titulo       String
+  creadoPorId  String
+  creadoPor    User         @relation(fields: [creadoPorId], references: [id])
+  creadoEn     DateTime     @default(now())
+  items        CuentaItem[]
+  operaciones  Operacion[]
+
+  @@index([cuentaId])
+}
+
 model CuentaItem {
   id              String       @id @default(cuid())
   cuentaId        String
@@ -1780,7 +1820,8 @@ model CuentaItem {
   producto        Producto     @relation(fields: [productoId], references: [id])
   /// Mismo tipo que MovimientoStock.cantidad: desemboca en la venta al cerrar la cuenta. Negativa SOLO en una fila espejo (anulación).
   cantidad        Decimal      @db.Decimal(14, 4)
-  /// Precio CONGELADO al agregar el ítem (Precio Local o global de ese momento); es el que se cobra al cerrar la cuenta.
+  /// Precio CONGELADO al agregar el ítem (Precio Local o global de ese momento, prorrateado si es un componente de promo, D3);
+  /// es el que se cobra al cerrar la cuenta (antes del descuento de cliente, D2 — ese se aplica recién ahí, no acá).
   precioUnitario  Decimal      @db.Decimal(14, 2)
   /// null = sin enviar a cocina (borrador); 1..n = en qué envío salió (KOT derivado, ver el bloque de arriba).
   numeroEnvio     Int?
@@ -1794,13 +1835,25 @@ model CuentaItem {
   anulaciones     CuentaItem[] @relation("CuentaItemAnulacion")
   /// Obligatorio en una fila espejo (validado en la aplicación).
   motivoAnulacion String?
-  /// La Operacion VENTA que registró este ítem al cerrar la cuenta (una por línea neta producto+precio). RESTRICT: no se borra.
+  /// La Operacion VENTA que registró este ítem al cerrar la cuenta (una por línea neta producto+precio+promo). RESTRICT: no se borra.
   operacionId     String?
   operacion       Operacion?   @relation(fields: [operacionId], references: [id], onDelete: Restrict)
+
+  /// Task #16 (docs/plan-promo-combo-2026-09-26.md): la `PromoCuenta` de la que este ítem es un COMPONENTE — null = un
+  /// suelto de siempre. FK RESTRICT: no se borra mientras algún componente siga apuntándola. Junto con `precioUnitario` (y
+  /// `operacionId`), forma la clave que evita mezclar un suelto con un componente del mismo producto al mismo precio
+  /// (`lineasDeVenta`, D4).
+  promoCuentaId String?
+  promoCuenta   PromoCuenta? @relation(fields: [promoCuentaId], references: [id])
+  /// Precio A LA CARTA de UNA unidad de este componente, al momento de agregarlo (antes de prorratear) — null en un suelto.
+  /// Sirve para comparar "lo que se cobró prorrateado" contra "lo que costaría pedirlo suelto" (paso 12, margen de promos) y
+  /// queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
+  precioCartaUnitario Decimal? @db.Decimal(14, 2)
 
   @@index([cuentaId])
   @@index([anulaAItemId])
   @@index([operacionId])
+  @@index([promoCuentaId])
 }
 
 /// Ejemplar IMPRESO de la boleta de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
