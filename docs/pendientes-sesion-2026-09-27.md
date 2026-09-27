@@ -66,9 +66,12 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 - **Fase A** (guard de `dependency-cruiser`, 9→10 reglas en `.dependency-cruiser.cjs`, corrección del único caso `core→server/actions`, doc de arquitectura actualizada) — PR #33.
 - **Fase B** (los 3 archivos grandes divididos: `pos/cuenta.ts` → 5 archivos, `core/reportes/periodo.ts` → 8 archivos con fachada, `server/actions/catalogo/recetas.ts` recortado) — PRs #35, #37, #38.
 - **K1** (informe de `knip`: 112 hallazgos, 34 candidatos a "código muerto real", 5 falsos positivos ya corregidos en `knip.jsonc`, 73 reservados con motivo) — PR #36. **El dueño todavía no revisó/aprobó la lista de 34** — ver K2 abajo.
-- **Fase D, 7 de 9 páginas migradas** a `server/consultas/` (D1 productos, D2 proveedores, D3 recetas-listado, D5 roles/usuarios, D7 rendimiento-por-sucursal, D8 mesas) — PRs #34, #42, #41, #44, #45, #39. Faltan D4 y D6 (ver abajo).
+- **Fase D COMPLETA, 9 de 9 páginas migradas** a `server/consultas/` (D1 productos, D2 proveedores, D3 recetas-listado, D5 roles/usuarios, D7 rendimiento-por-sucursal, D8 mesas, D6 productos-opción, D4 editor de recetas) — PRs #34, #42, #41, #44, #45, #39, #47, y el merge directo a `main` de D4 (2026-09-27, sesión continuada en máquina local: worktree `feat/arq-d4-consultas-recetas-editor`). `PENDIENTES_DE_MIGRAR` en `.dependency-cruiser-excepciones.cjs` queda vacía.
 - **C1** (`core/catalogo/public.ts` + `public-servidor.ts`, primer dominio con fronteras públicas) — PR #43.
-- **Fase M, piloto completo** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio) — PR #40. De paso corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada.
+- **C2** (`core/movimientos/public.ts` + `public-servidor.ts`) — mergeado a `main` (2026-09-27, misma sesión). `"movimientos"` ya está en `DOMINIOS_CON_PUBLIC`. **C3 y D9 quedan desbloqueadas.**
+- **Fase M, piloto + M8** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio — PR #40; M8: caso de uso `anularVenta` — PR #48, mergeado ya antes de este checkpoint). De paso el piloto corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada. **M9 queda desbloqueada.**
+
+**Nota de continuidad (2026-09-27, tarde):** D4, D6, C2 y M8 se lanzaron como 4 agentes en paralelo en una sesión cloud; la sesión se cortó antes de que D6/C2/M8 terminaran de reportarse (D6 y M8 en realidad ya habían mergeado; C2 había pusheado su rama sin mergear; D4 no llegó a pushear nada — se rehízo desde cero). Al continuar en una máquina local se verificó cada uno contra el estado real de `main` (nunca contra la descripción de esta tarea) antes de tocar nada — ver "Lección aprendida" de `plan-con-verificacion-e2e/SKILL.md`.
 
 ### Pendiente — orden sugerido de abajo hacia arriba (cada ítem dice sus bloqueos reales)
 
@@ -78,96 +81,14 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 `.env.example`. Sin bloqueos. Tamaño chico. Si no se hace, seguir con la
 disciplina manual de puerto-por-worktree descripta arriba.
 
-#### D6 — `server/consultas/catalogo/productos.ts`: `obtenerProductoOpcion`
-Página `src/app/(app)/movimientos/[proceso]/page.tsx`: hoy hace
-`producto.findUnique({ select: { id, codigo, nombre } })` solo si viene
-`?productoId=`. Agregar `obtenerProductoOpcion(id, db=prisma)` al mismo
-archivo de D1 (`src/server/consultas/catalogo/productos.ts`). Sacar la
-página de `PENDIENTES_DE_MIGRAR` en el mismo commit.
-**Hueco de cobertura a llenar en esta misma tarea:** ningún spec de
-Playwright cubre el caso `?productoId=` — agregar un caso nuevo en
-`movimientos-compra-wizard` navegando a `/movimientos/compra?productoId=<mp>`
-y confirmando que el selector ya viene cargado con "COD — Nombre" (por eso
-esta es la ÚNICA sub-tarea D con Playwright +1 en vez de "línea de base
-exacta"). Specs a mirar además: `movimientos-venta-fraccionada`,
-`lecturas-sesion-vencida`, `catalogo-disponibilidad-por-sucursal`,
-`maquetacion-general`. Tests estáticos: `lecturas-con-permiso-de-ver`
-(`ACCION_POR_PROCESO[config.proceso]`), `enlaces-con-permiso`.
-Bloqueada por: nada (D1 ya mergeado). Tamaño chica.
-
-#### D4 — `server/consultas/catalogo/recetas.ts`: editor
-Página `src/app/(app)/catalogo/recetas/[productoId]/page.tsx` (el editor,
-667 líneas — el page.tsx más grande tocado por #41; dividirlo queda FUERA de
-alcance). Hoy hace `producto.findUnique`, `producto.findMany` de MP
-disponibles, `insumo.findMany` de sustitutos (**una consulta por
-ingrediente** — el N+1 queda fuera de alcance, no se arregla acá) y
-`rendimientoLocalIngrediente.findMany`. Agregar al mismo archivo que D3
-(`src/server/consultas/catalogo/recetas.ts`):
-
-```ts
-export async function listarMpDisponiblesEnAlguna(db: Db = prisma) {
-  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, orderBy: { nombre: "asc" } });
-}
-
-export async function listarOpcionesDeSustituto(
-  ing: { insumoIdExcluido: string | null; unidadId: string },
-  db: Db = prisma,
-) {
-  return db.insumo.findMany({
-    where: {
-      activo: true,
-      id: { not: ing.insumoIdExcluido ?? undefined }, // conservar `?? undefined` tal cual
-      productos: { some: { tipo: "MP", unidadStockId: ing.unidadId, ...whereDisponibleEnAlguna() } },
-    },
-    orderBy: { nombre: "asc" },
-    select: { id: true, nombre: true },
-  });
-}
-
-export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db = prisma) {
-  return db.rendimientoLocalIngrediente.findMany({
-    where: { recetaIngredienteId: { in: recetaIngredienteIds }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
-    include: { sucursal: { select: { nombre: true } } },
-  });
-}
-```
-En el editor quedan: el `Promise.all` por ingrediente, `if (aceptaSustitutos)`,
-`if (vigente?.ingredientes.length)`, `obtenerRecetaVigente` (Server Action,
-sin cambios), `obtenerProductoPorId` (de D1). Sacar la página de
-`PENDIENTES_DE_MIGRAR`. Confirmar contra `lectores-de-receta.test.ts` que la
-lista `ARCHIVOS_CLASIFICADOS` no necesita otro cambio más allá del que ya
-hizo D3. Specs: `recetas-pasos-reordenar`, `recetas-sustitutos`,
-`accesibilidad` (el texto "Calibrado en 1 sucursal(es)" viene de la consulta
-de calibraciones), `volver-tras-login` (`/catalogo/recetas/abc123` inexistente),
-`catalogo-ficha-producto`. Bloqueada por: nada (D3 ya mergeado, mismo
-archivo). Tamaño mediana.
-
-#### C2 — `core/movimientos/public.ts` / `public-servidor.ts`
-Dominio con 22 aristas entrantes (16 desde reportes, 13 de esas son solo
-`redondearMoneda`). **Primer commit, separado:** `redondearMoneda` pasa a
-importarse directo de `@/core/moneda` en ~15 archivos de `core` (B1 ya cortó
-la reexportación transitiva en `periodo.ts` específicamente; este commit
-generaliza el cambio al resto). Después crear:
-- `core/movimientos/public.ts`: `transiciones`, `anulaciones`, `ui-config`,
-  `arrastre-redondeo` (los módulos puros).
-- `core/movimientos/public-servidor.ts`: `registrar-venta`, `con-reintento`,
-  `idempotencia`, `stock`, `precio-venta` y los demás que tocan la base.
-
-`navegacion/estructura.ts` y `pos/cantidad-pedido.ts` (los dos módulos de
-`core` que hoy terminan en el bundle del cliente) deben importar desde el
-`public.ts` puro, nunca desde `public-servidor`. Dos contratos a documentar
-explícitos (ya verificados, no hace falta reverificar):
-- `movimientos/registrar-venta → reportes/costos` (`calcularCostosYMargenes`):
-  legítimo, único ciclo real entre dominios de `core` — pasa a
-  `reportes/public-servidor.ts` (ver C3) y queda en `CICLOS_ACEPTADOS` de
-  `dependencias.test.ts`.
-- `stock/consolidado → movimientos/transiciones` (`tieneStockReal`):
-  legítimo, se vuelve contrato en `movimientos/public.ts`.
-
-Agregar `"movimientos"` a `DOMINIOS_CON_PUBLIC` en `.dependency-cruiser.cjs`.
-Bloqueada por: nada (A3, B1, C1 ya mergeados). Cierre: conteos EXACTOS +
-demostración obligatoria rojo→verde de `sin-internals-de-otro-dominio` y
-`publico-puro`. Tamaño mediana.
+#### D6, D4, C2 y M8 — YA MERGEADOS (ver "Ya mergeado en `main`" arriba)
+Sin nada pendiente. D6/M8 se mergearon en la sesión cloud original; C2 se
+rebaseó y verificó en la sesión local antes de mergear; D4 se rehizo desde
+cero en la sesión local (la rama original nunca se pusheó) siguiendo la
+misma especificación que estaba anotada acá — el spec completo de D4 (las 3
+funciones agregadas a `server/consultas/catalogo/recetas.ts` y cómo el
+editor pasa a usarlas) quedó documentado en el commit `refactor(arq-d4): ...`
+y en el docstring del propio archivo, no hace falta repetirlo acá.
 
 #### C3 — `core/reportes/public.ts` / `public-servidor.ts`
 Dominio con 3 aristas entrantes. Crear `core/reportes/public-servidor.ts`
@@ -175,8 +96,8 @@ Dominio con 3 aristas entrantes. Crear `core/reportes/public-servidor.ts`
 de C2) y `core/reportes/public.ts` (los módulos `*-vistas` y
 `rango-por-defecto`, puros). Actualizar `carta/reporte-secciones` y
 `movimientos/registrar-venta` para pasar por estos archivos. Agregar
-`"reportes"` a `DOMINIOS_CON_PUBLIC`. Bloqueada por: C2 (arriba). Cierre:
-conteos EXACTOS + demostración rojo→verde. Tamaño chica.
+`"reportes"` a `DOMINIOS_CON_PUBLIC`. Bloqueada por: nada (C2 ya mergeada).
+Cierre: conteos EXACTOS + demostración rojo→verde. Tamaño chica.
 **Nota, no crear tarea aparte:** `public.ts` de `pos` y `stock` quedan
 diferidos (C4/C5) porque casi todos sus consumidores están en `app/`, exento
 de la regla por ahora — dejarlo solo anotado en E1.
@@ -186,9 +107,10 @@ Componente cliente con `import type { AccionConteo } from "@prisma/client"`
 (de solo tipo, sin riesgo real de bundle, pero sí aparece en el grafo de
 dependency-cruiser como `app/` → `@prisma/client`). Si se quiere cero
 referencias, reexportar `AccionConteo` como tipo desde `core/movimientos/public.ts`
-(requiere C2 ya mergeada) y que el componente importe de ahí. Bloqueada por:
-C2. Descartable sin costo si un `import type` a `@prisma/client` desde un
-componente cliente se considera aceptable. Tamaño chica.
+(C2 ya mergeada, así que ya es viable) y que el componente importe de ahí.
+Bloqueada por: nada. Descartable sin costo si un `import type` a
+`@prisma/client` desde un componente cliente se considera aceptable. Tamaño
+chica.
 
 #### K2 — borrar código muerto aprobado
 Borrar SOLO lo que K1 clasificó como "muerto real" (34 hallazgos, ver el
@@ -299,21 +221,16 @@ patrón: `core/resultado-caso.ts` (`ResultadoCaso`/`exito`/`fracaso`/
 SIN `"use server"`), Server Action como adaptador fino. Convenciones
 completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
 
-- **M8** — caso de uso `anularVenta` (`server/actions/movimientos/venta.ts`):
-  guarda pura (absorbe la fase F3 pendiente de `plan-mutaciones-controladas`,
-  hoy en línea), carga con las hermanas de promo, escritura, caso de uso.
-  Transacción+contra-asiento+auditoría ya existen, se reorganizan sin
-  cambiar comportamiento. Bloqueada por M7 (ya mergeado, sin bloqueo real).
-  Cierre: `test/movimientos/venta-anular-auditoria*` sin tocar y en verde.
-  Tamaño mediana.
+- **M8 — YA MERGEADA** (PR #48): caso de uso `anularVenta` mergeado a `main`.
 - **M9** — caso de uso `registrarVenta` de mostrador (**cierra el "tramo 1"**
   de la Fase M): `ComandoRegistrarVenta` SIN `precioUnitario` por
   construcción (evita que el cliente mande un precio arbitrario). Caso de
   uso con I3, transacción, llamada a `registrarVentaEnTx` — **el núcleo de
   `registrarVentaEnTx` NO se toca** (~400 líneas críticas; partirlo queda
-  diferido hasta que C2 defina `public-servidor` de movimientos). `venta.ts`
-  entra a `ACCIONES_CON_CASO_DE_USO`. Bloqueada por M8. Cierre: tests
-  `venta*` y `movimientos-venta-*` en verde. Tamaño mediana.
+  diferido: C2, que definía `public-servidor` de movimientos, ya está
+  mergeada). `venta.ts` entra a `ACCIONES_CON_CASO_DE_USO`. Bloqueada por:
+  nada (M8 ya mergeada). Cierre: tests `venta*` y `movimientos-venta-*` en
+  verde. Tamaño mediana.
 - **M10** — transacción en cambios de precio (`actualizarProducto`,
   `setPrecioLocalProducto`, sincronización de precio): HOY auditan pero SIN
   transacción — el `update` y la auditoría no son atómicos (hueco real, no
