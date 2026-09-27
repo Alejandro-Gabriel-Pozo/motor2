@@ -1,10 +1,12 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { join, relative } from "node:path";
+import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import { cruise, type ICruiseResult, type IDependency, type IModule } from "dependency-cruiser";
 import extractDepcruiseOptions from "dependency-cruiser/config-utl/extract-depcruise-options";
 import extractTSConfig from "dependency-cruiser/config-utl/extract-ts-config";
+import { analizarFuente } from "./guardas/analizador";
 
 /**
  * Complemento de `npm run arquitectura` (dependency-cruiser, `.dependency-cruiser.cjs` — Task #41, Fase A3) SOLO para lo que
@@ -36,6 +38,7 @@ interface Excepciones {
   "ui-sin-prisma": ExcepcionDeArchivo[];
   "sin-ciclos": ExcepcionDeCiclo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
+  ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
 }
 interface ReglaConfig {
   name: string;
@@ -176,5 +179,84 @@ describe("sin-ciclos: los ciclos exceptuados, en las dos direcciones", () => {
       nuevos,
       `Ciclos que no están exceptuados (córtenlos; la regla sin-ciclos solo deja pasar un ciclo formado exclusivamente por archivos de ciclos ya listados):\n${nuevos.join("\n")}`
     ).toEqual([]);
+  });
+});
+
+/** Todos los `.ts` bajo `dir` (recursivo), como rutas relativas a la raíz del repo con `/`. */
+function archivosTs(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).flatMap((nombre) => {
+    const ruta = join(dir, nombre);
+    return statSync(ruta).isDirectory() ? archivosTs(ruta) : ruta.endsWith(".ts") ? [relative(RAIZ, ruta).split("\\").join("/")] : [];
+  });
+}
+
+/** ¿La PRIMERA sentencia del archivo es exactamente `import "server-only";` (sin nada importado)? Por AST: un comentario no cuenta. */
+function abreConServerOnly(fuente: string): boolean {
+  const primera = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, false).statements[0];
+  return (
+    primera !== undefined &&
+    ts.isImportDeclaration(primera) &&
+    primera.importClause === undefined &&
+    ts.isStringLiteral(primera.moduleSpecifier) &&
+    primera.moduleSpecifier.text === "server-only"
+  );
+}
+
+describe("persistencia-solo-desde-casos-de-uso (Fase M): los casos de uso no son endpoints", () => {
+  const CASOS_DE_USO = archivosTs(join(RAIZ, "src/server/actions")).filter((r) => /^src\/server\/actions\/[^/]+\/casos-de-uso\//.test(r));
+
+  it("la regla está en la config", () => {
+    expect(CONFIG.forbidden.map((r) => r.name)).toContain("persistencia-solo-desde-casos-de-uso");
+  });
+
+  it("hay casos de uso que revisar (el chequeo no pasa en vacío)", () => {
+    expect(CASOS_DE_USO.length).toBeGreaterThan(0);
+  });
+
+  it("ningún archivo de casos-de-uso/ lleva \"use server\" (todo lo que exporta sería un endpoint sin guarda)", () => {
+    const conUseServer = CASOS_DE_USO.filter((r) => analizarFuente(r, readFileSync(join(RAIZ, r), "utf8")).esArchivoDeAcciones);
+    expect(conUseServer, `Estos casos de uso llevan "use server": sacáselo (lo expone la Server Action que lo envuelve):\n${conUseServer.join("\n")}`).toEqual([]);
+  });
+
+  it("todo archivo de casos-de-uso/ abre con import \"server-only\"", () => {
+    const sinServerOnly = CASOS_DE_USO.filter((r) => !abreConServerOnly(readFileSync(join(RAIZ, r), "utf8")));
+    expect(sinServerOnly, `Estos casos de uso no abren con import "server-only":\n${sinServerOnly.join("\n")}`).toEqual([]);
+  });
+
+  it("el detector de import \"server-only\" (con fuentes sintéticas)", () => {
+    expect(abreConServerOnly('import "server-only";\nimport { x } from "y";')).toBe(true);
+    expect(abreConServerOnly('// import "server-only";\nimport { x } from "y";')).toBe(false);
+    expect(abreConServerOnly('import { x } from "y";\nimport "server-only";')).toBe(false);
+    expect(abreConServerOnly('"use server";\nimport "server-only";')).toBe(false);
+  });
+});
+
+describe("accion-migrada-sin-orquestacion (Fase M): ACCIONES_CON_CASO_DE_USO", () => {
+  const LISTA = EXCEPCIONES.ACCIONES_CON_CASO_DE_USO;
+
+  it("la regla está en la config (sus dos entradas: runtime y persistencia)", () => {
+    expect(CONFIG.forbidden.filter((r) => r.name === "accion-migrada-sin-orquestacion")).toHaveLength(2);
+  });
+
+  it("la lista no está vacía y cada entrada lleva motivo", () => {
+    expect(LISTA.length).toBeGreaterThan(0);
+    const sinMotivo = LISTA.filter((e) => !e.motivo?.trim()).map((e) => e.ruta);
+    expect(sinMotivo, `Entradas sin motivo:\n${sinMotivo.join("\n")}`).toEqual([]);
+  });
+
+  it("cada archivo de la lista existe y es un archivo de Server Actions (\"use server\")", () => {
+    const problemas = LISTA.flatMap(({ ruta }) => {
+      const absoluta = join(RAIZ, ruta);
+      if (!existsSync(absoluta)) return [`${ruta}: no existe`];
+      return analizarFuente(ruta, readFileSync(absoluta, "utf8")).esArchivoDeAcciones ? [] : [`${ruta}: no lleva "use server"`];
+    });
+    expect(problemas, `ACCIONES_CON_CASO_DE_USO (.dependency-cruiser-excepciones.cjs):\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("dependency-cruiser efectivamente ve esos archivos en el grafo (la regla no apunta a una ruta que no matchea nada)", () => {
+    const enGrafo = new Set(modulos.map((m) => m.source));
+    const fuera = LISTA.map((e) => e.ruta).filter((r) => !enGrafo.has(r));
+    expect(fuera).toEqual([]);
   });
 });
