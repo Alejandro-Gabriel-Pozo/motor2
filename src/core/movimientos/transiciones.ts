@@ -176,6 +176,7 @@ export function redondearACantidadDeUnidad(cantidad: number, decimales: number):
 
 /**
  * Port de redondearMoneda_ — 2 decimales fijos, para precios/importes. Vive en src/core/moneda.ts (aritmética decimal exacta: empates
- * alejándose del cero como `NUMERIC` de Postgres, sin -0); se reexporta acá para no tocar a sus importadores.
+ * alejándose del cero como `NUMERIC` de Postgres, sin -0). Desde la Task #41 (C2) todo `src/` la importa directo de `@/core/moneda`; el
+ * reexport queda solo para los tests que la prueban por este camino (test/core/redondear-moneda.test.ts, test/auditoria/precision-medio-centavo.test.ts).
  */
 export { redondearMoneda } from "@/core/moneda";

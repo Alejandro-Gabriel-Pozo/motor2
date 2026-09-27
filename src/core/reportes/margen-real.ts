@@ -1,5 +1,5 @@
 import type { Proceso } from "@prisma/client";
-import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { redondearMoneda } from "@/core/moneda";
 import { claveCostoHistorico, diaUtc, reconstruirCostosDeVenta } from "./costo-historico";
 import type { Db, IndiceRecetas, InfoProductoReporte } from "./comun";
 

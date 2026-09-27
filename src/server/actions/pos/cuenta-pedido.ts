@@ -1,7 +1,8 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
-import { redondearMoneda, tieneStockReal } from "@/core/movimientos/transiciones";
+import { redondearMoneda } from "@/core/moneda";
+import { tieneStockReal } from "@/core/movimientos/transiciones";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";

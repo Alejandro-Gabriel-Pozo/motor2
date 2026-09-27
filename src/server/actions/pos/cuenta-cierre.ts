@@ -1,7 +1,6 @@
 "use server";
 
-import { redondearMoneda } from "@/core/movimientos/transiciones";
-import { importeDeLinea, precioConDescuento } from "@/core/moneda";
+import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { lineasDeVenta, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { registrarVentaEnTx } from "@/core/movimientos/registrar-venta";

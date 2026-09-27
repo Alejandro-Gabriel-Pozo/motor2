@@ -1,5 +1,5 @@
 import type { Proceso } from "@prisma/client";
-import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
 
 // A propósito NO importa `redondearCantidad` de `./comun`: ese módulo importa

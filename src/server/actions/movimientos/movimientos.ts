@@ -11,9 +11,8 @@ import {
   esSignoFijo,
   productoValidoParaProceso,
   redondearACantidadDeUnidad,
-  redondearMoneda,
 } from "@/core/movimientos/transiciones";
-import { importeDeLinea } from "@/core/moneda";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
