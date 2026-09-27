@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { ACCION_POR_PROCESO } from "@/core/movimientos/transiciones";
-import { obtenerConfigProceso } from "@/core/movimientos/ui-config";
+import { ACCION_POR_PROCESO, obtenerConfigProceso } from "@/core/movimientos/public";
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";

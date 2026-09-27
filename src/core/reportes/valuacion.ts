@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
-import { tieneStockReal } from "@/core/movimientos/transiciones";
+import { tieneStockReal } from "@/core/movimientos/public";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 

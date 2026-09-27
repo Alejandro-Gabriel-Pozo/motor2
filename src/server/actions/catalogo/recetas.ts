@@ -3,8 +3,7 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { conReintento } from "@/core/movimientos/reintentar";
-import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/con-reintento";
+import { conReintento, conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import {
   esPermutacionExacta,
   aplicarSecuencia,

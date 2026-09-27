@@ -5,21 +5,25 @@ import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { guardLineaCompra, guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
-import {
-  ACCION_POR_PROCESO,
-  TRANSICIONES,
-  esSignoFijo,
-  productoValidoParaProceso,
-  redondearACantidadDeUnidad,
-} from "@/core/movimientos/transiciones";
+import { ACCION_POR_PROCESO, TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
-import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
+import {
+  obtenerLoteMasProximoAVencer,
+  obtenerSeccionPropia,
+  resolverConsumoPorFamilia,
+  seccionesConStock,
+  validarStockSuficiente,
+  conTransaccionSerializable,
+  calcularPayloadHash,
+  chequearIdempotencia,
+  esClaveIdempotenciaValida,
+  MENSAJE_CONFLICTO_IDEMPOTENCIA,
+  crearCacheProducto,
+  esChoqueDeFacturaUnica,
+  MENSAJE_FACTURA_DUPLICADA,
+} from "@/core/movimientos/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
-import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
-import { crearCacheProducto } from "@/core/movimientos/producto-cache";
-import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/factura-unica";
 import { upsertProveedorPorProducto } from "../catalogo/upsert-proveedor-por-producto";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";

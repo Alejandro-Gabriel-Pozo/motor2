@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@prisma/client";
-import type { AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
+import type { AvisoStockNegativo } from "@/core/movimientos/public-servidor";
 
 /**
  * Toma de pedido en el salón (módulo POS, docs/plan-tomar-pedido-2026-09-25.md). Todas las escrituras corren en una transacción

@@ -35,8 +35,9 @@ function excepcionesDe(regla) {
  * dominio (resto de core/, server/consultas/, server/persistencia/) solo se puede importar esa fachada. Arrancó vacía (A3);
  * la Fase C la va llenando dominio por dominio, a medida que cada uno tiene su `public.ts`:
  *  - C1 (piloto): `catalogo` → core/catalogo/public.ts (puro) + core/catalogo/public-servidor.ts (toca la base).
+ *  - C2: `movimientos` → core/movimientos/public.ts (puro) + core/movimientos/public-servidor.ts (toca la base).
  */
-const DOMINIOS_CON_PUBLIC = ["catalogo"];
+const DOMINIOS_CON_PUBLIC = ["catalogo", "movimientos"];
 
 const reglasSinInternalsDeOtroDominio = DOMINIOS_CON_PUBLIC.map((dominio) => ({
   name: "sin-internals-de-otro-dominio",
@@ -112,14 +113,14 @@ module.exports = {
     {
       name: "accion-migrada-sin-orquestacion",
       comment:
-        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar), la idempotencia I3 ni la auditoría: todo eso pasa por su caso de uso. `import type` sí se permite.",
+        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar), la idempotencia I3 ni la auditoría: todo eso pasa por su caso de uso. `import type` sí se permite. Incluye la fachada core/movimientos/public-servidor.ts (C2), que reexporta reintento, transacción e idempotencia: si no, la regla se esquivaría importándolos por ahí.",
       severity: "error",
       from: { path: ACCIONES_MIGRADAS },
       to: {
         path: [
           "^src/lib/db\\.ts$",
           "^node_modules/(@prisma/client|\\.prisma/client)/",
-          "^src/core/movimientos/(con-reintento|reintentar|idempotencia)\\.ts$",
+          "^src/core/movimientos/(con-reintento|reintentar|idempotencia|public-servidor)\\.ts$",
           "^src/core/permisos/auditoria\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],

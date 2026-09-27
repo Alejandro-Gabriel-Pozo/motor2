@@ -2,10 +2,9 @@
 
 import type { Prisma } from "@prisma/client";
 import { redondearMoneda } from "@/core/moneda";
-import { tieneStockReal } from "@/core/movimientos/transiciones";
-import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
+import { tieneStockReal } from "@/core/movimientos/public";
+import { resolverPrecioVenta, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { cargarPromoCartaParaAgregar } from "@/core/pos/promo-combo-consulta";
