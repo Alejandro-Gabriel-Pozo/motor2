@@ -1,4 +1,4 @@
-import { NAV_MOVIMIENTOS } from "@/core/movimientos/ui-config";
+import { NAV_MOVIMIENTOS } from "@/core/movimientos/public";
 import type { AccionClave } from "@/core/permisos/acciones";
 
 export interface ItemNav {

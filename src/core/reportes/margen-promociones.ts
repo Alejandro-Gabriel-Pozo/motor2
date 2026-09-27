@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { redondearMoneda } from "@/core/movimientos/transiciones";
+import { redondearMoneda } from "@/core/moneda";
 import { construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
 import { calcularMargenRealDelPeriodo, type ItemParaMargenReal } from "./margen-real";
 

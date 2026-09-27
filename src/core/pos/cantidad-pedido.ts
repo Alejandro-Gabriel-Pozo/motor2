@@ -1,5 +1,5 @@
 import { esNumeroFinito } from "@/core/numero";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
+import { redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/public";
 
 /**

@@ -6,7 +6,7 @@ import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
-import type { ProcesoUiConfig } from "@/core/movimientos/ui-config";
+import type { ProcesoUiConfig } from "@/core/movimientos/public";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";

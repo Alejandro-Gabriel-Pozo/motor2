@@ -3,7 +3,7 @@ import { aceptar, enMinuscula, rechazar, type ResultadoDato } from "./resultado"
 
 /**
  * Importes de ENTRADA (precio de compra, precio local…): lo que se teclea o llega a una Server Action. "Redondeo uniforme" para la
- * entrada significa RECHAZAR más de 2 decimales, no redondear en silencio; `redondearMoneda` (src/core/movimientos/transiciones.ts)
+ * entrada significa RECHAZAR más de 2 decimales, no redondear en silencio; `redondearMoneda` (src/core/moneda.ts)
  * sigue siendo para los montos CALCULADOS.
  */
 export const DECIMALES_IMPORTE = 2;
