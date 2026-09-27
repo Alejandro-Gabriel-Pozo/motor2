@@ -68,7 +68,9 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 - **K1** (informe de `knip`: 112 hallazgos, 34 candidatos a "código muerto real", 5 falsos positivos ya corregidos en `knip.jsonc`, 73 reservados con motivo) — PR #36. **El dueño todavía no revisó/aprobó la lista de 34** — ver K2 abajo.
 - **Fase D COMPLETA, 9 de 9 páginas migradas** a `server/consultas/` (D1 productos, D2 proveedores, D3 recetas-listado, D5 roles/usuarios, D7 rendimiento-por-sucursal, D8 mesas, D6 productos-opción, D4 editor de recetas) — PRs #34, #42, #41, #44, #45, #39, #47, y el merge directo a `main` de D4 (2026-09-27, sesión continuada en máquina local: worktree `feat/arq-d4-consultas-recetas-editor`). `PENDIENTES_DE_MIGRAR` en `.dependency-cruiser-excepciones.cjs` queda vacía.
 - **C1** (`core/catalogo/public.ts` + `public-servidor.ts`, primer dominio con fronteras públicas) — PR #43.
-- **C2** (`core/movimientos/public.ts` + `public-servidor.ts`) — mergeado a `main` (2026-09-27, misma sesión). `"movimientos"` ya está en `DOMINIOS_CON_PUBLIC`. **C3 y D9 quedan desbloqueadas.**
+- **C2** (`core/movimientos/public.ts` + `public-servidor.ts`) — mergeado a `main` (2026-09-27, misma sesión). `"movimientos"` ya está en `DOMINIOS_CON_PUBLIC`.
+- **C3** (`core/reportes/public.ts` + `public-servidor.ts`) — mergeado a `main` (2026-09-27, misma sesión). `"reportes"` ya está en `DOMINIOS_CON_PUBLIC`. Ver detalle y hallazgo real (no anticipado por esta descripción) más abajo.
+- **M9** (caso de uso `registrarVenta` de mostrador) — resultó YA HECHA como efecto colateral de M8 (verificado 2026-09-27). Nada pendiente.
 - **Fase M, piloto + M8** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio — PR #40; M8: caso de uso `anularVenta` — PR #48, mergeado ya antes de este checkpoint). De paso el piloto corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada. **M9 queda desbloqueada.**
 
 **Nota de continuidad (2026-09-27, tarde):** D4, D6, C2 y M8 se lanzaron como 4 agentes en paralelo en una sesión cloud; la sesión se cortó antes de que D6/C2/M8 terminaran de reportarse (D6 y M8 en realidad ya habían mergeado; C2 había pusheado su rama sin mergear; D4 no llegó a pushear nada — se rehízo desde cero). Al continuar en una máquina local se verificó cada uno contra el estado real de `main` (nunca contra la descripción de esta tarea) antes de tocar nada — ver "Lección aprendida" de `plan-con-verificacion-e2e/SKILL.md`.
@@ -90,14 +92,22 @@ funciones agregadas a `server/consultas/catalogo/recetas.ts` y cómo el
 editor pasa a usarlas) quedó documentado en el commit `refactor(arq-d4): ...`
 y en el docstring del propio archivo, no hace falta repetirlo acá.
 
-#### C3 — `core/reportes/public.ts` / `public-servidor.ts`
-Dominio con 3 aristas entrantes. Crear `core/reportes/public-servidor.ts`
-(la fachada `periodo`, de B1, y `costos` — el contrato con `registrar-venta`
-de C2) y `core/reportes/public.ts` (los módulos `*-vistas` y
-`rango-por-defecto`, puros). Actualizar `carta/reporte-secciones` y
-`movimientos/registrar-venta` para pasar por estos archivos. Agregar
-`"reportes"` a `DOMINIOS_CON_PUBLIC`. Bloqueada por: nada (C2 ya mergeada).
-Cierre: conteos EXACTOS + demostración rojo→verde. Tamaño chica.
+#### C3 — YA MERGEADA (`core/reportes/public.ts` / `public-servidor.ts`)
+Verificado contra el código real (no contra esta descripción, que estaba
+incompleta): las únicas 3 aristas restringidas eran `carta/reporte-secciones`
+y `movimientos/registrar-venta` (comun+periodo+costos → `public-servidor.ts`)
+y, algo que esta descripción NO mencionaba, `server/consultas/reportes/
+rendimiento-por-sucursal.ts`, que importaba `core/reportes/rendimiento-por-sucursal.ts`
+directo → `public.ts` (puro). Los módulos `*-vistas` y `rango-por-defecto`
+quedaron SIN exponer: hoy nada fuera del dominio (por la regla real, que
+exime `app/`) los consume, y la convención de C1 es "solo lo que hoy se usa
+desde afuera" — no agregar superficie pública sin un consumidor real.
+**Hallazgo al correr el gate:** `rendimiento-por-sucursal.ts` se creía puro
+por importar `Db` de `./comun` con `import type`, pero dependency-cruiser
+cuenta el edge a nivel de ARCHIVO (no de símbolo) — `comun.ts` sí toca
+`@/lib/db`, así que ese `import type` alcanzaba la base transitivamente y
+`publico-puro` lo marcaba en rojo apenas `reportes` tuvo fachada. Se corrigió
+declarando `Db` localmente desde `@prisma/client`.
 **Nota, no crear tarea aparte:** `public.ts` de `pos` y `stock` quedan
 diferidos (C4/C5) porque casi todos sus consumidores están en `app/`, exento
 de la regla por ahora — dejarlo solo anotado en E1.
@@ -222,15 +232,15 @@ SIN `"use server"`), Server Action como adaptador fino. Convenciones
 completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
 
 - **M8 — YA MERGEADA** (PR #48): caso de uso `anularVenta` mergeado a `main`.
-- **M9** — caso de uso `registrarVenta` de mostrador (**cierra el "tramo 1"**
-  de la Fase M): `ComandoRegistrarVenta` SIN `precioUnitario` por
-  construcción (evita que el cliente mande un precio arbitrario). Caso de
-  uso con I3, transacción, llamada a `registrarVentaEnTx` — **el núcleo de
-  `registrarVentaEnTx` NO se toca** (~400 líneas críticas; partirlo queda
-  diferido: C2, que definía `public-servidor` de movimientos, ya está
-  mergeada). `venta.ts` entra a `ACCIONES_CON_CASO_DE_USO`. Bloqueada por:
-  nada (M8 ya mergeada). Cierre: tests `venta*` y `movimientos-venta-*` en
-  verde. Tamaño mediana.
+- **M9 — YA HECHA, sin PR propio** (verificado 2026-09-27 contra el código
+  real, no contra esta descripción — cierra el "tramo 1" de la Fase M): M8
+  metió `venta.ts` en `ACCIONES_CON_CASO_DE_USO` por `anularVenta`, y esa
+  regla vale para TODO el archivo — como efecto colateral, M8 ya movió el
+  bloque transaccional de `registrarVenta` (I3 + `registrarVentaEnTx`) a
+  `casos-de-uso/registrar-venta.ts`, con `test/casos-de-uso/registrar-venta.test.ts`
+  cubriéndolo. `DatosVentaInput` (`core/features/ventas/venta.schema.ts`) ya
+  nace sin `precioUnitario` (se mapea a mano en el caso de uso). Nada
+  pendiente acá.
 - **M10** — transacción en cambios de precio (`actualizarProducto`,
   `setPrecioLocalProducto`, sincronización de precio): HOY auditan pero SIN
   transacción — el `update` y la auditoría no son atómicos (hueco real, no
