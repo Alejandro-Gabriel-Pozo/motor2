@@ -79,3 +79,12 @@ export async function chequearIdempotencia(
   }
   return { estado: "conflicto" };
 }
+
+/**
+ * §3/§7: guarda el mensaje de resultado YA FORMATEADO en la operación que lleva la clave, para que un reenvío exacto lo devuelva tal cual
+ * (`chequearIdempotencia` → "duplicado"). Se llama DENTRO de la misma transacción, al final, solo cuando hay clave. Primer uso: el caso de
+ * uso `anularCompra` (Task #41, Fase M); las demás acciones I3 siguen escribiendo `resultadoMensaje` en línea hasta migrar.
+ */
+export async function registrarResultadoIdempotente(tx: Prisma.TransactionClient, operacionId: string, mensaje: string): Promise<void> {
+  await tx.operacion.update({ where: { id: operacionId }, data: { resultadoMensaje: mensaje } });
+}
