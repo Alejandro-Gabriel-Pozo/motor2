@@ -23,6 +23,9 @@ function rutaExacta(ruta) {
   return `^${ruta.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
 }
 
+/** Las Server Actions ya migradas a caso de uso (`accion-migrada-sin-orquestacion`), como UNA expresión regular (ver el comentario de ARCHIVOS_EN_CICLOS_CONOCIDOS). */
+const ACCIONES_MIGRADAS = (EXCEPCIONES.ACCIONES_CON_CASO_DE_USO ?? []).map((e) => rutaExacta(e.ruta)).join("|") || "^$^";
+
 function excepcionesDe(regla) {
   return (EXCEPCIONES[regla] ?? []).map((e) => rutaExacta(e.ruta));
 }
@@ -101,6 +104,31 @@ module.exports = {
         "Solo un caso de uso (src/server/actions/<dominio>/casos-de-uso/) —y la propia persistencia— importa server/persistencia/: ni una Server Action, ni la UI, ni core/, ni server/consultas/ (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md).",
       severity: "error",
       from: { pathNot: [CASOS_DE_USO, "^src/server/persistencia/"] },
+      to: { path: "^src/server/persistencia/" },
+    },
+    // Dos entradas con el mismo nombre (como las dos de `persistencia-capa`): lo que se prohíbe en runtime (`import type` sí) y lo
+    // que se prohíbe del todo.
+    {
+      name: "accion-migrada-sin-orquestacion",
+      comment:
+        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar), la idempotencia I3 ni la auditoría: todo eso pasa por su caso de uso. `import type` sí se permite.",
+      severity: "error",
+      from: { path: ACCIONES_MIGRADAS },
+      to: {
+        path: [
+          "^src/lib/db\\.ts$",
+          "^node_modules/(@prisma/client|\\.prisma/client)/",
+          "^src/core/movimientos/(con-reintento|reintentar|idempotencia)\\.ts$",
+          "^src/core/permisos/auditoria\\.ts$",
+        ],
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
+      name: "accion-migrada-sin-orquestacion",
+      comment: "Una Server Action ya migrada a caso de uso no importa server/persistencia/ (ni siquiera sus tipos): habla con su caso de uso en comandos y resultados.",
+      severity: "error",
+      from: { path: ACCIONES_MIGRADAS },
       to: { path: "^src/server/persistencia/" },
     },
     ...reglasSinInternalsDeOtroDominio,

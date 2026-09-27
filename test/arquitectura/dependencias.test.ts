@@ -38,6 +38,7 @@ interface Excepciones {
   "ui-sin-prisma": ExcepcionDeArchivo[];
   "sin-ciclos": ExcepcionDeCiclo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
+  ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
 }
 interface ReglaConfig {
   name: string;
@@ -228,5 +229,34 @@ describe("persistencia-solo-desde-casos-de-uso (Fase M): los casos de uso no son
     expect(abreConServerOnly('// import "server-only";\nimport { x } from "y";')).toBe(false);
     expect(abreConServerOnly('import { x } from "y";\nimport "server-only";')).toBe(false);
     expect(abreConServerOnly('"use server";\nimport "server-only";')).toBe(false);
+  });
+});
+
+describe("accion-migrada-sin-orquestacion (Fase M): ACCIONES_CON_CASO_DE_USO", () => {
+  const LISTA = EXCEPCIONES.ACCIONES_CON_CASO_DE_USO;
+
+  it("la regla está en la config (sus dos entradas: runtime y persistencia)", () => {
+    expect(CONFIG.forbidden.filter((r) => r.name === "accion-migrada-sin-orquestacion")).toHaveLength(2);
+  });
+
+  it("la lista no está vacía y cada entrada lleva motivo", () => {
+    expect(LISTA.length).toBeGreaterThan(0);
+    const sinMotivo = LISTA.filter((e) => !e.motivo?.trim()).map((e) => e.ruta);
+    expect(sinMotivo, `Entradas sin motivo:\n${sinMotivo.join("\n")}`).toEqual([]);
+  });
+
+  it("cada archivo de la lista existe y es un archivo de Server Actions (\"use server\")", () => {
+    const problemas = LISTA.flatMap(({ ruta }) => {
+      const absoluta = join(RAIZ, ruta);
+      if (!existsSync(absoluta)) return [`${ruta}: no existe`];
+      return analizarFuente(ruta, readFileSync(absoluta, "utf8")).esArchivoDeAcciones ? [] : [`${ruta}: no lleva "use server"`];
+    });
+    expect(problemas, `ACCIONES_CON_CASO_DE_USO (.dependency-cruiser-excepciones.cjs):\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("dependency-cruiser efectivamente ve esos archivos en el grafo (la regla no apunta a una ruta que no matchea nada)", () => {
+    const enGrafo = new Set(modulos.map((m) => m.source));
+    const fuera = LISTA.map((e) => e.ruta).filter((r) => !enGrafo.has(r));
+    expect(fuera).toEqual([]);
   });
 });
