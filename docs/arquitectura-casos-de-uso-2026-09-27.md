@@ -156,6 +156,22 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   `aResultadoAccion`: su contrato (`ResultadoBoletaCorregida`) le devuelve a la pantalla además `numero` y `ejemplar` (para imprimir el
   ejemplar confirmado), así que los copia de `datos` — los ids (`ejemplarId`, `corrigeAId`) NO se serializan. Con `cerrarCuenta` (M12a) y
   `emitirBoletaCorregida` migradas, `cuenta-cierre.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**.
+- **M12c — `anularItemEnviado`** (`src/server/actions/pos/cuenta-anulacion.ts`, primera de dos sub-tareas sobre ese archivo): comando +
+  guard en `core/features/cuentas/`, pero en archivos APARTE de los de M12a/M12b (`cuenta-anulacion.schema.ts` con
+  `ComandoAnularItemEnviado`, `CodigoAnularItemEnviado`, `DatosAnularItemEnviado`; `cuenta-anulacion.guard.ts` con
+  `guardComandoAnularItemEnviado`): mismo corte que ya tienen las Server Actions (`cuenta-cierre.ts` vs `cuenta-anulacion.ts`) — acá el
+  sujeto es un ítem o una promo de la cuenta, no la cuenta —, y ahí se suma `anularPromoEnviada` en M12d. El guard solo valida el
+  `cuentaItemId` (no-string → «No se encontró ese ítem en esta sucursal.», igual que antes); `cantidad`, `motivo` y `restanteVisto` viajan
+  crudos y el caso de uso los valida en el MISMO orden de siempre: guardas de estado (ya es anulación → cuenta cerrada → sin enviar →
+  componente de promo) → motivo → guarda optimista (`restanteVisto` contra `restanteDe`) → cantidad (`validarCantidadPedido`, con la
+  unidad y el paso de venta del producto) → no más de lo que queda. Persistencia en `server/persistencia/pos/`
+  (`cargar-item-para-anular.ts`: el ítem con su producto, la mesa, el estado de la cuenta, sus anulaciones y su promo;
+  `escribir-espejo-de-item.ts`: la fila ESPEJO con la cantidad en negativo, mismo producto/precio/envío, `anulaAItemId` al original —
+  el original nunca se edita ni se borra); caso de uso `pos/casos-de-uso/anular-item-enviado.ts` (transacción serializable, auditoría
+  `CuentaItem`/`cantidadVigente`, `datos` con el id del espejo y el restante antes/después, que la Server Action no serializa). Sin I3
+  (nunca la tuvo: el doble clic lo frena la guarda optimista). Permiso `pos_anular_item` sin cambios. **Migración PARCIAL a propósito:**
+  `cuenta-anulacion.ts` NO entra todavía en `ACCIONES_CON_CASO_DE_USO` — `anularPromoEnviada` (M12d) sigue con Prisma, reintento y
+  auditoría en línea, y la regla vale para el archivo entero. Se suma cuando termine M12d.
 
 ## Cómo se migra la próxima acción
 
