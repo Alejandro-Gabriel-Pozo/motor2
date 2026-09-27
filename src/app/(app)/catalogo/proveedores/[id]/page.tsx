@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer, accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { prisma } from "@/lib/db";
+import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -37,18 +37,11 @@ export default async function FichaProveedorPage({
 
   const { id } = await params;
   const { guardado } = await searchParams;
-  const p = await prisma.proveedor.findUnique({
-    where: { id },
-    include: { productosConsignados: true },
-  });
+  const p = await obtenerFichaProveedor(id);
   if (!p) notFound();
 
   const [productosQueLeCompran, puedeVerPrecios] = await Promise.all([
-    prisma.proveedorPorProducto.findMany({
-      where: { proveedorId: id },
-      include: { producto: true, unidadCompra: true },
-      orderBy: { producto: { nombre: "asc" } },
-    }),
+    listarProductosQueLeCompran(id),
     accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, ["comparar_precios"]),
   ]);
 
