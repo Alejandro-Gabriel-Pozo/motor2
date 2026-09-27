@@ -1,0 +1,76 @@
+// knip (Task #41, Fase K1): informe de código/dependencias sin uso. Se corre con `npm run analizar:muerto`
+// (`knip --no-exit-code`): por ahora es INFORMATIVO, no bloquea nada. El informe clasificado de cada hallazgo vive en
+// docs/informe-knip-2026-09-27.md; la limpieza de lo "MUERTO REAL" es la Task K2.
+//
+// Regla de esta config: toda exclusión (ignore, ignoreDependencies, ignoreExportsUsedInFile, entry agregada a mano) lleva
+// su motivo al lado. Lo que es muerto de verdad NO se ignora acá: tiene que seguir apareciendo en el informe hasta que
+// K2 lo borre.
+{
+  "$schema": "./node_modules/knip/schema-jsonc.json",
+
+  // Entradas que knip NO descubre solo. Las que sí descubre por sus plugins NO se repiten acá (si se listan, knip avisa
+  // "Remove redundant entry pattern"): se verificó con la primera corrida que ya detecta
+  //   - src/proxy.ts, src/instrumentation.ts y src/instrumentation-client.ts (plugin de Next.js: middleware de Next 16 +
+  //     hooks de instrumentación de Sentry),
+  //   - prisma/seed.ts (plugin de Prisma, vía `prisma.seed` de package.json y `npm run db:seed`),
+  //   - vitest.config.ts y sus tests (plugin de Vitest),
+  //   - playwright.config.ts y test/e2e/**/*.spec.ts (plugin de Playwright).
+  "entry": [
+    // Scripts que se corren a mano (con `tsx` o como "test" de una config de Vitest propia): nadie los importa.
+    "scripts/*.ts",
+
+    // Las 4 configs de Vitest que NO son la principal (seed de demo, seed de 6 meses, carta de "La Cuadra", invariantes
+    // de la demo) y la config de Playwright de la demo. Se declaran como entradas a secas y NO en la sección `vitest` /
+    // `playwright` de abajo a propósito: para leerlas como config, knip las EJECUTA, y todas corren al cargarse las
+    // guardas de destino de scripts/demo-seed/guardas-destino.ts (tiran si falta MOTOR2_SEED_DATABASE_URL, y las de seed
+    // si falta MOTOR2_SEED_CONFIRMAR). Poner esas variables en el script de knip para "calmar" la guarda sería justo el
+    // tipo de atajo que esas guardas existen para impedir.
+    "vitest.demo-invariantes.config.ts",
+    "vitest.seed-6-meses.config.ts",
+    "vitest.seed-carta-la-cuadra.config.ts",
+    "vitest.seed.config.ts",
+    "playwright.demo.config.ts",
+
+    // `globalSetup` de playwright.demo.config.ts: como esa config no se ejecuta (ver arriba), knip no lee la referencia
+    // (es un string con la ruta, no un import).
+    "test/e2e-demo/global-setup-demo.ts",
+
+    // Módulos que reemplazan a `server-only` y `next/headers` en TODAS las configs de Vitest vía `resolve.alias`
+    // (`path.resolve(__dirname, "test/setup/...")`): son strings, no imports, así que knip no ve quién los usa y marcaba
+    // el archivo `server-only-stub.ts` como sin uso y los exports `cookies`/`headers` de `next-headers-stub.ts` como sin
+    // uso (en realidad los consume todo el código de src/ que importa `next/headers` cuando corre bajo Vitest).
+    "test/setup/server-only-stub.ts",
+    "test/setup/next-headers-stub.ts"
+  ],
+
+  // Archivos que se analizan: src, test, scripts y prisma. Se incluyen `.css` (el `@import "tailwindcss"` de
+  // globals.css es lo que usa la dependencia `tailwindcss`) y `.prisma` (el schema), que knip sabe leer: sin ellos
+  // avisa "Compiled extension excluded by project (imports not followed)".
+  "project": [
+    "src/**/*.{ts,tsx,css}",
+    "test/**/*.{ts,tsx}",
+    "scripts/**/*.ts",
+    "prisma/**/*.{ts,prisma}"
+  ],
+
+  "ignoreDependencies": [
+    // RESERVADO — driver de Postgres de `@prisma/adapter-pg` (src/lib/db.ts elige PrismaPg para cualquier host que no
+    // sea Neon: local, docker compose, E2E). Nadie hace `import "pg"`: lo carga el adapter. Se declaró a propósito junto
+    // con el adapter (docs/plan-migracion.md, "Bugs de infraestructura...") para fijar la versión del driver que corre en
+    // producción en vez de heredarla transitivamente.
+    "pg",
+    // RESERVADO — tipos del driver anterior, agregados en el mismo cambio y por el mismo motivo que `pg`.
+    "@types/pg"
+  ],
+
+  // RESERVADO — tipos e interfaces exportados que solo se usan dentro de su propio archivo. Casi todos describen la forma
+  // de lo que devuelve o recibe una función exportada (filas de reportes, entradas de armar-menu, etc.): son parte de la
+  // firma pública del módulo y un consumidor puede necesitar nombrarlos. Quitarles el `export` no borra nada y solo
+  // obliga a re-exportarlos el día que alguien los necesite. Los que no se usan NI en su archivo siguen apareciendo.
+  // Los VALORES (funciones/constantes) exportados que solo se usan en su archivo NO se ignoran: son "export sobrante"
+  // de verdad y quedan en el informe.
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  }
+}
