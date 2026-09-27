@@ -17,10 +17,19 @@ import {
 } from "@/core/movimientos/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
+import {
+  guardComandoAprobarYEnviarTraspaso,
+  guardComandoCancelarSolicitudTraspaso,
+  guardComandoRechazarSolicitudTraspaso,
+} from "@/core/features/traspasos/traspaso-comandos.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
+import { aprobarYEnviarTraspasoCasoDeUso } from "./casos-de-uso/aprobar-y-enviar-traspaso";
+import { cancelarSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/cancelar-solicitud-de-traspaso";
+import { rechazarSolicitudDeTraspasoCasoDeUso } from "./casos-de-uso/rechazar-solicitud-de-traspaso";
 
 /**
  * ===================================================================
@@ -56,6 +65,11 @@ import { requerirVerEnSucursal } from "../con-sesion";
  * quien llama pasa las sucursales que corresponda chequear en ese punto del
  * ciclo (origen+destino al crear, la que corresponda al re-chequear en cada
  * paso siguiente).
+ *
+ * La misma regla, con los mismos textos, vive también en
+ * `casos-de-uso/producto-transferible.ts` para los casos de uso ya migrados
+ * (Task #41, M11a); esta copia queda solo para las Server Actions todavía
+ * sin migrar (M11b/M11c) y se borra con la última.
  */
 async function obtenerProductoTransferible(
   productoId: string,
@@ -84,7 +98,7 @@ async function escribirMovimientoTraspaso(
   seccionId: string,
   cantidadFirmada: number,
   detalle: string,
-  /** I3 — solo lo mandan aceptarTransferencia/confirmarReingresoTransferencia (las 2 de las 5 llamadas a este helper que están en el alcance de la política, docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §11.5); aprobarYEnviarTransferencia no manda nada acá y queda sin cambios. */
+  /** I3 — solo lo mandan aceptarTransferencia/confirmarReingresoTransferencia (las 2 llamadas a este helper que están en el alcance de la política, docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §11.5); crearEnvioDirectoTransferencia no manda nada. La SALIDA de aprobarYEnviarTransferencia ya no pasa por acá: la escribe `server/persistencia/traspasos/escribir-aprobacion-de-traspaso.ts` (Task #41, M11a), también sin I3. */
   idempotencia?: { claveIdempotencia: string; payloadHash: string }
 ) {
   const operacion = await tx.operacion.create({
@@ -252,48 +266,18 @@ async function buscarTraspaso(id: string, tx: Prisma.TransactionClient | typeof 
   return tx.traspasoSucursal.findUnique({ where: { id }, include: { producto: { include: { unidadStock: true } } } });
 }
 
-/** Origen aprueba una SOLICITADA: valida stock, resta en SU Kardex local, pasa a ENVIADA. */
+/**
+ * Origen aprueba una SOLICITADA: valida stock, resta en SU Kardex local, pasa a ENVIADA.
+ *
+ * Desde la Task #41 (Fase M11a, docs/arquitectura-casos-de-uso-2026-09-27.md) es un adaptador fino: permiso (`conPermiso`) → formato
+ * (`guardComandoAprobarYEnviarTraspaso`) → caso de uso (`casos-de-uso/aprobar-y-enviar-traspaso.ts`: sección propia, transacción,
+ * guard de transición, re-chequeo de disponibilidad y stock, escritura) → `aResultadoAccion`.
+ */
 export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const idTraspaso = texto(id);
-    if (!idTraspaso) return error("Falta el traspaso.");
-
-    const seccionOrigen = await obtenerSeccionPropia(seccionOrigenId, ctx.sucursalId);
-    if (!seccionOrigen) return error("Elegí de qué sección propia sale.");
-
-    return conTransaccionSerializable(async (tx) => {
-      const traspaso = await buscarTraspaso(idTraspaso, tx);
-      if (!traspaso) return error("No se encontró ese traspaso.");
-      const transicion = guardTransicionTraspaso(traspaso, "aprobar", ctx.sucursalId);
-      if (!transicion.ok) return error(transicion.mensaje);
-
-      const destino = await tx.sucursal.findUniqueOrThrow({ where: { id: traspaso.destinoSucursalId } });
-      // El stock sale de acá recién ahora — re-chequea disponibilidad en origen Y destino (pudo haber cambiado desde la solicitud).
-      const resProducto = await obtenerProductoTransferible(
-        traspaso.productoId,
-        [{ sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre }, { sucursalId: destino.id, sucursalNombre: destino.nombre }],
-        tx
-      );
-      if (!resProducto.ok) return error(resProducto.mensaje);
-
-      const cantidad = Number(traspaso.cantidad);
-      const disponible = await calcularSaldoTotal(traspaso.productoId, seccionOrigen.id, tx);
-      if (disponible < cantidad) {
-        return error(`Stock insuficiente de "${traspaso.producto.nombre}" en "${seccionOrigen.nombre}". Actual: ${disponible}, requerido: ${cantidad}.`);
-      }
-
-      await escribirMovimientoTraspaso(
-        tx, ctx, traspaso.id, "TRANSFERENCIA_SALIDA_SUCURSAL", traspaso.productoId, seccionOrigen.id, -cantidad,
-        `Transferencia a sucursal "${destino.nombre}".`
-      );
-
-      await tx.traspasoSucursal.update({
-        where: { id: traspaso.id },
-        data: { seccionOrigenId: seccionOrigen.id, estado: transicion.estadoNuevo, fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId },
-      });
-
-      return ok(`Aprobado y enviado a "${destino.nombre}".`);
-    });
+    const comando = guardComandoAprobarYEnviarTraspaso({ id, seccionOrigenId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await aprobarYEnviarTraspasoCasoDeUso(ctx, comando.valor));
   });
 }
 
@@ -311,25 +295,16 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
  * clic, dos pestañas) respondían las DOS «cancelada»; peor, una cancelación
  * que leía SOLICITADA justo antes de que Origen aprobara la pisaba después
  * (docs/plan-mutaciones-controladas-2026-09-25.md, Paso 4).
+ *
+ * Desde la Task #41 (Fase M11a) es un adaptador fino: permiso → `guardComandoCancelarSolicitudTraspaso` → caso de uso
+ * (`casos-de-uso/cancelar-solicitud-de-traspaso.ts`, donde viven la transacción, el guard de transición y la escritura) →
+ * `aResultadoAccion`.
  */
 export async function cancelarSolicitudTransferencia(id: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const idTraspaso = texto(id);
-    if (!idTraspaso) return error("Falta el traspaso.");
-
-    return conTransaccionSerializable(async (tx) => {
-      const traspaso = await buscarTraspaso(idTraspaso, tx);
-      if (!traspaso) return error("No se encontró ese traspaso.");
-      const transicion = guardTransicionTraspaso(traspaso, "cancelar_solicitud", ctx.sucursalId);
-      if (!transicion.ok) return error(transicion.mensaje);
-
-      await tx.traspasoSucursal.update({
-        where: { id: idTraspaso },
-        data: { estado: transicion.estadoNuevo, fechaCierre: new Date(), cerradoPorId: ctx.usuarioId },
-      });
-
-      return ok("Solicitud cancelada.");
-    });
+    const comando = guardComandoCancelarSolicitudTraspaso({ id });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await cancelarSolicitudDeTraspasoCasoDeUso(ctx, comando.valor));
   });
 }
 
@@ -344,25 +319,15 @@ export async function cancelarSolicitudTransferencia(id: string): Promise<Result
  * stock perdido en tránsito. Con SERIALIZABLE, el que pierde la carrera
  * reintenta, ve el estado ya cambiado y falla con el error de estado
  * (test/auditoria/traspasos-en-transito.test.ts, «stock en tránsito»).
+ *
+ * Desde la Task #41 (Fase M11a) es un adaptador fino: permiso → `guardComandoRechazarSolicitudTraspaso` (normaliza también el
+ * motivo) → caso de uso (`casos-de-uso/rechazar-solicitud-de-traspaso.ts`) → `aResultadoAccion`.
  */
 export async function rechazarSolicitudTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
   return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
-    const idTraspaso = texto(id);
-    if (!idTraspaso) return error("Falta el traspaso.");
-
-    return conTransaccionSerializable(async (tx) => {
-      const traspaso = await buscarTraspaso(idTraspaso, tx);
-      if (!traspaso) return error("No se encontró ese traspaso.");
-      const transicion = guardTransicionTraspaso(traspaso, "rechazar_solicitud", ctx.sucursalId);
-      if (!transicion.ok) return error(transicion.mensaje);
-
-      await tx.traspasoSucursal.update({
-        where: { id: idTraspaso },
-        data: { estado: transicion.estadoNuevo, fechaDecisionOrigen: new Date(), decididoPorOrigenId: ctx.usuarioId, motivoRechazoOrigen: texto(motivo) || null },
-      });
-
-      return ok("Solicitud rechazada.");
-    });
+    const comando = guardComandoRechazarSolicitudTraspaso({ id, motivo });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await rechazarSolicitudDeTraspasoCasoDeUso(ctx, comando.valor));
   });
 }
 

@@ -111,6 +111,17 @@ Pantalla ─► Server Action ("use server", adaptador fino)
 - **Efecto colateral en `registrarVenta`** (mismo archivo): la regla `accion-migrada-sin-orquestacion` se aplica al archivo entero, así que
   su bloque transaccional (I3 + `registrarVentaEnTx`) pasó TAL CUAL a `casos-de-uso/registrar-venta.ts`. Sus validaciones de entrada
   siguen en la Server Action; pasarlas a un guard de comando queda para la migración propia de `registrarVenta`.
+- **M11a — `aprobarYEnviarTransferencia`, `cancelarSolicitudTransferencia`, `rechazarSolicitudTransferencia`**
+  (`src/server/actions/traspasos/traspasos.ts`): guards de comando en `core/features/traspasos/traspaso-comandos.guard.ts` (el guard de
+  TRANSICIÓN, `traspaso.guard.ts`, no se tocó: lo llama el caso de uso dentro de la transacción), comandos y resultados en
+  `traspaso.schema.ts`; persistencia en `server/persistencia/traspasos/` (`cargar-traspaso.ts`, `escribir-aprobacion-de-traspaso.ts`,
+  `escribir-cierre-de-solicitud.ts`); casos de uso en `server/actions/traspasos/casos-de-uso/` (`aprobar-y-enviar-traspaso.ts`,
+  `cancelar-solicitud-de-traspaso.ts`, `rechazar-solicitud-de-traspaso.ts`, más el paso compartido `producto-transferible.ts`). Sin I3
+  (ninguna de las tres la tenía). Un `seccionOrigenId` que no es string da «Elegí de qué sección propia sale.» (antes: error crudo de
+  Prisma). **Migración PARCIAL a propósito:** `traspasos.ts` NO entra todavía en `ACCIONES_CON_CASO_DE_USO` — sigue teniendo
+  mutaciones sin migrar (M11b: aceptar/rechazar envío/reingreso; M11c: crear solicitud/envío directo) que tocan Prisma directo, y la
+  regla vale para el archivo entero. Se suma cuando termine M11c; hasta entonces, `obtenerProductoTransferible`, `buscarTraspaso` y
+  `escribirMovimientoTraspaso` siguen en el archivo para esas acciones.
 - **M12a — `cerrarCuenta`** (`src/server/actions/pos/cuenta-cierre.ts`): comando + guard en `core/features/cuentas/` (`cuenta.schema.ts`,
   `cuenta.guard.ts`: un `cuentaId` que no es string da «No se encontró esa cuenta en esta sucursal.», igual que antes); persistencia en
   `server/persistencia/pos/` (`cargar-cuenta-para-cerrar.ts`: la cuenta, el último número de boleta de la sucursal y la Operacion del
