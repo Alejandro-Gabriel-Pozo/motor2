@@ -13,7 +13,7 @@ const NUMERO_MESA_MAXIMO = 9999;
 
 /**
  * Alta de una mesa del salón en la sucursal activa (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md, paso 3). Sin baja ni
- * renumeración. Abrir/cerrar cuentas vive en src/server/actions/pos/cuenta.ts («tomar pedido»); editar el límite de mesas abiertas
+ * renumeración. Abrir/cerrar cuentas vive en src/server/actions/pos/cuenta-*.ts («tomar pedido»); editar el límite de mesas abiertas
  * de la sucursal, más abajo en este mismo archivo (`actualizarMaxMesasAbiertas`, mismo permiso `pos_mesas`).
  * Sin auditoría administrativa (no es un precio ni un permiso).
  *

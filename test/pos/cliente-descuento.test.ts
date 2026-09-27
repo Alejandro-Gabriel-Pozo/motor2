@@ -4,7 +4,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
-import { asignarClienteACuenta, cerrarCuenta } from "../../src/server/actions/pos/cuenta";
+import { asignarClienteACuenta } from "../../src/server/actions/pos/cuenta-apertura";
+import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
 import { obtenerBoletasRecientes } from "../../src/core/pos/boleta";
 import { altaCliente, actualizarActivoCliente } from "../../src/server/actions/clientes/cliente";

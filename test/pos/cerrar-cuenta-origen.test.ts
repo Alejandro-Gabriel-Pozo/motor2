@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
-import { cerrarCuenta } from "../../src/server/actions/pos/cuenta";
+import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarVentaEnTx, type OrigenVenta } from "../../src/core/movimientos/registrar-venta";

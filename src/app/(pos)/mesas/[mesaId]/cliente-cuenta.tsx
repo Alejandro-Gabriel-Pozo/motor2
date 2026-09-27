@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { asignarClienteACuenta } from "@/server/actions/pos/cuenta";
+import { asignarClienteACuenta } from "@/server/actions/pos/cuenta-apertura";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
 import { useAccionMesa } from "./usar-accion";
 

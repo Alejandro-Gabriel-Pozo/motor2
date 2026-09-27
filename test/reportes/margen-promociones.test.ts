@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarSalon } from "../pos/salon-fixture";
-import { cerrarCuenta } from "../../src/server/actions/pos/cuenta";
+import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { obtenerReporteMargenPromociones } from "../../src/core/reportes/margen-promociones";

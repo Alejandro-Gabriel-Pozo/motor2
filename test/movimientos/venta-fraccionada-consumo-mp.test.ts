@@ -14,7 +14,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
-import { cerrarCuenta } from "../../src/server/actions/pos/cuenta";
+import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { sembrarCuenta } from "../pos/salon-fixture";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 

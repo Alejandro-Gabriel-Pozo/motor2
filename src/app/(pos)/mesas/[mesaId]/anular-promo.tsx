@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { anularPromoEnviada } from "@/server/actions/pos/cuenta";
+import { anularPromoEnviada } from "@/server/actions/pos/cuenta-anulacion";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
 import { useAccionMesa } from "./usar-accion";
 
