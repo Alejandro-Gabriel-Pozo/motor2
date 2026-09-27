@@ -100,5 +100,18 @@ que otros campos "solo mesas" del mismo módulo).
 TODAS las promos del rango en una sola pasada; `/reportes/margen-promociones` (paso 12) lo usa agrupando por `PromoCarta`
 en vez de por instancia — ver el aviso de arriba.
 
-**Verificación final**: paso 15, los 5 comandos (`tsc`, `lint`, `vitest`, `build`, `playwright`) en la MISMA corrida —
-resultado en el último commit de la rama.
+## Verificación final (Paso 15) — los 5 comandos en la MISMA corrida
+
+Contra el worktree/bases dedicadas de esta rama, con todo lo de los pasos 0 a 14 ya commiteado:
+
+- `npx tsc --noEmit`: limpio (0 errores — el ruido de `LayoutProps` de la línea de base ya no aparece en esta corrida).
+- `npm run lint`: 0 errores, 0 warnings.
+- `npm test` (Vitest): **242 archivos, 2913 tests**, todos en verde (línea de base: 2802 → **+111**). `Duration 470.38s`.
+- `npm run build` (`prisma generate && prisma migrate deploy && next build`): compila limpio, `/reportes/margen-promociones`
+  entre las rutas generadas.
+- `npm run test:e2e` (Playwright, servidor de producción): **368 tests**, todos en verde (línea de base: 359 → **+9**:
+  5 de `pos-promo-combo.spec.ts`, 2 de `reportes-margen-promociones.spec.ts`, 2 de `maquetacion-general.spec.ts` por la
+  ruta nueva en `rutas-sin-parametros.ts`). `8.6m`. Incluye el caso de `/stock/minimo` que había salido flaky una vez
+  durante el paso 11 (ajeno a esta Task, no vuelve a fallar acá).
+
+**Cumple el cierre exigido**: ≥ 2802 Vitest (2913) y ≥ 359 Playwright (368), los 5 comandos en verde en la misma corrida.
