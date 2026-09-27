@@ -1,44 +1,30 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
 import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
-import {
-  obtenerSeccionPropia,
-  conTransaccionSerializable,
-  calcularPayloadHash,
-  chequearIdempotencia,
-  esClaveIdempotenciaValida,
-  MENSAJE_CONFLICTO_IDEMPOTENCIA,
-  registrarVentaEnTx,
-} from "@/core/movimientos/public-servidor";
-import { detalleReversionDeVenta } from "@/core/movimientos/public";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { obtenerSeccionPropia } from "@/core/movimientos/stock";
+import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { guardComandoAnularVenta } from "@/core/features/ventas/venta.guard";
+import type { DatosVentaInput as DatosVentaInputSchema, ItemVentaInput as ItemVentaInputSchema } from "@/core/features/ventas/venta.schema";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
+import { anularVentaCasoDeUso } from "./casos-de-uso/anular-venta";
+import { registrarVentaCasoDeUso } from "./casos-de-uso/registrar-venta";
 
-export interface ItemVentaInput {
-  productoId: string;
-  cantidadVendida: number;
-}
+/** Una línea de la venta de mostrador. Vive en `venta.schema.ts` (lo usa también el caso de uso). */
+export type ItemVentaInput = ItemVentaInputSchema;
 
-export interface DatosVentaInput {
-  fecha: Date;
-  seccionId: string;
-  proveedorId?: string; // "a quién se vende" — null/undefined = mostrador (Movimientos.js:1769, 'Mostrador' como texto libre por defecto)
-  nroFactura?: string;
-  detalle?: string;
-  ventas: ItemVentaInput[];
-  /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. Opcional durante el rollout (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.3). */
-  claveIdempotencia?: string;
-}
+/** Lo que recibe `registrarVenta`. Vive en `venta.schema.ts` (lo usa también el caso de uso). */
+export type DatosVentaInput = DatosVentaInputSchema;
 
 /**
  * Port de confirmarRegistrarVenta_ConLock_ (Movimientos.js:1154-1332): la validación y la escritura viven en el núcleo
  * `registrarVentaEnTx` (src/core/movimientos/registrar-venta.ts, compartido con el cierre de cuenta del salón); acá quedan el
- * permiso, las validaciones de entrada, la idempotencia (I3) y la transacción serializable.
+ * permiso y las validaciones de entrada. La idempotencia (I3) y la transacción serializable viven, desde la Task #41 (Fase M), en
+ * `casos-de-uso/registrar-venta.ts`: `venta.ts` está en `ACCIONES_CON_CASO_DE_USO` (por `anularVenta`) y esa regla vale para todo el archivo.
  *
- * Cada línea se mapea A MANO a `{ productoId, cantidadVendida }`: el núcleo acepta además un `precioUnitario` interno (override de
- * precio, solo para `cerrarCuenta`) que un POST crudo a esta Server Action NUNCA tiene que poder fijar
+ * Cada línea se mapea A MANO a `{ productoId, cantidadVendida }` (en el caso de uso): el núcleo acepta además un `precioUnitario` interno
+ * (override de precio, solo para `cerrarCuenta`) que un POST crudo a esta Server Action NUNCA tiene que poder fijar
  * (test/movimientos/venta-en-tx.test.ts, «un precioUnitario colado en el payload se ignora»). Tampoco se pasa `permitirStockNegativo`: la
  * venta de mostrador sigue rechazando por stock insuficiente.
  */
@@ -56,37 +42,7 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
     const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
     if (errorLargoFactura) return error(errorLargoFactura);
 
-    const resultado = await conTransaccionSerializable(async (tx): Promise<ResultadoAccion> => {
-      // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
-      // A diferencia de registrarMovimiento, este lote escribe UNA
-      // Operacion por venta individual (ver el docstring de la función) —
-      // la clave/hash/resultado del intento completo se guardan solo en la
-      // PRIMERA Operacion del lote, no en cada una (docs/auditoria-motor2-
-      // plan-i3-idempotencia-2026-09-17.md §11.5).
-      const payloadHash = datos.claveIdempotencia
-        ? calcularPayloadHash("VENTA", ctx.sucursalId, { ...datos, claveIdempotencia: undefined })
-        : "";
-      const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
-      if (chequeo.estado === "duplicado") return ok(chequeo.mensaje);
-      if (chequeo.estado === "conflicto") return error(MENSAJE_CONFLICTO_IDEMPOTENCIA);
-
-      const venta = await registrarVentaEnTx(
-        tx,
-        { usuarioId: ctx.usuarioId, sucursalId: ctx.sucursalId, sucursalNombre: ctx.sucursalNombre },
-        {
-          fecha: datos.fecha,
-          origen: { tipo: "seccion", seccionId: datos.seccionId },
-          proveedorId: datos.proveedorId,
-          nroFactura: datos.nroFactura,
-          detalle: datos.detalle,
-          lineas: datos.ventas.map((item) => ({ productoId: item.productoId, cantidadVendida: item.cantidadVendida })),
-        },
-        datos.claveIdempotencia ? { idempotencia: { clave: datos.claveIdempotencia, payloadHash } } : {}
-      );
-      return venta.ok ? ok(venta.mensaje) : error(venta.mensaje);
-    });
-
-    return resultado;
+    return aResultadoAccion(await registrarVentaCasoDeUso(ctx, datos));
   });
 }
 
@@ -97,6 +53,11 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
  * para corregir un error de carga en el proceso más frecuente del sistema.
  * "Devolución de cliente" es un concepto de negocio distinto (mercadería
  * que vuelve, revendible) y no sirve para esto.
+ *
+ * Desde la Task #41 (Fase M, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso`) → formato (`guardComandoAnularVenta`) → caso de uso (`casos-de-uso/anular-venta.ts`: transacción, carga, guardas,
+ * hermanas de promo, escritura y auditoría) → `aResultadoAccion`. Las reglas puras (guardas, contra-asiento, textos) viven en
+ * `src/core/movimientos/anulaciones.ts`.
  *
  * Mismo criterio append-only que cancelarConteoFisico
  * (src/server/actions/conteo-fisico.ts): la Operacion/MovimientoStock
@@ -131,74 +92,8 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
  */
 export async function anularVenta(operacionId: string): Promise<ResultadoAccion> {
   return conPermiso("anular_venta", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
-      const operacion = await tx.operacion.findFirst({
-        where: { id: operacionId, sucursalId: ctx.sucursalId },
-        include: { movimientos: { include: { producto: true } } },
-      });
-      if (!operacion) return error("No se encontró esa operación en esta sucursal.");
-      if (operacion.proceso !== "VENTA") return error(`La operación "${operacionId}" no es una Venta — es "${operacion.proceso}".`);
-      if (operacion.anuladaEn) return error("Esta venta ya está anulada.");
-
-      const hermanas = operacion.promoCuentaId
-        ? await tx.operacion.findMany({
-            where: { promoCuentaId: operacion.promoCuentaId, anuladaEn: null, id: { not: operacion.id } },
-            include: { movimientos: { include: { producto: true } } },
-          })
-        : [];
-      const aAnular = [operacion, ...hermanas];
-
-      const ahora = new Date();
-      let totalMovimientos = 0;
-      let huboLiquidacion = false;
-      for (const op of aAnular) {
-        const reversion = await tx.operacion.create({
-          data: {
-            sucursalId: ctx.sucursalId,
-            proceso: "AJUSTE",
-            fecha: ahora,
-            detalleLibre: detalleReversionDeVenta(op.id, op.fecha),
-            usuarioId: ctx.usuarioId,
-          },
-        });
-
-        const filas: Prisma.MovimientoStockCreateManyInput[] = op.movimientos.map((m) => ({
-          operacionId: reversion.id,
-          productoId: m.productoId,
-          seccionId: m.seccionId,
-          proceso: m.proceso === "LIQUIDACION_CONSIGNACION" ? "LIQUIDACION_CONSIGNACION" : "AJUSTE",
-          cantidad: -Number(m.cantidad),
-          // Arrastre de redondeo (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): invertida igual que `cantidad`, para
-          // que la deuda de redondeo del producto (`D = Σcantidad − ΣcantidadExacta`, MovimientoStock.cantidadExacta) vuelva EXACTAMENTE
-          // al estado que corresponde a las ventas que siguen vigentes — hoy esta columna siempre es `null` (se llena recién en el paso
-          // 4 de la Task #27), así que este cambio, por sí solo, no altera ningún comportamiento observable todavía.
-          cantidadExacta: m.cantidadExacta === null ? null : -Number(m.cantidadExacta),
-          loteVencimiento: m.loteVencimiento,
-          detalle: `Anulación de venta: revierte "${m.detalle}".`,
-          precioTotal: -Number(m.precioTotal),
-          precioPorUnidadStock: Number(m.precioPorUnidadStock),
-        }));
-        await tx.movimientoStock.createMany({ data: filas });
-        totalMovimientos += filas.length;
-        if (filas.some((f) => f.proceso === "LIQUIDACION_CONSIGNACION")) huboLiquidacion = true;
-
-        await tx.operacion.update({ where: { id: op.id }, data: { anuladaEn: ahora, anuladaPorId: ctx.usuarioId } });
-
-        // Auditoría administrativa (igual que `anularCompra`): anular una venta mueve stock e ingreso, así que queda quién, cuándo y de cuál.
-        await registrarCambioAuditado(tx, {
-          entidad: "Operacion",
-          entidadId: op.id,
-          descripcion: `Venta del ${op.fecha.toISOString().slice(0, 10)}${op.nroFactura ? ` (factura ${op.nroFactura})` : ""}: anulación${hermanas.length ? " (promo, junto con sus otros componentes)" : ""}`,
-          campo: "anuladaEn",
-          valorAnterior: null,
-          valorNuevo: ahora.toISOString(),
-          actorId: ctx.usuarioId,
-          sucursalId: ctx.sucursalId,
-        });
-      }
-
-      const mensajePromo = hermanas.length ? ` Era una promo con ${aAnular.length} componentes: se anularon todos juntos.` : "";
-      return ok(`Venta anulada. Se revirtieron ${totalMovimientos} movimiento(s) de stock${huboLiquidacion ? " y la liquidación de consignación" : ""}.${mensajePromo}`);
-    });
+    const comando = guardComandoAnularVenta({ operacionId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await anularVentaCasoDeUso(ctx, comando.valor));
   });
 }
