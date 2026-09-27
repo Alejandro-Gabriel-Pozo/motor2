@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type Prisma } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -40,3 +40,10 @@ export const prisma = globalForPrisma.prisma ?? crearPrismaClient();
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
+
+/**
+ * Cliente con el que se lee o escribe: el singleton de arriba o el `tx` de un `prisma.$transaction(async (tx) => ...)`. Es el
+ * tipo del último parámetro (`db: Db = prisma`) de las funciones de `src/server/consultas/` (Task #41, Fase D): así la misma
+ * lectura sirve suelta o dentro de una transacción, sin abrir una conexión propia.
+ */
+export type Db = PrismaClient | Prisma.TransactionClient;

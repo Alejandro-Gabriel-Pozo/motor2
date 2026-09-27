@@ -40,12 +40,11 @@ const CORE_CON_REACT_NEXT = [
  * `ui-sin-prisma`: páginas que todavía leen la base directo (`import { prisma } from "@/lib/db"`). Se migran en tareas
  * FUTURAS (Fase D) a una capa `src/server/consultas/`; cada migración saca su página de esta lista en el mismo commit
  * (el complemento de Vitest falla si una página listada deja de importar `@/lib/db`). Verificado el 2026-09-27: las 11
- * existen y las 11 hacen `import { prisma } from "@/lib/db"` (no son de solo tipo).
+ * existían y las 11 hacían `import { prisma } from "@/lib/db"` (no de solo tipo). Migradas (fuera de la lista):
+ *  - D1 (piloto): catalogo/productos/[id] y catalogo/productos/[id]/editar → src/server/consultas/catalogo/productos.ts.
  */
 const MOTIVO_PENDIENTE = "Lee la base directo desde la página; pendiente de migrar a src/server/consultas/ (Task #41, Fase D).";
 const PENDIENTES_DE_MIGRAR = [
-  "src/app/(app)/catalogo/productos/[id]/page.tsx",
-  "src/app/(app)/catalogo/productos/[id]/editar/page.tsx",
   "src/app/(app)/catalogo/proveedores/[id]/page.tsx",
   "src/app/(app)/catalogo/proveedores/[id]/editar/page.tsx",
   "src/app/(app)/catalogo/recetas/page.tsx",
