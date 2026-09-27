@@ -113,6 +113,22 @@ export function evaluarAnulacion(compra: CompraAAnular, saldos: SaldosPorLote): 
   return { ok: true, reversion: construirReversion(compra.lineas) };
 }
 
+/**
+ * Mensaje de éxito de una anulación (Task #41, Fase M): texto EXACTO que armaba en línea la Server Action `anularCompra` antes de pasar
+ * a su caso de uso. Es también el que se guarda como resultado I3 y se devuelve tal cual en un reenvío.
+ */
+export function mensajeCompraAnulada(movimientosRevertidos: number, nroFactura: string | null): string {
+  return `Compra anulada. Se revirtieron ${movimientosRevertidos} movimiento(s) de stock${nroFactura ? ` y el N.º de factura ${nroFactura} quedó libre para volver a cargarla` : ""}.`;
+}
+
+/**
+ * Descripción de la fila de auditoría de una anulación (campo `anuladaEn`), con el texto EXACTO de antes. `proveedorNombre` es `null` si
+ * la compra no tiene proveedor (antes se miraba si existía la relación, no si el nombre estaba vacío: se mantiene).
+ */
+export function descripcionAuditoriaAnulacion(fecha: Date, proveedorNombre: string | null, nroFactura: string | null): string {
+  return `Compra del ${fechaCorta(fecha)}${proveedorNombre !== null ? ` a ${proveedorNombre}` : ""}${nroFactura ? `, factura ${nroFactura}` : ""}: anulación`;
+}
+
 /** Una línea inversa por cada línea comprada: misma sección y lote, cantidad y precio total con el signo invertido, y el mismo precio por unidad (como `anularVenta`). */
 export function construirReversion(lineas: readonly LineaComprada[]): LineaDeReversion[] {
   return lineas.map((l) => ({

@@ -79,6 +79,21 @@ export function clavesDeFactura(cabecera: CabeceraCompra): { proveedorId: string
   return cabecera.proveedorId && cabecera.nroFactura ? { proveedorId: cabecera.proveedorId, nroFactura: cabecera.nroFactura } : null;
 }
 
+const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
+
+/** Mensaje de éxito de una corrección (Task #41, Fase M): texto EXACTO que armaba en línea la Server Action `corregirCompra`. */
+export function mensajeCompraCorregida(cambios: readonly CambioDeCabecera[]): string {
+  return `Compra corregida: ${cambios.map((c) => ETIQUETA_CAMPO[c.campo]).join(", ")}.`;
+}
+
+/**
+ * Descripción de la fila de auditoría de UN campo corregido, con el texto EXACTO de antes. `nroFacturaAnterior` es el N.º que la compra
+ * tenía ANTES de corregir (el que la identifica para quien lee el registro), no el nuevo.
+ */
+export function descripcionAuditoriaCorreccion(fecha: Date, nroFacturaAnterior: string | null, campo: CampoCabecera): string {
+  return `Compra del ${fechaCorta(fecha)}${nroFacturaAnterior ? ` (factura ${nroFacturaAnterior})` : ""}: ${ETIQUETA_CAMPO[campo]}`;
+}
+
 export const ETIQUETA_CAMPO: Record<CampoCabecera, string> = {
   proveedorId: "proveedor",
   nroFactura: "N.º de factura",

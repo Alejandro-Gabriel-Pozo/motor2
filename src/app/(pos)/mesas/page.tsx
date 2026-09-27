@@ -5,7 +5,7 @@ import { esEstadoMesa, filtrarMesas, obtenerMapaDeMesas, type EstadoMesa } from 
 import { MesaCard } from "@/components/mesas/mesa-card";
 import { NuevaMesa } from "./nueva-mesa";
 import { LimiteMesasAbiertas } from "./limite-mesas";
-import { prisma } from "@/lib/db";
+import { obtenerLimiteMesasAbiertas } from "@/server/consultas/pos/mesas";
 
 const HORA = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
 
@@ -55,7 +55,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const [nivel, mapa, sucursal] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_mesas"),
     obtenerMapaDeMesas(ctx.sucursalId),
-    prisma.sucursal.findUniqueOrThrow({ where: { id: ctx.sucursalId }, select: { maxMesasAbiertas: true } }),
+    obtenerLimiteMesasAbiertas(ctx.sucursalId),
   ]);
   const { metricas } = mapa;
   const visibles = filtrarMesas(mapa.mesas, { estado: estado ?? undefined, q });
