@@ -49,11 +49,12 @@ const CORE_CON_REACT_NEXT = [
  *  - D6: movimientos/[proceso] (deep-link ?productoId=) → obtenerProductoOpcion de src/server/consultas/catalogo/productos.ts.
  *  - D7: reportes/rendimiento-recetas/por-sucursal → src/server/consultas/reportes/rendimiento-por-sucursal.ts.
  *  - D8: (pos)/mesas → src/server/consultas/pos/mesas.ts.
+ *  - D4: catalogo/recetas/[productoId] (editor) → listarMpDisponiblesEnAlguna, listarOpcionesDeSustituto y
+ *    listarCalibracionesDeIngredientes de src/server/consultas/catalogo/recetas.ts; el producto reusa obtenerProductoPorId
+ *    de src/server/consultas/catalogo/productos.ts (D1). Fase D completa: las 9 páginas ya están migradas.
  */
 const MOTIVO_PENDIENTE = "Lee la base directo desde la página; pendiente de migrar a src/server/consultas/ (Task #41, Fase D).";
-const PENDIENTES_DE_MIGRAR = [
-  "src/app/(app)/catalogo/recetas/[productoId]/page.tsx",
-].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE }));
+const PENDIENTES_DE_MIGRAR = [].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE }));
 
 /**
  * `sin-ciclos`: ciclos que ya existían al activar la regla (corrida en modo informe el 2026-09-27: 1 ciclo en todo `src/`).

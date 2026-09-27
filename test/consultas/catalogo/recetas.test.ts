@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
 import { limpiarBaseDeTest, prisma } from "../../setup/test-db";
-import { listarProductosConReceta } from "../../../src/server/consultas/catalogo/recetas";
+import {
+  listarProductosConReceta,
+  listarMpDisponiblesEnAlguna,
+  listarOpcionesDeSustituto,
+  listarCalibracionesDeIngredientes,
+} from "../../../src/server/consultas/catalogo/recetas";
 
 /**
- * `src/server/consultas/catalogo/recetas.ts` (Task #41, Fase D3) contra Postgres real.
+ * `src/server/consultas/catalogo/recetas.ts` (Task #41, Fase D3/D4) contra Postgres real.
  *
  * `listarProductosConReceta` reemplaza, SIN cambiar su forma, la consulta que hacía en línea la lista de recetas
  * (`/catalogo/recetas`). Ningún spec de Playwright verifica el CONTENIDO de esa lista (solo la maquetación general la
@@ -12,6 +17,9 @@ import { listarProductosConReceta } from "../../../src/server/consultas/catalogo
  * al menos una versión de receta), en qué orden (nombre asc), y que cada uno traiga SOLO su última versión (la de `version`
  * más alta, no la última creada) con el conteo de ingredientes DE ESA versión. También fija las claves exactas de cada nivel
  * del `include`, porque es lo que la página usa (`p.recetaVersiones[0].version`, `._count.ingredientes`).
+ *
+ * `listarMpDisponiblesEnAlguna`, `listarOpcionesDeSustituto` y `listarCalibracionesDeIngredientes` (D4) reemplazan, SIN
+ * cambiar su forma, las tres consultas en línea del editor de receta (`/catalogo/recetas/[productoId]`).
  */
 
 const ESCALARES_PRODUCTO = Object.keys(Prisma.ProductoScalarFieldEnum).sort();
@@ -170,6 +178,104 @@ describe("server/consultas/catalogo/recetas", () => {
         return listarProductosConReceta(tx);
       });
       expect(lista.map((p) => [p.nombre, p.recetaVersiones[0].version, p.recetaVersiones[0]._count.ingredientes])).toEqual([["Tarta", 1, 1]]);
+    });
+  });
+
+  describe("listarMpDisponiblesEnAlguna", () => {
+    it("devuelve solo las MP disponibles en alguna sucursal, por nombre — nunca un PV", async () => {
+      await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
+
+      const lista = await listarMpDisponiblesEnAlguna();
+      expect(lista.map((p) => p.nombre)).toEqual(["Aceite", "Harina", "Queso", "Tomate"]);
+    });
+
+    it("una MP sin ninguna fila de disponibilidad, o con todas en false, queda afuera", async () => {
+      await crearProducto("MP_SAL", "Sal", "MP", {});
+      await crearProducto("MP_PIMIENTA", "Pimienta", "MP", { [sucursalA]: false, [sucursalB]: false });
+
+      expect((await listarMpDisponiblesEnAlguna()).map((p) => p.nombre)).toEqual(["Aceite", "Harina", "Queso", "Tomate"]);
+    });
+
+    it("acepta el cliente de una transacción como `db`", async () => {
+      const nombres = await prisma.$transaction(async (tx) => {
+        const p = await tx.producto.create({ data: { codigo: "MP_TX", nombre: "Manteca", tipo: "MP", unidadStockId: kg } });
+        await tx.disponibilidadProducto.create({ data: { sucursalId: sucursalA, productoId: p.id, disponible: true } });
+        return (await listarMpDisponiblesEnAlguna(tx)).map((mp) => mp.nombre);
+      });
+      expect(nombres).toContain("Manteca");
+    });
+  });
+
+  describe("listarOpcionesDeSustituto", () => {
+    let insumoHarina: string;
+    let insumoQueso: string;
+    let insumoTomate: string;
+    let litro: string;
+
+    beforeEach(async () => {
+      litro = (await prisma.unidad.create({ data: { nombre: "litro", magnitud: "VOLUMEN", decimales: 2 } })).id;
+      insumoHarina = (await prisma.insumo.create({ data: { nombre: "Harina (insumo)" } })).id;
+      insumoQueso = (await prisma.insumo.create({ data: { nombre: "Queso (insumo)" } })).id;
+      insumoTomate = (await prisma.insumo.create({ data: { nombre: "Tomate (insumo)" } })).id;
+      await prisma.producto.update({ where: { id: harina }, data: { insumoId: insumoHarina } });
+      await prisma.producto.update({ where: { id: queso }, data: { insumoId: insumoQueso } });
+      await prisma.producto.update({ where: { id: tomate }, data: { insumoId: insumoTomate } });
+    });
+
+    it("devuelve solo id+nombre de los insumos activos con alguna MP de esa unidad de stock disponible en alguna sucursal, excluyendo el insumo indicado", async () => {
+      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: insumoHarina, unidadId: kg });
+      expect(opciones).toEqual(
+        expect.arrayContaining([
+          { id: insumoQueso, nombre: "Queso (insumo)" },
+          { id: insumoTomate, nombre: "Tomate (insumo)" },
+        ])
+      );
+      expect(opciones.map((o) => o.id)).not.toContain(insumoHarina);
+      expect(Object.keys(opciones[0]).sort()).toEqual(["id", "nombre"]);
+    });
+
+    it("sin excluir ninguno (insumoIdExcluido null), los devuelve todos — la unidad de stock filtra, no el insumo", async () => {
+      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: null, unidadId: kg });
+      expect(opciones.map((o) => o.id).sort()).toEqual([insumoHarina, insumoQueso, insumoTomate].sort());
+    });
+
+    it("un insumo inactivo, o cuya MP no tiene esa unidad de stock o no está disponible en ninguna sucursal, queda afuera", async () => {
+      await prisma.insumo.update({ where: { id: insumoQueso }, data: { activo: false } });
+      await prisma.producto.update({ where: { id: tomate }, data: { unidadStockId: litro } });
+      const soloTomateDisponible = await crearProducto("MP_TOMATE2", "Tomate en otra sucursal", "MP", {});
+      const insumoNoDisponible = (await prisma.insumo.create({ data: { nombre: "Sin disponibilidad" } })).id;
+      await prisma.producto.update({ where: { id: soloTomateDisponible }, data: { insumoId: insumoNoDisponible } });
+
+      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: null, unidadId: kg });
+      expect(opciones.map((o) => o.id)).toEqual([insumoHarina]);
+    });
+  });
+
+  describe("listarCalibracionesDeIngredientes", () => {
+    it("devuelve, para los recetaIngredienteId pedidos, solo las calibraciones con cantidad o merma no nulas, con el nombre de sucursal incluido", async () => {
+      const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
+      const version = await crearVersion(pizza, 1, [harina, queso]);
+      const [ingHarina, ingQueso] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id }, orderBy: { insumoProductoId: "asc" } });
+
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ingHarina.id, sucursalId: sucursalA, cantidad: 0.2 } });
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ingQueso.id, sucursalId: sucursalA, mermaPorcentaje: 5 } });
+      // Fila "vacía" (ni cantidad ni merma): no debería poder crearse con datos reales, pero si existiera no debe volver.
+
+      const calibraciones = await listarCalibracionesDeIngredientes([ingHarina.id, ingQueso.id]);
+      expect(calibraciones.map((c) => [c.recetaIngredienteId, c.sucursal.nombre]).sort()).toEqual(
+        [
+          [ingHarina.id, "Sucursal A"],
+          [ingQueso.id, "Sucursal A"],
+        ].sort()
+      );
+    });
+
+    it("con una lista de ids que no tienen ninguna calibración, devuelve []", async () => {
+      const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
+      const version = await crearVersion(pizza, 1, [harina]);
+      const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
+
+      await expect(listarCalibracionesDeIngredientes([ing.id])).resolves.toEqual([]);
     });
   });
 });

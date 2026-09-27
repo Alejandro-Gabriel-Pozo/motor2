@@ -3,12 +3,12 @@ import { prisma, type Db } from "@/lib/db";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 
 /**
- * Lecturas de Catálogo › Recetas para los Server Components (Task #41, Fase D3). Mismo contrato que
+ * Lecturas de Catálogo › Recetas para los Server Components (Task #41, Fase D3/D4). Mismo contrato que
  * `server/consultas/catalogo/productos.ts` (ver su cabecera): `server-only`, sin guarda de permiso adentro (la página la hace
  * antes), `db: Db = prisma` al final y devuelve EXACTAMENTE lo que devolvía la consulta Prisma que reemplaza.
  *
  * El producto suelto del historial (`/catalogo/recetas/[productoId]/historial`) NO vive acá: reusa `obtenerProductoPorId`
- * de `productos.ts`.
+ * de `productos.ts` (el editor, `/catalogo/recetas/[productoId]`, también).
  */
 
 /**
@@ -28,5 +28,40 @@ export async function listarProductosConReceta(db: Db = prisma) {
         include: { _count: { select: { ingredientes: true } } },
       },
     },
+  });
+}
+
+/** Editor de receta (`/catalogo/recetas/[productoId]`): las materias primas disponibles en alguna sucursal, para el selector de "Agregar ingrediente". */
+export async function listarMpDisponiblesEnAlguna(db: Db = prisma) {
+  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, orderBy: { nombre: "asc" } });
+}
+
+/**
+ * Editor de receta: opciones de sustituto para UN ingrediente puntual — insumos activos que tengan algún producto MP con
+ * esa misma unidad de stock, disponible en alguna sucursal, excluyendo el insumo del propio ingrediente.
+ */
+export async function listarOpcionesDeSustituto(
+  ing: { insumoIdExcluido: string | null; unidadId: string },
+  db: Db = prisma,
+) {
+  return db.insumo.findMany({
+    where: {
+      activo: true,
+      id: { not: ing.insumoIdExcluido ?? undefined },
+      productos: { some: { tipo: "MP", unidadStockId: ing.unidadId, ...whereDisponibleEnAlguna() } },
+    },
+    orderBy: { nombre: "asc" },
+    select: { id: true, nombre: true },
+  });
+}
+
+/**
+ * Editor de receta: notas "Calibrado en N sucursal(es)" por ingrediente — UNA sola consulta por lotes (no una por
+ * ingrediente) a `RendimientoLocalIngrediente`, para los ingredientes de la receta vigente que se pasen.
+ */
+export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db = prisma) {
+  return db.rendimientoLocalIngrediente.findMany({
+    where: { recetaIngredienteId: { in: recetaIngredienteIds }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
+    include: { sucursal: { select: { nombre: true } } },
   });
 }

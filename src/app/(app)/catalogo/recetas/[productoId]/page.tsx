@@ -3,7 +3,6 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { prisma } from "@/lib/db";
 import {
   obtenerRecetaVigente,
   agregarIngredienteAReceta,
@@ -17,8 +16,14 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
-import { disponibilidadPorSucursalDeProducto, whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/public-servidor";
 import { secuenciaMoviendo } from "@/core/catalogo/public";
+import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
+import {
+  listarMpDisponiblesEnAlguna,
+  listarOpcionesDeSustituto,
+  listarCalibracionesDeIngredientes,
+} from "@/server/consultas/catalogo/recetas";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -49,8 +54,8 @@ export default async function RecetaEditorPage({
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpDisponibles, unidades] = await Promise.all([
-    prisma.producto.findUnique({ where: { id: productoId } }),
-    prisma.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, orderBy: { nombre: "asc" } }),
+    obtenerProductoPorId(productoId),
+    listarMpDisponiblesEnAlguna(),
     listarUnidadesActivas(),
   ]);
 
@@ -100,14 +105,9 @@ export default async function RecetaEditorPage({
         if (faltantes.length) sucursalesSinIngrediente.set(ing.insumoProductoId, faltantes);
 
         if (aceptaSustitutos) {
-          const opciones = await prisma.insumo.findMany({
-            where: {
-              activo: true,
-              id: { not: ing.insumoProducto.insumoId ?? undefined },
-              productos: { some: { tipo: "MP", unidadStockId: ing.unidadId, ...whereDisponibleEnAlguna() } },
-            },
-            orderBy: { nombre: "asc" },
-            select: { id: true, nombre: true },
+          const opciones = await listarOpcionesDeSustituto({
+            insumoIdExcluido: ing.insumoProducto.insumoId,
+            unidadId: ing.unidadId,
           });
           opcionesSustitutoPorIngrediente.set(ing.insumoProductoId, opciones);
         }
@@ -119,10 +119,7 @@ export default async function RecetaEditorPage({
   // (no una por ingrediente) a RendimientoLocalIngrediente.
   const calibracionesPorIngrediente = new Map<string, string[]>();
   if (vigente?.ingredientes.length) {
-    const calibraciones = await prisma.rendimientoLocalIngrediente.findMany({
-      where: { recetaIngredienteId: { in: vigente.ingredientes.map((i) => i.id) }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
-      include: { sucursal: { select: { nombre: true } } },
-    });
+    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id));
     for (const c of calibraciones) {
       const lista = calibracionesPorIngrediente.get(c.recetaIngredienteId) ?? [];
       lista.push(c.sucursal.nombre);
