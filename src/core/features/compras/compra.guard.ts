@@ -1,8 +1,9 @@
 import { validarCantidad, type UnidadDeCantidad } from "@/core/datos/cantidad";
 import { validarImporte } from "@/core/datos/importe";
 import { validarNroFactura } from "@/core/datos/nro-factura";
-import { aceptar, type ResultadoDato } from "@/core/datos/resultado";
-import type { DatosLineaCompra, LineaCompraValidada } from "./compra.schema";
+import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import type { CabeceraVista, ComandoAnularCompra, ComandoCorregirCompra, CorreccionCompraInput, DatosLineaCompra, LineaCompraValidada } from "./compra.schema";
 
 /**
  * Guard de la feature Compra/Devolución a proveedor (convención "guard por feature", 2026-09-25;
@@ -38,4 +39,41 @@ export function guardLineaCompra(
  */
 export function guardNroFacturaCompra(valor: string | null | undefined) {
   return validarNroFactura(valor);
+}
+
+/** Mismo texto que usaba la Server Action cuando la operación no existe en esta sucursal (anular y corregir). */
+export const MENSAJE_OPERACION_NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
+
+/** Mismo texto que usaba `anularCompra` para una clave I3 que no es un UUID. */
+export const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
+
+/**
+ * Guard del comando «anular una compra» (Task #41, Fase M). Formato, ANTES de abrir la transacción, en el mismo orden que la Server
+ * Action anterior:
+ *  1. `claveIdempotencia`: ausente (`undefined`) → sin clave (`null`); cualquier otra cosa que no sea un UUID → «Clave de reintento
+ *     inválida.» (un `null` o un `""` también: antes solo `undefined` contaba como "sin clave", y se mantiene).
+ *  2. `operacionId` que no es un string → el MISMO mensaje que «no encontrada». Antes llegaba así a `findFirst` y Prisma lo rechazaba
+ *     con un error crudo de validación (un 500 para la pantalla).
+ */
+export function guardComandoAnularCompra(entrada: unknown): ResultadoDato<ComandoAnularCompra> {
+  const { operacionId, claveIdempotencia } = (entrada ?? {}) as { operacionId?: unknown; claveIdempotencia?: unknown };
+  let clave: string | null = null;
+  if (claveIdempotencia !== undefined) {
+    if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_REINTENTO_INVALIDA);
+    clave = claveIdempotencia;
+  }
+  if (typeof operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
+  return aceptar({ operacionId, claveIdempotencia: clave });
+}
+
+/**
+ * Guard del comando «corregir la cabecera de una compra» (Task #41, Fase M). Solo el `operacionId`: si no es un string, el MISMO mensaje
+ * que «no encontrada» (antes: error crudo de Prisma, o con `undefined` la primera operación de la sucursal). `nueva` y `esperado` pasan
+ * tal cual: los normaliza `normalizarCorreccion` (core/compras/correccion.ts) en el caso de uso, que ya tolera `null`/`undefined` en cada
+ * campo — no se llama desde acá porque correccion.ts importa este archivo (`guardNroFacturaCompra`) y se cerraría un ciclo.
+ */
+export function guardComandoCorregirCompra(entrada: unknown): ResultadoDato<ComandoCorregirCompra> {
+  const { operacionId, nueva, esperado } = (entrada ?? {}) as { operacionId?: unknown; nueva?: CorreccionCompraInput; esperado?: CabeceraVista };
+  if (typeof operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
+  return aceptar({ operacionId, nueva: nueva as CorreccionCompraInput, esperado: esperado as CabeceraVista });
 }
