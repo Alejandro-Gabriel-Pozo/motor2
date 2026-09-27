@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { importeDeLinea, redondearMoneda, totalDeLineas } from "../../src/core/moneda";
+import { importeDeLinea, redondearMoneda, repartirImporte, totalDeLineas } from "../../src/core/moneda";
 
 /**
  * Tests puros de src/core/moneda.ts (sin base). Los valores esperados son los de `round(v::numeric, 2)` de Postgres: empates de medio
@@ -110,5 +110,51 @@ describe("moneda — totalDeLineas", () => {
   it("NaN e ±Infinity pasan igual que hoy", () => {
     expect(totalDeLineas([{ cantidad: Number.NaN, precioUnitario: 1 }])).toBeNaN();
     expect(totalDeLineas([{ cantidad: 1, precioUnitario: Number.POSITIVE_INFINITY }])).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+describe("moneda — repartirImporte (Task #16, largest remainder)", () => {
+  it("divide exacto cuando el importe es múltiplo de los pesos", () => {
+    expect(repartirImporte(100, [1, 1])).toEqual([50, 50]);
+    expect(repartirImporte(30, [1, 2])).toEqual([10, 20]);
+  });
+
+  it("la suma de las partes da SIEMPRE, exacto, el importe pedido — también cuando no divide parejo", () => {
+    expect(repartirImporte(10, [1, 1, 1])).toEqual([3.34, 3.33, 3.33]);
+    expect(
+      repartirImporte(10, [1, 1, 1]).reduce((s, v) => s + v, 0)
+    ).toBe(10);
+    const partes = repartirImporte(6543.21, [1234.55, 987.33, 501, 2]);
+    expect(Math.round(partes.reduce((s, v) => s + v, 0) * 100) / 100).toBe(6543.21);
+  });
+
+  it("determinístico: a igual resto, gana el índice más bajo", () => {
+    // Tres pesos iguales: los restos fraccionarios son idénticos, el orden de desempate decide quién se lleva el centavo extra.
+    expect(repartirImporte(10, [1, 1, 1])).toEqual(repartirImporte(10, [1, 1, 1]));
+    expect(repartirImporte(10, [1, 1, 1])[0]).toBe(3.34);
+  });
+
+  it("pesos todos en 0 (o vacíos de peso): reparte en partes iguales", () => {
+    expect(repartirImporte(10, [0, 0])).toEqual([5, 5]);
+    expect(repartirImporte(9, [0, 0, 0])).toEqual([3, 3, 3]);
+  });
+
+  it("un peso negativo o no finito se trata como 0", () => {
+    expect(repartirImporte(10, [1, -5])).toEqual(repartirImporte(10, [1, 0]));
+  });
+
+  it("sin partes, devuelve []", () => {
+    expect(repartirImporte(100, [])).toEqual([]);
+  });
+
+  it("importe negativo o no finito: NaN en cada parte (no hay reparto sensato)", () => {
+    expect(repartirImporte(-10, [1, 1]).every(Number.isNaN)).toBe(true);
+    expect(repartirImporte(Number.NaN, [1, 1]).every(Number.isNaN)).toBe(true);
+  });
+
+  it("importe 0: todas las partes en 0, sin -0", () => {
+    const partes = repartirImporte(0, [1, 2, 3]);
+    expect(partes).toEqual([0, 0, 0]);
+    expect(partes.every((v) => Object.is(v, 0))).toBe(true);
   });
 });
