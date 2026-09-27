@@ -1,6 +1,6 @@
 import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
-import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/venta-fraccionada";
+import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/public";
 
 /**
  * Validación de la cantidad de un ítem al tomar el pedido (o al anularlo) — PURA, sin Prisma (docs/plan-pos-agregar-varios-2026-09-26.md).

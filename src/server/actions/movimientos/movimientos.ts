@@ -15,8 +15,8 @@ import {
 } from "@/core/movimientos/transiciones";
 import { importeDeLinea } from "@/core/moneda";
 import { obtenerLoteMasProximoAVencer, obtenerSeccionPropia, resolverConsumoPorFamilia, seccionesConStock, validarStockSuficiente } from "@/core/movimientos/stock";
-import { productoDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
-import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
+import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
 import { calcularPayloadHash, chequearIdempotencia, esClaveIdempotenciaValida, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/idempotencia";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";

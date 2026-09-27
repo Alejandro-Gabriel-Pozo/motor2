@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { construirIndiceRecetas } from "@/core/reportes/comun";
-import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { redondearMoneda, tieneStockReal } from "@/core/movimientos/transiciones";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
-import { whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 
 export interface FilaValuacionInventario {
   productoId: string;

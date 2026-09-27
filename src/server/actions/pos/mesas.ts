@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
-import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
+import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarMaxMesasAbiertas } from "@/core/pos/mesas";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
