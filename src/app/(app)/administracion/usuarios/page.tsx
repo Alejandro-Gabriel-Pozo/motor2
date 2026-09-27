@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { prisma } from "@/lib/db";
 import { listarUsuariosDeSucursal } from "@/server/actions/auth/usuarios";
 import { listarSucursales } from "@/server/actions/auth/sucursales";
+import { listarRolesActivos } from "@/server/consultas/permisos/roles";
 import { UsuariosTabla } from "./usuarios-tabla";
 
 export default async function UsuariosPage() {
@@ -14,7 +14,7 @@ export default async function UsuariosPage() {
 
   const [membresias, roles, sucursales] = await Promise.all([
     listarUsuariosDeSucursal(ctx.sucursalId),
-    prisma.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    listarRolesActivos(),
     listarSucursales(),
   ]);
 
