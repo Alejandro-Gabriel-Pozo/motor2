@@ -72,7 +72,8 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 - **C3** (`core/reportes/public.ts` + `public-servidor.ts`) — mergeado a `main` (2026-09-27, misma sesión). `"reportes"` ya está en `DOMINIOS_CON_PUBLIC`. Ver detalle y hallazgo real (no anticipado por esta descripción) más abajo.
 - **M9** (caso de uso `registrarVenta` de mostrador) — resultó YA HECHA como efecto colateral de M8 (verificado 2026-09-27). Nada pendiente.
 - **Fase M, piloto + M8** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio — PR #40; M8: caso de uso `anularVenta` — PR #48, mergeado ya antes de este checkpoint). De paso el piloto corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada. **M9 queda desbloqueada.**
-- **D9, M10, M11a, M12a** — 4 tareas lanzadas en paralelo (4 agentes, worktrees/DBs propios, este mismo día, máquina local) y mergeadas: D9 (`AccionConteo` vía fachada), M10 (transacción atómica en cambios de precio, con test rojo→verde), M11a (traspasos: aprobar/cancelar/rechazar solicitud, migración parcial a propósito) y M12a (POS: `cerrarCuenta`, migración parcial a propósito). Cada una reverificada de forma independiente (gate completo + lectura del diff) antes de mergear. Ver detalle de cada una más abajo — M11a y M12a dejan sub-tareas encadenadas pendientes (M11b/c, M12b/c/d).
+- **D9, M10, M11a, M12a** — 4 tareas lanzadas en paralelo (4 agentes, worktrees/DBs propios, este mismo día, máquina local) y mergeadas: D9 (`AccionConteo` vía fachada), M10 (transacción atómica en cambios de precio, con test rojo→verde), M11a (traspasos: aprobar/cancelar/rechazar solicitud, migración parcial a propósito) y M12a (POS: `cerrarCuenta`, migración parcial a propósito). Cada una reverificada de forma independiente (gate completo + lectura del diff) antes de mergear.
+- **M11b, M12b** — siguiente ronda, mismo patrón (2 agentes en paralelo, archivos distintos entre sí): M11b (traspasos: aceptar/rechazar envío/reingreso, todavía parcial — falta M11c) y M12b (POS: `emitirBoletaCorregida` — con esta, `cuenta-cierre.ts` completó su migración y ya entró en `ACCIONES_CON_CASO_DE_USO`). Ver detalle de cada una más abajo — quedan pendientes M11c y M12c/d.
 
 **Nota de continuidad (2026-09-27, tarde):** D4, D6, C2 y M8 se lanzaron como 4 agentes en paralelo en una sesión cloud; la sesión se cortó antes de que D6/C2/M8 terminaran de reportarse (D6 y M8 en realidad ya habían mergeado; C2 había pusheado su rama sin mergear; D4 no llegó a pushear nada — se rehízo desde cero). Al continuar en una máquina local se verificó cada uno contra el estado real de `main` (nunca contra la descripción de esta tarea) antes de tocar nada — ver "Lección aprendida" de `plan-con-verificacion-e2e/SKILL.md`.
 
@@ -252,28 +253,38 @@ completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
   — no son de precio, pendiente aparte si se quiere.
 - **M11a — YA MERGEADA** (`aprobarYEnviarTransferencia`,
   `cancelarSolicitudTransferencia`, `rechazarSolicitudTransferencia` a caso
-  de uso). Migración PARCIAL a propósito: `traspasos.ts` todavía NO entra en
-  `ACCIONES_CON_CASO_DE_USO` (M11b/M11c le faltan). Cambio de comportamiento
-  menor: un `seccionOrigenId` que no es string ahora da un mensaje claro en
-  vez de un error crudo de Prisma (mismo criterio que M8). **M11b/c siguen
-  pendientes**, encadenadas sobre el mismo archivo:
-  - **M11b** — aceptar traspaso y reingreso (`aceptarTransferencia`,
-    `confirmarReingresoTransferencia`, `rechazarTransferencia`; ya tienen I3
-    hoy). Puede reusar `producto-transferible.ts` (paso compartido que dejó
-    M11a) y debería poder borrar `obtenerProductoTransferible` del archivo
-    viejo si ya no lo usa nadie más.
+  de uso). Cambio de comportamiento menor: un `seccionOrigenId` que no es
+  string ahora da un mensaje claro en vez de un error crudo de Prisma (mismo
+  criterio que M8).
+- **M11b — YA MERGEADA** (`aceptarTransferencia`,
+  `rechazarTransferencia`, `confirmarReingresoTransferencia` a caso de uso;
+  I3 conservada en aceptar y reingreso). Reusó `producto-transferible.ts` de
+  M11a; borró `buscarTraspaso` (ya sin uso); `obtenerProductoTransferible` y
+  `escribirMovimientoTraspaso` QUEDAN en `traspasos.ts` porque los usa M11c.
+  Amplió `test/arquitectura/confirmacion-en-un-solo-lugar.test.ts` para
+  revisar también `casos-de-uso/` (ahí se mudaron las transiciones) —
+  verificado que sigue exigiendo `guardTransicionTraspaso(` en algún lado y
+  prohibiendo comparar el estado contra un literal en cualquiera de esos
+  archivos, no una regla debilitada. `traspasos.ts` todavía NO entra en
+  `ACCIONES_CON_CASO_DE_USO` (falta M11c). **M11c sigue pendiente:**
   - **M11c** — creación y envío directo (`crearSolicitudTransferencia`,
     `crearEnvioDirectoTransferencia`; hoy sin I3 — evaluar si corresponde
-    agregarla). Recién acá `traspasos.ts` entra a `ACCIONES_CON_CASO_DE_USO`.
-  Tamaño mediana cada una.
+    agregarla). Recién acá `traspasos.ts` entra a `ACCIONES_CON_CASO_DE_USO`,
+    y recién ahí se puede confirmar si `obtenerProductoTransferible`/
+    `escribirMovimientoTraspaso` se pueden borrar del todo. Tamaño mediana.
 - **M12a — YA MERGEADA** (`cerrarCuenta` a caso de uso: comando+guard en
   `core/features/cuentas/`, persistencia nueva en `server/persistencia/pos/`
   — no existía, se armó desde cero, cerrando de paso el ítem P2 opcional del
   backlog —, caso de uso en `server/actions/pos/casos-de-uso/cerrar-cuenta.ts`).
   Idempotencia por estado y numeración de boleta verificadas contra el
-  comportamiento original. **M12b/c/d siguen pendientes**, encadenadas:
-  - **M12b** — `emitirBoletaCorregida` (mismo archivo que M12a). Recién acá
-    `cuenta-cierre.ts` entra a `ACCIONES_CON_CASO_DE_USO`.
+  comportamiento original.
+- **M12b — YA MERGEADA** (`emitirBoletaCorregida` a caso de uso, mismo
+  archivo que M12a). Con las dos migradas, `cuenta-cierre.ts` ya no tiene
+  ninguna otra función y **entró en `ACCIONES_CON_CASO_DE_USO`** (verificado
+  con `npm run arquitectura` limpio). La Server Action no usa
+  `aResultadoAccion` porque su contrato le devuelve además `numero`/`ejemplar`
+  para imprimir. **M12c/d siguen pendientes**, sobre OTRO archivo
+  (`pos/cuenta-anulacion.ts`, sin relación de bloqueo real con M12a/b):
   - **M12c** — `anularItemEnviado` (`pos/cuenta-anulacion.ts`).
   - **M12d** — `anularPromoEnviada` (mismo archivo que M12c, después de c;
     evaluar si sumar `abrirCuenta` opcional acá o dejarla fuera). Recién acá
