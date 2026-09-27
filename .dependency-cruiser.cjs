@@ -73,10 +73,10 @@ module.exports = {
     },
     {
       name: "acciones-sin-ui",
-      comment: "server/actions/ no importa de la UI (app/, components/) ni de server/consultas/ o server/persistencia/.",
+      comment: "server/actions/ no importa de la UI (app/, components/) ni de server/consultas/. A server/persistencia/ solo llegan los casos de uso (ver persistencia-capa).",
       severity: "error",
       from: { path: "^src/server/actions/" },
-      to: { path: ["^src/(app|components)/", "^src/server/consultas/", "^src/server/persistencia/"] },
+      to: { path: ["^src/(app|components)/", "^src/server/consultas/"] },
     },
     {
       name: "consultas-capa",
