@@ -8,12 +8,15 @@
  * `knownViolations`): no lleva motivo y no avisa cuando una excepción sobra.
  *
  * Capas: `src/core/` (dominio) no conoce a nadie de arriba; `src/app/` + `src/components/` (UI) no tocan Prisma en runtime;
- * `src/server/actions/` (escrituras), `src/server/consultas/` (lecturas, Fase D) y `src/server/persistencia/` (Fase C/D)
- * no se mezclan entre sí salvo actions → persistencia. `server/consultas/` existe desde la Fase D1 (piloto: catalogo/productos.ts);
- * `server/persistencia/` todavía no: su regla queda preparada para cuando exista.
+ * `src/server/actions/` (escrituras), `src/server/consultas/` (lecturas, Fase D) y `src/server/persistencia/` no se mezclan
+ * entre sí salvo casos de uso → persistencia. `server/consultas/` existe desde la Fase D1 (piloto: catalogo/productos.ts);
+ * `server/persistencia/` y `server/actions/<dominio>/casos-de-uso/` desde la Fase M (piloto: compras — anular y corregir).
  */
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- dependency-cruiser carga esta config como CommonJS (.cjs): `require` es la forma nativa de traer el archivo de excepciones.
 const EXCEPCIONES = require("./.dependency-cruiser-excepciones.cjs");
+
+/** Los casos de uso de mutaciones (Task #41, Fase M): `src/server/actions/<dominio>/casos-de-uso/<verbo>.ts`. */
+const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 
 /** Ruta literal (con `/`) → expresión regular anclada que matchea ESE archivo y nada más. */
 function rutaExacta(ruta) {
@@ -73,7 +76,7 @@ module.exports = {
     },
     {
       name: "acciones-sin-ui",
-      comment: "server/actions/ no importa de la UI (app/, components/) ni de server/consultas/. A server/persistencia/ solo llegan los casos de uso (ver persistencia-capa).",
+      comment: "server/actions/ no importa de la UI (app/, components/) ni de server/consultas/. A server/persistencia/ solo llegan sus casos de uso (ver persistencia-solo-desde-casos-de-uso).",
       severity: "error",
       from: { path: "^src/server/actions/" },
       to: { path: ["^src/(app|components)/", "^src/server/consultas/"] },
@@ -93,10 +96,11 @@ module.exports = {
       to: { path: ["^src/(app|components)/", "^src/server/actions/", "^src/server/consultas/"] },
     },
     {
-      name: "persistencia-capa",
-      comment: "Solo server/actions/ (y la propia persistencia) puede importar server/persistencia/.",
+      name: "persistencia-solo-desde-casos-de-uso",
+      comment:
+        "Solo un caso de uso (src/server/actions/<dominio>/casos-de-uso/) —y la propia persistencia— importa server/persistencia/: ni una Server Action, ni la UI, ni core/, ni server/consultas/ (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md).",
       severity: "error",
-      from: { pathNot: ["^src/server/actions/", "^src/server/persistencia/"] },
+      from: { pathNot: [CASOS_DE_USO, "^src/server/persistencia/"] },
       to: { path: "^src/server/persistencia/" },
     },
     ...reglasSinInternalsDeOtroDominio,
