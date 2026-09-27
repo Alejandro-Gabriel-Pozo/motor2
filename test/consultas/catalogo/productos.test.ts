@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
 import { limpiarBaseDeTest, prisma } from "../../setup/test-db";
-import { obtenerFichaProducto, obtenerProductoPorId, obtenerSeccionHabitualEnSucursal } from "../../../src/server/consultas/catalogo/productos";
+import {
+  obtenerFichaProducto,
+  obtenerProductoOpcion,
+  obtenerProductoPorId,
+  obtenerSeccionHabitualEnSucursal,
+} from "../../../src/server/consultas/catalogo/productos";
 
 /**
  * `src/server/consultas/catalogo/productos.ts` (Task #41, Fase D1 — piloto de `server/consultas/`) contra Postgres real.
@@ -9,6 +14,7 @@ import { obtenerFichaProducto, obtenerProductoPorId, obtenerSeccionHabitualEnSuc
  * Estas funciones reemplazan, SIN cambiar su forma, las consultas Prisma que hacían en línea la ficha
  * (`/catalogo/productos/[id]`) y la edición (`/catalogo/productos/[id]/editar`) de un producto: acá se fija la forma exacta
  * de lo que devuelven (claves de primer nivel y de cada `include`/`select`), porque es lo que la página serializa al cliente.
+ * `obtenerProductoOpcion` (Fase D6) reemplaza la del deep-link `/movimientos/[proceso]?productoId=`: solo `{ id, codigo, nombre }`.
  * Ninguna ordena: `findUnique` por id y `findFirst` sobre `@@unique([sucursalId, productoId])` traen a lo sumo UNA fila.
  */
 
@@ -182,6 +188,26 @@ describe("server/consultas/catalogo/productos", () => {
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
       await expect(obtenerProductoPorId("no-existe")).resolves.toBeNull();
+    });
+  });
+
+  describe("obtenerProductoOpcion", () => {
+    it("trae SOLO { id, codigo, nombre } del producto (ningún otro escalar, ninguna relación)", async () => {
+      const p = await obtenerProductoOpcion(mpCompleto);
+      expect(p).toEqual({ id: mpCompleto, codigo: "MP_HARINA", nombre: "Harina 000" });
+      expect(Object.keys(p ?? {}).sort()).toEqual(["codigo", "id", "nombre"]);
+
+      // Filtra por el id pedido: el otro producto trae lo suyo.
+      await expect(obtenerProductoOpcion(pvSinRelaciones)).resolves.toEqual({ id: pvSinRelaciones, codigo: "PV_PIZZA", nombre: "Pizza muzza" });
+    });
+
+    it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
+      await expect(obtenerProductoOpcion("no-existe")).resolves.toBeNull();
+    });
+
+    it("acepta el cliente de una transacción como `db`", async () => {
+      const p = await prisma.$transaction((tx) => obtenerProductoOpcion(mpCompleto, tx));
+      expect(p).toEqual({ id: mpCompleto, codigo: "MP_HARINA", nombre: "Harina 000" });
     });
   });
 });
