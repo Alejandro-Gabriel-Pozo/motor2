@@ -73,7 +73,8 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 - **M9** (caso de uso `registrarVenta` de mostrador) — resultó YA HECHA como efecto colateral de M8 (verificado 2026-09-27). Nada pendiente.
 - **Fase M, piloto + M8** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio — PR #40; M8: caso de uso `anularVenta` — PR #48, mergeado ya antes de este checkpoint). De paso el piloto corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada. **M9 queda desbloqueada.**
 - **D9, M10, M11a, M12a** — 4 tareas lanzadas en paralelo (4 agentes, worktrees/DBs propios, este mismo día, máquina local) y mergeadas: D9 (`AccionConteo` vía fachada), M10 (transacción atómica en cambios de precio, con test rojo→verde), M11a (traspasos: aprobar/cancelar/rechazar solicitud, migración parcial a propósito) y M12a (POS: `cerrarCuenta`, migración parcial a propósito). Cada una reverificada de forma independiente (gate completo + lectura del diff) antes de mergear.
-- **M11b, M12b** — siguiente ronda, mismo patrón (2 agentes en paralelo, archivos distintos entre sí): M11b (traspasos: aceptar/rechazar envío/reingreso, todavía parcial — falta M11c) y M12b (POS: `emitirBoletaCorregida` — con esta, `cuenta-cierre.ts` completó su migración y ya entró en `ACCIONES_CON_CASO_DE_USO`). Ver detalle de cada una más abajo — quedan pendientes M11c y M12c/d.
+- **M11b, M12b** — mismo patrón (2 agentes en paralelo): M11b (traspasos: aceptar/rechazar envío/reingreso) y M12b (POS: `emitirBoletaCorregida` — `cuenta-cierre.ts` completó su migración y entró en `ACCIONES_CON_CASO_DE_USO`).
+- **M11c, M12c** — mismo patrón: M11c CIERRA la cadena de traspasos (`traspasos.ts` entero, ya solo con lecturas + casos de uso, entró en `ACCIONES_CON_CASO_DE_USO`; las 2 lecturas se mudaron a `traspasos/lecturas.ts`) y M12c (`anularItemEnviado`, migración parcial — falta M12d). Al reverificar M11c se encontró un flake real preexistente en un test de M10 (`sincronizarPrecioGrupoCarta`, orden de productos en el mensaje no determinista) — documentado más abajo, no bloquea nada. Solo queda **M12d** para cerrar toda la Fase M11/M12.
 
 **Nota de continuidad (2026-09-27, tarde):** D4, D6, C2 y M8 se lanzaron como 4 agentes en paralelo en una sesión cloud; la sesión se cortó antes de que D6/C2/M8 terminaran de reportarse (D6 y M8 en realidad ya habían mergeado; C2 había pusheado su rama sin mergear; D4 no llegó a pushear nada — se rehízo desde cero). Al continuar en una máquina local se verificó cada uno contra el estado real de `main` (nunca contra la descripción de esta tarea) antes de tocar nada — ver "Lección aprendida" de `plan-con-verificacion-e2e/SKILL.md`.
 
@@ -258,20 +259,23 @@ completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
   criterio que M8).
 - **M11b — YA MERGEADA** (`aceptarTransferencia`,
   `rechazarTransferencia`, `confirmarReingresoTransferencia` a caso de uso;
-  I3 conservada en aceptar y reingreso). Reusó `producto-transferible.ts` de
-  M11a; borró `buscarTraspaso` (ya sin uso); `obtenerProductoTransferible` y
-  `escribirMovimientoTraspaso` QUEDAN en `traspasos.ts` porque los usa M11c.
-  Amplió `test/arquitectura/confirmacion-en-un-solo-lugar.test.ts` para
-  revisar también `casos-de-uso/` (ahí se mudaron las transiciones) —
-  verificado que sigue exigiendo `guardTransicionTraspaso(` en algún lado y
-  prohibiendo comparar el estado contra un literal en cualquiera de esos
-  archivos, no una regla debilitada. `traspasos.ts` todavía NO entra en
-  `ACCIONES_CON_CASO_DE_USO` (falta M11c). **M11c sigue pendiente:**
-  - **M11c** — creación y envío directo (`crearSolicitudTransferencia`,
-    `crearEnvioDirectoTransferencia`; hoy sin I3 — evaluar si corresponde
-    agregarla). Recién acá `traspasos.ts` entra a `ACCIONES_CON_CASO_DE_USO`,
-    y recién ahí se puede confirmar si `obtenerProductoTransferible`/
-    `escribirMovimientoTraspaso` se pueden borrar del todo. Tamaño mediana.
+  I3 conservada en aceptar y reingreso). Amplió
+  `test/arquitectura/confirmacion-en-un-solo-lugar.test.ts` para revisar
+  también `casos-de-uso/` — verificado que no debilita la regla.
+- **M11c — YA MERGEADA, CIERRA LA CADENA** (`crearSolicitudTransferencia`,
+  `crearEnvioDirectoTransferencia` a caso de uso). Sin I3 en ninguna de las
+  dos (motivo documentado caso por caso — el envío directo queda con un
+  riesgo residual anotado: reintento de red podría duplicar el envío,
+  pendiente fuera de esta fase porque cambiaría el contrato). Hallazgo real:
+  la regla `accion-migrada-sin-orquestacion` aplica al ARCHIVO entero, así
+  que las 2 funciones de lectura (`obtenerBandejaTransferencias`,
+  `listarSucursalesDisponibles`) tuvieron que mudarse tal cual a
+  `traspasos/lecturas.ts` (una Server Action no puede importar
+  `server/consultas/`, así que no podían migrar a esa capa) — con eso,
+  `traspasos.ts` (ya solo con las 8 escrituras) entró en
+  `ACCIONES_CON_CASO_DE_USO`. Se borraron los 2 helpers viejos
+  (`obtenerProductoTransferible`, `escribirMovimientoTraspaso`), ya
+  reemplazados por sus equivalentes en `casos-de-uso/`/`persistencia/`.
 - **M12a — YA MERGEADA** (`cerrarCuenta` a caso de uso: comando+guard en
   `core/features/cuentas/`, persistencia nueva en `server/persistencia/pos/`
   — no existía, se armó desde cero, cerrando de paso el ítem P2 opcional del
@@ -283,15 +287,25 @@ completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
   ninguna otra función y **entró en `ACCIONES_CON_CASO_DE_USO`** (verificado
   con `npm run arquitectura` limpio). La Server Action no usa
   `aResultadoAccion` porque su contrato le devuelve además `numero`/`ejemplar`
-  para imprimir. **M12c/d siguen pendientes**, sobre OTRO archivo
-  (`pos/cuenta-anulacion.ts`, sin relación de bloqueo real con M12a/b):
-  - **M12c** — `anularItemEnviado` (`pos/cuenta-anulacion.ts`).
-  - **M12d** — `anularPromoEnviada` (mismo archivo que M12c, después de c;
-    evaluar si sumar `abrirCuenta` opcional acá o dejarla fuera). Recién acá
-    `cuenta-anulacion.ts` entra a `ACCIONES_CON_CASO_DE_USO`.
-  Bloqueadas por B2 (ya mergeado) y en cadena entre sí donde compartan
-  archivo. Cierre: `test/pos/*` y specs `pos-*` en verde. Tamaño mediana cada
-  una.
+  para imprimir.
+- **M12c — YA MERGEADA** (`anularItemEnviado` a caso de uso; comando+guard en
+  archivos APARTE de M12a/M12b — `cuenta-anulacion.schema.ts`/`.guard.ts` —
+  mismo corte que ya tenían las Server Actions). Sin I3 (nunca la tuvo: el
+  doble clic lo frena la guarda optimista de `restanteVisto`). **Migración
+  PARCIAL a propósito:** `cuenta-anulacion.ts` todavía NO entra en
+  `ACCIONES_CON_CASO_DE_USO` (falta M12d). **M12d sigue pendiente:**
+  - **M12d** — `anularPromoEnviada` (mismo archivo que M12c; evaluar si sumar
+    `abrirCuenta` opcional acá o dejarla fuera). Recién acá
+    `cuenta-anulacion.ts` entra a `ACCIONES_CON_CASO_DE_USO`. Tamaño mediana.
+
+**Hallazgo real detectado al reverificar M11c (no introducido por esta sesión, pre-existente desde M10):** `sincronizarPrecioGrupoCarta`
+(`src/server/actions/catalogo/productos.ts`) arma el mensaje de éxito listando los productos en el orden que devuelve
+`tx.producto.findMany({ where: { id: { in: ids } } })`, SIN `orderBy` — Postgres no garantiza que ese orden respete el de
+`ids`, así que el texto del mensaje (y el test que lo fija exacto, `test/catalogo/sincronizar-precio-grupo.test.ts`) puede
+flaquear según el plan de ejecución. Confirmado flake real (no una regresión de M11c): 3 corridas aisladas del archivo en
+verde, 1 falla en medio de la suite completa, corrida completa siguiente en verde. Arreglo sugerido, chico: agregar
+`orderBy` explícito por el orden de `ids` (o armar el mensaje ordenando por nombre) — no bloquea nada de la Fase M, queda
+anotado acá para una tarea aparte.
 - **M13a/b/c/d/e** — el motor genérico `registrarMovimiento`
   (`server/actions/movimientos/movimientos.ts`, 512 líneas, 9 procesos): UN
   caso de uso genérico, no una fachada por proceso (la UI ya es genérica).
