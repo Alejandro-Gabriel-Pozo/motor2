@@ -65,9 +65,10 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     motivo: "fijarRendimientoLocal/volverAlRendimientoCentral leen la línea (RecetaIngrediente) y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelven ningún rendimiento efectivo, escriben el override tal cual.",
   },
   {
-    ruta: "app/(app)/catalogo/recetas/page.tsx",
+    ruta: "server/consultas/catalogo/recetas.ts",
     clase: "central",
-    motivo: "Solo verifica que el producto TENGA alguna receta (recetaVersiones: { some: {} }) — no lee cantidad ni merma.",
+    motivo:
+      "listarProductosConReceta (lista /catalogo/recetas, Task #41 D3 — antes vivía en la página): filtra que el producto TENGA alguna receta (recetaVersiones: { some: {} }) y trae la última versión con el CONTEO de ingredientes — no lee cantidad ni merma.",
   },
   {
     ruta: "core/catalogo/desactivar-producto.ts",

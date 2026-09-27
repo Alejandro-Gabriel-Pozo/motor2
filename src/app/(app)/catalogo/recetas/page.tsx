@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { prisma } from "@/lib/db";
-import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { listarProductosConReceta } from "@/server/consultas/catalogo/recetas";
 import { NuevaReceta } from "./nueva-receta";
 
 /**
@@ -20,17 +19,7 @@ export default async function RecetasPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta");
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const conReceta = await prisma.producto.findMany({
-    where: { ...whereDisponibleEnAlguna(), recetaVersiones: { some: {} } },
-    orderBy: { nombre: "asc" },
-    include: {
-      recetaVersiones: {
-        orderBy: { version: "desc" },
-        take: 1,
-        include: { _count: { select: { ingredientes: true } } },
-      },
-    },
-  });
+  const conReceta = await listarProductosConReceta();
 
   return (
     <div className="flex flex-col gap-4">
