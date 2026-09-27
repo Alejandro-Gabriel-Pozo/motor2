@@ -85,6 +85,11 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await expect(filaPromo.getByRole("status")).toHaveText(`Cupos de "${nombrePromo}" guardados (1): ahora es una promo armable en el POS.`);
     await expect(filaPromo.getByText("Armable — 1 cupo")).toBeVisible();
 
+    // Paso 13 (opcional, no bloqueante): con máximo 2, el peor caso son 2 unidades — el piso de D3 es $0,02, muy por debajo del
+    // precio de esta promo ($25.000): el aviso lo dice, sin bloquear nada (guardarCuposPromoCarta ya lo hace duro si se cruza).
+    await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("el peor caso son 2 unidades y el precio mínimo permitido es $0,02");
+    await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("de margen antes de ese piso si subís algún máximo");
+
     const r2 = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
     const carta2 = await r2.json();
     const seccion2 = carta2.secciones.find((s: { nombre: string }) => s.nombre === nombreSeccion);

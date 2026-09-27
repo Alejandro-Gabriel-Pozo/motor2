@@ -6,6 +6,7 @@ import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/acti
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { actualizarActivaPromoCarta, guardarCuposPromoCarta, guardarPromoCarta } from "@/server/actions/carta/promos";
+import { precioMinimoPromo } from "@/core/pos/promo-combo";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -340,6 +341,22 @@ export default async function CartaPage() {
                       className="mt-1 flex flex-col gap-2"
                     >
                       <p className="text-sm text-neutral-500">Tildá de qué secciones se arma esta promo, con cuántas unidades mínimas y máximas de cada una (D1).</p>
+                      {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
+                          $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
+                          ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
+                      {pr.cupos.length > 0 &&
+                        (() => {
+                          const unidadesEnElPeorCaso = pr.cupos.reduce((suma, c) => suma + c.cantidadMaxima, 0);
+                          const minimo = precioMinimoPromo([{ cantidad: unidadesEnElPeorCaso }]);
+                          const holgura = pr.precio - minimo;
+                          return (
+                            <p className="text-xs text-neutral-500" data-aviso-peor-caso={pr.titulo}>
+                              Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es $
+                              {minimo.toLocaleString("es-AR")}
+                              {holgura > 0 ? ` — hay $${holgura.toLocaleString("es-AR")} de margen antes de ese piso si subís algún máximo.` : "."}
+                            </p>
+                          );
+                        })()}
                       <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />
                       <div>
                         <button type="submit" className={CLASE_BOTON}>
