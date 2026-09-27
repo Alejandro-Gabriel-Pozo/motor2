@@ -17,6 +17,7 @@ import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirSesion } from "../con-sesion";
+import type { FiltroSelectorProducto } from "@/core/catalogo/filtro-selector-producto";
 
 export interface ProductoOpcion {
   id: string;
@@ -34,22 +35,6 @@ const LIMITE_SELECTOR = 20;
  * `LIMITE_SELECTOR` en orden alfabético (para que el combobox no arranque
  * vacío); con término, filtra por nombre o código.
  */
-export interface FiltroSelectorProducto {
-  tipo?: TipoProducto;
-  /** Disponible EN LA SUCURSAL ACTIVA de quien busca (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.2) — la sucursal se toma del contexto del servidor, NUNCA de un parámetro del cliente: si no, cualquiera podría mirar el catálogo disponible de otra sucursal. */
-  soloDisponibles?: boolean;
-  /** El equivalente "central" de `soloDisponibles`: disponible en ALGUNA sucursal (no importa cuál) — para catálogo compartido entre sucursales, como hermanar Insumos (§5.2, call-site 12). */
-  soloDisponiblesEnAlguna?: boolean;
-  /** MP, o PV solo si está marcado "Se produce" — mismo criterio que `tieneStockReal` (Conteo Físico, Stock consolidado). */
-  soloConStockReal?: boolean;
-  /** `producto.seProduce === true`, en MP o PV — quién puede ser el RESULTADO de una Producción (distinto de `soloConStockReal`: una MP comprada, no producida, tiene stock real pero no es válida acá). */
-  soloSeProduce?: boolean;
-  /** PV, o MP solo si está marcada "Se produce" — quién puede tener una Receta (`/catalogo/recetas`). Es el criterio inverso a `soloConStockReal`: ahí toda MP entra y el PV es la excepción, acá es al revés. */
-  elegibleParaReceta?: boolean;
-  /** true = solo productos en consignación (Devolución al consignante); false = excluirlos (Devolución a proveedor — nunca se "compró" algo en consignación). Sin definir = sin filtrar. */
-  esConsignacion?: boolean;
-}
-
 export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
   const ctx = await requerirSesion();
   const t = texto(termino);

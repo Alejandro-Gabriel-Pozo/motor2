@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { buscarProductosSelector, type FiltroSelectorProducto, type ProductoOpcion } from "@/server/actions/catalogo/productos";
+import { buscarProductosSelector, type ProductoOpcion } from "@/server/actions/catalogo/productos";
+import type { FiltroSelectorProducto } from "@/core/catalogo/filtro-selector-producto";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 
 interface Props {
