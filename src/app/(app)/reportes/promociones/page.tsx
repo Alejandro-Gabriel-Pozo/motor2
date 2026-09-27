@@ -6,6 +6,7 @@ import { obtenerPromocionesHabilitadas, buscarProductoParaPromocion } from "@/se
 import { PromocionForm } from "./promocion-form";
 import { TablaPromociones } from "./tabla-promociones";
 import { SelectorRango } from "@/components/selector-rango";
+import { EnlaceInterno } from "@/components/enlace-interno";
 
 export default async function PromocionesPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -32,6 +33,13 @@ export default async function PromocionesPage({ searchParams }: { searchParams: 
         <p className="text-sm text-neutral-500">
           Feature opcional (apagada por defecto): separa la facturación en Promoción/Combo vs. a la carta, y calcula cuánto costarían sus insumos
           si se vendieran sueltos.
+        </p>
+        <p className="mt-1 text-sm text-neutral-500">
+          Esto marca qué PV cuenta como promoción (`PromocionProducto`) — no es una promo ARMABLE con componentes propios
+          (Task #16, Catálogo › Carta, cupos).{" "}
+          <EnlaceInterno href="/reportes/margen-promociones" className="underline">
+            Ver «Margen de promociones» (las armables, con desglose por componente) →
+          </EnlaceInterno>
         </p>
       </div>
 
