@@ -11,12 +11,11 @@ import type { Prisma } from "@prisma/client";
  * plan), se resuelve aparte con una guarda de estado atómica.
  */
 
-const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-/** §11.1: formato validado en la capa de aplicación antes de tocar la DB — nunca se guarda un string que no sea un UUID. */
-export function esClaveIdempotenciaValida(clave: unknown): clave is string {
-  return typeof clave === "string" && REGEX_UUID.test(clave);
-}
+/**
+ * §11.1: la validación del formato de la clave vive en `src/core/datos/clave-idempotencia.ts` (pura, sin `node:crypto`: la usan los guards
+ * de `core/features/`, Task #41 Fase M). Se reexporta acá para los que ya la importaban de este módulo.
+ */
+export { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 
 function canonicalizar(valor: unknown): unknown {
   if (Array.isArray(valor)) return valor.map(canonicalizar);

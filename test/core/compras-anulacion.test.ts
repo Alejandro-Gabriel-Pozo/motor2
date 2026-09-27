@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { claveDeLote, construirReversion, evaluarAnulacion, type CompraAAnular, type LineaComprada } from "../../src/core/compras/anulacion";
+import {
+  claveDeLote,
+  construirReversion,
+  descripcionAuditoriaAnulacion,
+  evaluarAnulacion,
+  mensajeCompraAnulada,
+  type CompraAAnular,
+  type LineaComprada,
+} from "../../src/core/compras/anulacion";
 
 /** Módulo puro: sin base de datos, sin mocks. */
 const linea = (sobre: Partial<LineaComprada> = {}): LineaComprada => ({
@@ -149,5 +157,22 @@ describe("claveDeLote", () => {
     const claves = [claveDeLote("p", "s", null), claveDeLote("p", "s", f), claveDeLote("p", "otra", null), claveDeLote("otro", "s", null)];
     expect(new Set(claves).size).toBe(4);
     expect(claveDeLote("p", "s", f)).toBe(claveDeLote("p", "s", new Date(f.getTime())));
+  });
+});
+
+/** Armadores de textos (Task #41, Fase M): EXACTAMENTE los que armaba en línea la Server Action `anularCompra`. */
+describe("mensajeCompraAnulada / descripcionAuditoriaAnulacion", () => {
+  it("mensaje de éxito, con y sin N.º de factura", () => {
+    expect(mensajeCompraAnulada(2, "A-0001")).toBe("Compra anulada. Se revirtieron 2 movimiento(s) de stock y el N.º de factura A-0001 quedó libre para volver a cargarla.");
+    expect(mensajeCompraAnulada(1, null)).toBe("Compra anulada. Se revirtieron 1 movimiento(s) de stock.");
+    expect(mensajeCompraAnulada(1, "")).toBe("Compra anulada. Se revirtieron 1 movimiento(s) de stock.");
+  });
+
+  it("descripción de auditoría, con y sin proveedor y factura", () => {
+    const fecha = new Date("2026-08-10T12:00:00Z");
+    expect(descripcionAuditoriaAnulacion(fecha, "Molino SA", "A-0001")).toBe("Compra del 2026-08-10 a Molino SA, factura A-0001: anulación");
+    expect(descripcionAuditoriaAnulacion(fecha, null, "A-0001")).toBe("Compra del 2026-08-10, factura A-0001: anulación");
+    expect(descripcionAuditoriaAnulacion(fecha, "Molino SA", null)).toBe("Compra del 2026-08-10 a Molino SA: anulación");
+    expect(descripcionAuditoriaAnulacion(fecha, null, null)).toBe("Compra del 2026-08-10: anulación");
   });
 });
