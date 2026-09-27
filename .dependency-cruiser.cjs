@@ -36,8 +36,9 @@ function excepcionesDe(regla) {
  * la Fase C la va llenando dominio por dominio, a medida que cada uno tiene su `public.ts`:
  *  - C1 (piloto): `catalogo` → core/catalogo/public.ts (puro) + core/catalogo/public-servidor.ts (toca la base).
  *  - C2: `movimientos` → core/movimientos/public.ts (puro) + core/movimientos/public-servidor.ts (toca la base).
+ *  - C3: `reportes` → core/reportes/public.ts (puro) + core/reportes/public-servidor.ts (toca la base).
  */
-const DOMINIOS_CON_PUBLIC = ["catalogo", "movimientos"];
+const DOMINIOS_CON_PUBLIC = ["catalogo", "movimientos", "reportes"];
 
 const reglasSinInternalsDeOtroDominio = DOMINIOS_CON_PUBLIC.map((dominio) => ({
   name: "sin-internals-de-otro-dominio",

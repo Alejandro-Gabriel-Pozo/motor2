@@ -1,14 +1,18 @@
-import type { Db } from "./comun";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, desvioEsNotable } from "./rendimiento-recetas-vistas";
 
 /**
  * D8 (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): comparación del rendimiento calibrado de cada línea de
- * receta, lado a lado entre varias sucursales. Armado puro, SIN importar el VALOR `@/lib/db` (a propósito — `db` es
- * obligatorio, no opcional, y el import de `Db` de acá arriba es solo de TIPO — se borra al compilar, ver
- * `import type`): a diferencia del resto de `core/reportes`, esta pantalla siempre recibe explícitamente las sucursales
- * de `ctx.membresias`, nunca "la sucursal activa" sola.
+ * receta, lado a lado entre varias sucursales. Armado puro, SIN alcanzar `src/lib/db.ts` ni directa ni transitivamente
+ * (regla `publico-puro`, Fase C3 — este archivo se expone en `core/reportes/public.ts`): `db` es obligatorio, no opcional,
+ * y `Db` se declara ACÁ, tipado directo de `@prisma/client` (el paquete, no `@/lib/db.ts`) — importarlo de `./comun`
+ * alcanzaría `@/lib/db.ts` transitivamente (comun.ts sí importa el VALOR `prisma`) y rompería la fachada pura, aunque el
+ * import de acá fuera `import type`: dependency-cruiser cuenta el edge a nivel de ARCHIVO, no de símbolo. A diferencia del
+ * resto de `core/reportes`, esta pantalla siempre recibe explícitamente las sucursales de `ctx.membresias`, nunca "la
+ * sucursal activa" sola.
  */
+type Db = PrismaClient | Prisma.TransactionClient;
 
 export interface ValorPorSucursal {
   /** NETO efectivo (rendimientoEfectivo). */
