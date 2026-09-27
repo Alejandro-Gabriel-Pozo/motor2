@@ -2,7 +2,7 @@
 
 import { useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
-import { agregarItems } from "@/server/actions/pos/cuenta";
+import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
 import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/selector-carta";
 import { estadoInicialSelectorCarta, reducirSelectorCarta } from "@/core/pos/selector-carta-estado";
 import {

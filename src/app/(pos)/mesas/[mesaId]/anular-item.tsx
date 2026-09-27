@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { anularItemEnviado } from "@/server/actions/pos/cuenta";
+import { anularItemEnviado } from "@/server/actions/pos/cuenta-anulacion";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";

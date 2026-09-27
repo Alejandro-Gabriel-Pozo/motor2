@@ -1,6 +1,6 @@
 "use client";
 
-import { liberarMesa } from "@/server/actions/pos/cuenta";
+import { liberarMesa } from "@/server/actions/pos/cuenta-apertura";
 import { BOTON_SECUNDARIO } from "./estilos";
 import { useAccionMesa } from "./usar-accion";
 

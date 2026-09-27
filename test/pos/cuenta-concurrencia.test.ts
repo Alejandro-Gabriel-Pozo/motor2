@@ -4,7 +4,10 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
-import { abrirCuenta, agregarItems, anularItemEnviado, cerrarCuenta, emitirBoletaCorregida, enviarACocina } from "../../src/server/actions/pos/cuenta";
+import { abrirCuenta } from "../../src/server/actions/pos/cuenta-apertura";
+import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta-pedido";
+import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
+import { cerrarCuenta, emitirBoletaCorregida } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 
 /**

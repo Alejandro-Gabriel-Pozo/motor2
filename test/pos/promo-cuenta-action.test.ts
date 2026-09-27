@@ -4,7 +4,10 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarSalon } from "./salon-fixture";
-import { abrirCuenta, agregarItems, anularItemEnviado, anularPromoEnviada, cerrarCuenta, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "../../src/server/actions/pos/cuenta";
+import { abrirCuenta } from "../../src/server/actions/pos/cuenta-apertura";
+import { agregarItems, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
+import { anularItemEnviado, anularPromoEnviada } from "../../src/server/actions/pos/cuenta-anulacion";
+import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 
 /**
  * Promos armables en la cuenta (Task #16, docs/plan-promo-combo-2026-09-26.md, pasos 8a/8b/8c): agregar, quitar sin enviar,

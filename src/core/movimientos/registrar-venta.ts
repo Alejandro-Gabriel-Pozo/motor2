@@ -17,7 +17,7 @@ import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
 /**
  * Núcleo de la Venta, SIN permisos ni transacción propia (no es una Server Action: sin "use server"). Extraído tal cual de
  * `registrarVenta` (src/server/actions/movimientos/venta.ts) para que el cierre de una cuenta del salón (`cerrarCuenta`,
- * src/server/actions/pos/cuenta.ts) registre la venta con EXACTAMENTE la misma validación y escritura, dentro de SU transacción
+ * src/server/actions/pos/cuenta-cierre.ts) registre la venta con EXACTAMENTE la misma validación y escritura, dentro de SU transacción
  * (docs/plan-tomar-pedido-2026-09-25.md, B6). Quien llama es responsable de: el permiso, la transacción serializable
  * (`conTransaccionSerializable`) y — si aplica — el chequeo de idempotencia previo.
  *

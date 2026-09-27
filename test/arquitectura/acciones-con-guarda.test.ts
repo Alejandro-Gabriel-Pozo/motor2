@@ -53,7 +53,7 @@ describe("server actions: toda función exportada lleva una guarda de acceso", (
   });
 
   it("los archivos con guarda de lectura (con-sesion.ts) y de escritura (con-permiso.ts) no llevan 'use server'", () => {
-    for (const nombre of ["con-sesion.ts", "con-permiso.ts", "catalogo/upsert-proveedor-por-producto.ts"]) {
+    for (const nombre of ["con-sesion.ts", "con-permiso.ts", "catalogo/upsert-proveedor-por-producto.ts", "pos/cuenta-comun.ts"]) {
       const ruta = join(RAIZ, nombre);
       const fuente = readFileSync(ruta, "utf8");
       expect(analizarFuente(ruta, fuente).esArchivoDeAcciones, `${nombre} no puede llevar "use server": sus exports serían endpoints`).toBe(false);

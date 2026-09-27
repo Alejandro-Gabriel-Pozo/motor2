@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { cerrarCuenta } from "@/server/actions/pos/cuenta";
+import { cerrarCuenta } from "@/server/actions/pos/cuenta-cierre";
 import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
 import { formatearMonto } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";

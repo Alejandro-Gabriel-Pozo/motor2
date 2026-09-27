@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { corregirComensales } from "@/server/actions/pos/cuenta";
+import { corregirComensales } from "@/server/actions/pos/cuenta-apertura";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
 import { useAccionMesa } from "./usar-accion";
 

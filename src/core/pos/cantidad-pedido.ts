@@ -7,7 +7,7 @@ import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/venta-f
  * Vive separada de `src/core/pos/cuenta.ts` (que importa `@/lib/db` a nivel de módulo: un cliente NUNCA puede importarlo, ni
  * siquiera solo para estas dos funciones/constantes) para que la lista «Por agregar» del POS (`agregar-items.tsx`,
  * `agregar-lista-estado.ts`) pueda normalizar cada línea con la MISMA función que usa el servidor (`agregarItems`,
- * `src/server/actions/pos/cuenta.ts`) antes de confirmar — así lo que se ve en pantalla es lo que se va a guardar, sin redondeo
+ * `src/server/actions/pos/cuenta-pedido.ts`) antes de confirmar — así lo que se ve en pantalla es lo que se va a guardar, sin redondeo
  * silencioso. `cuenta.ts` re-exporta ambas para no romper a quien ya las importaba de ahí.
  */
 
