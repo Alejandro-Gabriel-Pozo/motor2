@@ -9,8 +9,8 @@
  *
  * Capas: `src/core/` (dominio) no conoce a nadie de arriba; `src/app/` + `src/components/` (UI) no tocan Prisma en runtime;
  * `src/server/actions/` (escrituras), `src/server/consultas/` (lecturas, Fase D) y `src/server/persistencia/` (Fase C/D)
- * no se mezclan entre sí salvo actions → persistencia. `server/consultas/` y `server/persistencia/` todavía no existen: las
- * reglas quedan preparadas para cuando existan.
+ * no se mezclan entre sí salvo actions → persistencia. `server/consultas/` existe desde la Fase D1 (piloto: catalogo/productos.ts);
+ * `server/persistencia/` todavía no: su regla queda preparada para cuando exista.
  */
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- dependency-cruiser carga esta config como CommonJS (.cjs): `require` es la forma nativa de traer el archivo de excepciones.
 const EXCEPCIONES = require("./.dependency-cruiser-excepciones.cjs");

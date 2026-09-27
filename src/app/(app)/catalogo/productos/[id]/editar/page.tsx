@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermiso, requierePermisoVer } from "@/core/permisos/gate";
-import { prisma } from "@/lib/db";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
 import { cargarOpcionesFormularioProducto } from "../../opciones-formulario";
 
@@ -20,7 +20,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
 
   const { id } = await params;
-  const p = await prisma.producto.findUnique({ where: { id } });
+  const p = await obtenerProductoPorId(id);
   if (!p) notFound();
 
   const { unidades, insumos, categorias, proveedores } = await cargarOpcionesFormularioProducto();

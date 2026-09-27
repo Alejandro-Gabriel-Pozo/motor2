@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { prisma } from "@/lib/db";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
 import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -42,10 +42,7 @@ export default async function FichaProductoPage({
 
   const { id } = await params;
   const { guardado } = await searchParams;
-  const p = await prisma.producto.findUnique({
-    where: { id },
-    include: { categoria: true, unidadCompra: true, unidadStock: true, insumo: { include: { grupo: true } }, proveedorConsignacion: true },
-  });
+  const p = await obtenerFichaProducto(id);
   if (!p) notFound();
 
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
@@ -56,12 +53,7 @@ export default async function FichaProductoPage({
     disponibilidadPorSucursalDeProducto(p.id),
     // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
     // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).
-    p.tipo === "PV"
-      ? prisma.seccionHabitualProducto.findFirst({
-          where: { sucursalId: ctx.sucursalId, productoId: p.id, seccion: { sucursalId: ctx.sucursalId, activa: true } },
-          select: { seccion: { select: { nombre: true } } },
-        })
-      : Promise.resolve(null),
+    p.tipo === "PV" ? obtenerSeccionHabitualEnSucursal(ctx.sucursalId, p.id) : Promise.resolve(null),
   ]);
   const tieneReceta = p.tipo === "PV" || p.seProduce;
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
