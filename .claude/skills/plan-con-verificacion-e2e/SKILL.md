@@ -65,12 +65,16 @@ No alcanza con pedir "verificación end-to-end". Hay que pedir, en el propio
 prompt del agente de planificación, que el plan **enumere los comandos
 concretos** y el **criterio de éxito** de cada uno. En este proyecto
 (motor2) las herramientas ya son las siguientes — usar estos comandos
-literales, no una paráfrasis:
+literales, no una paráfrasis. Desde 2026-09-27 la batería obligatoria es de
+**6 comandos**, en este orden: `npx tsc --noEmit`, `npm run lint`, `npm run
+arquitectura`, `npm test`, `npm run build`, `npm run test:e2e` (la fila de
+accesibilidad ya corre dentro de `npm run test:e2e`):
 
 | Capa | Qué prueba | Comando en motor2 | Criterio de éxito |
 |---|---|---|---|
 | Tipos | El cambio no rompe el tipado del proyecto entero, no solo del archivo tocado | `npx tsc --noEmit` | Salida vacía (el único ruido preexistente y ajeno es `LayoutProps` de `layout.tsx`) |
 | Lint | Cero errores y cero warnings nuevos | `npm run lint` (ESLint, flat config) | 0 errores, 0 warnings |
+| Arquitectura | Fronteras entre capas/módulos: `core/` no importa de `app/`/`components/`/`server/` ni de React/Next, la UI no usa Prisma en runtime, `server/actions`/`consultas`/`persistencia` no se mezclan, sin ciclos, sin paquetes no declarados en `package.json` — capa nueva desde 2026-09-27 (Task #41, Fase A3) | `npm run arquitectura` (`depcruise src --config .dependency-cruiser.cjs`; excepciones con motivo en `.dependency-cruiser-excepciones.cjs`, revisadas en las dos direcciones por `test/arquitectura/dependencias.test.ts`) | Sale con código 0 (`no dependency violations found`). Nunca se baja la severidad de una regla ni se agrega una excepción sin motivo para que pase |
 | Unitaria/integración | Lógica de negocio contra Postgres real, sin mocks (`fileParallelism: false`) — la suite ENTERA, nunca solo el archivo tocado | `npm test` (Vitest) | Todos los archivos en verde; conteo de tests igual o mayor a la línea de base |
 | Accesibilidad (WCAG 2.1) | Que la UI no introduzca violaciones detectables automáticamente — capa nueva desde 2026-09-20, hoy solo en `test/e2e/accesibilidad.spec.ts` (login + un reporte autenticado) | `npx playwright test test/e2e/accesibilidad.spec.ts` (o la suite completa, que ya la incluye) | `violations` vacío en cada página cubierta. Al tocar una pantalla nueva, evaluar sumarle su propio chequeo con `@axe-core/playwright` (`new AxeBuilder({ page }).analyze()`) en vez de asumir que las dos páginas ya cubiertas alcanzan |
 | Build | El artefacto de producción compila limpio | `npm run build` (`prisma generate && prisma migrate deploy && next build`) — ojo, aplica migraciones: apuntar `DATABASE_URL`/`DIRECT_URL` a una base local o descartable, nunca a producción | Build exitoso, sin warnings nuevos |
@@ -158,8 +162,8 @@ orden. Cualquier paso que toque el schema/una migración va marcado
 
 Un paso final OBLIGATORIO y explícito de verificación end-to-end sobre la
 suite TOTAL del proyecto (no solo el área tocada): npx tsc --noEmit, npm run
-lint, npm test (Vitest contra Postgres real), npm run build, npm run test:e2e
-(Playwright) y, si el pendiente toca una pantalla, evaluar si conviene
+lint, npm run arquitectura (dependency-cruiser), npm test (Vitest contra
+Postgres real), npm run build, npm run test:e2e (Playwright) y, si el pendiente toca una pantalla, evaluar si conviene
 sumarle su propio chequeo de accesibilidad con @axe-core/playwright junto a
 los de test/e2e/accesibilidad.spec.ts — con línea de base antes de empezar y
 criterio de éxito conjunto. Si el pendiente es sobre testing, agregá la
@@ -178,7 +182,7 @@ La tabla de "paso final obligatorio" de arriba está llena con los comandos
 **literales de motor2** (Node/Next/Prisma/Vitest/Playwright/axe) — es a
 propósito, para que quede un ejemplo real y no una plantilla vacía, pero
 **hay que reemplazarla por los comandos reales del otro proyecto** antes de
-usar la skill ahí (compilador, linter, test runner, build, e2e y, si aplica,
-la capa de accesibilidad — no todos los proyectos la van a tener). Si el
+usar la skill ahí (compilador, linter, control de fronteras entre módulos, test runner, build,
+e2e y, si aplica, la capa de accesibilidad — no todos los proyectos la van a tener). Si el
 otro proyecto no tiene una capa (por ejemplo, no tiene suite E2E todavía),
 sacar esa fila de la tabla en vez de dejarla con un comando inventado.
