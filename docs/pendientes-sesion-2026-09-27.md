@@ -6,6 +6,26 @@ sistema de tareas de esa sesión (`TaskCreate`/`TaskList`) **no es visible
 desde otra sesión** — todo lo que había que conservar está transcripto acá,
 tal cual estaba en el tracker al momento de cerrar la sesión.
 
+**Para entender el "por qué" antes de tocar código, leer en este orden**
+(los dos ya están en `main`, no son parte de este traspaso — nacieron de la
+propia ejecución de la Task #41):
+1. `docs/arquitectura-modularidad-server-actions-2026-09-17.md` — el origen
+   de todo el refactor: cómo se descubrió el problema comparando motor2
+   contra el repo hermano `app`, el estado real de `server/actions/`/
+   `core/`/`components/` a hoy (sección "Estado al 2026-09-27"), y la tabla
+   de herramientas descartadas con motivo (por qué NO `eslint-plugin-boundaries`,
+   Zod, `next-safe-action`, tRPC, TanStack Query, Redux/Zustand, otra
+   librería decimal).
+2. `docs/arquitectura-casos-de-uso-2026-09-27.md` — el diseño de la capa
+   nueva de casos de uso (Fase M): la tabla de equivalencias con los 2
+   documentos externos que el dueño pasó (sobre convenciones de flujo de
+   datos), el diagrama de capas del piloto ya mergeado (`anularCompra`/
+   `corregirCompra`), y las 2 reglas de `dependency-cruiser` que lo hacen
+   obligatorio, no opcional.
+
+Este documento (el que estás leyendo) es el punch-list de lo que falta —
+los dos de arriba explican por qué cada pieza está donde está.
+
 **Estado de `main` al cerrar esta sesión:** todo lo de abajo marcado como
 "mergeado" ya está en `main`. El resto está sin empezar o a medio camino
 (ver cada sección).
