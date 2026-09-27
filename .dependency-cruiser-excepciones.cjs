@@ -103,6 +103,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "M12a + M12b: cerrarCuenta → pos/casos-de-uso/cerrar-cuenta.ts y emitirBoletaCorregida → pos/casos-de-uso/emitir-boleta-corregida.ts (transacción, carga, numeración/ejemplar de la boleta, persistencia y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
   },
   {
+    ruta: "src/server/actions/pos/cuenta-anulacion.ts",
+    motivo:
+      "M12c + M12d: anularItemEnviado → pos/casos-de-uso/anular-item-enviado.ts y anularPromoEnviada → pos/casos-de-uso/anular-promo-enviada.ts (transacción, carga, guardas de estado, fila espejo y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
+  },
+  {
     ruta: "src/server/actions/traspasos/traspasos.ts",
     motivo:
       "M11a + M11b + M11c: sus ocho escrituras → traspasos/casos-de-uso/ (aprobar-y-enviar, cancelar-solicitud, rechazar-solicitud, aceptar, rechazar-envio, confirmar-reingreso, crear-solicitud, crear-envio-directo; transacción, I3 de aceptar/reingreso, persistencia y guard de transición viven en el caso de uso). Sus lecturas (obtenerBandejaTransferencias, listarSucursalesDisponibles) se mudaron tal cual a traspasos/lecturas.ts, fuera de esta lista.",

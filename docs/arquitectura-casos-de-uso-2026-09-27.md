@@ -200,6 +200,23 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   `server/consultas/` (`acciones-sin-ui`); se actualizaron solo las rutas de import de sus tres páginas y de tres tests
   (`test/permisos/lecturas-con-permiso-de-ver.test.ts`, `lecturas-con-sesion.test.ts`, `test/traspasos/traspasos.test.ts`), sin tocar
   lo que verifican. Con las ocho escrituras migradas, **`traspasos.ts` entra en `ACCIONES_CON_CASO_DE_USO`**.
+- **M12d — `anularPromoEnviada`** (`src/server/actions/pos/cuenta-anulacion.ts`, cierre de M12c): comando + guard sumados a los de M12c
+  en `cuenta-anulacion.schema.ts` (`ComandoAnularPromoEnviada`, `CodigoAnularPromoEnviada`, `DatosAnularPromoEnviada`) y
+  `cuenta-anulacion.guard.ts` (`guardComandoAnularPromoEnviada`): el guard solo valida el `promoCuentaId` (no-string → «No se encontró
+  esa promo en esta sucursal.», igual que antes); el `motivo` viaja crudo y el caso de uso lo valida en el MISMO orden de siempre:
+  guardas de estado (cuenta cerrada → sin componentes → algún componente sin enviar) → motivo → «ya está anulada entera» (a ningún
+  componente le queda resto). Persistencia en `server/persistencia/pos/`: `cargar-promo-para-anular.ts` es NUEVO (el sujeto es la promo
+  con TODOS sus ítems —originales y espejos, con sus anulaciones y el precio de carta—, no un ítem: no se parece a
+  `cargar-item-para-anular.ts`); la escritura REUTILIZA `escribirEspejoDeItem` de M12c, que suma un argumento opcional `promo`
+  (`promoCuentaId` + `precioCartaUnitario` del componente, lo único que el `create` en línea de `anularPromoEnviada` escribía de más; sin
+  `promo`, esos campos no se escriben, igual que antes para un ítem suelto). Caso de uso `pos/casos-de-uso/anular-promo-enviada.ts`: UNA
+  transacción serializable, todo o nada (Task #16, D4: la promo se anula ENTERA), una fila espejo por el resto íntegro de cada componente
+  con el MISMO `promoCuentaId` y una fila de auditoría por componente (`CuentaItem`/`cantidadVigente`, resto → 0); `datos` con el
+  componente, su espejo y la cantidad anulada, que la Server Action no serializa. Sin I3 (nunca la tuvo: el doble clic lo frena «ya está
+  anulada entera»). Permiso `pos_anular_item` sin cambios. Con `anularItemEnviado` (M12c) y `anularPromoEnviada` migradas,
+  `cuenta-anulacion.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**. `abrirCuenta` (mencionada como
+  opcional) quedó FUERA a propósito: vive en otro archivo (`pos/cuenta-apertura.ts`, junto con comensales, cliente y liberar mesa) y no
+  mueve stock ni dinero ni cierra un ciclo, así que no es una "mutación relevante" de esta fase.
 
 ## Cómo se migra la próxima acción
 

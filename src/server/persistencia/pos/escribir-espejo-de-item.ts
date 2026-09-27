@@ -6,12 +6,18 @@ import type { Prisma } from "@prisma/client";
  * contrato que `cerrar-cuenta.ts`: `tx` OBLIGATORIO, sin reglas de negocio). Es EXACTAMENTE el `create` que antes hacía en línea
  * `anularItemEnviado` (src/server/actions/pos/cuenta-anulacion.ts). La cantidad (ya validada, y cuánto) la decide el caso de uso
  * (src/server/actions/pos/casos-de-uso/anular-item-enviado.ts); la auditoría la escribe él después.
+ *
+ * Desde M12d también la usa `anular-promo-enviada.ts`, una vez por componente de la promo: es el mismo `create` que hacía en línea
+ * `anularPromoEnviada`, que además copiaba `promoCuentaId` y `precioCartaUnitario` del componente (el argumento opcional `promo`).
  */
 
 /**
  * La fila ESPEJO: un CuentaItem nuevo con la cantidad en NEGATIVO, mismo producto/precio/envío que el original, `anulaAItemId` al
  * original, el motivo ya validado y quién anuló. El original nunca se edita ni se borra (lo que queda lo calcula `restanteDe`).
  * `cantidadAnulada` va en POSITIVO: el signo lo pone esta función. Devuelve el id de la fila espejo.
+ *
+ * `promo` (solo para un componente de promo, Task #16): la fila espejo lleva el MISMO `promoCuentaId` y el mismo `precioCartaUnitario`
+ * que el componente que anula. Sin `promo` (un ítem suelto) esos dos campos no se escriben, exactamente como antes.
  */
 export async function escribirEspejoDeItem(
   tx: Prisma.TransactionClient,
@@ -20,6 +26,7 @@ export async function escribirEspejoDeItem(
     cantidadAnulada: number;
     motivo: string;
     creadoPorId: string;
+    promo?: { promoCuentaId: string; precioCartaUnitario: number | null };
   }
 ): Promise<string> {
   const { id } = await tx.cuentaItem.create({
@@ -32,6 +39,7 @@ export async function escribirEspejoDeItem(
       anulaAItemId: args.original.id,
       motivoAnulacion: args.motivo,
       creadoPorId: args.creadoPorId,
+      ...(args.promo ? { promoCuentaId: args.promo.promoCuentaId, precioCartaUnitario: args.promo.precioCartaUnitario } : {}),
     },
     select: { id: true },
   });

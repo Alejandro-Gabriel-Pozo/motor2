@@ -5,7 +5,7 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * docs/arquitectura-casos-de-uso-2026-09-27.md): comandos y resultados de los casos de uso de `src/server/actions/pos/casos-de-uso/` que
  * vienen de `src/server/actions/pos/cuenta-anulacion.ts`. Archivo aparte de `cuenta.schema.ts` (cierre y boleta, `cuenta-cierre.ts`) por
  * el mismo corte que ya tienen las Server Actions: acá el sujeto es un ÍTEM (o una promo) de la cuenta, no la cuenta.
- * Hoy: `anularItemEnviado` (M12c). `anularPromoEnviada` (mismo archivo de acciones) se suma en M12d.
+ * `anularItemEnviado` (M12c) y `anularPromoEnviada` (M12d): las dos funciones del archivo de acciones.
  */
 
 /**
@@ -60,3 +60,38 @@ export interface DatosAnularItemEnviado {
 }
 
 export type ResultadoAnularItemEnviado = ResultadoCaso<DatosAnularItemEnviado, CodigoAnularItemEnviado>;
+
+/**
+ * Comando «anular una promo ya enviada a cocina» (M12d): lo que recibe `anularPromoEnviadaCasoDeUso`
+ * (src/server/actions/pos/casos-de-uso/anular-promo-enviada.ts), con el `promoCuentaId` ya validado por `guardComandoAnularPromoEnviada`.
+ * `motivo` viaja CRUDO (`unknown`): lo valida el caso de uso DESPUÉS de las guardas de estado, en el mismo orden que antes, así una
+ * promo cerrada o sin enviar sigue respondiendo eso aunque el motivo esté vacío. No hay cantidad ni guarda optimista: la promo se anula
+ * ENTERA (Task #16, D4). Sin clave de idempotencia I3: `anularPromoEnviada` nunca la tuvo — el doble clic lo frena «ya está anulada
+ * entera» (el segundo ya no encuentra ningún componente con resto).
+ */
+export interface ComandoAnularPromoEnviada {
+  promoCuentaId: string;
+  motivo: unknown;
+}
+
+/**
+ * Solo lo que produce el caso de uso (un `promoCuentaId` que no es un string lo rechaza antes el guard):
+ *  - `NO_ENCONTRADA`: no hay promo con ese id en una mesa de esta sucursal;
+ *  - `CUENTA_CERRADA`: la cuenta ya se cerró — su venta se anula por `anularVenta` (que también anula los hermanos);
+ *  - `SIN_COMPONENTES`: la promo no tiene ningún componente original;
+ *  - `SIN_ENVIAR`: algún componente todavía no salió a cocina — se quita la promo, no se anula;
+ *  - `MOTIVO_INVALIDO`: motivo vacío o demasiado largo (`validarMotivoAnulacion`);
+ *  - `YA_ANULADA`: a ningún componente le queda nada que anular.
+ */
+export type CodigoAnularPromoEnviada = "NO_ENCONTRADA" | "CUENTA_CERRADA" | "SIN_COMPONENTES" | "SIN_ENVIAR" | "MOTIVO_INVALIDO" | "YA_ANULADA";
+
+/**
+ * `datos` de una anulación exitosa: una entrada por componente anulado, en el orden en que se escribieron — el componente original, la
+ * fila espejo recién escrita y lo que quedaba de él (lo que anuló, íntegro; la auditoría registra ese valor → 0). Solo para el servidor:
+ * la Server Action NO los serializa (`aResultadoAccion`).
+ */
+export interface DatosAnularPromoEnviada {
+  componentes: { cuentaItemId: string; espejoId: string; cantidadAnulada: number }[];
+}
+
+export type ResultadoAnularPromoEnviada = ResultadoCaso<DatosAnularPromoEnviada, CodigoAnularPromoEnviada>;
