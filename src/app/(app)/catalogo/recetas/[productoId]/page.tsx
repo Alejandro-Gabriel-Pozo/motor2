@@ -17,8 +17,8 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
-import { disponibilidadPorSucursalDeProducto, whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
-import { secuenciaMoviendo } from "@/core/catalogo/pasos-receta";
+import { disponibilidadPorSucursalDeProducto, whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { secuenciaMoviendo } from "@/core/catalogo/public";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";

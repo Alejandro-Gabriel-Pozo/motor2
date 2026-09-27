@@ -3,8 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { creariaCiclo } from "@/core/catalogo/grupo";
-import { validarFusionInsumos } from "@/core/catalogo/producto";
+import { creariaCiclo, validarFusionInsumos } from "@/core/catalogo/public-servidor";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";

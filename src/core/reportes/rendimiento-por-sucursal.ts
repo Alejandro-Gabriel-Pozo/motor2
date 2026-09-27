@@ -1,5 +1,5 @@
 import type { Db } from "./comun";
-import { rendimientoEfectivo } from "@/core/catalogo/rendimiento-local";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, desvioEsNotable } from "./rendimiento-recetas-vistas";
 
 /**

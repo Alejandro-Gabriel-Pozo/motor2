@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { esErrorDeUnicidad } from "@/core/catalogo/generar-codigo";
+import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "@/core/carta/armar-menu";
 import {
   normalizarTagsCarta,

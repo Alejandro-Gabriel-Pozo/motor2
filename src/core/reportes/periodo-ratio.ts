@@ -1,6 +1,6 @@
 import { redondearMoneda } from "@/core/moneda";
 import { cargarClasificacionNoComestibles, type Db, type InfoProductoReporte } from "./comun";
-import type { ClasificacionNoComestibles } from "@/core/catalogo/no-comestibles";
+import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
 
 export interface RatioGastoVentas {
   /** Compras de comida y bebida ÷ Ventas (sin packaging ni limpieza si el grupo «No comestibles» existe). */

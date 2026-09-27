@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma, type Db } from "@/lib/db";
-import { whereDisponibleEnAlguna } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 
 /**
  * Lecturas de Catálogo › Recetas para los Server Components (Task #41, Fase D3). Mismo contrato que

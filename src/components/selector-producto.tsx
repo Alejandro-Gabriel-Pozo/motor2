@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { buscarProductosSelector, type ProductoOpcion } from "@/server/actions/catalogo/productos";
-import type { FiltroSelectorProducto } from "@/core/catalogo/filtro-selector-producto";
+import type { FiltroSelectorProducto } from "@/core/catalogo/public";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 
 interface Props {

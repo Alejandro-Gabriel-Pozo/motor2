@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/disponibilidad-producto-consulta";
+import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
 import { esClaveTema } from "./tema";
