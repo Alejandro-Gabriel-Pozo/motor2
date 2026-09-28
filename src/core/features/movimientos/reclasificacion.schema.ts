@@ -44,12 +44,14 @@ export type CodigoReclasificarStock =
   | "SUMA_NO_COINCIDE"
   | "SIN_SALDO";
 
-/** `datos` de una reclasificación exitosa: `operacionId`/`disponible`/`destinosCantidad` son `null` en el camino de idempotencia "duplicado" (no se volvió a escribir nada). */
-export interface DatosReclasificarStock {
-  operacionId: string | null;
-  disponible: number | null;
-  destinosCantidad: number | null;
-  repetida: boolean;
-}
+/**
+ * `datos` de una reclasificación exitosa — discriminado por `repetida` (backlog post-cierre de Task #41, 2026-09-28,
+ * docs/pendientes-sesion-2026-09-27.md §3): mismo criterio que `DatosRegistrarMovimiento` — con campos independientemente nullable,
+ * `{ operacionId: "x", disponible: 5, destinosCantidad: 2, repetida: true }` tipaba bien aunque fuera contradictorio (el camino de
+ * idempotencia "duplicado" nunca vuelve a escribir nada). La unión discriminada lo hace un error de compilación.
+ */
+export type DatosReclasificarStock =
+  | { repetida: true; operacionId: null; disponible: null; destinosCantidad: null }
+  | { repetida: false; operacionId: string; disponible: number; destinosCantidad: number };
 
 export type ResultadoReclasificarStock = ResultadoCaso<DatosReclasificarStock, CodigoReclasificarStock>;

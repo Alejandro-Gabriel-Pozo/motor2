@@ -58,11 +58,15 @@ export type CodigoRegistrarMovimiento =
   | "SIN_LINEAS_VALIDAS"
   | "STOCK_INSUFICIENTE";
 
-/** `datos` de un `registrarMovimiento` exitoso: `operacionId`/`movimientos` son `null` en el camino de idempotencia "duplicado" (no se volvió a escribir nada). */
-export interface DatosRegistrarMovimiento {
-  operacionId: string | null;
-  movimientos: number | null;
-  repetida: boolean;
-}
+/**
+ * `datos` de un `registrarMovimiento` exitoso — discriminado por `repetida` (backlog post-cierre de Task #41, 2026-09-28,
+ * docs/pendientes-sesion-2026-09-27.md §3): antes `operacionId`/`movimientos` eran independientemente `string|null`/`number|null` con
+ * `repetida: boolean` suelto, así que `{ operacionId: "x", movimientos: 5, repetida: true }` tipaba bien aunque fuera contradictorio
+ * (el camino de idempotencia "duplicado" nunca vuelve a escribir nada). Con la unión discriminada, esa combinación imposible ya no
+ * compila — el tipo mismo documenta y exige la regla.
+ */
+export type DatosRegistrarMovimiento =
+  | { repetida: true; operacionId: null; movimientos: null }
+  | { repetida: false; operacionId: string; movimientos: number };
 
 export type ResultadoRegistrarMovimiento = ResultadoCaso<DatosRegistrarMovimiento, CodigoRegistrarMovimiento>;

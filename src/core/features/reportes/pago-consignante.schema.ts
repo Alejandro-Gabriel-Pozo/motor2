@@ -25,10 +25,13 @@ export interface ComandoRegistrarPagoConsignante {
 
 export type CodigoRegistrarPagoConsignante = "CONFLICTO_IDEMPOTENCIA" | "PROVEEDOR_NO_ENCONTRADO";
 
-/** `datos` de un pago registrado con éxito. `pagoId` es `null` en el camino de idempotencia "duplicado" (no se volvió a escribir nada). */
-export interface DatosRegistrarPagoConsignante {
-  pagoId: string | null;
-  repetido: boolean;
-}
+/**
+ * `datos` de un pago registrado con éxito — discriminado por `repetido` (backlog post-cierre de Task #41, 2026-09-28,
+ * docs/pendientes-sesion-2026-09-27.md §3): mismo criterio que `DatosRegistrarMovimiento`/`DatosReclasificarStock` — con `pagoId`
+ * independientemente `string|null` y `repetido: boolean` suelto, `{ pagoId: "x", repetido: true }` tipaba bien aunque fuera
+ * contradictorio (el camino de idempotencia "duplicado" nunca vuelve a escribir nada). La unión discriminada lo hace un error de
+ * compilación.
+ */
+export type DatosRegistrarPagoConsignante = { pagoId: null; repetido: true } | { pagoId: string; repetido: false };
 
 export type ResultadoRegistrarPagoConsignante = ResultadoCaso<DatosRegistrarPagoConsignante, CodigoRegistrarPagoConsignante>;
