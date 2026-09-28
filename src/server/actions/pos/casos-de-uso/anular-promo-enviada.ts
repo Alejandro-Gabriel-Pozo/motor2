@@ -29,6 +29,11 @@ import { formatearCantidad } from "../cuenta-comun";
  *  4. qué queda de cada componente (`restanteDe`): si a ninguno le queda nada, ya está anulada entera;
  *  5. por cada componente con resto, la fila espejo por ese resto íntegro, con el MISMO `promoCuentaId` (persistencia), y su fila de
  *     auditoría (entidad `CuentaItem`, campo `cantidadVigente`, resto → 0); y el mensaje.
+ *
+ * @contract Anula TODOS los componentes de una promo ya enviada, o ninguno — nunca un componente suelto.
+ * @idempotency No aplica (nunca la tuvo) — un segundo intento ve "ya está anulada entera" (chequeo de estado, no I3).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects registrarCambioAuditado (uno por cada componente anulado).
  */
 export async function anularPromoEnviadaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

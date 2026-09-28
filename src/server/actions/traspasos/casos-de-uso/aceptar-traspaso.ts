@@ -34,6 +34,11 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *        envío) — el paso compartido `producto-transferible.ts`;
  *     d. la sucursal de origen (para el detalle y el mensaje), y la escritura de la ENTRADA y del traspaso ACEPTADO (persistencia);
  *     e. el resultado para la idempotencia (`registrarResultadoIdempotente`, solo si hay clave) y el mensaje de éxito.
+ *
+ * @contract Destino acepta un envío ENVIADO, re-chequea que el producto siga siendo transferible y escribe la entrada de stock.
+ * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno además de la escritura de la entrada de Kardex y el cambio de estado del traspaso — sin auditoría de permisos propia.
  */
 export async function aceptarTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,

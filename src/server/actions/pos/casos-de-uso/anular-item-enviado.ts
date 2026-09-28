@@ -30,6 +30,11 @@ import { formatearCantidad } from "../cuenta-comun";
  *  4. la guarda optimista: `restanteVisto` tiene que ser EXACTAMENTE lo que queda (`restanteDe`);
  *  5. la cantidad (`validarCantidadPedido`, con la unidad y el paso de venta del producto) y que no supere lo que queda;
  *  6. la fila espejo (persistencia), la fila de auditoría (entidad `CuentaItem`, campo `cantidadVigente`) y el mensaje.
+ *
+ * @contract Anula parcial o totalmente un ítem YA enviado a cocina con una fila espejo, respetando una guarda optimista sobre lo que queda.
+ * @idempotency No aplica (nunca la tuvo) — el doble clic lo frena la guarda optimista (restanteVisto tiene que coincidir EXACTO con lo que queda).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects registrarCambioAuditado (campo cantidadVigente).
  */
 export async function anularItemEnviadoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

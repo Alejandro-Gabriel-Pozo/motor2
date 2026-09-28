@@ -27,6 +27,11 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  *     serializable — aborta si otra escritura concurrente lo cambia mientras tanto), diferencia redondeada; si es 0 solo cierra, si
  *     no escribe el ajuste de Kardex vía `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (M13b, un array de una sola fila)
  *     con `conteoFisicoId: conteo.id` y cierra el conteo.
+ *
+ * @contract Cierra un conteo PENDIENTE, ajustando el Kardex contra el saldo de HOY si la rama elegida es "ajustar".
+ * @idempotency Por estado — exige estado PENDIENTE; un reintento sobre un conteo ya RESUELTO se rechaza con CONTEO_NO_PENDIENTE, no I3.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Escritura del Kardex SOLO si la diferencia contra el saldo de hoy es != 0 y la rama es "ajustar"; sin auditoría de permisos propia.
  */
 export async function resolverConteoPendienteCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

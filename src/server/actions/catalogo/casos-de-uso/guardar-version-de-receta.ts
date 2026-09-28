@@ -38,6 +38,11 @@ import {
  *          (cantidad y merma, en la sucursal de la calibración). Un cambio de cantidad/merma CENTRAL no descarta nada;
  *        - auditoría de la versión nueva (D6(b), paso 2): `RecetaVersion`/`version`, `sucursalId` siempre `null` (Catálogo Central);
  *  4. el mensaje de éxito, con el aviso de las calibraciones descartadas si hubo.
+ *
+ * @contract Crea una versión NUEVA de la receta (append-only) y arrastra las calibraciones locales compatibles, auditando las que se descartan.
+ * @idempotency No aplica — append-only, cada guardado crea una versión nueva; no hay un "duplicado" que detectar.
+ * @transaction conTransaccionSerializable (SERIALIZABLE), reabierta hasta 5 veces vía conReintento si choca el UNIQUE(productoId, version) o hay conflicto de escritura.
+ * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
  */
 export async function guardarVersionDeRecetaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre">,

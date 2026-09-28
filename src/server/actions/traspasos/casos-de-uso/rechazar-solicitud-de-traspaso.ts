@@ -20,6 +20,11 @@ import { escribirRechazoDeSolicitud } from "@/server/persistencia/traspasos/escr
  * SALIDA + ENVIADA escribía RECHAZADA_ORIGEN encima — el stock quedaba afuera del origen y nadie lo podía reingresar (el reingreso exige
  * RECHAZADA_DESTINO): stock perdido en tránsito. Con SERIALIZABLE, el que pierde la carrera reintenta, ve el estado ya cambiado y falla
  * con el error de estado (test/auditoria/traspasos-en-transito.test.ts, «stock en tránsito»). La solicitud nunca tocó stock.
+ *
+ * @contract Origen rechaza una solicitud SOLICITADA — la solicitud nunca tocó stock.
+ * @idempotency No aplica — sin Operación donde guardarla; el aislamiento SERIALIZABLE evita la carrera de "stock perdido en tránsito" (una aprobación concurrente que pisara el rechazo).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno — solo el cambio de estado del traspaso.
  */
 export async function rechazarSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

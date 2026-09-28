@@ -31,6 +31,11 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  *     anulan en esta misma transacción — una promo nunca queda anulada a medias, se elija el componente que se elija;
  *  4. por cada Operación a anular (la pedida primero): contra-asiento AJUSTE + marca de anulada (persistencia), y su fila de auditoría;
  *  5. el mensaje de éxito.
+ *
+ * @contract Anula una venta y, si es parte de una promo, TODAS sus hermanas juntas — nunca un componente suelto.
+ * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic; el segundo intento ve "ya anulada" (chequeo de estado, no I3).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo).
  */
 export async function anularVentaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

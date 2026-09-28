@@ -91,6 +91,11 @@ async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, 
  * líneas (el armado de las filas, que SÍ es lógica de negocio, se queda acá). M13c entró `movimientos.ts` en `ACCIONES_CON_CASO_DE_USO`
  * (su guard, `core/features/movimientos/movimiento.guard.ts`, valida además que `proceso` sea uno de los 9 `ProcesoGenerico` — segunda
  * barrera DENTRO de `conPermiso`, ver su docstring) y nombró el paso 6 de acá arriba (antes, un bloque sin nombre en línea).
+ *
+ * @contract Registra un movimiento de Kardex para cualquiera de los 9 procesos genéricos, con validación de stock agregada por producto+sección ANTES de escribir nada.
+ * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
+ * @sideEffects registrarProveedoresDeLaCompra (Compra, best-effort, FUERA de la transacción, solo si no es repetida) — un upsertProveedorPorProducto por línea con unidad de compra conocida.
  */
 export async function registrarMovimientoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,

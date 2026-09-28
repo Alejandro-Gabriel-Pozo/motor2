@@ -54,6 +54,11 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  *     corresponde (diferencia != 0 y la acción ajusta), el ajuste de Kardex vía `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock`
  *     (M13b) con `conteoFisicoId: conteo.id` en la fila — un array de una sola fila es funcionalmente idéntico al
  *     `tx.movimientoStock.create` de una fila que hacía antes en línea.
+ *
+ * @contract Registra un conteo físico y, según la acción elegida, ajusta el Kardex a la diferencia contra el saldo leído dentro de la transacción.
+ * @idempotency No aplica — el schema (conteo-fisico.guard.ts) no tiene claveIdempotencia; un doble clic real crea dos ConteoFisico distintos (limitación conocida, no resuelta acá).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Escritura del Kardex (Operacion + MovimientoStock) SOLO si la diferencia es != 0 y la acción ajusta; sin auditoría de permisos propia.
  */
 export async function registrarConteoFisicoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,

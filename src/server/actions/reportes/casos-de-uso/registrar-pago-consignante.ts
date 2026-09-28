@@ -32,6 +32,11 @@ import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsigna
  *  4. `crearPagoConsignante` con `resultadoMensaje` ya adentro (un solo `create`, sin `update` posterior);
  *  5. `registrarCambioAuditado` (paso 2, campo "importe", valorAnterior null — mismo criterio de "creación" que `RecetaVersion` en
  *     `guardar-version-de-receta.ts`, P1): antes `registrarPagoConsignante` no dejaba ningún rastro de quién pagó qué.
+ *
+ * @contract Registra un pago a un proveedor de consignación exactamente una vez por claveIdempotencia, con auditoría.
+ * @idempotency I3 (claveIdempotencia + payloadHash) — índice único + catch de P2002, no conTransaccionSerializable (sin invariante de agregado que proteger bajo concurrencia).
+ * @transaction prisma.$transaction simple (no SERIALIZABLE — la única carrera posible es el insert duplicado, que resuelve el índice único de PagoConsignante.claveIdempotencia).
+ * @sideEffects registrarCambioAuditado (campo importe).
  */
 export async function registrarPagoConsignanteCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

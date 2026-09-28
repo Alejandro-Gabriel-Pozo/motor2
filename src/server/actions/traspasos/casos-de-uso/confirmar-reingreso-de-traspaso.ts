@@ -30,6 +30,11 @@ import { escribirReingresoDeTraspaso } from "@/server/persistencia/traspasos/esc
  *  3. la sucursal destino (para el detalle) y la sección de origen (para el mensaje);
  *  4. escritura del REINGRESO y del traspaso CERRADO (persistencia);
  *  5. el resultado para la idempotencia (`registrarResultadoIdempotente`, solo si hay clave) y el mensaje de éxito.
+ *
+ * @contract Origen confirma el reingreso de un traspaso RECHAZADA_DESTINO, devolviendo el stock a la sección de la que salió.
+ * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno además de la escritura del reingreso de Kardex y el cierre del traspaso.
  */
 export async function confirmarReingresoDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

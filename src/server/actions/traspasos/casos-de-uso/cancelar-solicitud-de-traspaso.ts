@@ -20,6 +20,11 @@ import { escribirCancelacionDeSolicitud } from "@/server/persistencia/traspasos/
  * cancelaciones simultáneas no pueden responder las dos «cancelada», y una cancelación que leyó SOLICITADA justo antes de que Origen
  * aprobara no la pisa — la que pierde reintenta, ve el estado ya cambiado y falla con el error de estado. Una solicitud nunca tocó
  * stock, así que no hay reingreso: solo se cierra el traspaso.
+ *
+ * @contract Destino cancela su propia solicitud SOLICITADA — nunca tocó stock, así que solo cierra el traspaso.
+ * @idempotency No aplica — sin Operación donde guardar una clave; el aislamiento SERIALIZABLE arbitra la carrera de estado.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno — solo el cambio de estado del traspaso (nunca tocó Kardex).
  */
 export async function cancelarSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

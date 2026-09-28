@@ -29,6 +29,11 @@ import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ej
  *  3. el motivo (`validarMotivoAnulacion`) — recién acá, igual que antes;
  *  4. el ejemplar siguiente con el MISMO número y `corrigeAId` SIEMPRE al A, nunca al anterior (persistencia);
  *  5. la fila de auditoría (entidad `Cuenta`, campo `ejemplarBoleta`: del último ejemplar al nuevo) y el mensaje.
+ *
+ * @contract Emite un nuevo ejemplar de boleta que refleja las anulaciones vigentes, corrigiendo siempre al ejemplar A original.
+ * @idempotency No aplica (nunca la tuvo) — una segunda emisión ve el ejemplar ya vigente y se rechaza (chequeo de estado, no I3).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects registrarCambioAuditado (campo ejemplarBoleta).
  */
 export async function emitirBoletaCorregidaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

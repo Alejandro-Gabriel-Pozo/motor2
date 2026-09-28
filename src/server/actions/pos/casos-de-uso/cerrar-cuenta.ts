@@ -34,6 +34,11 @@ import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
  *  4. la venta, con el MISMO núcleo que la de mostrador (`registrarVentaEnTx`, sin tocarlo), `permitirStockNegativo`;
  *  5. número de boleta (`max + 1`, ejemplar A), enlace ítem → Operacion y cierre de la cuenta (persistencia);
  *  6. una fila de auditoría por cada insumo que quedó en negativo, y el mensaje.
+ *
+ * @contract Cierra la cuenta de una mesa, registra la venta (aunque el stock quede negativo) y emite la boleta original.
+ * @idempotency Por estado — una cuenta ya cerrada responde YA_CERRADA sin escribir nada; sin I3 (el aislamiento SERIALIZABLE arbitra el doble clic).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects registrarCambioAuditado (uno por cada insumo que quedó en negativo, B6bis) — best-effort, no bloquea el cierre.
  */
 export async function cerrarCuentaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "email">,

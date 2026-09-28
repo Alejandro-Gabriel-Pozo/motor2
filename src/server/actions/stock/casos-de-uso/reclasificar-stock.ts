@@ -48,6 +48,11 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  *     aborta si otra escritura concurrente lo cambia mientras tanto) y de la diferencia contra la suma de destinos (tiene que ser
  *     EXACTAMENTE cero — ni de más ni de menos), escritura de la Operación + líneas del Kardex (un origen negativo + N destinos
  *     positivos) y el mensaje final.
+ *
+ * @contract Reparte el saldo íntegro de un producto en un origen entre N destinos, exigiendo que la suma coincida EXACTAMENTE con lo disponible.
+ * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) — el saldo disponible se lee DENTRO de la transacción.
+ * @sideEffects Ninguno además de la escritura del Kardex (un origen negativo + N destinos positivos) — sin auditoría de permisos propia.
  */
 export async function reclasificarStockCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,

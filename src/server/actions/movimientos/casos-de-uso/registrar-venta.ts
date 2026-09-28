@@ -29,6 +29,11 @@ import { exito, fracaso } from "@/core/resultado-caso";
  *  2. `registrarVentaEnTx` (src/core/movimientos/registrar-venta.ts), con cada línea mapeada A MANO a `{ productoId, cantidadVendida }`:
  *     un `precioUnitario` colado en el payload nunca llega al núcleo (test/movimientos/venta-en-tx.test.ts), y no se pasa
  *     `permitirStockNegativo` (la venta de mostrador sigue rechazando por stock insuficiente).
+ *
+ * @contract Registra una venta de mostrador dentro de una transacción, delegando la lógica de negocio a registrarVentaEnTx.
+ * @idempotency I3 (claveIdempotencia + payloadHash) — a diferencia de registrarMovimiento, un lote de N ventas guarda la clave/hash/resultado SOLO en la primera Operacion.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno además de lo que ya hace registrarVentaEnTx (Operacion + MovimientoStock por línea) — sin auditoría propia acá.
  */
 export async function registrarVentaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,

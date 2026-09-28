@@ -20,6 +20,11 @@ import { escribirRechazoDeEnvio } from "@/server/persistencia/traspasos/escribir
  * Todavía NO toca stock: el reingreso lo confirma Origen aparte. Lectura + guard + escritura dentro de UNA transacción SERIALIZABLE: dos
  * rechazos simultáneos con motivo distinto ya no responden los DOS ok (el segundo pisaba el motivo del primero en silencio, §6.3) — el
  * que pierde reintenta, ve el estado ya cambiado y falla con el error de estado (test/auditoria/traspasos-en-transito.test.ts).
+ *
+ * @contract Destino rechaza un envío ENVIADO — todavía no toca stock, el reingreso lo confirma Origen después.
+ * @idempotency No aplica — sin Operación donde guardarla; el aislamiento SERIALIZABLE evita que dos rechazos concurrentes con motivo distinto se pisen en silencio.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno — solo el cambio de estado del traspaso (motivo incluido).
  */
 export async function rechazarEnvioDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

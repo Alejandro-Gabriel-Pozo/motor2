@@ -33,6 +33,11 @@ import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribi
  *  6. auditoría (`registrarCambioAuditado`);
  *  7. resultado para la idempotencia (`registrarResultadoIdempotente`, solo si hay clave);
  *  8. el mensaje de éxito.
+ *
+ * @contract Anula una compra exactamente una vez por claveIdempotencia, revirtiendo su Kardex con un contra-asiento y dejando auditoría.
+ * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects registrarCambioAuditado (campo anuladaEn).
  */
 export async function anularCompraCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

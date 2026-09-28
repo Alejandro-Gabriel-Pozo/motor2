@@ -24,6 +24,11 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  *  3. si `diferenciaOriginal !== 0`, escribe la reversión vía `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (M13b, un
  *     array de una sola fila) con `conteoFisicoId: conteo.id`;
  *  4. cierra el conteo como CANCELADO (`actualizarEstadoDeConteo`, M13e2).
+ *
+ * @contract Revierte un conteo YA RESUELTO con una fila de Kardex de reversión y lo marca CANCELADO — nunca edita/borra la fila original.
+ * @idempotency Por estado — un conteo ya CANCELADO se rechaza explícitamente; sin claveIdempotencia/I3.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno además de la reversión de Kardex (fila conteoFisicoId) y el cambio de estado del ConteoFisico.
  */
 export async function cancelarConteoFisicoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

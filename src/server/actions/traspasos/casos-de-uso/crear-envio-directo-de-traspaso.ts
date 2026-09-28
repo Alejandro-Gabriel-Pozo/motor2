@@ -34,6 +34,11 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *     insuficiente» contra un valor que se iba a redondear);
  *  6. el stock disponible en la sección de origen;
  *  7. escritura del traspaso ENVIADO y de su SALIDA (persistencia) y el mensaje de éxito.
+ *
+ * @contract Origen envía directo (PUSH) a otra sucursal, escribiendo la SALIDA y el traspaso ENVIADO juntos en un solo paso.
+ * @idempotency No aplica, decisión explícita (M11c) — fuera del alcance de I3 desde la auditoría original; un duplicado nunca deja el stock inconsistente (se deshace con el ciclo normal de rechazo+reingreso).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno además de la escritura conjunta de la salida de Kardex y la creación del traspaso.
  */
 export async function crearEnvioDirectoDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,

@@ -27,6 +27,11 @@ import { escribirCorreccionDeCompra } from "@/server/persistencia/compras/escrib
  * optimista); lo que cambia es válido; el proveedor nuevo existe y está activo; el par proveedor + N.º de factura no lo usa OTRA compra
  * vigente (y, bajo concurrencia, lo arbitra el índice único parcial: `esChoqueDeFacturaUnica` en el `.catch`). Una fila de auditoría
  * por campo que cambió.
+ *
+ * @contract Corrige la cabecera de una compra vigente con guarda optimista (esperado vs actual) — dos correcciones concurrentes nunca se pisan en silencio.
+ * @idempotency Por estado — si ya tiene exactamente lo pedido responde "nada que corregir" sin escribir (idempotencia natural, sin clave I3).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para el índice único parcial de factura.
+ * @sideEffects registrarCambioAuditado (uno por cada campo que cambió).
  */
 export async function corregirCompraCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,

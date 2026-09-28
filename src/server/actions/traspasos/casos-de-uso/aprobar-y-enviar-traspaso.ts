@@ -29,6 +29,11 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *     c. el stock disponible en la sección de origen, leído DENTRO de la transacción;
  *     d. escritura de la SALIDA y del traspaso ENVIADO (persistencia);
  *     e. el mensaje de éxito.
+ *
+ * @contract Origen aprueba una solicitud SOLICITADA y envía, re-chequeando transferibilidad y stock disponible leído DENTRO de la transacción.
+ * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic, el segundo intento ve el estado ya ENVIADA.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @sideEffects Ninguno además de la escritura de la salida de Kardex y el cambio de estado del traspaso.
  */
 export async function aprobarYEnviarTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,

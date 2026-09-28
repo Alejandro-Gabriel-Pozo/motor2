@@ -28,6 +28,11 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *  5. la cantidad, contra los decimales de la unidad de stock del producto: se RECHAZA el exceso, no se redondea
  *     (docs/plan-validacion-de-datos-2026-09-25.md);
  *  6. escritura del traspaso SOLICITADO (persistencia) y el mensaje de éxito.
+ *
+ * @contract Destino pide una transferencia (PULL) — no toca stock, solo crea el traspaso en estado SOLICITADA.
+ * @idempotency No aplica (nunca la tuvo) — un duplicado por doble clic se cancela desde la Bandeja sin ningún efecto sobre el Kardex.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) — mismo aislamiento que el resto, aunque acá no hay ninguna carrera de agregado que proteger.
+ * @sideEffects Ninguno — solo la creación del traspaso (nunca tocó Kardex).
  */
 export async function crearSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
