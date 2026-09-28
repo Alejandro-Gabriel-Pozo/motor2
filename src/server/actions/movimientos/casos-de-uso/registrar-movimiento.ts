@@ -26,16 +26,51 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
 import { upsertProveedorPorProducto } from "../../catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
 
+/** Lo que necesita `registrarProveedoresDeLaCompra` (paso 6, más abajo) de cada línea ya armada. */
+interface LineaParaProveedor {
+  productoId: string;
+  unidadCompraId: string | null;
+  precioUnitario: number;
+  precioPorUnidadStock: number;
+  referenciaProveedor: string | undefined;
+}
+
+/**
+ * Paso 6 (Compra) de `registrarMovimientoCasoDeUso`: engancha `upsertProveedorPorProducto` (Catálogo, sin usar todavía) — FUERA de la
+ * transacción principal y sin bloquear su resultado si falla, mismo criterio "best effort" que actualizarProveedoresDesdeCompra_
+ * (Catalogo.js:3617-3657, envuelta en try/catch en confirmarRegistrarMovimientos): el Kardex ya quedó bien escrito, esto solo
+ * alimenta la comparativa de precios. Se registra la relación en TODOS los casos con unidad de compra conocida (incluso sin precio,
+ * mismo bugfix que Catalogo.js:3635-3644: si se cortara acá por falta de precio, ese proveedor nunca acumularía historial).
+ */
+async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, lineas: LineaParaProveedor[]): Promise<void> {
+  for (const l of lineas) {
+    if (!l.unidadCompraId) continue;
+    try {
+      await upsertProveedorPorProducto({
+        productoId: l.productoId,
+        proveedorId,
+        unidadCompraId: l.unidadCompraId,
+        precioUnitario: l.precioUnitario,
+        precioPorUnidadStock: l.precioPorUnidadStock,
+        fechaCompra: fecha,
+        referenciaProveedor: l.referenciaProveedor,
+      });
+    } catch (e) {
+      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${(e as Error).message}`);
+    }
+  }
+}
+
 /**
  * Caso de uso «registrar un movimiento» — el motor genérico de los 9 procesos que lo comparten (Compra, Producción, Consumo, Ajuste,
- * Transferencia, Merma, Devolución×3; Task #41, Fase M, M13a — docs/arquitectura-casos-de-uso-2026-09-27.md). Es la orquestación que
+ * Transferencia, Merma, Devolución×3; Task #41, Fase M, M13a-c — docs/arquitectura-casos-de-uso-2026-09-27.md). Es la orquestación que
  * antes vivía en línea en la Server Action `registrarMovimiento` (src/server/actions/movimientos/movimientos.ts), en el MISMO orden y
- * con los MISMOS textos; la Server Action quedó como adaptador fino (permiso → 4 validaciones puras de entrada → este caso de uso →
+ * con los MISMOS textos; la Server Action quedó como adaptador fino (permiso → guard de comando → este caso de uso →
  * `aResultadoAccion`). Port de confirmarRegistrarMovimientos (Movimientos.js:876-1136).
  *
- * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso`) ni las 4
- * validaciones puras de la Server Action (items vacío, sección en blanco, formato de la clave I3, Transferencia con destino
- * vacío/igual al origen): recibe `datos` ya pasado por esas.
+ * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso`) ni el formato del
+ * comando (`guardComandoRegistrarMovimiento`, core/features/movimientos/movimiento.guard.ts: proceso genérico, items vacío, sección en
+ * blanco, formato de la clave I3, Transferencia con destino vacío/igual al origen): recibe `datos` ya pasado por esas.
  *
  * Orden, igual que antes:
  *  1. sección propia (origen y, si Transferencia, destino) — Fase 6 (auditoría de seguridad/contratos): `conPermiso` ya validó el
@@ -47,11 +82,13 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  *     parcial, ver el catch de más abajo;
  *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, armado de cada línea
  *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]`;
- *  6. `upsertProveedorPorProducto` (Compra), fuera de la transacción, best-effort.
+ *  6. `registrarProveedoresDeLaCompra` (Compra), fuera de la transacción, best-effort: un `upsertProveedorPorProducto` por línea con
+ *     unidad de compra conocida.
  *
  * M13b ya extrajo a `server/persistencia/movimientos/escribir-movimiento-de-stock.ts` las dos escrituras Prisma de la Operacion y sus
- * líneas (el armado de las filas, que SÍ es lógica de negocio, se queda acá); M13a no entra `movimientos.ts` en
- * `ACCIONES_CON_CASO_DE_USO` (eso es M13c).
+ * líneas (el armado de las filas, que SÍ es lógica de negocio, se queda acá). M13c entró `movimientos.ts` en `ACCIONES_CON_CASO_DE_USO`
+ * (su guard, `core/features/movimientos/movimiento.guard.ts`, valida además que `proceso` sea uno de los 9 `ProcesoGenerico` — segunda
+ * barrera DENTRO de `conPermiso`, ver su docstring) y nombró el paso 6 de acá arriba (antes, un bloque sin nombre en línea).
  */
 export async function registrarMovimientoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
@@ -103,13 +140,7 @@ export async function registrarMovimientoCasoDeUso(
   // Solo se usa para el hookup de Compra, fuera de la transacción — ver más abajo. La forma de ResultadoCaso no tiene
   // lugar para un dato lateral como este (a diferencia del `{ ok, mensaje, lineasParaProveedor }` ad-hoc de antes), así
   // que se captura en una variable del cierre, reasignada SOLO en el intento que efectivamente devuelve éxito.
-  let lineasParaProveedor: {
-    productoId: string;
-    unidadCompraId: string | null;
-    precioUnitario: number;
-    precioPorUnidadStock: number;
-    referenciaProveedor: string | undefined;
-  }[] = [];
+  let lineasParaProveedor: LineaParaProveedor[] = [];
 
   const resultado = await conTransaccionSerializable(async (tx): Promise<ResultadoRegistrarMovimiento> => {
     // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
@@ -268,32 +299,9 @@ export async function registrarMovimientoCasoDeUso(
     throw e;
   });
 
-  // Compra: engancha upsertProveedorPorProducto (Catálogo, sin usar
-  // todavía) — FUERA de la transacción principal y sin bloquear su
-  // resultado si falla, mismo criterio "best effort" que
-  // actualizarProveedoresDesdeCompra_ (Catalogo.js:3617-3657, envuelta en
-  // try/catch en confirmarRegistrarMovimientos): el Kardex ya quedó bien
-  // escrito, esto solo alimenta la comparativa de precios. Se registra
-  // la relación en TODOS los casos con unidad de compra conocida (incluso
-  // sin precio, mismo bugfix que Catalogo.js:3635-3644: si se cortara acá
-  // por falta de precio, ese proveedor nunca acumularía historial).
+  // Paso 6 (Compra): ver el docstring de `registrarProveedoresDeLaCompra` más arriba.
   if (resultado.ok && datos.proceso === "COMPRA" && datos.proveedorId) {
-    for (const l of lineasParaProveedor) {
-      if (!l.unidadCompraId) continue;
-      try {
-        await upsertProveedorPorProducto({
-          productoId: l.productoId,
-          proveedorId: datos.proveedorId,
-          unidadCompraId: l.unidadCompraId,
-          precioUnitario: l.precioUnitario,
-          precioPorUnidadStock: l.precioPorUnidadStock,
-          fechaCompra: datos.fecha,
-          referenciaProveedor: l.referenciaProveedor,
-        });
-      } catch (e) {
-        console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${(e as Error).message}`);
-      }
-    }
+    await registrarProveedoresDeLaCompra(datos.proveedorId, datos.fecha, lineasParaProveedor);
   }
 
   return resultado;
