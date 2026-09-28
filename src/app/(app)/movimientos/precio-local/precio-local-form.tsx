@@ -29,7 +29,8 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
   useEffect(() => {
     if (!productoId) return;
     let cancelado = false;
-    leer(
+    // `leer` nunca rechaza (atrapa el error y corre el callback de abajo) — fire-and-forget explícito, no una promesa sin manejar.
+    void leer(
       () => obtenerPrecioVentaProducto(productoId),
       () => {
         if (cancelado) return;

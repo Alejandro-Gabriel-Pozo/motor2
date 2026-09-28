@@ -285,14 +285,16 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
         </label>
         <button
           type="button"
-          onClick={async () => {
-            if (!nuevoProductoId) return;
-            const producto = await leer(
-              () => obtenerProductoOpcion(nuevoProductoId),
-              () => setResumen({ ok: false, texto: "No se pudo agregar la fila. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.", errores: [] })
-            );
-            if (producto) agregarProducto(producto.id, `${producto.codigo} — ${producto.nombre}`);
-          }}
+          onClick={() =>
+            void (async () => {
+              if (!nuevoProductoId) return;
+              const producto = await leer(
+                () => obtenerProductoOpcion(nuevoProductoId),
+                () => setResumen({ ok: false, texto: "No se pudo agregar la fila. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.", errores: [] })
+              );
+              if (producto) agregarProducto(producto.id, `${producto.codigo} — ${producto.nombre}`);
+            })()
+          }
           className="rounded border px-3 py-2 text-sm"
         >
           Agregar fila
@@ -314,7 +316,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
 
       <button
         type="button"
-        onClick={confirmar}
+        onClick={() => void confirmar()}
         disabled={pending}
         className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50"
       >

@@ -26,7 +26,8 @@ export function SidebarColapsable({ grupos }: { grupos: GrupoNav[] }) {
   useEffect(() => {
     // El setState va en un callback (no directo en el cuerpo del efecto) a
     // propósito, mismo criterio que exige react-hooks/set-state-in-effect.
-    Promise.resolve().then(() => {
+    // `queueMicrotask`, no `Promise.resolve().then(...)`: no hay ninguna operación async de verdad acá, solo un diferimiento.
+    queueMicrotask(() => {
       try {
         if (localStorage.getItem(CLAVE_STORAGE) === "1") setColapsado(true);
       } catch {

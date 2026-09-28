@@ -130,7 +130,8 @@ export function PanelMovimientoForm({
       return resto;
     });
     if (!config.esCompraLike || !productoId) return;
-    leer(
+    // `leer` nunca rechaza (atrapa el error y corre el callback de abajo) — fire-and-forget explícito, no una promesa sin manejar.
+    void leer(
       () => listarPresentaciones(productoId),
       () => {
         setMensaje("No se pudieron cargar las presentaciones de compra de ese producto. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.");
@@ -175,8 +176,9 @@ export function PanelMovimientoForm({
     setCargandoProveedor(true);
     setInfoProveedor("Buscando lo que le comprás a este proveedor...");
     // `leer` maneja el fallo: corre el bloque de abajo (avisar y dejar todo listo para reintentar) y, si el servidor respondió con un
-    // error (sesión vencida), refresca la pantalla para que el layout mande al login. Devuelve `undefined` si falló.
-    leer(
+    // error (sesión vencida), refresca la pantalla para que el layout mande al login. Devuelve `undefined` si falló. Nunca rechaza:
+    // fire-and-forget explícito, no una promesa sin manejar.
+    void leer(
       () => listarProductosDeProveedor(id),
       () => {
         if (pedido !== pedidoProveedor.current) return; // se eligió otro proveedor mientras tanto

@@ -49,7 +49,8 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
     let cancelado = false;
     // Sin producto/sección origen todavía, la propia acción devuelve null. Si la lectura FALLA (sesión vencida, sin conexión),
     // `leerServidor` devuelve `undefined` (un saldo nunca lo es): se avisa, y si fue por la sesión el refresco manda al login.
-    leerServidor(
+    // Nunca rechaza: fire-and-forget explícito, no una promesa sin manejar.
+    void leerServidor(
       () => obtenerSaldoDisponibleParaReclasificar(productoId, seccionOrigenId, loteOrigen ? new Date(loteOrigen) : null),
       () => {
         if (cancelado) return;

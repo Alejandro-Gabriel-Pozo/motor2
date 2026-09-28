@@ -67,13 +67,17 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
 
   function buscar(termino: string) {
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setCargando(true);
-      setErrorBusqueda(false);
-      const res = await leer(() => buscarProductosSelector(termino, filtro), () => setErrorBusqueda(true));
-      setOpciones(res ?? []);
-      setResaltado(0);
-      setCargando(false);
+    // `setTimeout` (Node, vía ReturnType de arriba) tipa su callback como `() => void`: el cuerpo async va en un IIFE marcado
+    // `void` — `leer` nunca rechaza, fire-and-forget explícito, no una promesa sin manejar.
+    debounceRef.current = setTimeout(() => {
+      void (async () => {
+        setCargando(true);
+        setErrorBusqueda(false);
+        const res = await leer(() => buscarProductosSelector(termino, filtro), () => setErrorBusqueda(true));
+        setOpciones(res ?? []);
+        setResaltado(0);
+        setCargando(false);
+      })();
     }, 250);
   }
 
