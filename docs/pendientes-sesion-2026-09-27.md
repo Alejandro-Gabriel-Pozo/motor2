@@ -343,15 +343,67 @@ varios hallazgos de knip).
 - **M13a/b/c/d/e** — el motor genérico `registrarMovimiento`
   (`server/actions/movimientos/movimientos.ts`, 512 líneas, 9 procesos): UN
   caso de uso genérico, no una fachada por proceso (la UI ya es genérica).
-  (a) extraer cargas a `server/persistencia/movimientos/cargar-*.ts`; (b)
-  extraer escritura a `escribir-*.ts`; (c) el caso de uso genérico en sí
-  (orquesta a+b, con el efecto posterior `upsertProveedorPorProducto`
-  explícito como paso nombrado); (d) `reclasificarStock` (evaluar si
-  reutiliza el caso de uso genérico de (c) o necesita uno propio); (e)
-  conteo físico. Bloqueadas en cadena (a→b→c→{d,e}); (a) además bloqueada
-  por M9 (patrón probado en ventas) y por que P1 esté mergeada (para no
-  fijar dos convenciones de persistencia en paralelo). Cierre: tests de los
-  9 procesos sin tocar y en verde. Tamaño mediana cada una.
+  Plan diseñado por un agente de planificación (Opus, 2026-09-28) leyendo el
+  código real — confirmó que ni `reclasificarStock` ni `registrarConteoFisico`
+  llaman hoy a `registrarMovimiento` (cada uno tiene su propio camino, como
+  decía el backlog) y que la regla `persistencia-solo-desde-casos-de-uso`
+  obliga a que (a) ya cree el caso de uso completo (no solo las cargas). Orden
+  confirmado: **M13a → M13b → M13c → M13d → M13e1 → M13e2** (6 worktrees).
+  - **M13a — YA MERGEADA** (2026-09-28): `core/features/movimientos/movimiento.schema.ts`
+    (tipos mudados tal cual + los nuevos `Codigo/Datos/ResultadoRegistrarMovimiento`);
+    `server/persistencia/movimientos/cargar-validaciones-de-movimiento.ts`
+    (motivo/destino/factura duplicada, FUERA de la transacción con el cliente
+    global — excepción documentada igual que P1) y `cargar-linea-de-movimiento.ts`
+    (presentación activa y receta vigente para producir, DENTRO de la
+    transacción); paso compartido `casos-de-uso/armar-linea-de-movimiento.ts`
+    (armarLineaMovimiento/calcularConsumosProduccion mudadas tal cual); el
+    caso de uso `casos-de-uso/registrar-movimiento.ts` con TODA la
+    orquestación (sección propia, motivo/destino, factura, I3, transacción,
+    escritura — las escrituras siguen en línea, eso es M13b). `movimientos.ts`
+    quedó como adaptador fino, TODAVÍA sin entrar en `ACCIONES_CON_CASO_DE_USO`
+    (eso es M13c). `test/arquitectura/lectores-de-receta.test.ts` reclasificado.
+    Reverificado independientemente: los 7 comandos en verde — 274/274
+    archivos y 3285/3285 tests de Vitest, build, 369/369 specs de Playwright.
+  - **M13b** (siguiente) — extraer las escrituras (`tx.operacion.create` +
+    armado de `filas` + `tx.movimientoStock.createMany` + el `tx.operacion.update`
+    del mensaje I3) del caso de uso de M13a a
+    `server/persistencia/movimientos/escribir-movimiento-de-stock.ts` (`tx`
+    obligatorio), con `registrarResultadoIdempotente` (de `core`) para el
+    update del mensaje. Diseño del plan: DOS funciones separadas
+    (`escribirOperacionDeStock`/`escribirLineasDeStock`), no una sola, para
+    preservar el orden EXACTO de hoy (decisión tomada: preferir "tal cual"
+    sobre una fusión más prolija).
+  - **M13c** — comando+guard puro en `core/features/movimientos/movimiento.guard.ts`
+    (las 4 validaciones puras de hoy, MISMOS textos y MISMO orden;
+    `guardNroFacturaCompra` se queda en el caso de uso, no en el guard, por el
+    orden de mensajes); el paso nombrado `registrarProveedoresDeLaCompra`
+    para el hookup de `upsertProveedorPorProducto`; `movimientos.ts` entra en
+    `ACCIONES_CON_CASO_DE_USO`; se agrega la sección M13a-c en
+    `docs/arquitectura-casos-de-uso-2026-09-27.md`. Decisión tomada: además
+    endurecer el guard para rechazar un `proceso` fuera de `ProcesoGenerico`
+    (VENTA/CONTROL/etc. armado a mano en el payload) — hueco real detectado
+    por el plan (el tipo de TS lo impide, pero nada lo frena en ejecución),
+    con test nuevo demostrado rojo→verde.
+  - **M13d** — `reclasificarStock` (`server/actions/stock/reclasificacion.ts`):
+    caso de uso PROPIO (no reutiliza el de M13c — entrada/permiso/validación/
+    escritura son todos distintos), que sí reutiliza `escribirMovimientoDeStock`
+    de M13b. Carga compartida `cargar-producto-con-unidad-de-stock.ts` (la
+    usan también M13e1/e2). `obtenerSaldoDisponibleParaReclasificar` se muda a
+    `server/actions/stock/lecturas-reclasificacion.ts` (estilo M11c) para que
+    `reclasificacion.ts` entre en `ACCIONES_CON_CASO_DE_USO`.
+  - **M13e1** — `registrarConteoFisico`/`registrarConteosFisicos`: caso de uso
+    propio, migración PARCIAL (no entra en la lista todavía).
+  - **M13e2** — `resolverConteoPendiente`/`cancelarConteoFisico` (también
+    mueven stock): casos de uso propios; `obtenerHistorialConteosFisicos` se
+    muda a una lectura aparte para que `conteo-fisico.ts` entre en la lista.
+  - Decisión tomada (deferida, no en el alcance de M13): `upsertProveedorPorProducto`
+    NO se muda a `server/persistencia/` en esta fase — queda anotado para E1.
+  - Ningún sub-paso toca `prisma/schema.prisma` ni migraciones — confirmado en
+    el plan y verificado con `git diff --stat` en cada merge.
+  - Cierre de cada sub-paso: los 7 comandos en verde en la MISMA corrida,
+    conteos de tests/specs iguales o mayores a la línea de base (274/3285
+    Vitest, 369/66 Playwright), y `git diff main -- test/` limitado a la
+    lista de tests que cada sub-paso puede tocar (documentada en el plan).
 - **M14** — caso de uso `registrarPagoConsignante`
   (`reportes/consignacion.ts`): HOY sin transacción, sin I3, sin auditoría —
   un doble clic registra dos pagos (hueco real). **BLOQUEADA POR UNA
