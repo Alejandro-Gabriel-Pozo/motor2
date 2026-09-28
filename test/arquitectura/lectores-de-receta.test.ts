@@ -35,9 +35,10 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     motivo: "C1: el consumo de receta al vender se resuelve con rendimientoEfectivo de la sucursal del actor.",
   },
   {
-    ruta: "server/actions/movimientos/movimientos.ts",
+    ruta: "server/persistencia/movimientos/cargar-linea-de-movimiento.ts",
     clase: "efectivo",
-    motivo: "C2 (calcularConsumosProduccion): el consumo de receta al producir se resuelve con rendimientoEfectivo de ctx.sucursalId.",
+    motivo:
+      "cargarRecetaVigenteParaProducir (Task #41, M13a — antes en línea en calcularConsumosProduccion de movimientos.ts): trae las calibraciones locales (rendimientosLocales) DE LA SUCURSAL que produce; el caso de uso (armar-linea-de-movimiento.ts) resuelve rendimientoEfectivo con ellas — C2 (el consumo de receta al producir se resuelve con rendimientoEfectivo de ctx.sucursalId).",
   },
   {
     ruta: "core/reportes/rendimiento-recetas.ts",
