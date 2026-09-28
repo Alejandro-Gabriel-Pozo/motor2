@@ -75,17 +75,20 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 - **D9, M10, M11a, M12a** — 4 tareas lanzadas en paralelo (4 agentes, worktrees/DBs propios, este mismo día, máquina local) y mergeadas: D9 (`AccionConteo` vía fachada), M10 (transacción atómica en cambios de precio, con test rojo→verde), M11a (traspasos: aprobar/cancelar/rechazar solicitud, migración parcial a propósito) y M12a (POS: `cerrarCuenta`, migración parcial a propósito). Cada una reverificada de forma independiente (gate completo + lectura del diff) antes de mergear.
 - **M11b, M12b** — mismo patrón (2 agentes en paralelo): M11b (traspasos: aceptar/rechazar envío/reingreso) y M12b (POS: `emitirBoletaCorregida` — `cuenta-cierre.ts` completó su migración y entró en `ACCIONES_CON_CASO_DE_USO`).
 - **M11c, M12c** — mismo patrón: M11c CIERRA la cadena de traspasos (`traspasos.ts` entero, ya solo con lecturas + casos de uso, entró en `ACCIONES_CON_CASO_DE_USO`; las 2 lecturas se mudaron a `traspasos/lecturas.ts`) y M12c (`anularItemEnviado`, migración parcial — falta M12d). Al reverificar M11c se encontró un flake real preexistente en un test de M10 (`sincronizarPrecioGrupoCarta`, orden de productos en el mensaje no determinista) — documentado más abajo, no bloquea nada.
-- **M12d** — CIERRA toda la cadena M11/M12 de esta ronda (`anularPromoEnviada`, `cuenta-anulacion.ts` entró en `ACCIONES_CON_CASO_DE_USO`). Con esto, las 8 sub-tareas de M11a→M12d quedaron todas mergeadas. Lo único que sigue bloqueando **M13** es que **P1 (piloto de `server/persistencia/` para `recetas.ts`) no arrancó todavía** — sigue esperando a la Fase F (F1-F4, bloqueadas por K3, bloqueada por tu aprobación de K2).
+- **M12d** — CIERRA toda la cadena M11/M12 de esta ronda (`anularPromoEnviada`, `cuenta-anulacion.ts` entró en `ACCIONES_CON_CASO_DE_USO`). Con esto, las 8 sub-tareas de M11a→M12d quedaron todas mergeadas.
+- **A0, F1-F4** — mergeadas (2026-09-28, madrugada). Fase F completa: 2 hallazgos reales sin corregir, documentados (subnormales en `repartirImporte`, y un caso de saldo negativo por una unidad en empates de `arrastre-redondeo`). **P1 queda desbloqueada.** De paso se verificó que **P2 ya estaba resuelta** (M12a ya había creado `server/persistencia/pos/cerrar-cuenta.ts`).
 
 **Nota de continuidad (2026-09-27, tarde):** D4, D6, C2 y M8 se lanzaron como 4 agentes en paralelo en una sesión cloud; la sesión se cortó antes de que D6/C2/M8 terminaran de reportarse (D6 y M8 en realidad ya habían mergeado; C2 había pusheado su rama sin mergear; D4 no llegó a pushear nada — se rehízo desde cero). Al continuar en una máquina local se verificó cada uno contra el estado real de `main` (nunca contra la descripción de esta tarea) antes de tocar nada — ver "Lección aprendida" de `plan-con-verificacion-e2e/SKILL.md`.
 
 ### Pendiente — orden sugerido de abajo hacia arriba (cada ítem dice sus bloqueos reales)
 
-#### A0 (opcional) — puerto E2E configurable por env var
-`playwright.config.ts`: `PUERTO` pasa de constante fija (56471) a
-`Number(process.env.MOTOR2_E2E_PUERTO ?? 56471)`. Sumar la variable a
-`.env.example`. Sin bloqueos. Tamaño chico. Si no se hace, seguir con la
-disciplina manual de puerto-por-worktree descripta arriba.
+#### A0 — YA MERGEADA (puerto E2E configurable por env var)
+`PUERTO` en `playwright.config.ts` pasa a `Number(process.env.MOTOR2_E2E_PUERTO ?? 56471)`.
+`.env.example` documenta la variable (comentada, no `""` — una cadena vacía
+daría `Number("") === 0`, puerto inválido). Verificado con
+`MOTOR2_E2E_PUERTO=56472 npm run test:e2e`: el servidor arrancó en ese
+puerto. Ya no hace falta la disciplina manual de editar el archivo por
+worktree.
 
 #### D6, D4, C2 y M8 — YA MERGEADOS (ver "Ya mergeado en `main`" arriba)
 Sin nada pendiente. D6/M8 se mergearon en la sesión cloud original; C2 se
@@ -143,39 +146,64 @@ Gate documentado en 7 comandos en `AGENTS.md` y en
 `.claude/skills/plan-con-verificacion-e2e/SKILL.md`. **F1-F4 quedan
 desbloqueadas.**
 
-#### F1-F4 — `fast-check` (property-based testing)
-Bloqueadas por K3 (orden pedido por el dueño; técnicamente F1/F2 no dependen
-de nada). Instalar `fast-check` como devDependency DIRECTA en F1 (hoy es
-transitiva vía `effect`). **Presupuesto: las 4 juntas no pueden sumarle más
-de ~60s a `npm test`.** Cada una exige, por ser tareas de testing, la
-demostración de que el test detecta lo que dice: mutación temporal → rojo
-con el contraejemplo → revertir → verde.
+#### F1-F4 — YA MERGEADAS (`fast-check`, property-based testing)
+Las 4 mergeadas (2026-09-28, madrugada), en worktrees paralelos. `fast-check`
+quedó en `^4.10.2` como devDependency directa (F1) — más nueva que la
+`3.23.2` transitiva vía `effect`, que sigue anidada aparte sin chocar.
+**Presupuesto de ~60s cumplido de sobra**: los 4 archivos nuevos juntos
+tardan un par de segundos (F1 ~1s, F2 ~0,4s, F3 ~0,9s, F4 ~2,7s).
 
-- **F1** (`test/core/moneda.propiedades.test.ts`, chica): `redondearMoneda`
-  (idempotente, diferencia ≤0,005 del original, centavos exactos, nunca
-  `-0`, simétrico), `importeDeLinea` (orden de factores no importa, exacto
-  con enteros), `precioConDescuento` (0-100%, entre 0,01 y el precio; sin
-  porcentaje devuelve igual; no sube con más porcentaje), `repartirImporte`
-  (suma en centavos EXACTA a `redondearMoneda(importe)`, largo correcto,
-  partes ≥0 y en centavos, cada una a ≤1 centavo de su proporción exacta,
-  determinista, reparte igual con pesos todos 0, `NaN` si el importe es
-  negativo).
-- **F2** (`test/movimientos/arrastre-redondeo.propiedades.test.ts`, chica):
-  cubre la Task #27 ya mergeada. Para `decimales` 0-3 y secuencias
-  generadas: deuda siempre en `[−u/2, u/2)`, diferencia escrito-vs-exacto
-  <u/2 en todo momento, `cantidad` siempre múltiplo de u, `cantidadExacta`
-  es `null` exactamente cuando coincide con `cantidad`, con deuda 0 el
-  primer resultado = `redondearACantidadDeUnidad`, productos intercalados =
-  procesados por separado, `deudaInicial` no se muta.
-- **F3** (`test/movimientos/idempotencia.propiedades.test.ts`, mediana, usa
-  Postgres, numRuns 10-20): `calcularPayloadHash` determinista,
-  `esClaveIdempotenciaValida`; repetir la misma clave+payload no duplica el
-  efecto; misma clave con otro payload → `MENSAJE_CONFLICTO_IDEMPOTENCIA` sin
-  crear filas.
-- **F4** (`test/reportes/saldo.propiedades.test.ts`, mediana, usa Postgres,
-  numRuns 10-20): generar una secuencia de movimientos con signo sobre un
-  producto nuevo por corrida; `calcularSaldoTotal` = suma con signo;
-  `saldoCorriente` final del historial = `saldoActual` = `calcularSaldoTotal`.
+**Hallazgo real de esta sesión, no de los agentes: `fast-check` 3→4 cambió
+el default de `fc.uuid()`** (de "solo v1-v5" a "v1-v8", RFC 9562) — el test
+de F3 se validó contra la 3.23.2 (antes de que F1 mergeara) y al
+reverificar de forma independiente con la 4.10.2 ya instalada, un caso
+generó un UUID v6 y rompió la aserción "todo UUID v1-v5 es válido".
+Corregido restringiendo ese generador puntual a `fc.uuid({ version: [1,2,3,4,5] })`
+(los otros 7 usos de `fc.uuid()` en el mismo archivo no dependían de la
+distribución de versiones, así que no hacía falta tocarlos). Esto es
+exactamente el tipo de cosa que la reverificación independiente existe para
+atrapar — el reporte del propio agente de F3 no lo vio porque corrió contra
+la versión vieja.
+
+- **F1** (`test/core/moneda.propiedades.test.ts`): las 4 funciones de
+  `moneda.ts` con las propiedades pedidas, más algunas extra. **Hallazgo
+  real, no corregido (fuera de alcance, documentado):** `repartirImporte`
+  puede tirar una excepción o repartir mal con pesos SUBNORMALES
+  (`< 2.2e-308`, ej. `5e-324`) — la función suma los pesos en float pero
+  convierte cada uno a `Decimal` por separado, y ahí divergen. No es un caso
+  realista para plata (200.000 corridas con pesos normales, en centavos o
+  con 3 decimales, sin fallar ni una vez); el test generа doubles desde
+  `1e-6` con un comentario explicando por qué. Si se quiere blindar del
+  todo: sumar los pesos en `Decimal` en vez de float.
+- **F2** (`test/movimientos/arrastre-redondeo.propiedades.test.ts`).
+  **Dos hallazgos reales, no corregidos:**
+  1. El rango real de la deuda es **cerrado** `[−u/2, u/2]`, no semiabierto
+     `[−u/2, u/2)` como decía el comentario original del archivo (y como
+     pedía esta descripción) — confirmado con un contraejemplo concreto
+     (d=2, x=1,005 por el redondeo binario de flotantes). El test usa el
+     rango real; el comentario de `arrastre-redondeo.ts` quedó desactualizado
+     (no se tocó, fuera de alcance de F2).
+  2. **El comentario "NO GENERA SALDOS NEGATIVOS" no se sostiene en
+     empates**: con d=2, consumir 1,005 y después 0,01 escribe 1,00 y
+     **0,02** — la segunda escritura consume una unidad más de lo pedido,
+     pudiendo superar el disponible de un lote por una unidad mínima.
+     Reproducido y documentado, sin corregir (cambiaría comportamiento).
+     Candidato a pendiente aparte si se quiere cerrar (redondear en enteros
+     de unidad, o compensar con `Number.EPSILON`).
+- **F3** (`test/movimientos/idempotencia.propiedades.test.ts`). Cubrió
+  `calcularPayloadHash` (determinista, ordena claves antes de hashear —
+  documentadas las colisiones a propósito: `Date` vs. su ISO string, `-0`
+  vs. `0`, `undefined` vs. campo ausente), `esClaveIdempotenciaValida` (UUID
+  v1-v5, variante RFC 4122, mayúsculas/minúsculas) y `chequearIdempotencia`
+  contra Postgres real (mismo key+payload no duplica, mismo key+payload
+  distinto da conflicto, clave vacía/ausente da "nueva").
+- **F4** (`test/reportes/saldo.propiedades.test.ts`). `calcularSaldoTotal` =
+  suma con signo de los movimientos ACEPTADOS (no todos los generados —
+  `registrarMovimiento` rechaza una salida mayor al saldo, el modelo del
+  test replica esa regla); el `saldoCorriente` final del historial coincide
+  siempre con `saldoActual`. Ambos con redondeo a 3 decimales
+  (`redondearCantidad`), documentado que las comparaciones son en
+  centésimas, no exactas en float.
 
 #### P1 (piloto de `server/persistencia/`) — completar el recorte de `recetas.ts`
 **Ya se decidió unificarla con el patrón de casos de uso de la Fase M**
@@ -191,16 +219,17 @@ arrastre de calibraciones locales, auditoría) — la parte de PERSISTENCIA
 pura a `src/server/persistencia/catalogo/guardar-version-de-receta.ts`, la
 de ORQUESTACIÓN al caso de uso nuevo. Actualizar
 `test/arquitectura/lectores-de-receta.test.ts` (agregar el archivo de
-persistencia como "central"). Bloqueada por: toda la Fase F (arriba) y por
-el patrón de casos de uso ya probado en compras (mergeado). Cierre: conteos
-EXACTOS; en Vitest lo cubren `recetas-concurrencia`, `recetas-auditoria`,
-`recetas`, `recetas-sustitutos`, `rendimiento-local-acciones`,
-`precision-roundtrip-y-reparto`; en Playwright los specs `recetas-*`.
-Tamaño mediana.
+persistencia como "central"). Bloqueada por: nada (Fase F ya mergeada; el
+patrón de casos de uso ya está probado varias veces — compras, ventas,
+traspasos, POS). Cierre: conteos EXACTOS; en Vitest lo cubren
+`recetas-concurrencia`, `recetas-auditoria`, `recetas`, `recetas-sustitutos`,
+`rendimiento-local-acciones`, `precision-roundtrip-y-reparto`; en Playwright
+los specs `recetas-*`. Tamaño mediana.
 
-#### P2 (opcional) — `server/persistencia/pos/cerrar-cuenta.ts`
-Mismo patrón que P1, aplicado a `cerrarCuenta`. Bloqueada por P1. Cierre:
-conteos EXACTOS, lo cubre todo `test/pos`. Tamaño mediana.
+#### P2 — YA RESUELTA (verificado 2026-09-28, no como tarea aparte)
+`server/persistencia/pos/cerrar-cuenta.ts` YA EXISTE — lo creó M12a al
+migrar `cerrarCuenta` a caso de uso (misma sesión). Mismo caso que M9: un
+pendiente del backlog resuelto de paso por otra tarea. Nada que hacer acá.
 
 #### E1 — cierre y verificación total (última tarea de #41)
 Actualizar la doc de arquitectura con: las capas `server/consultas` y
