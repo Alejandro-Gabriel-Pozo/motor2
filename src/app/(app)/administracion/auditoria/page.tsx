@@ -15,6 +15,7 @@ const ENTIDADES: CambioAuditable["entidad"][] = [
   "RecetaVersion",
   "RendimientoLocalIngrediente",
   "Sucursal",
+  "PagoConsignante",
 ];
 
 export default async function AuditoriaPage({

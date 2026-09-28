@@ -137,6 +137,43 @@ describe("generarReporteConsignacion", () => {
       const resultado = await registrarPagoConsignante(consignante.id, 10, new Date());
       expect(resultado.ok).toBe(false);
     });
+
+    // M14 (Task #41): antes de esto, registrarPagoConsignante no tenía idempotencia I3 — un doble clic (dos envíos con la MISMA
+    // clave, como manda el formulario real, ver registrar-pago-consignante.tsx) registraba el pago dos veces. Demostrado en rojo
+    // comentando temporalmente el chequeo de `cargarPagoConsignantePorClave` en el caso de uso (casos-de-uso/registrar-pago-consignante.ts):
+    // sin ese chequeo, este test fallaba con 2 filas en `pagoConsignante` en vez de 1 — revertido, vuelve a pasar.
+    it("un doble clic (misma claveIdempotencia) registra el pago UNA sola vez", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const claveIdempotencia = "11111111-1111-4111-8111-111111111111";
+      // MISMA fecha en los dos envíos, como en un doble clic real: el formulario la lee de un <input type="date"> que no cambia
+      // entre el primer y el segundo submit — `new Date()` llamado dos veces (con milisegundos distintos) daría un payload distinto
+      // y por lo tanto un hash I3 distinto, lo cual es correcto (dos payloads distintos con la misma clave son un CONFLICTO, no un
+      // duplicado) pero no es lo que este test quiere reproducir.
+      const fecha = new Date();
+
+      const primero = await registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia);
+      expect(primero.ok, primero.mensaje).toBe(true);
+
+      const segundo = await registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia);
+      expect(segundo.ok, segundo.mensaje).toBe(true);
+      expect(segundo.mensaje).toBe(primero.mensaje);
+
+      expect(await prisma.pagoConsignante.count()).toBe(1);
+    });
+
+    it("la misma clave con un importe distinto da conflicto, no un segundo pago", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const claveIdempotencia = "22222222-2222-4222-8222-222222222222";
+      const fecha = new Date();
+
+      const primero = await registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia);
+      expect(primero.ok).toBe(true);
+
+      const segundo = await registrarPagoConsignante(consignante.id, 20, fecha, undefined, claveIdempotencia);
+      expect(segundo.ok).toBe(false);
+
+      expect(await prisma.pagoConsignante.count()).toBe(1);
+    });
   });
 
   describe("filtro de período", () => {

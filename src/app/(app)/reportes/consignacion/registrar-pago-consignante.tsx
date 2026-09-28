@@ -18,6 +18,10 @@ export function RegistrarPagoConsignante({ proveedorId, proveedorNombre, saldoAc
   const [notas, setNotas] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // I3 — un UUID por intento de envío (docs/auditoria-motor2-plan-i3-
+  // idempotencia-2026-09-17.md §9.3), reenviado tal cual en reintentos;
+  // se renueva recién después de un éxito, cuando arranca un intento nuevo.
+  const [claveIdempotencia, setClaveIdempotencia] = useState(() => crypto.randomUUID());
 
   return (
     <Modal triggerLabel="Registrar pago" title={`Pago a "${proveedorNombre}"`}>
@@ -27,9 +31,16 @@ export function RegistrarPagoConsignante({ proveedorId, proveedorNombre, saldoAc
             e.preventDefault();
             startTransition(async () => {
               // numeroDelCampo: un texto inválido llega como NaN y el servidor lo rechaza; nunca el 0 que daba convertir un texto vacío.
-              const resultado = await registrarPagoConsignante(proveedorId, numeroDelCampo(importe) ?? Number.NaN, new Date(fecha), notas || undefined);
+              const resultado = await registrarPagoConsignante(
+                proveedorId,
+                numeroDelCampo(importe) ?? Number.NaN,
+                new Date(fecha),
+                notas || undefined,
+                claveIdempotencia
+              );
               setMensaje(resultado.mensaje);
               if (resultado.ok) {
+                setClaveIdempotencia(crypto.randomUUID());
                 router.refresh();
                 cerrar();
               }

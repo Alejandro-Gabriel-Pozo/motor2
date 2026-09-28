@@ -1,9 +1,10 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import { validarImporte } from "@/core/datos/importe";
+import { aResultadoAccion } from "@/core/resultado-caso";
+import { guardComandoRegistrarPagoConsignante } from "@/core/features/reportes/pago-consignante.guard";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
+import { registrarPagoConsignanteCasoDeUso } from "./casos-de-uso/registrar-pago-consignante";
 
 /**
  * Registra un pago a un proveedor de consignación, para saldar (parcial o
@@ -12,20 +13,23 @@ import { error, ok, type ResultadoAccion } from "../tipos";
  * (hallazgo de la auditoría de motor2). Append-only, igual que el resto
  * del Kardex: nunca se tocan las líneas LIQUIDACION_CONSIGNACION, esto es
  * un registro aparte que el reporte resta.
+ *
+ * Desde la Task #41 (Fase M, M14 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso("pagar_consignante")`) → formato del comando (`guardComandoRegistrarPagoConsignante`,
+ * `core/features/reportes/pago-consignante.guard.ts`: proveedor en blanco, importe, formato de la clave I3) → caso de uso
+ * (`casos-de-uso/registrar-pago-consignante.ts`: idempotencia I3, transacción, persistencia, auditoría) → `aResultadoAccion`. Antes
+ * no tenía transacción, idempotencia ni auditoría — un doble clic real registraba el pago dos veces (hallazgo del backlog, M14).
  */
-export async function registrarPagoConsignante(proveedorId: string, importe: number, fecha: Date, notas?: string): Promise<ResultadoAccion> {
+export async function registrarPagoConsignante(
+  proveedorId: string,
+  importe: number,
+  fecha: Date,
+  notas?: string,
+  claveIdempotencia?: string
+): Promise<ResultadoAccion> {
   return conPermiso("pagar_consignante", async (ctx) => {
-    // Mismo validador que el formulario (CampoNumero tipo="importe"): número, no negativo, a lo sumo 2 decimales, dentro del tope.
-    const validado = validarImporte(importe, { etiqueta: "El importe", obligatorio: true, permitirCero: false });
-    if (!validado.ok) return error(validado.mensaje);
-    importe = validado.valor!; // obligatorio: nunca null
-
-    const proveedor = await prisma.proveedor.findUnique({ where: { id: proveedorId } });
-    if (!proveedor || !proveedor.activo) return error("No se encontró el proveedor, o está inactivo.");
-
-    await prisma.pagoConsignante.create({
-      data: { sucursalId: ctx.sucursalId, proveedorId, importe, fecha, notas: notas || undefined, usuarioId: ctx.usuarioId },
-    });
-    return ok(`Pago de $${importe.toLocaleString("es-AR")} a "${proveedor.nombre}" registrado.`);
+    const comando = guardComandoRegistrarPagoConsignante({ proveedorId, importe, fecha, notas, claveIdempotencia });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await registrarPagoConsignanteCasoDeUso(ctx, comando.valor));
   });
 }

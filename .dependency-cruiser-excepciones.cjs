@@ -127,6 +127,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "M13e1 + M13e2, cierra la cadena M13a-e: registrarConteoFisico/registrarConteosFisicos (M13e1) → casos-de-uso/registrar-conteo-fisico.ts; resolverConteoPendiente (M13e2) → casos-de-uso/resolver-conteo-pendiente.ts; cancelarConteoFisico (M13e2) → casos-de-uso/cancelar-conteo-fisico.ts (persistencia compartida: cargar-conteo-fisico.ts, escribir-conteo-fisico.ts, y de M13b/M13d cargar-producto-con-unidad-de-stock.ts/escribir-movimiento-de-stock.ts). obtenerHistorialConteosFisicos (solo lectura) se mudó tal cual a lecturas-conteo-fisico.ts. El archivo no tiene ninguna otra función.",
   },
+  {
+    ruta: "src/server/actions/reportes/consignacion.ts",
+    motivo:
+      "M14: registrarPagoConsignante (antes sin transacción, sin I3, sin auditoría — un doble clic real registraba el pago dos veces) → casos-de-uso/registrar-pago-consignante.ts (idempotencia I3 con prisma.$transaction SIMPLE — sin invariante de agregado que proteger, solo un insert con clave única —, persistencia en server/persistencia/reportes/pago-consignante.ts, auditoría). El archivo no tiene ninguna otra función.",
+  },
 ];
 
 module.exports = {
