@@ -46,7 +46,7 @@ process.env.DIRECT_URL = base.url;
 // anteriores en este mismo sandbox compartido (48213, 45677, 47391, 53219 — ver el historial de este archivo). No
 // es una decisión de producto — la app no expone nada real en este puerto — así que se corrige acá, sin tocar
 // ningún otro worktree.
-const PUERTO = 56471;
+const PUERTO = Number(process.env.MOTOR2_E2E_PUERTO ?? 56471);
 const URL_BASE = `http://localhost:${PUERTO}`;
 
 /**
