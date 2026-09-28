@@ -8,8 +8,8 @@ import {
   detalleReversionDeVenta,
   evaluarAnulacionDeVenta,
   mensajeVentaAnulada,
-} from "@/core/movimientos/anulaciones";
-import { conTransaccionSerializable } from "@/core/movimientos/con-reintento";
+} from "@/core/movimientos/public";
+import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarHermanasDePromo, cargarVentaParaAnular } from "@/server/persistencia/movimientos/cargar-venta-para-anular";
