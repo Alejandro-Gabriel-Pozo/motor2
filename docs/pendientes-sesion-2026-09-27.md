@@ -136,15 +136,12 @@ sobrantes reducidos a locales. **`npm run analizar:muerto` da 0
 hallazgos.** Ningún test se tocó ni se borró. Gate completo (6 comandos)
 verificado limpio antes de mergear.
 
-#### K3 — knip obligatorio en el gate
-`analizar:muerto` corre `knip` CON código de salida (quitar `--no-exit-code`
-de `package.json`) y debe dar 0 hallazgos — **ya da 0 desde K2**, así que
-esta tarea es ahora solo formalizarlo: quitar el flag, y confirmar que
-sigue en 0 tras el cambio (por si `--no-exit-code` estaba ocultando algo
-que el código de salida sí marcaría distinto). Sumar el comando a la
-tabla de `.claude/skills/plan-con-verificacion-e2e/SKILL.md` y a
-`AGENTS.md` — el gate pasa a 7 comandos desde esta tarea. Bloqueada por:
-nada (K2 y C3 ya mergeadas). Tamaño chica.
+#### K3 — YA MERGEADA (knip obligatorio en el gate)
+`--no-exit-code` sacado de `package.json`. Demostrado rojo→verde: un export
+sin uso temporal hace fallar el comando (exit 1), revertido vuelve a exit 0.
+Gate documentado en 7 comandos en `AGENTS.md` y en
+`.claude/skills/plan-con-verificacion-e2e/SKILL.md`. **F1-F4 quedan
+desbloqueadas.**
 
 #### F1-F4 — `fast-check` (property-based testing)
 Bloqueadas por K3 (orden pedido por el dueño; técnicamente F1/F2 no dependen
