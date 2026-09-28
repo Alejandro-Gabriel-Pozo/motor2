@@ -11,11 +11,9 @@ import type { Prisma } from "@prisma/client";
  * plan), se resuelve aparte con una guarda de estado atómica.
  */
 
-/**
- * §11.1: la validación del formato de la clave vive en `src/core/datos/clave-idempotencia.ts` (pura, sin `node:crypto`: la usan los guards
- * de `core/features/`, Task #41 Fase M). Se reexporta acá para los que ya la importaban de este módulo.
- */
-export { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+// §11.1: la validación del formato de la clave vive en `src/core/datos/clave-idempotencia.ts` (pura, sin `node:crypto`: la usan los
+// guards de `core/features/`, Task #41 Fase M, directo de ahí — este módulo ya no la reexporta: M13d sacó a `reclasificacion.ts` (el
+// último que la importaba de acá) para importarla directo, como ya hacían los demás guards).
 
 function canonicalizar(valor: unknown): unknown {
   if (Array.isArray(valor)) return valor.map(canonicalizar);
