@@ -411,8 +411,19 @@ varios hallazgos de knip).
     `core/datos/clave-idempotencia`, igual que los demás guards. Reverificado
     independientemente: los 7 comandos en verde — 274/274 archivos y
     3287/3287 tests de Vitest, build, 369/369 specs de Playwright.
-  - **M13e1** — `registrarConteoFisico`/`registrarConteosFisicos`: caso de uso
-    propio, migración PARCIAL (no entra en la lista todavía).
+  - **M13e1 — YA MERGEADA** (2026-09-28): `registrarConteoFisico`/
+    `registrarConteosFisicos` (y su motor compartido, antes
+    `registrarConteoConContexto`) migrados a
+    `casos-de-uso/registrar-conteo-fisico.ts`, reutilizando
+    `cargarProductoConUnidadDeStock` (M13d) y `escribirOperacionDeStock`/
+    `escribirLineasDeMovimientoStock` (M13b). El guard corre UNA VEZ POR FILA
+    dentro de `registrarConteosFisicos` (la sesión y el permiso siguen
+    comprobándose una sola vez para toda la tanda, igual que antes). Migración
+    PARCIAL a propósito, como P1: `resolverConteoPendiente`,
+    `cancelarConteoFisico` y `obtenerHistorialConteosFisicos` quedan sin
+    tocar — eso es M13e2. Reverificado independientemente: los 7 comandos en
+    verde — 274/274 archivos y 3287/3287 tests de Vitest, build, 369/369
+    specs de Playwright. Ningún test tocado.
   - **M13e2** — `resolverConteoPendiente`/`cancelarConteoFisico` (también
     mueven stock): casos de uso propios; `obtenerHistorialConteosFisicos` se
     muda a una lectura aparte para que `conteo-fisico.ts` entre en la lista.
