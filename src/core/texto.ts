@@ -6,15 +6,6 @@ export function texto(v: unknown): string {
   return String(v ?? "").trim();
 }
 
-export function textoUpper(v: unknown): string {
-  return texto(v).toUpperCase();
-}
-
-/** Compara dos textos libres ignorando mayúsculas/espacios. */
-export function mismoTexto(a: unknown, b: unknown): boolean {
-  return texto(a).toLowerCase() === texto(b).toLowerCase();
-}
-
 /**
  * Charset permitido para nombres de catálogo (producto, proveedor,
  * categoría, familia, unidad, sección, rol, sucursal) — mismo criterio que

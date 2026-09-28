@@ -16,7 +16,7 @@ import { aceptar, rechazar, type ResultadoDato } from "./resultado";
  *    ("1.234,56" = "1,234.56" = 1234,56; "1.23,4" es error).
  *  - Acepta ",5" y "5," (tecleo a medias).
  */
-export const MENSAJE_NUMERO_INVALIDO = "No es un número válido.";
+const MENSAJE_NUMERO_INVALIDO = "No es un número válido.";
 
 const RE_GRUPO_INICIAL = /^\d{1,3}$/;
 const RE_GRUPO_MILES = /^\d{3}$/;

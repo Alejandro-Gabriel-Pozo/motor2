@@ -22,7 +22,7 @@ import type {
  */
 
 /** Mismo texto que usaban las Server Actions de la Bandeja cuando el id del traspaso llega vacío. */
-export const MENSAJE_FALTA_TRASPASO = "Falta el traspaso.";
+const MENSAJE_FALTA_TRASPASO = "Falta el traspaso.";
 
 /** Mismo texto que usaba `aprobarYEnviarTransferencia` cuando la sección de origen no es de esta sucursal. */
 export const MENSAJE_SECCION_ORIGEN_NO_PROPIA = "Elegí de qué sección propia sale.";
@@ -70,7 +70,7 @@ export function guardComandoRechazarSolicitudTraspaso(entrada: unknown): Resulta
  */
 
 /** Mismo texto que usaban `aceptarTransferencia` y `confirmarReingresoTransferencia` para una clave I3 que no es un UUID. */
-export const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
+const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
 
 /** Mismo texto que usaba `aceptarTransferencia` cuando la sección de destino no es de esta sucursal. */
 export const MENSAJE_SECCION_DESTINO_NO_PROPIA = "Elegí a qué sección propia entra.";
@@ -128,10 +128,10 @@ export function guardComandoConfirmarReingresoTraspaso(entrada: unknown): Result
  */
 
 /** Mismo texto que usaba `crearSolicitudTransferencia` cuando no se eligió la sucursal a la que se le pide. */
-export const MENSAJE_FALTA_SUCURSAL_ORIGEN = "Elegí de qué sucursal lo pedís.";
+const MENSAJE_FALTA_SUCURSAL_ORIGEN = "Elegí de qué sucursal lo pedís.";
 
 /** Mismo texto que usaba `crearEnvioDirectoTransferencia` cuando no se eligió la sucursal a la que se le manda. */
-export const MENSAJE_FALTA_SUCURSAL_DESTINO = "Elegí a qué sucursal se lo mandás.";
+const MENSAJE_FALTA_SUCURSAL_DESTINO = "Elegí a qué sucursal se lo mandás.";
 
 /** Mismo texto que usaba `crearSolicitudTransferencia` cuando la sección de destino no es de esta sucursal. */
 export const MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA = "Elegí a qué sección propia tiene que entrar.";

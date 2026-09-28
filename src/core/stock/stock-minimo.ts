@@ -18,8 +18,3 @@ export async function resolverStockMinimo(sucursalId: string, productoId: string
   const global = await db.stockMinimoProducto.findFirst({ where: { sucursalId, productoId, seccionId: null } });
   return global ? Number(global.minimo) : null;
 }
-
-/** Todas las filas (global + por sección) de un producto en una sucursal — para el panel de administración. */
-export async function obtenerStockMinimoDetalleProducto(sucursalId: string, productoId: string, db: Db = prisma) {
-  return db.stockMinimoProducto.findMany({ where: { sucursalId, productoId }, include: { seccion: true } });
-}

@@ -21,8 +21,8 @@
  * `timeout` de 15 s de la propia transacción.
  */
 
-export const ESPERA_BASE_MS = 25;
-export const ESPERA_TOPE_MS = 250;
+const ESPERA_BASE_MS = 25;
+const ESPERA_TOPE_MS = 250;
 
 export interface InfoReintento {
   /** Número de intento que acaba de terminar (0 = el primero). */

@@ -429,7 +429,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
 
     // Todo el grupo en UNA transacción, con su auditoría (Task #41, M10): o quedan todos los precios con su rastro, o ninguno.
     const productos = await prisma.$transaction(async (tx) => {
-      const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true } });
+      const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true }, orderBy: { nombre: "asc" } });
       for (const p of productos) {
         await tx.producto.update({ where: { id: p.id }, data: { precioVenta: precio } });
         await registrarCambioAuditado(tx, {

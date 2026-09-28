@@ -45,7 +45,7 @@ export function guardNroFacturaCompra(valor: string | null | undefined) {
 export const MENSAJE_OPERACION_NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
 
 /** Mismo texto que usaba `anularCompra` para una clave I3 que no es un UUID. */
-export const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
+const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
 
 /**
  * Guard del comando «anular una compra» (Task #41, Fase M). Formato, ANTES de abrir la transacción, en el mismo orden que la Server

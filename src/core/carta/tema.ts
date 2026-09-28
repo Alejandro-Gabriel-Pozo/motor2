@@ -193,7 +193,7 @@ export type ClaveTema = (typeof CLAVES_TEMA_V1)[number]["clave"];
 
 const DEFINICION_POR_CLAVE: ReadonlyMap<string, DefinicionClaveTema> = new Map(CLAVES_TEMA_V1.map((d) => [d.clave, d as DefinicionClaveTema]));
 
-export function definicionClaveTema(clave: string): DefinicionClaveTema | undefined {
+function definicionClaveTema(clave: string): DefinicionClaveTema | undefined {
   return DEFINICION_POR_CLAVE.get(clave);
 }
 

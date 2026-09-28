@@ -41,7 +41,7 @@ export interface ResumenFinanciero {
  * "mes en curso" — decisión del usuario (2026-09-21, docs/planes-demo-y-claridad-reportes-2026-09-21.md §1): el default del
  * dashboard pasa a ser "Últimos 30 días". Sin `rango`, cae al mismo default (ver rango-por-defecto.ts).
  */
-export async function obtenerResumenFinancieroDelRango(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<ResumenFinanciero> {
+async function obtenerResumenFinancieroDelRango(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<ResumenFinanciero> {
   const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, {}, db);
 
   return {

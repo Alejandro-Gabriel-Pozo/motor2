@@ -45,7 +45,7 @@ function formatoPrecio(n: number): string {
 }
 
 /** El valor que la carta usaría para cada clave: el cargado si es válido (normalizado), si no el default de la carta. */
-export function valoresEfectivos(valores: Readonly<Record<string, string>>): Record<ClaveTema, string> {
+function valoresEfectivos(valores: Readonly<Record<string, string>>): Record<ClaveTema, string> {
   const r = {} as Record<ClaveTema, string>;
   for (const d of CLAVES_TEMA_V1) {
     const v = validarValorTema(d.clave, valores[d.clave] ?? "");

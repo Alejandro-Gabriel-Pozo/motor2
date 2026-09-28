@@ -18,7 +18,7 @@ import { crearLibroDeStock, type LibroDeStock, type SeccionCandidata } from "@/c
  *   `findMany distinct`, que Prisma deduplica en memoria); decide adónde va un faltante o la fila VENTA cuando nada más lo decide.
  */
 
-export const MENSAJE_SIN_SECCIONES_ACTIVAS = "Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.";
+const MENSAJE_SIN_SECCIONES_ACTIVAS = "Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.";
 
 export type OrigenVenta = { tipo: "seccion"; seccionId: string } | { tipo: "automatico" };
 

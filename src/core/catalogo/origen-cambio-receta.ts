@@ -66,7 +66,7 @@ function fraseSemanas(n: number): string {
 }
 
 /** El texto que sigue a "— " en la descripción de auditoría (D6(a), ejemplos en el plan). */
-export function describirOrigen(origen: OrigenNormalizado | null, guardado?: { cantidad: number | null; mermaPorcentaje: number | null }): string {
+function describirOrigen(origen: OrigenNormalizado | null, guardado?: { cantidad: number | null; mermaPorcentaje: number | null }): string {
   if (!origen || origen.tipo === "manual") return "edición manual";
 
   const detalle: string[] = [];

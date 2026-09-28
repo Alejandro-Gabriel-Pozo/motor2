@@ -87,7 +87,7 @@ export function crearPrismaE2E(base: BaseE2E): PrismaClient {
  * lista de `information_schema` en vez de hardcodearla: no se desactualiza
  * cuando alguien agrega un modelo.
  */
-export async function contarFilasPorTabla(prisma: PrismaClient): Promise<Record<string, number>> {
+async function contarFilasPorTabla(prisma: PrismaClient): Promise<Record<string, number>> {
   const filas = await prisma.$queryRawUnsafe<Array<{ tabla: string; n: number }>>(
     `SELECT table_name AS tabla,
             (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', table_schema, table_name), false, true, '')))[1]::text::int AS n

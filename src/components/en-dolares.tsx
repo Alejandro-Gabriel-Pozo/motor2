@@ -3,7 +3,7 @@ import { pesosADolares, type UltimaCotizacion } from "@/core/reportes/cotizacion
 const formatoFecha = (f: Date) => f.toISOString().slice(0, 10).split("-").reverse().join("/");
 
 /** Texto que explica de dónde sale un importe en dólares: la cotización y su fecha. */
-export function textoCotizacion(c: UltimaCotizacion): string {
+function textoCotizacion(c: UltimaCotizacion): string {
   return `Dólar ${c.fuente === "BNA" ? "oficial Banco Nación" : "BCRA"} (venta) $${c.venta.toLocaleString("es-AR")} del ${formatoFecha(c.fecha)}`;
 }
 

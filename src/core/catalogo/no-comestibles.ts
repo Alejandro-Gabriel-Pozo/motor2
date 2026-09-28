@@ -9,7 +9,7 @@
  *
  * Este módulo es puro (sin base de datos) para poder usarlo desde los reportes y probarlo aparte.
  */
-export const NOMBRE_GRUPO_NO_COMESTIBLES = "No comestibles";
+const NOMBRE_GRUPO_NO_COMESTIBLES = "No comestibles";
 
 export interface NodoGrupo {
   nombre: string;

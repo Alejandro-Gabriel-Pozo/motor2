@@ -94,7 +94,7 @@ export function descripcionAuditoriaCorreccion(fecha: Date, nroFacturaAnterior: 
   return `Compra del ${fechaCorta(fecha)}${nroFacturaAnterior ? ` (factura ${nroFacturaAnterior})` : ""}: ${ETIQUETA_CAMPO[campo]}`;
 }
 
-export const ETIQUETA_CAMPO: Record<CampoCabecera, string> = {
+const ETIQUETA_CAMPO: Record<CampoCabecera, string> = {
   proveedorId: "proveedor",
   nroFactura: "N.º de factura",
   detalleLibre: "detalle",
