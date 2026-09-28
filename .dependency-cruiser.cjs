@@ -31,16 +31,36 @@ function excepcionesDe(regla) {
 }
 
 /**
- * Dominios de `src/core/` que ya exponen una fachada `public.ts` (y opcionalmente `public-servidor.ts`): fuera del propio
- * dominio (resto de core/, server/consultas/, server/persistencia/) solo se puede importar esa fachada. Arrancó vacía (A3);
- * la Fase C la va llenando dominio por dominio, a medida que cada uno tiene su `public.ts`:
- *  - C1 (piloto): `catalogo` → core/catalogo/public.ts (puro) + core/catalogo/public-servidor.ts (toca la base).
- *  - C2: `movimientos` → core/movimientos/public.ts (puro) + core/movimientos/public-servidor.ts (toca la base).
- *  - C3: `reportes` → core/reportes/public.ts (puro) + core/reportes/public-servidor.ts (toca la base).
+ * Dominios de NEGOCIO de `src/core/` — carpetas con lógica/estado propio que en principio no debería filtrarse fuera por sus
+ * archivos internos. Excluye a propósito la infraestructura transversal (`auth`, `permisos`, `datos`, `features`, `estadistica`,
+ * `navegacion`): esas se consumen desde cualquier lado por diseño, no tienen "internals" que proteger, y forzarlas acá rompería
+ * el proyecto entero sin aportar nada (mismo criterio que separa `core/moneda.ts`/`numero.ts`/`texto.ts`, sueltos en la raíz, de
+ * las carpetas por dominio).
  */
-const DOMINIOS_CON_PUBLIC = ["catalogo", "movimientos", "reportes"];
+const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stock", "compras", "carta"];
 
-const reglasSinInternalsDeOtroDominio = DOMINIOS_CON_PUBLIC.map((dominio) => ({
+/**
+ * Dominios de negocio que TODAVÍA no tienen su fachada `public.ts`/`public-servidor.ts` — excepción con motivo (2026-09-28,
+ * invertido desde un allowlist `DOMINIOS_CON_PUBLIC`: ese esquema dejaba a `pos`/`stock`/`compras`/`carta` sin NINGUNA protección
+ * simplemente porque nadie se acordó de sumarlos — el mismo problema, en el fondo, que el test de idempotencia I3 encontrado el
+ * mismo día). Con esta lista invertida, el default es PROTEGER: un dominio de negocio nuevo que se agregue a
+ * `DOMINIOS_DE_NEGOCIO` y no tenga fachada todavía HACE FALLAR el gate hasta que se decida explícitamente construirle la fachada
+ * o sumarlo acá con motivo — no al revés.
+ *
+ * Ningún comportamiento cambia hoy para estos 4 (0 arquitectura roto, 0 import nuevo bloqueado): es la MISMA situación de
+ * desprotección que ya tenían, ahora documentada y con default fail-closed para el próximo dominio.
+ *  - C1 (piloto, con fachada): `catalogo` → core/catalogo/public.ts (puro) + core/catalogo/public-servidor.ts (toca la base).
+ *  - C2 (con fachada): `movimientos` → core/movimientos/public.ts + public-servidor.ts.
+ *  - C3 (con fachada): `reportes` → core/reportes/public.ts + public-servidor.ts.
+ */
+const DOMINIOS_SIN_PUBLIC_TODAVIA = {
+  pos: "5 sitios externos importan core/pos/* directo (confirmado con depcruise: core/reportes/boletas-emitidas.ts → boleta.ts/cuenta.ts/mesas.ts/numeracion-boleta.ts, y server/persistencia/pos/cargar-cuenta-para-corregir-boleta.ts → boleta.ts) — candidato C4, sin construir todavía.",
+  stock: "4 sitios externos (confirmado con depcruise: core/reportes/salud-por-producto.ts → consolidado.ts/alertas.ts, resumen-operativo.ts → alertas.ts, diferencias-ajustes.ts → frecuencia-conteo.ts) — candidato C5, sin construir todavía.",
+  compras: "5 sitios externos (confirmado con depcruise: server/persistencia/compras/{escribir-correccion,escribir-anulacion,cargar-compra-para-corregir,cargar-compra-para-anular}.ts y core/features/compras/compra.schema.ts, todos importando core/compras/{anulacion,correccion}.ts) — sin evaluar todavía si necesita fachada.",
+  carta: "3 sitios externos (confirmado con depcruise: core/pos/selector-carta.ts y selector-carta-consulta.ts, importando core/carta/{armar-menu,menu-consulta}.ts) — sin evaluar todavía si necesita fachada.",
+};
+
+const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => !(dominio in DOMINIOS_SIN_PUBLIC_TODAVIA)).map((dominio) => ({
   name: "sin-internals-de-otro-dominio",
   comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos.`,
   severity: "error",

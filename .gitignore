@@ -13,6 +13,10 @@
 # testing
 /coverage
 
+# mutation testing (Stryker, `npm run mutacion`)
+/reports
+.stryker-tmp/
+
 # next.js
 /.next/
 /out/

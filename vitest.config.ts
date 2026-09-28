@@ -31,5 +31,17 @@ export default defineConfig({
     // (**/*.spec.ts) pero no corren acá; ver playwright.config.ts / `npm
     // run test:e2e` y playwright.demo.config.ts.
     exclude: [...configDefaults.exclude, "test/e2e/**", "test/e2e-demo/**"],
+    // Cobertura (2026-09-28, hallazgo post-Task #41): el catch de P2002 de `registrar-pago-consignante.ts` nunca se ejecutaba con el
+    // test de idempotencia "doble clic" original (secuencial, dos `await` uno detrás del otro) — un reporte de cobertura lo habría
+    // marcado sin que hiciera falta pensar el escenario de carrera a mano. `npm run test:coverage` (INFORMATIVO por ahora, no forma
+    // parte del gate de 7 comandos — mismo criterio de rollout gradual que knip en K1: primero visibilidad, recién después umbral
+    // obligatorio, si se decide). Acotado a los casos de uso y la persistencia (server/), que es donde vive la lógica de negocio con
+    // ramas de error/reintento — UI y core puro tienen su propia cobertura implícita vía los tests que ya los ejercitan.
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "json-summary"],
+      include: ["src/server/actions/**/casos-de-uso/**", "src/server/persistencia/**"],
+      exclude: [...configDefaults.exclude, "src/server/actions/**/casos-de-uso/**/*.d.ts"],
+    },
   },
 });
