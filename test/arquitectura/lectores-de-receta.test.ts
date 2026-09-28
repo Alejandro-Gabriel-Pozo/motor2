@@ -57,7 +57,12 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
   {
     ruta: "server/actions/catalogo/recetas.ts",
     clase: "central",
-    motivo: "El editor de la receta CENTRAL (obtenerRecetaVigente/listarVersionesDeReceta/guardarReceta) — nunca resuelve por sucursal, es lo que se calibra contra. El arrastre de D3 lee la versión vieja completa, pero solo para copiar/descartar RendimientoLocalIngrediente, no para resolver ningún efectivo.",
+    motivo: "El editor de la receta CENTRAL (obtenerRecetaVigente/listarVersionesDeReceta) — nunca resuelve por sucursal, es lo que se calibra contra. guardarReceta ya no lee la receta acá: delega en su caso de uso (Task #41, P1).",
+  },
+  {
+    ruta: "server/persistencia/catalogo/guardar-version-de-receta.ts",
+    clase: "central",
+    motivo: "cargarUltimaVersionDeReceta (Task #41, P1 — antes en línea en guardarReceta): la versión vigente de la receta CENTRAL, para calcular MAX(version)+1 y para el arrastre de D3, que lee la versión vieja completa solo para copiar/descartar RendimientoLocalIngrediente — nunca resuelve ningún efectivo por sucursal.",
   },
   {
     ruta: "server/actions/catalogo/rendimiento-local.ts",
