@@ -314,14 +314,18 @@ completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
   `ACCIONES_CON_CASO_DE_USO`**. **Con esto se cierra toda la cadena M11/M12
   de esta ronda** (M11a→b→c y M12a→b→c→d, las 8 sub-tareas mergeadas).
 
-**Hallazgo real detectado al reverificar M11c (no introducido por esta sesión, pre-existente desde M10):** `sincronizarPrecioGrupoCarta`
-(`src/server/actions/catalogo/productos.ts`) arma el mensaje de éxito listando los productos en el orden que devuelve
-`tx.producto.findMany({ where: { id: { in: ids } } })`, SIN `orderBy` — Postgres no garantiza que ese orden respete el de
-`ids`, así que el texto del mensaje (y el test que lo fija exacto, `test/catalogo/sincronizar-precio-grupo.test.ts`) puede
-flaquear según el plan de ejecución. Confirmado flake real (no una regresión de M11c): 3 corridas aisladas del archivo en
-verde, 1 falla en medio de la suite completa, corrida completa siguiente en verde. Arreglo sugerido, chico: agregar
-`orderBy` explícito por el orden de `ids` (o armar el mensaje ordenando por nombre) — no bloquea nada de la Fase M, queda
-anotado acá para una tarea aparte.
+**Hallazgo real detectado al reverificar M11c (no introducido por esta sesión, pre-existente desde M10), y VUELTO A VER
+al reverificar el fix de `venta.ts`:** `sincronizarPrecioGrupoCarta` y `sincronizarPrecioLocalGrupoCarta`
+(`src/server/actions/catalogo/productos.ts` y `src/server/actions/movimientos/precio-local.ts`) arman el mensaje de éxito
+listando los productos en el orden que devuelve `tx.producto.findMany({ where: { id: { in: ids } } })`, SIN `orderBy` —
+Postgres no garantiza que ese orden respete el de `ids`, así que el texto del mensaje (y `test/catalogo/sincronizar-precio-grupo.test.ts`,
+que lo fija exacto) puede flaquear según el plan de ejecución. Confirmado flake real dos veces, en dos funciones distintas
+del mismo archivo/patrón de M10 (no una regresión de M11c ni del fix de `venta.ts`): corridas aisladas en verde, una falla
+puntual en medio de la suite completa, corrida completa siguiente en verde. Ya reapareció dos veces en la misma noche —
+conviene resolverlo pronto para que deje de generar ruido en cada reverificación. Arreglo sugerido, chico: agregar
+`orderBy` explícito por el orden de `ids` (o armar el mensaje ordenando por nombre) en AMBAS funciones — no bloquea nada
+de la Fase M, queda anotado acá para una tarea aparte (encaja bien como parte de K2, ya que toca el mismo archivo que
+varios hallazgos de knip).
 - **M13a/b/c/d/e** — el motor genérico `registrarMovimiento`
   (`server/actions/movimientos/movimientos.ts`, 512 líneas, 9 procesos): UN
   caso de uso genérico, no una fachada por proceso (la UI ya es genérica).

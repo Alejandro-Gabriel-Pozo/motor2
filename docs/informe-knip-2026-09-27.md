@@ -78,15 +78,20 @@ original como "export sobrante" y se re-verificó que siguen igual (solo se usan
 directo. Gate completo verificado limpio antes de mergear. La reexportación de `detalleReversionDeVenta` ya no aparece en
 `npm run analizar:muerto` — ver la tabla de MUERTO REAL actualizada más abajo.
 
-**`server/actions/movimientos/venta.ts` (la Server Action, no el caso de uso) queda TAL CUAL, a propósito — no es un
-descuido:** sigue importando `obtenerSeccionPropia` directo de `@/core/movimientos/stock`. Se intentó pasarlo por
-`public-servidor.ts` y **`npm run arquitectura` lo rechazó**: `venta.ts` está en `ACCIONES_CON_CASO_DE_USO`, y la regla
-`accion-migrada-sin-orquestacion` prohíbe que un archivo de esa lista importe `public-servidor.ts` — el archivo ENTERO
-está vedado (no solo los símbolos de reintento/idempotencia que la regla busca frenar), justamente para que la regla no se
-pueda esquivar coincidencia de un import inocente en el mismo archivo que uno prohibido. Como la regla
-`sin-internals-de-otro-dominio` tampoco cubre `server/actions/` (por diseño, en los tres dominios con fachada), el import
-directo del interno es hoy la ÚNICA opción compatible con las reglas vigentes para este caso puntual. Ver E1 para si en
-algún momento se decide extender el guard a `server/actions/` — mientras tanto, este import se queda.
+**Actualización 2026-09-27 (noche) — `server/actions/movimientos/venta.ts` YA RESUELTO, ya no queda ninguna excepción:**
+la primera corrección de esta noche había intentado pasar `obtenerSeccionPropia` por `public-servidor.ts` y
+`npm run arquitectura` la rechazó (`venta.ts` está en `ACCIONES_CON_CASO_DE_USO`; la regla
+`accion-migrada-sin-orquestacion` prohíbe que un archivo de esa lista importe `public-servidor.ts` COMPLETO, no solo los
+símbolos de reintento/idempotencia, justamente para que no se pueda esquivar la prohibición por la puerta de al lado).
+Revisando más a fondo se encontró que el chequeo era **redundante, no solo mal ubicado**: `registrarVentaEnTx`
+(`core/movimientos/registrar-venta.ts:262`, llamado dentro del caso de uso) ya valida la sección como su primerísimo
+paso, ANTES de escribir nada, con el mismo mensaje exacto «No se encontró la sección.» (`prepararOrigen`,
+`core/movimientos/origen-venta-datos.ts`). Se sacó el chequeo duplicado de `venta.ts` en vez de moverlo — verificado
+contra `test/movimientos/venta.test.ts` (el test de Fase 6 solo pide `ok:false` + cero escrituras, no un mensaje ni un
+camino de código en particular) y `test/movimientos/venta-en-tx.test.ts` (ya cubre el rechazo vía `registrarVentaEnTx`
+directo). Con esto, `venta.ts` ya NO tiene ningún import de `core/movimientos/` — queda alineada con las otras 4
+Server Actions migradas (`compras.ts`, `cuenta-cierre.ts`, `cuenta-anulacion.ts`, `traspasos.ts`), ninguna de las cuales
+tenía ese tipo de import tampoco. Gate completo (6 comandos) verificado limpio antes de mergear.
 
 ## Resumen
 
