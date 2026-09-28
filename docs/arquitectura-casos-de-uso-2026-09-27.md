@@ -217,6 +217,23 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   `cuenta-anulacion.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**. `abrirCuenta` (mencionada como
   opcional) quedó FUERA a propósito: vive en otro archivo (`pos/cuenta-apertura.ts`, junto con comensales, cliente y liberar mesa) y no
   mueve stock ni dinero ni cierra un ciclo, así que no es una "mutación relevante" de esta fase.
+- **P1 — `guardarReceta`** (`src/server/actions/catalogo/recetas.ts`, primera aplicación del patrón fuera de movimientos/POS): comando
+  + guard en `core/features/catalogo/` (`receta-version.schema.ts` con `ComandoGuardarVersionDeReceta`, `CodigoGuardarVersionDeReceta`,
+  `DatosGuardarVersionDeReceta`; `receta-version.guard.ts` con `guardComandoGuardarVersionDeReceta`: un `productoId` que no es string da
+  «No se encontró el producto.», antes un error crudo de Prisma). `items`/`pasos`/`cabecera` viajan crudos y el caso de uso los valida
+  con `validarIngredientes` → `validarPasos` → `validarCabecera` (core/catalogo), en el MISMO orden de siempre, después de cargar el
+  producto y chequear que sea elegible. Persistencia en `server/persistencia/catalogo/guardar-version-de-receta.ts`
+  (`cargarProductoParaReceta`, `cargarUltimaVersionDeReceta`, `escribirVersionDeReceta` —versión + tabla puente paso↔ingrediente—,
+  `cargarNombresDeSucursales`, `copiarCalibracionesLocales`). **Excepción al contrato de la persistencia:** las dos cargas corrían FUERA
+  de la transacción (la versión se calcula de forma optimista, MAX+1, antes de abrir la SERIALIZABLE; el `@@unique([productoId,
+  version])` es el árbitro y `conReintento` relee ante un choque) y así siguen: el caso de uso les pasa el cliente global (primer
+  parámetro igual de obligatorio). `test/catalogo/recetas-concurrencia.test.ts` cuenta esas lecturas sobre `prisma.recetaVersion`. Los
+  `Decimal` de las calibraciones locales no se convierten a `number` (se copian tal cual a la versión nueva). Caso de uso
+  `catalogo/casos-de-uso/guardar-version-de-receta.ts`: el arrastre D3 (copiar si sigue con la misma unidad; si no, descartar y auditar
+  cantidad y merma) y la auditoría `RecetaVersion`/`version` quedaron idénticos. Sin I3 (nunca la tuvo: cada guardado es una versión
+  nueva a propósito). `refrescarVistaSiHaceFalta` sigue en la Server Action, solo ante un éxito (igual que antes). **Migración PARCIAL a
+  propósito:** `recetas.ts` NO entra en `ACCIONES_CON_CASO_DE_USO` — las lecturas (`obtenerRecetaVigente`, `listarVersionesDeReceta`)
+  siguen con `prisma`, y las ediciones puntuales (agregar/editar/quitar ingrediente o paso, cabecera) siguen delegando en `guardarReceta`.
 
 ## Cómo se migra la próxima acción
 
