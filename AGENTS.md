@@ -23,8 +23,10 @@ TOTAL del proyecto (tipos, lint, arquitectura, tests unitarios/integración,
 build y e2e con Playwright — comandos concretos y criterio de éxito, nunca
 "correr los tests" en abstracto).
 
-Gate de verificación obligatorio (desde 2026-09-27, Task #41 Fase A3): 6
-comandos, en la MISMA corrida y todos limpios — `npx tsc --noEmit`, `npm run
-lint`, `npm run arquitectura` (dependency-cruiser, `.dependency-cruiser.cjs`;
-excepciones con motivo en `.dependency-cruiser-excepciones.cjs`), `npm test`,
-`npm run build` y `npm run test:e2e`.
+Gate de verificación obligatorio (desde 2026-09-27, Task #41 Fase A3; 7
+comandos desde la Fase K3): en la MISMA corrida y todos limpios — `npx tsc
+--noEmit`, `npm run lint`, `npm run arquitectura` (dependency-cruiser,
+`.dependency-cruiser.cjs`; excepciones con motivo en
+`.dependency-cruiser-excepciones.cjs`), `npm run analizar:muerto` (knip, CON
+código de salida — 0 hallazgos obligatorio; excepciones legítimas con motivo
+en `knip.jsonc`), `npm test`, `npm run build` y `npm run test:e2e`.
