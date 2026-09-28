@@ -351,6 +351,28 @@ describe("registrarMovimiento", () => {
     expect(await calcularSaldoTotal(pv.id, seccionAId)).toBe(1);
   });
 
+  it("Producción: dos líneas que consumen 0.3 c/u de un insumo con decimales=0 no exigen stock (hallazgo post-cierre 2026-09-28, docs/pendientes-sesion-2026-09-27.md: antes se sumaba el consumo CRUDO de consumosReceta para validar stock — 0.3+0.3=0.6, 'insuficiente' con saldo 0 — aunque lo que realmente se persiste es cada consumo YA redondeado a los decimales de su insumo, 0+0=0)", async () => {
+    const salPizca = await sembrarProductoDisponible({ codigo: "MP_SALPIZCA", nombre: "Sal (pizca)", tipo: "MP", unidadStockId: unidadGId }, sucursalId);
+    const pv1 = await sembrarProductoDisponible({ codigo: "PV_PAN1", nombre: "Pan 1", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
+    const pv2 = await sembrarProductoDisponible({ codigo: "PV_PAN2", nombre: "Pan 2", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
+    await prisma.recetaVersion.create({
+      data: { productoId: pv1.id, version: 1, ingredientes: { create: [{ insumoProductoId: salPizca.id, cantidad: 0.3, unidadId: unidadGId, mermaPorcentaje: 0 }] } },
+    });
+    await prisma.recetaVersion.create({
+      data: { productoId: pv2.id, version: 1, ingredientes: { create: [{ insumoProductoId: salPizca.id, cantidad: 0.3, unidadId: unidadGId, mermaPorcentaje: 0 }] } },
+    });
+
+    // Sin ninguna Compra de salPizca: el saldo disponible es 0. Cada línea, aislada, redondea su consumo (0.3g, decimales:0) a 0 antes
+    // de persistir — el requerimiento REAL es 0+0=0. Antes del fix, el paso de validación sumaba las cantidades SIN redondear
+    // (0.3+0.3=0.6) y rechazaba "Stock insuficiente" contra un saldo de 0, aunque la escritura real no iba a necesitar nada.
+    const resultado = await registrarMovimiento({
+      proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
+      items: [{ productoId: pv1.id, cantidad: 1 }, { productoId: pv2.id, cantidad: 1 }],
+    });
+    expect(resultado.ok).toBe(true);
+    expect(await calcularSaldoTotal(salPizca.id, seccionAId)).toBe(0);
+  });
+
   it("Producción de un insumo en consignación genera Consumo + Liquidación (cantidad 0, importe según precioConsignacion)", async () => {
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_CONS", nombre: "Consignante SA" } });
     const mpConsignacion = await crearMP("Café en consignación", { esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 50 });

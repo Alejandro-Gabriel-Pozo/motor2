@@ -179,7 +179,16 @@ export async function registrarMovimientoCasoDeUso(
       else if (transicion.signoStock < 0) acumular(l.productoId, datos.seccionId, l.cantidadIngresada);
       else if (transicion.signoStock === 0 && l.cantidadFirmada < 0) acumular(l.productoId, datos.seccionId, -l.cantidadFirmada);
 
-      for (const c of l.consumosReceta) acumular(c.productoId, datos.seccionId, c.cantidad);
+      // Canonizado ANTES de validar (hallazgo post-cierre de Task #41, 2026-09-28): `c.cantidad` sale de
+      // resolverConsumoPorFamilia/calcularConsumosProduccion sin redondear — el paso 3, más abajo, la ajusta a los
+      // decimales de la unidad de stock del insumo ANTES de persistir. Antes de este fix, acá se validaba contra la
+      // cantidad CRUDA y se persistía la REDONDEADA — dos valores distintos decidiendo y escribiendo. Mismo cálculo
+      // exacto que el paso 3 (misma función, mismos argumentos): al ser puro y determinístico, da el mismo resultado.
+      for (const c of l.consumosReceta) {
+        const consumido = await obtenerProducto(c.productoId);
+        const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
+        acumular(c.productoId, datos.seccionId, cantidadRedondeada);
+      }
     }
     for (const { productoId, seccionId, cantidad } of requeridoPorClave.values()) {
       const chequeoStock = await validarStockSuficiente(productoId, seccionId, cantidad, tx);
