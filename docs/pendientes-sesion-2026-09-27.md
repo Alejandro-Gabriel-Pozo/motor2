@@ -447,13 +447,33 @@ varios hallazgos de knip).
     conteos de tests/specs iguales o mayores a la línea de base (274/3285
     Vitest, 369/66 Playwright), y `git diff main -- test/` limitado a la
     lista de tests que cada sub-paso puede tocar (documentada en el plan).
-- **M14** — caso de uso `registrarPagoConsignante`
-  (`reportes/consignacion.ts`): HOY sin transacción, sin I3, sin auditoría —
-  un doble clic registra dos pagos (hueco real). **BLOQUEADA POR UNA
-  MIGRACIÓN DE SCHEMA** (agregar la clave I3 requiere un campo nuevo en
-  `PagoConsignante`) — **requiere autorización expresa del dueño antes de
-  tocar el schema.** Cierre: test de doble-clic en rojo antes del fix y en
-  verde después, más los 6/7 comandos. Tamaño mediana.
+- **M14 — YA MERGEADA** (2026-09-28, autorización expresa del dueño para la
+  migración de schema): caso de uso `registrarPagoConsignante`
+  (`reportes/consignacion.ts`) — antes sin transacción, sin I3, sin
+  auditoría, un doble clic real registraba el pago dos veces. Migración de
+  schema: `PagoConsignante` gana 3 columnas nullable + `@@unique`
+  (`claveIdempotencia`, `payloadHash`, `resultadoMensaje`), mismo criterio
+  "rollout gradual" que `Operacion`
+  (`prisma/migrations/20260928040000_i3_idempotencia_pago_consignante/`).
+  Comando+guard en `core/features/reportes/pago-consignante.{schema,guard}.ts`;
+  persistencia en `server/persistencia/reportes/pago-consignante.ts`; caso
+  de uso en `reportes/casos-de-uso/registrar-pago-consignante.ts` con
+  `prisma.$transaction` SIMPLE (sin `conTransaccionSerializable`: no hay
+  invariante de agregado que proteger, solo un insert con clave única — un
+  P2002 de carrera real se atrapa aparte). Opción B con un solo `create`
+  (el mensaje de éxito se conoce antes del insert, a diferencia de
+  `Operacion`). Auditoría nueva (`registrarCambioAuditado`, entidad
+  `"PagoConsignante"`, agregada a `CambioAuditable` y al filtro de la
+  página de auditoría). UI cableada de verdad
+  (`registrar-pago-consignante.tsx`, mismo patrón `crypto.randomUUID()` que
+  `venta-form.tsx`) — el alcance incluyó la UI a propósito, para cerrar el
+  bug real, no solo dejarlo testeable a nivel Server Action. `consignacion.ts`
+  entró en `ACCIONES_CON_CASO_DE_USO`. Test de doble-clic demostrado
+  rojo→verde (mutando temporalmente el `create` para no persistir la
+  clave, simulando el estado pre-M14: 2 filas en vez de 1; revertido,
+  vuelve a pasar). Los 7 comandos en verde: 274/274 archivos y 3289/3289
+  tests de Vitest, build (con la migración aplicada), 369/369 specs de
+  Playwright.
 
 ---
 
