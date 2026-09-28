@@ -308,8 +308,13 @@ export async function registrarMovimientoCasoDeUso(
     throw e;
   });
 
-  // Paso 6 (Compra): ver el docstring de `registrarProveedoresDeLaCompra` más arriba.
-  if (resultado.ok && datos.proceso === "COMPRA" && datos.proveedorId) {
+  // Paso 6 (Compra): ver el docstring de `registrarProveedoresDeLaCompra` más arriba. `!resultado.datos.repetida`
+  // explícito (backlog post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §4): en el camino
+  // de idempotencia "duplicado" `lineasParaProveedor` queda en `[]` (el cierre nunca llega a reasignarla, el
+  // `return` de I3 pasa antes del paso 1) — hoy este guard es un no-op porque el bucle de abajo no itera nada, no
+  // porque el contrato lo garantice. Dejarlo explícito documenta la regla real ("un duplicado no vuelve a tocar
+  // Catálogo") en vez de depender de que nadie cambie el orden de la inicialización de `lineasParaProveedor`.
+  if (resultado.ok && !resultado.datos.repetida && datos.proceso === "COMPRA" && datos.proveedorId) {
     await registrarProveedoresDeLaCompra(datos.proveedorId, datos.fecha, lineasParaProveedor);
   }
 
