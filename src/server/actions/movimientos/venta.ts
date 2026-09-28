@@ -1,7 +1,6 @@
 "use server";
 
 import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
-import { obtenerSeccionPropia } from "@/core/movimientos/stock";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { guardComandoAnularVenta } from "@/core/features/ventas/venta.guard";
 import type { DatosVentaInput as DatosVentaInputSchema, ItemVentaInput as ItemVentaInputSchema } from "@/core/features/ventas/venta.schema";
@@ -27,6 +26,14 @@ export type DatosVentaInput = DatosVentaInputSchema;
  * (override de precio, solo para `cerrarCuenta`) que un POST crudo a esta Server Action NUNCA tiene que poder fijar
  * (test/movimientos/venta-en-tx.test.ts, «un precioUnitario colado en el payload se ignora»). Tampoco se pasa `permitirStockNegativo`: la
  * venta de mostrador sigue rechazando por stock insuficiente.
+ *
+ * Fase 6 (auditoría de seguridad/contratos): `conPermiso` no valida que la sección sea de ESTA sucursal, solo el permiso de quien
+ * llama — pero acá NO hace falta un chequeo aparte (a diferencia de `registrarMovimiento`): `registrarVentaEnTx` ya lo hace como
+ * su primerísimo paso (`prepararOrigen`, `core/movimientos/origen-venta-datos.ts`), con el MISMO mensaje «No se encontró la
+ * sección.», antes de escribir nada. Duplicarlo acá solo evitaría abrir la transacción para el caso raro de una sección ajena;
+ * Task #41 (Fase E1) sacó ese chequeo redundante para que esta Server Action no necesite ningún import directo de
+ * `core/movimientos/` (las otras 4 acciones ya migradas — `compras.ts`, `cuenta-cierre.ts`, `cuenta-anulacion.ts`,
+ * `traspasos.ts` — tampoco lo necesitan).
  */
 export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoAccion> {
   return conPermiso("proceso_venta", async (ctx) => {
@@ -35,10 +42,6 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
     if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
       return error("Clave de reintento inválida.");
     }
-    // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
-    // registrarMovimiento — conPermiso no valida que la sección sea de
-    // ESTA sucursal, solo el permiso de quien llama.
-    if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
     const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
     if (errorLargoFactura) return error(errorLargoFactura);
 
