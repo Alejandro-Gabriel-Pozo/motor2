@@ -529,17 +529,38 @@ también `ver_reportes_operativos` porque el destino es Trazabilidad?); si
 conviene el enlace solo en pantalla (no en la boleta impresa, no tiene
 sentido en papel).
 
+**Plan diseñado (2026-09-28, junto con #22 — no implementado todavía):** el
+deep-link `?idOperacion=` YA funciona (`ver_reportes_operativos`, 4
+pantallas lo usan hoy, ya cubierto por e2e); confirmado que `armarBoleta`
+en efecto descarta el `operacionId` (agrupa por producto+precio+promo), pero
+`obtenerBoletasRecientes` YA lo lee de cada ítem — el dato está cargado, solo
+no llega a la salida. Diseño elegido: `BoletaDeCuenta.lineasCorregibles`
+(campo nuevo, función pura, agrupa por `operacionId` — una promo se colapsa
+en una sola fila) en vez de meter el id dentro de `lineas` (rompería pines
+de test y mezclaría un dato interno con lo que se imprime). "Cuentas
+cerradas" de la mesa suma un `<details>` por cuenta con las líneas y el link
+"Anular esta línea →", visible solo con `ver_reportes_operativos.ver` Y
+`anular_venta.editar` (el segundo permiso necesario porque sin él
+`anularVenta` rechaza el clic — hallazgo nuevo, ver #22). Nunca se imprime
+(el papel no recibe `lineasCorregibles`). Ningún paso toca el schema de
+Prisma. Plan completo, con pasos chico-por-commit y tests puntuales por
+paso, en el hand-off del agente `Plan` de esta sesión.
+
 ### #21 — Investigar: "Emitir boleta corregida" deshabilitado en producción
-El dueño reportó (screenshot 2026-09-26 23:41, motor2-demo) que en 3 cuentas
-cerradas de Mesa 01 el botón aparece deshabilitado. **Hipótesis a verificar
-contra el código antes de asumir bug:** el botón solo se habilita cuando
-`estadoDeBoleta === "desactualizada"` (hubo una anulación de línea DESPUÉS
-de imprimir/cerrar) — si ninguna de esas 3 cuentas tuvo una anulación
-posterior al cierre, el disabled es el comportamiento esperado. Además, 2 de
-las 3 no muestran "N.º X-Y" (se cerraron antes de que existiera la
-numeración — Task #1 —, sin `EjemplarBoleta`, no corregibles por diseño).
-**Confirmar con el dueño qué acción esperaba poder hacer exactamente antes
-de tocar código.**
+**Hipótesis confirmada contra el código (2026-09-28) — no parece un bug.**
+`src/app/(pos)/mesas/[mesaId]/emitir-boleta-corregida.tsx` ya deshabilita el
+botón con un `title` explicativo para CADA uno de los motivos legítimos:
+venta anulada entera ("no hay boleta que corregir"), boleta ya vigente
+("ya refleja las anulaciones"), cuenta sin numeración ("se cerró antes de
+la numeración"), o sin el permiso `pos_cerrar_cuenta`. La lógica
+(`estadoDeBoleta`, `core/pos/boleta.ts:108`) es exactamente la que se
+sospechaba: "anulada" si TODAS las Operacion VENTA de la cuenta se
+anularon, "desactualizada" si alguna se anuló DESPUÉS del último ejemplar
+emitido, "vigente" en cualquier otro caso — sin ambigüedad. **Sigue
+pendiente, y es la única acción que falta:** confirmar con el dueño, sobre
+las 3 cuentas puntuales del screenshot (o con el mouse sobre el botón en un
+caso real), cuál de los 4 motivos aplicaba — sin eso no se puede cerrar como
+"correcto" ni como "hay que cambiar algo".
 
 ### #22 — UX de "anular venta" por producto: no aclara efecto sobre la boleta
 Al buscar "anular venta" por producto (en Trazabilidad) no queda claro si
@@ -550,25 +571,36 @@ después?). Investigar el flujo real de `/reportes/trazabilidad` y
 diseñar los tres juntos tiene sentido, comparten la misma pantalla y el
 mismo concepto de "boleta desactualizada".
 
-### #34 — Desborde real (no flake) en `/stock/minimo` a 1024px
-**IMPORTANTE — esta sesión encontró evidencia de que SÍ es un flake real de
-carga, no una regresión de CSS fija:** el spec
-`test/e2e/maquetacion-general.spec.ts` (`/stock/minimo: nada se sale de su
-caja a 1024 px`) falló repetidas veces esta sesión SOLO cuando había 4-5
-suites de Playwright corriendo en paralelo en el mismo sandbox (carga alta),
-y pasó limpio, de forma reproducible, en TODAS las corridas aisladas (sin
-concurrencia) — confirmado independientemente por al menos 5 agentes
-distintos en worktrees separados. Overflow real medido: ~2-4px, borderline,
-consistente con una condición de carrera de layout bajo contención de CPU
-(fuente cargando tarde, medición de ancho antes del reflow), no con una
-regla CSS rota. **Antes de invertir en arreglar el layout:** confirmar que
-de verdad falla en un entorno SIN concurrencia artificial (CI real, o local
-sin otros procesos pesados) — si nunca falla aislado, el pendiente real
-podría ser "hacer el test más tolerante a latencia de fuente" en vez de
-"arreglar el desborde". No descartar la hipótesis original sin volver a
-medir: hay reportes previos (de antes de esta sesión) de fallos
-deterministas, así que confirmar el patrón real antes de cerrar esto como
-"solo flake".
+**Plan diseñado (2026-09-28, junto con #18 — no implementado todavía, ver
+detalle completo del plan en el historial de esta sesión/agente `Plan`):**
+confirmó que `BoletaDeCuenta.lineas` no trae `operacionId` (agrupa por
+producto+precio, descarta el id — igual que sospechaba la auditoría) y que
+`anularVenta` no toca ni la Cuenta ni la boleta, así que el estado
+"desactualizada" es 100% derivado y nunca se comunica en Trazabilidad hoy.
+Diseño: `lineasCorregibles` (función pura nueva en `core/pos/boleta.ts`,
+agrupa por `operacionId`, sin tocar `lineas` ni los pines de test
+existentes) + un bloque de contexto nuevo en Trazabilidad
+(`obtenerBoletaDeVenta`/`efectoDeAnularSobreBoleta`, solo lectura, sin caso
+de uso nuevo) que dice antes y después de anular qué le pasa a la boleta.
+Encontró de paso 3 problemas reales sin resolver, a decidir si se atacan en
+el mismo lote: el mensaje de éxito de "Anular venta" se pierde al hacer
+`router.refresh()` (el botón se desmonta); el botón se muestra a cualquiera
+con `ver_reportes_operativos` aunque `anularVenta` exija `anular_venta`
+(rechazo silencioso al hacer clic); "Emitir boleta corregida" solo se puede
+usar desde las 3 cuentas más recientes de la mesa (`BOLETAS_RECIENTES_POR_MESA`),
+así que una línea vieja anulada queda sin pantalla para corregirla — vínculo
+directo con #21. Ningún paso toca el schema de Prisma.
+
+### #34 — Desborde real (no flake) en `/stock/minimo` a 1024px — CERRADO (2026-09-28, commit `bed458e`)
+**Confirmado, de nuevo, en aislamiento antes de tocar nada** (3/3 corridas
+limpias): el flake es real y es de carga, no una regresión de CSS. El spec
+medía `document.querySelectorAll("table")` apenas el título era visible, sin
+esperar a que las fuentes web terminaran de cargar — bajo contención real de
+CPU, un swap de fuente después de medir corre el ancho real de la tabla unos
+pocos px, justo el desborde borderline (~2-4px) reportado. Fix: `await
+page.evaluate(() => document.fonts.ready)` antes de medir — exactamente el
+diagnóstico que ya proponía este pendiente. Suite completa sin cambios de
+conteo, sin regresión.
 
 ### #35 — Compras: nota de crédito de proveedor (K1d)
 Grounding completo contra Odoo (`accounting`/`purchase`) en
