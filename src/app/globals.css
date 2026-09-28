@@ -75,8 +75,12 @@ body {
    con `window.print()` y el diálogo nativo, que deja elegir la térmica (58/80 mm) o la impresora común.
    - En pantalla NUNCA se ven (fuera del árbol de accesibilidad también).
    - Al imprimir, si hay un documento montado, se oculta todo lo demás; sin documento (Ctrl+P en cualquier otra pantalla) no cambia nada.
-   - Página con nombre y márgenes chicos, SIN `size`: el tamaño del papel lo decide el driver/diálogo. Ancho: todo el útil hasta 76 mm
-     (en un rollo ocupa el ancho; en A4/carta sale una columna legible arriba a la izquierda).
+   - Página con nombre y márgenes chicos, SIN `size`: el tamaño del papel lo decide el driver/diálogo. Ancho: todo el útil hasta 68 mm
+     (en un rollo ocupa el ancho; en A4/carta sale una columna legible arriba a la izquierda). Bajado de 76mm a 68mm (2026-09-28):
+     una térmica real reportada en 80mm de rollo con ~70mm de ancho útil de cabezal — 76mm asumía más ancho del que el cabezal marca,
+     y los montos/el total (`.ticket-monto`/`.ticket-total`, empujados al borde derecho con `justify-content: flex-end`/`space-between`)
+     quedaban en riesgo de cortarse por ese lado si el driver de Windows termina renderizando para un papel más angosto que el CSS.
+     68mm deja ~2mm de colchón bajo el ancho útil reportado.
    - Negro sobre blanco explícito, sin fondos (las térmicas no los imprimen), tamaños en pt, montos con cifras tabulares. */
 @media screen {
   [data-imprimible] {
@@ -102,30 +106,34 @@ body {
   page: ticket;
   color-scheme: light;
   width: 100%;
-  max-width: 76mm;
+  max-width: 68mm;
   color: #000;
   background: #fff;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 10pt;
+  font-size: 9pt;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
+/* Sucursal (BoletaCuenta) y los encabezados de estado (COMANDA · COCINA / REIMPRESIÓN / ANULACIÓN / CORRECCIÓN, TicketCocina y
+   BoletaCuenta): 10pt a propósito, más grande que el resto (2026-09-28). */
 [data-imprimible] .ticket-encabezado {
   font-size: 10pt;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
+/* Identifica la mesa (única función de esta clase, TicketCocina y BoletaCuenta): bajado de 20pt a 9pt (2026-09-28) — ya no es un
+   título grande, va al mismo tamaño que el resto del ticket. */
 [data-imprimible] .ticket-titulo {
-  font-size: 20pt;
+  font-size: 9pt;
   font-weight: 800;
   line-height: 1.1;
   text-transform: uppercase;
 }
 
 [data-imprimible] .ticket-dato {
-  font-size: 10pt;
+  font-size: 9pt;
 }
 
 [data-imprimible] .ticket-item {
