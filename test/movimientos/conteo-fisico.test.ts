@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente, cancelarConteoFisico, obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { getUsuarioActual } from "../../src/core/auth/session";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 

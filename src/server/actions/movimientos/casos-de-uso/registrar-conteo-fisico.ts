@@ -33,8 +33,9 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  * por llamada) → guard de comando (`guardComandoConteoFisico`, `core/features/movimientos/conteo-fisico.guard.ts`) → este caso de uso →
  * `aResultadoAccion`.
  *
- * Migración PARCIAL a propósito (como P1 con `recetas.ts`): `resolverConteoPendiente`, `cancelarConteoFisico` y
- * `obtenerHistorialConteosFisicos` (mismo archivo de Server Actions) NO pasan por acá — quedan pendientes para M13e2.
+ * Migración PARCIAL a propósito en M13e1 (como P1 con `recetas.ts`): `resolverConteoPendiente`/`cancelarConteoFisico` NO pasan por acá
+ * — tienen sus propios casos de uso (`resolver-conteo-pendiente.ts`/`cancelar-conteo-fisico.ts`, M13e2) — y
+ * `obtenerHistorialConteosFisicos` se mudó a `lecturas-conteo-fisico.ts` (M13e2).
  *
  * Camino PROPIO, no pasa por `registrarMovimientoCasoDeUso` (Movimientos.js nunca hace pasar Control por
  * `armarRegistroMovimiento_` tampoco): Control es un proceso distinto de Ajuste, con su propia bitácora (`ConteoFisico`) además del

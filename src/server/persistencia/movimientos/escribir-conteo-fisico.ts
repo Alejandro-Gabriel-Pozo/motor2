@@ -25,3 +25,18 @@ export async function escribirConteoFisico(tx: Prisma.TransactionClient, datos: 
   const conteo = await tx.conteoFisico.create({ data: { ...datos } });
   return { id: conteo.id };
 }
+
+/**
+ * Cierre de un conteo (Task #41, Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md). Es el MISMO
+ * `tx.conteoFisico.update({ where: { id }, data: { estado, detalle } })` que hacen hoy, en distintas variantes (4 llamadas en total),
+ * `resolverConteoPendiente` y `cancelarConteoFisico` (`src/server/actions/movimientos/conteo-fisico.ts`) para pasar el conteo a
+ * RESUELTO (sin ajuste, con ajuste) o CANCELADO.
+ */
+export interface EstadoDeConteoAActualizar {
+  estado: EstadoConteo;
+  detalle: string | null;
+}
+
+export async function actualizarEstadoDeConteo(tx: Prisma.TransactionClient, conteoId: string, datos: EstadoDeConteoAActualizar): Promise<void> {
+  await tx.conteoFisico.update({ where: { id: conteoId }, data: { estado: datos.estado, detalle: datos.detalle } });
+}

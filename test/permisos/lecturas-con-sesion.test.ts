@@ -21,7 +21,7 @@ import { listarProductosDeProveedor, obtenerComparativaPreciosPorInsumo } from "
 import { listarProveedores } from "../../src/server/actions/catalogo/proveedores";
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
 import { listarUnidadesActivas, listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
-import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
+import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesActivas, listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
