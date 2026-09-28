@@ -31,7 +31,7 @@ interface Transicion {
 const NO_ES_ORIGEN = "Este traspaso no está dirigido a esta sucursal como origen.";
 const NO_ES_DESTINO = "Este traspaso no está dirigido a esta sucursal como destino.";
 
-export const TRANSICIONES_TRASPASO: Readonly<Record<OperacionTraspaso, Transicion>> = {
+const TRANSICIONES_TRASPASO: Readonly<Record<OperacionTraspaso, Transicion>> = {
   // PULL: Origen aprueba una solicitud → el stock sale en ese momento.
   aprobar: {
     lado: "origen",

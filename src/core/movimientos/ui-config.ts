@@ -70,8 +70,6 @@ export const PROCESOS_UI: Record<string, ProcesoUiConfig> = Object.fromEntries(
   ])
 );
 
-export type ProcesoSlug = keyof typeof PROCESOS_UI;
-
 export function obtenerConfigProceso(slug: string): ProcesoUiConfig | null {
   return Object.prototype.hasOwnProperty.call(PROCESOS_UI, slug) ? PROCESOS_UI[slug] : null;
 }

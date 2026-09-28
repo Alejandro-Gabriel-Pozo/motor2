@@ -34,5 +34,5 @@ export function crearLimitadorDeTasa(limite: number, ventanaMs: number) {
   };
 }
 
-export const LIMITE_MUTACIONES_POR_MINUTO = 300;
+const LIMITE_MUTACIONES_POR_MINUTO = 300;
 export const limitadorMutaciones = crearLimitadorDeTasa(LIMITE_MUTACIONES_POR_MINUTO, 60_000);

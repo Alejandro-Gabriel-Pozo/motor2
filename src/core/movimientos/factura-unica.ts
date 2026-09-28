@@ -15,7 +15,7 @@ import { Prisma } from "@prisma/client";
  * Nació sin ese predicado (`Operacion_factura_unica_key`, migración
  * 20260920220000) y se reemplazó en 20260921230000/20260921230100.
  */
-export const NOMBRE_INDICE_FACTURA_UNICA = "Operacion_factura_unica_vigente_key";
+const NOMBRE_INDICE_FACTURA_UNICA = "Operacion_factura_unica_vigente_key";
 
 /**
  * Nombres con los que Postgres puede reportar la violación. Incluye el índice VIEJO (sin filtro de anuladas) para que, en una base a medio

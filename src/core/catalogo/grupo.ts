@@ -10,7 +10,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * Devuelve los NOMBRES, del grupo dado hacia la raíz (el propio grupo va
  * primero).
  */
-export async function cadenaDeGrupos(grupoId: string, db: Db = prisma): Promise<string[]> {
+async function cadenaDeGrupos(grupoId: string, db: Db = prisma): Promise<string[]> {
   const cadena: string[] = [];
   const vistos = new Set<string>();
   let actualId: string | null = grupoId;

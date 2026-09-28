@@ -17,21 +17,12 @@ import { agruparVentasPorCategoria, pvSinCategoriaDe } from "./periodo-categoria
  * exportaba antes de dividirlo, para que ningún importador cambie. Regla: ningún `periodo-*.ts` importa `./periodo` (sería un ciclo);
  * si uno necesita algo de otro, lo importa directo de ese archivo.
  */
-export type { FiltrosPeriodo, ItemPeriodo } from "./periodo-tipos";
+export type { FiltrosPeriodo } from "./periodo-tipos";
 export type { FilaAlertaDigest } from "./periodo-alertas";
-export type { RatioGastoVentas } from "./periodo-ratio";
-export type {
-  ComprasDelPeriodo,
-  FilaCompraPorProveedor,
-  FilaCompraPorProveedorProducto,
-  FilaGastoPorGrupo,
-  FilaGastoPorInsumo,
-  GastoPorInsumoDelPeriodo,
-} from "./periodo-compras";
+export type { FilaCompraPorProveedor, FilaGastoPorGrupo, FilaGastoPorInsumo } from "./periodo-compras";
 export type { ComparativaPreciosDelPeriodo, FilaPrecioInsumo } from "./periodo-precios";
-export type { FilaVentaProducto, VentasDelPeriodo } from "./periodo-ventas";
-export type { FilaMargenProducto, MargenDelPeriodo } from "./periodo-margen";
-export type { FilaCategoriaVenta, VentaConCategoria } from "./periodo-categorias";
+export type { FilaMargenProducto } from "./periodo-margen";
+export type { FilaCategoriaVenta } from "./periodo-categorias";
 export { agruparVentasPorCategoria, pvSinCategoriaDe } from "./periodo-categorias";
 
 /**
@@ -181,12 +172,4 @@ export async function generarReporteVentasPorCategoria(sucursalId: string, desde
     porCategoria: agruparVentasPorCategoria(rep.ventas.porProducto.map((v) => ({ ...v, categoria: productos.get(v.productoId)?.categoriaNombre ?? null }))),
     pvSinCategoria: pvSinCategoriaDe(productos),
   };
-}
-
-/** Port de resumenPeriodicoPorProceso (Reportes.js:517-531). */
-export async function resumenPeriodicoPorProceso(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma) {
-  const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, {}, db);
-  const totales: Record<string, number> = {};
-  for (const r of rep.items) totales[r.proceso] = (totales[r.proceso] ?? 0) + r.cantidad;
-  return { totalMovimientos: rep.total, totalesPorProceso: totales };
 }

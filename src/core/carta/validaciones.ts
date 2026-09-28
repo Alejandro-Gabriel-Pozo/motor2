@@ -10,8 +10,8 @@ import { urlImagenSegura } from "./armar-menu";
 
 export const LARGO_MAXIMO_DESCRIPCION_CARTA = 500;
 export const LARGO_MAXIMO_TITULO_CARTA = 120;
-export const MAXIMO_TAGS_CARTA = 8;
-export const LARGO_MAXIMO_TAG_CARTA = 30;
+const MAXIMO_TAGS_CARTA = 8;
+const LARGO_MAXIMO_TAG_CARTA = 30;
 /** Letras, números, espacio y poca puntuación: los tags se muestran como chips y filtros en la carta. */
 const RE_TAG = /^[\p{L}\p{N} \-.&/+'!]+$/u;
 
@@ -127,7 +127,7 @@ export function validarCantidadCupoPromo(valor: unknown, etiqueta: string, valor
 export const LARGO_MAXIMO_SLUG_TENANT = 60;
 export const LARGO_MAXIMO_ETIQUETA_PORTAL = 80;
 export const LARGO_MAXIMO_SUBTITULO_PORTAL = 200;
-export const LARGO_MAXIMO_TAB_SHEET = 100;
+const LARGO_MAXIMO_TAB_SHEET = 100;
 export const TAB_MENU_POR_DEFECTO = "Menu";
 /** Minúsculas, dígitos y guiones sueltos entre medio: es el `/carta/<slug>` público (y el `tenant_id` de la sheet). */
 const RE_SLUG_TENANT = /^[a-z0-9]+(-[a-z0-9]+)*$/;

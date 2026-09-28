@@ -118,7 +118,7 @@ export function necesidadSemanal(semana: number, multiplicadores: Record<string,
 }
 
 /** Ventas objetivo del día `diaSemana` (0=domingo) de la semana `semana`, por PV. */
-export function ventasDelDia(semana: number, diaSemana: number, multiplicadores: Record<string, number[]>): Record<string, number> {
+function ventasDelDia(semana: number, diaSemana: number, multiplicadores: Record<string, number[]>): Record<string, number> {
   const pesoDia = PESO_DIA[diaSemana]!;
   const out: Record<string, number> = {};
   for (const [pv, base] of Object.entries(VENTAS_BASE)) {

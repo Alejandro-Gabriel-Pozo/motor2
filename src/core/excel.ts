@@ -15,8 +15,6 @@ import writeExcelFile from "write-excel-file/universal";
  */
 export type CeldaExcel = string | number | null | undefined;
 
-export const TIPO_MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
 const ANCHO_MINIMO = 8;
 const ANCHO_MAXIMO = 60;
 

@@ -1,16 +1,6 @@
-import type { PrismaClient, TipoProducto } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
-
-/**
- * "Uso" (Catalogo.js:1053-1062) ya no se persiste — es 100% derivable de
- * `tipo` desde la sesión "eliminar COMPRA+VENTA" (Catalogo.js:1035-1052):
- * una MP siempre se compra, un PV siempre se vende. Sin esta función no
- * hay forma de reconstruir el dato para mostrarlo en la UI.
- */
-export function usoDeTipo(tipo: TipoProducto): "COMPRA" | "VENTA" {
-  return tipo === "MP" ? "COMPRA" : "VENTA";
-}
 
 /**
  * Todos los productos DISPONIBLES (en alguna sucursal — §5.6, catálogo

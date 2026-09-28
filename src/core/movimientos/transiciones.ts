@@ -14,7 +14,7 @@ import type { AccionClave } from "@/core/permisos/acciones";
  * proceso (ver prisma/schema.prisma, docstring de MovimientoStock).
  *
  * `filtroUso` de Apps Script no se porta: "Uso" ya no existe como dato
- * persistido (porción Catálogo, usoDeTipo) — es 100% derivable de `tipo`,
+ * persistido (porción Catálogo) — es 100% derivable de `tipo`,
  * así que donde Apps Script filtraba por Uso (solo COMPRA) acá se filtra
  * por `tipo === 'MP'` directo (ver productoValidoParaProceso).
  */
@@ -132,7 +132,7 @@ export function productoValidoParaProceso(
 ): boolean {
   const t = TRANSICIONES[proceso];
 
-  // Uso 1:1 Tipo (porción Catálogo, usoDeTipo): comprar siempre es de una MP.
+  // Uso 1:1 Tipo (porción Catálogo): comprar siempre es de una MP.
   if (proceso === "COMPRA" && producto.tipo !== "MP") return false;
 
   if (proceso === "PRODUCCION") return producto.seProduce;

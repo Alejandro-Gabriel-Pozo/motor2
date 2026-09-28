@@ -4,11 +4,11 @@ import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
 import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
 import { nombreDelMesero, tiempoDesde } from "./mesas";
-import { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido } from "./cantidad-pedido";
+import { validarCantidadPedido } from "./cantidad-pedido";
 
-// Re-exportadas: quien ya las importaba de acá (test/pos/cuenta.test.ts, esta misma Server Action) sigue andando igual. Viven en
+// Re-exportada: quien ya la importaba de acá (test/pos/cuenta.test.ts, esta misma Server Action) sigue andando igual. Vive en
 // `cantidad-pedido.ts` porque ESTE archivo importa `@/lib/db` a nivel de módulo — un cliente no puede importarlo ni para esto solo.
-export { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido };
+export { validarCantidadPedido };
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -112,7 +112,7 @@ export function agruparPorEnvio<T extends ItemAgrupable>(items: readonly T[]): I
   };
 }
 
-export const COMENSALES_MAXIMO = 99;
+const COMENSALES_MAXIMO = 99;
 
 /**
  * Comensales al abrir la cuenta, o al corregirlos después (docs/plan-comensales-y-limite-mesas-2026-09-26.md): entero entre 1 y

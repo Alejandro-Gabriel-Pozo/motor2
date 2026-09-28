@@ -11,8 +11,8 @@ import type { Prisma } from "@prisma/client";
  * las acciones arman el texto con ellos y los reportes lo reconocen con ellos. Una venta anulada antes de que existiera este módulo usa el mismo prefijo, así
  * que también queda cubierta.
  */
-export const PREFIJO_REVERSION_VENTA = "Anulación de la venta ";
-export const PREFIJO_REVERSION_COMPRA = "Anulación de la compra ";
+const PREFIJO_REVERSION_VENTA = "Anulación de la venta ";
+const PREFIJO_REVERSION_COMPRA = "Anulación de la compra ";
 
 /** `detalleLibre` de la Operación AJUSTE que revierte una venta. */
 export function detalleReversionDeVenta(idVenta: string, fechaVenta: Date): string {

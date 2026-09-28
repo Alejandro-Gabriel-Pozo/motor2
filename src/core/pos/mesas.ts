@@ -16,7 +16,7 @@ import { importeDeLinea, redondearMoneda } from "@/core/moneda";
  */
 export type EstadoMesa = "libre" | "en_pedido" | "ocupada";
 
-export const ESTADOS_MESA: readonly EstadoMesa[] = ["libre", "en_pedido", "ocupada"];
+const ESTADOS_MESA: readonly EstadoMesa[] = ["libre", "en_pedido", "ocupada"];
 
 export function esEstadoMesa(valor: unknown): valor is EstadoMesa {
   return typeof valor === "string" && (ESTADOS_MESA as readonly string[]).includes(valor);
@@ -100,7 +100,7 @@ export function filtrarMesas<T extends Pick<MesaEnMapa, "numero" | "estado" | "m
   });
 }
 
-export const MAXIMO_LIMITE_MESAS_ABIERTAS = 9999;
+const MAXIMO_LIMITE_MESAS_ABIERTAS = 9999;
 
 /**
  * Límite de mesas ABIERTAS a la vez en una sucursal (`Sucursal.maxMesasAbiertas`, docs/plan-comensales-y-limite-mesas-2026-09-26.md):

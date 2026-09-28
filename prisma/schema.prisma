@@ -289,7 +289,7 @@ model Producto {
 
   /// "Uso" (Catalogo.js:1053-1062) NO se persiste: es 100% derivable de
   /// `tipo` (MP siempre COMPRA, PV siempre VENTA, sesión "eliminar
-  /// COMPRA+VENTA") — ver src/core/catalogo/producto.ts::usoDeTipo().
+  /// COMPRA+VENTA"). Donde hace falta, se deriva de `tipo` en el momento.
 
   /// Rubro comercial (Catalogo.js:2969-2989) — sin relación con Unidad.magnitud.
   categoriaId String?
