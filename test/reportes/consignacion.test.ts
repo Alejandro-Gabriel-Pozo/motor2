@@ -49,16 +49,16 @@ describe("generarReporteConsignacion", () => {
     expect(rep.stockSinVender.find((s) => s.productoId === mp.id)?.stockActual).toBe(7);
   });
 
-  async function armarConsignanteConDeuda(importeLiquidado: number) {
-    const consignante = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Vinos del Valle" } });
+  async function armarConsignanteConDeuda(importeLiquidado: number, sufijo = "") {
+    const consignante = await prisma.proveedor.create({ data: { codigo: `PRV_1${sufijo}`, nombre: `Vinos del Valle${sufijo}` } });
     const mp = await sembrarProductoDisponible(
       {
-        codigo: "MP_VINO", nombre: "Vino en consignación", tipo: "MP", unidadStockId: unidadKgId, insumoId,
+        codigo: `MP_VINO${sufijo}`, nombre: `Vino en consignación${sufijo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId,
         esConsignacion: true, proveedorConsignacionId: consignante.id, precioConsignacion: 20,
       },
       sucursalId
     );
-    const pv = await sembrarProductoDisponible({ codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: `PV_COPA${sufijo}`, nombre: `Copa de vino${sufijo}`, tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: mp.id, cantidad: 10 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: importeLiquidado / 20 }] });
@@ -159,6 +159,33 @@ describe("generarReporteConsignacion", () => {
       expect(segundo.mensaje).toBe(primero.mensaje);
 
       expect(await prisma.pagoConsignante.count()).toBe(1);
+    });
+
+    // Regresión de la condición de carrera real (a diferencia del test de arriba, que es SECUENCIAL: dos `await` uno detrás del
+    // otro, así que la segunda llamada siempre encuentra la fila ya escrita por `cargarPagoConsignantePorClave` y nunca ejercita
+    // el catch de P2002 de `registrarPagoConsignanteCasoDeUso`). Acá las dos llamadas corren con `Promise.allSettled`, genuinamente
+    // concurrentes: una gana el `create`, la otra choca contra el `@@unique` de `claveIdempotencia` y tiene que recuperarse del
+    // P2002 sin tirar un error sin manejar. Un loop, mismo criterio que `test/auditoria/factura-unica-concurrencia.test.ts`: una
+    // sola corrida no garantiza que la carrera colisione de verdad (depende del scheduler), varias iteraciones sí.
+    it("dos pagos SIMULTÁNEOS con la MISMA claveIdempotencia — exactamente uno escribe, ninguno rechaza, los dos devuelven el mismo mensaje", async () => {
+      for (let i = 0; i < 10; i++) {
+        const consignante = await armarConsignanteConDeuda(60, `_CONC_${i}`);
+        const claveIdempotencia = crypto.randomUUID();
+        const fecha = new Date();
+
+        const settled = await Promise.allSettled([
+          registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia),
+          registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia),
+        ]);
+
+        expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+        const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+        expect(resultados.every((r) => r.ok), `iteración ${i}: las dos tienen que dar ok:true (una nueva, la otra idempotente): ${JSON.stringify(resultados)}`).toBe(true);
+        expect(resultados[0].mensaje, `iteración ${i}: mismo mensaje en las dos`).toBe(resultados[1].mensaje);
+
+        const filas = await prisma.pagoConsignante.count({ where: { proveedorId: consignante.id } });
+        expect(filas, `iteración ${i}: exactamente una fila, nunca dos`).toBe(1);
+      }
     });
 
     it("la misma clave con un importe distinto da conflicto, no un segundo pago", async () => {
