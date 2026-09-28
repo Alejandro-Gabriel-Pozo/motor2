@@ -32,6 +32,17 @@ const TEST = join(__dirname, "../../test");
  */
 const SIN_TEST_CONCURRENTE_TODAVIA: Record<string, string> = {};
 
+/**
+ * Casos de uso con I3 que TODAVÍA no tienen, en el CÓDIGO (no en el test), la rama que devuelve el resultado repetido — cada entrada
+ * exige motivo. Backlog post-cierre de Task #41, 2026-09-28 (docs/pendientes-sesion-2026-09-27.md §8): un test concurrente real
+ * (arriba) prueba que la CARRERA se resuelve bien, pero no que el caso de uso tenga de verdad una rama "ya se hizo, no repitas nada" —
+ * alguien podría importar `calcularPayloadHash`, calcular el hash, y por error nunca usarlo para cortar antes de escribir de nuevo
+ * (un test podría incluso pasar igual, si el efecto termina siendo el mismo por otra vía). Se verifica contra el mismo patrón que ya
+ * usan los 8 casos de uso reales descubiertos hoy: `exito(..., { ..., repetid[oa]: true })` en algún lado Y
+ * `repetid[oa]: false` en otro — confirmado en la firma real, no solo en el nombre del campo del tipo `Datos*`.
+ */
+const SIN_RAMA_DE_DUPLICADO_TODAVIA: Record<string, string> = {};
+
 function archivosFuente(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
     const ruta = join(dir, nombre);
@@ -61,6 +72,7 @@ function nombresDeFunciones(fuente: string): string[] {
 interface CasoDeUsoI3 {
   ruta: string; // relativa a src/, ej. "server/actions/reportes/casos-de-uso/registrar-pago-consignante.ts"
   nombresBuscados: string[]; // el nombre propio del caso de uso + el/los nombre(s) del adaptador (Server Action) que lo envuelve
+  fuente: string; // fuente del archivo, sin comentarios — reusada para la rama de duplicado obligatoria (no re-leer el archivo).
 }
 
 /** Descubre TODO caso de uso bajo casos-de-uso/ que implementa I3 (importa `calcularPayloadHash`) — nunca una lista a mano. */
@@ -88,10 +100,21 @@ function descubrirCasosDeUsoConI3(): CasoDeUsoI3[] {
       }
     }
 
-    resultado.push({ ruta: rutaRelativa(SRC, archivo), nombresBuscados: [...new Set([...nombresPropios, ...nombresWrapper])] });
+    resultado.push({ ruta: rutaRelativa(SRC, archivo), nombresBuscados: [...new Set([...nombresPropios, ...nombresWrapper])], fuente });
   }
 
   return resultado;
+}
+
+/**
+ * true si el archivo tiene, en el código, la rama que devuelve el resultado repetido: `repetid[oa]: true` en algún lado (el camino de
+ * idempotencia "duplicado") Y `repetid[oa]: false` en otro (el camino nuevo) — confirmado como el patrón universal de los 8 casos de
+ * uso con I3 reales de este proyecto (`grep -rn "repetid" src/server/actions/&lt;dominio&gt;/casos-de-uso/&lt;archivo&gt;.ts`, 2026-09-28). No exige la forma
+ * exacta `chequeo.estado === "duplicado"` a propósito: `registrarPagoConsignante` (M14) resuelve la carrera con un mecanismo distinto
+ * (catch de P2002 + relectura), sin ese chequeo de `estado`, pero con el mismo campo `repetido: true/false` en su `Datos*`.
+ */
+function tieneRamaDeDuplicado(fuente: string): boolean {
+  return /\brepetid[oa]\s*:\s*true\b/.test(fuente) && /\brepetid[oa]\s*:\s*false\b/.test(fuente);
 }
 
 /**
@@ -139,6 +162,30 @@ describe("idempotencia I3: todo caso de uso con claveIdempotencia tiene un test 
         expect(
           tieneTestConcurrente(caso.nombresBuscados),
           `${ruta} está en SIN_TEST_CONCURRENTE_TODAVIA pero YA tiene un test concurrente real — sacala de la lista, el hueco ya se cerró.`
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("cada caso de uso con I3 tiene, en el CÓDIGO, la rama que devuelve el resultado repetido, o está en SIN_RAMA_DE_DUPLICADO_TODAVIA con motivo", () => {
+    const sinRamaYSinExcepcion = casos.filter((c) => !tieneRamaDeDuplicado(c.fuente) && !(c.ruta in SIN_RAMA_DE_DUPLICADO_TODAVIA));
+
+    expect(
+      sinRamaYSinExcepcion,
+      `Caso(s) de uso con I3 sin una rama de resultado repetido detectable en el código (repetid[oa]: true/false) y sin excepción ` +
+        `documentada — agregá la rama o sumalo a SIN_RAMA_DE_DUPLICADO_TODAVIA con motivo:\n` +
+        sinRamaYSinExcepcion.map((c) => `  - ${c.ruta}`).join("\n")
+    ).toEqual([]);
+  });
+
+  it("SIN_RAMA_DE_DUPLICADO_TODAVIA no tiene entradas obsoletas (un caso que ya tiene la rama, o que ya no existe)", () => {
+    for (const ruta of Object.keys(SIN_RAMA_DE_DUPLICADO_TODAVIA)) {
+      const caso = casos.find((c) => c.ruta === ruta);
+      expect(caso, `${ruta} está en SIN_RAMA_DE_DUPLICADO_TODAVIA pero ya no se descubre como caso de uso con I3 — sacala de la lista.`).toBeDefined();
+      if (caso) {
+        expect(
+          tieneRamaDeDuplicado(caso.fuente),
+          `${ruta} está en SIN_RAMA_DE_DUPLICADO_TODAVIA pero YA tiene la rama de duplicado — sacala de la lista, el hueco ya se cerró.`
         ).toBe(false);
       }
     }
