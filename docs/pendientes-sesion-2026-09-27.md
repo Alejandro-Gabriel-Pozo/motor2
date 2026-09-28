@@ -205,26 +205,22 @@ la versión vieja.
   (`redondearCantidad`), documentado que las comparaciones son en
   centésimas, no exactas en float.
 
-#### P1 (piloto de `server/persistencia/`) — completar el recorte de `recetas.ts`
-**Ya se decidió unificarla con el patrón de casos de uso de la Fase M**
-(ver más abajo): `server/actions/catalogo/recetas.ts` NO llama directo a
-`server/persistencia/`, llama a un archivo nuevo
-`server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts` (mismo
-patrón que `casos-de-uso/anular-compra.ts` del piloto M) que orquesta
-idempotencia si aplica, carga, guard/versionado, llamada a persistencia,
-auditoría, y devuelve `ResultadoCaso`. Mover TAL CUAL (sin reescribir) el
-cuerpo transaccional de `guardarReceta` (líneas ~300-450 de
-`server/actions/catalogo/recetas.ts`: versionado, reintento SERIALIZABLE,
-arrastre de calibraciones locales, auditoría) — la parte de PERSISTENCIA
-pura a `src/server/persistencia/catalogo/guardar-version-de-receta.ts`, la
-de ORQUESTACIÓN al caso de uso nuevo. Actualizar
-`test/arquitectura/lectores-de-receta.test.ts` (agregar el archivo de
-persistencia como "central"). Bloqueada por: nada (Fase F ya mergeada; el
-patrón de casos de uso ya está probado varias veces — compras, ventas,
-traspasos, POS). Cierre: conteos EXACTOS; en Vitest lo cubren
-`recetas-concurrencia`, `recetas-auditoria`, `recetas`, `recetas-sustitutos`,
-`rendimiento-local-acciones`, `precision-roundtrip-y-reparto`; en Playwright
-los specs `recetas-*`. Tamaño mediana.
+#### P1 — YA MERGEADA (2026-09-28)
+`guardarReceta` migrado al patrón de casos de uso: comando+guard en
+`core/features/catalogo/receta-version.{schema,guard}.ts`, persistencia en
+`server/persistencia/catalogo/guardar-version-de-receta.ts` (con la
+excepción documentada de `cargarProductoParaReceta`/
+`cargarUltimaVersionDeReceta`, que corren FUERA de la transacción con el
+cliente global `prisma` — `test/catalogo/recetas-concurrencia.test.ts`
+depende de contar esas lecturas para probar el reintento), caso de uso en
+`server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts`.
+`test/arquitectura/lectores-de-receta.test.ts` actualizado con el archivo
+de persistencia nuevo como "central". Migración PARCIAL a propósito:
+`recetas.ts` NO entró en `ACCIONES_CON_CASO_DE_USO` (las lecturas y las
+demás ediciones puntuales siguen sin tocar). Reverificado
+independientemente (worktree aparte, DB dedicada): los 7 comandos en
+verde — 274/274 archivos y 3285/3285 tests de Vitest, build, 369/369
+specs de Playwright. **P1 desbloquea M13a.**
 
 #### P2 — YA RESUELTA (verificado 2026-09-28, no como tarea aparte)
 `server/persistencia/pos/cerrar-cuenta.ts` YA EXISTE — lo creó M12a al
