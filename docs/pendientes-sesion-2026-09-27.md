@@ -74,7 +74,8 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 - **Fase M, piloto + M8** (M0-M7: `core/resultado-caso.ts`, comando+guard+persistencia+caso de uso de `anularCompra` y `corregirCompra`, 2 reglas nuevas de dependency-cruiser que hacen el patrón obligatorio — PR #40; M8: caso de uso `anularVenta` — PR #48, mergeado ya antes de este checkpoint). De paso el piloto corrigió un bug real preexistente: con `operacionId: undefined`, Prisma ignoraba el filtro y podía anular la compra equivocada. **M9 queda desbloqueada.**
 - **D9, M10, M11a, M12a** — 4 tareas lanzadas en paralelo (4 agentes, worktrees/DBs propios, este mismo día, máquina local) y mergeadas: D9 (`AccionConteo` vía fachada), M10 (transacción atómica en cambios de precio, con test rojo→verde), M11a (traspasos: aprobar/cancelar/rechazar solicitud, migración parcial a propósito) y M12a (POS: `cerrarCuenta`, migración parcial a propósito). Cada una reverificada de forma independiente (gate completo + lectura del diff) antes de mergear.
 - **M11b, M12b** — mismo patrón (2 agentes en paralelo): M11b (traspasos: aceptar/rechazar envío/reingreso) y M12b (POS: `emitirBoletaCorregida` — `cuenta-cierre.ts` completó su migración y entró en `ACCIONES_CON_CASO_DE_USO`).
-- **M11c, M12c** — mismo patrón: M11c CIERRA la cadena de traspasos (`traspasos.ts` entero, ya solo con lecturas + casos de uso, entró en `ACCIONES_CON_CASO_DE_USO`; las 2 lecturas se mudaron a `traspasos/lecturas.ts`) y M12c (`anularItemEnviado`, migración parcial — falta M12d). Al reverificar M11c se encontró un flake real preexistente en un test de M10 (`sincronizarPrecioGrupoCarta`, orden de productos en el mensaje no determinista) — documentado más abajo, no bloquea nada. Solo queda **M12d** para cerrar toda la Fase M11/M12.
+- **M11c, M12c** — mismo patrón: M11c CIERRA la cadena de traspasos (`traspasos.ts` entero, ya solo con lecturas + casos de uso, entró en `ACCIONES_CON_CASO_DE_USO`; las 2 lecturas se mudaron a `traspasos/lecturas.ts`) y M12c (`anularItemEnviado`, migración parcial — falta M12d). Al reverificar M11c se encontró un flake real preexistente en un test de M10 (`sincronizarPrecioGrupoCarta`, orden de productos en el mensaje no determinista) — documentado más abajo, no bloquea nada.
+- **M12d** — CIERRA toda la cadena M11/M12 de esta ronda (`anularPromoEnviada`, `cuenta-anulacion.ts` entró en `ACCIONES_CON_CASO_DE_USO`). Con esto, las 8 sub-tareas de M11a→M12d quedaron todas mergeadas. Lo único que sigue bloqueando **M13** es que **P1 (piloto de `server/persistencia/` para `recetas.ts`) no arrancó todavía** — sigue esperando a la Fase F (F1-F4, bloqueadas por K3, bloqueada por tu aprobación de K2).
 
 **Nota de continuidad (2026-09-27, tarde):** D4, D6, C2 y M8 se lanzaron como 4 agentes en paralelo en una sesión cloud; la sesión se cortó antes de que D6/C2/M8 terminaran de reportarse (D6 y M8 en realidad ya habían mergeado; C2 había pusheado su rama sin mergear; D4 no llegó a pushear nada — se rehízo desde cero). Al continuar en una máquina local se verificó cada uno contra el estado real de `main` (nunca contra la descripción de esta tarea) antes de tocar nada — ver "Lección aprendida" de `plan-con-verificacion-e2e/SKILL.md`.
 
@@ -291,12 +292,16 @@ completas en `docs/arquitectura-casos-de-uso-2026-09-27.md` (ya en el repo).
 - **M12c — YA MERGEADA** (`anularItemEnviado` a caso de uso; comando+guard en
   archivos APARTE de M12a/M12b — `cuenta-anulacion.schema.ts`/`.guard.ts` —
   mismo corte que ya tenían las Server Actions). Sin I3 (nunca la tuvo: el
-  doble clic lo frena la guarda optimista de `restanteVisto`). **Migración
-  PARCIAL a propósito:** `cuenta-anulacion.ts` todavía NO entra en
-  `ACCIONES_CON_CASO_DE_USO` (falta M12d). **M12d sigue pendiente:**
-  - **M12d** — `anularPromoEnviada` (mismo archivo que M12c; evaluar si sumar
-    `abrirCuenta` opcional acá o dejarla fuera). Recién acá
-    `cuenta-anulacion.ts` entra a `ACCIONES_CON_CASO_DE_USO`. Tamaño mediana.
+  doble clic lo frena la guarda optimista de `restanteVisto`).
+- **M12d — YA MERGEADA, CIERRA LA CADENA** (`anularPromoEnviada` a caso de
+  uso: transacción todo-o-nada, una fila espejo + una de auditoría por cada
+  componente vigente de la promo). Reusó `escribir-espejo-de-item.ts` de
+  M12c con un parámetro opcional `promo`. `abrirCuenta` se evaluó y se
+  descartó: vive en otro archivo (`pos/cuenta-apertura.ts`) y no mueve
+  stock/dinero ni cierra un ciclo, así que no es una "mutación relevante" de
+  la Fase M. Con las 2 funciones migradas, `cuenta-anulacion.ts` **entró en
+  `ACCIONES_CON_CASO_DE_USO`**. **Con esto se cierra toda la cadena M11/M12
+  de esta ronda** (M11a→b→c y M12a→b→c→d, las 8 sub-tareas mergeadas).
 
 **Hallazgo real detectado al reverificar M11c (no introducido por esta sesión, pre-existente desde M10):** `sincronizarPrecioGrupoCarta`
 (`src/server/actions/catalogo/productos.ts`) arma el mensaje de éxito listando los productos en el orden que devuelve
