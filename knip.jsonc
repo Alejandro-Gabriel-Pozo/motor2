@@ -1,6 +1,7 @@
-// knip (Task #41, Fase K1): informe de código/dependencias sin uso. Se corre con `npm run analizar:muerto`
-// (`knip --no-exit-code`): por ahora es INFORMATIVO, no bloquea nada. El informe clasificado de cada hallazgo vive en
-// docs/informe-knip-2026-09-27.md; la limpieza de lo "MUERTO REAL" es la Task K2.
+// knip (Task #41, Fase K1): informe de código/dependencias sin uso. Se corre con `npm run analizar:muerto` (`knip`).
+// Desde la Fase K3 (2026-09-27, noche) es uno de los 7 comandos OBLIGATORIOS del gate de verificación (AGENTS.md), CON
+// código de salida — 0 hallazgos es la única corrida en verde; ya no es informativo. El informe clasificado de cada
+// hallazgo (histórico, previo a K2/K3) vive en docs/informe-knip-2026-09-27.md.
 //
 // Regla de esta config: toda exclusión (ignore, ignoreDependencies, ignoreExportsUsedInFile, entry agregada a mano) lleva
 // su motivo al lado. Lo que es muerto de verdad NO se ignora acá: tiene que seguir apareciendo en el informe hasta que

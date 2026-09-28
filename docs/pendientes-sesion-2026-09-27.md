@@ -227,24 +227,33 @@ specs de Playwright. **P1 desbloquea M13a.**
 migrar `cerrarCuenta` a caso de uso (misma sesión). Mismo caso que M9: un
 pendiente del backlog resuelto de paso por otra tarea. Nada que hacer acá.
 
-#### E1 — cierre y verificación total (última tarea de #41)
-Actualizar la doc de arquitectura con: las capas `server/consultas` y
-`server/persistencia` y su contrato completo; la convención
-`public.ts`/`public-servidor.ts`; las reglas de dependency-cruiser y de
-knip; la tabla de herramientas descartadas (`eslint-plugin-boundaries`,
-Zod, `next-safe-action`, tRPC, TanStack Query, Redux/Zustand, otra
-librería decimal — con motivo cada una); confirmar que
-`PENDIENTES_DE_MIGRAR` quedó VACÍA. Documentar como "fuera de alcance,
-pendiente aparte": dividir `core/reportes/rendimiento-recetas.ts` (43,5K);
-dividir la página del editor de recetas (35,7K); pasar `server/actions`,
-`app` y `components` a usar `public*`; `public.ts` de `pos`/`stock` (C4/C5);
-mover el costeo a `core/costos/` para romper el ciclo movimientos↔reportes;
-mudar `core/auth/{contexto,session,ir-al-login}` a `server/`; resolver el
-N+1 del editor de recetas; DTOs mínimos en las consultas; centralizar las
-~20 copias de `type Db` en `core`; enseñarle al analizador de guardas a
-seguir la delegación entre archivos. Bloqueada por TODO lo anterior de #41.
-Cierre: los 7 comandos en verde en la MISMA corrida sobre `origin/main` con
-todo mergeado. Tamaño chica.
+#### E1 — YA HECHA, CIERRA LA TASK #41 (2026-09-28)
+Sección "E1 — cierre y verificación total del Task #41" agregada al final
+de `docs/arquitectura-casos-de-uso-2026-09-27.md`: contrato completo de
+`server/consultas`/`server/persistencia`, el catálogo completo de reglas de
+`dependency-cruiser` con su motivo, la convención `public.ts`/`public-servidor.ts`
+(dominios que la adoptaron: `catalogo`/`movimientos`/`reportes`), el estado
+de `knip` en el gate (y corregido un comentario desactualizado en
+`knip.jsonc` que todavía decía "informativo" desde antes de K3), referencia
+a la tabla de herramientas descartadas (ya vivía en
+`docs/arquitectura-modularidad-server-actions-2026-09-17.md`, revisada y
+sigue vigente), `PENDIENTES_DE_MIGRAR` **confirmada vacía**, y la lista de
+"fuera de alcance, pendiente aparte" completa. Cierre verificado:
+los 7 comandos en verde EN LA MISMA CORRIDA sobre `origin/main` (`c32adea`)
+con todo mergeado — `tsc` limpio, `lint` 0/0, `arquitectura` sin
+violaciones (508 módulos), `knip` 0 hallazgos, 274/274 archivos y
+3289/3289 tests de Vitest, `build` limpio, 369/369 specs de Playwright.
+
+## CON ESTO SE CIERRA LA TASK #41 COMPLETA (2026-09-28)
+
+Todos los sub-pendientes de la Parte 1 que no dependían de una decisión de
+negocio están mergeados en `main` y pusheados: A0, F1-F4, P1, P2 (ya
+resuelta), la cadena M13a→b→c→d→e1→e2, M14 (con autorización expresa del
+dueño para su migración de schema) y E1. Cada uno se implementó en un
+worktree aislado, se reverificó independientemente contra el código real
+(no contra el autoreporte del agente implementador) y se mergeó solo
+después de que los 7 comandos del gate pasaran limpios en la misma
+corrida.
 
 ### Fase M — casos de uso de mutación (generalizar el patrón del piloto)
 

@@ -369,3 +369,115 @@ Pantalla ─► Server Action ("use server", adaptador fino)
 3. El caso de uso, con el mismo orden de pasos que la acción original.
 4. La acción queda como adaptador fino y se suma a `ACCIONES_CON_CASO_DE_USO`.
 5. Los tests existentes de la acción (Vitest y Playwright) no se tocan: `git diff` vacío sobre ellos es la prueba de que no cambió el comportamiento.
+
+---
+
+## E1 — cierre y verificación total del Task #41 (2026-09-28)
+
+Última tarea de la Task #41. Con M14 mergeada se cerraron todos los sub-pendientes de la Parte 1 de
+`docs/pendientes-sesion-2026-09-27.md` que no dependían de una decisión de negocio nueva (P1, P2, la cadena
+M13a→b→c→d→e1→e2, M14). Esta sección deja registrado el estado final de la arquitectura que dejaron las fases A-M, para
+que no haya que reconstruirlo leyendo commits sueltos.
+
+### Las capas de `server/`, contrato completo
+
+```
+server/actions/<dominio>/<verbo>.ts        "use server" — permiso (conPermiso) → guard → [caso de uso] → aResultadoAccion
+server/actions/<dominio>/casos-de-uso/     "server-only", SIN "use server" — orquestación de una mutación relevante
+server/consultas/<dominio>/<lectura>.ts    lecturas para UI, fuera de una mutación (piloto: server/consultas/catalogo/productos.ts, Fase D)
+server/persistencia/<dominio>/             Prisma puro, SIN reglas de negocio — cargar-*.ts / escribir-*.ts
+```
+
+Reglas de `dependency-cruiser` (`.dependency-cruiser.cjs`) que arbitran estas fronteras, en el orden en que un archivo
+nuevo las cruza:
+
+- **`acciones-sin-ui`**: `server/actions/` no importa de `app/`/`components/` ni de `server/consultas/`.
+- **`consultas-capa`**: `server/consultas/` no importa de la UI, de `server/actions/` ni de `server/persistencia/`.
+- **`persistencia-capa`**: `server/persistencia/` no importa de la UI, de `server/actions/` ni de `server/consultas/`.
+- **`persistencia-solo-desde-casos-de-uso`**: a `server/persistencia/` solo llega un caso de uso (o la propia
+  persistencia) — ni una Server Action sin migrar, ni la UI, ni `core/`, ni `server/consultas/`.
+- **`accion-migrada-sin-orquestacion`** (dos entradas, misma regla): una Server Action ya en `ACCIONES_CON_CASO_DE_USO`
+  (`.dependency-cruiser-excepciones.cjs`) no usa en runtime `src/lib/db.ts`, `@prisma/client`, el reintento/transacción,
+  la idempotencia I3 ni la auditoría — ni siquiera vía la fachada `core/movimientos/public-servidor.ts` (si no, la regla
+  se esquivaría importando por ahí) — y tampoco importa `server/persistencia/` directo, ni sus tipos. Vale para el
+  ARCHIVO entero, no símbolo por símbolo (hallazgo de M11c: obligó a mudar lecturas a un archivo de `lecturas-*.ts`
+  aparte cuando convivían con las mutaciones migradas).
+- **`sin-internals-de-otro-dominio`** (una entrada por dominio en `DOMINIOS_CON_PUBLIC`): fuera de `core/<dominio>/`,
+  `server/consultas/` y `server/persistencia/` solo se importa la fachada del dominio (`public.ts`/`public-servidor.ts`),
+  nunca sus archivos internos.
+- **`publico-puro`**: `core/<dominio>/public.ts` no alcanza `src/lib/db.ts`, ni directa ni transitivamente.
+- **`core-sin-capas-superiores`** / **`core-sin-react-next`**: `core/` no importa de `server/`/`app/`/`components/` ni de
+  React/Next (ni con `import type`, salvo la excepción documentada de `core/movimientos/registrar-venta.ts` ↔
+  `core/reportes/` — ver el ciclo legítimo documentado en `.dependency-cruiser-excepciones.cjs`).
+- **`ui-sin-prisma`**: `app/`/`components/` no llega a `src/lib/db.ts` ni a `@prisma/client` en runtime.
+- **`sin-ciclos`**: cualquier ciclo nuevo entre archivos de `src/` es error, salvo los ya inventariados con motivo en
+  `CICLOS_CONOCIDOS`.
+- **`no-non-package-json`**: no se importa un paquete que no esté declarado en `package.json`.
+
+Excepciones (`.dependency-cruiser-excepciones.cjs`, cada una con motivo): `PENDIENTES_DE_MIGRAR` (archivos temporalmente
+exceptuados de `ui-sin-prisma` mientras se migran — **confirmado vacía**, no queda ningún archivo pendiente de esa
+migración), `ACCIONES_CON_CASO_DE_USO` (la lista de Server Actions ya migradas a caso de uso, la que hace cumplir
+`accion-migrada-sin-orquestacion`), `CICLOS_CONOCIDOS` (el único ciclo de dominios documentado arriba).
+
+### Convención `public.ts` / `public-servidor.ts`
+
+Por dominio de `core/` que la adoptó (`DOMINIOS_CON_PUBLIC` en `.dependency-cruiser.cjs`: hoy `catalogo` (C1, piloto),
+`movimientos` (C2), `reportes` (C3) — `pos`/`stock` quedan pendientes, ver "Fuera de alcance" más abajo):
+
+- **`public.ts`** — fachada PURA: solo lo que puede llegar al bundle del cliente (sin `@/lib/db`, sin Prisma, sin
+  `node:crypto` ni otro módulo de Node). La importan módulos de otros dominios y, en algunos casos, componentes.
+- **`public-servidor.ts`** — fachada de SERVIDOR: lo que un dominio expone y que sí toca la base (directa o
+  transitivamente) o corre sobre una transacción que le pasan (`idempotencia`, `producto-cache`). Sin `import
+  "server-only"` a propósito (Vitest/Playwright/scripts `tsx` cargan `core/` fuera de la resolución de módulos de Next,
+  donde ese paquete tira al importarse).
+- Ambas: solo reexports explícitos (nunca `export *`, nunca lógica nueva), y solo lo que HOY se usa desde afuera del
+  dominio — un reexport sin consumidor real lo marca `knip`.
+- Fuera de `core/<dominio>/`, `server/consultas/` y `server/persistencia/`, importar un archivo interno del dominio
+  (no la fachada) es error de `dependency-cruiser` (`sin-internals-de-otro-dominio`).
+
+### `knip` — código y dependencias sin uso
+
+Desde la Fase K3 (2026-09-27, noche), `npm run analizar:muerto` (`knip`, CON código de salida) es uno de los 7 comandos
+obligatorios del gate — 0 hallazgos es la única corrida en verde, ya no es informativo (corrección hecha en esta misma
+tarea E1: el comentario de cabecera de `knip.jsonc` seguía diciendo "informativo, no bloquea nada" desde K1, desactualizado
+después de K3). Toda exclusión de `knip.jsonc` (`ignore`, `ignoreDependencies`, `ignoreExportsUsedInFile`, una `entry`
+agregada a mano) lleva su motivo al lado — nunca se ignora algo que sea "muerto real" solo para que la corrida pase.
+Historial de la clasificación (34→50→49→0 hallazgos entre K1 y K2) en `docs/informe-knip-2026-09-27.md`.
+
+### Herramientas descartadas
+
+Tabla completa, con motivo por herramienta (`eslint-plugin-boundaries`, Zod, `next-safe-action`, tRPC, TanStack Query,
+Redux/Zustand, otra librería decimal), en
+`docs/arquitectura-modularidad-server-actions-2026-09-17.md` ("Herramientas descartadas") — no se duplica acá. Revisada
+en esta tarea (E1): sigue vigente, ningún hecho nuevo de esta sesión la contradice.
+
+### `PENDIENTES_DE_MIGRAR` — confirmado vacía
+
+`const PENDIENTES_DE_MIGRAR = [].map(...)` en `.dependency-cruiser-excepciones.cjs` — sin ninguna entrada. Ningún
+archivo de `app/`/`components/` está exceptuado de `ui-sin-prisma` hoy.
+
+### Fuera de alcance — pendiente aparte (no bloquea el cierre de la Task #41)
+
+Documentado explícito, no implementado en esta sesión:
+
+- Dividir `core/reportes/rendimiento-recetas.ts` (43,5K) y la página del editor de recetas (35,7K) — archivos grandes,
+  sin urgencia funcional.
+- Pasar `server/actions`, `app` y `components` a consumir `public*` donde hoy importan un archivo interno de un dominio
+  que sí tiene fachada.
+- `public.ts`/`public-servidor.ts` de `pos`/`stock` (candidatos C4/C5 — no se hicieron esta ronda).
+- Mover el costeo a `core/costos/` para romper el ciclo documentado `movimientos` ↔ `reportes`.
+- Mudar `core/auth/{contexto,session,ir-al-login}` a `server/` (hoy en `core/` por herencia histórica, tocan sesión real).
+- Resolver el N+1 del editor de recetas.
+- DTOs mínimos en las consultas de `server/consultas/`.
+- Centralizar las ~20 copias de `type Db = PrismaClient | Prisma.TransactionClient` esparcidas por `core/`.
+- Enseñarle al analizador de guardas (`test/arquitectura/acciones-con-guarda.test.ts` y similares) a seguir la
+  delegación entre archivos, en vez de exigir que la guarda esté en el mismo archivo que la mutación.
+- Mudar `upsertProveedorPorProducto` a `server/persistencia/catalogo/` (usa el cliente global hoy — anotado al cerrar
+  M13c, no se hizo por no fijar una segunda excepción al contrato "tx obligatorio" sin necesidad).
+
+### Cierre
+
+Los 7 comandos del gate, en la MISMA corrida, sobre `origin/main` con TODO lo de esta sesión mergeado (`c32adea`):
+`npx tsc --noEmit` (limpio), `npm run lint` (0/0), `npm run arquitectura` (508 módulos, 2036 dependencias, sin
+violaciones), `npm run analizar:muerto` (0 hallazgos), `npm test` (274/274 archivos, 3289/3289 tests), `npm run build`
+(limpio, con la migración de M14 aplicada), `npm run test:e2e` (369/369 specs). **Con esto se cierra la Task #41.**
