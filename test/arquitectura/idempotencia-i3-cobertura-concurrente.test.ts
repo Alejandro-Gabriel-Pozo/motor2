@@ -7,9 +7,11 @@ import { describe, expect, it } from "vitest";
  * el test de idempotencia "doble clic" de `registrarPagoConsignante` (M14) era SECUENCIAL (dos `await` uno detrás del otro) y nunca
  * ejercitaba el catch de P2002 real — el mecanismo de I3 puede fallar exactamente en la carrera que dice resolver sin que ningún test
  * se entere. Al auditar el resto del proyecto con este mismo test se encontró un hueco real en `reclasificarStock` (sin NINGÚN test
- * de la clave, ni secuencial). `anularCompra` se sospechó con el mismo hueco en una primera auditoría manual, pero este test
- * automático encontró un segundo archivo (`test/movimientos/compras-anular.test.ts`, describe "concurrencia") con una carrera real
- * que la auditoría manual se había perdido — corregido acá mismo, sin dejarlo en la excepción.
+ * de la clave, ni secuencial — cerrado el mismo día en `test/stock/reclasificacion.test.ts`, describe "idempotencia (I3)").
+ * `anularCompra` se sospechó con el mismo hueco en una primera auditoría manual, pero este test automático encontró un segundo
+ * archivo (`test/movimientos/compras-anular.test.ts`, describe "concurrencia") con una carrera real que la auditoría manual se
+ * había perdido — corregido acá mismo, sin dejarlo en la excepción. `SIN_TEST_CONCURRENTE_TODAVIA` quedó vacía: no hay ningún
+ * caso de uso de I3 sin cobertura concurrente real hoy.
  *
  * A propósito NO es una lista a mano de "estos archivos necesitan el test" (ese fue justo el problema con `DOMINIOS_CON_PUBLIC`:
  * un dominio nuevo que nadie se acuerda de agregar queda sin ninguna protección, en silencio). Este test DESCUBRE solo todo caso de
@@ -28,10 +30,7 @@ const TEST = join(__dirname, "../../test");
  * medida que se les agrega el test (mismo patrón `Promise.allSettled` que `registrarPagoConsignante`,
  * `test/reportes/consignacion.test.ts`, o `test/auditoria/idempotencia-i3-mecanismo.test.ts`).
  */
-const SIN_TEST_CONCURRENTE_TODAVIA: Record<string, string> = {
-  "server/actions/stock/casos-de-uso/reclasificar-stock.ts":
-    "NO tiene NINGÚN test de `claveIdempotencia`, ni siquiera secuencial — hallazgo del 2026-09-28, pendiente de agregar (primero el secuencial, para confirmar que el mecanismo funciona en absoluto, y recién después el concurrente).",
-};
+const SIN_TEST_CONCURRENTE_TODAVIA: Record<string, string> = {};
 
 function archivosFuente(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {

@@ -175,6 +175,68 @@ describe("reclasificarStock", () => {
     });
   });
 
+  // Hallazgo post-cierre de Task #41 (2026-09-28, docs/pendientes-sesion-2026-09-27.md): reclasificarStock tiene I3
+  // (claveIdempotencia en su comando desde M13d) pero nunca tuvo NINGÚN test de la clave — ni secuencial. Cerrado acá.
+  describe("idempotencia (I3)", () => {
+    it("un doble clic (misma claveIdempotencia) reclasifica UNA sola vez", async () => {
+      const claveIdempotencia = crypto.randomUUID();
+      const payload = { productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: destinoAId, cantidad: 10 }], fecha: new Date(), claveIdempotencia };
+
+      const primero = await reclasificarStock(payload);
+      expect(primero.ok, primero.mensaje).toBe(true);
+
+      const segundo = await reclasificarStock(payload);
+      expect(segundo.ok, segundo.mensaje).toBe(true);
+      expect(segundo.mensaje).toBe(primero.mensaje);
+
+      expect(await prisma.operacion.count({ where: { proceso: "RECLASIFICACION" } })).toBe(1);
+      expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(10); // no se duplicó el reparto
+    });
+
+    it("la misma clave con un payload distinto da conflicto, no una segunda reclasificación", async () => {
+      const claveIdempotencia = crypto.randomUUID();
+      const fecha = new Date();
+
+      const primero = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: origenId,
+        destinos: [{ seccionId: destinoAId, cantidad: 6 }, { seccionId: destinoBId, cantidad: 4 }], fecha, claveIdempotencia,
+      });
+      expect(primero.ok).toBe(true);
+
+      const segundo = await reclasificarStock({
+        productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: destinoAId, cantidad: 10 }], fecha, claveIdempotencia,
+      });
+      expect(segundo.ok).toBe(false);
+
+      expect(await prisma.operacion.count({ where: { proceso: "RECLASIFICACION" } })).toBe(1);
+    });
+
+    // A diferencia de registrarPagoConsignante (M14, prisma.$transaction SIMPLE + catch de P2002), reclasificarStockCasoDeUso usa
+    // conTransaccionSerializable (SERIALIZABLE + reintento genérico, mismo mecanismo que anularCompra): una carrera real sobre la
+    // MISMA claveIdempotencia debería resolverse por reintento de la transacción entera, no por un catch puntual. Este test
+    // demuestra que el resultado final es correcto de todos modos — exactamente una escritura, ninguna llamada rechaza.
+    it("dos reclasificaciones SIMULTÁNEAS con la MISMA claveIdempotencia — exactamente una escribe, ninguna rechaza, las dos devuelven el mismo mensaje", async () => {
+      for (let i = 0; i < 10; i++) {
+        // Repone el saldo del origen para esta iteración: el `beforeEach` ya deja 10 antes de la primera vuelta, así que se lee
+        // el disponible REAL en vez de asumir un número fijo (evita "la suma no coincide" por acumular de más).
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 10 }] });
+        const disponible = await calcularSaldoTotal(mpId, origenId);
+        const claveIdempotencia = crypto.randomUUID();
+        const payload = { productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: destinoAId, cantidad: disponible }], fecha: new Date(), claveIdempotencia };
+
+        const settled = await Promise.allSettled([reclasificarStock(payload), reclasificarStock(payload)]);
+
+        expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+        const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+        expect(resultados.every((r) => r.ok), `iteración ${i}: las dos tienen que dar ok:true (una nueva, la otra idempotente): ${JSON.stringify(resultados)}`).toBe(true);
+        expect(resultados[0].mensaje, `iteración ${i}: mismo mensaje en las dos`).toBe(resultados[1].mensaje);
+      }
+
+      expect(await prisma.operacion.count({ where: { proceso: "RECLASIFICACION" } })).toBe(10); // una por iteración, nunca el doble
+      expect(await calcularSaldoTotal(mpId, origenId)).toBe(0); // sin sobras ni faltantes acumulados
+    });
+  });
+
   describe("Fase 6 (auditoría de seguridad/contratos): las secciones tienen que ser de la sucursal de quien llama", () => {
     it("rechaza un seccionOrigenId de OTRA sucursal", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
