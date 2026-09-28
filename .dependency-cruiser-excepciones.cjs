@@ -112,6 +112,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "M11a + M11b + M11c: sus ocho escrituras → traspasos/casos-de-uso/ (aprobar-y-enviar, cancelar-solicitud, rechazar-solicitud, aceptar, rechazar-envio, confirmar-reingreso, crear-solicitud, crear-envio-directo; transacción, I3 de aceptar/reingreso, persistencia y guard de transición viven en el caso de uso). Sus lecturas (obtenerBandejaTransferencias, listarSucursalesDisponibles) se mudaron tal cual a traspasos/lecturas.ts, fuera de esta lista.",
   },
+  {
+    ruta: "src/server/actions/movimientos/movimientos.ts",
+    motivo:
+      "M13a-c: registrarMovimiento (los 9 procesos del motor genérico: Compra, Producción, Consumo, Ajuste, Transferencia, Merma, Devolución×3) → casos-de-uso/registrar-movimiento.ts (sección propia, motivo/destino, factura, I3, transacción, persistencia en server/persistencia/movimientos/ y el paso 6 registrarProveedoresDeLaCompra). El archivo no tiene ninguna otra función.",
+  },
 ];
 
 module.exports = {

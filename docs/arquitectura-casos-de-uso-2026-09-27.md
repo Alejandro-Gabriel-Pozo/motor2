@@ -234,6 +234,42 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   nueva a propósito). `refrescarVistaSiHaceFalta` sigue en la Server Action, solo ante un éxito (igual que antes). **Migración PARCIAL a
   propósito:** `recetas.ts` NO entra en `ACCIONES_CON_CASO_DE_USO` — las lecturas (`obtenerRecetaVigente`, `listarVersionesDeReceta`)
   siguen con `prisma`, y las ediciones puntuales (agregar/editar/quitar ingrediente o paso, cabecera) siguen delegando en `guardarReceta`.
+- **M13a-c — `registrarMovimiento`** (`src/server/actions/movimientos/movimientos.ts`): el motor genérico de los 9 procesos que no
+  tienen su propia acción (Compra, Producción, Consumo, Ajuste, Transferencia, Merma, Devolución×3 — `ProcesoGenerico`,
+  `core/features/movimientos/movimiento.schema.ts`; Venta y Control/Conteo Físico quedan fuera, tienen la suya). Cierra la migración de
+  `movimientos.ts` (`reclasificarStock` y `registrarConteoFisico` son archivos propios, fuera de esta fase — M13d/M13e).
+  - **M13a** (comando + tipos): `DatosMovimientoInput`/`ItemMovimientoInput`/`ResultadoRegistrarMovimiento`/`CodigoRegistrarMovimiento`
+    mudados TAL CUAL a `core/features/movimientos/movimiento.schema.ts` (la Server Action los reexporta con el mismo nombre, para no
+    romper a nadie que ya los importaba de ahí). Persistencia de las tres lecturas que corren FUERA de la transacción en
+    `server/persistencia/movimientos/cargar-validaciones-de-movimiento.ts` (`cargarMotivoMerma`, `cargarDestinoConsumo`,
+    `existeCompraVigenteConFactura` — mismo criterio "cliente global a propósito" que `guardar-version-de-receta.ts` de P1: el árbitro
+    real de la factura duplicada es el índice único parcial, no esta lectura). El caso de uso `casos-de-uso/registrar-movimiento.ts`
+    nace con TODA la orquestación (sección propia, motivo/destino, `guardNroFacturaCompra`, factura duplicada, la transacción entera y
+    el hookup de proveedor), en el MISMO orden que antes; `movimientos.ts` todavía NO entra en `ACCIONES_CON_CASO_DE_USO` (le faltaban
+    el guard de comando y M13b).
+  - **M13b** (persistencia de las escrituras): los dos `tx.operacion.create`/`tx.movimientoStock.createMany` de dentro de la transacción
+    → `server/persistencia/movimientos/escribir-movimiento-de-stock.ts` (`escribirOperacionDeStock`, `escribirLineasDeMovimientoStock`
+    — DOS funciones separadas a propósito: el caso de uso necesita el `id` de la Operacion antes de armar las filas de Producción, que
+    leen `obtenerProducto` de cada insumo consumido DESPUÉS del INSERT). El armado de las filas (SÍ es lógica de negocio: signo por
+    proceso, redondeo por unidad, la fila LIQUIDACION_CONSIGNACION) se queda en el caso de uso.
+  - **M13c** (guard + hookup nombrado + cierre): comando + guard en `core/features/movimientos/` (`movimiento.guard.ts`,
+    `guardComandoRegistrarMovimiento`), con las MISMAS 4 validaciones que antes corrían en línea dentro de `conPermiso` (items vacío,
+    sección en blanco, formato de la clave I3, Transferencia con destino vacío/igual al origen) MÁS una 5ª, primera en el orden:
+    `proceso` tiene que ser uno de los 9 `ProcesoGenerico` (`Record<ProcesoGenerico, true>`, para que `tsc` fuerce actualizarlo si el
+    enum de Prisma cambia). Es un endurecimiento de un hueco real: `ACCION_POR_PROCESO[datos.proceso]` (que sigue, SIN CAMBIOS, ANTES de
+    `conPermiso`, eligiendo qué permiso pedir) también tiene entradas para procesos que NO pasan por este motor (VENTA → `proceso_venta`,
+    CONTROL → `proceso_control`); antes de este guard, un payload armado a mano con `proceso: "VENTA"` de alguien que YA tenía
+    `proceso_venta` pasaba `conPermiso` sin que nada, DENTRO de la acción, lo frenara después. El guard es la segunda barrera, mismo
+    texto (`Proceso "${proceso}" no se registra con esta acción.`) que ya usa `movimientos.ts` para el proceso sin acción asociada.
+    `guardNroFacturaCompra` se queda en el caso de uso a propósito (corre DESPUÉS de sección/motivo/destino: moverlo cambiaría qué
+    mensaje sale primero). El guard devuelve `aceptar(entrada)` sin transformar nada (el hash I3 depende del payload tal cual llegó).
+    El hookup de proveedor (Compra, fuera de la transacción, best-effort) se extrajo a una función nombrada,
+    `registrarProveedoresDeLaCompra` (interna, no exportada, en `casos-de-uso/registrar-movimiento.ts`), con el MISMO try/catch por
+    línea y el MISMO `console.error` — el docstring del caso de uso ya numeraba este paso como "6."; ahora ese paso tiene nombre.
+    `movimientos.ts` queda como adaptador fino (`ACCION_POR_PROCESO` para elegir el permiso → `conPermiso` → `guardComandoRegistrarMovimiento`
+    → caso de uso → `aResultadoAccion`) y, sin ninguna otra función en el archivo, **entra en `ACCIONES_CON_CASO_DE_USO`**.
+    Test nuevo (`test/movimientos/registrar-movimiento.test.ts`): un payload con `proceso: "VENTA"` (y otro con `"CONTROL"`) da el
+    mensaje de rechazo y no escribe ninguna Operacion.
 
 ## Cómo se migra la próxima acción
 

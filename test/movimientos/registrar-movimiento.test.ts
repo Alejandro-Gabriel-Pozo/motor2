@@ -370,6 +370,30 @@ describe("registrarMovimiento", () => {
     expect(Number(liquidacion!.precioTotal)).toBeCloseTo(2 * 50);
   });
 
+  describe("M13c: el guard de comando (guardComandoRegistrarMovimiento) frena un proceso que no es de este motor, aunque ACCION_POR_PROCESO ya haya elegido un permiso real para él", () => {
+    it('un payload armado a mano con proceso: "VENTA" no cuela: antes de este guard, ACCION_POR_PROCESO.VENTA resuelve a "proceso_venta" (que el admin de este test SÍ tiene) y conPermiso lo dejaba pasar — nada, DENTRO de la acción, frenaba después un proceso ajeno (confirmado leyendo movimientos.ts antes de este cambio: las 4 validaciones en línea nunca miraban el proceso en sí)', async () => {
+      const mp = await crearMP("Cerveza");
+      const resultado = await registrarMovimiento({
+        proceso: "VENTA", fecha: new Date(), seccionId: seccionAId,
+        items: [{ productoId: mp.id, cantidad: 1 }],
+      } as unknown as Parameters<typeof registrarMovimiento>[0]);
+
+      expect(resultado).toEqual({ ok: false, mensaje: 'Proceso "VENTA" no se registra con esta acción.' });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+
+    it('lo mismo con proceso: "CONTROL" (Conteo Físico, ACCION_POR_PROCESO.CONTROL -> "proceso_control")', async () => {
+      const mp = await crearMP("Gaseosa");
+      const resultado = await registrarMovimiento({
+        proceso: "CONTROL", fecha: new Date(), seccionId: seccionAId,
+        items: [{ productoId: mp.id, cantidad: 1 }],
+      } as unknown as Parameters<typeof registrarMovimiento>[0]);
+
+      expect(resultado).toEqual({ ok: false, mensaje: 'Proceso "CONTROL" no se registra con esta acción.' });
+      expect(await prisma.operacion.count()).toBe(0);
+    });
+  });
+
   describe("Fase 6 (auditoría de seguridad/contratos): la sección tiene que ser de la sucursal de quien llama", () => {
     it("rechaza un seccionId de OTRA sucursal aunque el usuario tenga el permiso en la suya", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
