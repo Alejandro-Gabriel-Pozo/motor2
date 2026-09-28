@@ -424,9 +424,21 @@ varios hallazgos de knip).
     tocar — eso es M13e2. Reverificado independientemente: los 7 comandos en
     verde — 274/274 archivos y 3287/3287 tests de Vitest, build, 369/369
     specs de Playwright. Ningún test tocado.
-  - **M13e2** — `resolverConteoPendiente`/`cancelarConteoFisico` (también
-    mueven stock): casos de uso propios; `obtenerHistorialConteosFisicos` se
-    muda a una lectura aparte para que `conteo-fisico.ts` entre en la lista.
+  - **M13e2 — YA MERGEADA, CIERRA TODA LA CADENA M13a→e** (2026-09-28):
+    `resolverConteoPendiente`/`cancelarConteoFisico` migrados a casos de uso
+    propios, reutilizando `cargarProductoConUnidadDeStock` (M13d) y
+    `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (M13b) para
+    los ajustes de Kardex. Persistencia compartida nueva:
+    `cargar-conteo-fisico.ts` y `actualizarEstadoDeConteo` (sumada a
+    `escribir-conteo-fisico.ts` de M13e1). `obtenerHistorialConteosFisicos` se
+    mudó tal cual a `lecturas-conteo-fisico.ts` (estilo M11c/M13d). Con las 4
+    mutaciones migradas y la lectura movida, `conteo-fisico.ts` entró en
+    `ACCIONES_CON_CASO_DE_USO`. Reverificado independientemente: los 7
+    comandos en verde — 274/274 archivos y 3287/3287 tests de Vitest, build,
+    369/369 specs de Playwright.
+
+  **CON ESTO SE CIERRA TODA LA CADENA M13a→b→c→d→e1→e2** (6 worktrees, 6
+  merges independientes a `main`, todos reverificados). Desbloquea M14 y E1.
   - Decisión tomada (deferida, no en el alcance de M13): `upsertProveedorPorProducto`
     NO se muda a `server/persistencia/` en esta fase — queda anotado para E1.
   - Ningún sub-paso toca `prisma/schema.prisma` ni migraciones — confirmado en
