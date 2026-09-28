@@ -375,17 +375,25 @@ varios hallazgos de knip).
     filas (lógica de negocio) se quedó en el caso de uso. Ningún test tocado.
     Reverificado independientemente: los 7 comandos en verde — 274/274
     archivos y 3285/3285 tests de Vitest, build, 369/369 specs de Playwright.
-  - **M13c** — comando+guard puro en `core/features/movimientos/movimiento.guard.ts`
-    (las 4 validaciones puras de hoy, MISMOS textos y MISMO orden;
-    `guardNroFacturaCompra` se queda en el caso de uso, no en el guard, por el
-    orden de mensajes); el paso nombrado `registrarProveedoresDeLaCompra`
-    para el hookup de `upsertProveedorPorProducto`; `movimientos.ts` entra en
-    `ACCIONES_CON_CASO_DE_USO`; se agrega la sección M13a-c en
-    `docs/arquitectura-casos-de-uso-2026-09-27.md`. Decisión tomada: además
-    endurecer el guard para rechazar un `proceso` fuera de `ProcesoGenerico`
-    (VENTA/CONTROL/etc. armado a mano en el payload) — hueco real detectado
-    por el plan (el tipo de TS lo impide, pero nada lo frena en ejecución),
-    con test nuevo demostrado rojo→verde.
+  - **M13c — YA MERGEADA, CIERRA LA MIGRACIÓN DE `movimientos.ts`** (2026-09-28):
+    comando+guard puro en `core/features/movimientos/movimiento.guard.ts`
+    (las 4 validaciones de siempre, MISMOS textos y MISMO orden;
+    `guardNroFacturaCompra` se quedó en el caso de uso, por el orden de
+    mensajes) MÁS una 5ª validación, endureciendo un hueco real: `proceso`
+    tiene que ser uno de los 9 `ProcesoGenerico` (`Record<ProcesoGenerico, true>`,
+    para que `tsc` fuerce actualizarlo si el enum de Prisma cambia) —
+    `ACCION_POR_PROCESO` también resuelve VENTA/CONTROL a un permiso real, así
+    que un payload armado a mano con esos procesos pasaba `conPermiso` sin que
+    nada, DENTRO de la acción, lo frenara después; el guard es la segunda
+    barrera. El hookup de proveedor (Compra) se extrajo a un paso nombrado,
+    `registrarProveedoresDeLaCompra`. `movimientos.ts` entró en
+    `ACCIONES_CON_CASO_DE_USO` — sección M13a-c agregada en
+    `docs/arquitectura-casos-de-uso-2026-09-27.md`. Test nuevo (2 casos,
+    `test/movimientos/registrar-movimiento.test.ts`) demuestra el rechazo con
+    `proceso: "VENTA"`/`"CONTROL"` armados a mano, sin escribir ninguna
+    Operacion. Reverificado independientemente: los 7 comandos en verde —
+    274/274 archivos y 3287/3287 tests de Vitest (274 + 2 nuevos), build,
+    369/369 specs de Playwright.
   - **M13d** — `reclasificarStock` (`server/actions/stock/reclasificacion.ts`):
     caso de uso PROPIO (no reutiliza el de M13c — entrada/permiso/validación/
     escritura son todos distintos), que sí reutiliza `escribirMovimientoDeStock`
