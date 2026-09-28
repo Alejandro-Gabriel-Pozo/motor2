@@ -56,6 +56,11 @@ for (const ancho of ANCHOS) for (const ruta of RUTAS_SIN_PARAMETROS) {
     await page.setViewportSize({ width: ancho, height: 720 });
     await page.goto(ruta);
     await expect(page.locator("main h1, main h2").first(), "la pantalla no renderizó su título").toBeVisible();
+    // Pendiente #34 (docs/pendientes-sesion-2026-09-27.md): sin esto, medir el ancho de la tabla ANTES de que terminen de cargar las
+    // fuentes web puede dar un desborde de unos pocos px que desaparece solo cuando la fuente ya cargó y el texto se re-mide con su
+    // métrica real — confirmado (5+ corridas independientes) que este spec falla SOLO bajo contención real de CPU (varias suites de
+    // Playwright en paralelo), nunca aislado: consistente con una carrera de carga de fuente, no con una regla CSS rota.
+    await page.evaluate(() => document.fonts.ready);
 
     const problemas = await page.evaluate(() => {
       const salida: string[] = [];
