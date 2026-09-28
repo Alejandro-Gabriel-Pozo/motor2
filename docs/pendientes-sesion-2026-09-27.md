@@ -697,3 +697,39 @@ Depende del mismo "registro de pago" que #36/#37 — conviene diseñar el
 medio de pago una sola vez si varias de estas tres avanzan. Documento
 fuente completo: `grounding-facturacion-ventas-odoo-2026-09-26.md`
 (hay una versión anterior sin el anexo §2.10, usar la que lo tiene).
+
+---
+
+## Hallazgo post-cierre (2026-09-28): cobertura de test de la carrera real de I3, inventario
+
+**Cómo apareció:** al agregar un test de carrera CONCURRENTE de verdad
+(`Promise.allSettled`, no dos `await` secuenciales) para `registrarPagoConsignante`
+(M14) — el test secuencial que ya existía nunca ejercitaba el catch del
+P2002 real. Se corrigió ESE caso puntual (`test/reportes/consignacion.test.ts`,
+commit `3e115db`, demostrado rojo→verde revirtiendo el catch). **Antes de
+asumir que el resto del proyecto está igual de cubierto, se auditaron TODAS
+las acciones que usan `claveIdempotencia`** — no se corrigió nada más
+todavía, es un inventario para decidir, no una corrección silenciosa.
+
+**Acciones con I3 en su schema, por cobertura real de test:**
+
+| Acción | Test secuencial (2 `await`) | Test CONCURRENTE real (`Promise.all`/`allSettled`) |
+|---|---|---|
+| `registrarMovimiento` | Sí | Sí (`test/auditoria/idempotencia-i3-mecanismo.test.ts`) |
+| `registrarVenta` | Sí | Sí (mismo archivo) |
+| `aceptarTransferencia` | Sí | Sí (mismo archivo) |
+| `confirmarReingresoTransferencia` | Sí | Sí (mismo archivo) |
+| `registrarPagoConsignante` (M14) | Sí | Sí (agregado 2026-09-28, `test/reportes/consignacion.test.ts`) |
+| **`anularCompra`** | Sí (`test/casos-de-uso/anular-compra.test.ts:124-126`, `primera`/`reenvio` con dos `await` seguidos) | **NO — mismo hueco que tenía `registrarPagoConsignante` antes de hoy** |
+| **`reclasificarStock`** (M13d) | **NO — `test/stock/reclasificacion.test.ts` no tiene NINGÚN test de `claveIdempotencia`, ni secuencial** | **NO** |
+
+**Acciones sin I3 — confirmado que es diseño, no un olvido:**
+- `corregirCompra` — usa un mecanismo distinto a propósito (`esperado: CabeceraVista` comparado contra el estado real, código `CAMBIO_CONCURRENTE`): es una corrección idempotente por naturaleza (fijar la cabecera a un valor exacto), no necesita clave de cliente.
+- `crearSolicitudTransferencia`/`crearEnvioDirectoTransferencia` (M11c) — ya documentado en su momento como "riesgo residual anotado, pendiente fuera de esta fase porque cambiaría el contrato". No es un hallazgo nuevo, se repite acá solo para que quede en la misma tabla.
+- `registrarConteoFisico`/`registrarConteosFisicos` (M13e1) — nunca tuvieron `claveIdempotencia` en su schema (`core/features/movimientos/conteo-fisico.schema.ts`), no es una omisión de esta sesión.
+- `resolverConteoPendiente`/`cancelarConteoFisico` (M13e2) — no usan clave de cliente porque el chequeo de `estado` (`!== "PENDIENTE"`/`"RESUELTO"`) ya es idempotente por sí solo: un reintento sobre el mismo `conteoId` da el mismo resultado sin duplicar nada.
+
+**Pendiente real, sin decisión tomada todavía:**
+1. `anularCompra` — agregar el mismo test de carrera concurrente que se hizo para `registrarPagoConsignante` (mismo patrón: `Promise.allSettled`, loop de varias iteraciones, demostrado rojo→verde desactivando el catch de P2002 de su caso de uso si existe, o confirmando primero si `anular-compra.ts` siquiera tiene ese catch — **sin verificar todavía**).
+2. `reclasificarStock` — falta CUALQUIER test de `claveIdempotencia`, ni siquiera secuencial. Antes de escribir el concurrente, confirmar que el mecanismo funciona en absoluto (test secuencial primero), y recién después el de carrera real.
+3. Estos dos son del mismo tamaño de esfuerzo que M14 (una tarde), no bloquean nada de la Task #41 (ya cerrada) — quedan como pendiente aparte, a decidir cuándo se atacan.
