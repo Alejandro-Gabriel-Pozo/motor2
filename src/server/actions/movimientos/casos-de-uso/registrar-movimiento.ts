@@ -60,6 +60,18 @@ function sinLineasParaProveedor(resultado: ResultadoRegistrarMovimiento): Result
  * (Catalogo.js:3617-3657, envuelta en try/catch en confirmarRegistrarMovimientos): el Kardex ya quedó bien escrito, esto solo
  * alimenta la comparativa de precios. Se registra la relación en TODOS los casos con unidad de compra conocida (incluso sin precio,
  * mismo bugfix que Catalogo.js:3635-3644: si se cortara acá por falta de precio, ese proveedor nunca acumularía historial).
+ *
+ * Limitación conocida, decisión DEFERIDA — no un bug (backlog post-cierre de Task #41, 2026-09-28,
+ * docs/pendientes-sesion-2026-09-27.md §11): si `upsertProveedorPorProducto` falla para una línea, el catch de más abajo lo
+ * `console.error`ea y sigue con la línea siguiente — no hay forma de reintentar SOLO ese hookup después. `upsertProveedorPorProducto`
+ * no tiene ningún otro punto de entrada en el proyecto (confirmado: es la ÚNICA llamada real, `grep -rn
+ * upsertProveedorPorProducto src/`) — ni una pantalla de administración, ni una acción de "reconciliar catálogo de esta compra". Y
+ * reintentar la Compra ENTERA no sirve: con la MISMA `claveIdempotencia` el paso 0 (I3) corta antes de llegar acá (`repetida: true`,
+ * el guard del §4 de este mismo backlog no vuelve a llamar a este paso), y con una clave distinta (o sin clave) se escribiría una
+ * SEGUNDA Compra real en el Kardex — probablemente peor que el precio faltante en Catálogo que se buscaba arreglar. Hoy, la única
+ * vía de recuperación es manual (consola de Prisma / SQL directo) contra `ProveedorPorProducto`. Aceptado así por ahora: agregar un
+ * mecanismo de reintento dedicado es una decisión de producto (¿vale la pena una acción de administración para esto?, ¿con qué
+ * alcance?), no algo para resolver de paso en esta auditoría.
  */
 async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, lineas: LineaParaProveedor[]): Promise<void> {
   for (const l of lineas) {
