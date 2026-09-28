@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "arquitectura": "depcruise src --config .dependency-cruiser.cjs",
-    "analizar:muerto": "knip --no-exit-code",
+    "analizar:muerto": "knip",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
