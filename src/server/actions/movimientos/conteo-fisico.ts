@@ -1,15 +1,14 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import { calcularSaldoPorLote, calcularSaldoTotal, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { guardComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.guard";
 import type { ComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";
+import type { ComoResolverConteo } from "@/core/features/movimientos/resolver-conteo.schema";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVerEnSucursal } from "../con-sesion";
+import { error, type ResultadoAccion } from "../tipos";
 import { registrarConteoFisicoCasoDeUso } from "./casos-de-uso/registrar-conteo-fisico";
+import { resolverConteoPendienteCasoDeUso } from "./casos-de-uso/resolver-conteo-pendiente";
+import { cancelarConteoFisicoCasoDeUso } from "./casos-de-uso/cancelar-conteo-fisico";
 
 /** Lo que recibe `registrarConteoFisico`/`registrarConteosFisicos`. Vive en `conteo-fisico.schema.ts` (lo usa también el caso de uso). */
 export type DatosConteoFisico = ComandoConteoFisico;
@@ -93,62 +92,14 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
  * desde el panel de Conteo Físico, ya gateado a nivel menú) — acá se gatea
  * igual que registrarConteoFisico ('proceso_control'), mismo criterio que
  * "toda mutación pasa por conPermiso" (plan de migración, convenciones).
+ *
+ * Desde la Task #41 (Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso("proceso_control")`) → caso de uso (`casos-de-uso/resolver-conteo-pendiente.ts`: carga del conteo, sección/estado,
+ * ramas "resuelto"/"ajustar", persistencia) → `aResultadoAccion`. Sin guard de comando (ver `resolver-conteo.schema.ts`).
  */
-export async function resolverConteoPendiente(conteoId: string, comoResolver: "resuelto" | "ajustar"): Promise<ResultadoAccion> {
+export async function resolverConteoPendiente(conteoId: string, comoResolver: ComoResolverConteo): Promise<ResultadoAccion> {
   return conPermiso("proceso_control", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
-      const conteo = await tx.conteoFisico.findUnique({ where: { id: conteoId } });
-      if (!conteo || conteo.sucursalId !== ctx.sucursalId) return error("No se encontró ese conteo.");
-      if (conteo.estado !== "PENDIENTE") return error("Ese conteo no está pendiente.");
-
-      if (comoResolver === "resuelto") {
-        await tx.conteoFisico.update({
-          where: { id: conteoId },
-          data: { estado: "RESUELTO", detalle: `${conteo.detalle ?? ""} — cerrado: se cargó el movimiento que faltaba`.trim() },
-        });
-        return ok("Conteo cerrado. El stock ya se corrigió con el movimiento que cargaste.");
-      }
-
-      const producto = await tx.producto.findUnique({ where: { id: conteo.productoId }, include: { unidadStock: true } });
-      if (!producto) return error("El producto ya no existe en el catálogo.");
-
-      const saldoHoy = conteo.loteVencimiento
-        ? await calcularSaldoPorLote(conteo.productoId, conteo.seccionId, conteo.loteVencimiento, tx)
-        : await calcularSaldoTotal(conteo.productoId, conteo.seccionId, tx);
-      const diferencia = redondearACantidadDeUnidad(Number(conteo.conteoReal) - saldoHoy, producto.unidadStock.decimales);
-
-      if (diferencia === 0) {
-        await tx.conteoFisico.update({
-          where: { id: conteoId },
-          data: { estado: "RESUELTO", detalle: `${conteo.detalle ?? ""} — cerrado: el stock ya coincide`.trim() },
-        });
-        return ok("El stock ya coincide con lo contado. No hizo falta ajustar.");
-      }
-
-      const operacion = await tx.operacion.create({
-        data: { sucursalId: ctx.sucursalId, proceso: "CONTROL", fecha: new Date(), usuarioId: ctx.usuarioId },
-      });
-      await tx.movimientoStock.create({
-        data: {
-          operacionId: operacion.id,
-          productoId: conteo.productoId,
-          seccionId: conteo.seccionId,
-          proceso: "CONTROL",
-          cantidad: diferencia,
-          loteVencimiento: conteo.loteVencimiento,
-          detalle: `Conteo pendiente resuelto: contado ${conteo.conteoReal}, sistema calculaba ${saldoHoy}, diferencia ${diferencia > 0 ? "+" : ""}${diferencia}.`,
-          precioTotal: 0,
-          precioPorUnidadStock: 0,
-          conteoFisicoId: conteo.id,
-        },
-      });
-      await tx.conteoFisico.update({
-        where: { id: conteoId },
-        data: { estado: "RESUELTO", detalle: `${conteo.detalle ?? ""} — cerrado con ajuste de ${diferencia > 0 ? "+" : ""}${diferencia}`.trim() },
-      });
-
-      return ok(`Conteo cerrado. Se ajustó ${diferencia > 0 ? "+" : ""}${diferencia}.`);
-    });
+    return aResultadoAccion(await resolverConteoPendienteCasoDeUso(ctx, conteoId, comoResolver));
   });
 }
 
@@ -159,95 +110,17 @@ export async function resolverConteoPendiente(conteoId: string, comoResolver: "r
  * nueva con la MISMA magnitud y signo contrario, enlazada al mismo
  * ConteoFisico (FK real — en Apps Script era el mismo "ID Operación" que
  * la fila original, correlación por string).
+ *
+ * Desde la Task #41 (Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso("cancelar_conteo")`) → caso de uso (`casos-de-uso/cancelar-conteo-fisico.ts`: carga del conteo, sección/estado,
+ * reversión, persistencia) → `aResultadoAccion`. Sin guard de comando (ver `cancelar-conteo.schema.ts`).
+ *
+ * `obtenerHistorialConteosFisicos` (solo lectura) se mudó a `lecturas-conteo-fisico.ts`. Con las cuatro mutaciones de este archivo ya
+ * migradas a caso de uso y la lectura mudada, `conteo-fisico.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**
+ * (.dependency-cruiser-excepciones.cjs).
  */
 export async function cancelarConteoFisico(conteoId: string): Promise<ResultadoAccion> {
   return conPermiso("cancelar_conteo", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
-      const conteo = await tx.conteoFisico.findUnique({ where: { id: conteoId } });
-      if (!conteo || conteo.sucursalId !== ctx.sucursalId) return error("No se encontró ese conteo.");
-      if (conteo.estado === "CANCELADO") return error("Ese conteo ya está cancelado.");
-      if (conteo.estado !== "RESUELTO") {
-        return error(
-          `Este conteo está "${conteo.estado}", no aplicó ningún ajuste al stock — no hay nada que cancelar. Si es un conteo pendiente, resolvelo en vez de cancelarlo.`
-        );
-      }
-
-      const diferenciaOriginal = Number(conteo.diferencia);
-      if (diferenciaOriginal !== 0) {
-        const operacion = await tx.operacion.create({
-          data: { sucursalId: ctx.sucursalId, proceso: "CONTROL", fecha: new Date(), usuarioId: ctx.usuarioId },
-        });
-        await tx.movimientoStock.create({
-          data: {
-            operacionId: operacion.id,
-            productoId: conteo.productoId,
-            seccionId: conteo.seccionId,
-            proceso: "CONTROL",
-            cantidad: -diferenciaOriginal,
-            loteVencimiento: conteo.loteVencimiento,
-            detalle: `Conteo físico cancelado: se revierte el ajuste de ${diferenciaOriginal > 0 ? "+" : ""}${diferenciaOriginal}.`,
-            precioTotal: 0,
-            precioPorUnidadStock: 0,
-            conteoFisicoId: conteo.id,
-          },
-        });
-      }
-
-      await tx.conteoFisico.update({
-        where: { id: conteoId },
-        data: {
-          estado: "CANCELADO",
-          detalle: `${conteo.detalle ?? ""} — cancelado, se revirtió el ajuste de ${diferenciaOriginal > 0 ? "+" : ""}${diferenciaOriginal}`.trim(),
-        },
-      });
-
-      return ok(`Conteo cancelado. Se revirtió el ajuste de ${diferenciaOriginal > 0 ? "+" : ""}${diferenciaOriginal}.`);
-    });
+    return aResultadoAccion(await cancelarConteoFisicoCasoDeUso(ctx, conteoId));
   });
-}
-
-const TAMANO_PAGINA_CONTEOS = 50;
-
-/**
- * Historial de conteos de un producto/sección, más nuevo primero — para el
- * panel, paginado por cursor (antes un `take: 200` fijo sin forma de ver
- * conteos más viejos — hallazgo de la diligencia de motor2).
- *
- * `sucursalId` es obligatorio a propósito (no opcional como en una primera
- * versión de esta función): sin él, sin `seccionId`, listaría conteos de
- * CUALQUIER sucursal — bug encontrado escribiendo la UI, mismo tipo de
- * fuga que Core/Catálogo evitan scopeando todo por sucursal desde el vamos.
- *
- * `seccionId`/`productoId`/`desde`/`hasta` existían como filtro posible
- * (seccionId) o eran triviales de agregar (productoId, rango de fechas),
- * pero /reportes/conteos nunca los exponía en la página, a diferencia de
- * casi todos los demás reportes del módulo (hallazgo de la auditoría).
- */
-export interface FiltroHistorialConteos {
-  seccionId?: string;
-  productoId?: string;
-  desde?: Date;
-  hasta?: Date;
-  cursor?: string;
-}
-
-export async function obtenerHistorialConteosFisicos(sucursalId: string, filtro: FiltroHistorialConteos = {}) {
-  await requerirVerEnSucursal(sucursalId, "proceso_control");
-  const { seccionId, productoId, desde, hasta, cursor } = filtro;
-  const items = await prisma.conteoFisico.findMany({
-    where: {
-      sucursalId,
-      ...(seccionId ? { seccionId } : {}),
-      ...(productoId ? { productoId } : {}),
-      ...(desde || hasta ? { fecha: { ...(desde ? { gte: desde } : {}), ...(hasta ? { lte: hasta } : {}) } } : {}),
-    },
-    include: { producto: true, seccion: true },
-    orderBy: [{ fecha: "desc" }, { id: "desc" }],
-    take: TAMANO_PAGINA_CONTEOS + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-  });
-
-  const hayMas = items.length > TAMANO_PAGINA_CONTEOS;
-  const pagina = hayMas ? items.slice(0, TAMANO_PAGINA_CONTEOS) : items;
-  return { items: pagina, nextCursor: hayMas ? pagina[pagina.length - 1].id : null };
 }

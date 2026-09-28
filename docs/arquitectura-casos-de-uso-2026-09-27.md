@@ -314,6 +314,35 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   **Migración PARCIAL a propósito, como P1:** `conteo-fisico.ts` NO entra en `ACCIONES_CON_CASO_DE_USO` — `resolverConteoPendiente`,
   `cancelarConteoFisico` y `obtenerHistorialConteosFisicos` (mismo archivo) siguen con su código de hoy (Prisma/`core/movimientos/
   public-servidor` directos), pendientes para M13e2.
+- **M13e2 — `resolverConteoPendiente`/`cancelarConteoFisico`, y mueve `obtenerHistorialConteosFisicos`** (mismo archivo,
+  `src/server/actions/movimientos/conteo-fisico.ts`): último sub-paso de la cadena M13a→e — **con este sub-paso cierra TODA la Fase M
+  de esta ronda**. Sin `.guard.ts` propio para ninguna de las dos mutaciones (`core/features/movimientos/resolver-conteo.schema.ts` /
+  `cancelar-conteo.schema.ts`, solo tipos): a diferencia de `ComandoConteoFisico` (M13e1), ninguna de las dos recibe un campo de
+  formato libre que validar antes de la transacción — `conteoId` es un id opaco y `comoResolver` ya viene acotado por su tipo en
+  tiempo de compilación; todo lo que antes se validaba (el conteo existe, es de esta sucursal, el estado correcto para la transición,
+  el producto sigue en el catálogo) depende de datos de base y se queda en el caso de uso, mismo criterio que M13d/M13e1. Persistencia
+  NUEVA y compartida por las dos: `server/persistencia/movimientos/cargar-conteo-fisico.ts` (`cargarConteoFisico`, el mismo
+  `tx.conteoFisico.findUnique` de siempre, solo los campos que ambas leen: `id`/`sucursalId`/`estado`/`productoId`/`seccionId`/
+  `loteVencimiento`/`conteoReal`/`diferencia`/`detalle`) y una función nueva en `server/persistencia/movimientos/escribir-conteo-fisico.ts`
+  (`actualizarEstadoDeConteo`, el mismo `tx.conteoFisico.update({ estado, detalle })` que antes se repetía, en variantes, en las 4
+  llamadas `.update` de las dos funciones). REUTILIZA de M13d `cargarProductoConUnidadDeStock` (la rama "ajustar" de
+  `resolverConteoPendiente`, que antes hacía su propio `tx.producto.findUnique`) y de M13b `escribirOperacionDeStock`/
+  `escribirLineasDeMovimientoStock` para el ajuste/reversión de Kardex de ambas funciones. Casos de uso
+  `movimientos/casos-de-uso/resolver-conteo-pendiente.ts` (`resolverConteoPendienteCasoDeUso`) y
+  `movimientos/casos-de-uso/cancelar-conteo-fisico.ts` (`cancelarConteoFisicoCasoDeUso`), en el MISMO orden que antes: cargar el conteo
+  (`cargarConteoFisico`) → verificar sucursal + estado → la rama correspondiente (resolver: "resuelto"/cierre directo vs. "ajustar"/
+  cargar producto, recalcular saldo de HOY, diferencia, cerrar sin ajuste si es 0 o escribir el ajuste de Kardex con
+  `conteoFisicoId` antes de cerrar; cancelar: si `diferenciaOriginal !== 0` escribir la reversión con `conteoFisicoId` antes de marcar
+  CANCELADO), MISMOS textos. Los dos adaptadores de `conteo-fisico.ts` quedan finos: permiso (`conPermiso("proceso_control")` /
+  `conPermiso("cancelar_conteo")`) → caso de uso → `aResultadoAccion`. `obtenerHistorialConteosFisicos` (solo lectura) se mudó TAL CUAL
+  a `src/server/actions/movimientos/lecturas-conteo-fisico.ts` (mismo criterio que M13d/M11c: sigue siendo una Server Action con
+  `requerirVerEnSucursal`, fuera de `ACCIONES_CON_CASO_DE_USO` porque esa regla vale para el archivo entero); se actualizaron las rutas
+  de import de las dos páginas que la usan (`app/(app)/reportes/conteos/page.tsx`, `app/(app)/movimientos/conteo-fisico/page.tsx`) y de
+  tres tests (`test/movimientos/conteo-fisico.test.ts`, `test/permisos/lecturas-con-permiso-de-ver.test.ts` —también su columna
+  `archivo`, que apunta al archivo fuente para verificar el gate en el cuerpo de la función—, `test/permisos/lecturas-con-sesion.test.ts`),
+  sin tocar lo que verifican. Con las cuatro mutaciones de `conteo-fisico.ts` migradas a caso de uso (M13e1 + M13e2) y la lectura
+  mudada, el archivo no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**. **Con M13e2 cierra la cadena completa
+  M13a→b→c→d→e1→e2 del Task #41, Fase M.**
 
 ## Cómo se migra la próxima acción
 
