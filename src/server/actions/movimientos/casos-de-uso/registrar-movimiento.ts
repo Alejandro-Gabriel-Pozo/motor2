@@ -56,7 +56,10 @@ async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, 
         referenciaProveedor: l.referenciaProveedor,
       });
     } catch (e) {
-      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${(e as Error).message}`);
+      // e instanceof Error ? e.message : String(e) (backlog post-cierre de Task #41, 2026-09-28,
+      // docs/pendientes-sesion-2026-09-27.md §5): el cast (e as Error).message revienta con TypeError si algo
+      // no-Error (ej. null/undefined) se lanza acá adentro — mismo criterio que core/reportes/cotizacion-dolar.ts.
+      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 }
