@@ -134,7 +134,9 @@ describe("F3 — propiedades de calcularPayloadHash", () => {
 describe("F3 — propiedades de esClaveIdempotenciaValida", () => {
   it("todo UUID v1-v5 con variante RFC 4122 es válido, en minúsculas o mayúsculas", () => {
     fc.assert(
-      fc.property(fc.uuid(), fc.boolean(), (uuid, mayus) => {
+      // `fc.uuid()` sin restricción genera v1-v8 desde fast-check 3.21 (RFC 9562) — acá se restringe a v1-v5,
+      // que es lo único que este test afirma que es válido.
+      fc.property(fc.uuid({ version: [1, 2, 3, 4, 5] }), fc.boolean(), (uuid, mayus) => {
         expect(esClaveIdempotenciaValida(mayus ? uuid.toUpperCase() : uuid)).toBe(true);
       }),
       { numRuns: 300 }
