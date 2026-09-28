@@ -364,15 +364,17 @@ varios hallazgos de knip).
     (eso es M13c). `test/arquitectura/lectores-de-receta.test.ts` reclasificado.
     Reverificado independientemente: los 7 comandos en verde — 274/274
     archivos y 3285/3285 tests de Vitest, build, 369/369 specs de Playwright.
-  - **M13b** (siguiente) — extraer las escrituras (`tx.operacion.create` +
-    armado de `filas` + `tx.movimientoStock.createMany` + el `tx.operacion.update`
-    del mensaje I3) del caso de uso de M13a a
-    `server/persistencia/movimientos/escribir-movimiento-de-stock.ts` (`tx`
-    obligatorio), con `registrarResultadoIdempotente` (de `core`) para el
-    update del mensaje. Diseño del plan: DOS funciones separadas
-    (`escribirOperacionDeStock`/`escribirLineasDeStock`), no una sola, para
-    preservar el orden EXACTO de hoy (decisión tomada: preferir "tal cual"
-    sobre una fusión más prolija).
+  - **M13b — YA MERGEADA** (2026-09-28): `server/persistencia/movimientos/escribir-movimiento-de-stock.ts`
+    con DOS funciones separadas (`escribirOperacionDeStock`/`escribirLineasDeMovimientoStock`,
+    `tx` obligatorio) para preservar el orden EXACTO de hoy (el caso de uso
+    necesita el `id` de la Operacion antes de armar las filas, y arma las de
+    Producción leyendo `obtenerProducto` de cada insumo DESPUÉS del INSERT).
+    El `tx.operacion.update` del mensaje I3 pasa a usar
+    `registrarResultadoIdempotente` (ya existía en `core/movimientos/idempotencia.ts`,
+    mismo uso que `anular-compra.ts` — no hizo falta crearla). El armado de
+    filas (lógica de negocio) se quedó en el caso de uso. Ningún test tocado.
+    Reverificado independientemente: los 7 comandos en verde — 274/274
+    archivos y 3285/3285 tests de Vitest, build, 369/369 specs de Playwright.
   - **M13c** — comando+guard puro en `core/features/movimientos/movimiento.guard.ts`
     (las 4 validaciones puras de hoy, MISMOS textos y MISMO orden;
     `guardNroFacturaCompra` se queda en el caso de uso, no en el guard, por el
