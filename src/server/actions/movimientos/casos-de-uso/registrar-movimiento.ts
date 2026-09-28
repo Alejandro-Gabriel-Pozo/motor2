@@ -17,10 +17,12 @@ import {
   crearCacheProducto,
   esChoqueDeFacturaUnica,
   MENSAJE_FACTURA_DUPLICADA,
+  registrarResultadoIdempotente,
 } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
 import { cargarDestinoConsumo, cargarMotivoMerma, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { upsertProveedorPorProducto } from "../../catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
 
@@ -47,7 +49,8 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]`;
  *  6. `upsertProveedorPorProducto` (Compra), fuera de la transacción, best-effort.
  *
- * M13a NO extrae las escrituras de la transacción a `server/persistencia/` (eso es M13b) ni entra `movimientos.ts` en
+ * M13b ya extrajo a `server/persistencia/movimientos/escribir-movimiento-de-stock.ts` las dos escrituras Prisma de la Operacion y sus
+ * líneas (el armado de las filas, que SÍ es lógica de negocio, se queda acá); M13a no entra `movimientos.ts` en
  * `ACCIONES_CON_CASO_DE_USO` (eso es M13c).
  */
 export async function registrarMovimientoCasoDeUso(
@@ -161,21 +164,19 @@ export async function registrarMovimientoCasoDeUso(
     }
 
     // 3) Escribir Operacion (encabezado) + MovimientoStock[] (líneas).
-    const operacion = await tx.operacion.create({
-      data: {
-        sucursalId: actor.sucursalId,
-        proceso: datos.proceso,
-        fecha: datos.fecha,
-        proveedorId: datos.proveedorId ?? null,
-        nroFactura,
-        seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? datos.seccionDestinoId : null,
-        motivoId: datos.motivoId ?? null,
-        destinoId: datos.destinoId ?? null,
-        detalleLibre: texto(datos.detalleLibre) || null,
-        usuarioId: actor.usuarioId,
-        claveIdempotencia: datos.claveIdempotencia ?? null,
-        payloadHash: datos.claveIdempotencia ? payloadHash : null,
-      },
+    const operacion = await escribirOperacionDeStock(tx, {
+      sucursalId: actor.sucursalId,
+      proceso: datos.proceso,
+      fecha: datos.fecha,
+      proveedorId: datos.proveedorId ?? null,
+      nroFactura,
+      seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? (datos.seccionDestinoId ?? null) : null,
+      motivoId: datos.motivoId ?? null,
+      destinoId: datos.destinoId ?? null,
+      detalleLibre: texto(datos.detalleLibre) || null,
+      usuarioId: actor.usuarioId,
+      claveIdempotencia: datos.claveIdempotencia ?? null,
+      payloadHash: datos.claveIdempotencia ? payloadHash : null,
     });
 
     const filas: Prisma.MovimientoStockCreateManyInput[] = [];
@@ -236,7 +237,7 @@ export async function registrarMovimientoCasoDeUso(
       }
     }
 
-    await tx.movimientoStock.createMany({ data: filas });
+    await escribirLineasDeMovimientoStock(tx, filas);
 
     const avisoConversion = lineas.some((l) => l.huboConversion)
       ? " Algunas cantidades se convirtieron automáticamente de unidad de compra a unidad de stock."
@@ -246,7 +247,7 @@ export async function registrarMovimientoCasoDeUso(
     // I3 — Opción B (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
     // §4.5): se persiste el mensaje ya formateado, no se reconstruye.
     if (datos.claveIdempotencia) {
-      await tx.operacion.update({ where: { id: operacion.id }, data: { resultadoMensaje: mensaje } });
+      await registrarResultadoIdempotente(tx, operacion.id, mensaje);
     }
 
     lineasParaProveedor = lineas.map((l) => ({
