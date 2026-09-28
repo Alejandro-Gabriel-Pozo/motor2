@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { reclasificarStock, obtenerSaldoDisponibleParaReclasificar, type DestinoReclasificacion } from "@/server/actions/stock/reclasificacion";
+import { reclasificarStock, type DestinoReclasificacion } from "@/server/actions/stock/reclasificacion";
+import { obtenerSaldoDisponibleParaReclasificar } from "@/server/actions/stock/lecturas-reclasificacion";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { useLeerServidor } from "@/lib/use-leer-servidor";

@@ -117,6 +117,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "M13a-c: registrarMovimiento (los 9 procesos del motor genérico: Compra, Producción, Consumo, Ajuste, Transferencia, Merma, Devolución×3) → casos-de-uso/registrar-movimiento.ts (sección propia, motivo/destino, factura, I3, transacción, persistencia en server/persistencia/movimientos/ y el paso 6 registrarProveedoresDeLaCompra). El archivo no tiene ninguna otra función.",
   },
+  {
+    ruta: "src/server/actions/stock/reclasificacion.ts",
+    motivo:
+      "M13d: reclasificarStock (caso de uso PROPIO, no el motor genérico de M13a-c: un producto, un origen, N destinos, la regla \"la suma de destinos es exactamente el saldo\") → casos-de-uso/reclasificar-stock.ts (secciones propias, \"único destino idéntico al origen\", I3, transacción; reutiliza escribirOperacionDeStock/escribirLineasDeMovimientoStock de M13b y registrarResultadoIdempotente). obtenerSaldoDisponibleParaReclasificar (solo lectura) se mudó tal cual a lecturas-reclasificacion.ts. El archivo no tiene ninguna otra función.",
+  },
 ];
 
 module.exports = {

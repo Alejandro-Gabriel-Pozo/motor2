@@ -270,6 +270,31 @@ Pantalla ─► Server Action ("use server", adaptador fino)
     → caso de uso → `aResultadoAccion`) y, sin ninguna otra función en el archivo, **entra en `ACCIONES_CON_CASO_DE_USO`**.
     Test nuevo (`test/movimientos/registrar-movimiento.test.ts`): un payload con `proceso: "VENTA"` (y otro con `"CONTROL"`) da el
     mensaje de rechazo y no escribe ninguna Operacion.
+- **M13d — `reclasificarStock`** (`src/server/actions/stock/reclasificacion.ts`): comando + guard en `core/features/movimientos/`
+  (mismo dominio que M13a-c: RECLASIFICACION es un proceso más del enum `Proceso`), pero en archivos APARTE
+  (`reclasificacion.schema.ts`, `reclasificacion.guard.ts`) y **caso de uso PROPIO, no el motor genérico de M13a-c**: entrada (un
+  producto, un origen, N destinos, no una lista de ítems), permiso (`proceso_control`, mismo que Conteo Físico — no pasa por
+  `ACCION_POR_PROCESO` ni tiene su propia `Accion`), validación (la regla "la suma de destinos es exactamente el saldo disponible en
+  origen", sin equivalente en `registrarMovimiento`) y escritura (un origen negativo + N destinos positivos en una sola Operación) son
+  todos distintos; RECLASIFICACION está excluida de `ProcesoGenerico` a propósito (`movimiento.schema.ts`, ya desde M13a). El guard
+  (`guardComandoReclasificarStock`) tiene las MISMAS 5 validaciones que antes corrían en línea (producto, sección de origen, destinos
+  vacío, clave I3, sección de cada destino en blanco), en el MISMO orden y con los MISMOS textos; el chequeo "único destino idéntico al
+  origen" (misma sección + mismo lote que el origen, con un solo destino) NO va en el guard —necesita comparar contra la sección de
+  origen ya confirmada como propia de la sucursal (dato de base)— y se queda en el caso de uso, DESPUÉS de resolver las secciones
+  propias, mismo criterio que M13c con `guardNroFacturaCompra` (por el orden de mensajes). Persistencia NUEVA y compartida:
+  `server/persistencia/movimientos/cargar-producto-con-unidad-de-stock.ts` (`cargarProductoConUnidadDeStock`, el mismo
+  `findUnique`/`unidadStock` de siempre, tipado para que también lo reuse M13e — Conteo Físico, sin migrar todavía). Caso de uso
+  `stock/casos-de-uso/reclasificar-stock.ts`, en el MISMO orden que antes (secciones propias → "único destino idéntico al origen" →
+  transacción serializable: I3, carga del producto, disponibilidad en la sucursal, `validarCantidad` de cada destino —hallazgo del
+  pendiente #32, se sigue rechazando el exceso de decimales—, saldo y diferencia contra la suma de destinos, escritura y mensaje). SÍ
+  REUTILIZA de M13b `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (server/persistencia/movimientos/) y
+  `registrarResultadoIdempotente` para el `resultadoMensaje` de I3 — nada de Prisma a mano para esas dos escrituras. **La lectura**
+  (`obtenerSaldoDisponibleParaReclasificar`) se mudó TAL CUAL a `src/server/actions/stock/lecturas-reclasificacion.ts` (mismo criterio
+  que M11c: sigue siendo una Server Action con `requerirSesion()` + `obtenerSeccionPropia`, fuera de `ACCIONES_CON_CASO_DE_USO` porque
+  la regla `accion-migrada-sin-orquestacion` vale para el archivo entero); se actualizaron las rutas de import de su formulario
+  (`stock/reclasificar/reclasificar-form.tsx`) y de dos tests (`test/stock/reclasificacion.test.ts`,
+  `test/permisos/lecturas-con-sesion.test.ts`), sin tocar lo que verifican. Con `reclasificarStock` migrado y la lectura mudada,
+  `reclasificacion.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**.
 
 ## Cómo se migra la próxima acción
 
