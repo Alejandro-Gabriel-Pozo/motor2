@@ -4,6 +4,7 @@ import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { guardLineaCompra } from "@/core/features/compras/compra.guard";
 import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad } from "@/core/movimientos/public";
+import type { ConsumoParaFilas } from "@/core/movimientos/armar-filas-de-movimiento";
 import {
   obtenerLoteMasProximoAVencer,
   resolverConsumoPorFamilia,
@@ -39,7 +40,7 @@ export interface LineaCalculada {
   precioUnitario: number;
   unidadCompraId: string | null;
   referenciaProveedor: string | undefined;
-  consumosReceta: { productoId: string; cantidad: number; loteVencimiento: Date | null }[];
+  consumosReceta: ConsumoParaFilas[];
   /** true si se aplicó factor de conversión o peso real — para el aviso final "se convirtió automáticamente". */
   huboConversion: boolean;
 }
@@ -57,17 +58,29 @@ async function calcularConsumosProduccion(
   sucursalId: string,
   tx: Prisma.TransactionClient,
   obtenerProducto: ReturnType<typeof crearCacheProducto>
-): Promise<{ productoId: string; cantidad: number; loteVencimiento: Date | null }[]> {
+): Promise<ConsumoParaFilas[]> {
   const ingredientes = await cargarRecetaVigenteParaProducir(tx, { productoId, sucursalId });
   if (!ingredientes.length) return [];
 
-  const partes: { productoId: string; cantidad: number; loteVencimiento: Date | null }[] = [];
+  const partes: ConsumoParaFilas[] = [];
   for (const ing of ingredientes) {
     // rendimientoEfectivo (D2) — misma fórmula textual, solo cambia de dónde salen cantidad/merma (ver registrar-venta.ts).
     const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
     const cantidadSalida = cantidadProducida * ef.cantidad * (1 + ef.mermaPorcentaje / 100);
     const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx, obtenerProducto);
-    partes.push(...reparto);
+    // Snapshot plano del insumo REAL consumido (puede ser un "hermano", no el ingrediente pedido) — resuelto acá, la única I/O que
+    // hacía falta, para que `armarFilasDeMovimiento` (core/movimientos/armar-filas-de-movimiento.ts) sea una función pura.
+    for (const r of reparto) {
+      const consumido = await obtenerProducto(r.productoId);
+      partes.push({
+        productoId: r.productoId,
+        cantidad: r.cantidad,
+        loteVencimiento: r.loteVencimiento,
+        decimalesUnidadStock: consumido?.unidadStock.decimales ?? 2,
+        esConsignacion: consumido?.esConsignacion ?? false,
+        precioConsignacion: Number(consumido?.precioConsignacion ?? 0),
+      });
+    }
   }
   return partes;
 }

@@ -1,11 +1,10 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
-import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { TRANSICIONES, redondearACantidadDeUnidad } from "@/core/movimientos/public";
+import { armarFilasDeMovimiento } from "@/core/movimientos/armar-filas-de-movimiento";
 import {
   obtenerSeccionPropia,
   seccionesConStock,
@@ -183,13 +182,13 @@ export async function registrarMovimientoCasoDeUso(
       else if (transicion.signoStock === 0 && l.cantidadFirmada < 0) acumular(l.productoId, datos.seccionId, -l.cantidadFirmada);
 
       // Canonizado ANTES de validar (hallazgo post-cierre de Task #41, 2026-09-28): `c.cantidad` sale de
-      // resolverConsumoPorFamilia/calcularConsumosProduccion sin redondear — el paso 3, más abajo, la ajusta a los
-      // decimales de la unidad de stock del insumo ANTES de persistir. Antes de este fix, acá se validaba contra la
-      // cantidad CRUDA y se persistía la REDONDEADA — dos valores distintos decidiendo y escribiendo. Mismo cálculo
-      // exacto que el paso 3 (misma función, mismos argumentos): al ser puro y determinístico, da el mismo resultado.
+      // resolverConsumoPorFamilia/calcularConsumosProduccion sin redondear — `armarFilasDeMovimiento` (paso 3, más
+      // abajo) la ajusta a los decimales de la unidad de stock del insumo ANTES de persistir. Antes de este fix, acá
+      // se validaba contra la cantidad CRUDA y se persistía la REDONDEADA — dos valores distintos decidiendo y
+      // escribiendo. `c.decimalesUnidadStock` ya viene resuelto (armar-linea-de-movimiento.ts): mismo cálculo exacto
+      // que el paso 3 sin un segundo round-trip a `obtenerProducto`.
       for (const c of l.consumosReceta) {
-        const consumido = await obtenerProducto(c.productoId);
-        const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
+        const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, c.decimalesUnidadStock);
         acumular(c.productoId, datos.seccionId, cantidadRedondeada);
       }
     }
@@ -222,63 +221,19 @@ export async function registrarMovimientoCasoDeUso(
       payloadHash: datos.claveIdempotencia ? payloadHash : null,
     });
 
-    const filas: Prisma.MovimientoStockCreateManyInput[] = [];
-
-    if (datos.proceso === "TRANSFERENCIA") {
-      for (const l of lineas) {
-        filas.push({
-          operacionId: operacion.id, productoId: l.productoId, seccionId: datos.seccionId, proceso: "TRANSFERENCIA",
-          cantidad: -l.cantidadIngresada, loteVencimiento: l.loteVencimiento,
-          detalle: `Transferencia: sale hacia la sección destino (${l.cantidadIngresada}).`, precioTotal: 0, precioPorUnidadStock: 0,
-        });
-        filas.push({
-          operacionId: operacion.id, productoId: l.productoId, seccionId: datos.seccionDestinoId!, proceso: "TRANSFERENCIA",
-          cantidad: l.cantidadIngresada, loteVencimiento: l.loteVencimiento,
-          detalle: `Transferencia: entra desde la sección origen (${l.cantidadIngresada}).`, precioTotal: 0, precioPorUnidadStock: 0,
-        });
-      }
-    } else {
-      for (const l of lineas) {
-        filas.push({
-          operacionId: operacion.id, productoId: l.productoId, seccionId: datos.seccionId, proceso: datos.proceso,
-          cantidad: l.cantidadFirmada, loteVencimiento: l.loteVencimiento,
-          detalle: l.detalle, precioTotal: l.precioTotal, precioPorUnidadStock: l.precioPorUnidadStock,
-        });
-
-        for (const c of l.consumosReceta) {
-          // La cantidad que sale de resolverConsumoPorFamilia/calcularConsumosProduccion
-          // todavía no pasó por ningún redondeo — recién acá, antes de
-          // persistir, se ajusta a los decimales que admite la unidad de
-          // stock de ESTE insumo (mismo criterio que ya aplica venta.ts
-          // para el consumo de receta generado por una venta).
-          const consumido = await obtenerProducto(c.productoId);
-          const cantidadRedondeada = redondearACantidadDeUnidad(c.cantidad, consumido?.unidadStock.decimales ?? 2);
-
-          filas.push({
-            operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "CONSUMO",
-            cantidad: -cantidadRedondeada, loteVencimiento: c.loteVencimiento,
-            detalle: "Consumo por producción.", precioTotal: 0, precioPorUnidadStock: 0,
-          });
-
-          // Sesión "consignación": si el insumo consumido está marcado
-          // esConsignacion, ACÁ (al producir) es cuando se lo consume de
-          // verdad — cantidad SIEMPRE 0 (el stock ya lo movió la Compra
-          // de recepción), fila puramente financiera. Quién es el
-          // consignante se lee vía FK (producto.proveedorConsignacion),
-          // no hace falta duplicarlo en la fila (a diferencia de Apps
-          // Script, que no podía hacer ese join).
-          if (consumido?.esConsignacion) {
-            filas.push({
-              operacionId: operacion.id, productoId: c.productoId, seccionId: datos.seccionId, proceso: "LIQUIDACION_CONSIGNACION",
-              cantidad: 0, loteVencimiento: null,
-              detalle: "Liquidación consignación por producción.",
-              precioTotal: importeDeLinea(cantidadRedondeada, Number(consumido.precioConsignacion ?? 0)),
-              precioPorUnidadStock: redondearMoneda(Number(consumido.precioConsignacion ?? 0)),
-            });
-          }
-        }
-      }
-    }
+    // Armado de filas extraído a una función PURA (backlog post-cierre de Task #41, 2026-09-28,
+    // docs/pendientes-sesion-2026-09-27.md §6): core/movimientos/armar-filas-de-movimiento.ts — sin I/O, con
+    // property-based tests propias (test/core/armar-filas-de-movimiento.test.ts). `lineas` ya trae todo lo que hace
+    // falta resuelto (armar-linea-de-movimiento.ts hizo la única I/O necesaria).
+    const filas = armarFilasDeMovimiento(
+      {
+        operacionId: operacion.id,
+        proceso: datos.proceso,
+        seccionId: datos.seccionId,
+        seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? (datos.seccionDestinoId ?? null) : null,
+      },
+      lineas
+    );
 
     await escribirLineasDeMovimientoStock(tx, filas);
 
