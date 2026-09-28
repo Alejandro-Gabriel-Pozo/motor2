@@ -1,14 +1,11 @@
 "use server";
 
-import { guardComandoAnularItemEnviado } from "@/core/features/cuentas/cuenta-anulacion.guard";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { restanteDe, validarMotivoAnulacion } from "@/core/pos/cuenta";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { guardComandoAnularItemEnviado, guardComandoAnularPromoEnviada } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
 import { anularItemEnviadoCasoDeUso } from "./casos-de-uso/anular-item-enviado";
-import { formatearCantidad } from "./cuenta-comun";
+import { anularPromoEnviadaCasoDeUso } from "./casos-de-uso/anular-promo-enviada";
 
 /**
  * Toma de pedido en el salón — anular con motivo lo que YA SALIÓ a cocina (un ítem suelto o una promo entera).
@@ -29,8 +26,8 @@ import { formatearCantidad } from "./cuenta-comun";
  * Desde la Task #41 (Fase M12c, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
  * (`conPermiso`) → formato del `cuentaItemId` (`guardComandoAnularItemEnviado`, core/features/cuentas/cuenta-anulacion.guard.ts) → caso de
  * uso (`casos-de-uso/anular-item-enviado.ts`: transacción serializable, carga, guardas de estado, motivo, guarda optimista, cantidad, fila
- * espejo y auditoría; lectura y escritura en server/persistencia/pos/) → `aResultadoAccion`. El archivo todavía NO está en
- * `ACCIONES_CON_CASO_DE_USO`: `anularPromoEnviada` (abajo) se migra en M12d.
+ * espejo y auditoría; lectura y escritura en server/persistencia/pos/) → `aResultadoAccion`. Con `anularPromoEnviada` (abajo, M12d)
+ * también migrada, el archivo entero está en `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function anularItemEnviado(cuentaItemId: string, cantidad: number, motivo: string, restanteVisto: number): Promise<ResultadoAccion> {
   return conPermiso("pos_anular_item", async (ctx) => {
@@ -46,63 +43,16 @@ export async function anularItemEnviado(cuentaItemId: string, cantidad: number, 
  * patrón que `anularItemEnviado` (fila espejo + auditoría), pero para TODOS los componentes juntos en una sola llamada, todo
  * o nada. Mismo permiso (`pos_anular_item`, más restrictivo que tomar pedido). Una cuenta ya cerrada no se toca: su venta se
  * anula por el camino de siempre (`anularVenta`, paso 9), que también anula los hermanos.
+ *
+ * Desde la Task #41 (Fase M12d, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso`) → formato del `promoCuentaId` (`guardComandoAnularPromoEnviada`, core/features/cuentas/cuenta-anulacion.guard.ts) →
+ * caso de uso (`casos-de-uso/anular-promo-enviada.ts`: transacción serializable, carga, guardas de estado, motivo, una fila espejo y una
+ * fila de auditoría por componente; lectura y escritura en server/persistencia/pos/) → `aResultadoAccion`.
  */
 export async function anularPromoEnviada(promoCuentaId: string, motivo: string): Promise<ResultadoAccion> {
   return conPermiso("pos_anular_item", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
-      const promoCuenta =
-        typeof promoCuentaId === "string"
-          ? await tx.promoCuenta.findFirst({
-              where: { id: promoCuentaId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } },
-              include: {
-                cuenta: { include: { mesa: { select: { numero: true } } } },
-                items: { include: { producto: { select: { nombre: true } }, anulaciones: { select: { cantidad: true } } } },
-              },
-            })
-          : null;
-      if (!promoCuenta) return error("No se encontró esa promo en esta sucursal.");
-      const mesa = promoCuenta.cuenta.mesa.numero;
-      if (promoCuenta.cuenta.cerradaEn) return error(`La cuenta de la mesa ${mesa} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
-
-      const originales = promoCuenta.items.filter((i) => i.anulaAItemId === null);
-      if (originales.length === 0) return error("Esa promo no tiene ningún componente.");
-      if (originales.some((i) => i.numeroEnvio === null)) return error("Esa promo todavía no salió a cocina: usá «Quitar promo».");
-
-      const motivoValidado = validarMotivoAnulacion(motivo);
-      if (!motivoValidado.ok) return error(motivoValidado.mensaje);
-
-      const aAnular = originales
-        .map((item) => ({ item, restante: restanteDe({ cantidad: Number(item.cantidad) }, item.anulaciones.map((a) => ({ cantidad: Number(a.cantidad) }))) }))
-        .filter((x) => x.restante > 0);
-      if (!aAnular.length) return error(`La promo «${promoCuenta.titulo}» ya está anulada entera.`);
-
-      for (const { item, restante } of aAnular) {
-        await tx.cuentaItem.create({
-          data: {
-            cuentaId: item.cuentaId,
-            productoId: item.productoId,
-            cantidad: -restante,
-            precioUnitario: item.precioUnitario,
-            numeroEnvio: item.numeroEnvio,
-            anulaAItemId: item.id,
-            motivoAnulacion: motivoValidado.motivo,
-            creadoPorId: ctx.usuarioId,
-            promoCuentaId: promoCuenta.id,
-            precioCartaUnitario: item.precioCartaUnitario,
-          },
-        });
-        await registrarCambioAuditado(tx, {
-          entidad: "CuentaItem",
-          entidadId: item.id,
-          descripcion: `Mesa ${mesa}, envío ${item.numeroEnvio}: anulación de la promo «${promoCuenta.titulo}» ya enviada a cocina — ${formatearCantidad(restante)} × "${item.producto.nombre}". Motivo: ${motivoValidado.motivo}`,
-          campo: "cantidadVigente",
-          valorAnterior: restante,
-          valorNuevo: 0,
-          actorId: ctx.usuarioId,
-          sucursalId: ctx.sucursalId,
-        });
-      }
-      return ok(`Se anuló la promo «${promoCuenta.titulo}» de la mesa ${mesa} (${aAnular.length} componente${aAnular.length === 1 ? "" : "s"}).`);
-    });
+    const comando = guardComandoAnularPromoEnviada({ promoCuentaId, motivo });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await anularPromoEnviadaCasoDeUso(ctx, comando.valor));
   });
 }
