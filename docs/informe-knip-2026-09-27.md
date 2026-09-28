@@ -69,15 +69,30 @@ Para separar "símbolo muerto" de "`export` sobrante" se revisó, para cada expo
 `TRANSICIONES_TRASPASO` y `PREFIJO_REVERSION_VENTA`/`PREFIJO_REVERSION_COMPRA` **no son nuevos**: ya estaban en la lista
 original como "export sobrante" y se re-verificó que siguen igual (solo se usan en su archivo).
 
-**Hallazgo lateral (no es de knip, no se tocó):** además de `anular-venta.ts`, los archivos de M8
-`server/actions/movimientos/casos-de-uso/registrar-venta.ts` (`con-reintento`, `idempotencia`, `registrar-venta`) y
-`server/actions/movimientos/venta.ts` (`stock`) importan internos de `core/movimientos/` en vez de las fachadas, a pesar de
-que el commit de C2 dice que "todos los importadores de src/ fuera de core/movimientos (core/, server/actions/, app/) pasan
-a las fachadas". La regla `sin-internals-de-otro-dominio` no lo detecta porque su `from` solo cubre `core/`,
-`server/consultas/` y `server/persistencia/`, no `server/actions/`. Es la causa de fondo de la reexportación huérfana de
-`detalleReversionDeVenta`.
+**Actualización 2026-09-27 (noche) — `detalleReversionDeVenta` YA RESUELTO, MUERTO REAL pasa de 50 a 49:**
+`anular-venta.ts` y `registrar-venta.ts` (casos de uso de M8/M9) pasaron a importar `evaluarAnulacionDeVenta`,
+`construirReversionDeVenta`, `mensajeVentaAnulada`, `descripcionAuditoriaAnulacionDeVenta` y `detalleReversionDeVenta` de
+`@/core/movimientos/public.ts` (que ahora los reexporta) en vez de `@/core/movimientos/anulaciones` directo; y
+`conTransaccionSerializable`/`calcularPayloadHash`/`chequearIdempotencia`/`MENSAJE_CONFLICTO_IDEMPOTENCIA`/
+`registrarVentaEnTx` de `@/core/movimientos/public-servidor.ts` en vez de `con-reintento`/`idempotencia`/`registrar-venta`
+directo. Gate completo verificado limpio antes de mergear. La reexportación de `detalleReversionDeVenta` ya no aparece en
+`npm run analizar:muerto` — ver la tabla de MUERTO REAL actualizada más abajo.
+
+**`server/actions/movimientos/venta.ts` (la Server Action, no el caso de uso) queda TAL CUAL, a propósito — no es un
+descuido:** sigue importando `obtenerSeccionPropia` directo de `@/core/movimientos/stock`. Se intentó pasarlo por
+`public-servidor.ts` y **`npm run arquitectura` lo rechazó**: `venta.ts` está en `ACCIONES_CON_CASO_DE_USO`, y la regla
+`accion-migrada-sin-orquestacion` prohíbe que un archivo de esa lista importe `public-servidor.ts` — el archivo ENTERO
+está vedado (no solo los símbolos de reintento/idempotencia que la regla busca frenar), justamente para que la regla no se
+pueda esquivar coincidencia de un import inocente en el mismo archivo que uno prohibido. Como la regla
+`sin-internals-de-otro-dominio` tampoco cubre `server/actions/` (por diseño, en los tres dominios con fachada), el import
+directo del interno es hoy la ÚNICA opción compatible con las reglas vigentes para este caso puntual. Ver E1 para si en
+algún momento se decide extender el guard a `server/actions/` — mientras tanto, este import se queda.
 
 ## Resumen
+
+**Nota:** la tabla de abajo es la foto del refresco de la tarde (antes de resolver `detalleReversionDeVenta`); el número
+vigente de MUERTO REAL para K2 es **49**, no el 50 que muestra esta tabla — ver "MUERTO REAL (49)" y la "Actualización"
+del Refresco más arriba.
 
 Clasificación actual, contada sobre la corrida con config mínima (sin las correcciones ni las exclusiones de
 `knip.jsonc`):
@@ -95,7 +110,7 @@ Clasificación actual, contada sobre la corrida con config mínima (sin las corr
 Estado con el `knip.jsonc` actual: `npm run analizar:muerto` muestra **exactamente los 50 MUERTO REAL** y ningún hint de
 configuración.
 
-## MUERTO REAL (50) — lista de trabajo VIGENTE para K2
+## MUERTO REAL (49) — lista de trabajo VIGENTE para K2
 
 Reemplaza a la lista original de 34. Marcados con **(nuevo)** los 16 que no estaban.
 
@@ -118,12 +133,15 @@ Reemplaza a la lista original de 34. Marcados con **(nuevo)** los 16 que no esta
 | `mismoTexto` (function) | `src/core/texto.ts:14` | Port de `Core.js` sin consumidores. |
 | `ProcesoSlug` (type) | `src/core/movimientos/ui-config.ts:73` | Único tipo *declarado* que no se usa ni en su archivo. |
 
-### Reexportaciones sobrantes (11) — el símbolo vive y se usa en otro archivo; sobra solo la reexportación
+### Reexportaciones sobrantes (10) — el símbolo vive y se usa en otro archivo; sobra solo la reexportación
+
+`detalleReversionDeVenta` (`core/movimientos/public.ts:27`) estaba acá — **RESUELTO** (ver "Actualización 2026-09-27
+(noche)" en el Refresco): `anular-venta.ts` ya importa de `public.ts`, la reexportación tiene consumidor real y dejó de
+aparecer.
 
 | Símbolo | Archivo | Nota / acción sugerida en K2 |
 |---|---|---|
 | `CANTIDAD_MAXIMA_POR_ITEM` | `src/core/pos/cuenta.ts:11` (`export { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido }`) | Re-export "de compatibilidad" (vive en `cantidad-pedido.ts`). `validarCantidadPedido` sí se sigue importando desde `cuenta.ts`; `CANTIDAD_MAXIMA_POR_ITEM` ya no — todos lo importan de `cantidad-pedido.ts`. El `import` en `cuenta.ts` existe solo para re-exportarlo. |
-| `detalleReversionDeVenta` **(nuevo)** | `src/core/movimientos/public.ts:27` | Consumidor real: `server/actions/movimientos/casos-de-uso/anular-venta.ts`, pero lo importa del interno `anulaciones.ts` (ver [Refresco](#refresco-2026-09-27-tarde--qué-cambió-respecto-de-la-clasificación-original)). Decisión de K2: o `anular-venta.ts` pasa a importarlo de `public.ts` (como hace `anular-compra.ts` con `detalleReversionDeCompra`, y como pide el criterio de C2 — implicaría además exponer en `public.ts` los otros 4 símbolos de `anulaciones.ts` que usa ese caso de uso), o se saca de la reexportación. **No es para borrar a ciegas.** |
 | `ItemPeriodo` (type) **(nuevo)** | `src/core/reportes/periodo.ts:20` | Declarado en `periodo-tipos.ts` (usado por `periodo.ts` y 4 `periodo-*.ts` importándolo de ahí). Nadie lo importa desde `periodo.ts`. |
 | `RatioGastoVentas` (type) **(nuevo)** | `src/core/reportes/periodo.ts:22` | Declarado y usado en `periodo-ratio.ts` / `periodo-alertas.ts`. |
 | `ComprasDelPeriodo` (type) **(nuevo)** | `src/core/reportes/periodo.ts:24` | Declarado y usado en `periodo-compras.ts`. |
@@ -293,14 +311,17 @@ La primera corrida, con las entradas explícitas pedidas para K1, avisó (en el 
 
 ## Salida actual de `npm run analizar:muerto`
 
+**Actualizada 2026-09-27 (noche) tras resolver `detalleReversionDeVenta`** (ver "Actualización" en el Refresco): 49 en
+total ahora, no 50.
+
 ```
 Unused devDependencies (1)
 @vitejs/plugin-react  package.json:49:6
 Unlisted dependencies (1)
 fflate  test/core/excel.test.ts:1:38
-Unused exports (38)
-  (los 6 símbolos muertos que son valores, las 2 reexportaciones de valor —CANTIDAD_MAXIMA_POR_ITEM y
-   detalleReversionDeVenta— y los 30 "export sobrante" de arriba)
+Unused exports (37)
+  (los 6 símbolos muertos que son valores, la reexportación de valor CANTIDAD_MAXIMA_POR_ITEM,
+   y los 30 "export sobrante" de arriba)
 Unused exported types (10)
 ProcesoSlug                     type  src/core/movimientos/ui-config.ts:73:13
 ItemPeriodo                     type  src/core/reportes/periodo.ts:20:31

@@ -124,15 +124,26 @@ importando directo de `@prisma/client` a propósito (no es `app/`, la regla no
 lo alcanza).
 
 #### K2 — borrar código muerto aprobado
-Borrar SOLO lo que K1 clasificó como "muerto real" (34 hallazgos, ver el
-informe en `docs/informe-knip-2026-09-27.md`) y que **el dueño aprobó
-explícitamente antes de arrancar** — esa revisión todavía no pasó. Puede
-partirse en una sub-tarea por dominio si el volumen lo justifica. Si algún
-hallazgo toca un archivo que también toca D4, D6, C2 o C3, esa porción va
-DESPUÉS de la tarea que tenga ese archivo. Cierre: Vitest/Playwright iguales
-o MENORES solo si lo borrado es un test de código muerto (cada test que
-desaparece se documenta por nombre y motivo) — cualquier otra caída de
-conteo es regresión, no limpieza. Tamaño chica-mediana.
+Borrar SOLO lo que knip clasifica como "muerto real" y que **el dueño
+aprobó explícitamente antes de arrancar** — esa revisión todavía no pasó.
+**OJO: la lista de K1 (34) quedó desactualizada por los refactors del mismo
+día (Fase C, M8-M12d) y se rehizo (2026-09-27, noche) contra el código
+real: ahora son 49** (ver `docs/informe-knip-2026-09-27.md`, sección
+"MUERTO REAL (49) — lista de trabajo VIGENTE para K2" — no la tabla vieja
+de 34). De paso se resolvió uno de los 50 originales (`detalleReversionDeVenta`,
+corrigiendo el import de `anular-venta.ts`/`registrar-venta.ts` para pasar
+por `core/movimientos/public.ts`/`public-servidor.ts`), y se dejó
+documentado por qué `server/actions/movimientos/venta.ts` NO se puede
+corregir del mismo modo (la regla `accion-migrada-sin-orquestacion` prohíbe
+que ese archivo importe `public-servidor.ts` aunque sea por un símbolo no
+relacionado — es la única opción compatible con las reglas de hoy).
+Antes de implementar K2, volver a correr `npm run analizar:muerto` una vez
+más por si algo cambió entre esta actualización y el momento de arrancar.
+Puede partirse en una sub-tarea por dominio si el volumen lo justifica.
+Cierre: Vitest/Playwright iguales o MENORES solo si lo borrado es un test
+de código muerto (cada test que desaparece se documenta por nombre y
+motivo) — cualquier otra caída de conteo es regresión, no limpieza. Tamaño
+chica-mediana.
 
 #### K3 — knip obligatorio en el gate
 `analizar:muerto` corre `knip` CON código de salida (quitar `--no-exit-code`
