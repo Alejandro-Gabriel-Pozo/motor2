@@ -34,6 +34,26 @@ interface LineaParaProveedor {
   referenciaProveedor: string | undefined;
 }
 
+/** Lo que devuelve el callback de `conTransaccionSerializable` — el resultado del caso de uso junto con el dato lateral que necesita
+ * el paso 6 (Compra), fuera de la transacción. */
+interface ResultadoConLineasParaProveedor {
+  resultado: ResultadoRegistrarMovimiento;
+  lineasParaProveedor: LineaParaProveedor[];
+}
+
+/**
+ * Envuelve un `ResultadoRegistrarMovimiento` sin `lineasParaProveedor` — todo camino que NO sea el éxito final del paso 3 (backlog
+ * post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §12): antes `lineasParaProveedor` era una variable
+ * mutable del cierre, reasignada solo en el camino de éxito y leída DESPUÉS de que `conTransaccionSerializable` resolviera — segura
+ * hoy (cada reintento vuelve a ejecutar el callback completo desde cero, y el uso de `lineasParaProveedor` siempre está condicionado a
+ * que `resultado` sea el de ESE MISMO intento exitoso), pero dependía de ese razonamiento en vez de que cada camino de retorno
+ * llevara su propio dato completo. Con esta forma, cada `return` es autocontenido: no hace falta razonar sobre qué dejó un intento
+ * anterior en una variable de afuera.
+ */
+function sinLineasParaProveedor(resultado: ResultadoRegistrarMovimiento): ResultadoConLineasParaProveedor {
+  return { resultado, lineasParaProveedor: [] };
+}
+
 /**
  * Paso 6 (Compra) de `registrarMovimientoCasoDeUso`: engancha `upsertProveedorPorProducto` (Catálogo, sin usar todavía) — FUERA de la
  * transacción principal y sin bloquear su resultado si falla, mismo criterio "best effort" que actualizarProveedoresDesdeCompra_
@@ -144,29 +164,24 @@ export async function registrarMovimientoCasoDeUso(
     if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
   }
 
-  // Solo se usa para el hookup de Compra, fuera de la transacción — ver más abajo. La forma de ResultadoCaso no tiene
-  // lugar para un dato lateral como este (a diferencia del `{ ok, mensaje, lineasParaProveedor }` ad-hoc de antes), así
-  // que se captura en una variable del cierre, reasignada SOLO en el intento que efectivamente devuelve éxito.
-  let lineasParaProveedor: LineaParaProveedor[] = [];
-
-  const resultado = await conTransaccionSerializable(async (tx): Promise<ResultadoRegistrarMovimiento> => {
+  const { resultado, lineasParaProveedor } = await conTransaccionSerializable(async (tx): Promise<ResultadoConLineasParaProveedor> => {
     // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
     const payloadHash = datos.claveIdempotencia
       ? calcularPayloadHash(datos.proceso, actor.sucursalId, { ...datos, claveIdempotencia: undefined })
       : "";
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
-    if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true });
-    if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+    if (chequeo.estado === "duplicado") return sinLineasParaProveedor(exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true }));
+    if (chequeo.estado === "conflicto") return sinLineasParaProveedor(fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA));
 
     const obtenerProducto = crearCacheProducto(tx);
     // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
     const lineas: LineaCalculada[] = [];
     for (const item of datos.items) {
       const armado = await armarLineaMovimiento(item, datos, tx, obtenerProducto, actor.sucursalId, actor.sucursalNombre);
-      if (!armado.ok) return fracaso("LINEA_INVALIDA", armado.mensaje);
+      if (!armado.ok) return sinLineasParaProveedor(fracaso("LINEA_INVALIDA", armado.mensaje));
       if (armado.linea) lineas.push(armado.linea);
     }
-    if (!lineas.length) return fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida.");
+    if (!lineas.length) return sinLineasParaProveedor(fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida."));
 
     // 2) Validación de stock AGREGADA por clave producto+sección dentro
     // de TODO el payload, antes de escribir nada (bugfix C-1,
@@ -203,10 +218,10 @@ export async function registrarMovimientoCasoDeUso(
         const producto = await obtenerProducto(productoId);
         const pista = await seccionesConStock(productoId, actor.sucursalId, tx);
         const detallePista = pista.length ? ` Tiene stock en: ${pista.join(", ")}.` : "";
-        return fracaso(
+        return sinLineasParaProveedor(fracaso(
           "STOCK_INSUFICIENTE",
           `Stock insuficiente para "${producto?.nombre ?? productoId}". Actual: ${chequeoStock.actual}, requerido: ${chequeoStock.requerido}.${detallePista}`
-        );
+        ));
       }
     }
 
@@ -253,7 +268,7 @@ export async function registrarMovimientoCasoDeUso(
       await registrarResultadoIdempotente(tx, operacion.id, mensaje);
     }
 
-    lineasParaProveedor = lineas.map((l) => ({
+    const lineasParaProveedor: LineaParaProveedor[] = lineas.map((l) => ({
       productoId: l.productoId,
       unidadCompraId: l.unidadCompraId,
       precioUnitario: l.precioUnitario,
@@ -261,22 +276,22 @@ export async function registrarMovimientoCasoDeUso(
       referenciaProveedor: l.referenciaProveedor,
     }));
 
-    return exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false });
+    return { resultado: exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false }), lineasParaProveedor };
   }).catch((e) => {
     // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
     // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
     // chequeo previo más arriba): mismo mensaje de negocio, no un error 500. Cualquier otro P2002 (ej. la
     // clave de idempotencia en carrera) NO lo reconoce esChoqueDeFacturaUnica — sigue de largo como error real.
-    if (esChoqueDeFacturaUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
+    if (esChoqueDeFacturaUnica(e)) return sinLineasParaProveedor(fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA));
     throw e;
   });
 
   // Paso 6 (Compra): ver el docstring de `registrarProveedoresDeLaCompra` más arriba. `!resultado.datos.repetida`
-  // explícito (backlog post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §4): en el camino
-  // de idempotencia "duplicado" `lineasParaProveedor` queda en `[]` (el cierre nunca llega a reasignarla, el
-  // `return` de I3 pasa antes del paso 1) — hoy este guard es un no-op porque el bucle de abajo no itera nada, no
-  // porque el contrato lo garantice. Dejarlo explícito documenta la regla real ("un duplicado no vuelve a tocar
-  // Catálogo") en vez de depender de que nadie cambie el orden de la inicialización de `lineasParaProveedor`.
+  // explícito (backlog post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §4): en TODO camino
+  // que no sea el éxito final del paso 3 (`sinLineasParaProveedor`, incluido el de idempotencia "duplicado"),
+  // `lineasParaProveedor` es `[]` por construcción — no un efecto colateral del orden de una variable mutable
+  // (§12, mismo backlog). Dejarlo explícito acá documenta la regla real ("un duplicado no vuelve a tocar Catálogo"),
+  // no solo la garantía estructural.
   if (resultado.ok && !resultado.datos.repetida && datos.proceso === "COMPRA" && datos.proveedorId) {
     await registrarProveedoresDeLaCompra(datos.proveedorId, datos.fecha, lineasParaProveedor);
   }
