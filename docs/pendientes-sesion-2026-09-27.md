@@ -65,7 +65,7 @@ nunca hizo falta rehacer nada a mano más allá de eso.
 
 - **Fase A** (guard de `dependency-cruiser`, 9→10 reglas en `.dependency-cruiser.cjs`, corrección del único caso `core→server/actions`, doc de arquitectura actualizada) — PR #33.
 - **Fase B** (los 3 archivos grandes divididos: `pos/cuenta.ts` → 5 archivos, `core/reportes/periodo.ts` → 8 archivos con fachada, `server/actions/catalogo/recetas.ts` recortado) — PRs #35, #37, #38.
-- **K1** (informe de `knip`: 112 hallazgos, 34 candidatos a "código muerto real", 5 falsos positivos ya corregidos en `knip.jsonc`, 73 reservados con motivo) — PR #36. **El dueño todavía no revisó/aprobó la lista de 34** — ver K2 abajo.
+- **K1** (informe de `knip`, PR #36) — reclasificado en frío el mismo día (2026-09-27, noche) tras los refactors de Fase C/M8-M12d, y **K2 ya aprobada y mergeada**: `npm run analizar:muerto` da 0 hallazgos. Ver detalle en `docs/informe-knip-2026-09-27.md` y más abajo.
 - **Fase D COMPLETA, 9 de 9 páginas migradas** a `server/consultas/` (D1 productos, D2 proveedores, D3 recetas-listado, D5 roles/usuarios, D7 rendimiento-por-sucursal, D8 mesas, D6 productos-opción, D4 editor de recetas) — PRs #34, #42, #41, #44, #45, #39, #47, y el merge directo a `main` de D4 (2026-09-27, sesión continuada en máquina local: worktree `feat/arq-d4-consultas-recetas-editor`). `PENDIENTES_DE_MIGRAR` en `.dependency-cruiser-excepciones.cjs` queda vacía.
 - **C1** (`core/catalogo/public.ts` + `public-servidor.ts`, primer dominio con fronteras públicas) — PR #43.
 - **C2** (`core/movimientos/public.ts` + `public-servidor.ts`) — mergeado a `main` (2026-09-27, misma sesión). `"movimientos"` ya está en `DOMINIOS_CON_PUBLIC`.
@@ -123,36 +123,28 @@ rompe `publico-puro`). `server/actions/movimientos/conteo-fisico.ts` sigue
 importando directo de `@prisma/client` a propósito (no es `app/`, la regla no
 lo alcanza).
 
-#### K2 — borrar código muerto aprobado
-Borrar SOLO lo que knip clasifica como "muerto real" y que **el dueño
-aprobó explícitamente antes de arrancar** — esa revisión todavía no pasó.
-**OJO: la lista de K1 (34) quedó desactualizada por los refactors del mismo
-día (Fase C, M8-M12d) y se rehizo (2026-09-27, noche) contra el código
-real: ahora son 49** (ver `docs/informe-knip-2026-09-27.md`, sección
-"MUERTO REAL (49) — lista de trabajo VIGENTE para K2" — no la tabla vieja
-de 34). De paso se resolvió uno de los 50 originales (`detalleReversionDeVenta`,
-corrigiendo el import de `anular-venta.ts`/`registrar-venta.ts` para pasar
-por `core/movimientos/public.ts`/`public-servidor.ts`), y se dejó
-documentado por qué `server/actions/movimientos/venta.ts` NO se puede
-corregir del mismo modo (la regla `accion-migrada-sin-orquestacion` prohíbe
-que ese archivo importe `public-servidor.ts` aunque sea por un símbolo no
-relacionado — es la única opción compatible con las reglas de hoy).
-Antes de implementar K2, volver a correr `npm run analizar:muerto` una vez
-más por si algo cambió entre esta actualización y el momento de arrancar.
-Puede partirse en una sub-tarea por dominio si el volumen lo justifica.
-Cierre: Vitest/Playwright iguales o MENORES solo si lo borrado es un test
-de código muerto (cada test que desaparece se documenta por nombre y
-motivo) — cualquier otra caída de conteo es regresión, no limpieza. Tamaño
-chica-mediana.
+#### K2 — YA MERGEADA (borrar código muerto aprobado)
+Aprobada por el dueño y ejecutada (2026-09-27, noche) contra la lista
+refrescada de 49 (no la de 34 original). De paso, en la misma tarea, se
+corrigió el flake real de `sincronizarPrecioGrupoCarta`/
+`sincronizarPrecioLocalGrupoCarta` (orden no determinista del mensaje —
+`orderBy: { nombre: "asc" }` agregado a los dos `findMany`). Los 49:
+2 dependencias (`@vitejs/plugin-react` desinstalada, `fflate` declarada),
+7 símbolos muertos borrados, 10 reexportaciones sobrantes sacadas
+(`CANTIDAD_MAXIMA_POR_ITEM` + 9 tipos de `periodo.ts`), 30 `export`
+sobrantes reducidos a locales. **`npm run analizar:muerto` da 0
+hallazgos.** Ningún test se tocó ni se borró. Gate completo (6 comandos)
+verificado limpio antes de mergear.
 
 #### K3 — knip obligatorio en el gate
 `analizar:muerto` corre `knip` CON código de salida (quitar `--no-exit-code`
-de `package.json`) y debe dar 0 hallazgos. Toda excepción legítima que quede
-vive en `knip.jsonc` con motivo. Sumar el comando a la tabla de
-`.claude/skills/plan-con-verificacion-e2e/SKILL.md` y a `AGENTS.md` — el gate
-pasa a 7 comandos desde esta tarea. Bloqueada por K2 y C3 (los barriles
-`public*.ts` tienen que existir ya para que la config de knip quede
-estable). Tamaño chica.
+de `package.json`) y debe dar 0 hallazgos — **ya da 0 desde K2**, así que
+esta tarea es ahora solo formalizarlo: quitar el flag, y confirmar que
+sigue en 0 tras el cambio (por si `--no-exit-code` estaba ocultando algo
+que el código de salida sí marcaría distinto). Sumar el comando a la
+tabla de `.claude/skills/plan-con-verificacion-e2e/SKILL.md` y a
+`AGENTS.md` — el gate pasa a 7 comandos desde esta tarea. Bloqueada por:
+nada (K2 y C3 ya mergeadas). Tamaño chica.
 
 #### F1-F4 — `fast-check` (property-based testing)
 Bloqueadas por K3 (orden pedido por el dueño; técnicamente F1/F2 no dependen
