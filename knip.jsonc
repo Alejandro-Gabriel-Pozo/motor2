@@ -5,6 +5,12 @@
 // Regla de esta config: toda exclusión (ignore, ignoreDependencies, ignoreExportsUsedInFile, entry agregada a mano) lleva
 // su motivo al lado. Lo que es muerto de verdad NO se ignora acá: tiene que seguir apareciendo en el informe hasta que
 // K2 lo borre.
+//
+// Refrescado el 2026-09-27 (tarde), tras las Fases C y M8-M12d: la clasificación se rehizo contra el código de ese momento
+// (ver la sección "Refresco" del informe). No hizo falta ninguna corrección NUEVA de falso positivo ni ninguna entrada
+// NUEVA de RESERVADO: los hallazgos nuevos son todos MUERTO REAL (export sobrante o reexportación sin consumidor) y siguen
+// apareciendo a propósito. Se verificó que las 5 correcciones de falso positivo de abajo siguen siendo necesarias (sin
+// ellas vuelven a salir los 2 archivos, `cookies`/`headers`, `tailwindcss` y el hint de `.css`).
 {
   "$schema": "./node_modules/knip/schema-jsonc.json",
 
@@ -69,6 +75,13 @@
   // obliga a re-exportarlos el día que alguien los necesite. Los que no se usan NI en su archivo siguen apareciendo.
   // Los VALORES (funciones/constantes) exportados que solo se usan en su archivo NO se ignoran: son "export sobrante"
   // de verdad y quedan en el informe.
+  // Refresco 2026-09-27 (tarde): la regla cubre ahora 101 tipos (eran 71). Los 32 nuevos son los `Codigo*`/`Datos*`/
+  // `Motivo*`/`Desenlace*` de los schemas de comandos de la Fase M (core/features/{compras,cuentas,traspasos,ventas}/*.schema.ts)
+  // y las filas que devuelven las cargas de server/persistencia/pos/: son las piezas del `Resultado*` exportado de cada
+  // caso de uso, el mismo criterio de "parte de la firma pública". La regla NO alcanza (y no se agregó nada para ocultarlas)
+  // las REEXPORTACIONES de tipo sin consumidor (`export type { X } from "./otro"` en la fachada core/reportes/periodo.ts):
+  // no describen ninguna firma del archivo que las reexporta, así que siguen apareciendo como MUERTO REAL (reexportación
+  // sobrante, mismo criterio que `CANTIDAD_MAXIMA_POR_ITEM` en core/pos/cuenta.ts).
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true
