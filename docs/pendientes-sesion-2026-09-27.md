@@ -394,13 +394,23 @@ varios hallazgos de knip).
     Operacion. Reverificado independientemente: los 7 comandos en verde —
     274/274 archivos y 3287/3287 tests de Vitest (274 + 2 nuevos), build,
     369/369 specs de Playwright.
-  - **M13d** — `reclasificarStock` (`server/actions/stock/reclasificacion.ts`):
-    caso de uso PROPIO (no reutiliza el de M13c — entrada/permiso/validación/
-    escritura son todos distintos), que sí reutiliza `escribirMovimientoDeStock`
-    de M13b. Carga compartida `cargar-producto-con-unidad-de-stock.ts` (la
-    usan también M13e1/e2). `obtenerSaldoDisponibleParaReclasificar` se muda a
-    `server/actions/stock/lecturas-reclasificacion.ts` (estilo M11c) para que
-    `reclasificacion.ts` entre en `ACCIONES_CON_CASO_DE_USO`.
+  - **M13d — YA MERGEADA** (2026-09-28): `reclasificarStock`
+    (`server/actions/stock/reclasificacion.ts`) migrado a caso de uso PROPIO
+    (comando+guard en `core/features/movimientos/reclasificacion.{schema,guard}.ts`;
+    NO reutiliza el motor genérico de M13a-c — entrada/permiso/validación/
+    escritura son todos distintos, RECLASIFICACION está excluida de
+    `ProcesoGenerico`), que sí reutiliza `escribirOperacionDeStock`/
+    `escribirLineasDeMovimientoStock` de M13b y `registrarResultadoIdempotente`.
+    Carga compartida `server/persistencia/movimientos/cargar-producto-con-unidad-de-stock.ts`
+    (pensada también para M13e). `obtenerSaldoDisponibleParaReclasificar` se
+    mudó tal cual a `server/actions/stock/lecturas-reclasificacion.ts` (estilo
+    M11c) y `reclasificacion.ts` entró en `ACCIONES_CON_CASO_DE_USO`. Efecto
+    colateral menor (knip): `esClaveIdempotenciaValida` dejó de reexportarse
+    desde `core/movimientos/idempotencia.ts`/`public-servidor.ts` — era el
+    último consumidor de ese reexport, ahora importa directo de
+    `core/datos/clave-idempotencia`, igual que los demás guards. Reverificado
+    independientemente: los 7 comandos en verde — 274/274 archivos y
+    3287/3287 tests de Vitest, build, 369/369 specs de Playwright.
   - **M13e1** — `registrarConteoFisico`/`registrarConteosFisicos`: caso de uso
     propio, migración PARCIAL (no entra en la lista todavía).
   - **M13e2** — `resolverConteoPendiente`/`cancelarConteoFisico` (también
