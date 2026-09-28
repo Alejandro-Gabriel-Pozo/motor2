@@ -1,29 +1,15 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { texto } from "@/core/texto";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { conReintento, conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import {
-  esPermutacionExacta,
-  aplicarSecuencia,
-  insertarEnPosicion,
-  describirCambioVersionReceta,
-  describirDescarteArrastre,
-} from "@/core/catalogo/public";
-import {
-  esErrorDeUnicidad,
-  validarIngredientes,
-  validarPasos,
-  validarCabecera,
-  type IngredienteInput,
-  type PasoInput,
-  type CabeceraRecetaInput,
-} from "@/core/catalogo/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
+import type { IngredienteInput, PasoInput, CabeceraRecetaInput } from "@/core/catalogo/public-servidor";
+import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
+import { guardarVersionDeRecetaCasoDeUso } from "./casos-de-uso/guardar-version-de-receta";
 
 const INCLUDE_RECETA_COMPLETA = {
   ingredientes: {
@@ -122,6 +108,12 @@ function mapCabeceraAInput(vigente: RecetaVigente): CabeceraRecetaInput {
  * quitar UN ingrediente o paso) tiene que mandar los tres completos —
  * `agregarIngredienteAReceta` y las funciones de pasos/cabecera de abajo
  * hacen ese round-trip por vos.
+ *
+ * Desde la Task #41 (P1, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * (`conPermiso`) → formato (`guardComandoGuardarVersionDeReceta`) → caso de uso (`casos-de-uso/guardar-version-de-receta.ts`:
+ * validación, versionado con reintento, transacción SERIALIZABLE, arrastre de calibraciones locales y auditoría) →
+ * `aResultadoAccion`. El resto de las funciones de este archivo (agregar/editar/quitar ingrediente o paso, cabecera) siguen
+ * delegando en `guardarReceta`, sin migrar: por eso el archivo NO está en `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function guardarReceta(
   productoId: string,
@@ -130,169 +122,15 @@ export async function guardarReceta(
   cabecera: CabeceraRecetaInput = {}
 ): Promise<ResultadoAccion> {
   return conPermiso("guardar_receta", async (ctx) => {
-    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
-    if (!producto) return error("No se encontró el producto.");
-
-    const elegible = producto.tipo === "PV" || (producto.tipo === "MP" && producto.seProduce);
-    if (!elegible) {
-      return error(`"${producto.nombre}" no es elegible para tener receta — tiene que ser PV, o MP con "Se produce" activado.`);
-    }
-
-    const invalidoIngredientes = await validarIngredientes(items, producto);
-    if (invalidoIngredientes) return error(invalidoIngredientes);
-
-    const invalidoPasos = validarPasos(pasos, items);
-    if (invalidoPasos) return error(invalidoPasos);
-
-    const invalidoCabecera = await validarCabecera(cabecera);
-    if (invalidoCabecera) return error(invalidoCabecera);
-
-    // Reintento con backoff y jitter (mismo ciclo de siempre, core/movimientos/reintentar.ts): dos ediciones simultáneas de la
-    // MISMA receta calculan la misma `version` y una choca con el UNIQUE (productoId, version) — se relee el máximo y se
-    // reintenta. Desde D3 (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6) la transacción pasa a
-    // SERIALIZABLE (el arrastre de calibraciones locales lee/escribe `RendimientoLocalIngrediente`, que una calibración
-    // concurrente también puede estar tocando): se reintenta tanto el choque de UNIQUE como un conflicto de escritura
-    // (esErrorDeUnicidad(e) || esConflictoDeEscritura(e)).
-    let version = 0;
-    let descartes: string[] = [];
-    await conReintento(
-      async () => {
-        descartes = [];
-        // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el
-        // ingrediente haya cambiado de unidad o haya salido de la receta.
-        const ultima = await prisma.recetaVersion.findFirst({
-          where: { productoId },
-          orderBy: { version: "desc" },
-          include: { ingredientes: { include: { rendimientosLocales: true, unidad: { select: { nombre: true } }, insumoProducto: { select: { nombre: true } } } } },
-        });
-        version = (ultima?.version ?? 0) + 1;
-        await conTransaccionSerializable(async (tx) => {
-          const creada = await tx.recetaVersion.create({
-            data: {
-              productoId,
-              version,
-              rendimientoCantidad: cabecera.rendimientoCantidad,
-              rendimientoUnidadId: cabecera.rendimientoUnidadId || null,
-              racionesCantidad: cabecera.racionesCantidad,
-              racionTamano: cabecera.racionTamano,
-              racionUnidadId: cabecera.racionUnidadId || null,
-              tiempoPreparacionMinutos: cabecera.tiempoPreparacionMinutos,
-              tiempoCoccionMinutos: cabecera.tiempoCoccionMinutos,
-              comentarios: texto(cabecera.comentarios ?? "") || null,
-              presentacionEmplatado: texto(cabecera.presentacionEmplatado ?? "") || null,
-              notasAdicionales: texto(cabecera.notasAdicionales ?? "") || null,
-              equipamientoNecesario: texto(cabecera.equipamientoNecesario ?? "") || null,
-              ingredientes: {
-                create: items.map((it) => ({
-                  insumoProductoId: it.insumoProductoId,
-                  cantidad: it.cantidad,
-                  unidadId: it.unidadId,
-                  mermaPorcentaje: it.mermaPorcentaje ?? 0,
-                  observaciones: it.observaciones,
-                  sustitutos: it.insumoSustitutoIds?.length
-                    ? { create: it.insumoSustitutoIds.map((insumoSustitutoId, i) => ({ insumoSustitutoId, orden: i + 1 })) }
-                    : undefined,
-                })),
-              },
-              pasos: {
-                create: pasos.map((p) => ({
-                  orden: p.orden,
-                  nombre: texto(p.nombre ?? "") || null,
-                  instruccion: p.instruccion,
-                  minutos: p.minutos,
-                })),
-              },
-            },
-            include: { ingredientes: { include: { unidad: { select: { nombre: true } } } }, pasos: true },
-          });
-
-          // Los pasos ya existen (con id real), y también los ingredientes
-          // — recién ahora se puede armar la tabla puente paso↔ingrediente
-          // (no se puede anidar en el create de arriba: no hay ningún id
-          // real todavía en el momento de armar ese payload).
-          for (const pasoInput of pasos) {
-            if (!pasoInput.insumoProductoIds?.length) continue;
-            const pasoCreado = creada.pasos.find((p) => p.orden === pasoInput.orden);
-            if (!pasoCreado) continue;
-            for (const insumoProductoId of pasoInput.insumoProductoIds) {
-              const ingredienteCreado = creada.ingredientes.find((i) => i.insumoProductoId === insumoProductoId);
-              if (!ingredienteCreado) continue;
-              await tx.recetaPasoIngrediente.create({
-                data: { recetaPasoId: pasoCreado.id, recetaIngredienteId: ingredienteCreado.id },
-              });
-            }
-          }
-
-          // D3 — arrastre de calibraciones locales (RendimientoLocalIngrediente) de la versión vieja a la nueva, por
-          // insumoProductoId. Si cambió la unidad, o el ingrediente salió de la receta, la calibración se DESCARTA
-          // (nunca se arrastra "resucitada" con otra unidad) y se audita. Un cambio de cantidad/merma CENTRAL no
-          // descarta nada — la calibración es de la sucursal, no del valor central.
-          if (ultima) {
-            const sucursalIds = new Set<string>();
-            for (const viejoIng of ultima.ingredientes) for (const r of viejoIng.rendimientosLocales) sucursalIds.add(r.sucursalId);
-            const sucursales = sucursalIds.size ? await tx.sucursal.findMany({ where: { id: { in: Array.from(sucursalIds) } }, select: { id: true, nombre: true } }) : [];
-            const nombreSucursal = new Map(sucursales.map((s) => [s.id, s.nombre]));
-
-            for (const viejoIng of ultima.ingredientes) {
-              if (!viejoIng.rendimientosLocales.length) continue; // nada calibrado en ninguna sucursal: nada que arrastrar ni descartar.
-              const nuevoIng = creada.ingredientes.find((i) => i.insumoProductoId === viejoIng.insumoProductoId);
-
-              if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId) {
-                await tx.rendimientoLocalIngrediente.createMany({
-                  data: viejoIng.rendimientosLocales.map((r) => ({
-                    recetaIngredienteId: nuevoIng.id,
-                    sucursalId: r.sucursalId,
-                    cantidad: r.cantidad,
-                    mermaPorcentaje: r.mermaPorcentaje,
-                  })),
-                });
-                continue;
-              }
-
-              const motivo = !nuevoIng ? "se quitó de la receta" : `cambió la unidad de ${viejoIng.unidad.nombre} a ${nuevoIng.unidad.nombre}`;
-              for (const r of viejoIng.rendimientosLocales) {
-                const sucNombre = nombreSucursal.get(r.sucursalId) ?? r.sucursalId;
-                const entidadId = `${r.sucursalId}:${productoId}:${viejoIng.insumoProductoId}`;
-                const descripcion = describirDescarteArrastre({ insumoNombre: viejoIng.insumoProducto.nombre, sucursalNombre: sucNombre, version, motivo });
-                await registrarCambioAuditado(tx, {
-                  entidad: "RendimientoLocalIngrediente", entidadId, campo: "cantidad", descripcion,
-                  valorAnterior: r.cantidad !== null ? Number(r.cantidad) : null, valorNuevo: null,
-                  actorId: ctx.usuarioId, sucursalId: r.sucursalId,
-                });
-                await registrarCambioAuditado(tx, {
-                  entidad: "RendimientoLocalIngrediente", entidadId, campo: "mermaPorcentaje", descripcion,
-                  valorAnterior: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null, valorNuevo: null,
-                  actorId: ctx.usuarioId, sucursalId: r.sucursalId,
-                });
-                descartes.push(`«${sucNombre}» para "${viejoIng.insumoProducto.nombre}" (${motivo})`);
-              }
-            }
-          }
-
-          // Auditoría (D6(b), docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 2): un registro por versión
-          // nueva de la receta CENTRAL — sucursalId siempre null (Catálogo Central, no un dato por sucursal). El origen
-          // es siempre manual: guardarReceta no recibe ningún parámetro `origen`.
-          await registrarCambioAuditado(tx, {
-            entidad: "RecetaVersion",
-            entidadId: creada.id,
-            campo: "version",
-            descripcion: describirCambioVersionReceta(producto.nombre, ctx.sucursalNombre),
-            valorAnterior: ultima ? ultima.version : null,
-            valorNuevo: version,
-            actorId: ctx.usuarioId,
-            sucursalId: null,
-          });
-        });
-      },
-      { maxIntentos: 5, esReintentable: (e) => esErrorDeUnicidad(e) || esConflictoDeEscritura(e) }
-    );
+    const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos, cabecera });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor);
     // Sin esto la página no refleja el cambio en un navegador real hasta
     // recargar a mano (ver src/server/actions/refrescar.ts) — detectado
     // con Playwright, no con Vitest ni con los closures que ya hacían
     // `redirect(volver)` tras un `ok` (una navegación real ya refresca sola).
-    refrescarVistaSiHaceFalta();
-    const avisoDescartes = descartes.length ? ` Se descartó la calibración local de ${descartes.join(", ")}.` : "";
-    return ok(`Receta de "${producto.nombre}" guardada como versión ${version}.${avisoDescartes}`);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
   });
 }
 
