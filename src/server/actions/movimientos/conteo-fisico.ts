@@ -1,40 +1,18 @@
 "use server";
 
-import type { AccionConteo, EstadoConteo } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { texto } from "@/core/texto";
-import { validarCantidad } from "@/core/datos/cantidad";
-import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
-import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import { redondearACantidadDeUnidad } from "@/core/movimientos/public";
+import { calcularSaldoPorLote, calcularSaldoTotal, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { aResultadoAccion } from "@/core/resultado-caso";
+import { guardComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.guard";
+import type { ComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
+import { registrarConteoFisicoCasoDeUso } from "./casos-de-uso/registrar-conteo-fisico";
 
-/**
- * Port de ACCIONES_CONTEO_FISICO (Stock.js:1066-1088): qué hacer con la
- * diferencia encontrada. AJUSTAR escribe el movimiento de corrección;
- * FALTA_MOVIMIENTO deja el conteo pendiente SIN tocar stock (evita el
- * doble conteo cuando lo que falta es cargar una compra/venta real);
- * DESCARTAR no ajusta y no cuenta como conteo válido.
- */
-const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoConteo }> = {
-  AJUSTAR: { ajusta: true, estado: "RESUELTO" },
-  FALTA_MOVIMIENTO: { ajusta: false, estado: "PENDIENTE" },
-  DESCARTAR: { ajusta: false, estado: "DESCARTADO" },
-};
-
-export interface DatosConteoFisico {
-  productoId: string;
-  seccionId: string;
-  /** El LOTE contado (null = "total, sin lote puntual" — misma semántica que Stock.js). */
-  loteVencimiento?: Date | null;
-  conteoReal: number;
-  fechaConteo: Date;
-  accion: AccionConteo;
-  detalle?: string;
-}
+/** Lo que recibe `registrarConteoFisico`/`registrarConteosFisicos`. Vive en `conteo-fisico.schema.ts` (lo usa también el caso de uso). */
+export type DatosConteoFisico = ComandoConteoFisico;
 
 /**
  * Port de _registrarConteoFisicoSinRecalculo_ (Stock.js:1523-1649) — camino
@@ -43,96 +21,17 @@ export interface DatosConteoFisico {
  * Script: Control es un proceso distinto de Ajuste (permite distinguir
  * "conteo físico formal" de "corrección manual suelta"), con su propia
  * bitácora (ConteoFisico) además del Kardex.
+ *
+ * Desde la Task #41 (Fase M, M13e1 — docs/arquitectura-casos-de-uso-2026-09-27.md; migración PARCIAL, como P1) esta Server Action es un
+ * adaptador fino: permiso (`conPermiso("proceso_control")`) → formato del comando (`guardComandoConteoFisico`,
+ * `core/features/movimientos/conteo-fisico.guard.ts`: sección en blanco) → caso de uso (`casos-de-uso/registrar-conteo-fisico.ts`:
+ * sección propia, producto, disponibilidad, "tiene stock real", cantidad, transacción, persistencia) → `aResultadoAccion`.
  */
 export async function registrarConteoFisico(datos: DatosConteoFisico): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", (ctx) => registrarConteoConContexto(ctx, datos));
-}
-
-/**
- * Un conteo, con el contexto ya resuelto (la sesión y el permiso los comprobó quien llama, una sola vez). Es lo que comparten
- * `registrarConteoFisico` (uno) y `registrarConteosFisicos` (toda la grilla). Cada conteo va en su propia transacción
- * serializable: el resultado de uno no depende de los demás.
- */
-async function registrarConteoConContexto(ctx: ContextoUsuario, datos: DatosConteoFisico): Promise<ResultadoAccion> {
-  if (!texto(datos.seccionId)) return error("Elegí una sección — no se puede dejar en blanco.");
-  // El formato/signo/decimales del conteo tecleado se validan más abajo con `validarCantidad`, una vez resuelta la unidad de
-  // stock del producto (Fase de rechazo de decimales, mismo criterio que Compra/Mesa: docs/plan-validacion-de-datos-2026-09-25.md).
-  // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
-  // registrarMovimiento — conPermiso no valida que la sección sea de
-  // ESTA sucursal, solo el permiso de quien llama.
-  if (!(await obtenerSeccionPropia(datos.seccionId, ctx.sucursalId))) return error("No se encontró la sección.");
-
-  return conTransaccionSerializable(async (tx) => {
-    const producto = await tx.producto.findUnique({ where: { id: datos.productoId }, include: { unidadStock: true } });
-    if (!producto) return error("El producto no existe.");
-    if (!(await productoDisponibleEn(ctx.sucursalId, producto.id, tx))) {
-      return error(`«${producto.nombre}» no está disponible en «${ctx.sucursalNombre}».`);
-    }
-    if (!tieneStockReal(producto.tipo, producto.seProduce)) {
-      return error(`El conteo físico es sobre materias primas (MP) o productos "Se produce", no sobre PV comunes.`);
-    }
-
-    // Cantidad de ENTRADA (lo que se tecleó): se rechaza el exceso de decimales, no se redondea en silencio — mismo criterio que
-    // Compra/Mesa (src/core/datos/cantidad.ts). `diferencia`, más abajo, es lo CALCULADO (conteoReal - saldoSistema): eso sigue
-    // redondeándose con `redondearACantidadDeUnidad`, el mismo criterio que la conversión de unidades en Compra.
-    const resConteoReal = validarCantidad(datos.conteoReal, producto.unidadStock, {
-      etiqueta: `El conteo real de "${producto.nombre}"`,
-      obligatorio: true,
-      permitirCero: true,
-    });
-    if (!resConteoReal.ok) return error(resConteoReal.mensaje);
-    const conteoReal = resConteoReal.valor!;
-    const loteVencimiento = datos.loteVencimiento ?? null;
-    const saldoSistema = loteVencimiento
-      ? await calcularSaldoPorLote(producto.id, datos.seccionId, loteVencimiento, tx)
-      : await calcularSaldoTotal(producto.id, datos.seccionId, tx);
-    const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, producto.unidadStock.decimales);
-
-    const accionInfo = ACCIONES_CONTEO[datos.accion];
-    const estado: EstadoConteo = diferencia === 0 ? "RESUELTO" : accionInfo.estado;
-
-    const conteo = await tx.conteoFisico.create({
-      data: {
-        sucursalId: ctx.sucursalId,
-        fecha: datos.fechaConteo,
-        productoId: producto.id,
-        seccionId: datos.seccionId,
-        loteVencimiento,
-        saldoSistema,
-        conteoReal,
-        diferencia,
-        accion: datos.accion,
-        estado,
-        detalle: texto(datos.detalle) || null,
-        usuarioId: ctx.usuarioId,
-      },
-    });
-
-    if (diferencia !== 0 && accionInfo.ajusta) {
-      const operacion = await tx.operacion.create({
-        data: { sucursalId: ctx.sucursalId, proceso: "CONTROL", fecha: datos.fechaConteo, usuarioId: ctx.usuarioId },
-      });
-      await tx.movimientoStock.create({
-        data: {
-          operacionId: operacion.id,
-          productoId: producto.id,
-          seccionId: datos.seccionId,
-          proceso: "CONTROL",
-          cantidad: diferencia,
-          loteVencimiento,
-          detalle: `Conteo físico: contado ${conteoReal}, sistema calculaba ${saldoSistema}, diferencia ${diferencia > 0 ? "+" : ""}${diferencia}.`,
-          precioTotal: 0,
-          precioPorUnidadStock: 0,
-          conteoFisicoId: conteo.id,
-        },
-      });
-    }
-
-    const mensaje =
-      diferencia === 0
-        ? "Conteo registrado. El stock ya coincidía."
-        : `Conteo registrado. Diferencia: ${diferencia > 0 ? "+" : ""}${diferencia}${accionInfo.ajusta ? " (ajustada)" : ""}.`;
-    return ok(mensaje);
+  return conPermiso("proceso_control", async (ctx) => {
+    const comando = guardComandoConteoFisico(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await registrarConteoFisicoCasoDeUso(ctx, comando.valor));
   });
 }
 
@@ -161,10 +60,14 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
       return error(`Son demasiados conteos de una vez (${filas.length}, el máximo es ${MAX_CONTEOS_POR_LLAMADA}). Registralos en partes.`);
     }
 
+    // El guard corre UNA VEZ POR FILA, dentro del bucle: cada fila valida su propia sección (mismo comportamiento que antes, cuando
+    // cada fila pasaba por `registrarConteoConContexto` y esa función arrancaba con el mismo chequeo). La sesión y el permiso, en
+    // cambio, se comprueban una sola vez para toda la tanda — ver el docstring de esta función.
     const resultados: ResultadoAccion[] = [];
     for (const fila of filas) {
       try {
-        resultados.push(await registrarConteoConContexto(ctx, fila));
+        const comando = guardComandoConteoFisico(fila);
+        resultados.push(comando.ok ? aResultadoAccion(await registrarConteoFisicoCasoDeUso(ctx, comando.valor)) : error(comando.mensaje));
       } catch (e) {
         // Un error inesperado de una fila (base de datos, etc.) no tira abajo la llamada entera: las filas anteriores ya están
         // escritas y hay que devolver el parcial.
