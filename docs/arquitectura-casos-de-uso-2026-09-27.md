@@ -295,6 +295,25 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   (`stock/reclasificar/reclasificar-form.tsx`) y de dos tests (`test/stock/reclasificacion.test.ts`,
   `test/permisos/lecturas-con-sesion.test.ts`), sin tocar lo que verifican. Con `reclasificarStock` migrado y la lectura mudada,
   `reclasificacion.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**.
+- **M13e1 — `registrarConteoFisico`/`registrarConteosFisicos`** (`src/server/actions/movimientos/conteo-fisico.ts`): comando + guard en
+  `core/features/movimientos/conteo-fisico.schema.ts`/`conteo-fisico.guard.ts` (mismo dominio que M13a-d). El guard
+  (`guardComandoConteoFisico`) tiene UNA sola validación, la única que antes corría en línea, en formato puro, antes de la transacción
+  (sección en blanco) — todo lo demás que validaba `registrarConteoConContexto` (sección propia de la sucursal, producto,
+  disponibilidad, "tiene stock real", formato/decimales del conteo) depende de datos de base y se queda en el caso de uso, mismo
+  criterio que el chequeo "único destino idéntico al origen" de M13d. Persistencia NUEVA:
+  `server/persistencia/movimientos/escribir-conteo-fisico.ts` (`escribirConteoFisico`, el mismo `tx.conteoFisico.create` de siempre, los
+  11 campos de antes). REUTILIZA de M13d `cargarProductoConUnidadDeStock` (ya pensada para esta migración) y de M13b
+  `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` para el ajuste de Kardex (un array de una sola fila, funcionalmente
+  idéntico al `tx.movimientoStock.create` de una fila que hacía antes en línea). Caso de uso
+  `movimientos/casos-de-uso/registrar-conteo-fisico.ts` (`registrarConteoFisicoCasoDeUso`), en el MISMO orden que antes: sección propia
+  (fuera de la transacción) → dentro de la transacción, producto, disponibilidad, `tieneStockReal`, `validarCantidad` del conteo, saldo
+  (por lote o total), diferencia, `ACCIONES_CONTEO` (mudada tal cual al caso de uso, sin exportar), escritura del `ConteoFisico` y, si
+  corresponde, el ajuste de Kardex, mensaje final. `registrarConteosFisicos` (toda la grilla, un solo `conPermiso` para la tanda) llama
+  al guard y al caso de uso UNA VEZ POR FILA dentro del bucle — la sesión y el permiso se comprueban una sola vez, pero cada fila sigue
+  validando su propia sección, igual que antes cuando cada una pasaba por `registrarConteoConContexto`.
+  **Migración PARCIAL a propósito, como P1:** `conteo-fisico.ts` NO entra en `ACCIONES_CON_CASO_DE_USO` — `resolverConteoPendiente`,
+  `cancelarConteoFisico` y `obtenerHistorialConteosFisicos` (mismo archivo) siguen con su código de hoy (Prisma/`core/movimientos/
+  public-servidor` directos), pendientes para M13e2.
 
 ## Cómo se migra la próxima acción
 
