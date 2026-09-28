@@ -343,6 +343,24 @@ Pantalla ─► Server Action ("use server", adaptador fino)
   sin tocar lo que verifican. Con las cuatro mutaciones de `conteo-fisico.ts` migradas a caso de uso (M13e1 + M13e2) y la lectura
   mudada, el archivo no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**. **Con M13e2 cierra la cadena completa
   M13a→b→c→d→e1→e2 del Task #41, Fase M.**
+- **M14 — `registrarPagoConsignante`** (`src/server/actions/reportes/consignacion.ts`): antes sin transacción, sin idempotencia I3 y
+  sin auditoría — un doble clic real registraba el pago dos veces (hallazgo del backlog). Comando + guard en
+  `core/features/reportes/pago-consignante.{schema,guard}.ts` (proveedor en blanco, `importe` con `validarImporte` — normalizado
+  DESDE el guard, a diferencia de otros guards de esta fase, porque el hash I3 se calcula sobre el comando ya validado —, formato de
+  la clave I3). Persistencia en `server/persistencia/reportes/pago-consignante.ts` (`cargarProveedorActivo`,
+  `cargarPagoConsignantePorClave`, `crearPagoConsignante`). Caso de uso `reportes/casos-de-uso/registrar-pago-consignante.ts`: a
+  diferencia de `registrarMovimiento`/`reclasificarStock` (Kardex, con un invariante de agregado real bajo concurrencia), acá NO usa
+  `conTransaccionSerializable` — la única carrera es "insert duplicado bajo la misma clave", que el índice único de
+  `PagoConsignante.claveIdempotencia` + un `prisma.$transaction` SIMPLE ya resuelven (un P2002 de carrera se atrapa aparte y relee el
+  ganador). Opción B con un solo `create`: a diferencia de `Operacion`, el mensaje de éxito (proveedor + importe) se conoce ANTES del
+  insert, así que `resultadoMensaje` se escribe en el MISMO `create`, sin un `update` posterior — el reporte de consignación
+  (`core/reportes/consignacion.ts`) no necesitó ningún cambio: nunca puede existir una fila con clave pero sin mensaje. Migración de
+  schema (autorización expresa del dueño, 2026-09-28): 3 columnas nullable + `@@unique` en `PagoConsignante`, mismo criterio "rollout
+  gradual" que `Operacion` (`prisma/migrations/20260928040000_i3_idempotencia_pago_consignante/`). Se agregó `"PagoConsignante"` a
+  `CambioAuditable["entidad"]` (`core/permisos/auditoria.ts`) y al array `ENTIDADES` de la página de auditoría. Cableado en la UI
+  (`registrar-pago-consignante.tsx`, mismo patrón que `venta-form.tsx`: `crypto.randomUUID()` por intento, renovada tras un éxito) —
+  el alcance de M14 incluyó la UI a propósito, para cerrar el bug real del doble clic, no solo dejarlo testeable a nivel Server
+  Action. `consignacion.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**.
 
 ## Cómo se migra la próxima acción
 

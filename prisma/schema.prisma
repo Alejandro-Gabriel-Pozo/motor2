@@ -522,6 +522,20 @@ model PagoConsignante {
   usuario     User      @relation(fields: [usuarioId], references: [id])
   creadoEn    DateTime  @default(now())
 
+  /// I3 — idempotencia (Task #41, M14, mismo mecanismo que `Operacion`, ver esas columnas más abajo en este archivo): UUID generado
+  /// por el cliente al abrir el modal de pago, reenviado tal cual en reintentos del mismo intento de envío. Nullable durante el
+  /// rollout gradual (mismo criterio que `Operacion.claveIdempotencia`) — un pago sin clave simplemente no participa del mecanismo de
+  /// deduplicación. Único GLOBAL. Validada en la capa de aplicación como UUID antes de llegar acá.
+  claveIdempotencia String? @unique
+
+  /// I3 — hash SHA-256 del payload validado que efectivamente se procesó (incluye sucursalId), para distinguir "mismo intento
+  /// reenviado" de "clave reutilizada con datos distintos" sin comparar objetos JSON campo por campo.
+  payloadHash String?
+
+  /// I3 — Opción B: mensaje de éxito ya formateado, persistido en el MISMO `create` (a diferencia de `Operacion`, acá el mensaje se
+  /// conoce ANTES del insert — proveedor e importe ya están resueltos — así que no hace falta un segundo `update` posterior).
+  resultadoMensaje String?
+
   @@index([sucursalId, proveedorId])
 }
 
