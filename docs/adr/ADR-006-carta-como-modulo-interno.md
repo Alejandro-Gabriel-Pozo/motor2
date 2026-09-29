@@ -150,6 +150,38 @@ nivel, evaluados y descartados por el dueño).
 > `Plan` que lo diseñó, 2026-09-29) en vez de asumir contexto de memoria.
 > Rama: `multitenancy-fase-a`. Todo lo de abajo es local, sin push.
 
+### CHECKPOINT 2026-09-29 (a prueba de compactación — leer esto primero)
+
+- **HEAD local:** `27f8f27` sobre `27b8243` (Fase 6), `919500a` (Fase 4),
+  `e8a6902`. Árbol limpio al escribir esto. Sin push (el push exige
+  aprobación explícita del dueño a nivel hash). Nunca `main`.
+- **Terminado (todo lo que se podía sin autorización):** Fases 0-4 y 6 con
+  código, Fase 5 decidida (se queda el layout "libro"). Última línea de base
+  del gate de 7 comandos: arquitectura 535 módulos, test 292/3421,
+  test:e2e 379.
+- **Pendiente y bloqueado por autorización:** Fase 7 (DNS wildcard,
+  `CARTA_DOMINIO_BASE` en Vercel, staging, migrar QR/links, retirar el
+  deployment externo), Fase 8 (después de la 7), Fase F.
+- **Estado real de multitenancy:** la app NO es multitenant hoy. El schema
+  real (`prisma/schema.prisma`) no tiene `Empresa` ni `empresaId`; el diseño
+  (ADR-001/002/004: tabla compartida + `empresaId` + RLS) vive solo en el
+  schema aislado `prisma/fase-a/schema.prisma` + migraciones manuales en
+  `prisma/fase-a/migraciones-manuales/`. La carta resuelve la empresa contra
+  `CARTA_EMPRESA_SLUG` (env), no contra la base.
+- **REQUISITO NUEVO DEL DUEÑO (2026-09-29) para la Fase F:** la app tiene
+  que poder INSTALARSE ya multitenant-capable pero ACTIVARSE con UNA sola
+  empresa: el esquema (`Empresa`, `empresaId`, RLS, resolución por slug/host)
+  existe siempre, y una instalación de una sola empresa funciona sin fricción
+  (sin exigir subdominios/DNS wildcard, con esa empresa como default). Sumar
+  una segunda empresa después = dato + configuración, no otra migración de
+  estructura. El plan de la Fase F se diseña con este requisito; ver el
+  documento de plan que se enlace acá cuando exista.
+- **Cómo retomar:** (1) `git log --oneline -6` y `git status`; (2) leer esta
+  sección + el ADR-004 + `prisma/fase-a/`; (3) el siguiente paso es el PLAN de
+  la Fase F (skill `plan-con-verificacion-e2e`, agente `Plan`, `opus`), sin
+  implementar nada del schema real hasta que el dueño apruebe el plan;
+  (4) toda tarea de schema/migración es "requiere autorización expresa".
+
 **Hecho, en orden, cada uno gate-verificado (7 comandos: tsc, lint,
 arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
 
@@ -177,7 +209,7 @@ arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
    `revalidate=300` un spec veía la respuesta cacheada de otro) — la
    Fase 4 lo resolvió para la página de sucursal (el portal sigue
    dinámico). test 292/3415, test:e2e 375/67.
-5. **Fase 4**: la vista
+5. **Fase 4** (`919500a`): la vista
    previa de `/carta/tema` es `CartaVista` real con `CARTA_EJEMPLO`
    (`NavegacionCarta` ganó `embebida`: alto fijo, sin landmarks propios);
    borrado `vista-previa-tema.tsx`. `/carta/portal` suma "Ver la carta de
@@ -204,7 +236,7 @@ cada una — no reinventarlas de memoria):**
   (páginas: portada → índice → secciones, de a una). No se cambia a scroll
   vertical; no hay código que hacer. La base de la Fase 3 sigue sirviendo si
   algún día se reabre.
-- **Fase 6 — código HECHO (commit local; test 292/3421, arquitectura 535
+- **Fase 6 — código HECHO (`27b8243` + `27f8f27`; test 292/3421, arquitectura 535
   módulos, test:e2e 379); DNS real requiere autorización**:
   `reglasRewriteCarta` (`src/core/carta/host.ts`, mismo patrón de host que
   `interpretarHostCarta`) alimenta `rewrites().beforeFiles` de
