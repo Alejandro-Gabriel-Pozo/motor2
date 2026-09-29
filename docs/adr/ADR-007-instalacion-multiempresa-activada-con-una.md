@@ -241,10 +241,13 @@ con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
    usuarios y asignaciones de la empresa). El bootstrap no pisa un rol que el
    usuario ya tuviera. Los demás usuarios siguen con `rolEmpresa` NULL (sin rol
    a nivel empresa) hasta que un gerente les asigne uno.
-2. **Borrados bajo FK compuestas (RESTRICT)**: `insumo.delete` (fusión de
-   insumos) y `promoCuenta.delete` (quitar promo sin enviar) pasan a archivar
-   (`activo = false`) en vez de borrar. Pendiente de implementar como paso
-   propio, con su gate.
+2. **Borrados bajo FK compuestas (RESTRICT)**: se dejan los RESTRICT y NO se
+   archiva. Revisado en el código (2026-09-29): los únicos borrados de un padre
+   afectado son `insumo.delete` (fusión: reapunta productos y sustitutos antes de
+   borrar) y `promoCuenta.delete` (`quitarPromoSinEnviar`: rechaza cuentas
+   cerradas, y `Operacion.promoCuentaId` solo se asigna al cerrar la cuenta), y
+   ninguno puede chocar con la FK. No hay otros borrados de padres en `src`. Las
+   FK hacia `User` (global) no se tocaron y siguen en `SET NULL`.
 3. **`obtenerCostoActualPorMP`**: pasó de `findMany` con `include` sobre toda la
    historia a una consulta `DISTINCT ON (productoId)` (una fila por producto,
    desempate por `m.id`). Con ~55.000 compras la versión anterior superaba el
