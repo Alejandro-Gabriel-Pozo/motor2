@@ -8,6 +8,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import { obtenerHistorialProducto } from "../../src/core/reportes/historial-producto";
+import { limitadorMutaciones } from "../../src/core/permisos/limitador-tasa";
 
 /**
  * Property-based testing (Task #41, Fase F4): la vista de historial de un producto (`obtenerHistorialProducto`, saldo
@@ -52,6 +53,9 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
   let corrida = 0;
 
   beforeAll(async () => {
+    // Las dos propiedades juntas pueden superar las 300 mutaciones/min del limitador (según la semilla, con el shrinking de
+    // fast-check incluido) y rechazar una acción legítima: intermitente. Acá el límite no es lo que se prueba.
+    vi.spyOn(limitadorMutaciones, "excedeLimite").mockReturnValue(false);
     await limpiarBaseDeTest();
     const base = await sembrarBase();
     sucursalId = base.sucursal.id;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { armarHostCarta, interpretarHostCarta } from "@/core/carta/host";
+import { armarHostCarta, interpretarHostCarta, reglasRewriteCarta } from "@/core/carta/host";
 
 describe("interpretarHostCarta", () => {
   const BASE = "motor2carta.com";
@@ -51,6 +51,37 @@ describe("interpretarHostCarta", () => {
 
   it("localhost con subdominios (desarrollo/e2e) funciona igual que un dominio real", () => {
     expect(interpretarHostCarta("carta.e2e.localhost", "localhost")).toEqual({ empresaSlug: "e2e" });
+  });
+});
+
+describe("reglasRewriteCarta", () => {
+  // Next arma la regex del `has` de host como ^(?:value)$ y expone los grupos con nombre como :param.
+  const regexDelHost = (base: string) => new RegExp(`^(?:${reglasRewriteCarta(base)[0].has[0].value})$`);
+
+  it("sin dominioBase no hay reglas", () => {
+    expect(reglasRewriteCarta(undefined)).toEqual([]);
+    expect(reglasRewriteCarta("")).toEqual([]);
+    expect(reglasRewriteCarta("  ")).toEqual([]);
+  });
+
+  it("reescribe / al portal y /<sucursal> a la carta, capturando la empresa del host", () => {
+    const [portal, carta] = reglasRewriteCarta("motor2carta.com");
+    expect(portal).toMatchObject({ source: "/", destination: "/carta-publica/:empresa" });
+    expect(carta).toMatchObject({ source: "/:sucursal([a-z0-9][a-z0-9-]*)", destination: "/carta-publica/:empresa/:sucursal" });
+    expect(portal.has).toEqual(carta.has);
+  });
+
+  it("el patrón del host acepta y rechaza lo mismo que interpretarHostCarta", () => {
+    const base = "motor2carta.com";
+    const re = regexDelHost(base);
+    for (const host of ["carta.la-cuadra.motor2carta.com", "carta.e2e.motor2carta.com", "carta.motor2carta.com", "www.motor2carta.com", "carta.a.b.motor2carta.com", "carta.-x.motor2carta.com", "carta.x.otro.com"]) {
+      expect(re.test(host), host).toBe(interpretarHostCarta(host, base) !== null);
+    }
+    expect(re.exec("carta.la-cuadra.motor2carta.com")?.groups?.empresa).toBe("la-cuadra");
+  });
+
+  it("el punto del dominioBase es literal, no comodín", () => {
+    expect(regexDelHost("motor2carta.com").test("carta.x.motor2cartaXcom")).toBe(false);
   });
 });
 

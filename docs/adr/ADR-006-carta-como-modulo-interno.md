@@ -200,15 +200,26 @@ arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
 **Pendiente, en el orden del plan (ver el plan completo para el detalle de
 cada una — no reinventarlas de memoria):**
 
-- **Fase 5** [HOY, opcional, con aprobación del dueño]: decisión sobre
-  cambiar el layout de "libro" (slider horizontal) a scroll vertical único
-  — capturas antes/después, nunca decidir solo. La Fase 3 ya construyó la
-  base (resolver de estilo, navegación por datos, variables CSS) que sirve
-  para cualquiera de los dos layouts.
-- **Fase 6** [código HOY; DNS real requiere autorización]: rewrite en
-  `next.config.ts` para `carta.<empresa>.<dominioBase>` (con
-  `CARTA_DOMINIO_BASE` configurada), probado con `*.localhost` en
-  Playwright sin DNS real.
+- **Fase 5 — DECIDIDA 2026-09-29 por el dueño: se queda el layout "libro"**
+  (páginas: portada → índice → secciones, de a una). No se cambia a scroll
+  vertical; no hay código que hacer. La base de la Fase 3 sigue sirviendo si
+  algún día se reabre.
+- **Fase 6 — código HECHO (commit local; test 292/3419, arquitectura 535
+  módulos, test:e2e 378); DNS real requiere autorización**:
+  `reglasRewriteCarta` (`src/core/carta/host.ts`, mismo patrón de host que
+  `interpretarHostCarta`) alimenta `rewrites().beforeFiles` de
+  `next.config.ts`: en `carta.<empresa>.<CARTA_DOMINIO_BASE>`, `/` → portal
+  y `/<sucursal>` → carta, sin `/carta-publica` en la URL. Sin la variable no
+  hay reglas. Se lee AL COMPILAR (va en el env del build). e2e con
+  `carta.e2e.localhost` (`test/e2e/carta-subdominio.spec.ts`, demostrado
+  por mutación). Límites conocidos: (1) el host de la carta NO bloquea el
+  resto de la app (`/login`, `/carta/...` de dos segmentos siguen
+  resolviendo; el acceso lo deciden el layout y cada acción, como siempre);
+  (2) los links internos de la carta (`hrefVolver`, links del portal) son
+  paths `/carta-publica/...`, que también funcionan en el subdominio pero
+  muestran ese path — pulirlo (links relativos al host) queda para antes de
+  la Fase 7. Falta para producción (Fase 7/F): DNS wildcard
+  `*.<dominioBase>` y configurar `CARTA_DOMINIO_BASE` en Vercel.
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
   retirar el deployment externo.

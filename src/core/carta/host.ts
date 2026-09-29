@@ -15,8 +15,36 @@ function escaparRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function patronHostCarta(dominioBase: string, grupo: string): string {
+  return `carta\\.(${grupo}${PATRON_SLUG_EMPRESA})\\.${escaparRegex(dominioBase)}`;
+}
+
 function regexHostCarta(dominioBase: string): RegExp {
-  return new RegExp(`^carta\\.(${PATRON_SLUG_EMPRESA})\\.${escaparRegex(dominioBase)}$`);
+  return new RegExp(`^${patronHostCarta(dominioBase, "")}$`);
+}
+
+export interface ReglaRewriteCarta {
+  source: string;
+  has: { type: "host"; value: string }[];
+  destination: string;
+}
+
+/**
+ * Fase 6: las reglas de `rewrites().beforeFiles` de `next.config.ts` para servir la carta en `carta.<empresa>.<dominioBase>`. La `/` del
+ * host es el portal de la empresa y `/<sucursal>` la carta de esa sucursal; ambas se reescriben a `/carta-publica/...` (la URL del
+ * navegador no cambia). El patrón del host es EL MISMO de `interpretarHostCarta` (con el slug capturado como `:empresa`). Sin
+ * `dominioBase`, sin reglas: la carta solo se sirve por path. Solo se reescriben rutas de un segmento con forma de slug, así
+ * `/_next/…`, `/api/…` y los archivos con punto (`/favicon.ico`) pasan de largo. Las reglas se calculan al compilar: `CARTA_DOMINIO_BASE`
+ * tiene que estar en el entorno del build, no solo del arranque.
+ */
+export function reglasRewriteCarta(dominioBase: string | null | undefined): ReglaRewriteCarta[] {
+  const base = dominioBase?.trim().toLowerCase();
+  if (!base) return [];
+  const has = [{ type: "host" as const, value: patronHostCarta(base, "?<empresa>") }];
+  return [
+    { source: "/", has, destination: "/carta-publica/:empresa" },
+    { source: "/:sucursal([a-z0-9][a-z0-9-]*)", has, destination: "/carta-publica/:empresa/:sucursal" },
+  ];
 }
 
 export interface HostCartaInterpretado {
