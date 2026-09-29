@@ -40,26 +40,19 @@ async function main() {
 
   const conRelaciones = await prisma.empresa.findUnique({
     where: { id: empresa.id },
-    include: { sucursales: true, usuarios: true },
+    include: { sucursalRel: true, usuarios: true },
   });
   console.log(
     "Empresa con relaciones -> sucursales:",
-    conRelaciones!.sucursales.length,
+    conRelaciones!.sucursalRel.length,
     "usuarios:",
     conRelaciones!.usuarios.length
   );
 
-  // Carta multisucursal + sincronización de precios (plan del panel, 2.4/2.5).
+  // FK compuesta [empresaId, xId]: una promo apunta a su sección y sucursal dentro de la misma empresa.
   const seccion = await prisma.seccionCarta.create({
     data: { id: "smoke_seccion_1", nombre: "Sección Smoke", empresaId: empresa.id },
   });
-  console.log("SeccionCarta creada:", seccion.id, "alcance:", seccion.alcance);
-
-  const seccionSucursal = await prisma.seccionCartaSucursal.create({
-    data: { empresaId: empresa.id, seccionCartaId: seccion.id, sucursalId: sucursal.id },
-  });
-  console.log("SeccionCartaSucursal creada:", seccionSucursal.seccionCartaId, seccionSucursal.sucursalId);
-
   const promo = await prisma.promoCarta.create({
     data: {
       id: "smoke_promo_1",
@@ -72,22 +65,7 @@ async function main() {
   });
   console.log("PromoCarta creada:", promo.id, "empresaId:", promo.empresaId);
 
-  const grupo = await prisma.grupoSincroPrecio.create({
-    data: { id: "smoke_grupo_1", empresaId: empresa.id, nombre: "Grupo Smoke" },
-  });
-  const grupoSucursal = await prisma.grupoSincroPrecioSucursal.create({
-    data: { empresaId: empresa.id, grupoId: grupo.id, sucursalId: sucursal.id },
-  });
-  console.log("GrupoSincroPrecio creado:", grupo.id, "sucursal:", grupoSucursal.sucursalId);
-
-  await prisma.grupoSincroPrecioSucursal.delete({
-    where: { grupoId_sucursalId: { grupoId: grupo.id, sucursalId: sucursal.id } },
-  });
-  await prisma.grupoSincroPrecio.delete({ where: { id: grupo.id } });
   await prisma.promoCarta.delete({ where: { id: promo.id } });
-  await prisma.seccionCartaSucursal.delete({
-    where: { seccionCartaId_sucursalId: { seccionCartaId: seccion.id, sucursalId: sucursal.id } },
-  });
   await prisma.seccionCarta.delete({ where: { id: seccion.id } });
 
   await prisma.usuarioEmpresa.delete({ where: { id: membresia.id } });

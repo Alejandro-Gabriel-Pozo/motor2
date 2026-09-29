@@ -58,7 +58,11 @@
     "prisma/fase-a/prisma.config.ts",
     // Igual motivo: smoke test manual de esa carpeta, se corre a mano con
     // `npx tsx prisma/fase-a/smoke-test.ts`, nadie lo importa.
-    "prisma/fase-a/smoke-test.ts"
+    "prisma/fase-a/smoke-test.ts",
+    // ADR-007 A1: generador del schema objetivo (`npx tsx prisma/fase-a/generar-schema-objetivo.ts`) y sonda de
+    // tipos (`npx tsc -p prisma/fase-a/sonda-tipos/tsconfig.json`, tsconfig propio; el `tsc` raíz la excluye).
+    "prisma/fase-a/generar-schema-objetivo.ts",
+    "prisma/fase-a/sonda-tipos/sonda.ts"
   ],
 
   // Archivos que se analizan: src, test, scripts y prisma. Se incluyen `.css` (el `@import "tailwindcss"` de
