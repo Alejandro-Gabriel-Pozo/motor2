@@ -1,5 +1,16 @@
 # ADR-005: Acceso multi-empresa al portal de carta — deployment + token por empresa, no dominio dinámico
 
+> **SUPERADO el 2026-09-29, mismo día — ver ADR-006.** Al escribir este ADR
+> no se había leído `ARCHITECTURE.md` de `restaurant-menu-design` (sección
+> 2: "Multi-tenant — un mismo deploy sirve N negocios, resuelto por
+> dominio" ya figuraba ahí como prioridad 1 del roadmap de esa app, antes de
+> esta conversación). Con ese dato sobre la mesa, el dueño decidió absorber
+> la carta como módulo interno de motor2 en vez de token-por-empresa. Este
+> documento queda como registro histórico de la investigación (el hallazgo
+> de que `dominio`/`getTenantByDomain` son código muerto sigue siendo
+> cierto y válido) pero **la decisión de la sección "Decisión" de abajo NO
+> es la vigente.**
+
 > Redactado el 2026-09-29, durante el diseño del schema de Fase A (carta
 > multisucursal). Decisión del dueño tomada en la misma conversación,
 > después de investigar el código real de `restaurant-menu-design` (repo
