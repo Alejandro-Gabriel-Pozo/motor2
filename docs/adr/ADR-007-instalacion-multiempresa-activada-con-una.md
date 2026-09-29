@@ -160,11 +160,11 @@ segunda empresa se activa **después de la Fase 8** (D9).
 | A1 | Prueba previa en `prisma/fase-a/` con el objetivo completo (`validate` + `generate`; ver qué pasa con `create`/`connect` ante FK compuestas). **HECHO (local, sin push)**: ``2606c36``. `prisma/fase-a/schema.prisma` ahora se GENERA desde `prisma/schema.prisma` con `prisma/fase-a/generar-schema-objetivo.ts` (56 modelos: 7 globales + 49 con `empresaId`; 94 FK compuestas); la copia anterior estaba desfasada y arrastraba modelos D6 ajenos a la Fase F. `prisma validate` y `prisma generate` pasan. Sonda de tipos `prisma/fase-a/sonda-tipos/` (`npx tsc -p prisma/fase-a/sonda-tipos/tsconfig.json`, demostrada por mutación). Hallazgos: (1) un 1:1 con FK compuesta exige `@@unique([empresaId, xId])` (4 casos: `TemaCartaSucursal`, `SucursalPublica`, `ContenidoCartaProducto`, `OpcionItemAgrupadoCarta`) y `findUnique({ where: { sucursalId } })` deja de compilar; (2) el repo escribe con FK escalares (59 `create`/`createMany`, 0 `connect`): esos patrones compilan SIN pasar `empresaId` (default de la columna) y `connect: { id }` también; (3) compilando el código real contra el Client objetivo: 218 errores de tipo (32 en `src/`, 157 en `test/` —69 archivos—, 25 en `scripts/` y 4 en `prisma/seed.ts`), todos `where` únicos que dejan de existir: ~130 por `nombre`/`slug` pasado a `@@unique([empresaId, …])` (Unidad 86, Rol 22, Sucursal 13, SeccionCarta 4…; independiente de D4) y 46 por los 4 1:1; (4) referential actions: con FK compuesta Prisma no genera `SET NULL` (`empresaId` es NOT NULL): el SQL objetivo tiene 6 CASCADE y 139 RESTRICT, contra 8 CASCADE / 72 RESTRICT / 33 SET NULL hoy. Los borrados reales de padres afectados son `insumo.delete` (tras reapuntar `Producto.insumoId`) y `promoCuenta.delete` (tras borrar sus `CuentaItem`): no rompen, pero A2 debe agregar un test de `promoCuenta.delete` con una `Operacion` asociada. Línea base sin cambios (arquitectura 0 violaciones / 538 módulos, tests 294 archivos / 3435, e2e 379). | **EXPRESA** (schema) — otorgada | Bajo | N1 |
 | A2 | Migración 1 + `schema.prisma` + `down.sql` + arreglos de compilación, seed y helpers (por A1: los ~218 `where` únicos a reescribir como `empresaId_nombre`/`empresaId_sucursalId`, o `findFirst`; test de `promoCuenta.delete` con `Operacion`). **HECHO (local, sin push)**: `72d53da` (`prisma/migrations/20260929100000_multiempresa_estructura/` con `migration.sql` y `down.sql`, SIN RLS —eso es A6—; 49 tablas con `empresaId NOT NULL DEFAULT app_empresa_actual()`, 7 globales, 94 FK compuestas, empresa por defecto `empresa_principal` con slug provisorio `principal`, `rolEmpresa` NULL en el backfill de `UsuarioEmpresa`). Verificado sobre una copia de datos locales: aplicar/revertir/aplicar, `migrate diff` vacío, 3.120 operaciones y 14.404 movimientos con `empresaId` de la empresa por defecto. Los 33 `SET NULL` pasaron a `RESTRICT` (efecto real en `insumo.delete` y `promoCuenta.delete`); el test de `promoCuenta.delete` ya no era discriminante y ahora exige `P2003` y que la `Operacion` conserve el vínculo; `test/persistencia/multiempresa-estructura.test.ts` (15 tests), todo demostrado por mutación (rojo, revertido, verde). Se retiran de `prisma/fase-a/` el generador y la sonda de tipos de A1 (el objetivo ya vive en `prisma/schema.prisma`). Línea base tras A2: arquitectura 0 violaciones (538 módulos), tests 295 archivos / 3450, e2e 379. | **EXPRESA** — otorgada | Alto | A0, A1 |
 | A3 | Carta desde la base; se elimina `CARTA_EMPRESA_SLUG` en todas las capas. **HECHO (local, sin push)**: `dc4e074` (`resolverEmpresaCarta(slug, db)` lee `Empresa` por slug y solo `ACTIVE`; `EmpresaCarta` pasa a `{ id, slug }`; `resolverPortalCarta` filtra por `empresaId` y `resolverCartaPublica` usa `findUnique` por `empresaId_slug`; `empresaCartaPublica(slug)` en `publica-sin-sesion.ts` (único punto con `prisma`) para las dos páginas públicas; el link del admin (`/carta/portal`) toma la empresa de la sucursal en sesión con `empresaDeSucursalCarta`; variable borrada de `env.ts`, `playwright.config.ts`, `.env.example` y tests; el seed e2e (`asegurarBaseSeed`) crea la empresa con slug `e2e`). Desvíos: no había README ni docs vivos con la variable (solo ADR-006/007 y el comentario de la migración A2, históricos, sin tocar); los comentarios de `alcance.ts` y `precios/sincronizacion.ts` sobre el «schema experimental» siguen siendo ciertos (hablan de tablas D6 que no existen) y solo se corrigió `host.ts`. Las rutas legado `/api/carta/*` siguen sin empresa (D9). Tests: `test/core/carta-empresa-carta.test.ts` reescrito contra la base y 3 tests de aislamiento entre empresas en `test/carta/publica-consulta.test.ts`, todo demostrado por mutación (rojo, revertido, verde). Línea base tras A3: arquitectura 0 violaciones (538 módulos), tests 295 archivos / 3457, e2e 379, knip 0. | No (código) | Medio | A2 |
-| A4 | **HECHO (`9548e73`)** — Empresa activa en la sesión (cookie `empresaActivaId` validada contra `UsuarioEmpresa`), selector solo con más de una empresa, `UsuarioEmpresa` en bootstrap/altas de usuarios y sucursales; `ContextoUsuario` absorbe `ContextoEmpresa` (eliminados `contexto-empresa.ts` y `empresaDeSucursalCarta`). `rolEmpresa` queda NULL (decisión del dueño pendiente). Línea base: 296 archivos/3469 tests, 539 módulos/0 violaciones, e2e 379, knip 0. | No | Medio | A2 |
+| A4 | **HECHO (`9548e73`)** — Empresa activa en la sesión (cookie `empresaActivaId` validada contra `UsuarioEmpresa`), selector solo con más de una empresa, `UsuarioEmpresa` en bootstrap/altas de usuarios y sucursales; `ContextoUsuario` absorbe `ContextoEmpresa` (eliminados `contexto-empresa.ts` y `empresaDeSucursalCarta`). `rolEmpresa` quedó NULL en este paso; la regla se decidió después (ver «Decisiones posteriores»): quien crea la empresa, su primer admin, es su «gerente». Línea base: 296 archivos/3469 tests, 539 módulos/0 violaciones, e2e 379, knip 0. | No | Medio | A2 |
 | A5 | **HECHO (`22c0541`)** — `dbDeEmpresa`/`transaccionDeEmpresa` (`set_config('app.empresa_id', $1, true)` local a la transacción; el contexto de usuario ya sale de `baseDeEmpresa`), autochequeo del rol de ejecución (se niega con superusuario/BYPASSRLS/dueño y más de una empresa activa) y los dos pendientes de A4 (`empresaId` explícito en la disponibilidad de `crearSucursalConAdmin`; admins activos contados por empresa). Medición local (`scripts/benchmark-reportes.ts`, 1 año de historia, 18.250 compras): ≈ +0,46 ms por operación (0,26 → 0,72 ms) y +3,2 % en `obtenerReportePorPeriodo` (2355 → 2430 ms). Línea base: 298 archivos/3480 tests, 540 módulos/0 violaciones, e2e 379, knip 0. | No | Medio (rendimiento) | A4 |
 | A6 | Migración 2: RLS, políticas, grants condicionales, `down.sql` + tests de catálogo | **EXPRESA** | Alto | A5 |
 | A7 | Tests de aislamiento + e2e multiempresa + script `crear-empresa` | No (correrlo contra una base real sí) | Bajo | A6 |
-| A8 | Producción: ensayo en rama de Neon, rol en Neon, `DATABASE_URL` en Vercel, slug real, push y DNS wildcard (Fase 7) | **EXPRESA** | Alto | A7 |
+| A8 | Producción: ensayo en rama de Neon, rol en Neon, `DATABASE_URL` en Vercel, slug real, push y DNS wildcard (Fase 7). Paso de datos (no migración): la `empresa_principal` de producción ya existía, así que asignar `rolEmpresa = 'gerente'` a su primer admin (el dueño confirma quién; candidato: el usuario ADMIN más antiguo) | **EXPRESA** | Alto | A7 |
 | V | Verificación final (abajo) | — | — | todos |
 
 ## Impacto en tests
@@ -234,6 +234,44 @@ con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
    `core/` usan Prisma): por eso N2 y la regla de dependency-cruiser.
 8. `contexto-empresa.ts` dice que 88 archivos consumen `ContextoUsuario`; hoy
    lo mencionan ~112.
+
+## Decisiones posteriores (2026-09-29)
+1. **`rolEmpresa`**: quien crea la empresa (en el bootstrap, su primer admin) es
+   su «gerente» (`UsuarioEmpresa.rolEmpresa = 'gerente'`, ADR-001: gestiona
+   usuarios y asignaciones de la empresa). El bootstrap no pisa un rol que el
+   usuario ya tuviera. Los demás usuarios siguen con `rolEmpresa` NULL (sin rol
+   a nivel empresa) hasta que un gerente les asigne uno.
+2. **Borrados bajo FK compuestas (RESTRICT)**: `insumo.delete` (fusión de
+   insumos) y `promoCuenta.delete` (quitar promo sin enviar) pasan a archivar
+   (`activo = false`) en vez de borrar. Pendiente de implementar como paso
+   propio, con su gate.
+3. **`obtenerCostoActualPorMP`**: pasó de `findMany` con `include` sobre toda la
+   historia a una consulta `DISTINCT ON (productoId)` (una fila por producto,
+   desempate por `m.id`). Con ~55.000 compras la versión anterior superaba el
+   límite de parámetros de Prisma 7 (o, en el test de volumen, no terminaba en
+   60 s); el test `costo-actual-mp-volumen.test.ts` lo reproduce y falla con la
+   implementación vieja.
+4. **Índice en el kardex por proceso y producto — medición** (Postgres 17 local,
+   base descartable, 1 sucursal, 150 MP + 20 PV, ≈ 2,2 M movimientos/año a
+   550.000 operaciones/año; A = sin índice nuevo, B = parcial
+   `("productoId") WHERE "proceso" = 'COMPRA'`, C = completo
+   `("productoId", "proceso")`):
+
+   | | 1 año A / B / C | 3 años A / B / C |
+   |---|---|---|
+   | Costo actual (`obtenerCostoActualPorMP`) | 229 / 132 / 198 ms | 610 / 435 / 575–750 ms |
+   | Compras de UN producto (`periodo-precios`) | 94 / 0,8 / 2,4 ms | 250 / 2,4 / 4,1 ms |
+   | Tamaño del índice | — / 0,2 / 16 MB | — / 0,5 / 46 MB |
+   | Insertar 100.000 movimientos | 7,77 / 7,84 / 8,12 s | 8,03 / 8,07 / 8,38 s |
+
+   Conclusión: el índice completo casi no ayuda (el planificador ni lo usa para
+   el costo actual) y cuesta 46 MB a 3 años (Neon: 512 MB por rama); el
+   **parcial** pesa < 1 MB, no encarece la escritura (≈ +1 %) y reduce 100×
+   las búsquedas de compras por producto. Recomendación: agregar el parcial, en
+   una migración manual (Prisma no expresa índices parciales; precedente:
+   `CapacidadSucursal_accionClave_default_key`), con autorización EXPRESA. El
+   costo actual sigue dominado por ~54.000 búsquedas en `Operacion` (una por
+   compra): el próximo escalón sería otra forma de la consulta, no otro índice.
 
 ## Riesgos abiertos
 Rendimiento (cada consulta suma BEGIN + `set_config` + COMMIT; se mide en A5
