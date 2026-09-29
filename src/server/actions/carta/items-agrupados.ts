@@ -13,6 +13,7 @@ import {
 import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Ítems AGRUPADOS de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): un renglón visible ("Gaseosa 500 CC") que
@@ -93,6 +94,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
         const existente = await prisma.itemAgrupadoCarta.findUnique({ where: { id: datos.id } });
         if (!existente) return error("No se encontró el ítem agrupado.");
         const editado = await prisma.itemAgrupadoCarta.update({ where: { id: datos.id }, data });
+        revalidarCartasPublicas();
         return okConId(`Ítem agrupado "${editado.nombre}" guardado.`, editado.id, editado.nombre);
       }
       it = await prisma.itemAgrupadoCarta.create({ data });
@@ -101,6 +103,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
       throw e;
     }
 
+    revalidarCartasPublicas();
     const productoIds = [...new Set((datos.productoIds ?? []).map((id) => id.trim()).filter(Boolean))];
     if (productoIds.length === 0) return okConId(`Ítem agrupado "${it.nombre}" creado.`, it.id, it.nombre);
 
@@ -124,6 +127,7 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
     const existente = await prisma.itemAgrupadoCarta.findUnique({ where: { id: itemAgrupadoCartaId } });
     if (!existente) return error("No se encontró el ítem agrupado.");
     await prisma.itemAgrupadoCarta.update({ where: { id: itemAgrupadoCartaId }, data: { activo } });
+    revalidarCartasPublicas();
     return ok(`Ítem agrupado "${existente.nombre}" ${activo ? "prendido" : "apagado"}.`);
   });
 }
@@ -200,6 +204,7 @@ async function agregarOpcion(sucursalId: string, itemAgrupadoCartaId: string, pr
     if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
     throw e;
   }
+  revalidarCartasPublicas();
   return ok(`«${producto.nombre}» agregado a «${item.nombre}».`);
 }
 
@@ -210,6 +215,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
     const opcion = await prisma.opcionItemAgrupadoCarta.findUnique({ where: { id: opcionId }, select: { producto: { select: { nombre: true } } } });
     if (!opcion) return error("No se encontró la opción.");
     await prisma.opcionItemAgrupadoCarta.update({ where: { id: opcionId }, data: { orden: o.valor } });
+    revalidarCartasPublicas();
     return ok(`Orden de «${opcion.producto.nombre}» guardado.`);
   });
 }
@@ -223,6 +229,7 @@ export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<R
     });
     if (!opcion) return error("No se encontró la opción.");
     await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { id: opcionId } });
+    revalidarCartasPublicas();
     return ok(`«${opcion.producto.nombre}» ya no está en «${opcion.itemAgrupadoCarta.nombre}».`);
   });
 }

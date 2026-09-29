@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { contarValoresTema, validarValoresTema } from "@/core/carta/tema";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Tema visual de la carta pública de una sucursal (docs/plan-tema-carta-2026-09-24.md, M8): lo que restaurant-menu-design lee
@@ -37,6 +38,7 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
       update: { valores: json },
       select: { aplicarEnCarta: true },
     });
+    revalidarCartasPublicas();
     const cantidad = Object.keys(validados.valor).length;
     const estado = fila.aplicarEnCarta ? "Está aplicado: la carta toma los cambios en hasta 5 minutos." : "Es un borrador: la carta sigue con la sheet hasta que lo apliques.";
     return ok(`Tema de "${sucursal.nombre}" guardado (${cantidad} ${cantidad === 1 ? "valor cargado" : "valores cargados"}; el resto usa el default de la carta). ${estado}`);
@@ -59,11 +61,13 @@ export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean
 
     if (!aplicar) {
       await prisma.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: false } });
+      revalidarCartasPublicas();
       return ok(`Tema de "${nombre}" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).`);
     }
 
     if (contarValoresTema(fila.valores) === 0) return error("No se puede aplicar un tema vacío: cargá al menos un valor y guardalo.");
     await prisma.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: true } });
+    revalidarCartasPublicas();
     const publica = fila.sucursal.publica;
     if (!publica) return ok(`Tema de "${nombre}" aplicado, pero sin efecto hasta agregarla al portal (Portal de sucursales).`);
     if (!publica.publicada) return ok(`Tema de "${nombre}" aplicado, pero sin efecto hasta publicarla en el portal.`);

@@ -171,20 +171,35 @@ arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
    `querySelectorAll`, `ResizeObserver` bien desconectado, landmarks para
    axe, piso de contraste/legibilidad). Accesible por PATH directo
    (`/carta-publica/<empresa>/<sucursal>`), todavía sin subdominio (eso es
-   la Fase 6). Páginas `dynamic = "force-dynamic"` a propósito: no hay
-   `revalidatePath` todavía, cachear sin invalidar sería peor que no
-   cachear (encontrado con un test real: con `revalidate=300` un spec veía
-   la respuesta cacheada de otro). test 292/3415, test:e2e 375/67.
+   la Fase 6). Páginas `dynamic = "force-dynamic"` en esta fase a
+   propósito: no había `revalidatePath` todavía, cachear sin invalidar
+   sería peor que no cachear (encontrado con un test real: con
+   `revalidate=300` un spec veía la respuesta cacheada de otro) — la
+   Fase 4 lo resolvió para la página de sucursal (el portal sigue
+   dinámico). test 292/3415, test:e2e 375/67.
+5. **Fase 4**: la vista
+   previa de `/carta/tema` es `CartaVista` real con `CARTA_EJEMPLO`
+   (`NavegacionCarta` ganó `embebida`: alto fijo, sin landmarks propios);
+   borrado `vista-previa-tema.tsx`. `/carta/portal` suma "Ver la carta de
+   motor2 →" y "Ver el portal de motor2 →" (links por path, `empresaCartaActual`;
+   los links externos siguen hasta la Fase 7). Caché: la página de sucursal
+   vuelve a ISR (`revalidate = 300`) e invalida al instante desde las acciones
+   de `src/server/actions/carta/` (`revalidarCartasPublicas`); el portal de la
+   empresa sigue dinámico. Dos trampas encontradas por un e2e que se vio fallar
+   (mutación → rojo → revertir → verde): (1) una ruta con segmentos dinámicos
+   NO entra en ISR sin `generateStaticParams` (el build la marcaba ƒ y
+   `revalidate` no hacía nada) — se devuelve `[]`; (2) `revalidatePath` con un
+   patrón necesita el route group (`/(carta-publica)/carta-publica/[empresa]/[sucursal]`),
+   sin él no invalida nada y no avisa. Límites conocidos: cambios fuera del
+   módulo carta (precio/nombre/disponibilidad de un producto) tardan hasta 5
+   min; las bandas de sección usan `vh` y en la vista previa se calculan con la
+   ventana, no con el recuadro; la vista previa usa datos de ejemplo fijos (mejora
+   posible: la carta real de la sucursal). test 292/3415, arquitectura 535
+   módulos, test:e2e 376/67.
 
 **Pendiente, en el orden del plan (ver el plan completo para el detalle de
 cada una — no reinventarlas de memoria):**
 
-- **Fase 4** [HOY, sin autorización]: `/carta/tema` usa `CartaVista` real
-  para la vista previa (borrar `src/components/carta/vista-previa-tema.tsx`,
-  281 líneas duplicadas); `/carta/portal` arma el link "Ver en vivo" hacia
-  `/carta-publica/<empresa>/<slug>`; sumar el `revalidatePath` que falta
-  (ver nota de Fase 3 arriba) y recién ahí volver a poner `revalidate` en
-  las páginas públicas.
 - **Fase 5** [HOY, opcional, con aprobación del dueño]: decisión sobre
   cambiar el layout de "libro" (slider horizontal) a scroll vertical único
   — capturas antes/después, nunca decidir solo. La Fase 3 ya construyó la

@@ -1,6 +1,4 @@
-import { Playfair_Display } from "next/font/google";
-
-const playfair = Playfair_Display({ variable: "--font-carta-serif", subsets: ["latin"] });
+import { fuenteCartaSerif } from "@/components/carta-publica/fuente-carta";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`): layout de la carta pública — SIN sesión, distinto del de
@@ -10,5 +8,5 @@ const playfair = Playfair_Display({ variable: "--font-carta-serif", subsets: ["l
  * normal, y solo la carta de una sucursal (con su slider) fuerza `h-svh overflow-hidden` en su propia página.
  */
 export default function CartaPublicaLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`carta-shell ${playfair.variable}`}>{children}</div>;
+  return <div className={`carta-shell ${fuenteCartaSerif.variable}`}>{children}</div>;
 }

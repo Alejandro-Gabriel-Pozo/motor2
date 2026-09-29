@@ -1,10 +1,13 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import { CartaVista } from "@/components/carta-publica/carta-vista";
+import { fuenteCartaSerif } from "@/components/carta-publica/fuente-carta";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { resolverEstiloCarta } from "@/core/carta/public";
 import { CLAVES_TEMA_V1, parsearConfigPegada, validarValorTema, ZONAS_TEMA, type ConfigPegada, type DefinicionClaveTema } from "@/core/carta/tema";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { VistaPreviaTema } from "./vista-previa-tema";
+import { CARTA_EJEMPLO } from "./carta-ejemplo";
 
 /**
  * Editor del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M9, D11/D12). Formulario NO controlado (`FormConResultado`),
@@ -43,6 +46,7 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
   const raiz = useRef<HTMLDivElement>(null);
   const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
   const [pegado, setPegado] = useState<ConfigPegada | null>(null);
+  const estilo = useMemo(() => resolverEstiloCarta(valores), [valores]);
 
   const releer = (e: FormEvent<HTMLDivElement>) => {
     const form = e.currentTarget.closest("form");
@@ -110,11 +114,12 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
           <h2 id="titulo-vista-previa" className="text-sm font-medium">
             Vista previa
           </h2>
-          <VistaPreviaTema valores={valores} />
+          <div className={`carta-shell ${fuenteCartaSerif.variable} overflow-hidden rounded border`} data-vista-previa-tema>
+            <CartaVista carta={CARTA_EJEMPLO} estilo={estilo} embebida />
+          </div>
           <p className="text-xs text-neutral-500">
-            Aproximada: se recorre como la carta, de a una página (portada, índice y una sección de ejemplo) con las flechas ‹ ›, pero no simula el
-            deslizamiento entre páginas ni la vista de escritorio, ni los modos, anchos, posiciones, degradé ni opacidad de la imagen de sección. Los precios
-            usan la convención del sistema (es-AR, $ a la izquierda).
+            Es la carta real con datos de ejemplo (portada, índice y dos secciones): se recorre con las flechas o tocando el índice. La altura de la banda de cada sección
+            (medida en <code>vh</code>) se calcula con la ventana del navegador, no con el alto de este recuadro.
           </p>
         </section>
       </div>

@@ -4,8 +4,14 @@ import { resolverEmpresaCarta } from "@/core/carta/public";
 import { resolverCartaPublica } from "@/core/carta/public-servidor";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 
-// Forzado dinámico (sin caché): ver la nota de abajo y en carta-publica/[empresa]/page.tsx.
-export const dynamic = "force-dynamic";
+// ISR: se cachea 5 minutos, y las acciones del módulo carta la invalidan al instante (`revalidarCartasPublicas`). Sin
+// `generateStaticParams` una ruta con segmentos dinámicos NO entra en ISR (el build la marca ƒ y `revalidate` no hace nada):
+// devolver [] la habilita sin prerenderizar ninguna sucursal — cada una se genera en su primera visita.
+export const revalidate = 300;
+
+export function generateStaticParams() {
+  return [];
+}
 
 async function resolver(empresa: string, sucursal: string) {
   const empresaCarta = await resolverEmpresaCarta(empresa);
@@ -24,8 +30,11 @@ export async function generateMetadata({ params }: { params: Promise<{ empresa: 
  * La carta de una sucursal (ADR-006, Fase 3): reemplaza `restaurant-menu-design/app/carta/[sucursal]/page.tsx`. Un slug de
  * sucursal inexistente, no publicado, de una sucursal inactiva, o una empresa que no resuelve, dan el mismo 404 — no se
  * distingue cuál caso es (mismo criterio que hoy). Sin `headers()`/`cookies()` acá: la empresa se resuelve por el segmento
- * de ruta `[empresa]`, no por el Host (eso es Fase 6, el rewrite de `next.config.ts`). Sin `revalidate`/ISR a propósito
- * por ahora — ver la nota en `carta-publica/[empresa]/page.tsx` (falta el `revalidatePath` que lo invalidaría).
+ * de ruta `[empresa]`, no por el Host (eso es Fase 6, el rewrite de `next.config.ts`).
+ *
+ * Caché (Fase 4): `revalidate = 300` + `revalidatePath("/(carta-publica)/carta-publica/[empresa]/[sucursal]", "page")` en cada acción de
+ * `src/server/actions/carta/` que cambia lo que se ve (ver `revalidar.ts`). Límite conocido: un cambio hecho fuera del módulo
+ * carta que la carta muestra (precio, nombre o disponibilidad de un producto) tarda hasta 5 minutos en verse.
  */
 export default async function CartaPage({ params }: { params: Promise<{ empresa: string; sucursal: string }> }) {
   const { empresa, sucursal } = await params;

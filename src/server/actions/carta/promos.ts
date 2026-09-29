@@ -12,6 +12,7 @@ import {
 } from "@/core/carta/validaciones";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Promos de la carta de la sucursal activa (docs/plan-carta-catalogo-2026-09-24.md, M9, D5): título, descripción y precio
@@ -53,9 +54,11 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
       const existente = await prisma.promoCarta.findUnique({ where: { id: datos.id } });
       if (!existente || existente.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
       await prisma.promoCarta.update({ where: { id: datos.id }, data });
+      revalidarCartasPublicas();
       return ok(`Promo "${titulo.valor}" guardada.`);
     }
     await prisma.promoCarta.create({ data: { ...data, sucursalId: ctx.sucursalId } });
+    revalidarCartasPublicas();
     return ok(`Promo "${titulo.valor}" creada en "${seccion.nombre}".`);
   });
 }
@@ -65,6 +68,7 @@ export async function actualizarActivaPromoCarta(promoCartaId: string, activa: b
     const existente = await prisma.promoCarta.findUnique({ where: { id: promoCartaId } });
     if (!existente || existente.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
     await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { activa } });
+    revalidarCartasPublicas();
     return ok(`Promo "${existente.titulo}" ${activa ? "activada" : "desactivada"}.`);
   });
 }

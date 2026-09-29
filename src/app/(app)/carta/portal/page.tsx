@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
+import { empresaCartaActual } from "@/core/carta/public";
 import { cargarAdminPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
 import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -40,6 +42,7 @@ export default async function PortalSucursalesPage() {
 
   const sucursales = await cargarAdminPortal();
   const basePortal = urlBasePortal();
+  const empresa = await empresaCartaActual();
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,16 +53,23 @@ export default async function PortalSucursalesPage() {
           el mismo slug de la sheet maestra de la carta; «Quitar del portal» vuelve a esa fila. Solo sale en el portal si está publicada y la sucursal está
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
-        {basePortal && (
-          <a href={basePortal} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm text-blue-600 underline">
-            Ver el portal en vivo →
-          </a>
-        )}
+        <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
+          {empresa && (
+            <Link href={`/carta-publica/${empresa.slug}`} target="_blank" className="text-blue-600 underline">
+              Ver el portal de motor2 →
+            </Link>
+          )}
+          {basePortal && (
+            <a href={basePortal} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+              Ver el portal en vivo →
+            </a>
+          )}
+        </div>
       </div>
 
       <ul className="flex flex-col gap-3">
         {sucursales.map((s) => (
-          <SucursalEnPortal key={s.id} sucursal={s} basePortal={basePortal} />
+          <SucursalEnPortal key={s.id} sucursal={s} basePortal={basePortal} empresaSlug={empresa?.slug ?? null} />
         ))}
         {!sucursales.length && <li className="text-sm text-neutral-500">No hay sucursales.</li>}
       </ul>
@@ -78,7 +88,7 @@ function seVeEnVivo(s: SucursalPortalAdmin): boolean {
   return Boolean(s.publica?.publicada) && s.activo;
 }
 
-function SucursalEnPortal({ sucursal: s, basePortal }: { sucursal: SucursalPortalAdmin; basePortal: string | null }) {
+function SucursalEnPortal({ sucursal: s, basePortal, empresaSlug }: { sucursal: SucursalPortalAdmin; basePortal: string | null; empresaSlug: string | null }) {
   const sucursalId = s.id;
   const p = s.publica;
   return (
@@ -86,6 +96,14 @@ function SucursalEnPortal({ sucursal: s, basePortal }: { sucursal: SucursalPorta
       <p className="text-sm">
         <span className="font-medium">{s.nombre}</span>
         {!s.activo && <span className="text-neutral-500"> (inactiva)</span>} · {estadoEnPortal(s)}
+        {empresaSlug && p && seVeEnVivo(s) && (
+          <>
+            {" · "}
+            <Link href={`/carta-publica/${empresaSlug}/${p.slug}`} target="_blank" className="text-blue-600 underline">
+              Ver la carta de motor2 →
+            </Link>
+          </>
+        )}
         {basePortal && p && seVeEnVivo(s) && (
           <>
             {" · "}

@@ -8,7 +8,7 @@ import { Seccion } from "./seccion";
  * (`restaurant-menu-design/components/carta-view.tsx`). Las páginas del slider (`paginas`) se calculan acá, en el
  * servidor, a partir de `carta.secciones` — nunca descubiertas del DOM (ver `navegacion-carta.tsx`).
  */
-export function CartaVista({ carta, estilo, hrefVolver }: { carta: CartaV1; estilo: EstiloCarta; hrefVolver: string }) {
+export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: CartaV1; estilo: EstiloCarta; hrefVolver?: string; embebida?: boolean }) {
   const restauranteNombre = estilo.valores.restaurante_nombre || carta.sucursal.nombre;
   const paginas: PaginaCarta[] = [
     { id: "portada", tipo: "portada" },
@@ -23,7 +23,7 @@ export function CartaVista({ carta, estilo, hrefVolver }: { carta: CartaV1; esti
   if (estilo.valores.color_fondo_dia) variablesCss["--carta-bg"] = estilo.valores.color_fondo_dia;
 
   return (
-    <NavegacionCarta paginas={paginas} hrefVolver={hrefVolver} redesSociales={redesSociales} variablesCss={variablesCss}>
+    <NavegacionCarta paginas={paginas} hrefVolver={hrefVolver} embebida={embebida} redesSociales={redesSociales} variablesCss={variablesCss}>
       <Portada estilo={estilo} restauranteNombre={restauranteNombre} />
 
       <div className="carta-pagina flex flex-col px-6 pb-16 pt-14 sm:px-10">

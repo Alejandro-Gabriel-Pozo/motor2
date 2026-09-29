@@ -38,7 +38,8 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
     await expect(invalidas).toContainText("color_item_precio");
     await expect(invalidas).toContainText("carta_banda_alto_desktop");
     // …y el color y el tamaño calculados en la vista previa: clamp(0.8rem, 2vw, 1rem) a 1280 px = 1rem = 16px.
-    const nombreItem = page.locator('[data-vista-previa-tema] [data-preview="item-nombre"]');
+    // (El ítem "Provoleta" de la carta de ejemplo no es especial: usa color_item_nombre; el especial usa color_especial_item_nombre.)
+    const nombreItem = page.locator("[data-vista-previa-tema]").getByRole("heading", { name: "Provoleta", level: 3 });
     await expect(nombreItem).toHaveCSS("color", "rgb(170, 51, 0)");
     await expect(nombreItem).toHaveCSS("font-size", "16px");
     // Nada se guardó todavía.
@@ -77,54 +78,91 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
   }
 });
 
-test("la vista previa del tema se recorre de a una página, como la carta: portada → índice → sección, en círculo", async ({ paginaAutenticada: page, sucursalId }) => {
-  // Sin tema: la portada muestra el nombre por defecto de la vista previa.
+test("aplicar y desaplicar el tema se ve al instante en la carta pública (invalida el caché de la página)", async ({ paginaAutenticada: page, sucursalId }) => {
+  // ADR-006, Fase 4: la página de la sucursal se cachea 5 minutos (`revalidate = 300`); las acciones de carta la invalidan
+  // (`revalidarCartasPublicas`). Sin la invalidación, la segunda visita traería la respuesta cacheada de la primera.
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const slug = `e2e-tema-vivo-${marca}`;
+  const nombre = `Restaurante Vivo ${marca}`;
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+  await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+  await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
+  const titulo = page.getByRole("heading", { name: nombre, level: 1 });
+  try {
+    // Primera visita (queda cacheada): sin tema, no está el nombre.
+    await page.goto(`/carta-publica/e2e/${slug}`);
+    await expect(page.locator("h1").first()).toBeVisible();
+    await expect(titulo).toHaveCount(0);
+
+    await page.goto("/carta/tema");
+    await page.locator('[data-zona-tema="Portada e identidad"]').evaluate((el) => ((el as HTMLDetailsElement).open = true));
+    await page.locator('[name="restaurante_nombre"]').fill(nombre);
+    await page.getByRole("button", { name: "Guardar tema" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
+    await page.getByRole("button", { name: "Aplicar el tema" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "aplicado" })).toBeVisible();
+
+    await page.goto(`/carta-publica/e2e/${slug}`);
+    await expect(titulo).toHaveCount(1);
+
+    await page.goto("/carta/tema");
+    await page.getByRole("button", { name: "Desaplicar el tema" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "desaplicado" })).toBeVisible();
+
+    await page.goto(`/carta-publica/e2e/${slug}`);
+    await expect(titulo).toHaveCount(0);
+  } finally {
+    await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+  }
+});
+
+test("la vista previa del tema es la carta real: se recorre de a una página (portada → índice → secciones), con flechas y desde el índice", async ({ paginaAutenticada: page, sucursalId }) => {
+  // ADR-006, Fase 4: la vista previa dibuja `CartaVista` (el mismo componente de la carta pública) con datos de ejemplo. Sin tema: la
+  // portada muestra el nombre por defecto de la carta de ejemplo.
+  await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/carta/tema");
   const vista = page.locator("[data-vista-previa-tema]");
-  const pagina = (nombre: string) => vista.locator(`[data-vista-previa-pagina="${nombre}"]`);
-  const indicador = vista.locator("[data-vista-previa-indicador]");
-  const siguiente = vista.getByRole("button", { name: "Página siguiente de la vista previa" });
-  const anterior = vista.getByRole("button", { name: "Página anterior de la vista previa" });
-  const visibles = (texto: string) => vista.getByText(texto).filter({ visible: true });
+  const siguiente = vista.getByRole("button", { name: "Página siguiente" });
+  const anterior = vista.getByRole("button", { name: "Página anterior" });
+  const portada = vista.getByRole("heading", { name: "Nombre del restaurante", level: 1 });
+  const indice = vista.getByRole("heading", { name: "Índice", level: 1 });
+  const entradas = vista.getByRole("heading", { name: "Entradas", level: 2 });
+  const fuego = vista.getByRole("heading", { name: "Del fuego", level: 2 });
 
-  // Arranca en la portada: se ve el nombre del restaurante y NO el índice («Cocina»).
-  await expect(pagina("portada")).toBeVisible();
-  await expect(pagina("indice")).toBeHidden();
-  await expect(pagina("seccion")).toBeHidden();
-  await expect(indicador).toHaveText("1 / 3");
-  await expect(visibles("Nombre del restaurante")).toHaveCount(1);
-  await expect(visibles("Cocina")).toHaveCount(0);
-  // Las barras superior e inferior son fijas.
-  await expect(vista.locator('[data-preview="topbar"]')).toBeVisible();
+  // Arranca en la portada: se ve el nombre del restaurante y NO el índice; no se puede ir hacia atrás.
+  await expect(portada).toBeInViewport();
+  await expect(indice).not.toBeInViewport();
+  await expect(anterior).toBeDisabled();
+  await expect(vista.locator("[data-carta-topbar]")).toBeVisible();
 
-  // › pasa al índice: se ve «Cocina» y ya no el nombre del restaurante.
+  // › pasa al índice, con una entrada por sección.
   await siguiente.click();
-  await expect(pagina("indice")).toBeVisible();
-  await expect(pagina("portada")).toBeHidden();
-  await expect(indicador).toHaveText("2 / 3");
-  await expect(visibles("Cocina")).toHaveCount(2);
-  await expect(visibles("Nombre del restaurante")).toHaveCount(0);
-  await expect(vista.locator('[data-preview="topbar"]')).toBeVisible();
+  await expect(indice).toBeInViewport();
+  await expect(portada).not.toBeInViewport();
+  await expect(vista.getByRole("button", { name: /Entradas/ })).toBeVisible();
+  await expect(vista.getByRole("button", { name: /Del fuego/ })).toBeVisible();
+  await expect(vista.getByText("2 / 4")).toBeVisible();
 
-  // › pasa a la sección: la banda y los ítems de ejemplo.
+  // › pasa a la primera sección: su banda, su ítem y el botón "Índice" en la barra inferior.
   await siguiente.click();
-  await expect(pagina("seccion")).toBeVisible();
-  await expect(pagina("indice")).toBeHidden();
-  await expect(indicador).toHaveText("3 / 3");
-  await expect(vista.locator('[data-preview="item-nombre"]')).toHaveText("Bife de chorizo");
-  await expect(vista.locator('[data-preview="item-nombre"]')).toBeVisible();
-  await expect(vista.locator('[data-preview="banda"]')).toBeVisible();
+  await expect(entradas).toBeInViewport();
+  await expect(vista.getByRole("heading", { name: "Provoleta", level: 3 })).toBeInViewport();
+  await expect(vista.getByRole("button", { name: "Índice" })).toBeVisible();
 
-  // Circular: › desde la sección vuelve a la portada, y ‹ desde la portada va a la sección.
-  await siguiente.click();
-  await expect(pagina("portada")).toBeVisible();
-  await expect(indicador).toHaveText("1 / 3");
+  // Desde el índice se salta directo a una sección: «Del fuego» trae dos ítems y una promo.
+  await vista.getByRole("button", { name: "Índice" }).click();
+  await expect(indice).toBeInViewport();
+  await vista.getByRole("button", { name: /Del fuego/ }).click();
+  await expect(fuego).toBeInViewport();
+  await expect(vista.getByRole("heading", { name: "Bife de chorizo", level: 3 })).toBeInViewport();
+  await expect(vista.getByRole("heading", { name: "Promo de la casa", level: 3 })).toBeInViewport();
+
+  // No es circular (como la carta pública): en la última página › queda deshabilitado, y ‹ vuelve de a una.
+  await expect(siguiente).toBeDisabled();
   await anterior.click();
-  await expect(pagina("seccion")).toBeVisible();
-  await anterior.click();
-  await expect(pagina("indice")).toBeVisible();
-  await expect(indicador).toHaveText("2 / 3");
+  await expect(entradas).toBeInViewport();
 
   // Las flechas no envían el formulario del tema (son type="button"): nada se guardó.
   expect(await prisma.temaCartaSucursal.count({ where: { sucursalId } })).toBe(0);

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { validarNombreGeneroCarta, validarOrdenCarta } from "@/core/carta/validaciones";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Géneros de carta (docs/plan-genero-carta-2026-09-26.md): carpetas VISUALES del POS que agrupan, dentro de una sección de
@@ -37,9 +38,11 @@ export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<Resul
       const existente = await prisma.generoCarta.findUnique({ where: { id: datos.id } });
       if (!existente) return error("No se encontró el género.");
       const g = await prisma.generoCarta.update({ where: { id: datos.id }, data });
+      revalidarCartasPublicas();
       return okConId(`Género "${g.nombre}" guardado.`, g.id, g.nombre);
     }
     const g = await prisma.generoCarta.create({ data });
+    revalidarCartasPublicas();
     return okConId(`Género "${g.nombre}" creado.`, g.id, g.nombre);
   });
 }
@@ -50,6 +53,7 @@ export async function actualizarActivoGeneroCarta(generoCartaId: string, activo:
     const existente = await prisma.generoCarta.findUnique({ where: { id: generoCartaId } });
     if (!existente) return error("No se encontró el género.");
     await prisma.generoCarta.update({ where: { id: generoCartaId }, data: { activo } });
+    revalidarCartasPublicas();
     return ok(`Género "${existente.nombre}" ${activo ? "activado" : "desactivado"}.`);
   });
 }

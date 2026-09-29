@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { validarImagenUrlCarta, validarNombreSeccionCarta, validarOrdenCarta, validarTextoLibreCarta, LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_TITULO_CARTA } from "@/core/carta/validaciones";
 import { conPermiso } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Secciones de carta (docs/plan-carta-catalogo-2026-09-24.md, M9). Globales (Catálogo Central, decisión D4). Solo escriben en
@@ -44,9 +45,11 @@ export async function guardarSeccionCarta(datos: DatosSeccionCarta): Promise<Res
       const existente = await prisma.seccionCarta.findUnique({ where: { id: datos.id } });
       if (!existente) return error("No se encontró la sección de carta.");
       const s = await prisma.seccionCarta.update({ where: { id: datos.id }, data });
+      revalidarCartasPublicas();
       return okConId(`Sección de carta "${s.nombre}" guardada.`, s.id, s.nombre);
     }
     const s = await prisma.seccionCarta.create({ data });
+    revalidarCartasPublicas();
     return okConId(`Sección de carta "${s.nombre}" creada.`, s.id, s.nombre);
   });
 }
@@ -57,6 +60,7 @@ export async function actualizarActivaSeccionCarta(seccionCartaId: string, activ
     const existente = await prisma.seccionCarta.findUnique({ where: { id: seccionCartaId } });
     if (!existente) return error("No se encontró la sección de carta.");
     await prisma.seccionCarta.update({ where: { id: seccionCartaId }, data: { activa } });
+    revalidarCartasPublicas();
     return ok(`Sección de carta "${existente.nombre}" ${activa ? "activada" : "desactivada"}.`);
   });
 }

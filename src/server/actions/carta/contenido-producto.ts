@@ -5,6 +5,7 @@ import { normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta, LARGO_M
 import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Contenido de cara al cliente de un PV en la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M9): si se muestra, en qué
@@ -63,6 +64,7 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
       generoCartaId: genero.valor,
     };
     await prisma.contenidoCartaProducto.upsert({ where: { productoId }, update: data, create: { productoId, ...data } });
+    revalidarCartasPublicas();
     return ok(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`);
   });
 }
@@ -78,6 +80,7 @@ export async function actualizarVisibleEnCarta(productoId: string, visibleEnCart
     if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
     if (visibleEnCarta && !producto.contenidoCarta?.seccionCartaId) return error(MENSAJE_FALTA_SECCION);
     await prisma.contenidoCartaProducto.upsert({ where: { productoId }, update: { visibleEnCarta }, create: { productoId, visibleEnCarta } });
+    revalidarCartasPublicas();
     return ok(`Carta: "${producto.nombre}" ${visibleEnCarta ? "se muestra" : "queda oculto"}.`);
   });
 }

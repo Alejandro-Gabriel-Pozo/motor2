@@ -39,13 +39,18 @@ interface Props {
   children: ReactNode;
   paginas: PaginaCarta[];
   /** A dónde vuelve el link "← Menú" del topbar: el portal de la empresa. */
-  hrefVolver: string;
+  hrefVolver?: string;
   redesSociales: readonly RedSocial[];
   /** `EstiloCarta.variablesCss` (`src/core/carta/estilo.ts`): pisa los defaults de `.carta-shell` para ESTA sucursal. */
   variablesCss: Readonly<Record<string, string>>;
+  /**
+   * Vista previa dentro de otra página (el editor del tema, ADR-006 Fase 4): alto fijo en vez de `h-svh`, sin landmarks
+   * propios (`header`/`main` — la página anfitriona ya tiene los suyos), "← Menú" sin link y sin botón de imprimir.
+   */
+  embebida?: boolean;
 }
 
-export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, variablesCss }: Props) {
+export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, variablesCss, embebida = false }: Props) {
   const sliderRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const [current, setCurrent] = useState(0);
@@ -84,40 +89,20 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
   const hayRedes = redesSociales.length > 0;
 
   return (
-    <div className="relative h-svh w-full overflow-hidden" style={variablesCss as React.CSSProperties}>
-      <header
-        data-carta-topbar
-        className="absolute left-0 right-0 top-0 z-40 flex h-10 items-center justify-between border-b px-3 backdrop-blur-sm"
-        style={{ backgroundColor: "color-mix(in oklch, var(--carta-bg) 88%, transparent)", borderColor: "var(--carta-border)" }}
-      >
-        <Link href={hrefVolver} className="text-xs font-light uppercase tracking-[0.3em] opacity-60 transition-opacity hover:opacity-90">
-          ← Menú
-        </Link>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          aria-label="Imprimir carta"
-          className="flex h-8 w-8 items-center justify-center rounded-full opacity-50 transition-opacity hover:opacity-90"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-            <path d="M6 9V2h12v7" />
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-            <rect x="6" y="14" width="12" height="8" />
-          </svg>
-        </button>
-      </header>
+    <div className={`relative w-full overflow-hidden ${embebida ? "h-[32rem]" : "h-svh"}`} style={variablesCss as React.CSSProperties}>
+      <Topbar embebida={embebida} hrefVolver={hrefVolver} />
 
-      <main
-        ref={sliderRef}
+      <Slider
+        embebida={embebida}
+        sliderRef={sliderRef}
         onScroll={onScroll}
-        className="carta-slider h-full w-full"
         onClickCapture={(e) => {
           const boton = (e.target as HTMLElement).closest<HTMLElement>("[data-ir-a]");
           if (boton?.dataset.irA) irAId(boton.dataset.irA);
         }}
       >
         {children}
-      </main>
+      </Slider>
 
       {total > 1 && (
         <nav
@@ -202,5 +187,65 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
         </nav>
       )}
     </div>
+  );
+}
+
+const ESTILO_TOPBAR = { backgroundColor: "color-mix(in oklch, var(--carta-bg) 88%, transparent)", borderColor: "var(--carta-border)" } as const;
+const CLASE_TOPBAR = "absolute left-0 right-0 top-0 z-40 flex h-10 items-center justify-between border-b px-3 backdrop-blur-sm";
+const CLASE_VOLVER = "text-xs font-light uppercase tracking-[0.3em] opacity-60";
+
+function Topbar({ embebida, hrefVolver }: { embebida: boolean; hrefVolver?: string }) {
+  if (embebida) {
+    return (
+      <div data-carta-topbar className={CLASE_TOPBAR} style={ESTILO_TOPBAR}>
+        <span className={CLASE_VOLVER}>← Menú</span>
+      </div>
+    );
+  }
+  return (
+    <header data-carta-topbar className={CLASE_TOPBAR} style={ESTILO_TOPBAR}>
+      {hrefVolver ? (
+        <Link href={hrefVolver} className={`${CLASE_VOLVER} transition-opacity hover:opacity-90`}>
+          ← Menú
+        </Link>
+      ) : (
+        <span />
+      )}
+      <button
+        type="button"
+        onClick={() => window.print()}
+        aria-label="Imprimir carta"
+        className="flex h-8 w-8 items-center justify-center rounded-full opacity-50 transition-opacity hover:opacity-90"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M6 9V2h12v7" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <rect x="6" y="14" width="12" height="8" />
+        </svg>
+      </button>
+    </header>
+  );
+}
+
+interface PropsSlider {
+  embebida: boolean;
+  sliderRef: React.RefObject<HTMLElement | null>;
+  onScroll: () => void;
+  onClickCapture: (e: React.MouseEvent<HTMLElement>) => void;
+  children: ReactNode;
+}
+
+function Slider({ embebida, sliderRef, onScroll, onClickCapture, children }: PropsSlider) {
+  if (embebida) {
+    return (
+      <div ref={sliderRef as React.RefObject<HTMLDivElement | null>} onScroll={onScroll} onClickCapture={onClickCapture} className="carta-slider h-full w-full" data-carta-slider>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <main ref={sliderRef} onScroll={onScroll} onClickCapture={onClickCapture} className="carta-slider h-full w-full" data-carta-slider>
+      {children}
+    </main>
   );
 }

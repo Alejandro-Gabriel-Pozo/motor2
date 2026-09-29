@@ -18,3 +18,9 @@ export async function resolverEmpresaCarta(slug: string): Promise<EmpresaCarta |
   if (!esperado || slug !== esperado) return null;
   return { slug };
 }
+
+/** La empresa a la que sirve ESTA instalación (hoy la única, `CARTA_EMPRESA_SLUG`); `null` si no está configurada. Lo usa el admin para armar el link "Ver en vivo". */
+export async function empresaCartaActual(): Promise<EmpresaCarta | null> {
+  const slug = process.env.CARTA_EMPRESA_SLUG?.trim();
+  return slug ? { slug } : null;
+}

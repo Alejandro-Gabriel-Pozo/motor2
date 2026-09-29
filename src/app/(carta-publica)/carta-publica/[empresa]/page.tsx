@@ -3,7 +3,7 @@ import { resolverEmpresaCarta } from "@/core/carta/public";
 import { resolverPortalCarta } from "@/core/carta/public-servidor";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 
-// Forzado dinámico (sin caché): ver la nota de abajo sobre por qué no hay `revalidate` todavía.
+// Dinámico a propósito (sin caché): ver la nota de abajo.
 export const dynamic = "force-dynamic";
 
 /**
@@ -11,11 +11,9 @@ export const dynamic = "force-dynamic";
  * si el slug de empresa no resuelve — hoy (`resolverEmpresaCarta`) compara contra `CARTA_EMPRESA_SLUG`; cuando `Empresa`
  * exista de verdad (Fase F) esta página no cambia, solo cambia qué hay adentro de esa función.
  *
- * SIN `revalidate`/ISR a propósito por ahora (se probó con 300s y se sacó): todavía no hay ningún `revalidatePath` que
- * invalide el caché cuando cambia el registro de sucursales (Server Actions de `src/server/actions/carta/registro-
- * publico.ts`) — cachear sin forma de invalidar es peor que no cachear (los cambios tardarían hasta 5 minutos en verse,
- * en vez de al instante como en el resto de la administración). Sumar `revalidatePath` a esas acciones y volver a poner
- * `revalidate` es trabajo pendiente, no de esta fase.
+ * SIN `revalidate`/ISR a propósito (ADR-006, Fase 4): es una lista chica (una consulta) y tiene que estar siempre al día —
+ * el registro de sucursales cambia desde el admin y el propio portal `/carta-publica/e2e` es compartido por varios e2e. La
+ * página de cada sucursal sí se cachea (con invalidación desde las acciones de carta): `[sucursal]/page.tsx`.
  */
 export default async function PortalPage({ params }: { params: Promise<{ empresa: string }> }) {
   const { empresa } = await params;

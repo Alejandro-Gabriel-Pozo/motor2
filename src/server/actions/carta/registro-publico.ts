@@ -16,6 +16,7 @@ import {
 } from "@/core/carta/validaciones";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
+import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Registro público de las sucursales en el portal/carta (docs/plan-registro-tenants-2026-09-24.md, M6): lo que
@@ -51,6 +52,7 @@ export async function agregarSucursalAlPortal(sucursalId: string): Promise<Resul
       const slug = slugTenantUnico(slugTenant(sucursal.nombre), ocupados);
       try {
         await prisma.sucursalPublica.create({ data: { sucursalId, slug } });
+        revalidarCartasPublicas();
         return ok(`"${sucursal.nombre}" agregada al portal con el slug ${slug} (sin publicar todavía).`);
       } catch (e) {
         if (!esChoqueDeUnicidad(e)) throw e;
@@ -134,6 +136,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
       if (esChoqueDeUnicidad(e)) return error("Otra sucursal tomó ese slug o dominio mientras guardabas. Revisalos y volvé a intentar.");
       throw e;
     }
+    revalidarCartasPublicas();
     return ok(`Portal: "${existente.sucursal.nombre}" guardada${datos.publicada ? " y publicada" : " (sin publicar)"}.`);
   });
 }
@@ -147,6 +150,7 @@ export async function quitarSucursalDelPortal(sucursalId: string): Promise<Resul
     const existente = await prisma.sucursalPublica.findUnique({ where: { sucursalId }, select: { slug: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal.");
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    revalidarCartasPublicas();
     return ok(`"${existente.sucursal.nombre}" quitada del portal (slug ${existente.slug}).`);
   });
 }
