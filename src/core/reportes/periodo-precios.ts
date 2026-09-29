@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { redondearMoneda } from "@/core/moneda";
 import { redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
 import {
@@ -31,8 +32,8 @@ const UMBRAL_VARIACION_SOSPECHOSA_PCT = 200;
 /**
  * Precio anterior a `desde` de cada insumo — el más reciente de TODAS sus
  * Compras previas (cualquier producto de ese Insumo), sin importar cuánto
- * tiempo pasó. Una sola consulta ordenada por fecha desc + quedarse con la
- * primera aparición de cada insumo en JS (evita 1 query por insumo).
+ * tiempo pasó. Una sola consulta (última compra válida de cada producto) +
+ * quedarse con la más reciente de cada insumo en JS (evita 1 query por insumo).
  */
 async function obtenerPrecioAnteriorPorInsumo(
   sucursalId: string,
@@ -46,20 +47,33 @@ async function obtenerPrecioAnteriorPorInsumo(
     .map(([id]) => id);
   if (!productoIdsRelevantes.length) return new Map();
 
-  const previas = await db.movimientoStock.findMany({
-    where: { productoId: { in: productoIdsRelevantes }, proceso: "COMPRA", seccion: { sucursalId }, operacion: { fecha: { lt: desde }, anuladaEn: null } },
-    select: { productoId: true, precioTotal: true, cantidad: true },
-    orderBy: { operacion: { fecha: "desc" } },
-  });
+  // 1 fila por producto (su última compra válida antes de `desde`), no una por compra: leer toda la historia previa crecía sin
+  // límite (con 400k compras: ~6 s antes, ~3,8 s ahora; sin índice parcial el escaneo queda). "Válida" = con cantidad y precio reales, como antes. Empate de fecha: gana el
+  // `m."id"` mayor (determinista). La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK compuesta); el
+  // aislamiento entre empresas lo sigue haciendo el `db` recibido (RLS, A6).
+  const previas = await db.$queryRaw<Array<{ productoId: string; id: string; fecha: Date; precioUnitario: Prisma.Decimal }>>`
+    SELECT DISTINCT ON (m."productoId") m."productoId", m."id", o."fecha", m."precioTotal" / m."cantidad" AS "precioUnitario"
+    FROM "MovimientoStock" m
+    JOIN "Operacion" o ON o."id" = m."operacionId"
+    JOIN "Seccion" s ON s."id" = m."seccionId"
+    WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = ${sucursalId}
+      AND m."productoId" = ANY(${productoIdsRelevantes})
+      AND o."fecha" < ${desde} AND o."anuladaEn" IS NULL
+      AND m."cantidad" > 0 AND m."precioTotal" > 0
+    ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
+  `;
 
-  const precioAnteriorPorInsumo = new Map<string, number>();
+  // La más reciente de todos los productos del insumo (los productos del mismo insumo comparten precio de referencia).
+  const masReciente = new Map<string, { fecha: number; id: string; precio: number }>();
   for (const m of previas) {
     const insumo = productos.get(m.productoId)?.insumoNombre;
-    if (!insumo || precioAnteriorPorInsumo.has(insumo)) continue; // ya se guardó la más reciente de ese insumo (viene ordenado desc)
-    const cantidad = Number(m.cantidad);
-    const precioTotal = Number(m.precioTotal);
-    if (cantidad > 0 && precioTotal > 0) precioAnteriorPorInsumo.set(insumo, precioTotal / cantidad);
+    if (!insumo) continue;
+    const fecha = m.fecha.getTime();
+    const actual = masReciente.get(insumo);
+    if (!actual || fecha > actual.fecha || (fecha === actual.fecha && m.id > actual.id)) masReciente.set(insumo, { fecha, id: m.id, precio: Number(m.precioUnitario) });
   }
+  const precioAnteriorPorInsumo = new Map<string, number>();
+  for (const [insumo, { precio }] of masReciente) precioAnteriorPorInsumo.set(insumo, precio);
   return precioAnteriorPorInsumo;
 }
 
