@@ -47,7 +47,15 @@
     // el archivo `server-only-stub.ts` como sin uso y los exports `cookies`/`headers` de `next-headers-stub.ts` como sin
     // uso (en realidad los consume todo el código de src/ que importa `next/headers` cuando corre bajo Vitest).
     "test/setup/server-only-stub.ts",
-    "test/setup/next-headers-stub.ts"
+    "test/setup/next-headers-stub.ts",
+
+    // RESERVADO — prisma/fase-a/: schema y config experimentales de la Fase A de
+    // multi-tenancy (docs/adr/ADR-004-fase-a-schema-aislado.md), deliberadamente
+    // fuera de prisma/schema.prisma para no tocar el Client real ni el Postgres
+    // local. Se invocan a mano vía `--schema`/`--config`, nunca importados desde
+    // código — igual que el resto de esta lista.
+    "prisma/fase-a/schema.prisma",
+    "prisma/fase-a/prisma.config.ts"
   ],
 
   // Archivos que se analizan: src, test, scripts y prisma. Se incluyen `.css` (el `@import "tailwindcss"` de
