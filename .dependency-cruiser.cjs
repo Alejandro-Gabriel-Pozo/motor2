@@ -163,6 +163,17 @@ module.exports = {
       to: { path: "^src/lib/db\\.ts$", reachable: true },
     },
     {
+      name: "casos-de-uso-no-cookies",
+      comment:
+        "Fase 0.4 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): un caso de uso " +
+        "(server/actions/<dominio>/casos-de-uso/) nunca lee cookies()/next/headers directo — solo el resolvedor de contexto " +
+        "(core/auth/contexto.ts, ya excepción documentada de core-sin-react-next) lo hace. Sin violaciones hoy: cierra la puerta " +
+        "a que un caso de uso nuevo empiece a leer sesión por su cuenta en vez de recibirla como parámetro.",
+      severity: "error",
+      from: { path: CASOS_DE_USO },
+      to: { path: "^node_modules/next/" },
+    },
+    {
       name: "sin-ciclos",
       comment:
         "Sin dependencias circulares entre archivos (incluye las de solo tipos). Ciclos preexistentes exceptuados: .dependency-cruiser-excepciones.cjs.",
