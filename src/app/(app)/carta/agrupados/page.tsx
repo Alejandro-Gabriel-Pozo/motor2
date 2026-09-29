@@ -22,12 +22,12 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
  * Se ubica DIRECTO en su sección de carta, sin imagen propia (docs/plan-carta-seccion-directa-2026-09-25.md). Globales (Catálogo
  * Central); lo que se ve acá de cada opción (disponible o no, y su precio) es de la sucursal ACTIVA.
  *
- * Mismo estilo que /catalogo/carta: las mutaciones pasan por las Server Actions de src/server/actions/carta/items-agrupados.ts
+ * Mismo estilo que /carta: las mutaciones pasan por las Server Actions de src/server/actions/carta/items-agrupados.ts
  * (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
  * closure "use server" viaja al cliente. Si agregar una opción se rechaza por precio (D5), el error de la acción se muestra tal
  * cual en el resultado del formulario.
  *
- * Ver ≠ editar, igual que /catalogo/carta: sin «Editar» de "carta" no se dibujan formularios, altas ni botones (agregar, quitar,
+ * Ver ≠ editar, igual que /carta: sin «Editar» de "carta" no se dibujan formularios, altas ni botones (agregar, quitar,
  * reordenar, apagar/prender); cada ítem muestra sus datos y sus opciones como texto.
  */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -69,7 +69,7 @@ export default async function ItemsAgrupadosPage() {
           Un ítem agrupado es un solo renglón de la carta («Gaseosa 500 CC») que agrupa varios productos de venta reales («Coca-Cola 500cc», «Sprite
           500cc»…), con su propia descripción, tags y ★. Se ubica directo en su sección de carta, igual que un producto suelto. Un producto agrupado sale solo
           dentro de su ítem, nunca suelto. Lo que se ve de cada opción (si está disponible y su precio) es de esta sucursal, {ctx.sucursalNombre}. Volver a{" "}
-          <Link href="/catalogo/carta" className="underline">
+          <Link href="/carta" className="underline">
             Carta pública
           </Link>
           .
@@ -121,7 +121,7 @@ export default async function ItemsAgrupadosPage() {
       ) : (
         <p className="text-sm text-neutral-500">
           Para crear un ítem agrupado hace falta al menos una sección de carta (
-          <Link href="/catalogo/carta" className="underline">
+          <Link href="/carta" className="underline">
             Carta pública
           </Link>
           ).

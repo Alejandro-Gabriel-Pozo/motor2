@@ -3,7 +3,7 @@ import { prisma } from "../../src/lib/db";
 import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 
 /**
- * Portal de sucursales (/catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7) de punta a punta: agregar dos
+ * Portal de sucursales (/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7) de punta a punta: agregar dos
  * sucursales cuyos nombres dan el mismo slug (la segunda queda con `-2`, visible en la pantalla), el choque de slug al editar se
  * muestra con el nombre de la otra sucursal, guardar dominio/posición/sheet y publicar se refleja en GET /api/carta/tenants, y
  * "Quitar del portal" borra la fila.
@@ -18,7 +18,7 @@ test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", as
   const [a, b] = await Promise.all([nombreA, nombreB].map((nombre) => prisma.sucursal.create({ data: { nombre } })));
 
   try {
-    await page.goto("/catalogo/carta/portal");
+    await page.goto("/carta/portal");
     await expect(page.getByRole("heading", { name: "Portal de sucursales", level: 1 })).toBeVisible();
     const filaA = page.locator(`[data-sucursal-portal="${nombreA}"]`);
     const filaB = page.locator(`[data-sucursal-portal="${nombreB}"]`);

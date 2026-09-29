@@ -3,7 +3,7 @@ import { prisma } from "../../src/lib/db";
 import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 
 /**
- * Admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10) de punta a punta: lo que se carga en la
+ * Admin de la carta (/carta, docs/plan-carta-catalogo-2026-09-24.md, M10) de punta a punta: lo que se carga en la
  * pantalla (sección de carta, contenido del PV con su sección elegida DIRECTO —docs/plan-carta-seccion-directa-2026-09-25.md— y
  * una promo) es lo que devuelve el endpoint público GET /api/carta/[sucursal] — con el precio que se cobra, los tags normalizados
  * y el ★.
@@ -20,7 +20,7 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
 
   try {
-    await page.goto("/catalogo/carta");
+    await page.goto("/carta");
     await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
     // D3: un PV disponible acá sin contenido de carta se avisa (si no, pasaría desapercibido que no sale).
     await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
@@ -105,4 +105,11 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await prisma.producto.deleteMany({ where: { id: producto.id } });
     await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
   }
+});
+
+/** ADR-006: /catalogo/carta se movió a /carta — el redirect (next.config.ts) evita romper marcadores guardados. */
+test("un marcador viejo a /catalogo/carta/tema redirige a /carta/tema", async ({ paginaAutenticada: page }) => {
+  await page.goto("/catalogo/carta/tema");
+  await expect(page).toHaveURL(/\/carta\/tema$/);
+  await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
 });

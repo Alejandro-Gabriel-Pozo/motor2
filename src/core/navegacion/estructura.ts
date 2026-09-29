@@ -45,11 +45,19 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta" },
       { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia" },
       { href: "/catalogo/categorias", label: "Categorías", accion: "categorias" },
-      { href: "/catalogo/carta", label: "Carta pública", accion: "carta" },
-      { href: "/catalogo/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta" },
-      { href: "/catalogo/carta/portal", label: "Portal de sucursales", accion: "carta" },
-      { href: "/catalogo/carta/tema", label: "Tema de la carta", accion: "carta" },
       { href: "/catalogo/unidades", label: "Unidades", accion: "unidades" },
+    ],
+  },
+  {
+    // Módulo propio (ADR-006, docs/adr/ADR-006-carta-como-modulo-interno.md): antes anidado bajo Catálogo sin motivo claro,
+    // aunque ya tenía su propio permiso (`accion: "carta"`, distinto del de catálogo).
+    id: "carta",
+    label: "Carta",
+    items: [
+      { href: "/carta", label: "Carta pública", accion: "carta" },
+      { href: "/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta" },
+      { href: "/carta/portal", label: "Portal de sucursales", accion: "carta" },
+      { href: "/carta/tema", label: "Tema de la carta", accion: "carta" },
     ],
   },
   {

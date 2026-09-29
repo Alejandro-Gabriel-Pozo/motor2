@@ -12,7 +12,7 @@ import { FormConResultado } from "@/components/form-con-resultado";
  * posición en el mapa, orden, si está publicada, de dónde sale el menú y los datos de la sheet mientras dure la transición.
  *
  * Todas las sucursales (el mapa es entre sucursales, no depende de la activa). Sin fila → "Agregar al portal"; con fila → su
- * formulario. Mismo estilo que /catalogo/carta: las mutaciones pasan por las Server Actions de
+ * formulario. Mismo estilo que /carta: las mutaciones pasan por las Server Actions de
  * src/server/actions/carta/registro-publico.ts (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures
  * capturan solo el id de la sucursal (texto): lo que captura un closure "use server" viaja al cliente.
  */

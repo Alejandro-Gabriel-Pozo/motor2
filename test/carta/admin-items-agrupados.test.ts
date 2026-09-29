@@ -4,7 +4,7 @@ import { cargarAdminCarta, cargarAdminItemsAgrupados } from "../../src/core/cart
 
 /**
  * Lectura del admin de los ítems agrupados (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), contra Postgres real:
- * `/catalogo/carta` ya no avisa como "sin contenido" a un PV agrupado (sale a través del grupo), y `/catalogo/carta/agrupados`
+ * `/carta` ya no avisa como "sin contenido" a un PV agrupado (sale a través del grupo), y `/carta/agrupados`
  * recibe el aviso D5 (precios distintos acá: rango y el precio que se termina mostrando, el mayor), más "sin opciones disponibles
  * acá" y "sección apagada". Desde docs/plan-carta-seccion-directa-2026-09-25.md el ítem elige su sección directo: ya no existe el
  * aviso D4 (opción de otra categoría en otra sección).
@@ -46,7 +46,7 @@ describe("admin de ítems agrupados", () => {
     });
   });
 
-  it("/catalogo/carta: un PV agrupado sin contenido NO está en sinContenido y tiene agrupadoEn", async () => {
+  it("/carta: un PV agrupado sin contenido NO está en sinContenido y tiene agrupadoEn", async () => {
     const datos = await cargarAdminCarta(central);
     const coca = datos.productos.find((p) => p.id === ids.coca)!;
     expect(coca.agrupadoEn).toBe("Gaseosa 500 CC");

@@ -6,7 +6,7 @@ import { prisma } from "../../src/lib/db";
  * enviar el formulario — el comportamiento por defecto del navegador (Enter en un input dentro de un `<form>` con botón de
  * submit = submit) hacía que escribir en "Nombre" y apretar Enter guardara de verdad, sin haber tocado "Guardar". Solo se
  * reproduce en un formulario con VARIOS campos (no en uno de un solo input, como /catalogo/categorías): se prueba en "Nueva
- * sección de carta" (/catalogo/carta), pero el arreglo está en el componente compartido, así que corrige todas las pantallas
+ * sección de carta" (/carta), pero el arreglo está en el componente compartido, así que corrige todas las pantallas
  * que lo usan.
  */
 test("Enter en Nombre no crea la sección; el botón sí", async ({ paginaAutenticada: page }) => {
@@ -14,7 +14,7 @@ test("Enter en Nombre no crea la sección; el botón sí", async ({ paginaAutent
   const nombre = `E2E Enter ${marca}`;
 
   try {
-    await page.goto("/catalogo/carta");
+    await page.goto("/carta");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
     const campoNombre = nuevaSeccion.getByLabel("Nombre", { exact: true });
     await campoNombre.fill(nombre);

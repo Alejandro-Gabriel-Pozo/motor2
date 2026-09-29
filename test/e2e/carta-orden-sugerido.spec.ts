@@ -5,7 +5,7 @@ import { prisma } from "../../src/lib/db";
  * Orden autosugerido en la carta (docs/plan-carta-seccion-directa-2026-09-25.md, DA5/DA6, M8), en un navegador real:
  *  - DA5: "Nueva sección de carta" arranca con orden = cuántas secciones hay (cae al final), y después de crear una, el formulario
  *    vuelve a arrancar con el siguiente número;
- *  - DA6: en el contenido de un PV (/catalogo/carta) y en un ítem agrupado (/catalogo/carta/agrupados), elegir una sección
+ *  - DA6: en el contenido de un PV (/carta) y en un ítem agrupado (/carta/agrupados), elegir una sección
  *    autocompleta el orden con la cantidad de ítems que ya tiene; editar algo existente sin cambiar de sección conserva su orden
  *    guardado, y volver a su sección lo recupera.
  */
@@ -30,7 +30,7 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
   try {
     // DA5: sección nueva.
     const cantidadSecciones = await prisma.seccionCarta.count();
-    await page.goto("/catalogo/carta");
+    await page.goto("/carta");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
     await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones));
     await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccionNueva);
@@ -40,7 +40,7 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     // Tras el alta (y el refresco), el formulario vuelve a arrancar con el siguiente.
     await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones + 1));
 
-    // DA6 en /catalogo/carta: un PV sin contenido.
+    // DA6 en /carta: un PV sin contenido.
     const filaNuevo = page.locator(`[data-contenido-carta="${nuevo.nombre}"]`);
     await filaNuevo.locator("summary").click();
     const seccionNuevo = filaNuevo.getByLabel(/^Sección de carta/);
@@ -69,8 +69,8 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     await seccionConOrden.selectOption(llena.id);
     await expect(ordenConOrden).toHaveValue("7");
 
-    // DA6 en /catalogo/carta/agrupados. «Llena» ahora tiene 3 ítems (se sumó el PV recién guardado).
-    await page.goto("/catalogo/carta/agrupados");
+    // DA6 en /carta/agrupados. «Llena» ahora tiene 3 ítems (se sumó el PV recién guardado).
+    await page.goto("/carta/agrupados");
     const nuevoItem = page.locator("form", { has: page.getByRole("heading", { name: "Nuevo ítem agrupado" }) });
     const ordenItemNuevo = nuevoItem.getByLabel("Orden dentro de su sección");
     await expect(ordenItemNuevo).toHaveValue("0");

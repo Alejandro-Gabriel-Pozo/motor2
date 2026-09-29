@@ -599,7 +599,7 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: 
         {p.agrupadoEn && (
           <p className="mt-2 text-sm text-neutral-500">
             Sale en la carta dentro de «{p.agrupadoEn}» (
-            <Link href="/catalogo/carta/agrupados" className="underline">
+            <Link href="/carta/agrupados" className="underline">
               Ítems agrupados de la carta
             </Link>
             ): mientras esté agrupado, el contenido de acá no se usa.

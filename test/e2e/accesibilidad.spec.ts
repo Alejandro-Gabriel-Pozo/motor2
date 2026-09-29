@@ -807,7 +807,7 @@ testAutenticado(
   }
 );
 
-testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abiertos y el aviso en ámbar de PV sin contenido", async ({ paginaAutenticada: page, sucursalId }) => {
+testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el aviso en ámbar de PV sin contenido", async ({ paginaAutenticada: page, sucursalId }) => {
   // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los tres bloques (sección, un PV con contenido en esa sección y otro sin él
   // —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
   // ellos el select "Sección de carta" del contenido, docs/plan-carta-seccion-directa-2026-09-25.md).
@@ -824,7 +824,7 @@ testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abierto
   await prisma.contenidoCartaProducto.create({ data: { productoId: conContenido.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
   const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
   try {
-    await page.goto("/catalogo/carta");
+    await page.goto("/carta");
     await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
     await page.locator(`[data-seccion-carta="${seccion.nombre}"] summary`).click();
@@ -843,7 +843,7 @@ testAutenticado("catalogo/carta: sin violaciones de axe, con formularios abierto
   }
 });
 
-testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem abierto, el aviso ámbar de precios distintos y los selects", async ({ paginaAutenticada: page, sucursalId }) => {
+testAutenticado("carta/agrupados: sin violaciones de axe, con un ítem abierto, el aviso ámbar de precios distintos y los selects", async ({ paginaAutenticada: page, sucursalId }) => {
   // docs/plan-agrupacion-items-carta-2026-09-24.md, M7. Un ítem agrupado con dos opciones de distinto precio (el drift posterior de D5,
   // sembrado directo: la acción de agregar lo bloquearía) dibuja el aviso ámbar; se abre su <details> para exponer el formulario del ítem,
   // las opciones (orden y quitar) y el select "Agregar producto" (hay un PV suelto disponible para listar).
@@ -867,7 +867,7 @@ testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem 
   const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, especial: true, tags: ["Sin alcohol"] } });
   await prisma.opcionItemAgrupadoCarta.createMany({ data: ids.slice(0, 2).map((productoId, orden) => ({ itemAgrupadoCartaId: item.id, productoId, orden })) });
   try {
-    await page.goto("/catalogo/carta/agrupados");
+    await page.goto("/carta/agrupados");
     await expect(page.getByRole("heading", { name: "Ítems agrupados de la carta", level: 1 })).toBeVisible();
     const fila = page.locator(`[data-item-agrupado="${item.nombre}"]`);
     await expect(fila.getByText(/no cuestan lo mismo/)).toBeVisible();
@@ -885,7 +885,7 @@ testAutenticado("catalogo/carta/agrupados: sin violaciones de axe, con un ítem 
   }
 });
 
-testAutenticado("catalogo/carta/portal: sin violaciones de axe, con una sucursal sin agregar y el formulario de otra abierto", async ({ paginaAutenticada: page }) => {
+testAutenticado("carta/portal: sin violaciones de axe, con una sucursal sin agregar y el formulario de otra abierto", async ({ paginaAutenticada: page }) => {
   // docs/plan-registro-tenants-2026-09-24.md, M7. Una sucursal fuera del portal (botón «Agregar») y otra dentro, publicada y con posición, con su
   // <details> desplegado: cerrado, un <details> no expone sus campos (los dos fieldset, los checkbox y el botón de quitar).
   const marca = `${Date.now()}`;
@@ -894,7 +894,7 @@ testAutenticado("catalogo/carta/portal: sin violaciones de axe, con una sucursal
     data: { sucursalId: dentro.id, slug: `e2e-a11y-portal-${marca}`, publicada: true, sheetId: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-a11y", posX: 10, posY: 20, posW: 5, subtituloPortal: "Frente al lago" },
   });
   try {
-    await page.goto("/catalogo/carta/portal");
+    await page.goto("/carta/portal");
     await expect(page.getByRole("heading", { name: "Portal de sucursales", level: 1 })).toBeVisible();
     await expect(page.locator(`[data-sucursal-portal="${fuera.nombre}"]`).getByRole("button", { name: /^Agregar/ })).toBeVisible();
     await page.locator(`[data-sucursal-portal="${dentro.nombre}"] summary`).click();
@@ -906,7 +906,7 @@ testAutenticado("catalogo/carta/portal: sin violaciones de axe, con una sucursal
   }
 });
 
-testAutenticado("catalogo/carta/tema: sin violaciones de axe, con zonas del editor abiertas (color, select, número) y un campo inválido", async ({ paginaAutenticada: page, sucursalId }) => {
+testAutenticado("carta/tema: sin violaciones de axe, con zonas del editor abiertas (color, select, número) y un campo inválido", async ({ paginaAutenticada: page, sucursalId }) => {
   // docs/plan-tema-carta-2026-09-24.md, M9. Un tema con valores (uno inválido, cargado a mano: dibuja el aviso rojo del campo) y tres <details>
   // desplegados además del primero: "Colores generales" (selectores de color con su etiqueta propia), "Banda e imagen de sección" (los
   // <select> y los <input type="number">) e "Ítems" (el campo inválido). Cerrado, un <details> no expone sus campos.
@@ -917,7 +917,7 @@ testAutenticado("catalogo/carta/tema: sin violaciones de axe, con zonas del edit
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   await prisma.temaCartaSucursal.create({ data: { sucursalId, valores: { color_marca: "#8b4513", hero_ink: "claro", carta_imagen_modo: "miniatura", carta_imagen_opacidad: "60", color_item_precio: "red;x" } } });
   try {
-    await page.goto("/catalogo/carta/tema");
+    await page.goto("/carta/tema");
     await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
     for (const zona of ["Colores generales", "Banda e imagen de sección", "Ítems"]) await page.locator(`[data-zona-tema="${zona}"] summary`).click();
     await expect(page.locator('select[name="carta_imagen_modo"]')).toBeVisible();

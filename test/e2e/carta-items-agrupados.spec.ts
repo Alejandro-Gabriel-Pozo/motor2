@@ -3,7 +3,7 @@ import { prisma } from "../../src/lib/db";
 import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 
 /**
- * Ítems agrupados de la carta (/catalogo/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M7) de punta a punta,
+ * Ítems agrupados de la carta (/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M7) de punta a punta,
  * caso «Los Miches» (A.13): se crea «Gaseosa 500 CC» desde la pantalla y se le agregan tres gaseosas a $5000; una cuarta a $5500
  * se RECHAZA (D5: solo se agrupan productos del mismo precio) y sigue suelta; el endpoint público muestra un solo renglón a $5000
  * con las tres opciones. Después se quita una opción y se apaga el ítem (sus opciones no salen sueltas, D3). El ítem elige su
@@ -32,7 +32,7 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
   };
 
   try {
-    await page.goto("/catalogo/carta/agrupados");
+    await page.goto("/carta/agrupados");
     await expect(page.getByRole("heading", { name: "Ítems agrupados de la carta", level: 1 })).toBeVisible();
     await expect(page.getByText("Solo se pueden agrupar productos del mismo precio (acá).")).toBeVisible();
 
@@ -123,7 +123,7 @@ test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
 
   try {
-    await page.goto("/catalogo/carta/agrupados");
+    await page.goto("/carta/agrupados");
     const nuevo = page.locator("form", { has: page.getByRole("heading", { name: "Nuevo ítem agrupado" }) });
     await nuevo.getByLabel("Nombre", { exact: true }).fill(nombreItem);
     await nuevo.getByLabel(/^Sección de carta/).selectOption({ label: seccion.nombre });

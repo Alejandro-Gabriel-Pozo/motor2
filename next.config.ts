@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // ADR-006: /catalogo/carta pasó a /carta (carta como módulo propio, ya
+  // no anidada bajo catálogo). No permanente a propósito: si el destino
+  // cambia de nuevo más adelante, un 308 cacheado por el navegador sería
+  // más difícil de corregir que un 307.
+  async redirects() {
+    return [{ source: "/catalogo/carta/:path*", destination: "/carta/:path*", permanent: false }];
+  },
 };
 
 // Sin SENTRY_AUTH_TOKEN configurado (no hay token de source maps

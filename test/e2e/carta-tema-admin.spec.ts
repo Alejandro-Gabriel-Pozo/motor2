@@ -3,7 +3,7 @@ import { prisma } from "../../src/lib/db";
 import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 
 /**
- * Tema de la carta (/catalogo/carta/tema, docs/plan-tema-carta-2026-09-24.md, M9) de punta a punta: "Pegar desde la sheet"
+ * Tema de la carta (/carta/tema, docs/plan-tema-carta-2026-09-24.md, M9) de punta a punta: "Pegar desde la sheet"
  * clasifica lo pegado y rellena el formulario sin guardar (la vista previa lo refleja), Guardar persiste solo lo válido, Aplicar
  * lo publica en GET /api/carta/[sucursal]/tema y Desaplicar lo saca (404) conservando los valores.
  */
@@ -20,7 +20,7 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   await page.setViewportSize({ width: 1280, height: 900 });
   try {
-    await page.goto("/catalogo/carta/tema");
+    await page.goto("/carta/tema");
     await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
     await expect(page.locator("[data-estado-tema]")).toContainText("Tema: sin tema en motor2");
 
@@ -80,7 +80,7 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
 test("la vista previa del tema se recorre de a una página, como la carta: portada → índice → sección, en círculo", async ({ paginaAutenticada: page, sucursalId }) => {
   // Sin tema: la portada muestra el nombre por defecto de la vista previa.
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
-  await page.goto("/catalogo/carta/tema");
+  await page.goto("/carta/tema");
   const vista = page.locator("[data-vista-previa-tema]");
   const pagina = (nombre: string) => vista.locator(`[data-vista-previa-pagina="${nombre}"]`);
   const indicador = vista.locator("[data-vista-previa-indicador]");

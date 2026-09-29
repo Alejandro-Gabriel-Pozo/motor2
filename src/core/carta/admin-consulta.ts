@@ -8,8 +8,8 @@ import { esClaveTema } from "./tema";
 type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
- * Lectura de las pantallas de admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10, y
- * /catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7, y /catalogo/carta/tema, docs/plan-tema-carta-2026-09-24.md,
+ * Lectura de las pantallas de admin de la carta (/carta, docs/plan-carta-catalogo-2026-09-24.md, M10, y
+ * /carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7, y /carta/tema, docs/plan-tema-carta-2026-09-24.md,
  * M9). Solo lectura (la fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer(..., "carta")`. No es una
  * Server Action a propósito: así no queda expuesta como endpoint.
  */
@@ -203,7 +203,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Ítems agrupados de la carta (/catalogo/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M6/M7)
+// Ítems agrupados de la carta (/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M6/M7)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 export interface OpcionItemAgrupadoAdmin {
@@ -357,7 +357,7 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Portal de sucursales (/catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7)
+// Portal de sucursales (/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 export interface RegistroPublicoAdmin {
@@ -382,7 +382,7 @@ export interface SucursalPortalAdmin {
   activo: boolean;
   /** null = la sucursal no está en el registro de motor2 (la carta sigue con la fila de la sheet, si la hay). */
   publica: RegistroPublicoAdmin | null;
-  /** true = tiene un tema aplicado en motor2 (/catalogo/carta/tema): el registro emite `temaDesdeMotor2` (docs/plan-tema-carta-2026-09-24.md, M6). */
+  /** true = tiene un tema aplicado en motor2 (/carta/tema): el registro emite `temaDesdeMotor2` (docs/plan-tema-carta-2026-09-24.md, M6). */
   temaDesdeMotor2: boolean;
 }
 
@@ -417,7 +417,7 @@ export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortal
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Tema de la carta (/catalogo/carta/tema, docs/plan-tema-carta-2026-09-24.md, M4/M9)
+// Tema de la carta (/carta/tema, docs/plan-tema-carta-2026-09-24.md, M4/M9)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 export interface TemaAdmin {

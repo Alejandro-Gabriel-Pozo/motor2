@@ -174,6 +174,16 @@ module.exports = {
       to: { path: "^node_modules/next/" },
     },
     {
+      name: "carta-admin-sin-rutas-de-catalogo",
+      comment:
+        "ADR-006 (docs/adr/ADR-006-carta-como-modulo-interno.md): la carta es su propio módulo, separado de catálogo " +
+        "(antes anidada en app/(app)/catalogo/carta sin motivo claro, pese a tener su propio permiso `accion: \"carta\"`). " +
+        "Fija la separación: una pantalla de app/(app)/carta/ no importa de app/(app)/catalogo/.",
+      severity: "error",
+      from: { path: "^src/app/\\(app\\)/carta/" },
+      to: { path: "^src/app/\\(app\\)/catalogo/" },
+    },
+    {
       name: "sin-ciclos",
       comment:
         "Sin dependencias circulares entre archivos (incluye las de solo tipos). Ciclos preexistentes exceptuados: .dependency-cruiser-excepciones.cjs.",

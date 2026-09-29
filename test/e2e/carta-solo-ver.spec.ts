@@ -5,7 +5,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
 /**
- * Ver ≠ editar en las pantallas de la carta (/catalogo/carta y /catalogo/carta/agrupados): con «Ver» pero sin «Editar» de "carta" se
+ * Ver ≠ editar en las pantallas de la carta (/carta y /carta/agrupados): con «Ver» pero sin «Editar» de "carta" se
  * ven los mismos datos como texto, sin un solo campo ni botón (docs/grounding-lista-ver-editar-2026-09-18.md §7.4: catálogo chico,
  * queda inline; la separación se resuelve con el nivel de permiso). Con la semilla de fábrica no hay un rol que vea la carta y no la
  * edite, así que cada caso fabrica el suyo (rol, usuario y sesión propios), mismo patrón que catalogo-productos-permiso-editar.spec.ts.
@@ -73,11 +73,11 @@ async function crearCarta(sucursalId: string) {
 /** Ningún control de edición dentro del contenido de la pantalla (el menú lateral no cuenta). */
 const BOTONES_DE_EDICION = /Guardar|Crear|Agregar|Quitar|Apagar|Prender/;
 
-test("un rol que solo VE la carta ve secciones, contenido y promos en /catalogo/carta como texto, sin campos ni botones", async ({ browser, baseURL, sucursalId }) => {
+test("un rol que solo VE la carta ve secciones, contenido y promos en /carta como texto, sin campos ni botones", async ({ browser, baseURL, sucursalId }) => {
   const carta = await crearCarta(sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, false);
   try {
-    await page.goto("/catalogo/carta");
+    await page.goto("/carta");
     const main = page.locator("main");
     await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible(); // la pantalla, no un mensaje de permiso
     await expect(main.locator("[data-aviso-solo-lectura]")).toHaveText("Solo lectura: tu rol no tiene permiso para editar la carta.");
@@ -112,11 +112,11 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /catalogo/
   }
 });
 
-test("un rol que solo VE la carta ve los ítems agrupados y sus opciones en /catalogo/carta/agrupados como texto, sin campos ni botones", async ({ browser, baseURL, sucursalId }) => {
+test("un rol que solo VE la carta ve los ítems agrupados y sus opciones en /carta/agrupados como texto, sin campos ni botones", async ({ browser, baseURL, sucursalId }) => {
   const carta = await crearCarta(sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, false);
   try {
-    await page.goto("/catalogo/carta/agrupados");
+    await page.goto("/carta/agrupados");
     const main = page.locator("main");
     await expect(page.getByRole("heading", { name: "Ítems agrupados de la carta", level: 1 })).toBeVisible();
     await expect(main.locator("[data-aviso-solo-lectura]")).toBeVisible();
@@ -144,7 +144,7 @@ test("un rol CON editar de la carta ve los formularios y las altas en las dos pa
   const carta = await crearCarta(sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, true);
   try {
-    await page.goto("/catalogo/carta");
+    await page.goto("/carta");
     const main = page.locator("main");
     await expect(main.locator("[data-aviso-solo-lectura]")).toHaveCount(0);
     await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toBeVisible();
@@ -155,7 +155,7 @@ test("un rol CON editar de la carta ve los formularios y las altas en las dos pa
     await expect(seccion.getByRole("button", { name: `Apagar «${carta.seccion.nombre}»` })).toBeVisible();
     await expect(main.locator("[data-solo-lectura]")).toHaveCount(0);
 
-    await page.goto("/catalogo/carta/agrupados");
+    await page.goto("/carta/agrupados");
     await expect(main.getByRole("heading", { name: "Nuevo ítem agrupado" })).toBeVisible();
     const item = main.locator(`[data-item-agrupado="${carta.item.nombre}"]`);
     await item.locator("summary").click();
