@@ -730,6 +730,60 @@ medio de pago una sola vez si varias de estas tres avanzan. Documento
 fuente completo: `grounding-facturacion-ventas-odoo-2026-09-26.md`
 (hay una versión anterior sin el anexo §2.10, usar la que lo tiene).
 
+### #42 — "Anular venta" (post-cierre): sin motivo, sin anulación en conjunto de toda la boleta, mensaje de éxito que se pierde
+Hallazgo nuevo de esta sesión (2026-09-28), surgido al investigar #21/#22 —
+no viene del lote de grounding original. Relacionado con #18/#22 (comparten
+pantalla/concepto) pero lo bastante grande como para ser su propio ítem.
+
+**Confirmado contra el código, no es una suposición:**
+- Una vez cerrada la cuenta, `anularVenta` (Trazabilidad) anula **una
+  `Operacion` VENTA a la vez** — no existe ninguna acción que anule
+  "toda la boleta"/todas las líneas de una cuenta juntas. `Operacion` se
+  crea **una por línea neta** (producto+precio+promo) al cerrar
+  (`cerrarCuenta` → `registrarVentaEnTx`: `venta.operacionIds.length ===
+  lineas.length`), a diferencia de Compras, donde toda la factura es UNA
+  sola `Operacion` con varias líneas de Kardex (por eso `anularCompra` sí
+  anula "todo junto" de movida — no es la misma forma de dato).
+- **El mecanismo de "anular varias Operaciones juntas, atómico" YA EXISTE
+  y ya funciona en producción** — hoy acotado a "hermanas de promo"
+  (`anularVentaCasoDeUso`: `cargarHermanasDePromo` por `promoCuentaId`,
+  mismo loop de `construirReversionDeVenta`/`escribirAnulacionDeVenta`/
+  `registrarCambioAuditado` para cada una, una sola transacción
+  SERIALIZABLE). Extenderlo a "todas las Operaciones VENTA vigentes de
+  la Cuenta" es una generalización directa de ese mismo mecanismo, no un
+  diseño desde cero.
+- **No hace falta ninguna migración de schema.** `Operacion` no tiene
+  `cuentaId` directo, pero la relación inversa YA EXISTE vía
+  `CuentaItem.operacionId` — alcanza con `tx.operacion.findMany({ where:
+  { proceso: "VENTA", anuladaEn: null, cuentaItems: { some: { cuentaId } }
+  } })`.
+- **Efecto colateral gratis:** `estadoDeBoleta` (`core/pos/boleta.ts:108`)
+  ya deriva "anulada" automáticamente cuando TODAS las Operaciones de la
+  cuenta están anuladas — anular en conjunto no necesita tocar esa lógica
+  para que la boleta quede consistente.
+- **Hallazgo aparte, real:** `ComandoAnularVenta` (`core/features/ventas/
+  venta.schema.ts`) NO tiene campo `motivo` — es el ÚNICO mecanismo de
+  anulación del proyecto sin motivo obligatorio auditado (`AnularItem`,
+  `AnularPromo`, `EmitirBoletaCorregida` sí lo piden y lo auditan).
+- **Hallazgo aparte, confirmado por el agente `Plan` de #18/#22:** el
+  mensaje de éxito de `BotonAnularVenta` se pierde al hacer
+  `router.refresh()` — el componente se remonta y el estado local
+  `mensaje` se resetea antes de que el usuario llegue a leerlo.
+
+**Decisiones de producto abiertas, sin resolver todavía:**
+1. Alcance: ¿"anular toda la cuenta" (todo o nada) alcanza, o hace falta
+   selección PARCIAL arbitraria (elegir 2 de 5 líneas y anularlas juntas,
+   no necesariamente todas)?
+2. Entry point: ¿vive en "Cuentas cerradas" de la mesa (mismo lugar que
+   el rediseño de #18), en Trazabilidad, o en los dos?
+3. Permiso: ¿el mismo `anular_venta` de siempre, o uno más restrictivo
+   dado el mayor impacto de anular una boleta entera de una vez?
+4. Motivo obligatorio: ¿se agrega ya, aislado, o junto con el resto de
+   este pendiente?
+
+**Seguir investigando antes de diseñar un plan formal** (pedido explícito
+del usuario, 2026-09-28) — no confundir con "ya se puede implementar".
+
 ---
 
 ## Hallazgo post-cierre (2026-09-28): cobertura de test de la carrera real de I3, inventario
