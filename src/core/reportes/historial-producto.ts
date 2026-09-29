@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
@@ -19,7 +18,7 @@ export interface FilaBusquedaProducto {
  * local), incluye NO DISPONIBLES a propósito: se puede querer ver el
  * historial de algo que ya se discontinuó en esta sucursal.
  */
-export async function buscarProductoParaHistorial(sucursalId: string, termino: string, db: Db = prisma): Promise<FilaBusquedaProducto[]> {
+export async function buscarProductoParaHistorial(sucursalId: string, termino: string, db: Db): Promise<FilaBusquedaProducto[]> {
   const q = termino.trim();
   const productos = await db.producto.findMany({
     where: q ? { OR: [{ nombre: { contains: q, mode: "insensitive" } }, { codigo: { contains: q, mode: "insensitive" } }] } : {},
@@ -101,7 +100,7 @@ export async function obtenerHistorialProducto(
   seccionId: string | undefined,
   desde: Date | undefined,
   hasta: Date | undefined,
-  db: Db = prisma
+  db: Db
 ): Promise<HistorialProducto | null> {
   const producto = await db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
   if (!producto) return null;
@@ -219,7 +218,7 @@ export interface IngredienteRecetaVigente {
  * `sucursalId` (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, R3): con ella, `cantidad` sale EFECTIVA (con la
  * calibración de esa sucursal si la hay); sin ella, queda en el valor central.
  */
-export async function obtenerIngredientesRecetaVigente(productoId: string, db: Db = prisma, sucursalId?: string): Promise<IngredienteRecetaVigente[]> {
+export async function obtenerIngredientesRecetaVigente(productoId: string, db: Db, sucursalId?: string): Promise<IngredienteRecetaVigente[]> {
   const version = await db.recetaVersion.findFirst({
     where: { productoId },
     orderBy: { version: "desc" },

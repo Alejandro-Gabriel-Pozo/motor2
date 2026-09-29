@@ -61,8 +61,8 @@ export default async function RendimientoRecetasPage({
   const hasta = new Date(hastaStr);
 
   const [todasLasSimples, todasLasCompartidas, { editar: puedeCalibrar }] = await Promise.all([
-    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta),
-    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta),
+    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta, ctx.db),
+    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta, ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local", ctx.db),
   ]);
   const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;

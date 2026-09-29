@@ -71,7 +71,7 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
 
     const mensaje = `Precio local de "${producto.nombre}" ${habilitado ? `fijado en ${precio}` : "cargado (deshabilitado, se usa el precio global)"}.`;
     if (habilitado) {
-      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId), Number(precio), "enSucursal");
+      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), Number(precio), "enSucursal");
       if (sincronizable) return { ok: true, mensaje, sincronizable };
     }
     return ok(mensaje);
@@ -93,7 +93,7 @@ export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, produ
     const ids = [...new Set(productoIds)];
     if (!ids.length) return error("No hay productos para actualizar.");
 
-    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId);
+    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId, ctx.db);
     const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
 

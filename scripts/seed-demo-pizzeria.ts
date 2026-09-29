@@ -654,8 +654,8 @@ describe("seed demo pizzería La Cuadra", () => {
       const desde = fechaHace(30, 0);
       const hasta = fechaHace(1, 23);
       const [simples, compartidas] = await Promise.all([
-        calcularRendimientoRecetasSimples(sucursal.id, desde, hasta),
-        calcularRendimientoRecetasCompartidas(sucursal.id, desde, hasta),
+        calcularRendimientoRecetasSimples(sucursal.id, desde, hasta, prisma),
+        calcularRendimientoRecetasCompartidas(sucursal.id, desde, hasta, prisma),
       ]);
 
       console.log(`\n=== Fase 1 (pool simple): ${simples.length} filas ===`);

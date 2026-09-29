@@ -33,7 +33,7 @@ describe("obtenerResumenOperativo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 50 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
 
-    const resumen = await obtenerResumenOperativo(sucursalId);
+    const resumen = await obtenerResumenOperativo(sucursalId, prisma);
     expect(resumen.stock.totalItems).toBeGreaterThanOrEqual(2); // mp y pv, al menos
     expect(resumen.movimientos.total).toBeGreaterThan(0);
     expect(resumen.financiero.ventasTotal).toBe(200);

@@ -21,18 +21,18 @@ describe("resolverTemaCarta", () => {
   });
 
   it("sin fila → null", async () => {
-    expect(await resolverTemaCarta(central)).toBeNull();
-    expect(await resolverTemaCarta("no-existe")).toBeNull();
+    expect(await resolverTemaCarta(central, prisma)).toBeNull();
+    expect(await resolverTemaCarta("no-existe", prisma)).toBeNull();
   });
 
   it("con el tema sin aplicar (borrador) → null", async () => {
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, valores: { color_marca: "#8b4513" } } });
-    expect(await resolverTemaCarta(central)).toBeNull();
+    expect(await resolverTemaCarta(central, prisma)).toBeNull();
   });
 
   it("aplicado pero con la sucursal inactiva → null", async () => {
     await prisma.temaCartaSucursal.create({ data: { sucursalId: cerrada, valores: { color_marca: "#8b4513" }, aplicarEnCarta: true } });
-    expect(await resolverTemaCarta(cerrada)).toBeNull();
+    expect(await resolverTemaCarta(cerrada, prisma)).toBeNull();
   });
 
   it("aplicado → las 67 claves, con los valores cargados y null en el resto", async () => {
@@ -78,14 +78,14 @@ describe("cargarTemaAdmin", () => {
   });
 
   it("sin tema y fuera del portal", async () => {
-    expect(await cargarTemaAdmin(central)).toEqual({ sucursalId: central, nombre: "Central", tema: null, publica: null });
-    expect(await cargarTemaAdmin("no-existe")).toBeNull();
+    expect(await cargarTemaAdmin(central, prisma)).toEqual({ sucursalId: central, nombre: "Central", tema: null, publica: null });
+    expect(await cargarTemaAdmin("no-existe", prisma)).toBeNull();
   });
 
   it("los valores guardados tal cual (también los inválidos, para poder corregirlos), solo claves del catálogo con texto; y el portal", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, valores: { color_marca: "red;x", restaurante_nombre: "La Parrilla", precio_simbolo: "US$", carta_imagen_opacidad: 38 } } });
-    const t = await cargarTemaAdmin(central);
+    const t = await cargarTemaAdmin(central, prisma);
     expect(t?.publica).toEqual({ slug: "central", publicada: true });
     expect(t?.tema?.aplicarEnCarta).toBe(false);
     expect(t?.tema?.valores).toEqual({ color_marca: "red;x", restaurante_nombre: "La Parrilla" });

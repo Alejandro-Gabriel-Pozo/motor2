@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
 import { lineasDeVenta } from "./cuenta";
 import { nombreDelMesero } from "./mesas";

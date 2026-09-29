@@ -54,7 +54,7 @@ export default async function ItemsAgrupadosPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
 
-  const datos = await cargarAdminItemsAgrupados(ctx.sucursalId);
+  const datos = await cargarAdminItemsAgrupados(ctx.sucursalId, ctx.db);
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),

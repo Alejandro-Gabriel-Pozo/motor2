@@ -209,7 +209,7 @@ describe("Server Actions de ítems agrupados", () => {
       const agId = await crearGaseosa();
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
       expect(await agregarOpcionItemAgrupadoCarta(agId, ids.agua)).toEqual({ ok: true, mensaje: "«Agua saborizada 500cc» agregado a «Gaseosa 500 CC»." });
-      const [seccion] = (await resolverMenuCarta(sucursalId))!.secciones;
+      const [seccion] = (await resolverMenuCarta(sucursalId, prisma))!.secciones;
       expect(seccion.nombre).toBe("Bebidas sin alcohol");
       expect(seccion.items.find((i) => i.productoId === agId)!.opciones!.map((o) => o.productoId)).toEqual([ids.coca, ids.agua]);
     });
@@ -314,7 +314,7 @@ describe("Server Actions de ítems agrupados", () => {
     const agId = await crearGaseosa();
     await agregarOpcionItemAgrupadoCarta(agId, ids.coca);
     await agregarOpcionItemAgrupadoCarta(agId, ids.sprite);
-    const items = (await resolverMenuCarta(sucursalId))!.secciones.flatMap((s) => s.items);
+    const items = (await resolverMenuCarta(sucursalId, prisma))!.secciones.flatMap((s) => s.items);
     expect(items).toEqual([
       {
         productoId: agId,

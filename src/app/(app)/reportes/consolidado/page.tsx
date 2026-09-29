@@ -26,7 +26,7 @@ export default async function ConsolidadoPage() {
     );
   }
 
-  const filas = await obtenerResumenConsolidado(ctx.membresias.map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre })));
+  const filas = await obtenerResumenConsolidado(ctx.membresias.map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre })), ctx.db);
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,

@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { whereDisponibleEn } from "./disponibilidad-producto-consulta";
 
 export interface DependenciasDeProducto {

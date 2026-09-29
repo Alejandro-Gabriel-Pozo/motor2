@@ -1,6 +1,5 @@
 import { obtenerResumenOperativo } from "./resumen-operativo";
 import type { Db } from "./comun";
-import { prisma } from "@/lib/db";
 
 export interface FilaResumenConsolidado {
   sucursalId: string;
@@ -21,7 +20,7 @@ export interface FilaResumenConsolidado {
  */
 export async function obtenerResumenConsolidado(
   sucursales: { id: string; nombre: string }[],
-  db: Db = prisma
+  db: Db
 ): Promise<FilaResumenConsolidado[]> {
   const resumenes = await Promise.all(sucursales.map((s) => obtenerResumenOperativo(s.id, db)));
   return sucursales.map((s, i) => {

@@ -33,7 +33,7 @@ describe("calcularCostosYMargenes", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-06-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 150 }] }); // $15/kg, más cara y más reciente
 
-    const filas = await calcularCostosYMargenes(sucursalId);
+    const filas = await calcularCostosYMargenes(sucursalId, prisma);
     const fila = filas.find((f) => f.productoId === pv.id)!;
     expect(fila.costo).toBe(2 * 15); // usa el precio de la compra más reciente, no la más barata
   });
@@ -48,7 +48,7 @@ describe("calcularCostosYMargenes", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp1.id, cantidad: 10, precioTotal: 100 }] });
     // mp2 nunca se compró: sin costo conocido.
 
-    const filas = await calcularCostosYMargenes(sucursalId);
+    const filas = await calcularCostosYMargenes(sucursalId, prisma);
     const fila = filas.find((f) => f.productoId === pv.id)!;
     expect(fila.costoIncompleto).toBe(true);
     expect(fila.costo).toBeNull();
@@ -62,7 +62,7 @@ describe("calcularCostosYMargenes", () => {
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId, mermaPorcentaje: 10 }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg
 
-    const filas = await calcularCostosYMargenes(sucursalId);
+    const filas = await calcularCostosYMargenes(sucursalId, prisma);
     const fila = filas.find((f) => f.productoId === pv.id)!;
     expect(fila.costo).toBeCloseTo(1 * 1.1 * 10); // cantidad × (1+merma%) × costo unitario
     expect(fila.margen).toBeCloseTo(100 - 11);
@@ -84,7 +84,7 @@ describe("calcularCostosYMargenes", () => {
     });
     // La sucursal bajo prueba nunca compró esta MP.
 
-    const filas = await calcularCostosYMargenes(sucursalId);
+    const filas = await calcularCostosYMargenes(sucursalId, prisma);
     const fila = filas.find((f) => f.productoId === pv.id)!;
     expect(fila.costoIncompleto).toBe(true); // no toma el precio $100/kg de la otra sucursal
   });
@@ -106,7 +106,7 @@ describe("calcularImpactoInsumos", () => {
     await prisma.recetaVersion.create({ data: { productoId: pv2.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 2, unidadId: catalogo.kg.id }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion.id, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg
 
-    const impacto = await calcularImpactoInsumos(base.sucursal.id);
+    const impacto = await calcularImpactoInsumos(base.sucursal.id, prisma);
     const fila = impacto.find((i) => i.insumoProductoId === mp.id)!;
     expect(fila.cantidadPlatos).toBe(2);
     expect(fila.costoAcumulado).toBeCloseTo(1 * 10 + 2 * 10);
@@ -139,7 +139,7 @@ describe("calcularImpactoRecetasPorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] }); // $10/kg, antes del período
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }] }); // $20/kg, dentro del período
 
-    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"), prisma);
 
     const fila = filas.find((f) => f.productoId === pv.id)!;
     expect(fila).toBeDefined();
@@ -161,7 +161,7 @@ describe("calcularImpactoRecetasPorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] }); // $10/kg, antes
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 15 }] }); // $15/kg, dentro del período
 
-    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"), prisma);
 
     const fila = filas.find((f) => f.productoId === pv.id)!;
     expect(fila).toBeDefined();
@@ -178,7 +178,7 @@ describe("calcularImpactoRecetasPorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] }); // mismo precio
 
-    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"), prisma);
     expect(filas.find((f) => f.productoId === pv.id)).toBeUndefined();
   });
 
@@ -190,7 +190,7 @@ describe("calcularImpactoRecetasPorPeriodo", () => {
     // Única compra, DENTRO del período elegido — no hay ninguna compra anterior a `desde`.
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
 
-    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"), prisma);
     expect(filas.find((f) => f.productoId === pv.id)).toBeUndefined();
   });
 
@@ -205,7 +205,7 @@ describe("calcularImpactoRecetasPorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 20 }] });
     // mp2 nunca se compró: costo incompleto en las dos corridas.
 
-    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"));
+    const filas = await calcularImpactoRecetasPorPeriodo(sucursalId, new Date("2026-08-10"), prisma);
     expect(filas.find((f) => f.productoId === pv.id)).toBeUndefined();
   });
 });

@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import type { Db } from "./comun";
 
 /**
@@ -145,7 +144,7 @@ function rangoUtc(desde: Date, hasta: Date): { desde: Date; hasta: Date } {
  * Todas las cuentas de la sucursal ABIERTAS dentro de `[desde, hasta]` (mismo criterio de rango que el resto de los reportes —
  * `resolverRangoDeReporte`/`SelectorRango`, en UTC), con la lectura de rotación ya calculada.
  */
-export async function generarReporteRotacionMesas(sucursalId: string, desdeParam: Date, hastaParam: Date, db: Db = prisma): Promise<ReporteRotacionMesas> {
+export async function generarReporteRotacionMesas(sucursalId: string, desdeParam: Date, hastaParam: Date, db: Db): Promise<ReporteRotacionMesas> {
   const { desde, hasta } = rangoUtc(desdeParam, hastaParam);
   const cuentas = await db.cuenta.findMany({
     where: { mesa: { sucursalId }, abiertaEn: { gte: desde, lte: hasta } },

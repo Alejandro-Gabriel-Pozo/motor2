@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { resolverEmpresaCarta } from "@/core/carta/public";
-import { resolverCartaPublica } from "@/core/carta/public-servidor";
+import { cartaPublica } from "@/core/carta/publica-sin-sesion";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 
 // ISR: se cachea 5 minutos, y las acciones del módulo carta la invalidan al instante (`revalidarCartasPublicas`). Sin
@@ -16,7 +16,7 @@ export function generateStaticParams() {
 async function resolver(empresa: string, sucursal: string) {
   const empresaCarta = await resolverEmpresaCarta(empresa);
   if (!empresaCarta) return null;
-  return resolverCartaPublica(sucursal);
+  return cartaPublica(sucursal);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ empresa: string; sucursal: string }> }): Promise<Metadata> {

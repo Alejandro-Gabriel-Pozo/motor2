@@ -36,8 +36,8 @@ export default async function BoletasEmitidasPage({
   const { desde, hasta, mesaId, filtro } = leerFiltroBoletas(sp);
 
   const [{ items, nextCursor }, mesaNumero] = await Promise.all([
-    listarBoletasEmitidas(ctx.sucursalId, filtro),
-    mesaId ? obtenerNumeroDeMesa(ctx.sucursalId, mesaId) : Promise.resolve(null),
+    listarBoletasEmitidas(ctx.sucursalId, filtro, ctx.db),
+    mesaId ? obtenerNumeroDeMesa(ctx.sucursalId, mesaId, ctx.db) : Promise.resolve(null),
   ]);
 
   const paramsSiguiente = serializarFiltroBoletas({ desde, hasta, mesaId, cursor: nextCursor });

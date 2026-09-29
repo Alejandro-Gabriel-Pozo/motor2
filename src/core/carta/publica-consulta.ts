@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import type { CartaV1 } from "./armar-menu";
 import { estiloCartaPorDefecto, resolverEstiloCarta, type EstiloCarta } from "./estilo";
 import { resolverMenuCarta } from "./menu-consulta";
@@ -26,7 +25,7 @@ export interface EntradaPortalCarta {
  * `docs/plan-registro-tenants-2026-09-24.md`; sin sheet externa que reconciliar, no hace falta emitir lo que no se muestra).
  * Orden: `orden` y después `etiqueta` (`localeCompare("es")`), mismo criterio que `armarRegistroTenants`.
  */
-export async function resolverPortalCarta(db: Db = prisma): Promise<EntradaPortalCarta[]> {
+export async function resolverPortalCarta(db: Db): Promise<EntradaPortalCarta[]> {
   const filas = await db.sucursalPublica.findMany({
     where: { publicada: true, sucursal: { activo: true } },
     select: { slug: true, etiqueta: true, subtituloPortal: true, orden: true, sucursal: { select: { nombre: true } } },
@@ -49,7 +48,7 @@ export interface CartaPublicaResuelta {
  * El tema solo se usa si `aplicarEnCarta` (un borrador guardado pero no aplicado no debe verse en la carta pública, mismo
  * criterio que `docs/setup-sucursal.md` sección 3); sin eso, o sin fila de tema, el estilo es el default del catálogo.
  */
-export async function resolverCartaPublica(slug: string, db: Db = prisma, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
+export async function resolverCartaPublica(slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
   const publica = await db.sucursalPublica.findUnique({
     where: { slug },
     select: {

@@ -33,7 +33,7 @@ describe("generarReporteDevoluciones", () => {
     await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2 }] });
     await registrarMovimiento({ proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 30 }] });
 
-    const rep = await generarReporteDevoluciones(sucursalId, 30);
+    const rep = await generarReporteDevoluciones(sucursalId, 30, prisma);
     expect(rep.clientes.find((c) => c.producto === "Harina")?.cantidad).toBe(2);
     expect(rep.clientes.find((c) => c.producto === "Harina")?.valor).toBe(20); // valorizado al costo de reposición, no al precio de la propia devolución
 
@@ -53,7 +53,7 @@ describe("generarReporteDevoluciones", () => {
     await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: comprado.id, cantidad: 1 }] });
     await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: producido.id, cantidad: 1 }] });
 
-    const rep = await generarReporteDevoluciones(sucursalId, 30);
+    const rep = await generarReporteDevoluciones(sucursalId, 30, prisma);
     const filaComprado = rep.clientes.find((c) => c.productoId === comprado.id)!;
     expect(filaComprado.sinPrecio).toBe(true);
     expect(filaComprado.accionFaltante).toEqual({ href: `/movimientos/compra?productoId=${comprado.id}`, etiqueta: "Sin costo de reposición — cargar compra" });

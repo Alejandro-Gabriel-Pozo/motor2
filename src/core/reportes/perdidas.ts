@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
 
@@ -50,7 +49,7 @@ const SIN_DESTINO = "(automático por receta)";
  * `idOperacion` para el detalle completo (sección, resto de la
  * operación) en Trazabilidad, en vez de duplicar esos datos acá.
  */
-export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db = prisma): Promise<ReportePerdidas> {
+export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db): Promise<ReportePerdidas> {
   const dias = diasAtras > 0 ? diasAtras : 30;
   const desde = new Date();
   desde.setUTCDate(desde.getUTCDate() - dias);

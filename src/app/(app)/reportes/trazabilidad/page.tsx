@@ -12,8 +12,8 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
-  const operacion = sp.idOperacion ? await obtenerOperacionPorId(ctx.sucursalId, sp.idOperacion) : null;
-  const encontradas = !sp.idOperacion && sp.producto ? await buscarOperacionesPorProducto(ctx.sucursalId, sp.producto) : [];
+  const operacion = sp.idOperacion ? await obtenerOperacionPorId(ctx.sucursalId, sp.idOperacion, ctx.db) : null;
+  const encontradas = !sp.idOperacion && sp.producto ? await buscarOperacionesPorProducto(ctx.sucursalId, sp.producto, ctx.db) : [];
 
   return (
     <div className="flex flex-col gap-6">

@@ -24,7 +24,7 @@ export default async function PromocionesPage({ searchParams }: { searchParams: 
     obtenerPromocionesHabilitadas(ctx.sucursalId),
     buscarProductoParaPromocion(ctx.sucursalId, ""),
   ]);
-  const rep = habilitado ? await obtenerReportePromociones(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr)) : null;
+  const rep = habilitado ? await obtenerReportePromociones(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db) : null;
 
   return (
     <div className="flex flex-col gap-6">

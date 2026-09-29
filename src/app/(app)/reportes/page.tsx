@@ -19,8 +19,8 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
   const sp = await searchParams;
   const rango = resolverRangoDeReporte(sp);
   const [r, cotizacion] = await Promise.all([
-    obtenerResumenOperativo(ctx.sucursalId, undefined, { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }),
-    obtenerUltimaCotizacion().catch(() => null),
+    obtenerResumenOperativo(ctx.sucursalId, ctx.db, { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }),
+    obtenerUltimaCotizacion(ctx.db).catch(() => null),
   ]);
 
   return (

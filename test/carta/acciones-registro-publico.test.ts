@@ -57,7 +57,7 @@ describe("Server Actions del registro público", () => {
   it("renombrar la sucursal después NO cambia el slug guardado", async () => {
     await agregarSucursalAlPortal(centralId);
     await prisma.sucursal.update({ where: { id: centralId }, data: { nombre: "Casa Central" } });
-    const { tenants } = await resolverRegistroTenants();
+    const { tenants } = await resolverRegistroTenants(prisma);
     expect(tenants.map((t) => [t.slug, t.etiqueta])).toEqual([["central", "Casa Central"]]);
   });
 
@@ -82,7 +82,7 @@ describe("Server Actions del registro público", () => {
       })
     );
     expect(r).toEqual({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
-    const { tenants } = await resolverRegistroTenants();
+    const { tenants } = await resolverRegistroTenants(prisma);
     expect(tenants).toEqual([
       {
         slug: "varvarco",

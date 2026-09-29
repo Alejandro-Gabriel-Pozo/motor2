@@ -75,7 +75,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
   });
 
   it("el gasto del período, el gasto por insumo y la tendencia de precios solo cuentan la compra vigente", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma);
 
     expect(rep.compras.totalGastado).toBe(100); // solo C; sin el filtro serían 2100
     expect(rep.compras.porProveedor.map((p) => p.proveedor)).toEqual(["Molino Vigente"]);
@@ -90,7 +90,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
   });
 
   it("el precio de referencia anterior ignora la compra anulada más reciente", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma);
     const precio = rep.tendenciaPrecios.find((f) => f.insumo === "Harina");
     // La última compra ANTES de agosto es B ($50/kg, anulada): tiene que valer A ($5/kg, vigente).
     expect(precio?.precioUnitarioAnterior).toBe(5);
@@ -101,16 +101,16 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
     const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: d("2026-07-15T12:00:00"), usuarioId: adminId } });
     await prisma.movimientoStock.create({ data: { operacionId: venta.id, productoId: platoId, seccionId, proceso: "VENTA", cantidad: -2, detalle: "Venta", precioTotal: 200, precioPorUnidadStock: 100 } });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma);
     expect(rep.ratioGastoVentas.porcentajePeriodoAnterior).toBe(12.5);
   });
 
   it("el costo de reposición (compra más reciente) ignora las anuladas, con y sin fecha de corte", async () => {
-    const hoy = await obtenerCostoActualPorMP(sucursalId);
+    const hoy = await obtenerCostoActualPorMP(sucursalId, prisma);
     expect(hoy.get(harinaId)?.precioPorUnidadStock).toBe(10); // C, no D ni E
     expect(hoy.get(harinaId)?.fecha?.toISOString().slice(0, 10)).toBe("2026-08-10");
 
-    const antesDeAgosto = await obtenerCostoActualPorMP(sucursalId, undefined, d("2026-08-01T00:00:00"));
+    const antesDeAgosto = await obtenerCostoActualPorMP(sucursalId, prisma, d("2026-08-01T00:00:00"));
     expect(antesDeAgosto.get(harinaId)?.precioPorUnidadStock).toBe(5); // A, no B
   });
 
@@ -118,13 +118,13 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
     const costos = await reconstruirCostosDeVenta(sucursalId, [
       { productoId: platoId, fecha: d("2026-08-11T12:00:00") }, // semilla: la última antes del 11/8 es D (anulada, mismo día que C) → tiene que ser C
       { productoId: platoId, fecha: d("2026-09-05T12:00:00") }, // ventana: E (anulada) cae adentro → tiene que seguir siendo C
-    ]);
+    ], prisma);
     expect(costos.get(claveCostoHistorico(platoId, "2026-08-11"))).toBe(10);
     expect(costos.get(claveCostoHistorico(platoId, "2026-09-05"))).toBe(10);
   });
 
   it("el listado de compras registradas muestra la anulada marcada, con quién y cuándo, y sin ocultarla", async () => {
-    const { items } = await listarComprasRegistradas(sucursalId, { desde: new Date("2026-08-01"), hasta: new Date("2026-08-31") });
+    const { items } = await listarComprasRegistradas(sucursalId, { desde: new Date("2026-08-01"), hasta: new Date("2026-08-31") }, prisma);
     const anuladas = items.filter((c) => c.anuladaEn);
     const vigentes = items.filter((c) => !c.anuladaEn);
     expect(anuladas).toHaveLength(2);
@@ -136,7 +136,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
 
   it("la trazabilidad informa la anulación de una compra, no solo de una venta", async () => {
     const anulada = await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedorAnuladorId } });
-    const datos = await obtenerOperacionPorId(sucursalId, anulada.id);
+    const datos = await obtenerOperacionPorId(sucursalId, anulada.id, prisma);
     expect(datos?.proceso).toBe("COMPRA");
     expect(datos?.anuladaEn).not.toBeNull();
     expect(datos?.anuladaPorEmail).toBe("admin@test.com");

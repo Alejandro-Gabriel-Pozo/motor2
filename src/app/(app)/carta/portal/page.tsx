@@ -40,7 +40,7 @@ export default async function PortalSucursalesPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sucursales = await cargarAdminPortal();
+  const sucursales = await cargarAdminPortal(ctx.db);
   const basePortal = urlBasePortal();
   const empresa = await empresaCartaActual();
 

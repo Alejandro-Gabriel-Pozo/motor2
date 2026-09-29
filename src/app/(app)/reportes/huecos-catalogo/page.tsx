@@ -9,8 +9,8 @@ export default async function HuecosCatalogoPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "insumos_mezclados", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const rep = await generarReporteHuecosCatalogo(ctx.sucursalId);
-  const problemasUnidadMezclada = await obtenerProblemasUnidadMezclada();
+  const rep = await generarReporteHuecosCatalogo(ctx.sucursalId, ctx.db);
+  const problemasUnidadMezclada = await obtenerProblemasUnidadMezclada(ctx.db);
 
   return (
     <div className="flex flex-col gap-6">

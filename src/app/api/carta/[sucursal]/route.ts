@@ -1,4 +1,4 @@
-import { resolverMenuCarta } from "@/core/carta/menu-consulta";
+import { menuCartaPublico } from "@/core/carta/publica-sin-sesion";
 import { autorizarServicioCarta, SIN_CACHE } from "@/core/carta/autorizar-servicio";
 import { reportarError } from "@/lib/reportar-error";
 
@@ -23,7 +23,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ sucursal: s
   try {
     const { sucursal } = await ctx.params;
     // Mismo 404 para inexistente e inactiva: quien llama no necesita saber cuál de las dos es.
-    const carta = sucursal.length <= 100 ? await resolverMenuCarta(sucursal) : null;
+    const carta = sucursal.length <= 100 ? await menuCartaPublico(sucursal) : null;
     if (!carta) return Response.json({ error: "Sucursal no encontrada" }, { status: 404, headers: SIN_CACHE });
     return Response.json(carta, { headers: SIN_CACHE });
   } catch (e) {

@@ -18,7 +18,7 @@ export default async function ConsignacionPage({ searchParams }: { searchParams:
   // opcional, para reconciliar un período puntual con el consignante.
   const periodo = desde || hasta ? { desde: desde ? new Date(desde) : undefined, hasta: hasta ? new Date(hasta) : undefined } : undefined;
 
-  const rep = await generarReporteConsignacion(ctx.sucursalId, undefined, periodo);
+  const rep = await generarReporteConsignacion(ctx.sucursalId, ctx.db, periodo);
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,5 +1,4 @@
 import "server-only";
-import { prisma } from "@/lib/db";
 import type { Db } from "@/lib/db-tipos";
 
 /**

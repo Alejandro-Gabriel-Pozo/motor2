@@ -137,9 +137,9 @@ describe("anularCompra", () => {
     const desde = new Date(Date.now() - 86_400_000);
     const hasta = new Date(Date.now() + 86_400_000);
 
-    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta)).compras.totalGastado).toBe(1300);
+    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma)).compras.totalGastado).toBe(1300);
     await anularCompra(compra.id);
-    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta)).compras.totalGastado).toBe(300);
+    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma)).compras.totalGastado).toBe(300);
   });
 
   describe("stock ya consumido", () => {
@@ -307,7 +307,7 @@ describe("anularCompra", () => {
 
       const desde = new Date(Date.now() - 86_400_000);
       const hasta = new Date(Date.now() + 86_400_000);
-      const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta);
+      const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma);
       expect(rep.compras.totalGastado).toBe(100);
       expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 
@@ -321,10 +321,10 @@ describe("anularCompra", () => {
       const { obtenerCostoActualPorMP } = await import("../../src/core/reportes/comun");
       await comprar({ cantidad: 10, precioTotal: 100, nroFactura: "R-1" }); // $10/kg
       const cara = await comprar({ cantidad: 10, precioTotal: 1000, nroFactura: "R-2" }); // $100/kg, más reciente
-      expect((await obtenerCostoActualPorMP(sucursalId)).get(harinaId)?.precioPorUnidadStock).toBe(100);
+      expect((await obtenerCostoActualPorMP(sucursalId, prisma)).get(harinaId)?.precioPorUnidadStock).toBe(100);
 
       await anularCompra(cara.id);
-      expect((await obtenerCostoActualPorMP(sucursalId)).get(harinaId)?.precioPorUnidadStock).toBe(10);
+      expect((await obtenerCostoActualPorMP(sucursalId, prisma)).get(harinaId)?.precioPorUnidadStock).toBe(10);
     });
   });
 

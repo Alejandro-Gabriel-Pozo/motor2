@@ -59,7 +59,7 @@ describe("obtenerReporteMargenPromociones", () => {
   }
 
   it("sin ninguna venta de promo: reporte vacío", async () => {
-    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep).toEqual({ desde, hasta, cantidadInstancias: 0, ingresoALista: 0, ingresoCobrado: 0, ahorroCliente: 0, promos: [], aviso: rep.aviso });
   });
 
@@ -74,7 +74,7 @@ describe("obtenerReporteMargenPromociones", () => {
     ]);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep.cantidadInstancias).toBe(1);
     expect(rep.ingresoALista).toBe(15000);
     expect(rep.ingresoCobrado).toBe(12000);
@@ -112,7 +112,7 @@ describe("obtenerReporteMargenPromociones", () => {
     const cuenta2 = await prisma.cuenta.findFirstOrThrow({ where: { mesaId: mesa2.id } });
     expect((await cerrarCuenta(cuenta2.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep.promos).toHaveLength(1);
     expect(rep.promos[0]).toMatchObject({ cantidadInstancias: 2, cantidadComponentes: 2, ingresoCobrado: 6000, ingresoALista: 6000, ahorroCliente: 0 });
   });
@@ -123,7 +123,7 @@ describe("obtenerReporteMargenPromociones", () => {
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     await prisma.promoCarta.update({ where: { id: promo.id }, data: { activa: false } });
 
-    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep.promos).toEqual([expect.objectContaining({ titulo: "Se dio de baja", activa: false })]);
   });
 
@@ -134,7 +134,7 @@ describe("obtenerReporteMargenPromociones", () => {
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", promoCuentaId: { not: null } } });
     expect((await anularVenta(venta.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep.promos).toEqual([]);
   });
 
@@ -143,9 +143,9 @@ describe("obtenerReporteMargenPromociones", () => {
     const cuenta = await sembrarCuentaConPromo(s.mesa.id, promo.id, "Combo Test", 3000, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, precioCartaUnitario: 3000 }]);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-    expect((await obtenerReporteMargenPromociones(s.sucursalId, new Date("1999-01-01"), new Date("1999-06-01"))).promos).toEqual([]);
+    expect((await obtenerReporteMargenPromociones(s.sucursalId, new Date("1999-01-01"), new Date("1999-06-01"), prisma)).promos).toEqual([]);
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-    expect((await obtenerReporteMargenPromociones(norte.id, desde, hasta)).promos).toEqual([]);
+    expect((await obtenerReporteMargenPromociones(norte.id, desde, hasta, prisma)).promos).toEqual([]);
   });
 
   it("una venta suelta de siempre (sin promoCuentaId) no aparece acá", async () => {
@@ -153,7 +153,7 @@ describe("obtenerReporteMargenPromociones", () => {
     await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1, creadoPorId: s.admin.id } });
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep.promos).toEqual([]);
   });
 
@@ -169,7 +169,7 @@ describe("obtenerReporteMargenPromociones", () => {
     const c2 = await prisma.cuenta.findFirstOrThrow({ where: { mesaId: mesa2.id } });
     expect((await cerrarCuenta(c2.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep.promos.map((p) => p.titulo)).toEqual(["Grande", "Chica"]);
   });
 });

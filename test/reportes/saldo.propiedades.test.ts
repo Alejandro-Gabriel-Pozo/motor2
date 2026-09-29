@@ -101,7 +101,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
         const saldoDirecto = await calcularSaldoTotal(productoId, seccionId, prisma);
         expect(aCentesimas(saldoDirecto)).toBe(saldoModelo);
 
-        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined);
+        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined, prisma);
         const filas = historial!.eventos.filter((e) => e.tipo === "movimiento");
         expect(filas.map((f) => aCentesimas(f.saldoCorriente!))).toEqual(prefijosAceptados);
         expect(historial!.totalMovimientos).toBe(prefijosAceptados.length);
@@ -123,7 +123,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
         const saldoDirecto = await calcularSaldoTotal(productoId, seccionId, prisma);
         expect(aCentesimas(saldoDirecto)).toBe(saldoModelo);
 
-        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined);
+        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined, prisma);
         const filas = historial!.eventos.filter((e) => e.tipo === "movimiento");
         expect(filas).toHaveLength(prefijosAceptados.length);
         expect(aCentesimas(filas.at(-1)?.saldoCorriente ?? 0)).toBe(aCentesimas(saldoDirecto));

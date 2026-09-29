@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "./comun";
 import { SIN_PROVEEDOR } from "./compras-filtros";
@@ -72,7 +71,7 @@ function finDelDiaUtc(fecha: Date): Date {
   return d;
 }
 
-export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db = prisma): Promise<PaginaCompras> {
+export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db): Promise<PaginaCompras> {
   const { desde, hasta, proveedorId, factura, cursor } = filtro;
 
   const operaciones = await db.operacion.findMany({

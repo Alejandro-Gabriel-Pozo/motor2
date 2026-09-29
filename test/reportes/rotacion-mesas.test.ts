@@ -141,7 +141,7 @@ describe("generarReporteRotacionMesas (consulta real)", () => {
       data: { mesaId: mesaOtra.id, abiertaPorId: s.admin.id, abiertaEn: new Date("2026-01-10T12:00:00Z"), cerradaEn: new Date("2026-01-10T13:00:00Z"), comensales: 5, items: { create: [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }] } },
     });
 
-    const rep = await generarReporteRotacionMesas(s.sucursalId, desde, hasta);
+    const rep = await generarReporteRotacionMesas(s.sucursalId, desde, hasta, prisma);
     expect(rep.atendidas).toBe(1);
     expect(rep.liberadasSinConsumo).toBe(1);
     expect(rep.abiertasSinCerrar).toBe(1);

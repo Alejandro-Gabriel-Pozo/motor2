@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearCantidad, type Db } from "./comun";
 
 export interface FilaLoteProximoAVencer {
@@ -19,7 +18,7 @@ export interface FilaLoteProximoAVencer {
  * memoria), acá el WHERE `loteVencimiento IS NOT NULL` ya va en el
  * `groupBy` de Postgres.
  */
-export async function generarReporteLotesProximosAVencer(sucursalId: string, dias: number, db: Db = prisma): Promise<FilaLoteProximoAVencer[]> {
+export async function generarReporteLotesProximosAVencer(sucursalId: string, dias: number, db: Db): Promise<FilaLoteProximoAVencer[]> {
   const limiteDias = dias > 0 ? dias : 7;
   const hoy = new Date();
   hoy.setUTCHours(0, 0, 0, 0);
@@ -114,7 +113,7 @@ async function sumarVentasYConsumosDeProducto(sucursalId: string, productoId: st
  * contados CON Fecha VTO específica — si nunca se contó por lote, no hay
  * con qué comparar la desaparición puntual.
  */
-export async function generarConciliacionVencimientos(sucursalId: string, db: Db = prisma): Promise<FilaConciliacionVencimiento[]> {
+export async function generarConciliacionVencimientos(sucursalId: string, db: Db): Promise<FilaConciliacionVencimiento[]> {
   const conteos = await db.conteoFisico.findMany({
     where: { sucursalId, loteVencimiento: { not: null } },
     include: { producto: true, seccion: true },
@@ -175,7 +174,7 @@ export async function generarConciliacionVencimientos(sucursalId: string, db: Db
 }
 
 /** Port de obtenerReporteVencimientosDatos (Reportes.js:683-689). */
-export async function obtenerReporteVencimientosDatos(sucursalId: string, dias: number, db: Db = prisma) {
+export async function obtenerReporteVencimientosDatos(sucursalId: string, dias: number, db: Db) {
   const [proximosAVencer, conciliacion] = await Promise.all([
     generarReporteLotesProximosAVencer(sucursalId, dias || 7, db),
     generarConciliacionVencimientos(sucursalId, db),

@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { cargarSelectorCartaPos } from "./selector-carta-consulta";
 import { pediblesDeEntrada } from "./selector-carta";
 import type { CupoPromoDefinicion } from "./promo-combo";

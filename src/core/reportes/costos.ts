@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import {
   asegurarIndiceRecetasDeLaSucursal,
@@ -128,7 +127,7 @@ const ORDEN_ESTADO: Record<EstadoCosto, number> = {
  */
 export async function calcularCostosYMargenes(
   sucursalId: string,
-  db: Db = prisma,
+  db: Db,
   /**
    * El catálogo ya cargado, para no volver a leerlo. TIENE que ser el de LA MISMA sucursal (`precioVenta` sale resuelto con el Precio
    * Local de esa sucursal): pasar el de otra da márgenes de otra sucursal sin ningún error. `obtenerReportePorPeriodo` lo comparte entre
@@ -251,7 +250,7 @@ export interface FilaImpactoInsumo {
  * mueven más la aguja del costo total: si una MP aparece en muchos platos y
  * pesa mucho, un aumento suyo pega fuerte.
  */
-export async function calcularImpactoInsumos(sucursalId: string, db: Db = prisma): Promise<FilaImpactoInsumo[]> {
+export async function calcularImpactoInsumos(sucursalId: string, db: Db): Promise<FilaImpactoInsumo[]> {
   const filas = await calcularCostosYMargenes(sucursalId, db);
   const porMP = new Map<string, { insumoNombre: string; platos: Set<string>; costoAcumulado: number; costoUnitario: number | null; proveedorNombre: string | null }>();
 
@@ -343,7 +342,7 @@ export interface FilaImpactoRecetaPorPeriodo {
 export async function calcularImpactoRecetasPorPeriodo(
   sucursalId: string,
   desde: Date,
-  db: Db = prisma,
+  db: Db,
   /** El catálogo ya cargado de LA MISMA sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
   productosCargados?: Map<string, InfoProductoReporte>,
   /** El índice de recetas ya cargado, mismo motivo (ver `obtenerReportePorPeriodoConCatalogo`). */

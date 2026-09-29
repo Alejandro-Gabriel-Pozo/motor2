@@ -41,7 +41,7 @@ export default async function ComprasRegistradasPage({
       proveedorId: sp.proveedorId || undefined,
       factura: sp.factura || undefined,
       cursor: sp.cursor,
-    }),
+    }, ctx.db),
     listarProveedores(),
   ]);
 

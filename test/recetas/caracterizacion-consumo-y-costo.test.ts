@@ -149,7 +149,7 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
   });
 
   it("(c) calcularCostosYMargenes: costo unitario y margen de cada PV, incluida la recursión sobre la subreceta", async () => {
-    const filas = await calcularCostosYMargenes(sucursalId);
+    const filas = await calcularCostosYMargenes(sucursalId, prisma);
     const porNombre = new Map(filas.map((f) => [f.productoNombre, f]));
 
     // Milanesa: costoCarneA=$50/kg (250/5) × (0.3333 × 1.125) = 50 × 0.37496...
@@ -175,7 +175,7 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     const desde = new Date("2026-03-01T00:00:00Z");
     const hasta = new Date("2026-03-31T23:59:59Z");
 
-    const simples = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const simples = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     // El insumo "Carne" lo usan DOS platos (Milanesa vía CarneA, Bife a caballo vía CarneB) → cae en Compartidas, no en Simples.
     expect(simples.find((f) => f.insumoONombre === "Carne (familia)")).toBeUndefined();
     const pizzaSimple = simples.find((f) => f.productoVentaNombre === "Pizza");
@@ -184,7 +184,7 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     expect(pizzaSimple!.totalProducido).toBe(2);
     expect(pizzaSimple!.totalComprado).toBe(0);
 
-    const compartidas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const compartidas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     const filasCarne = compartidas.filter((f) => f.insumoONombre === "Carne (familia)");
     expect(filasCarne).toHaveLength(2);
     expect(filasCarne.map((f) => f.productoVentaNombre).sort()).toEqual(["Bife a caballo", "Milanesa"]);
@@ -192,7 +192,7 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
   });
 
   it("(e) generarReporteDiferenciasAjustes: SalsaBase/Tomate/Carne quedan en 'Solo receta' (grupo b), sin diferencia", async () => {
-    const filas = await generarReporteDiferenciasAjustes(sucursalId);
+    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
     const porNombre = new Map(filas.map((f) => [f.producto, f]));
 
     expect(porNombre.get("Tomate")!.grupo).toBe("b");
@@ -210,7 +210,7 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
       { productoId: milanesa.id, fecha },
       { productoId: bifeCaballo.id, fecha },
       { productoId: pizza.id, fecha },
-    ]);
+    ], prisma);
     expect(costos.get(claveCostoHistorico(milanesa.id, "2026-03-10"))).toBe(18.748124999999998);
     expect(costos.get(claveCostoHistorico(bifeCaballo.id, "2026-03-10"))).toBe(5);
     expect(costos.get(claveCostoHistorico(pizza.id, "2026-03-10"))).toBe(1.6666249999999998);
@@ -223,7 +223,7 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     await marcarProductoComoPromocion(combo.id, true);
     await registrarVenta({ fecha, seccionId, ventas: [{ productoId: combo.id, cantidadVendida: 1 }] });
 
-    const rep = await obtenerReportePromociones(sucursalId, new Date("2026-03-01"), new Date("2026-03-31"));
+    const rep = await obtenerReportePromociones(sucursalId, new Date("2026-03-01"), new Date("2026-03-31"), prisma);
     expect(rep.habilitado).toBe(true);
     if (!rep.habilitado) return;
     const filaCombo = rep.promociones.find((p) => p.producto === "Combo Carne");

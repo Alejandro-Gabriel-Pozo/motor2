@@ -82,7 +82,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
         },
       });
 
-      const filas = await calcularCostosYMargenes(sucursalId);
+      const filas = await calcularCostosYMargenes(sucursalId, prisma);
       const fila = filas.find((f) => f.productoId === pv.id)!;
 
       // Referencia exacta calculada por fuera, con la MISMA fórmula que
@@ -111,7 +111,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p2.id, cantidad: 11, precioTotal: 40.37 }] }); // 3.670909.../kg
       await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: p1.id, cantidad: 1.5 }] });
 
-      const reporte = await calcularValuacionInventario(sucursalId);
+      const reporte = await calcularValuacionInventario(sucursalId, prisma);
       const fila1 = reporte.filas.find((f) => f.productoId === p1.id)!;
       const fila2 = reporte.filas.find((f) => f.productoId === p2.id)!;
 

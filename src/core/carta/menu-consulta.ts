@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { armarMenuCarta, type CartaV1, type MenuArmado } from "./armar-menu";
 
@@ -24,7 +23,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  *
  * Una sucursal inexistente o inactiva da `null` (el endpoint responde 404 igual en los dos casos, para no revelar cuál).
  */
-export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db = prisma, ahora: Date = new Date()): Promise<MenuArmado | null> {
+export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<MenuArmado | null> {
   const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true, activo: true } });
   if (!sucursal || !sucursal.activo) return null;
 
@@ -113,7 +112,7 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
 }
 
 /** La carta pública de una sucursal, tal como la sirve `GET /api/carta/[sucursal]` (sin el diagnóstico interno). */
-export async function resolverMenuCarta(sucursalId: string, db: Db = prisma, ahora: Date = new Date()): Promise<CartaV1 | null> {
+export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<CartaV1 | null> {
   const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora);
   return armado ? armado.carta : null;
 }

@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { precioDeCarta } from "./armar-menu";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -31,7 +30,7 @@ export interface GrupoDeProducto {
 }
 
 /** `null` si el producto no está en ningún ítem agrupado. */
-export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db = prisma): Promise<GrupoDeProducto | null> {
+export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db): Promise<GrupoDeProducto | null> {
   const opcion = await db.opcionItemAgrupadoCarta.findUnique({
     where: { productoId },
     select: {

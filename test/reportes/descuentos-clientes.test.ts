@@ -33,7 +33,7 @@ describe("obtenerReporteDescuentosClientes", () => {
   };
 
   it("sin ninguna venta con cliente: reporte vacío", async () => {
-    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta, prisma);
     expect(rep).toEqual({ desde, hasta, ingresoALista: 0, ingresoCobrado: 0, totalDescontado: 0, descuentoEfectivoPct: null, clientes: [], aviso: rep.aviso });
   });
 
@@ -45,7 +45,7 @@ describe("obtenerReporteDescuentosClientes", () => {
     await asignarClienteACuenta(cuenta.id, clienteId);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta, prisma);
     expect(rep.ingresoALista).toBe(2000);
     expect(rep.ingresoCobrado).toBe(1600); // 2000 × 0,8
     expect(rep.totalDescontado).toBe(400);
@@ -78,7 +78,7 @@ describe("obtenerReporteDescuentosClientes", () => {
     await asignarClienteACuenta(cuenta.id, clienteId);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta, prisma);
     expect(rep.clientes).toEqual([
       expect.objectContaining({ cliente: "Sin descuento", ingresoALista: 3000, ingresoCobrado: 3000, totalDescontado: 0, descuentoEfectivoPct: 0 }),
     ]);
@@ -95,7 +95,7 @@ describe("obtenerReporteDescuentosClientes", () => {
     await asignarClienteACuenta(c2.id, grande);
     await cerrarCuenta(c2.id);
 
-    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta, prisma);
     expect(rep.clientes.map((f) => f.cliente)).toEqual(["Grande", "Chico"]); // 1500 > 300
     expect(rep.totalDescontado).toBe(1500 + 300);
   });
@@ -111,11 +111,11 @@ describe("obtenerReporteDescuentosClientes", () => {
     await asignarClienteACuenta(conCliente.id, clienteId);
     expect((await cerrarCuenta(conCliente.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta, prisma);
     expect(rep.clientes).toHaveLength(1); // solo "Fulano" — la venta sin cliente no aparece
 
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-    expect((await obtenerReporteDescuentosClientes(norte.id, desde, hasta)).clientes).toEqual([]);
+    expect((await obtenerReporteDescuentosClientes(norte.id, desde, hasta, prisma)).clientes).toEqual([]);
   });
 
   it("una venta anulada no cuenta", async () => {
@@ -127,7 +127,7 @@ describe("obtenerReporteDescuentosClientes", () => {
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", clienteId } });
     expect((await anularVenta(venta.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta);
+    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta, prisma);
     expect(rep.clientes).toEqual([]);
   });
 
@@ -137,7 +137,7 @@ describe("obtenerReporteDescuentosClientes", () => {
     await asignarClienteACuenta(cuenta.id, clienteId);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, new Date("1999-01-01"), new Date("1999-06-01"));
+    const rep = await obtenerReporteDescuentosClientes(s.sucursalId, new Date("1999-01-01"), new Date("1999-06-01"), prisma);
     expect(rep.clientes).toEqual([]);
   });
 });

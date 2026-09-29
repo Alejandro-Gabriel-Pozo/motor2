@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import { construirIndiceRecetas, construirMapaProductos, redondearCantidad, type Db } from "./comun";
 import { resolverProximoConteo } from "@/core/stock/frecuencia-conteo";
@@ -67,7 +66,7 @@ const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1
  * bugfix documentado ahí), acá siempre estuvieron separados —
  * MovimientoStock.proceso distingue 'AJUSTE' de 'CONTROL' desde el día uno.
  */
-export async function generarReporteDiferenciasAjustes(sucursalId: string, db: Db = prisma, hoy: Date = new Date()): Promise<FilaDiferenciaAjuste[]> {
+export async function generarReporteDiferenciasAjustes(sucursalId: string, db: Db, hoy: Date = new Date()): Promise<FilaDiferenciaAjuste[]> {
   const productos = await construirMapaProductos(sucursalId, db);
   const { recetaPorProducto, mpsEnRecetas } = await construirIndiceRecetas(db, sucursalId);
   const frecuencias = await db.frecuenciaConteoProducto.findMany({ where: { sucursalId }, select: { productoId: true, frecuenciaDias: true } });

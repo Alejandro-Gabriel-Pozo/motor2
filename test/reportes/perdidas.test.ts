@@ -41,7 +41,7 @@ describe("generarReportePerdidas", () => {
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 2 }] });
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 1 }] });
 
-    const rep = await generarReportePerdidas(sucursalId, 30);
+    const rep = await generarReportePerdidas(sucursalId, 30, prisma);
     expect(rep.mermas).toHaveLength(2);
     // motivo ya viene resuelto a su nombre legible (perdidas.ts, plan "motivos de Consumo/Merma como catálogo administrable", P4) — no el código crudo del enum.
     const vencido = rep.mermas.find((m) => m.motivo === "Vencido")!;
@@ -58,7 +58,7 @@ describe("generarReportePerdidas", () => {
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] }); // stock sin costo de compra
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoOtroId, items: [{ productoId: mp.id, cantidad: 2 }] });
 
-    const rep = await generarReportePerdidas(sucursalId, 30);
+    const rep = await generarReportePerdidas(sucursalId, 30, prisma);
     const fila = rep.mermas.find((m) => m.motivo === "Otro")!;
     expect(fila.sinPrecio).toBe(true);
     expect(fila.valor).toBe(0);
@@ -74,7 +74,7 @@ describe("generarReportePerdidas", () => {
     await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, destinoId: destinoDegustacionId, items: [{ productoId: mp.id, cantidad: 3 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] }); // genera Consumo automático de la receta
 
-    const rep = await generarReportePerdidas(sucursalId, 30);
+    const rep = await generarReportePerdidas(sucursalId, 30, prisma);
     expect(rep.consumos.find((c) => c.motivo === "Degustación / cortesía")?.cantidad).toBe(3);
     expect(rep.consumos.find((c) => c.motivo === "(automático por receta)")?.cantidad).toBe(2);
   });

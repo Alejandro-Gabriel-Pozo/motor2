@@ -50,7 +50,7 @@ export default async function CartaPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
 
-  const datos = await cargarAdminCarta(ctx.sucursalId);
+  const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db);
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),

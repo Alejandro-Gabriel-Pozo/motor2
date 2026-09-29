@@ -23,8 +23,8 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const [rep, cotizacion] = await Promise.all([
-    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr)),
-    obtenerUltimaCotizacion().catch(() => null),
+    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db),
+    obtenerUltimaCotizacion(ctx.db).catch(() => null),
   ]);
 
   return (

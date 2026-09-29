@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
 import { calcularMargenRealDelPeriodo, type ItemParaMargenReal } from "./margen-real";
@@ -61,7 +60,7 @@ function reporteVacio(desde: Date, hasta: Date): ReporteDescuentosClientes {
   return { desde, hasta, ingresoALista: 0, ingresoCobrado: 0, totalDescontado: 0, descuentoEfectivoPct: null, clientes: [], aviso: AVISO };
 }
 
-export async function obtenerReporteDescuentosClientes(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<ReporteDescuentosClientes> {
+export async function obtenerReporteDescuentosClientes(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<ReporteDescuentosClientes> {
   const filas = await db.movimientoStock.findMany({
     where: {
       proceso: "VENTA",

@@ -204,7 +204,7 @@ describe("tomar pedido (server actions)", () => {
       it("una opción del grupo congela SU precio (con su Precio Local), aunque la carta muestre el mayor", async () => {
         const { coca, sprite, gaseosa } = await sembrarGaseosa();
         await prisma.precioLocalProducto.create({ data: { sucursalId: s.sucursalId, productoId: sprite.id, precio: 5500, habilitado: true } });
-        const carta = await resolverMenuCarta(s.sucursalId);
+        const carta = await resolverMenuCarta(s.sucursalId, prisma);
         expect(carta?.secciones[0].items.find((i) => i.productoId === gaseosa.id)?.precio).toBe(5500);
 
         const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);

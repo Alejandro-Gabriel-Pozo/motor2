@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import { construirIndiceRecetas, type Db } from "./comun";
 import { obtenerReportePorPeriodoConCatalogo } from "./periodo";
@@ -62,7 +61,7 @@ export type ReportePromociones =
  * algún insumo no se vende suelto, la promoción queda "incompleta" para ese
  * cálculo en vez de inventar un número.
  */
-export async function obtenerReportePromociones(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<ReportePromociones> {
+export async function obtenerReportePromociones(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<ReportePromociones> {
   const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId } });
   if (!sucursal?.promocionesHabilitadas) return { habilitado: false };
 

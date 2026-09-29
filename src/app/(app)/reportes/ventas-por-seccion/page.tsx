@@ -21,7 +21,7 @@ export default async function VentasPorSeccionPage({ searchParams }: { searchPar
   const rango = resolverRangoDeReporte(sp);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const rep = await generarReporteVentasPorSeccion(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr));
+  const rep = await generarReporteVentasPorSeccion(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db);
 
   return (
     <div className="flex flex-col gap-6">

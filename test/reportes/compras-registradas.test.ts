@@ -48,7 +48,7 @@ describe("listarComprasRegistradas", () => {
     ]);
     await comprar("2026-08-05", provBId, "B-0007", [{ productoId: quesoId, cantidad: 5, precioTotal: 100 }]);
 
-    const { items, nextCursor } = await listarComprasRegistradas(sucursalId);
+    const { items, nextCursor } = await listarComprasRegistradas(sucursalId, undefined, prisma);
 
     expect(nextCursor).toBeNull();
     expect(items.map((c) => c.nroFactura)).toEqual(["B-0007", "A-0001"]);
@@ -69,7 +69,7 @@ describe("listarComprasRegistradas", () => {
     await comprar("2026-08-05", provBId, "B-0007", [{ productoId: quesoId, cantidad: 1, precioTotal: 20 }]);
     await comprar("2026-08-09", undefined, undefined, [{ productoId: harinaId, cantidad: 1, precioTotal: 6 }]);
 
-    const facturas = async (f: Parameters<typeof listarComprasRegistradas>[1]) => (await listarComprasRegistradas(sucursalId, f)).items.map((c) => c.nroFactura ?? "(sin)");
+    const facturas = async (f: Parameters<typeof listarComprasRegistradas>[1]) => (await listarComprasRegistradas(sucursalId, f, prisma)).items.map((c) => c.nroFactura ?? "(sin)");
 
     expect(await facturas({ proveedorId: provAId })).toEqual(["A-0001"]);
     expect(await facturas({ proveedorId: SIN_PROVEEDOR })).toEqual(["(sin)"]);
@@ -80,7 +80,7 @@ describe("listarComprasRegistradas", () => {
 
   it("los límites de fecha son días completos: una compra a las 12:00 UTC entra con `hasta` = ese mismo día (que llega a las 00:00 UTC)", async () => {
     await comprar("2026-08-09", provAId, "A-0001", [{ productoId: harinaId, cantidad: 1, precioTotal: 5 }]); // se guarda a las 12:00Z
-    const facturas = async (f: Parameters<typeof listarComprasRegistradas>[1]) => (await listarComprasRegistradas(sucursalId, f)).items.map((c) => c.nroFactura);
+    const facturas = async (f: Parameters<typeof listarComprasRegistradas>[1]) => (await listarComprasRegistradas(sucursalId, f, prisma)).items.map((c) => c.nroFactura);
 
     expect(await facturas({ hasta: new Date("2026-08-09") })).toEqual(["A-0001"]);
     expect(await facturas({ desde: new Date("2026-08-09"), hasta: new Date("2026-08-09") })).toEqual(["A-0001"]);
@@ -93,7 +93,7 @@ describe("listarComprasRegistradas", () => {
       { productoId: harinaId, cantidad: 10, precioTotal: 50 },
       { productoId: quesoId, cantidad: 2 },
     ]);
-    const [c] = (await listarComprasRegistradas(sucursalId)).items;
+    const [c] = (await listarComprasRegistradas(sucursalId, undefined, prisma)).items;
     expect(c.haySinPrecio).toBe(true);
     expect(c.total).toBe(50);
   });
@@ -103,7 +103,7 @@ describe("listarComprasRegistradas", () => {
       { productoId: harinaId, cantidad: 5, precioTotal: 25 },
       { productoId: harinaId, cantidad: 5, precioTotal: 25 }, // mismo producto, otro renglón — ej. dos lotes con vencimiento distinto
     ]);
-    const [c] = (await listarComprasRegistradas(sucursalId)).items;
+    const [c] = (await listarComprasRegistradas(sucursalId, undefined, prisma)).items;
     expect(c.renglones).toHaveLength(2);
     expect(c.cantidadProductos).toBe(1);
   });
@@ -118,9 +118,9 @@ describe("listarComprasRegistradas", () => {
     await prisma.operacion.create({ data: { sucursalId: otra.id, proceso: "COMPRA", fecha: d("2026-08-03"), usuarioId: admin.id, nroFactura: "AJENA-1" } });
     void seccionOtra;
 
-    const { items } = await listarComprasRegistradas(sucursalId);
+    const { items } = await listarComprasRegistradas(sucursalId, undefined, prisma);
     expect(items.map((c) => c.nroFactura)).toEqual(["A-0001"]);
-    expect((await listarComprasRegistradas(otra.id)).items.map((c) => c.nroFactura)).toEqual(["AJENA-1"]);
+    expect((await listarComprasRegistradas(otra.id, undefined, prisma)).items.map((c) => c.nroFactura)).toEqual(["AJENA-1"]);
   });
 
   it("pagina por cursor sin repetir ni saltear compras", async () => {
@@ -130,10 +130,10 @@ describe("listarComprasRegistradas", () => {
         data: { sucursalId, proceso: "COMPRA", fecha: new Date(Date.UTC(2026, 0, 1 + (i % 28))), usuarioId: (await prisma.user.findFirstOrThrow({ where: { email: "admin@test.com" } })).id, nroFactura: `F-${i}` },
       });
     }
-    const p1 = await listarComprasRegistradas(sucursalId);
+    const p1 = await listarComprasRegistradas(sucursalId, undefined, prisma);
     expect(p1.items).toHaveLength(TAMANO_PAGINA_COMPRAS);
     expect(p1.nextCursor).not.toBeNull();
-    const p2 = await listarComprasRegistradas(sucursalId, { cursor: p1.nextCursor! });
+    const p2 = await listarComprasRegistradas(sucursalId, { cursor: p1.nextCursor! }, prisma);
     expect(p2.items).toHaveLength(5);
     expect(p2.nextCursor).toBeNull();
     const todas = [...p1.items, ...p2.items].map((c) => c.idOperacion);
@@ -156,7 +156,7 @@ describe("Compras por proveedor (Período) lleva el id del proveedor para enlaza
     await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, proveedorId: prov.id, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 5 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 6 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-30"), new Date("2026-08-05"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-30"), new Date("2026-08-05"), undefined, prisma);
     const porNombre = new Map(rep.compras.porProveedor.map((p) => [p.proveedor, p.proveedorId]));
     expect(porNombre.get("Molino A")).toBe(prov.id);
     expect(porNombre.get("Sin proveedor")).toBeNull();

@@ -10,7 +10,7 @@ export default async function DiferenciasPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_control", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const filas = await generarReporteDiferenciasAjustes(ctx.sucursalId);
+  const filas = await generarReporteDiferenciasAjustes(ctx.sucursalId, ctx.db);
 
   return (
     <div className="flex flex-col gap-4">

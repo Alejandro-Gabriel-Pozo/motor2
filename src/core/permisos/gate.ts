@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { capacidadesDeSucursal, sucursalTieneCapacidad } from "./capacidades-sucursal";
 import type { AccionClave } from "./acciones";
 

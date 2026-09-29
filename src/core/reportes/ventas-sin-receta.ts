@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { construirMapaProductos, type Db } from "./comun";
 
 export interface FilaVentaSinReceta {
@@ -19,7 +18,7 @@ export interface FilaVentaSinReceta {
  * directo, una fila VENTA cuya Operacion no tiene ninguna fila CONSUMO
  * asociada (acá se resuelve con una FK real, no comparando IDs de texto).
  */
-export async function generarReporteVentasSinReceta(sucursalId: string, db: Db = prisma): Promise<FilaVentaSinReceta[]> {
+export async function generarReporteVentasSinReceta(sucursalId: string, db: Db): Promise<FilaVentaSinReceta[]> {
   const ventas = await db.movimientoStock.findMany({
     // Una venta ANULADA no cuenta: no ocurrió.
     where: { proceso: "VENTA", seccion: { sucursalId }, operacion: { anuladaEn: null } },

@@ -24,9 +24,9 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDeNavegacion(), ctx.db);
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
-  const cotizacion = await obtenerUltimaCotizacion().catch(() => null);
+  const cotizacion = await obtenerUltimaCotizacion(ctx.db).catch(() => null);
   // Si falta la cotización de hoy (el cron diario puede no haber corrido), la aplicación se pone al día sola DESPUÉS de responder.
-  if (cotizacionVencida(cotizacion)) after(() => actualizarDolarSiHaceFalta());
+  if (cotizacionVencida(cotizacion)) after(() => actualizarDolarSiHaceFalta(ctx.db));
 
   return (
     <div className="flex flex-1">

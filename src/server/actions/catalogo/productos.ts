@@ -405,7 +405,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     const mensaje = `Producto "${nombreActual}" actualizado.`;
     const precioNuevo = Number(nuevos.precioVenta);
     if (precioNuevo !== Number(existente.precioVenta)) {
-      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId), precioNuevo, "global");
+      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), precioNuevo, "global");
       if (sincronizable) return { ok: true, mensaje, sincronizable };
     }
     return ok(mensaje);
@@ -424,7 +424,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
     const ids = [...new Set(productoIds)];
     if (!ids.length) return error("No hay productos para actualizar.");
 
-    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId);
+    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId, ctx.db);
     const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
 

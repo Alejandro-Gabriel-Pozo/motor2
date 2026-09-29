@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { armarRegistroTenants, type RegistroTenantsV1 } from "./registro-tenants";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -12,7 +11,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * Una sola consulta: todas las filas de `SucursalPublica` con su sucursal. Sin fila = la sucursal no está en el registro de
  * motor2 (opt-in, D3). Las no publicadas o de una sucursal inactiva salen igual, con `activo: false` (D4, D7).
  */
-export async function resolverRegistroTenants(db: Db = prisma, ahora: Date = new Date()): Promise<RegistroTenantsV1> {
+export async function resolverRegistroTenants(db: Db, ahora: Date = new Date()): Promise<RegistroTenantsV1> {
   const filas = await db.sucursalPublica.findMany({
     select: {
       slug: true,

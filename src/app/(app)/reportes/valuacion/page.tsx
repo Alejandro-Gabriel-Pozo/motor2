@@ -12,7 +12,7 @@ export default async function ValuacionPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [rep, cotizacion] = await Promise.all([calcularValuacionInventario(ctx.sucursalId), obtenerUltimaCotizacion().catch(() => null)]);
+  const [rep, cotizacion] = await Promise.all([calcularValuacionInventario(ctx.sucursalId, ctx.db), obtenerUltimaCotizacion(ctx.db).catch(() => null)]);
   const sinCosto = rep.filas.filter((f) => f.sinCosto);
   const conCosto = rep.filas.filter((f) => !f.sinCosto);
 

@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
 
 export interface FilaPvSinVenta {
@@ -45,7 +44,7 @@ export interface ReporteHuecosCatalogo {
  *    (docs/comparativa-ux-erpnext-dolibarr.md §8.7): "Prepizza masa
  *    chica/grande" aparecían acá sin corresponder.
  */
-export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db = prisma): Promise<ReporteHuecosCatalogo> {
+export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db): Promise<ReporteHuecosCatalogo> {
   const productos = await construirMapaProductos(sucursalId, db);
   const { mpsEnRecetas } = await construirIndiceRecetas(db);
 
@@ -83,7 +82,7 @@ export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db = 
  * inactivos a propósito — mismo criterio que el original
  * (obtenerUnidadPorInsumo_ no filtra por activo).
  */
-export async function obtenerProblemasUnidadMezclada(db: Db = prisma): Promise<ProblemaUnidadMezclada[]> {
+export async function obtenerProblemasUnidadMezclada(db: Db): Promise<ProblemaUnidadMezclada[]> {
   const productos = await db.producto.findMany({
     where: { insumoId: { not: null } },
     include: { insumo: true, unidadStock: true },

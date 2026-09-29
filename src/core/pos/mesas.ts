@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 

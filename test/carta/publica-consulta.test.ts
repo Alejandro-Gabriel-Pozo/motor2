@@ -20,7 +20,7 @@ describe("resolverPortalCarta", () => {
   });
 
   it("sin filas, lista vacía", async () => {
-    await expect(resolverPortalCarta()).resolves.toEqual([]);
+    await expect(resolverPortalCarta(prisma)).resolves.toEqual([]);
   });
 
   it("solo publicada && sucursal.activo entran — a diferencia del registro completo de la carta externa, acá NO se emite lo que no se muestra", async () => {
@@ -31,13 +31,13 @@ describe("resolverPortalCarta", () => {
         { sucursalId: inactiva, slug: "cerrada", publicada: true },
       ],
     });
-    const portal = await resolverPortalCarta();
+    const portal = await resolverPortalCarta(prisma);
     expect(portal.map((p) => p.slug)).toEqual(["central"]);
   });
 
   it("etiqueta cae al nombre de la sucursal si no está cargada", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
-    const [entrada] = await resolverPortalCarta();
+    const [entrada] = await resolverPortalCarta(prisma);
     expect(entrada).toEqual({ slug: "central", etiqueta: "Central", subtitulo: null });
   });
 
@@ -48,7 +48,7 @@ describe("resolverPortalCarta", () => {
         { sucursalId: norte, slug: "norte", publicada: true, etiqueta: "Alfa", orden: 0 },
       ],
     });
-    const portal = await resolverPortalCarta();
+    const portal = await resolverPortalCarta(prisma);
     expect(portal.map((p) => p.slug)).toEqual(["norte", "central"]);
   });
 });
@@ -62,23 +62,23 @@ describe("resolverCartaPublica", () => {
   });
 
   it("null si el slug no existe", async () => {
-    await expect(resolverCartaPublica("no-existe")).resolves.toBeNull();
+    await expect(resolverCartaPublica("no-existe", prisma)).resolves.toBeNull();
   });
 
   it("null si existe pero no está publicada", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: false } });
-    await expect(resolverCartaPublica("central")).resolves.toBeNull();
+    await expect(resolverCartaPublica("central", prisma)).resolves.toBeNull();
   });
 
   it("null si la sucursal está inactiva, aunque esté publicada", async () => {
     const inactiva = (await prisma.sucursal.create({ data: { nombre: "Cerrada", activo: false } })).id;
     await prisma.sucursalPublica.create({ data: { sucursalId: inactiva, slug: "cerrada", publicada: true } });
-    await expect(resolverCartaPublica("cerrada")).resolves.toBeNull();
+    await expect(resolverCartaPublica("cerrada", prisma)).resolves.toBeNull();
   });
 
   it("sin tema (ninguna fila), el estilo es el default del catálogo", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
-    const r = await resolverCartaPublica("central");
+    const r = await resolverCartaPublica("central", prisma);
     expect(r).not.toBeNull();
     expect(r!.carta.sucursal.id).toBe(central);
     expect(r!.estilo.valores.restaurante_nombre).toBe("");
@@ -87,14 +87,14 @@ describe("resolverCartaPublica", () => {
   it("con tema guardado pero SIN aplicar, sigue en el default — un borrador nunca se filtra a la carta pública", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: false, valores: { restaurante_nombre: "Borrador" } } });
-    const r = await resolverCartaPublica("central");
+    const r = await resolverCartaPublica("central", prisma);
     expect(r!.estilo.valores.restaurante_nombre).toBe("");
   });
 
   it("con tema aplicado, el estilo usa esos valores", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: true, valores: { restaurante_nombre: "La Cuadra" } } });
-    const r = await resolverCartaPublica("central");
+    const r = await resolverCartaPublica("central", prisma);
     expect(r!.estilo.valores.restaurante_nombre).toBe("La Cuadra");
   });
 });

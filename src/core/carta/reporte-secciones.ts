@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import {
   redondearCantidad,
@@ -131,7 +130,7 @@ async function seccionesDeProductos(db: Db): Promise<Map<string, SeccionDeProduc
 }
 
 /** Las ventas del período (el mismo reporte base que «Ventas por categoría») + UNA consulta de ubicación, agrupadas por sección de carta. */
-export async function generarReporteVentasPorSeccion(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<ReporteVentasPorSeccion> {
+export async function generarReporteVentasPorSeccion(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<ReporteVentasPorSeccion> {
   const [{ reporte: rep, productos }, seccionPorProducto] = await Promise.all([
     obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, { proceso: "VENTA" }, db),
     seccionesDeProductos(db),

@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { calcularStockConsolidado, type EstadoStockConsolidado } from "@/core/stock/consolidado";
 import { calcularAlertasStock } from "@/core/stock/alertas";
 import type { Db } from "./comun";
@@ -32,7 +31,7 @@ const ORDEN_CONSOLIDADO: Record<EstadoStockConsolidado, number> = { NEGATIVO: 0,
  * PRODUCTO (no varían por sección): se repiten a propósito en cada fila de
  * sección del mismo producto, para no perder la señal si se mira solo una.
  */
-export async function generarReporteSaludPorProducto(sucursalId: string, db: Db = prisma): Promise<FilaSaludProducto[]> {
+export async function generarReporteSaludPorProducto(sucursalId: string, db: Db): Promise<FilaSaludProducto[]> {
   const [consolidado, alertas, diferencias, sinReceta] = await Promise.all([
     calcularStockConsolidado(sucursalId, db),
     calcularAlertasStock(sucursalId, db),

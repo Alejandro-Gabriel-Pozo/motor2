@@ -1,4 +1,4 @@
-import { resolverTemaCarta } from "@/core/carta/tema-consulta";
+import { temaCartaPublico } from "@/core/carta/publica-sin-sesion";
 import { autorizarServicioCarta, SIN_CACHE } from "@/core/carta/autorizar-servicio";
 import { reportarError } from "@/lib/reportar-error";
 
@@ -25,7 +25,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ sucursal: s
 
   try {
     const { sucursal } = await ctx.params;
-    const tema = sucursal.length <= 100 ? await resolverTemaCarta(sucursal) : null;
+    const tema = sucursal.length <= 100 ? await temaCartaPublico(sucursal) : null;
     if (!tema) return Response.json({ error: "Tema no encontrado" }, { status: 404, headers: SIN_CACHE });
     return Response.json(tema, { headers: SIN_CACHE });
   } catch (e) {

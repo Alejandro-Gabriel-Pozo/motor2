@@ -120,9 +120,9 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
     await comprar(deposito.id, 1);
     await cerrarPizzas(2);
     const hoy = new Date();
-    const enCocina = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: cocina.id });
+    const enCocina = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: cocina.id }, prisma);
     expect(enCocina.items.map((i) => [i.proceso, i.productoId, i.cantidad])).toEqual([["VENTA", s.pizza.id, 2]]);
-    const enDeposito = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: deposito.id });
+    const enDeposito = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: deposito.id }, prisma);
     expect(enDeposito.items.map((i) => [i.proceso, i.productoId]).sort()).toEqual([["COMPRA", s.muzzarella.id], ["CONSUMO", s.muzzarella.id]]);
   });
 });

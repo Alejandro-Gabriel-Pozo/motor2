@@ -34,7 +34,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
   let panId: string;
 
   const d = (iso: string) => new Date(`${iso}T12:00:00Z`);
-  const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"));
+  const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
 
   async function comprarHarina(fecha: string) {
     const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });
@@ -137,7 +137,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       await venderPan("2026-08-07", 1);
       await anularVenta(anulada);
 
-      const filas = await calcularRendimientoRecetasSimples(sucursalId, d("2026-08-01"), d("2026-08-31"));
+      const filas = await calcularRendimientoRecetasSimples(sucursalId, d("2026-08-01"), d("2026-08-31"), prisma);
       const fila = filas.find((f) => f.productoVentaId === panId);
       expect(fila?.totalVendido).toBe(1); // sin el filtro serían 5
     });
@@ -146,33 +146,33 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       await comprarHarina("2026-08-05");
       const venta = await venderPan("2026-08-06", 1);
 
-      expect((await generarReporteHuecosCatalogo(sucursalId)).pvSinVentaNunca.map((p) => p.productoId)).not.toContain(panId);
+      expect((await generarReporteHuecosCatalogo(sucursalId, prisma)).pvSinVentaNunca.map((p) => p.productoId)).not.toContain(panId);
       await anularVenta(venta);
-      expect((await generarReporteHuecosCatalogo(sucursalId)).pvSinVentaNunca.map((p) => p.productoId)).toContain(panId);
+      expect((await generarReporteHuecosCatalogo(sucursalId, prisma)).pvSinVentaNunca.map((p) => p.productoId)).toContain(panId);
     });
 
     it("Ventas sin receta: una venta anulada de un plato sin receta ya no figura", async () => {
       const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SR", nombre: "Plato sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 50 }, sucursalId);
       const venta = await registrarVenta({ fecha: d("2026-08-06"), seccionId, ventas: [{ productoId: sinReceta.id, cantidadVendida: 1 }] });
       expect(venta.ok, venta.mensaje).toBe(true);
-      expect((await generarReporteVentasSinReceta(sucursalId)).map((f) => f.productoId)).toContain(sinReceta.id);
+      expect((await generarReporteVentasSinReceta(sucursalId, prisma)).map((f) => f.productoId)).toContain(sinReceta.id);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
       await anularVenta(op.id);
-      expect((await generarReporteVentasSinReceta(sucursalId)).map((f) => f.productoId)).not.toContain(sinReceta.id);
+      expect((await generarReporteVentasSinReceta(sucursalId, prisma)).map((f) => f.productoId)).not.toContain(sinReceta.id);
     });
 
     it("Pérdidas y consumo: el consumo automático por receta de una venta anulada no es consumo", async () => {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });
       const registrada = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
       expect(registrada.ok, registrada.mensaje).toBe(true);
-      const antes = await generarReportePerdidas(sucursalId, 30);
+      const antes = await generarReportePerdidas(sucursalId, 30, prisma);
       expect(antes.consumos.length).toBeGreaterThan(0);
       expect(antes.totalConsumo).toBe(10); // 2 kg de harina a $5
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
       await anularVenta(op.id);
-      const despues = await generarReportePerdidas(sucursalId, 30);
+      const despues = await generarReportePerdidas(sucursalId, 30, prisma);
       expect(despues.consumos).toEqual([]);
       expect(despues.totalConsumo).toBe(0);
     });
@@ -180,7 +180,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
   describe("Diferencias de ajuste: la reversión por anulación no es un ajuste manual", () => {
     async function ajusteDeHarina() {
-      const fila = (await generarReporteDiferenciasAjustes(sucursalId)).find((f) => f.productoId === harinaId);
+      const fila = (await generarReporteDiferenciasAjustes(sucursalId, prisma)).find((f) => f.productoId === harinaId);
       return { suma: fila?.sumaAjustesManuales ?? 0, sugerencia: fila?.sugerenciaMerma ?? null };
     }
 

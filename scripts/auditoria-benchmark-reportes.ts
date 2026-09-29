@@ -177,35 +177,35 @@ async function main() {
   console.log("\n5) Historial de producto — CASO NORMAL (producto con pocos movimientos):");
   const productoFrio = productos[0]!.id;
   await medir("obtenerHistorialProducto (producto frío, sin filtro de fecha)", () =>
-    obtenerHistorialProducto(sucursales[0]!.id, productoFrio, undefined, undefined, undefined)
+    obtenerHistorialProducto(sucursales[0]!.id, productoFrio, undefined, undefined, undefined, prisma)
   );
 
   console.log("\n5b) Historial de producto — producto 'caliente' del reparto general, filtrando solo el último mes:");
   const haceUnMes = new Date();
   haceUnMes.setDate(haceUnMes.getDate() - 30);
   await medir("obtenerHistorialProducto (producto caliente, desde=hace 1 mes)", () =>
-    obtenerHistorialProducto(sucursales[0]!.id, productoCaliente.productoId, undefined, haceUnMes, new Date())
+    obtenerHistorialProducto(sucursales[0]!.id, productoCaliente.productoId, undefined, haceUnMes, new Date(), prisma)
   );
 
   console.log("\n5c) Historial de producto — CASO DE ESTRÉS REAL: producto longevo (30.000 movimientos), filtrando solo el último mes:");
   await medir(`obtenerHistorialProducto (producto longevo, ${N_MOVS_LONGEVO.toLocaleString("es-AR")} movimientos totales, desde=hace 1 mes)`, () =>
-    obtenerHistorialProducto(sucursales[0]!.id, productoLongevo.id, undefined, haceUnMes, new Date())
+    obtenerHistorialProducto(sucursales[0]!.id, productoLongevo.id, undefined, haceUnMes, new Date(), prisma)
   );
 
   console.log("\n5d) Historial de producto — mismo producto longevo, SIN filtro de fecha (siempre carga todo, antes y después):");
   await medir("obtenerHistorialProducto (producto longevo, sin filtro de fecha)", () =>
-    obtenerHistorialProducto(sucursales[0]!.id, productoLongevo.id, undefined, undefined, undefined)
+    obtenerHistorialProducto(sucursales[0]!.id, productoLongevo.id, undefined, undefined, undefined, prisma)
   );
 
   console.log("\n6) Reporte por período (obtenerReportePorPeriodo, rango amplio: 3 años completos):");
   const hace3Anios = new Date();
   hace3Anios.setFullYear(hace3Anios.getFullYear() - 3);
-  await medir("obtenerReportePorPeriodo (3 años, toda la sucursal)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace3Anios, new Date()));
+  await medir("obtenerReportePorPeriodo (3 años, toda la sucursal)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace3Anios, new Date(), undefined, prisma));
 
   console.log("\n7) Reporte por período — rango angosto (últimos 7 días, para comparar):");
   const hace7Dias = new Date();
   hace7Dias.setDate(hace7Dias.getDate() - 7);
-  await medir("obtenerReportePorPeriodo (7 días)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace7Dias, new Date()));
+  await medir("obtenerReportePorPeriodo (7 días)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace7Dias, new Date(), undefined, prisma));
 
   console.log("\n8) Query plan de la agregación base (SUM sobre el índice compuesto):");
   const plan = await prisma.$queryRawUnsafe<{ "QUERY PLAN": string }[]>(

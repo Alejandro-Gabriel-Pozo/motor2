@@ -23,7 +23,7 @@ export default async function DescuentosClientesPage({ searchParams }: { searchP
 
   const sp = await searchParams;
   const rango = resolverRangoDeReporte(sp);
-  const rep = await obtenerReporteDescuentosClientes(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO));
+  const rep = await obtenerReporteDescuentosClientes(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE } from "./acciones";
 
 /**

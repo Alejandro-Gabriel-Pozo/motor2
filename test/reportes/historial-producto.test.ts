@@ -37,7 +37,7 @@ describe("obtenerHistorialProducto", () => {
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: new Date("2026-01-03"), accion: "DESCARTAR" });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-04"), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
 
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
     expect(historial?.saldoActual).toBe(10 - 2 + 5);
     expect(historial?.totalMovimientos).toBe(3);
     expect(historial?.totalConteos).toBe(1);
@@ -54,7 +54,7 @@ describe("obtenerHistorialProducto", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
 
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, new Date("2026-01-10"), new Date("2026-01-31"));
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, new Date("2026-01-10"), new Date("2026-01-31"), prisma);
     expect(historial?.eventos.length).toBe(1); // solo la segunda compra queda visible
     expect(historial?.eventos[0].saldoCorriente).toBe(15); // pero ya arrastra la primera compra
     expect(historial?.saldoActual).toBe(15);
@@ -68,7 +68,7 @@ describe("obtenerHistorialProducto", () => {
 
     // Filtro que deja fuera del rango visible a los 2 primeros movimientos
     // y al conteo — igual deben contarse en el total.
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, new Date("2026-01-10"), new Date("2026-01-31"));
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, new Date("2026-01-10"), new Date("2026-01-31"), prisma);
     expect(historial?.eventos.length).toBe(1); // solo la compra del 15 es visible
     expect(historial?.totalMovimientos).toBe(3); // pero el total sigue contando los 3 movimientos reales
     expect(historial?.totalConteos).toBe(1); // y el conteo, aunque quedó fuera del rango visible
@@ -79,7 +79,7 @@ describe("obtenerHistorialProducto", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-02-01"), seccionId, items: [{ productoId: mpId, cantidad: 3 }] });
 
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, new Date("2026-01-31"));
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, new Date("2026-01-31"), prisma);
     expect(historial?.eventos.length).toBe(2); // las dos compras de enero, no la de febrero
     expect(historial?.eventos[0].saldoCorriente).toBe(10);
     expect(historial?.eventos[1].saldoCorriente).toBe(15);
@@ -92,7 +92,7 @@ describe("obtenerHistorialProducto", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: seccionB, items: [{ productoId: mpId, cantidad: 100 }] }); // otra sección, no debe contaminar
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
 
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, seccionId, new Date("2026-01-10"), new Date("2026-01-31"));
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, seccionId, new Date("2026-01-10"), new Date("2026-01-31"), prisma);
     expect(historial?.eventos.length).toBe(1);
     expect(historial?.eventos[0].saldoCorriente).toBe(15); // 10 (saldo inicial de ESTA sección) + 5, sin la seccionB
     expect(historial?.totalMovimientos).toBe(2); // solo los 2 de seccionId, no el de seccionB
@@ -103,7 +103,7 @@ describe("obtenerHistorialProducto", () => {
   it("precioPorUnidadStock llega desde una COMPRA real", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }] });
 
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
     const compra = historial?.eventos.find((e) => e.tipo === "movimiento");
     expect(compra?.precioTotal).toBe(1000);
     expect(compra?.precioPorUnidadStock).toBe(100); // 1000 / 10kg
@@ -113,7 +113,7 @@ describe("obtenerHistorialProducto", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }] });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }] });
 
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
     const ajuste = historial?.eventos.find((e) => e.proceso === "AJUSTE");
     expect(ajuste?.precioTotal).toBe(0);
     expect(ajuste?.precioPorUnidadStock).toBe(0);
@@ -127,7 +127,7 @@ describe("obtenerHistorialProducto", () => {
     const anulacion = await anularCompra(compra.id);
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
-    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
     expect(historial?.eventos).toHaveLength(2); // la compra original + el contra-asiento, append-only
 
     const original = historial?.eventos.find((e) => e.idOperacion === compra.id);
@@ -147,13 +147,13 @@ describe("obtenerHistorialProducto", () => {
     const pvSinProducir = await sembrarProductoDisponible({ codigo: "PV_REVENTA", nombre: "Agua", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     const pvConReceta = await sembrarProductoDisponible({ codigo: "PV_PLATO", nombre: "Pizza", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000, seProduce: true }, sucursalId);
 
-    const historialMp = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined);
+    const historialMp = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
     expect(historialMp?.tieneStockPropio).toBe(true);
 
-    const historialPvReventa = await obtenerHistorialProducto(sucursalId, pvSinProducir.id, undefined, undefined, undefined);
+    const historialPvReventa = await obtenerHistorialProducto(sucursalId, pvSinProducir.id, undefined, undefined, undefined, prisma);
     expect(historialPvReventa?.tieneStockPropio).toBe(false);
 
-    const historialPvProducido = await obtenerHistorialProducto(sucursalId, pvConReceta.id, undefined, undefined, undefined);
+    const historialPvProducido = await obtenerHistorialProducto(sucursalId, pvConReceta.id, undefined, undefined, undefined, prisma);
     expect(historialPvProducido?.tieneStockPropio).toBe(true);
   });
 
@@ -170,12 +170,12 @@ describe("obtenerHistorialProducto", () => {
     const r = await registrarVenta({ fecha: new Date("2026-01-02"), seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 1 }] });
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
 
-    const historialOjo = await obtenerHistorialProducto(sucursalId, ojo.id, undefined, undefined, undefined);
+    const historialOjo = await obtenerHistorialProducto(sucursalId, ojo.id, undefined, undefined, undefined, prisma);
     const consumo = historialOjo!.eventos.find((ev) => ev.proceso === "CONSUMO")!;
     expect(consumo.sustituyeANombre).toBe("Bife de chorizo");
 
     // El historial de Bife (el principal) no tiene ningún CONSUMO propio — nunca se tocó.
-    const historialBife = await obtenerHistorialProducto(sucursalId, bife.id, undefined, undefined, undefined);
+    const historialBife = await obtenerHistorialProducto(sucursalId, bife.id, undefined, undefined, undefined, prisma);
     expect(historialBife!.eventos.some((ev) => ev.proceso === "CONSUMO")).toBe(false);
   });
 });
@@ -204,12 +204,12 @@ describe("obtenerIngredientesRecetaVigente", () => {
     await prisma.recetaVersion.create({ data: { productoId: pvId, version: 1, ingredientes: { create: [{ insumoProductoId: mpId, cantidad: 1, unidadId: unidadKgId }] } } });
     await prisma.recetaVersion.create({ data: { productoId: pvId, version: 2, ingredientes: { create: [{ insumoProductoId: mpId, cantidad: 2, unidadId: unidadKgId }] } } });
 
-    const ingredientes = await obtenerIngredientesRecetaVigente(pvId);
+    const ingredientes = await obtenerIngredientesRecetaVigente(pvId, prisma);
     expect(ingredientes).toEqual([{ nombre: "Agua mineral caja x12", cantidad: 2, unidad: "kg" }]); // versión 2, no la 1
   });
 
   it("producto sin ninguna receta: lista vacía, sin tirar error", async () => {
-    expect(await obtenerIngredientesRecetaVigente(pvId)).toEqual([]);
+    expect(await obtenerIngredientesRecetaVigente(pvId, prisma)).toEqual([]);
   });
 });
 
@@ -221,7 +221,7 @@ describe("buscarProductoParaHistorial", () => {
     // Sin fila DisponibilidadProducto para esta sucursal: "fila ausente = no disponible" (disponibilidad-producto.ts).
     const noDisponible = await prisma.producto.create({ data: { codigo: "MP_VIEJA", nombre: "Descontinuada", tipo: "MP", unidadStockId: catalogo.kg.id } });
 
-    const filas = await buscarProductoParaHistorial(base.sucursal.id, "Descontinuada");
+    const filas = await buscarProductoParaHistorial(base.sucursal.id, "Descontinuada", prisma);
     expect(filas.map((f) => f.productoId)).toContain(noDisponible.id);
     expect(filas.find((f) => f.productoId === noDisponible.id)?.disponible).toBe(false);
   });

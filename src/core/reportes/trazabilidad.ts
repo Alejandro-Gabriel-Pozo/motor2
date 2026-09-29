@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import type { Db } from "./comun";
 
 export interface ItemOperacion {
@@ -36,7 +35,7 @@ export interface DatosOperacion {
  * todas comparten la misma base): nunca se debe poder traer la operación
  * de otra sucursal solo adivinando/probando un ID.
  */
-export async function obtenerOperacionPorId(sucursalId: string, idOperacion: string, db: Db = prisma): Promise<DatosOperacion | null> {
+export async function obtenerOperacionPorId(sucursalId: string, idOperacion: string, db: Db): Promise<DatosOperacion | null> {
   const operacion = await db.operacion.findFirst({
     where: { id: idOperacion, sucursalId },
     include: { proveedor: true, anuladaPor: true, movimientos: { include: { producto: true, seccion: true, sustituyeAProducto: { select: { nombre: true } } } } },
@@ -74,7 +73,7 @@ export interface OperacionEncontrada {
 }
 
 /** Port de buscarOperacionesPorProducto (Reportes.js:1178-1197). */
-export async function buscarOperacionesPorProducto(sucursalId: string, termino: string, db: Db = prisma): Promise<OperacionEncontrada[]> {
+export async function buscarOperacionesPorProducto(sucursalId: string, termino: string, db: Db): Promise<OperacionEncontrada[]> {
   const q = termino.trim();
   if (!q) return [];
 

@@ -88,7 +88,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await precioVenta(ids.sprite)).toBe(5000);
       // Sin confirmar: la red de seguridad de D5 (la carta muestra el mayor, con diagnóstico).
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
     });
@@ -112,7 +112,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await auditoriasDePrecio(ids.sprite)).toEqual([{ valorAnterior: "5000", valorNuevo: "5500" }]);
       expect(await auditoriasDePrecio(ids.coca15)).toEqual([]);
 
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
     });
@@ -189,7 +189,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
         { campo: "habilitado", valorAnterior: null, valorNuevo: "true", sucursalId },
         { campo: "precio", valorAnterior: null, valorNuevo: "5500", sucursalId },
       ]);
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
     });

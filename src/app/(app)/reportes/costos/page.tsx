@@ -10,7 +10,7 @@ export default async function CostosPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [productos, insumos] = await Promise.all([calcularCostosYMargenes(ctx.sucursalId), calcularImpactoInsumos(ctx.sucursalId)]);
+  const [productos, insumos] = await Promise.all([calcularCostosYMargenes(ctx.sucursalId, ctx.db), calcularImpactoInsumos(ctx.sucursalId, ctx.db)]);
 
   return (
     <div className="flex flex-col gap-6">

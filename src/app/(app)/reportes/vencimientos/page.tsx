@@ -12,7 +12,7 @@ export default async function VencimientosPage({ searchParams }: { searchParams:
 
   const sp = await searchParams;
   const dias = Number(sp.dias) > 0 ? Number(sp.dias) : 7;
-  const rep = await obtenerReporteVencimientosDatos(ctx.sucursalId, dias);
+  const rep = await obtenerReporteVencimientosDatos(ctx.sucursalId, dias, ctx.db);
 
   return (
     <div className="flex flex-col gap-6">

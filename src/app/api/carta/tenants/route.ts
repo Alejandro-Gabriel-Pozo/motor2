@@ -1,4 +1,4 @@
-import { resolverRegistroTenants } from "@/core/carta/registro-consulta";
+import { registroTenantsPublico } from "@/core/carta/publica-sin-sesion";
 import { autorizarServicioCarta, SIN_CACHE } from "@/core/carta/autorizar-servicio";
 import { reportarError } from "@/lib/reportar-error";
 
@@ -27,7 +27,7 @@ export async function GET(request: Request): Promise<Response> {
   if (noAutorizado) return noAutorizado;
 
   try {
-    return Response.json(await resolverRegistroTenants(), { headers: SIN_CACHE });
+    return Response.json(await registroTenantsPublico(), { headers: SIN_CACHE });
   } catch (e) {
     await reportarError(e, "carta-api");
     // No se devuelve `e.message`: lo llama un sitio externo.

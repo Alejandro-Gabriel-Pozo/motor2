@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 

@@ -100,7 +100,7 @@ describe("No comestibles en los reportes", () => {
     await marcarCajaNoComestible();
     await comprarYVender("2026-08");
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
 
     expect(rep.compras.totalGastado).toBe(150);
     expect(rep.compras.totalNoComestibles).toBe(100);
@@ -115,7 +115,7 @@ describe("No comestibles en los reportes", () => {
     await comprarYVender("2026-07");
     await comprarYVender("2026-08");
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
 
     expect(rep.ratioGastoVentas.porcentaje).toBe(50);
     expect(rep.ratioGastoVentas.porcentajePeriodoAnterior).toBe(50);
@@ -125,7 +125,7 @@ describe("No comestibles en los reportes", () => {
     await prisma.grupo.delete({ where: { id: grupoNoComestiblesId } });
     await comprarYVender("2026-08");
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
 
     expect(rep.ratioGastoVentas.excluyeNoComestibles).toBe(false);
     expect(rep.compras.totalNoComestibles).toBe(0);
@@ -137,7 +137,7 @@ describe("No comestibles en los reportes", () => {
     await marcarCajaNoComestible();
     await comprarYVender("2026-08");
 
-    const fila = (await calcularCostosYMargenes(sucursalId)).find((f) => f.productoId === panId)!;
+    const fila = (await calcularCostosYMargenes(sucursalId, prisma)).find((f) => f.productoId === panId)!;
 
     expect(fila.costo).toBe(20); // 2 kg × $5 + 1 caja × $10
     expect(fila.costoNoComestible).toBe(10);
@@ -150,11 +150,11 @@ describe("No comestibles en los reportes", () => {
     await marcarCajaNoComestible();
     await comprarYVender("2026-08");
 
-    const conGrupo = (await calcularCostosYMargenes(sucursalId)).find((f) => f.productoId === panId)!;
+    const conGrupo = (await calcularCostosYMargenes(sucursalId, prisma)).find((f) => f.productoId === panId)!;
     expect(conGrupo.estado).toBe("OK");
 
     await prisma.producto.update({ where: { id: cajaId }, data: { insumoId: null } }); // sin clasificar, la caja cuenta como comida
-    const sinClasificar = (await calcularCostosYMargenes(sucursalId)).find((f) => f.productoId === panId)!;
+    const sinClasificar = (await calcularCostosYMargenes(sucursalId, prisma)).find((f) => f.productoId === panId)!;
     expect(sinClasificar.estado).toBe("FOOD_COST_ALTO");
   });
 
@@ -164,12 +164,12 @@ describe("No comestibles en los reportes", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }, { productoId: cajaId, cantidad: 10, precioTotal: 100 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-10"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 200 }] });
 
-    const [fila] = await calcularImpactoRecetasPorPeriodo(sucursalId, d("2026-08-05"));
+    const [fila] = await calcularImpactoRecetasPorPeriodo(sucursalId, d("2026-08-05"), prisma);
     expect([fila.costoAntes, fila.costoActual, fila.deltaCosto]).toEqual([20, 30, 10]); // costo total: harina $10 + caja $10 → caja $20
     expect([fila.foodCostPctAntes, fila.foodCostPctActual]).toEqual([10, 10]); // food cost: solo la harina, no cambió
 
     await prisma.producto.update({ where: { id: cajaId }, data: { insumoId: null } }); // sin clasificar, la caja cuenta como comida
-    const [sinClasificar] = await calcularImpactoRecetasPorPeriodo(sucursalId, d("2026-08-05"));
+    const [sinClasificar] = await calcularImpactoRecetasPorPeriodo(sucursalId, d("2026-08-05"), prisma);
     expect([sinClasificar.foodCostPctAntes, sinClasificar.foodCostPctActual]).toEqual([20, 30]);
   });
 });

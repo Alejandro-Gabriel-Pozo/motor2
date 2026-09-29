@@ -123,8 +123,8 @@ describe("Rendimiento local: consumo de venta/producción y costos usan el valor
     await comprarStockEnB();
     await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId, sucursalId: sucursalAId, cantidad: 4, mermaPorcentaje: 0 } });
 
-    const costosA = await calcularCostosYMargenes(sucursalAId);
-    const costosB = await calcularCostosYMargenes(sucursalBId);
+    const costosA = await calcularCostosYMargenes(sucursalAId, prisma);
+    const costosB = await calcularCostosYMargenes(sucursalBId, prisma);
     const filaA = costosA.find((f) => f.productoNombre === "Pan RL")!;
     const filaB = costosB.find((f) => f.productoNombre === "Pan RL")!;
 

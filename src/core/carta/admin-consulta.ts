@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
@@ -123,7 +122,7 @@ async function generosOrdenados(db: Db): Promise<GeneroCartaAdmin[]> {
   return generos.map((g) => ({ id: g.id, nombre: g.nombre, orden: g.orden, activo: g.activo }));
 }
 
-export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Promise<DatosAdminCarta> {
+export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<DatosAdminCarta> {
   const [secciones, generos, productos, promos, armado] = await Promise.all([
     seccionesConCantidad(db),
     generosOrdenados(db),
@@ -260,7 +259,7 @@ export interface DatosAdminItemsAgrupados {
 }
 
 /** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. */
-export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = prisma): Promise<DatosAdminItemsAgrupados> {
+export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Promise<DatosAdminItemsAgrupados> {
   const [items, secciones, generos, sinGrupo, armado] = await Promise.all([
     db.itemAgrupadoCarta.findMany({
       select: {
@@ -387,7 +386,7 @@ export interface SucursalPortalAdmin {
 }
 
 /** TODAS las sucursales (el mapa del portal es entre sucursales, no depende de la activa), activas primero, con su fila si la tienen. */
-export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortalAdmin[]> {
+export async function cargarAdminPortal(db: Db): Promise<SucursalPortalAdmin[]> {
   const sucursales = await db.sucursal.findMany({
     select: { id: true, nombre: true, activo: true, publica: true, temaCarta: { select: { aplicarEnCarta: true } } },
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
@@ -438,7 +437,7 @@ export interface TemaAdmin {
 }
 
 /** El tema de la sucursal (la activa de quien llama) y su lugar en el portal, en una sola consulta. */
-export async function cargarTemaAdmin(sucursalId: string, db: Db = prisma): Promise<TemaAdmin | null> {
+export async function cargarTemaAdmin(sucursalId: string, db: Db): Promise<TemaAdmin | null> {
   const s = await db.sucursal.findUnique({
     where: { id: sucursalId },
     select: {

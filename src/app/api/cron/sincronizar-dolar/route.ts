@@ -1,4 +1,5 @@
 import { sincronizarDolar } from "@/core/reportes/cotizacion-dolar";
+import { baseDelContexto } from "@/core/auth/base";
 import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 
 /**
@@ -15,7 +16,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const resultado = await sincronizarDolar();
+    const resultado = await sincronizarDolar(baseDelContexto().db);
     // Una fuente que falló (aunque otra haya respondido) queda registrada: hoy solo se veía en la respuesta del cron.
     if (resultado.errores.length) await reportarError(new Error(`Sincronización del dólar con errores: ${resultado.errores.join("; ")}`), "dolar-cron");
     return Response.json(resultado);

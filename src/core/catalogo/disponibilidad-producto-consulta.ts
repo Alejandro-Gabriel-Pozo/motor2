@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "./disponibilidad-producto";
 
 type Db = PrismaClient | Prisma.TransactionClient;

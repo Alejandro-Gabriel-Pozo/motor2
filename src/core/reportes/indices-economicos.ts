@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import type { Db } from "./comun";
 
 /**
@@ -37,7 +36,7 @@ function claveMes(fecha: Date): string {
 }
 
 /** Una sola consulta — se llama UNA vez por reporte, nunca por línea (ver resolverCoeficienteIPC, que es puro/en memoria). */
-export async function cargarSerieIPC(db: Db = prisma): Promise<SerieIPC> {
+export async function cargarSerieIPC(db: Db): Promise<SerieIPC> {
   const filas = await db.indicePrecio.findMany({ orderBy: { mes: "desc" } });
   const porMes = new Map<string, number>();
   for (const f of filas) porMes.set(claveMes(f.mes), Number(f.valor));
@@ -170,7 +169,7 @@ export interface ResultadoSincronizacionIPC {
  * cerrado no cambia, y si alguna vez el INDEC revisa un dato, que sea una
  * decisión explícita, no un sobrescribe silencioso de este job.
  */
-export async function sincronizarIPC(db: Db = prisma): Promise<ResultadoSincronizacionIPC> {
+export async function sincronizarIPC(db: Db): Promise<ResultadoSincronizacionIPC> {
   const resp = await fetch(URL_API_SERIES, { cache: "no-store" });
   if (!resp.ok) throw new Error(`API de series de tiempo (datos.gob.ar) respondió ${resp.status}`);
   const json = (await resp.json()) as { data: [string, number][] };

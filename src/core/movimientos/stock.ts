@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { redondearACantidadDeUnidad, tieneStockReal } from "./transiciones";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 

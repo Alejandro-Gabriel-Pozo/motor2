@@ -145,12 +145,12 @@ describe("Server Actions del tema de la carta", () => {
   it("desaplicar conserva los valores (y el endpoint deja de servirlo)", async () => {
     await guardarTemaCarta(centralId, { color_marca: "red", restaurante_nombre: "La Parrilla" });
     await cambiarAplicacionTema(centralId, true);
-    expect((await resolverTemaCarta(centralId))?.valores.color_marca).toBe("red");
+    expect((await resolverTemaCarta(centralId, prisma))?.valores.color_marca).toBe("red");
     expect(await cambiarAplicacionTema(centralId, false)).toEqual({ ok: true, mensaje: 'Tema de "Central" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).' });
     const fila = await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(false);
     expect(fila.valores).toEqual({ color_marca: "red", restaurante_nombre: "La Parrilla" });
-    expect(await resolverTemaCarta(centralId)).toBeNull();
+    expect(await resolverTemaCarta(centralId, prisma)).toBeNull();
   });
 
   it("guardar para una sucursal inexistente → error", async () => {

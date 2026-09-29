@@ -39,7 +39,7 @@ export default async function TemaCartaPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const datos = await cargarTemaAdmin(ctx.sucursalId);
+  const datos = await cargarTemaAdmin(ctx.sucursalId, ctx.db);
   if (!datos) return <p className="text-red-600">No se encontró la sucursal activa.</p>;
   const sucursalId = datos.sucursalId;
   const aplicado = datos.tema?.aplicarEnCarta ?? false;

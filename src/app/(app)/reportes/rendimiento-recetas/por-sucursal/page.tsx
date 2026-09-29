@@ -23,7 +23,7 @@ export default async function RendimientoPorSucursalPage({
   const sucursales = ctx.membresias.map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
   const todas = sp.todas === "1";
 
-  const filas = await compararRendimientosDeSucursales(sucursales, { productoId: sp.productoId, todas });
+  const filas = await compararRendimientosDeSucursales(sucursales, { productoId: sp.productoId, todas }, ctx.db);
   const filasPlanas: FilaComparacionPlana[] = filas.map((f) => ({
     productoId: f.productoId,
     productoNombre: f.productoNombre,

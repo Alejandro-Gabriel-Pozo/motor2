@@ -47,7 +47,7 @@ describe("admin de ítems agrupados", () => {
   });
 
   it("/carta: un PV agrupado sin contenido NO está en sinContenido y tiene agrupadoEn", async () => {
-    const datos = await cargarAdminCarta(central);
+    const datos = await cargarAdminCarta(central, prisma);
     const coca = datos.productos.find((p) => p.id === ids.coca)!;
     expect(coca.agrupadoEn).toBe("Gaseosa 500 CC");
     expect(coca.contenido).toBeNull();
@@ -56,7 +56,7 @@ describe("admin de ítems agrupados", () => {
   });
 
   it("sin avisos cuando las opciones cuestan lo mismo y su sección está activa", async () => {
-    const datos = await cargarAdminItemsAgrupados(central);
+    const datos = await cargarAdminItemsAgrupados(central, prisma);
     expect(datos.items).toHaveLength(1);
     const [item] = datos.items;
     expect(item).toMatchObject({
@@ -85,31 +85,31 @@ describe("admin de ítems agrupados", () => {
 
   it("aviso D5: precios distintos acá (un cambio posterior en Catálogo) → rango $X-$Y y se muestra el mayor", async () => {
     await prisma.precioLocalProducto.create({ data: { sucursalId: central, productoId: ids.sprite, precio: 5500, habilitado: true } });
-    const [item] = (await cargarAdminItemsAgrupados(central)).items;
+    const [item] = (await cargarAdminItemsAgrupados(central, prisma)).items;
     expect(item.precio).toEqual({ minimo: 5000, maximo: 5500 });
     expect(item.avisos.preciosDistintos).toEqual({ minimo: 5000, maximo: 5500, mostrado: 5500 });
     expect(item.opciones.find((o) => o.productoId === ids.sprite)!.precioAca).toBe(5500);
-    expect((await cargarAdminItemsAgrupados(central)).diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
+    expect((await cargarAdminItemsAgrupados(central, prisma)).diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
     // En la otra sucursal (sin ese precio local) no hay aviso.
-    expect((await cargarAdminItemsAgrupados(otra)).items[0].avisos.preciosDistintos).toBeNull();
+    expect((await cargarAdminItemsAgrupados(otra, prisma)).items[0].avisos.preciosDistintos).toBeNull();
   });
 
   it("sin aviso D4: una opción de otra categoría no genera ningún aviso (sale en la sección del ítem)", async () => {
     await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: agId, productoId: ids.agua, orden: 2 } });
-    const [item] = (await cargarAdminItemsAgrupados(central)).items;
+    const [item] = (await cargarAdminItemsAgrupados(central, prisma)).items;
     expect(item.avisos).toEqual({ preciosDistintos: null, sinOpcionesAca: false, sinSeccion: false });
     expect(item.opciones.find((o) => o.productoId === ids.agua)).toEqual({ id: expect.any(String), productoId: ids.agua, nombre: "Agua saborizada 500cc", orden: 2, disponibleAca: true, precioAca: 5000 });
   });
 
   it("aviso: sin opciones disponibles acá (y en el diagnóstico de la carta); sección de carta apagada", async () => {
     await prisma.disponibilidadProducto.updateMany({ where: { sucursalId: central, productoId: { in: [ids.coca, ids.sprite] } }, data: { disponible: false } });
-    const datos = await cargarAdminItemsAgrupados(central);
+    const datos = await cargarAdminItemsAgrupados(central, prisma);
     expect(datos.items[0]).toMatchObject({ disponiblesAca: 0, precio: null, avisos: { sinOpcionesAca: true, preciosDistintos: null } });
     expect(datos.items[0].opciones.map((o) => o.disponibleAca)).toEqual([false, false]);
     expect(datos.diagnostico.agrupadosSinOpciones).toEqual([{ id: agId, nombre: "Gaseosa 500 CC" }]);
 
     await prisma.seccionCarta.update({ where: { id: bebidasId }, data: { activa: false } });
-    const sinSeccion = await cargarAdminItemsAgrupados(otra);
+    const sinSeccion = await cargarAdminItemsAgrupados(otra, prisma);
     expect(sinSeccion.items[0]).toMatchObject({ seccionCartaId: bebidasId, seccionCarta: null, avisos: { sinSeccion: true } });
     expect(sinSeccion.diagnostico.agrupadosSinSeccion).toEqual([{ id: agId, nombre: "Gaseosa 500 CC" }]);
   });
@@ -129,14 +129,14 @@ describe("admin de ítems agrupados", () => {
     await prisma.itemAgrupadoCarta.create({ data: { nombre: "Apagado", seccionCartaId: bebidasId, activo: false } });
     const cantidades = (secciones: { nombre: string; cantidadItems: number }[]) => Object.fromEntries(secciones.map((s) => [s.nombre, s.cantidadItems]));
     // Bebidas: el agua (suelta visible) + «Gaseosa 500 CC» (agrupado prendido).
-    expect(cantidades((await cargarAdminItemsAgrupados(central)).secciones)).toEqual({ "Bebidas sin alcohol": 2, "Otras bebidas": 0 });
-    expect(cantidades((await cargarAdminCarta(central)).secciones)).toEqual({ "Bebidas sin alcohol": 2, "Otras bebidas": 0 });
+    expect(cantidades((await cargarAdminItemsAgrupados(central, prisma)).secciones)).toEqual({ "Bebidas sin alcohol": 2, "Otras bebidas": 0 });
+    expect(cantidades((await cargarAdminCarta(central, prisma)).secciones)).toEqual({ "Bebidas sin alcohol": 2, "Otras bebidas": 0 });
   });
 
   it("orden: activos primero, después orden y nombre", async () => {
     await prisma.itemAgrupadoCarta.create({ data: { nombre: "Apagado", seccionCartaId: bebidasId, activo: false } });
     await prisma.itemAgrupadoCarta.create({ data: { nombre: "Agua 1,5L", seccionCartaId: bebidasId, orden: 0 } });
     await prisma.itemAgrupadoCarta.create({ data: { nombre: "Primero", seccionCartaId: bebidasId, orden: -1 } });
-    expect((await cargarAdminItemsAgrupados(central)).items.map((i) => i.nombre)).toEqual(["Primero", "Agua 1,5L", "Gaseosa 500 CC", "Apagado"]);
+    expect((await cargarAdminItemsAgrupados(central, prisma)).items.map((i) => i.nombre)).toEqual(["Primero", "Agua 1,5L", "Gaseosa 500 CC", "Apagado"]);
   });
 });

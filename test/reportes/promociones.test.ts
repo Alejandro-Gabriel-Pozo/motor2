@@ -34,7 +34,7 @@ describe("Promociones y Combos", () => {
   });
 
   it("apagada por defecto: el reporte devuelve habilitado=false sin calcular nada", async () => {
-    const rep = await obtenerReportePromociones(sucursalId, new Date(0), new Date());
+    const rep = await obtenerReportePromociones(sucursalId, new Date(0), new Date(), prisma);
     expect(rep.habilitado).toBe(false);
   });
 
@@ -72,7 +72,7 @@ describe("Promociones y Combos", () => {
 
     const hoy = new Date();
     const desde = new Date(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1);
-    const rep = await obtenerReportePromociones(sucursalId, desde, hoy);
+    const rep = await obtenerReportePromociones(sucursalId, desde, hoy, prisma);
     if (!rep.habilitado) throw new Error("esperaba habilitado=true");
 
     expect(rep.totalFacturadoPromociones).toBe(50);
@@ -100,8 +100,8 @@ describe("Promociones y Combos", () => {
 
     const desde = new Date(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1);
     const [repPeriodo, repPromociones] = await Promise.all([
-      obtenerReportePorPeriodo(sucursalId, desde, hoy),
-      obtenerReportePromociones(sucursalId, desde, hoy),
+      obtenerReportePorPeriodo(sucursalId, desde, hoy, undefined, prisma),
+      obtenerReportePromociones(sucursalId, desde, hoy, prisma),
     ]);
     if (!repPromociones.habilitado) throw new Error("esperaba habilitado=true");
 

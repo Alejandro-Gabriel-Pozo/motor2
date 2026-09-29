@@ -48,7 +48,7 @@ describe("listarBoletasEmitidas", () => {
     const cuenta = await cerrarUna(2);
     const item = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id } });
 
-    const { items, nextCursor } = await listarBoletasEmitidas(s.sucursalId);
+    const { items, nextCursor } = await listarBoletasEmitidas(s.sucursalId, undefined, prisma);
     expect(nextCursor).toBeNull();
     expect(items).toHaveLength(1);
     const [b] = items;
@@ -72,7 +72,7 @@ describe("listarBoletasEmitidas", () => {
     expect((await anularVenta(ventaFlan)).ok).toBe(true);
     expect((await emitirBoletaCorregida(cuenta.id, "No quiso el flan")).ok).toBe(true);
 
-    const { items } = await listarBoletasEmitidas(s.sucursalId);
+    const { items } = await listarBoletasEmitidas(s.sucursalId, undefined, prisma);
     expect(items.map((b) => b.numero)).toEqual([
       { numero: 1, ejemplar: 2 },
       { numero: 1, ejemplar: 1 },
@@ -84,7 +84,7 @@ describe("listarBoletasEmitidas", () => {
     expect((await anularVenta(ventaFlan)).ok).toBe(true);
     expect((await emitirBoletaCorregida(cuenta.id, "No quiso el flan")).ok).toBe(true);
 
-    const [b, a] = (await listarBoletasEmitidas(s.sucursalId)).items;
+    const [b, a] = (await listarBoletasEmitidas(s.sucursalId, undefined, prisma)).items;
     // La B ya refleja la anulación del flan (sin nada posterior): vigente. Total = 2×9000 + 9500 = 27500 (ver boleta.test.ts).
     expect(b).toMatchObject({ numero: { numero: 1, ejemplar: 2 }, importe: 27500, esUltimoEjemplar: true, correccionDe: { numero: 1, ejemplar: 1 }, reemplazadaPor: null, estado: "vigente" });
     expect(a).toMatchObject({ numero: { numero: 1, ejemplar: 1 }, esUltimoEjemplar: false, correccionDe: null, reemplazadaPor: { numero: 1, ejemplar: 2 }, estado: null });
@@ -95,7 +95,7 @@ describe("listarBoletasEmitidas", () => {
     const item = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id } });
     expect((await anularVenta(item.operacionId!)).ok).toBe(true);
 
-    const [a] = (await listarBoletasEmitidas(s.sucursalId)).items;
+    const [a] = (await listarBoletasEmitidas(s.sucursalId, undefined, prisma)).items;
     expect(a).toMatchObject({ numero: { numero: 1, ejemplar: 1 }, esUltimoEjemplar: true, estado: "anulada" });
   });
 
@@ -105,13 +105,13 @@ describe("listarBoletasEmitidas", () => {
     // Se anula el flan y se emite la B: ya refleja esa anulación (vigente).
     expect((await anularVenta(ventaFlan)).ok).toBe(true);
     expect((await emitirBoletaCorregida(cuenta.id, "No quiso el flan")).ok).toBe(true);
-    const [vigenteTodavia] = (await listarBoletasEmitidas(s.sucursalId)).items;
+    const [vigenteTodavia] = (await listarBoletasEmitidas(s.sucursalId, undefined, prisma)).items;
     expect(vigenteTodavia).toMatchObject({ numero: { numero: 1, ejemplar: 2 }, estado: "vigente" });
 
     // Se anula la segunda milanesa DESPUÉS de emitir la B, sin emitir una C todavía: la B queda desactualizada (no "anulada": la
     // primera milanesa sigue vendida).
     expect((await anularVenta(ventaMila2)).ok).toBe(true);
-    const [desactualizada] = (await listarBoletasEmitidas(s.sucursalId)).items;
+    const [desactualizada] = (await listarBoletasEmitidas(s.sucursalId, undefined, prisma)).items;
     expect(desactualizada).toMatchObject({ numero: { numero: 1, ejemplar: 2 }, esUltimoEjemplar: true, estado: "desactualizada" });
   });
 
@@ -120,7 +120,7 @@ describe("listarBoletasEmitidas", () => {
     await cerrarUna(1, s.mesa.id);
     await cerrarUna(2, otraMesa.id);
 
-    const { items } = await listarBoletasEmitidas(s.sucursalId, { mesaId: s.mesa.id });
+    const { items } = await listarBoletasEmitidas(s.sucursalId, { mesaId: s.mesa.id }, prisma);
     expect(items).toHaveLength(1);
     expect(items[0].mesaNumero).toBe(4);
   });
@@ -141,9 +141,9 @@ describe("listarBoletasEmitidas", () => {
     });
     await prisma.ejemplarBoleta.create({ data: { sucursalId: otra.id, cuentaId: cuentaOtra.id, numero: 1, emitidoPorId: s.admin.id } });
 
-    expect((await listarBoletasEmitidas(s.sucursalId)).items).toHaveLength(1);
-    expect((await listarBoletasEmitidas(otra.id)).items).toHaveLength(1);
-    expect((await listarBoletasEmitidas(otra.id)).items[0].cuentaId).toBe(cuentaOtra.id);
+    expect((await listarBoletasEmitidas(s.sucursalId, undefined, prisma)).items).toHaveLength(1);
+    expect((await listarBoletasEmitidas(otra.id, undefined, prisma)).items).toHaveLength(1);
+    expect((await listarBoletasEmitidas(otra.id, undefined, prisma)).items[0].cuentaId).toBe(cuentaOtra.id);
   });
 
   it("una cuenta sin ejemplar (cerrada sin venta: todo anulado antes de cerrar) no aparece", async () => {
@@ -151,7 +151,7 @@ describe("listarBoletasEmitidas", () => {
     expect((await anularItemEnviado(cuenta.items[0].id, 1, "Se fue", 1)).ok).toBe(true);
     expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar." });
 
-    expect((await listarBoletasEmitidas(s.sucursalId)).items).toEqual([]);
+    expect((await listarBoletasEmitidas(s.sucursalId, undefined, prisma)).items).toEqual([]);
     expect(await prisma.ejemplarBoleta.count()).toBe(0);
   });
 
@@ -162,12 +162,12 @@ describe("listarBoletasEmitidas", () => {
 
     const rango25 = { desde: inicioDelDiaArgentina("2026-09-25"), hasta: finDelDiaArgentina("2026-09-25") };
     const rango26 = { desde: inicioDelDiaArgentina("2026-09-26"), hasta: finDelDiaArgentina("2026-09-26") };
-    expect((await listarBoletasEmitidas(s.sucursalId, rango25)).items).toHaveLength(1);
-    expect((await listarBoletasEmitidas(s.sucursalId, rango26)).items).toHaveLength(0);
+    expect((await listarBoletasEmitidas(s.sucursalId, rango25, prisma)).items).toHaveLength(1);
+    expect((await listarBoletasEmitidas(s.sucursalId, rango26, prisma)).items).toHaveLength(0);
 
     // Y a través de leerFiltroBoletas (lo que hace la página): sp.desde=sp.hasta="2026-09-25" da el mismo resultado.
     const leido = leerFiltroBoletas({ desde: "2026-09-25", hasta: "2026-09-25" });
-    expect((await listarBoletasEmitidas(s.sucursalId, leido.filtro)).items).toHaveLength(1);
+    expect((await listarBoletasEmitidas(s.sucursalId, leido.filtro, prisma)).items).toHaveLength(1);
   });
 
   it(`pagina por cursor sin repetir ni saltear boletas: ${TAMANO_PAGINA_BOLETAS + 1} boletas → ${TAMANO_PAGINA_BOLETAS} + 1`, async () => {
@@ -186,13 +186,13 @@ describe("listarBoletasEmitidas", () => {
       await prisma.ejemplarBoleta.create({ data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: i, emitidoPorId: s.admin.id } });
     }
 
-    const p1 = await listarBoletasEmitidas(s.sucursalId);
+    const p1 = await listarBoletasEmitidas(s.sucursalId, undefined, prisma);
     expect(p1.items).toHaveLength(TAMANO_PAGINA_BOLETAS);
     expect(p1.nextCursor).not.toBeNull();
     // más recientes primero: la primera página trae los números más altos.
     expect(p1.items[0].numero.numero).toBe(total);
 
-    const p2 = await listarBoletasEmitidas(s.sucursalId, { cursor: p1.nextCursor! });
+    const p2 = await listarBoletasEmitidas(s.sucursalId, { cursor: p1.nextCursor! }, prisma);
     expect(p2.items).toHaveLength(1);
     expect(p2.nextCursor).toBeNull();
 
@@ -215,7 +215,7 @@ describe("listarBoletasEmitidas", () => {
     });
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-    const { items } = await listarBoletasEmitidas(s.sucursalId);
+    const { items } = await listarBoletasEmitidas(s.sucursalId, undefined, prisma);
     const [fila] = items;
     expect(fila.importe).toBe(10000);
     expect(fila.detalle.lineas).toHaveLength(3); // cabecera + 2 componentes

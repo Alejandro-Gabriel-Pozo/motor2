@@ -139,8 +139,8 @@ describe("generarReporteVentasPorSeccion (contra Postgres)", () => {
   });
 
   it("agrupa por la sección real de cada producto; los totales cierran con el reporte por categoría", async () => {
-    const porCategoria = await generarReporteVentasPorCategoria(sucursalId, d("2026-08-01"), d("2026-08-31"));
-    const porSeccion = await generarReporteVentasPorSeccion(sucursalId, d("2026-08-01"), d("2026-08-31"));
+    const porCategoria = await generarReporteVentasPorCategoria(sucursalId, d("2026-08-01"), d("2026-08-31"), prisma);
+    const porSeccion = await generarReporteVentasPorSeccion(sucursalId, d("2026-08-01"), d("2026-08-31"), prisma);
 
     const suma = (xs: readonly { importe: number; cantidad: number }[], k: "importe" | "cantidad") => xs.reduce((a, x) => a + x[k], 0);
     expect(suma(porSeccion.porSeccion, "importe")).toBeCloseTo(suma(porCategoria.porCategoria, "importe"), 6);

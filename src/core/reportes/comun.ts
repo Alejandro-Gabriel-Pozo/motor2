@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 
@@ -35,7 +34,7 @@ export interface InfoProductoReporte {
 }
 
 /** Qué grupos del árbol cuentan como «No comestibles» (una consulta chica: la tabla de Grupos es corta). */
-export async function cargarClasificacionNoComestibles(db: Db = prisma): Promise<ClasificacionNoComestibles> {
+export async function cargarClasificacionNoComestibles(db: Db): Promise<ClasificacionNoComestibles> {
   const grupos = await db.grupo.findMany({ select: { id: true, nombre: true, grupoPadreId: true } });
   return clasificarGruposNoComestibles(new Map(grupos.map((g) => [g.id, { nombre: g.nombre, grupoPadreId: g.grupoPadreId }])));
 }
@@ -62,8 +61,8 @@ export async function cargarClasificacionNoComestibles(db: Db = prisma): Promise
  * (queda en `true` fijo) — ver su docstring.
  */
 export async function construirMapaProductos(
-  sucursalId?: string,
-  db: Db = prisma,
+  sucursalId: string | undefined,
+  db: Db,
   /** La clasificación de grupos "No comestibles" ya cargada, para no volver a leerla (ver `obtenerReportePorPeriodoConCatalogo`). */
   clasificacionCargada?: ClasificacionNoComestibles
 ): Promise<Map<string, InfoProductoReporte>> {
@@ -138,7 +137,7 @@ export interface IndiceRecetas {
  * El `include` anidado de `rendimientosLocales` no suma una consulta más (sigue siendo un solo `recetaVersion.findMany`,
  * ver test/reportes/catalogo-una-sola-carga.test.ts).
  */
-export async function construirIndiceRecetas(db: Db = prisma, sucursalId?: string): Promise<IndiceRecetas> {
+export async function construirIndiceRecetas(db: Db, sucursalId?: string): Promise<IndiceRecetas> {
   const versiones = await db.recetaVersion.findMany({
     orderBy: { version: "asc" },
     include: {
@@ -223,7 +222,7 @@ export interface CostoMP {
  * más reciente en absoluto — para poder recalcular el costo de una receta
  * "como era antes de este período" y compararlo contra el costo de hoy.
  */
-export async function obtenerCostoActualPorMP(sucursalId: string, db: Db = prisma, antesDe?: Date): Promise<Map<string, CostoMP>> {
+export async function obtenerCostoActualPorMP(sucursalId: string, db: Db, antesDe?: Date): Promise<Map<string, CostoMP>> {
   const compras = await db.movimientoStock.findMany({
     where: {
       proceso: "COMPRA",

@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
 import type { CostoMP, Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
@@ -464,7 +463,7 @@ export async function calcularRendimientoRecetasSimples(
   sucursalId: string,
   desdeIn: Date,
   hastaIn: Date,
-  db: Db = prisma
+  db: Db
 ): Promise<FilaRendimientoSimple[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
@@ -655,7 +654,7 @@ export async function calcularRendimientoRecetasCompartidas(
   sucursalId: string,
   desdeIn: Date,
   hastaIn: Date,
-  db: Db = prisma
+  db: Db
 ): Promise<FilaRendimientoCompartido[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);

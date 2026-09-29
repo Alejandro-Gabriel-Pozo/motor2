@@ -25,7 +25,7 @@ describe("resolverRegistroTenants", () => {
   });
 
   it("sin filas → lista vacía (no es un error)", async () => {
-    const r = await resolverRegistroTenants();
+    const r = await resolverRegistroTenants(prisma);
     expect(r.version).toBe(1);
     expect(r.tenants).toEqual([]);
   });
@@ -38,7 +38,7 @@ describe("resolverRegistroTenants", () => {
         { sucursalId: cerrada, slug: "cerrada", publicada: true, sheetId: SHEET, orden: 3 },
       ],
     });
-    const { tenants } = await resolverRegistroTenants();
+    const { tenants } = await resolverRegistroTenants(prisma);
     expect(tenants.map((t) => [t.slug, t.activo])).toEqual([
       ["central", true],
       ["norte", false],
@@ -50,7 +50,7 @@ describe("resolverRegistroTenants", () => {
 
   it("menuDesdeMotor2 y sucursalId salen tal cual", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true, sheetId: SHEET, menuDesdeMotor2: true, etiqueta: "Hostería Central", subtituloPortal: "Frente al lago" } });
-    const { tenants } = await resolverRegistroTenants();
+    const { tenants } = await resolverRegistroTenants(prisma);
     expect(tenants).toEqual([
       {
         slug: "central",
@@ -79,7 +79,7 @@ describe("resolverRegistroTenants", () => {
     });
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: true, valores: { color_marca: "red" } } });
     await prisma.temaCartaSucursal.create({ data: { sucursalId: norte, aplicarEnCarta: false, valores: { color_marca: "blue" } } });
-    const { tenants } = await resolverRegistroTenants();
+    const { tenants } = await resolverRegistroTenants(prisma);
     expect(tenants.map((t) => [t.slug, t.temaDesdeMotor2])).toEqual([
       ["central", true],
       ["norte", false],

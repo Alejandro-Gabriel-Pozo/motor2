@@ -12,7 +12,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
 
   const sp = await searchParams;
   const dias = Number(sp.dias) > 0 ? Number(sp.dias) : 30;
-  const rep = await generarReporteDevoluciones(ctx.sucursalId, dias);
+  const rep = await generarReporteDevoluciones(ctx.sucursalId, dias, ctx.db);
 
   return (
     <div className="flex flex-col gap-6">

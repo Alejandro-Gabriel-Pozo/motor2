@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { reportarError } from "@/lib/reportar-error";
 import type { Db } from "./comun";
 
@@ -101,7 +100,7 @@ export interface ResultadoSincronizacionDolar {
  * es viejo, rellena antes el historial desde argentinadatos. Un fallo de una fuente no tira abajo la corrida: se prueba la siguiente y
  * los errores se devuelven. Si NINGUNA fuente da la cotización de hoy y no se rellenó nada, lanza (el cron responde 502).
  */
-export async function sincronizarDolar(db: Db = prisma, ahora: Date = new Date()): Promise<ResultadoSincronizacionDolar> {
+export async function sincronizarDolar(db: Db, ahora: Date = new Date()): Promise<ResultadoSincronizacionDolar> {
   const errores: string[] = [];
   let diasRellenados = 0;
 
@@ -142,7 +141,7 @@ export async function sincronizarDolar(db: Db = prisma, ahora: Date = new Date()
 }
 
 /** La cotización más reciente guardada (la de BNA si hay; si no, la del BCRA), o `null` si todavía no hay ninguna. */
-export async function obtenerUltimaCotizacion(db: Db = prisma): Promise<UltimaCotizacion | null> {
+export async function obtenerUltimaCotizacion(db: Db): Promise<UltimaCotizacion | null> {
   const fila = await db.cotizacionDolar.findFirst({ orderBy: [{ fecha: "desc" }, { fuente: "desc" }] });
   if (!fila) return null;
   return { fecha: fila.fecha, compra: fila.compra !== null ? Number(fila.compra) : null, venta: Number(fila.venta), fuente: fila.fuente };
@@ -176,7 +175,7 @@ export function reiniciarLimitadorDolar(): void {
  * pantallas abiertas a la vez no disparan varias sincronizaciones) y NUNCA lanza: un fallo de las APIs de terceros no puede romper la
  * pantalla desde la que se pidió. Devuelve `true` si intentó sincronizar.
  */
-export async function actualizarDolarSiHaceFalta(db: Db = prisma, ahora: Date = new Date()): Promise<boolean> {
+export async function actualizarDolarSiHaceFalta(db: Db, ahora: Date = new Date()): Promise<boolean> {
   if (process.env.MOTOR2_SIN_DOLAR_AUTOMATICO === "1") return false; // las pruebas de navegador no salen a internet
   if (ahora.getTime() - ultimoIntentoMs < MINUTOS_ENTRE_INTENTOS * 60_000) return false;
   ultimoIntentoMs = ahora.getTime();

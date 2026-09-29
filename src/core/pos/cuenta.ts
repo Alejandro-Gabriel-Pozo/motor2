@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
 import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";

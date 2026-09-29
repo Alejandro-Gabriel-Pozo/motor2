@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import type { Db } from "./comun";
 import { armarBoletaImpresaEn, estadoDeBoleta, type EstadoDeBoleta, type ItemConVenta, type LineaDeBoleta } from "@/core/pos/boleta";
 import { lineasDeVenta } from "@/core/pos/cuenta";
@@ -103,7 +102,7 @@ function lineasConOperacion(items: readonly ItemConVenta[], impresaEn: Date, des
  * desc` — aprovecha el índice único `(sucursalId, numero, ejemplar)`). Paginado por cursor, mismo patrón que
  * `listarComprasRegistradas` (compras-registradas.ts): `take: N+1`, cursor por id.
  */
-export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBoletas = {}, db: Db = prisma): Promise<PaginaBoletas> {
+export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBoletas = {}, db: Db): Promise<PaginaBoletas> {
   const { desde, hasta, mesaId, cursor } = filtro;
 
   const ejemplares = await db.ejemplarBoleta.findMany({
@@ -194,7 +193,7 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
 /** El número de la mesa filtrada, para el chip «Filtrando por Mesa N» de la página — null si `mesaId` no existe en esta
  *  sucursal (link viejo, mesa borrada). Una consulta chica, aparte de `listarBoletasEmitidas` porque esa lista puede volver
  *  vacía (sin boletas en el rango) y aun así hay que poder mostrar de qué mesa se está filtrando. */
-export async function obtenerNumeroDeMesa(sucursalId: string, mesaId: string, db: Db = prisma): Promise<number | null> {
+export async function obtenerNumeroDeMesa(sucursalId: string, mesaId: string, db: Db): Promise<number | null> {
   const mesa = await db.mesa.findFirst({ where: { id: mesaId, sucursalId }, select: { numero: true } });
   return mesa?.numero ?? null;
 }

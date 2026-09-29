@@ -100,19 +100,19 @@ describe("resolverMenuCarta", () => {
   });
 
   it("sucursal inexistente o inactiva → null", async () => {
-    expect(await resolverMenuCarta("no-existe")).toBeNull();
-    expect(await resolverMenuCarta(inactiva)).toBeNull();
+    expect(await resolverMenuCarta("no-existe", prisma)).toBeNull();
+    expect(await resolverMenuCarta(inactiva, prisma)).toBeNull();
   });
 
   it("devuelve la carta v1 de la sucursal, con fecha ISO y la sucursal", async () => {
-    const carta = await resolverMenuCarta(central, undefined, new Date("2026-09-24T10:00:00.000Z"));
+    const carta = await resolverMenuCarta(central, prisma, new Date("2026-09-24T10:00:00.000Z"));
     expect(carta?.version).toBe(1);
     expect(carta?.generadoEn).toBe("2026-09-24T10:00:00.000Z");
     expect(carta?.sucursal).toEqual({ id: central, nombre: "Central" });
   });
 
   it("solo entran PV disponibles acá Y visibles en la carta; secciones apagadas o vacías no aparecen", async () => {
-    const carta = (await resolverMenuCarta(central))!;
+    const carta = (await resolverMenuCarta(central, prisma))!;
     expect(carta.secciones.map((s) => s.nombre)).toEqual(["Entradas", "Platos Principales", "Promos"]);
     const nombres = carta.secciones.flatMap((s) => s.items.map((i) => i.nombre));
     expect(nombres.sort()).toEqual(["Bife de chorizo", "Empanada de carne", "Empanada de verdura", "Ojo de bife"]);
@@ -122,21 +122,21 @@ describe("resolverMenuCarta", () => {
   });
 
   it("la disponibilidad de otra sucursal no se filtra: la otra sucursal ve lo suyo", async () => {
-    const carta = (await resolverMenuCarta(otra))!;
+    const carta = (await resolverMenuCarta(otra, prisma))!;
     const items = carta.secciones.flatMap((s) => s.items);
     expect(items.map((i) => i.nombre)).toEqual(["Bife de la otra"]);
     expect(carta.secciones.flatMap((s) => s.promos).map((p) => p.titulo)).toEqual(["Promo de la otra"]);
   });
 
   it("precio: el local habilitado pisa al de venta; el deshabilitado no; siempre numérico", async () => {
-    const carta = (await resolverMenuCarta(central))!;
+    const carta = (await resolverMenuCarta(central, prisma))!;
     const precio = Object.fromEntries(carta.secciones.flatMap((s) => s.items).map((i) => [i.nombre, i.precio]));
     expect(precio).toEqual({ "Bife de chorizo": 34000, "Ojo de bife": 36000, "Empanada de carne": 3000, "Empanada de verdura": 2400 });
     for (const v of Object.values(precio)) expect(typeof v).toBe("number");
   });
 
   it("contenido de carta: descripción, tags, especial; orden por ContenidoCartaProducto.orden dentro de la sección", async () => {
-    const carta = (await resolverMenuCarta(central))!;
+    const carta = (await resolverMenuCarta(central, prisma))!;
     const platos = carta.secciones.find((s) => s.nombre === "Platos Principales")!;
     expect(platos.titulo).toBe("Del fuego");
     expect(platos.descripcion).toBe("A las brasas");
@@ -154,13 +154,13 @@ describe("resolverMenuCarta", () => {
   });
 
   it("promos: solo las activas de esta sucursal y en secciones activas, con precio numérico", async () => {
-    const carta = (await resolverMenuCarta(central))!;
+    const carta = (await resolverMenuCarta(central, prisma))!;
     const promos = carta.secciones.flatMap((s) => s.promos);
     expect(promos).toEqual([{ id: expect.any(String), titulo: "1 pizza + coca 1,5L", descripcion: null, precio: 25000, orden: 1 }]);
   });
 
   it("diagnóstico: los PV visibles sin sección de carta, o con la suya apagada (no se exponen en la carta)", async () => {
-    const armado = (await resolverMenuCartaConDiagnostico(central))!;
+    const armado = (await resolverMenuCartaConDiagnostico(central, prisma))!;
     expect(armado.diagnostico.visiblesSinSeccion.map((p) => p.nombre)).toEqual(["Fernet", "Plato suelto", "Sin categoría"]);
     expect(JSON.stringify(armado.carta)).not.toContain("visiblesSinSeccion");
   });
@@ -169,7 +169,7 @@ describe("resolverMenuCarta", () => {
     const entradas = await prisma.seccionCarta.findUniqueOrThrow({ where: { nombre: "Entradas" } });
     await prisma.contenidoCartaProducto.update({ where: { productoId: ids.sinCategoria }, data: { seccionCartaId: entradas.id } });
     await prisma.contenidoCartaProducto.update({ where: { productoId: ids.ojo }, data: { seccionCartaId: entradas.id } });
-    const carta = (await resolverMenuCarta(central))!;
+    const carta = (await resolverMenuCarta(central, prisma))!;
     const seccionEntradas = carta.secciones.find((s) => s.nombre === "Entradas")!;
     expect(seccionEntradas.items.map((i) => [i.nombre, i.categoria])).toEqual([
       ["Empanada de carne", "Empanadas"],
@@ -183,7 +183,7 @@ describe("resolverMenuCarta", () => {
 
   it("imagen: la de la sección sale; ningún ítem tiene imagen propia (imagenUrl siempre null)", async () => {
     await prisma.seccionCarta.update({ where: { nombre: "Platos Principales" }, data: { imagenUrl: "https://cdn.ejemplo.com/platos.jpg" } });
-    const carta = (await resolverMenuCarta(central))!;
+    const carta = (await resolverMenuCarta(central, prisma))!;
     const platos = carta.secciones.find((s) => s.nombre === "Platos Principales")!;
     expect(platos.imagenUrl).toBe("https://cdn.ejemplo.com/platos.jpg");
     for (const i of carta.secciones.flatMap((s) => s.items)) expect(i).toHaveProperty("imagenUrl", null);
@@ -191,7 +191,7 @@ describe("resolverMenuCarta", () => {
 
   it("apagar la disponibilidad saca el PV de la carta en la próxima lectura", async () => {
     await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId: central, productoId: ids.bife } }, data: { disponible: false } });
-    const carta = (await resolverMenuCarta(central))!;
+    const carta = (await resolverMenuCarta(central, prisma))!;
     expect(carta.secciones.flatMap((s) => s.items).map((i) => i.nombre)).not.toContain("Bife de chorizo");
   });
 
@@ -199,8 +199,8 @@ describe("resolverMenuCarta", () => {
     const contar = async () =>
       Promise.all([prisma.seccionCarta.count(), prisma.contenidoCartaProducto.count(), prisma.promoCarta.count(), prisma.producto.count(), prisma.disponibilidadProducto.count()]);
     const antes = await contar();
-    await resolverMenuCarta(central);
-    await resolverMenuCarta(otra);
+    await resolverMenuCarta(central, prisma);
+    await resolverMenuCarta(otra, prisma);
     expect(await contar()).toEqual(antes);
   });
 });

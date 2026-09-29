@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
 import { resolverAccionSinCostoReposicion, type AccionFaltante } from "./accion-faltante";
@@ -49,7 +48,7 @@ interface AccProducto {
  * falta un dato — mismo criterio "Se produce" que `resolverAccionFaltante`
  * (Costos) y `generarReporteHuecosCatalogo` (§8.7).
  */
-export async function generarReporteDevoluciones(sucursalId: string, diasAtras: number, db: Db = prisma): Promise<ReporteDevoluciones> {
+export async function generarReporteDevoluciones(sucursalId: string, diasAtras: number, db: Db): Promise<ReporteDevoluciones> {
   const dias = diasAtras > 0 ? diasAtras : 30;
   const desde = new Date();
   desde.setUTCDate(desde.getUTCDate() - dias);

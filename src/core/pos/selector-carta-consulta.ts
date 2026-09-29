@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "@/core/carta/public";
 import { resolverMenuCarta } from "@/core/carta/public-servidor";

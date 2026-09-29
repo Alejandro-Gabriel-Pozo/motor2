@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { textoCadenaDeGrupos } from "@/core/catalogo/public-servidor";
 
 type Db = PrismaClient | Prisma.TransactionClient;

@@ -26,7 +26,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
 
   const sp = await searchParams;
   const rango = resolverRangoDeReporte(sp);
-  const rep = await obtenerReporteMargenPromociones(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO));
+  const rep = await obtenerReporteMargenPromociones(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
 
   return (
     <div className="flex flex-col gap-4">
