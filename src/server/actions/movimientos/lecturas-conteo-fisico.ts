@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { requerirVerEnSucursal } from "../con-sesion";
 
 const TAMANO_PAGINA_CONTEOS = 50;
@@ -37,9 +36,9 @@ export interface FiltroHistorialConteos {
 }
 
 export async function obtenerHistorialConteosFisicos(sucursalId: string, filtro: FiltroHistorialConteos = {}) {
-  await requerirVerEnSucursal(sucursalId, "proceso_control");
+  const ctx = await requerirVerEnSucursal(sucursalId, "proceso_control");
   const { seccionId, productoId, desde, hasta, cursor } = filtro;
-  const items = await prisma.conteoFisico.findMany({
+  const items = await ctx.db.conteoFisico.findMany({
     where: {
       sucursalId,
       ...(seccionId ? { seccionId } : {}),

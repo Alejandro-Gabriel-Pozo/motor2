@@ -1,7 +1,6 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { requerirVerEnSucursal } from "../con-sesion";
 
 /**
@@ -55,14 +54,14 @@ function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInp
  * hallazgo de la diligencia de motor2: "bandeja de traspasos sin límite").
  */
 export async function obtenerBandejaTransferencias(sucursalId: string, cursorHistorial?: string) {
-  await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
+  const ctx = await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
   const [enCurso, historialMasUno] = await Promise.all([
-    prisma.traspasoSucursal.findMany({
+    ctx.db.traspasoSucursal.findMany({
       where: { OR: condicionesEnCurso(sucursalId) },
       include: INCLUDE_BANDEJA,
       orderBy: { creadoEn: "desc" },
     }),
-    prisma.traspasoSucursal.findMany({
+    ctx.db.traspasoSucursal.findMany({
       where: {
         AND: [{ OR: [{ origenSucursalId: sucursalId }, { destinoSucursalId: sucursalId }] }, { NOT: { OR: condicionesEnCurso(sucursalId) } }],
       },
@@ -98,6 +97,6 @@ export async function obtenerBandejaTransferencias(sucursalId: string, cursorHis
 
 /** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. */
 export async function listarSucursalesDisponibles(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
-  return prisma.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
+  const ctx = await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
+  return ctx.db.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
 }

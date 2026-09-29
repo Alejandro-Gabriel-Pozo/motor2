@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "@/core/carta/armar-menu";
 import {
@@ -69,12 +69,12 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     if (!orden.ok) return error(orden.mensaje);
 
     if (!datos.seccionCartaId) return error("Elegí la sección de carta del ítem agrupado.");
-    const seccion = await prisma.seccionCarta.findUnique({ where: { id: datos.seccionCartaId }, select: { id: true } });
+    const seccion = await ctx.db.seccionCarta.findUnique({ where: { id: datos.seccionCartaId }, select: { id: true } });
     if (!seccion) return error("No se encontró la sección de carta.");
-    const genero = await validarGeneroCartaOpcional(datos.generoCartaId);
+    const genero = await validarGeneroCartaOpcional(ctx.db, datos.generoCartaId);
     if (!genero.ok) return error(genero.mensaje);
 
-    const repetido = await prisma.itemAgrupadoCarta.findFirst({
+    const repetido = await ctx.db.itemAgrupadoCarta.findFirst({
       where: { nombre: { equals: nombre.valor, mode: "insensitive" }, ...(datos.id ? { NOT: { id: datos.id } } : {}) },
     });
     if (repetido) return error(`Ya existe el ítem agrupado "${repetido.nombre}".`);
@@ -91,13 +91,13 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     let it: { id: string; nombre: string };
     try {
       if (datos.id) {
-        const existente = await prisma.itemAgrupadoCarta.findUnique({ where: { id: datos.id } });
+        const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: datos.id } });
         if (!existente) return error("No se encontró el ítem agrupado.");
-        const editado = await prisma.itemAgrupadoCarta.update({ where: { id: datos.id }, data });
+        const editado = await ctx.db.itemAgrupadoCarta.update({ where: { id: datos.id }, data });
         revalidarCartasPublicas();
         return okConId(`Ítem agrupado "${editado.nombre}" guardado.`, editado.id, editado.nombre);
       }
-      it = await prisma.itemAgrupadoCarta.create({ data });
+      it = await ctx.db.itemAgrupadoCarta.create({ data });
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error(`Ya existe el ítem agrupado "${nombre.valor}".`);
       throw e;
@@ -111,7 +111,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     // entraron). Un rechazo no frena a los demás ni deshace el alta: se junta todo en un solo mensaje.
     const rechazos: string[] = [];
     for (const productoId of productoIds) {
-      const r = await agregarOpcion(ctx.sucursalId, it.id, productoId, null);
+      const r = await agregarOpcion(ctx.db, ctx.sucursalId, it.id, productoId, null);
       if (!r.ok) rechazos.push(r.mensaje);
     }
     const entraron = productoIds.length - rechazos.length;
@@ -123,18 +123,18 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
 
 /** Nunca se borra un ítem agrupado: se apaga (deja de salir en la carta, y sus opciones tampoco salen sueltas, D3). */
 export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const existente = await prisma.itemAgrupadoCarta.findUnique({ where: { id: itemAgrupadoCartaId } });
+  return conPermiso("carta", async (ctx) => {
+    const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: itemAgrupadoCartaId } });
     if (!existente) return error("No se encontró el ítem agrupado.");
-    await prisma.itemAgrupadoCarta.update({ where: { id: itemAgrupadoCartaId }, data: { activo } });
+    await ctx.db.itemAgrupadoCarta.update({ where: { id: itemAgrupadoCartaId }, data: { activo } });
     revalidarCartasPublicas();
     return ok(`Ítem agrupado "${existente.nombre}" ${activo ? "prendido" : "apagado"}.`);
   });
 }
 
 /** El mensaje cuando el producto ya está en un ítem agrupado (el mismo u otro): un producto va en a lo sumo uno (D2). */
-async function mensajeYaAgrupado(productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
-  const ya = await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
+async function mensajeYaAgrupado(db: Db, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
+  const ya = await db.opcionItemAgrupadoCarta.findUnique({ where: { productoId }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
   if (!ya) return null;
   if (ya.itemAgrupadoCartaId === itemAgrupadoCartaId) return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}».`;
   return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}»: quitalo de ahí primero.`;
@@ -146,15 +146,15 @@ async function mensajeYaAgrupado(productoId: string, productoNombre: string, ite
  * La categoría del producto no importa: la opción sale (y sus ventas se cuentan) en la sección del ítem agrupado.
  */
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
-  return conPermiso("carta", (ctx) => agregarOpcion(ctx.sucursalId, itemAgrupadoCartaId, productoId, orden));
+  return conPermiso("carta", (ctx) => agregarOpcion(ctx.db, ctx.sucursalId, itemAgrupadoCartaId, productoId, orden));
 }
 
 /**
  * El cuerpo de `agregarOpcionItemAgrupadoCarta`, SIN el gate (lo pone quien llama: esa acción, o `guardarItemAgrupadoCarta` en el
  * alta con productos, DA7). No se exporta: en un archivo "use server" todo lo exportado es un endpoint.
  */
-async function agregarOpcion(sucursalId: string, itemAgrupadoCartaId: string, productoId: string, orden: number | string | null): Promise<ResultadoAccion> {
-  const item = await prisma.itemAgrupadoCarta.findUnique({
+async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: string, productoId: string, orden: number | string | null): Promise<ResultadoAccion> {
+  const item = await db.itemAgrupadoCarta.findUnique({
     where: { id: itemAgrupadoCartaId },
     select: {
       id: true,
@@ -164,14 +164,14 @@ async function agregarOpcion(sucursalId: string, itemAgrupadoCartaId: string, pr
   });
   if (!item) return error("No se encontró el ítem agrupado.");
   if (!productoId) return error("Elegí el producto a agregar.");
-  const producto = await prisma.producto.findUnique({
+  const producto = await db.producto.findUnique({
     where: { id: productoId },
     select: { id: true, nombre: true, tipo: true, precioVenta: true },
   });
   if (!producto) return error("No se encontró el producto.");
   if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
 
-  const yaAgrupado = await mensajeYaAgrupado(producto.id, producto.nombre, item.id);
+  const yaAgrupado = await mensajeYaAgrupado(db, producto.id, producto.nombre, item.id);
   if (yaAgrupado) return error(yaAgrupado);
 
   const o = validarOrdenCarta(orden ?? item.opciones.length);
@@ -180,7 +180,7 @@ async function agregarOpcion(sucursalId: string, itemAgrupadoCartaId: string, pr
   // D5: mismo precio que las opciones ya cargadas, en la sucursal activa de quien administra (con su precio local, si lo hay).
   if (item.opciones.length > 0) {
     const idsAComparar = [producto.id, ...item.opciones.map((op) => op.producto.id)];
-    const locales = await prisma.precioLocalProducto.findMany({
+    const locales = await db.precioLocalProducto.findMany({
       where: { sucursalId, productoId: { in: idsAComparar } },
       select: { productoId: true, precio: true, habilitado: true },
     });
@@ -198,10 +198,10 @@ async function agregarOpcion(sucursalId: string, itemAgrupadoCartaId: string, pr
   }
 
   try {
-    await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor } });
+    await db.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor } });
   } catch (e) {
     // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
-    if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
+    if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(db, producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
     throw e;
   }
   revalidarCartasPublicas();
@@ -209,12 +209,12 @@ async function agregarOpcion(sucursalId: string, itemAgrupadoCartaId: string, pr
 }
 
 export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, orden: number | string | null): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
+  return conPermiso("carta", async (ctx) => {
     const o = validarOrdenCarta(orden);
     if (!o.ok) return error(o.mensaje);
-    const opcion = await prisma.opcionItemAgrupadoCarta.findUnique({ where: { id: opcionId }, select: { producto: { select: { nombre: true } } } });
+    const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({ where: { id: opcionId }, select: { producto: { select: { nombre: true } } } });
     if (!opcion) return error("No se encontró la opción.");
-    await prisma.opcionItemAgrupadoCarta.update({ where: { id: opcionId }, data: { orden: o.valor } });
+    await ctx.db.opcionItemAgrupadoCarta.update({ where: { id: opcionId }, data: { orden: o.valor } });
     revalidarCartasPublicas();
     return ok(`Orden de «${opcion.producto.nombre}» guardado.`);
   });
@@ -222,13 +222,13 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
 
 /** Saca un producto de su ítem agrupado: se borra solo la referencia. El producto y su ContenidoCartaProducto no se tocan (D3). */
 export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const opcion = await prisma.opcionItemAgrupadoCarta.findUnique({
+  return conPermiso("carta", async (ctx) => {
+    const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({
       where: { id: opcionId },
       select: { producto: { select: { nombre: true } }, itemAgrupadoCarta: { select: { nombre: true } } },
     });
     if (!opcion) return error("No se encontró la opción.");
-    await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { id: opcionId } });
+    await ctx.db.opcionItemAgrupadoCarta.deleteMany({ where: { id: opcionId } });
     revalidarCartasPublicas();
     return ok(`«${opcion.producto.nombre}» ya no está en «${opcion.itemAgrupadoCarta.nombre}».`);
   });

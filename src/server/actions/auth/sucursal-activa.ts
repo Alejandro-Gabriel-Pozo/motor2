@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { baseDelContexto } from "@/core/auth/base";
 import { getUsuarioActual } from "@/core/auth/session";
 import { COOKIE_SUCURSAL_ACTIVA } from "@/core/auth/contexto";
 
@@ -17,7 +17,7 @@ export async function cambiarSucursalActiva(sucursalId: string): Promise<void> {
   const usuario = await getUsuarioActual();
   if (!usuario) return;
 
-  const membresia = await prisma.usuarioSucursal.findUnique({
+  const membresia = await baseDelContexto().db.usuarioSucursal.findUnique({
     where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId } },
   });
   if (!membresia?.activo) return;

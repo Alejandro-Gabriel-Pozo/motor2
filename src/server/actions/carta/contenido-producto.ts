@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta, LARGO_MAXIMO_DESCRIPCION_CARTA } from "@/core/carta/validaciones";
 import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermiso } from "../con-permiso";
@@ -31,8 +30,8 @@ export interface DatosContenidoCarta {
 }
 
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const producto = await prisma.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
+  return conPermiso("carta", async (ctx) => {
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
 
@@ -48,10 +47,10 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
     // DA2: visible exige sección; oculto se puede guardar sin ella (por si se vuelve a mostrar después).
     if (visibleEnCarta && !seccionCartaId) return error(MENSAJE_FALTA_SECCION);
     if (seccionCartaId) {
-      const seccion = await prisma.seccionCarta.findUnique({ where: { id: seccionCartaId }, select: { id: true } });
+      const seccion = await ctx.db.seccionCarta.findUnique({ where: { id: seccionCartaId }, select: { id: true } });
       if (!seccion) return error("No se encontró la sección de carta.");
     }
-    const genero = await validarGeneroCartaOpcional(datos.generoCartaId);
+    const genero = await validarGeneroCartaOpcional(ctx.db, datos.generoCartaId);
     if (!genero.ok) return error(genero.mensaje);
 
     const data = {
@@ -63,7 +62,7 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
       orden: orden.valor,
       generoCartaId: genero.valor,
     };
-    await prisma.contenidoCartaProducto.upsert({ where: { productoId }, update: data, create: { productoId, ...data } });
+    await ctx.db.contenidoCartaProducto.upsert({ where: { productoId }, update: data, create: { productoId, ...data } });
     revalidarCartasPublicas();
     return ok(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`);
   });
@@ -74,12 +73,12 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
  * el contenido ya tenga sección de carta (DA2): si no, hay que elegirla con `guardarContenidoCartaProducto`.
  */
 export async function actualizarVisibleEnCarta(productoId: string, visibleEnCarta: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const producto = await prisma.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true, contenidoCarta: { select: { seccionCartaId: true } } } });
+  return conPermiso("carta", async (ctx) => {
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true, contenidoCarta: { select: { seccionCartaId: true } } } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
     if (visibleEnCarta && !producto.contenidoCarta?.seccionCartaId) return error(MENSAJE_FALTA_SECCION);
-    await prisma.contenidoCartaProducto.upsert({ where: { productoId }, update: { visibleEnCarta }, create: { productoId, visibleEnCarta } });
+    await ctx.db.contenidoCartaProducto.upsert({ where: { productoId }, update: { visibleEnCarta }, create: { productoId, visibleEnCarta } });
     revalidarCartasPublicas();
     return ok(`Carta: "${producto.nombre}" ${visibleEnCarta ? "se muestra" : "queda oculto"}.`);
   });

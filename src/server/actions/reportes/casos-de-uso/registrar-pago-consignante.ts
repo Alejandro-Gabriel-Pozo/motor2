@@ -1,6 +1,5 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
@@ -39,7 +38,7 @@ import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsigna
  * @sideEffects registrarCambioAuditado (campo importe).
  */
 export async function registrarPagoConsignanteCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "db" | "transaccion">,
   comando: ComandoRegistrarPagoConsignante
 ): Promise<ResultadoRegistrarPagoConsignante> {
   const payloadHash = comando.claveIdempotencia
@@ -93,7 +92,7 @@ export async function registrarPagoConsignanteCasoDeUso(
     // `@@unique` — se relee fuera de la transacción fallida y, si el ganador ya dejó su resultadoMensaje, se devuelve como éxito
     // repetido. Fail closed (mismo criterio que el resto de I3): si no se puede confirmar qué pasó, se relanza el error.
     if (comando.claveIdempotencia && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      const ganador = await prisma.pagoConsignante.findUnique({
+      const ganador = await actor.db.pagoConsignante.findUnique({
         where: { claveIdempotencia: comando.claveIdempotencia },
         select: { resultadoMensaje: true },
       });

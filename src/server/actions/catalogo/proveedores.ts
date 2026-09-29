@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermiso } from "../con-permiso";
@@ -9,8 +8,8 @@ import { requerirSesion } from "../con-sesion";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 
 export async function listarProveedores(soloActivos = false) {
-  await requerirSesion();
-  return prisma.proveedor.findMany({
+  const ctx = await requerirSesion();
+  return ctx.db.proveedor.findMany({
     where: soloActivos ? { activo: true } : undefined,
     orderBy: { nombre: "asc" },
   });
@@ -33,18 +32,18 @@ export interface DatosProveedor {
  * restringe nada nuevo.
  */
 export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async () => {
+  return conPermiso<ResultadoConId>("alta_producto", async (ctx) => {
     const nombre = texto(datos.nombre);
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre");
     if (invalido) return error(invalido);
 
-    const dup = await prisma.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
+    const dup = await ctx.db.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
     if (dup) return error(`Ya existe un proveedor llamado "${nombre}".`);
 
     try {
       const proveedor = await crearConCodigoAutogenerado("PRV", undefined, (codigo) =>
-        prisma.proveedor.create({
+        ctx.db.proveedor.create({
           data: {
             codigo,
             nombre,
@@ -66,8 +65,8 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
 }
 
 export async function actualizarActivaProveedor(proveedorId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("proveedores", async () => {
-    await prisma.proveedor.update({ where: { id: proveedorId }, data: { activo } });
+  return conPermiso("proveedores", async (ctx) => {
+    await ctx.db.proveedor.update({ where: { id: proveedorId }, data: { activo } });
     // Se llama desde la lista sin redirigir después — sin esto la columna
     // "Activo" no cambiaría en un navegador real hasta recargar a mano
     // (ver src/server/actions/refrescar.ts).
@@ -84,11 +83,11 @@ export async function actualizarActivaProveedor(proveedorId: string, activo: boo
  * renombrarOFusionarInsumo-style, fuera del alcance de este hallazgo.
  */
 export async function actualizarProveedor(proveedorId: string, datos: Omit<DatosProveedor, "nombre">): Promise<ResultadoAccion> {
-  return conPermiso("proveedores", async () => {
-    const proveedor = await prisma.proveedor.findUnique({ where: { id: proveedorId } });
+  return conPermiso("proveedores", async (ctx) => {
+    const proveedor = await ctx.db.proveedor.findUnique({ where: { id: proveedorId } });
     if (!proveedor) return error("No se encontró ese proveedor.");
 
-    await prisma.proveedor.update({
+    await ctx.db.proveedor.update({
       where: { id: proveedorId },
       data: {
         contacto: texto(datos.contacto ?? "") || null,

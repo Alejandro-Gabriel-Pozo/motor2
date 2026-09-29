@@ -1,13 +1,13 @@
 "use server";
 
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 
-async function contarAdminsActivosExcluyendo(idExcluido?: string): Promise<number> {
-  return prisma.usuarioSucursal.count({
+async function contarAdminsActivosExcluyendo(db: Db, idExcluido?: string): Promise<number> {
+  return db.usuarioSucursal.count({
     where: {
       activo: true,
       rol: { nombre: "admin", activo: true },
@@ -17,8 +17,8 @@ async function contarAdminsActivosExcluyendo(idExcluido?: string): Promise<numbe
 }
 
 export async function listarUsuariosDeSucursal(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "gestion_usuarios");
-  return prisma.usuarioSucursal.findMany({
+  const ctx = await requerirVerEnSucursal(sucursalId, "gestion_usuarios");
+  return ctx.db.usuarioSucursal.findMany({
     where: { sucursalId },
     include: { usuario: true, rol: true },
     orderBy: { creadoEn: "asc" },
@@ -39,20 +39,20 @@ export async function agregarOActualizarUsuario(input: {
   rolId: string;
   notas?: string;
 }): Promise<ResultadoAccion> {
-  return conPermiso("gestion_usuarios", async () => {
+  return conPermiso("gestion_usuarios", async (ctx) => {
     const email = texto(input.email).toLowerCase();
     if (!email) return error("El email es obligatorio.");
 
-    const rol = await prisma.rol.findUnique({ where: { id: input.rolId } });
+    const rol = await ctx.db.rol.findUnique({ where: { id: input.rolId } });
     if (!rol || !rol.activo) return error("Rol inválido o inactivo.");
 
-    const usuario = await prisma.user.upsert({
+    const usuario = await ctx.db.user.upsert({
       where: { email },
       update: {},
       create: { email },
     });
 
-    const existente = await prisma.usuarioSucursal.findUnique({
+    const existente = await ctx.db.usuarioSucursal.findUnique({
       where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: input.sucursalId } },
       include: { rol: true },
     });
@@ -62,7 +62,7 @@ export async function agregarOActualizarUsuario(input: {
     // queda el sistema sin ningún admin activo", chequeo GLOBAL porque acá
     // es un solo negocio, no multi-tenant).
     if (existente?.activo && existente.rol.nombre === "admin" && rol.nombre !== "admin") {
-      const quedan = await contarAdminsActivosExcluyendo(existente.id);
+      const quedan = await contarAdminsActivosExcluyendo(ctx.db, existente.id);
       if (quedan === 0) {
         return error(
           "Esta operación dejaría el sistema sin ningún admin activo — no se puede aplicar. Dejá al menos un admin activo antes de cambiar este."
@@ -70,7 +70,7 @@ export async function agregarOActualizarUsuario(input: {
       }
     }
 
-    await prisma.usuarioSucursal.upsert({
+    await ctx.db.usuarioSucursal.upsert({
       where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: input.sucursalId } },
       update: { rolId: rol.id, notas: input.notas, activo: true },
       create: { usuarioId: usuario.id, sucursalId: input.sucursalId, rolId: rol.id, notas: input.notas },
@@ -83,14 +83,14 @@ export async function agregarOActualizarUsuario(input: {
 /** Equivalente de actualizarActivoUsuario (Core.js:1181-1211). */
 export async function actualizarActivoMembresia(membresiaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const membresia = await prisma.usuarioSucursal.findUnique({
+    const membresia = await ctx.db.usuarioSucursal.findUnique({
       where: { id: membresiaId },
       include: { rol: true },
     });
     if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
 
     if (!activo && membresia.rol.nombre === "admin") {
-      const quedan = await contarAdminsActivosExcluyendo(membresiaId);
+      const quedan = await contarAdminsActivosExcluyendo(ctx.db, membresiaId);
       if (quedan === 0) {
         return error(
           "Esta operación dejaría el sistema sin ningún admin activo — no se puede desactivar. Activá otro admin antes."
@@ -98,7 +98,7 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
       }
     }
 
-    await prisma.usuarioSucursal.update({ where: { id: membresiaId }, data: { activo } });
+    await ctx.db.usuarioSucursal.update({ where: { id: membresiaId }, data: { activo } });
     return ok(`Usuario ${activo ? "activado" : "desactivado"}.`);
   });
 }
@@ -110,10 +110,10 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
  */
 export async function actualizarNotasMembresia(membresiaId: string, notas: string): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const membresia = await prisma.usuarioSucursal.findUnique({ where: { id: membresiaId } });
+    const membresia = await ctx.db.usuarioSucursal.findUnique({ where: { id: membresiaId } });
     if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
 
-    await prisma.usuarioSucursal.update({ where: { id: membresiaId }, data: { notas: texto(notas) || null } });
+    await ctx.db.usuarioSucursal.update({ where: { id: membresiaId }, data: { notas: texto(notas) || null } });
     return ok("Notas actualizadas.");
   });
 }
@@ -132,16 +132,16 @@ export async function actualizarNotasMembresia(membresiaId: string, notas: strin
  * ningún admin activo en ninguna.
  */
 export async function actualizarActivoGlobalUsuario(usuarioId: string, activoGlobal: boolean): Promise<ResultadoAccion> {
-  return conPermiso("gestion_usuarios", async () => {
-    const usuario = await prisma.user.findUnique({ where: { id: usuarioId } });
+  return conPermiso("gestion_usuarios", async (ctx) => {
+    const usuario = await ctx.db.user.findUnique({ where: { id: usuarioId } });
     if (!usuario) return error("No se encontró ese usuario.");
 
     if (!activoGlobal) {
-      const esAdminActivo = await prisma.usuarioSucursal.findFirst({
+      const esAdminActivo = await ctx.db.usuarioSucursal.findFirst({
         where: { usuarioId, activo: true, rol: { nombre: "admin", activo: true } },
       });
       if (esAdminActivo) {
-        const quedan = await prisma.usuarioSucursal.count({
+        const quedan = await ctx.db.usuarioSucursal.count({
           where: { activo: true, rol: { nombre: "admin", activo: true }, usuarioId: { not: usuarioId } },
         });
         if (quedan === 0) {
@@ -152,7 +152,7 @@ export async function actualizarActivoGlobalUsuario(usuarioId: string, activoGlo
       }
     }
 
-    await prisma.user.update({ where: { id: usuarioId }, data: { activoGlobal } });
+    await ctx.db.user.update({ where: { id: usuarioId }, data: { activoGlobal } });
     return ok(`Cuenta de "${usuario.email}" ${activoGlobal ? "reactivada" : "desactivada"} a nivel sistema.`);
   });
 }

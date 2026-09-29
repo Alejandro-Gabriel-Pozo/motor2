@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarMaxMesasAbiertas } from "@/core/pos/mesas";
@@ -28,7 +27,7 @@ export async function crearMesa(numero: number): Promise<ResultadoAccion> {
       return error(`El número de mesa tiene que ser un entero entre 1 y ${NUMERO_MESA_MAXIMO}.`);
     }
     try {
-      await prisma.mesa.create({ data: { sucursalId: ctx.sucursalId, numero } });
+      await ctx.db.mesa.create({ data: { sucursalId: ctx.sucursalId, numero } });
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error(`Ya existe la mesa ${numero} en esta sucursal.`);
       throw e;
@@ -51,8 +50,8 @@ export async function actualizarMaxMesasAbiertas(limite: number | null): Promise
     const val = validarMaxMesasAbiertas(limite);
     if (!val.ok) return error(val.mensaje);
 
-    const sucursal = await prisma.sucursal.findUniqueOrThrow({ where: { id: ctx.sucursalId } });
-    await registrarCambioAuditado(prisma, {
+    const sucursal = await ctx.db.sucursal.findUniqueOrThrow({ where: { id: ctx.sucursalId } });
+    await registrarCambioAuditado(ctx.db, {
       entidad: "Sucursal",
       entidadId: sucursal.id,
       descripcion: `Sucursal "${sucursal.nombre}": límite de mesas abiertas`,
@@ -62,7 +61,7 @@ export async function actualizarMaxMesasAbiertas(limite: number | null): Promise
       actorId: ctx.usuarioId,
       sucursalId: ctx.sucursalId,
     });
-    await prisma.sucursal.update({ where: { id: sucursal.id }, data: { maxMesasAbiertas: val.limite } });
+    await ctx.db.sucursal.update({ where: { id: sucursal.id }, data: { maxMesasAbiertas: val.limite } });
     return ok(val.limite === null ? `Sin límite de mesas abiertas en «${sucursal.nombre}».` : `Máximo de mesas abiertas en «${sucursal.nombre}»: ${val.limite}.`);
   });
 }

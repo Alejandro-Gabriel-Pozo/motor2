@@ -1,7 +1,6 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { validarImporte } from "@/core/datos/importe";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
@@ -17,13 +16,13 @@ import { requerirVerEnSucursal } from "../con-sesion";
  * (src/core/movimientos/precio-venta.ts) es quien lee esto — acá solo el CRUD.
  */
 export async function obtenerPrecioLocalProducto(sucursalId: string, productoId: string) {
-  await requerirVerEnSucursal(sucursalId, "precio_local");
-  return prisma.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } });
+  const ctx = await requerirVerEnSucursal(sucursalId, "precio_local");
+  return ctx.db.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } });
 }
 
 export async function listarPreciosLocales(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "precio_local");
-  return prisma.precioLocalProducto.findMany({ where: { sucursalId }, include: { producto: true }, orderBy: { producto: { nombre: "asc" } } });
+  const ctx = await requerirVerEnSucursal(sucursalId, "precio_local");
+  return ctx.db.precioLocalProducto.findMany({ where: { sucursalId }, include: { producto: true }, orderBy: { producto: { nombre: "asc" } } });
 }
 
 /**
@@ -64,7 +63,7 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
     if (!validado.ok) return error(validado.mensaje);
     precio = validado.valor!; // obligatorio: nunca null
 
-    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
 
     await ctx.transaccion((tx) => guardarPrecioLocal(tx, ctx, producto, precio, habilitado));
@@ -97,7 +96,7 @@ export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, produ
     const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
 
-    const productos = await prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
+    const productos = await ctx.db.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
     // Todo el grupo en UNA transacción (Task #41, M10): o quedan todos los precios locales con su auditoría, o ninguno.
     await ctx.transaccion(async (tx) => {
       for (const p of productos) await guardarPrecioLocal(tx, ctx, p, precio, habilitado);

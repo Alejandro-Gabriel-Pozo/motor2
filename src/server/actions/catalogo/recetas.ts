@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
 import type { IngredienteInput, PasoInput, CabeceraRecetaInput } from "@/core/catalogo/public-servidor";
@@ -22,8 +21,8 @@ const INCLUDE_RECETA_COMPLETA = {
 
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
-  await requerirVer("guardar_receta");
-  return prisma.recetaVersion.findFirst({
+  const ctx = await requerirVer("guardar_receta");
+  return ctx.db.recetaVersion.findFirst({
     where: { productoId },
     orderBy: { version: "desc" },
     include: INCLUDE_RECETA_COMPLETA,
@@ -37,8 +36,8 @@ export async function obtenerRecetaVigente(productoId: string) {
  * guardado pero invisible en la UI (que solo mostraba la vigente).
  */
 export async function listarVersionesDeReceta(productoId: string) {
-  await requerirVer("guardar_receta");
-  return prisma.recetaVersion.findMany({
+  const ctx = await requerirVer("guardar_receta");
+  return ctx.db.recetaVersion.findMany({
     where: { productoId },
     orderBy: { version: "desc" },
     include: INCLUDE_RECETA_COMPLETA,

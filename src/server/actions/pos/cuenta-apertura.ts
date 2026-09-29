@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
@@ -31,7 +30,7 @@ import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
  */
 export async function abrirCuenta(mesaId: string, comensales: number): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    const mesa = typeof mesaId === "string" ? await prisma.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
+    const mesa = typeof mesaId === "string" ? await ctx.db.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
     if (!mesa) return error("No se encontró esa mesa en esta sucursal.");
     try {
       return await conTransaccionSerializable(ctx.transaccion, async (tx) => {

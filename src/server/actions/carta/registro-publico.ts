@@ -1,7 +1,6 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { slugTenant, slugTenantUnico } from "@/core/carta/registro-tenants";
 import {
   LARGO_MAXIMO_ETIQUETA_PORTAL,
@@ -40,18 +39,18 @@ function esChoqueDeUnicidad(e: unknown): boolean {
  * coincide con su `tenant_id`, se edita después a mano. Ante una carrera con otra alta que tomó el mismo slug (P2002), reintenta.
  */
 export async function agregarSucursalAlPortal(sucursalId: string): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true } });
+  return conPermiso("carta", async (ctx) => {
+    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true } });
     if (!sucursal) return error("No se encontró la sucursal.");
 
     for (let intento = 0; intento < MAXIMO_INTENTOS_SLUG; intento++) {
-      const yaEsta = await prisma.sucursalPublica.findUnique({ where: { sucursalId }, select: { slug: true } });
+      const yaEsta = await ctx.db.sucursalPublica.findUnique({ where: { sucursalId }, select: { slug: true } });
       if (yaEsta) return error(`"${sucursal.nombre}" ya está en el portal (slug ${yaEsta.slug}).`);
 
-      const ocupados = new Set((await prisma.sucursalPublica.findMany({ select: { slug: true } })).map((f) => f.slug));
+      const ocupados = new Set((await ctx.db.sucursalPublica.findMany({ select: { slug: true } })).map((f) => f.slug));
       const slug = slugTenantUnico(slugTenant(sucursal.nombre), ocupados);
       try {
-        await prisma.sucursalPublica.create({ data: { sucursalId, slug } });
+        await ctx.db.sucursalPublica.create({ data: { sucursalId, slug } });
         revalidarCartasPublicas();
         return ok(`"${sucursal.nombre}" agregada al portal con el slug ${slug} (sin publicar todavía).`);
       } catch (e) {
@@ -85,7 +84,7 @@ export interface DatosSucursalPublica {
  * de la sheet para algo que motor2 todavía no cubra. Slug o dominio ya usados por otra sucursal → error con su nombre.
  */
 export async function guardarSucursalPublica(sucursalId: string, datos: DatosSucursalPublica): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
+  return conPermiso("carta", async (ctx) => {
     const slug = validarSlugTenant(datos.slug);
     if (!slug.ok) return error(slug.mensaje);
     const etiqueta = validarTextoLibreCarta(datos.etiqueta, "La etiqueta", LARGO_MAXIMO_ETIQUETA_PORTAL);
@@ -103,18 +102,18 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
     const tab = validarNombreTabSheet(datos.sheetMenuNombre);
     if (!tab.ok) return error(tab.mensaje);
 
-    const existente = await prisma.sucursalPublica.findUnique({ where: { sucursalId }, select: { id: true, sucursal: { select: { nombre: true } } } });
+    const existente = await ctx.db.sucursalPublica.findUnique({ where: { sucursalId }, select: { id: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal: agregala primero.");
 
-    const conMismoSlug = await prisma.sucursalPublica.findFirst({ where: { slug: slug.valor, NOT: { sucursalId } }, select: { sucursal: { select: { nombre: true } } } });
+    const conMismoSlug = await ctx.db.sucursalPublica.findFirst({ where: { slug: slug.valor, NOT: { sucursalId } }, select: { sucursal: { select: { nombre: true } } } });
     if (conMismoSlug) return error(`El slug ${slug.valor} ya lo usa "${conMismoSlug.sucursal.nombre}".`);
     if (dominio.valor) {
-      const conMismoDominio = await prisma.sucursalPublica.findFirst({ where: { dominio: dominio.valor, NOT: { sucursalId } }, select: { sucursal: { select: { nombre: true } } } });
+      const conMismoDominio = await ctx.db.sucursalPublica.findFirst({ where: { dominio: dominio.valor, NOT: { sucursalId } }, select: { sucursal: { select: { nombre: true } } } });
       if (conMismoDominio) return error(`El dominio ${dominio.valor} ya lo usa "${conMismoDominio.sucursal.nombre}".`);
     }
 
     try {
-      await prisma.sucursalPublica.update({
+      await ctx.db.sucursalPublica.update({
         where: { sucursalId },
         data: {
           slug: slug.valor,
@@ -146,10 +145,10 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
  * tiene una fila con ese `tenant_id`, la carta vuelve a usarla; si no, el tenant desaparece del portal.
  */
 export async function quitarSucursalDelPortal(sucursalId: string): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const existente = await prisma.sucursalPublica.findUnique({ where: { sucursalId }, select: { slug: true, sucursal: { select: { nombre: true } } } });
+  return conPermiso("carta", async (ctx) => {
+    const existente = await ctx.db.sucursalPublica.findUnique({ where: { sucursalId }, select: { slug: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal.");
-    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await ctx.db.sucursalPublica.deleteMany({ where: { sucursalId } });
     revalidarCartasPublicas();
     return ok(`"${existente.sucursal.nombre}" quitada del portal (slug ${existente.slug}).`);
   });

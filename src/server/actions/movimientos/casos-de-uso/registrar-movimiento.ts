@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
@@ -73,11 +73,11 @@ function sinLineasParaProveedor(resultado: ResultadoRegistrarMovimiento): Result
  * mecanismo de reintento dedicado es una decisión de producto (¿vale la pena una acción de administración para esto?, ¿con qué
  * alcance?), no algo para resolver de paso en esta auditoría.
  */
-async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, lineas: LineaParaProveedor[]): Promise<void> {
+async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha: Date, lineas: LineaParaProveedor[]): Promise<void> {
   for (const l of lineas) {
     if (!l.unidadCompraId) continue;
     try {
-      await upsertProveedorPorProducto({
+      await upsertProveedorPorProducto(db, {
         productoId: l.productoId,
         proveedorId,
         unidadCompraId: l.unidadCompraId,
@@ -146,11 +146,11 @@ export async function registrarMovimientoCasoDeUso(
   // exista y siga activa (un motivo desactivado no puede ELEGIRSE de nuevo, pero las Operacion viejas que ya lo
   // usaban lo conservan, mismo criterio "nunca DELETE" que el resto de los catálogos).
   if (datos.motivoId) {
-    const motivo = await cargarMotivoMerma(prisma, datos.motivoId);
+    const motivo = await cargarMotivoMerma(actor.db, datos.motivoId);
     if (!motivo?.activo) return fracaso("MOTIVO_NO_DISPONIBLE", "El motivo elegido ya no está disponible.");
   }
   if (datos.destinoId) {
-    const destino = await cargarDestinoConsumo(prisma, datos.destinoId);
+    const destino = await cargarDestinoConsumo(actor.db, datos.destinoId);
     if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
   }
 
@@ -172,7 +172,7 @@ export async function registrarMovimientoCasoDeUso(
   // fuera de la transacción (ya hizo rollback para cuando el `.catch`
   // la recibe).
   if (datos.proceso === "COMPRA" && datos.proveedorId && nroFactura) {
-    const yaExiste = await existeCompraVigenteConFactura(prisma, { sucursalId: actor.sucursalId, proveedorId: datos.proveedorId, nroFactura });
+    const yaExiste = await existeCompraVigenteConFactura(actor.db, { sucursalId: actor.sucursalId, proveedorId: datos.proveedorId, nroFactura });
     if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
   }
 
@@ -305,7 +305,7 @@ export async function registrarMovimientoCasoDeUso(
   // (§12, mismo backlog). Dejarlo explícito acá documenta la regla real ("un duplicado no vuelve a tocar Catálogo"),
   // no solo la garantía estructural.
   if (resultado.ok && !resultado.datos.repetida && datos.proceso === "COMPRA" && datos.proveedorId) {
-    await registrarProveedoresDeLaCompra(datos.proveedorId, datos.fecha, lineasParaProveedor);
+    await registrarProveedoresDeLaCompra(actor.db, datos.proveedorId, datos.fecha, lineasParaProveedor);
   }
 
   return resultado;

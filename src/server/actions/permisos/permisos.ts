@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { MENSAJE_GUARDADO_EN_CONFLICTO, mismoEstado, normalizarPermiso, PREFIJO_CONFLICTO_DE_EDICION, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
@@ -10,11 +9,11 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
 
 export async function listarMatrizPermisos() {
-  await requerirVer("gestion_permisos");
+  const ctx = await requerirVer("gestion_permisos");
   const [acciones, roles, permisos] = await Promise.all([
-    prisma.accion.findMany({ orderBy: { clave: "asc" } }),
-    prisma.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    prisma.permisoRol.findMany(),
+    ctx.db.accion.findMany({ orderBy: { clave: "asc" } }),
+    ctx.db.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    ctx.db.permisoRol.findMany(),
   ]);
   return { acciones, roles, permisos };
 }
@@ -67,8 +66,8 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
     }
 
     const [roles, acciones] = await Promise.all([
-      prisma.rol.findMany({ where: { activo: true, id: { in: cambios.map((c) => c.rolId) } } }),
-      prisma.accion.findMany({ where: { clave: { in: cambios.map((c) => c.accionClave) } } }),
+      ctx.db.rol.findMany({ where: { activo: true, id: { in: cambios.map((c) => c.rolId) } } }),
+      ctx.db.accion.findMany({ where: { clave: { in: cambios.map((c) => c.accionClave) } } }),
     ]);
     const rolPorId = new Map(roles.map((r) => [r.id, r]));
     const accionesConocidas = new Set(acciones.map((a) => a.clave));

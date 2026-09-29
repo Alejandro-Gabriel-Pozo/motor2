@@ -1,7 +1,6 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { contarValoresTema, validarValoresTema } from "@/core/carta/tema";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -24,15 +23,15 @@ import { revalidarCartasPublicas } from "./revalidar";
  * (queda en borrador); al editar, un tema ya aplicado sigue aplicado.
  */
 export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Record<string, unknown>>): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
+  return conPermiso("carta", async (ctx) => {
     const validados = validarValoresTema(valores);
     if (!validados.ok) return error(validados.mensaje);
 
-    const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId }, select: { nombre: true } });
+    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { nombre: true } });
     if (!sucursal) return error("No se encontró la sucursal.");
 
     const json = validados.valor as Prisma.InputJsonObject;
-    const fila = await prisma.temaCartaSucursal.upsert({
+    const fila = await ctx.db.temaCartaSucursal.upsert({
       where: { sucursalId },
       create: { sucursalId, valores: json },
       update: { valores: json },
@@ -51,8 +50,8 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
  * carta la conozca. Desaplicar es la vuelta atrás: la carta vuelve a la tab Config de la sheet y los valores se conservan.
  */
 export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta", async () => {
-    const fila = await prisma.temaCartaSucursal.findUnique({
+  return conPermiso("carta", async (ctx) => {
+    const fila = await ctx.db.temaCartaSucursal.findUnique({
       where: { sucursalId },
       select: { valores: true, sucursal: { select: { nombre: true, publica: { select: { publicada: true } } } } },
     });
@@ -60,13 +59,13 @@ export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean
     const nombre = fila.sucursal.nombre;
 
     if (!aplicar) {
-      await prisma.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: false } });
+      await ctx.db.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: false } });
       revalidarCartasPublicas();
       return ok(`Tema de "${nombre}" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).`);
     }
 
     if (contarValoresTema(fila.valores) === 0) return error("No se puede aplicar un tema vacío: cargá al menos un valor y guardalo.");
-    await prisma.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: true } });
+    await ctx.db.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: true } });
     revalidarCartasPublicas();
     const publica = fila.sucursal.publica;
     if (!publica) return ok(`Tema de "${nombre}" aplicado, pero sin efecto hasta agregarla al portal (Portal de sucursales).`);

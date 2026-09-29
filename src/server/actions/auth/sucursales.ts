@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import { conPermiso } from "../con-permiso";
@@ -9,8 +8,8 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
 export async function listarSucursales() {
-  await requerirSesion();
-  return prisma.sucursal.findMany({ orderBy: { nombre: "asc" } });
+  const ctx = await requerirSesion();
+  return ctx.db.sucursal.findMany({ orderBy: { nombre: "asc" } });
 }
 
 /**
@@ -34,10 +33,10 @@ export async function crearSucursalConAdmin(input: {
     const email = texto(input.emailPrimerAdmin).toLowerCase();
     if (!email) return error("El email del primer admin de la sucursal es obligatorio.");
 
-    const existente = await prisma.sucursal.findUnique({ where: { nombre } });
+    const existente = await ctx.db.sucursal.findUnique({ where: { nombre } });
     if (existente) return error(`Ya existe una sucursal "${nombre}".`);
 
-    const rolAdmin = await prisma.rol.findUnique({ where: { nombre: "admin" } });
+    const rolAdmin = await ctx.db.rol.findUnique({ where: { nombre: "admin" } });
     if (!rolAdmin || !rolAdmin.activo) {
       return error('No se encontró el rol "admin" (¿corriste el seed?) — no se puede asignar el primer admin.');
     }
@@ -47,9 +46,9 @@ export async function crearSucursalConAdmin(input: {
     // Nunca con los que son mayoría pero no unanimidad: un producto sucursal-específico no se contagia solo por ser común.
     // Se resuelve ANTES de la transacción (lectura pura, no hace falta el aislamiento) y con `sucursalIdsActivas` vacío
     // (la primerísima sucursal del sistema) `productosUniversales` da siempre `[]` — arranca en cero, no en "todos".
-    const sucursalIdsActivas = (await prisma.sucursal.findMany({ where: { activo: true }, select: { id: true } })).map((s) => s.id);
+    const sucursalIdsActivas = (await ctx.db.sucursal.findMany({ where: { activo: true }, select: { id: true } })).map((s) => s.id);
     const filasDisponibilidad = sucursalIdsActivas.length
-      ? await prisma.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
+      ? await ctx.db.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
       : [];
     const disponibilidadPorProducto = new Map<string, FilaDisponibilidadEnSucursal[]>();
     for (const f of filasDisponibilidad) {
@@ -93,7 +92,7 @@ export async function crearSucursalConAdmin(input: {
  */
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("alta_sucursal", async (ctx) => {
-    const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
+    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId } });
     if (!sucursal) return error("No se encontró esa sucursal.");
 
     // `obtenerContextoUsuario` solo cuenta las membresías de sucursales activas: quien desactiva la suya (y no tiene otra)
@@ -104,7 +103,7 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
       );
     }
 
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { activo } });
+    await ctx.db.sucursal.update({ where: { id: sucursalId }, data: { activo } });
     // A propósito SIN `refrescarVistaSiHaceFalta()`: su único llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente, y
     // otras pantallas que reusen ese componente heredan lo mismo (ver la regla en refrescar.ts).
     return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
@@ -113,19 +112,19 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
 
 /** Renombrar una sucursal existente — antes solo se podía elegir el nombre una vez, al crearla. */
 export async function renombrarSucursal(sucursalId: string, nombreNuevo: string): Promise<ResultadoAccion> {
-  return conPermiso("alta_sucursal", async () => {
+  return conPermiso("alta_sucursal", async (ctx) => {
     const nombre = texto(nombreNuevo);
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
     if (invalido) return error(invalido);
 
-    const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
+    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId } });
     if (!sucursal) return error("No se encontró esa sucursal.");
 
-    const existente = await prisma.sucursal.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" }, id: { not: sucursalId } } });
+    const existente = await ctx.db.sucursal.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" }, id: { not: sucursalId } } });
     if (existente) return error(`Ya existe una sucursal "${existente.nombre}".`);
 
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { nombre } });
+    await ctx.db.sucursal.update({ where: { id: sucursalId }, data: { nombre } });
     refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
     return ok(`Sucursal renombrada a "${nombre}".`);
   });

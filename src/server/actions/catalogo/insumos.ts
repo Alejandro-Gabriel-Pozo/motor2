@@ -1,7 +1,6 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { creariaCiclo, validarFusionInsumos } from "@/core/catalogo/public-servidor";
 import { conPermiso } from "../con-permiso";
@@ -62,13 +61,13 @@ async function reapuntarSustitutosDeInsumoFusionado(tx: Prisma.TransactionClient
 }
 
 export async function listarInsumos() {
-  await requerirSesion();
-  return prisma.insumo.findMany({ include: { grupo: true }, orderBy: { nombre: "asc" } });
+  const ctx = await requerirSesion();
+  return ctx.db.insumo.findMany({ include: { grupo: true }, orderBy: { nombre: "asc" } });
 }
 
 export async function listarGrupos() {
-  await requerirSesion();
-  return prisma.grupo.findMany({ orderBy: { nombre: "asc" } });
+  const ctx = await requerirSesion();
+  return ctx.db.grupo.findMany({ orderBy: { nombre: "asc" } });
 }
 
 /**
@@ -79,23 +78,23 @@ export async function listarGrupos() {
  * Esos dos devuelven el insumo por callback y NO deben re-renderizar la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
  */
 export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async () => {
+  return conPermiso<ResultadoConId>("alta_producto", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del insumo no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del insumo");
     if (invalido) return error(invalido);
 
-    const existente = await prisma.insumo.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
+    const existente = await ctx.db.insumo.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
     if (existente) return okConId(`Ya existía el insumo "${existente.nombre}" — se reusa.`, existente.id, existente.nombre);
 
-    const creado = await prisma.insumo.create({ data: { nombre: n } });
+    const creado = await ctx.db.insumo.create({ data: { nombre: n } });
     return okConId(`Insumo "${creado.nombre}" creado.`, creado.id, creado.nombre);
   });
 }
 
 export async function actualizarActivoInsumo(insumoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async () => {
-    await prisma.insumo.update({ where: { id: insumoId }, data: { activo } });
+  return conPermiso("grupos_familia", async (ctx) => {
+    await ctx.db.insumo.update({ where: { id: insumoId }, data: { activo } });
     // Se llama desde un closure "use server" de la página de Insumos, sin redirigir: sin esto la columna «Activo» no cambia (ver refrescar.ts).
     refrescarVistaSiHaceFalta();
     return ok(`Insumo ${activo ? "activado" : "desactivado"}.`);
@@ -103,8 +102,8 @@ export async function actualizarActivoInsumo(insumoId: string, activo: boolean):
 }
 
 export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string | null): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async () => {
-    await prisma.insumo.update({ where: { id: insumoId }, data: { grupoId } });
+  return conPermiso("grupos_familia", async (ctx) => {
+    await ctx.db.insumo.update({ where: { id: insumoId }, data: { grupoId } });
     refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok("Grupo del insumo actualizado.");
   });
@@ -118,10 +117,10 @@ export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string 
  * de una sin que el usuario se entere de qué está pasando.
  */
 export async function previsualizarFusionInsumo(insumoId: string, nombreNuevo: string): Promise<string | null> {
-  await requerirSesion();
+  const ctx = await requerirSesion();
   const nuevo = texto(nombreNuevo);
   if (!nuevo) return null;
-  const existente = await prisma.insumo.findFirst({
+  const existente = await ctx.db.insumo.findFirst({
     where: { nombre: { equals: nuevo, mode: "insensitive" }, id: { not: insumoId } },
   });
   return existente?.nombre ?? null;
@@ -151,10 +150,10 @@ export async function renombrarOFusionarInsumo(
     const invalido = validarTextoCatalogo(nuevo, "El nombre del insumo");
     if (invalido) return error(invalido);
 
-    const actual = await prisma.insumo.findUnique({ where: { id: insumoId } });
+    const actual = await ctx.db.insumo.findUnique({ where: { id: insumoId } });
     if (!actual) return error("No se encontró el insumo.");
 
-    const existente = await prisma.insumo.findFirst({
+    const existente = await ctx.db.insumo.findFirst({
       where: { nombre: { equals: nuevo, mode: "insensitive" }, id: { not: insumoId } },
     });
 
@@ -176,7 +175,7 @@ export async function renombrarOFusionarInsumo(
       return ok(`"${actual.nombre}" se fusionó con el insumo existente "${existente.nombre}".`);
     }
 
-    await prisma.insumo.update({ where: { id: insumoId }, data: { nombre: nuevo } });
+    await ctx.db.insumo.update({ where: { id: insumoId }, data: { nombre: nuevo } });
     return ok(`Insumo renombrado a "${nuevo}".`);
   });
 }
@@ -189,13 +188,13 @@ export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string
     const invalido = validarTextoCatalogo(n, "El nombre del grupo");
     if (invalido) return error(invalido);
 
-    const existente = await prisma.grupo.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
+    const existente = await ctx.db.grupo.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
 
     if (existente) {
       if (grupoPadreId && (await creariaCiclo(existente.id, grupoPadreId, ctx.db))) {
         return error(`Ese padre ya desciende de "${n}", o es el mismo grupo — crearía un ciclo.`);
       }
-      await prisma.grupo.update({ where: { id: existente.id }, data: { grupoPadreId } });
+      await ctx.db.grupo.update({ where: { id: existente.id }, data: { grupoPadreId } });
       // La «Cadena» de cada grupo se calcula en el servidor: sin refresco no cambia hasta recargar (ver actualizarActivoInsumo).
       refrescarVistaSiHaceFalta();
       return ok(`Grupo "${n}" actualizado.`);
@@ -203,15 +202,15 @@ export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string
 
     // Un grupo recién creado nunca puede formar un ciclo consigo mismo
     // (su id todavía no existe), así que no hace falta validar acá.
-    const creado = await prisma.grupo.create({ data: { nombre: n, grupoPadreId } });
+    const creado = await ctx.db.grupo.create({ data: { nombre: n, grupoPadreId } });
     refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok(`Grupo "${creado.nombre}" creado.`);
   });
 }
 
 export async function actualizarActivoGrupo(grupoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async () => {
-    await prisma.grupo.update({ where: { id: grupoId }, data: { activo } });
+  return conPermiso("grupos_familia", async (ctx) => {
+    await ctx.db.grupo.update({ where: { id: grupoId }, data: { activo } });
     refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok(`Grupo ${activo ? "activado" : "desactivado"}.`);
   });

@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { precioMinimoPromo } from "@/core/pos/promo-combo";
 import {
   validarCantidadCupoPromo,
@@ -46,18 +45,18 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
     const orden = validarOrdenCarta(datos.orden);
     if (!orden.ok) return error(orden.mensaje);
 
-    const seccion = await prisma.seccionCarta.findUnique({ where: { id: datos.seccionCartaId } });
+    const seccion = await ctx.db.seccionCarta.findUnique({ where: { id: datos.seccionCartaId } });
     if (!seccion) return error("No se encontró la sección de carta.");
 
     const data = { seccionCartaId: seccion.id, titulo: titulo.valor, descripcion: descripcion.valor, precio: precio.valor, orden: orden.valor };
     if (datos.id) {
-      const existente = await prisma.promoCarta.findUnique({ where: { id: datos.id } });
+      const existente = await ctx.db.promoCarta.findUnique({ where: { id: datos.id } });
       if (!existente || existente.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
-      await prisma.promoCarta.update({ where: { id: datos.id }, data });
+      await ctx.db.promoCarta.update({ where: { id: datos.id }, data });
       revalidarCartasPublicas();
       return ok(`Promo "${titulo.valor}" guardada.`);
     }
-    await prisma.promoCarta.create({ data: { ...data, sucursalId: ctx.sucursalId } });
+    await ctx.db.promoCarta.create({ data: { ...data, sucursalId: ctx.sucursalId } });
     revalidarCartasPublicas();
     return ok(`Promo "${titulo.valor}" creada en "${seccion.nombre}".`);
   });
@@ -65,9 +64,9 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
 
 export async function actualizarActivaPromoCarta(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
-    const existente = await prisma.promoCarta.findUnique({ where: { id: promoCartaId } });
+    const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
     if (!existente || existente.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
-    await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { activa } });
+    await ctx.db.promoCarta.update({ where: { id: promoCartaId }, data: { activa } });
     revalidarCartasPublicas();
     return ok(`Promo "${existente.titulo}" ${activa ? "activada" : "desactivada"}.`);
   });
@@ -97,7 +96,7 @@ export interface DatosCupoPromoCarta {
  */
 export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readonly DatosCupoPromoCarta[]): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
-    const promo = await prisma.promoCarta.findUnique({ where: { id: promoCartaId } });
+    const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
     if (!promo || promo.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
 
     const seccionIds = new Set<string>();
@@ -118,7 +117,7 @@ export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readon
     }
 
     if (cuposValidados.length) {
-      const secciones = await prisma.seccionCarta.findMany({ where: { id: { in: [...seccionIds] } }, select: { id: true } });
+      const secciones = await ctx.db.seccionCarta.findMany({ where: { id: { in: [...seccionIds] } }, select: { id: true } });
       if (secciones.length !== seccionIds.size) return error("Alguna sección de carta de los cupos no existe.");
 
       // D3: peor caso = todos los cupos en su máximo — el precio tiene que alcanzar el piso de $0,01 por unidad ahí también,

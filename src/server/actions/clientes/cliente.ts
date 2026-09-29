@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
 import { conPermiso } from "../con-permiso";
@@ -16,8 +15,8 @@ import { requerirSesion } from "../con-sesion";
  */
 
 export async function listarClientes(soloActivos = false) {
-  await requerirSesion();
-  return prisma.cliente.findMany({
+  const ctx = await requerirSesion();
+  return ctx.db.cliente.findMany({
     where: soloActivos ? { activo: true } : undefined,
     orderBy: { nombre: "asc" },
   });
@@ -25,7 +24,7 @@ export async function listarClientes(soloActivos = false) {
 
 /** Equivalente de crearCategoriaProducto (mismo dedup case-insensible), con el % de descuento validado (validarPorcentajeDescuento). */
 export async function altaCliente(nombre: string, descuentoPorcentaje: unknown): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("clientes", async () => {
+  return conPermiso<ResultadoConId>("clientes", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del cliente no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del cliente");
@@ -34,10 +33,10 @@ export async function altaCliente(nombre: string, descuentoPorcentaje: unknown):
     const pct = validarPorcentajeDescuento(descuentoPorcentaje);
     if (!pct.ok) return error(pct.mensaje);
 
-    const existente = await prisma.cliente.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
+    const existente = await ctx.db.cliente.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
     if (existente) return error(`Ya existe un cliente llamado "${existente.nombre}".`);
 
-    const creado = await prisma.cliente.create({ data: { nombre: n, descuentoPorcentaje: pct.valor! } });
+    const creado = await ctx.db.cliente.create({ data: { nombre: n, descuentoPorcentaje: pct.valor! } });
     return okConId(`Cliente "${creado.nombre}" creado, con ${pct.valor}% de descuento.`, creado.id, creado.nombre);
   });
 }
@@ -47,8 +46,8 @@ export async function altaCliente(nombre: string, descuentoPorcentaje: unknown):
  * `Cuenta.descuentoPorcentaje` al asignar el cliente): solo aplica a asignaciones futuras.
  */
 export async function actualizarCliente(clienteId: string, nombre: string, descuentoPorcentaje: unknown): Promise<ResultadoAccion> {
-  return conPermiso("clientes", async () => {
-    const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
+  return conPermiso("clientes", async (ctx) => {
+    const cliente = await ctx.db.cliente.findUnique({ where: { id: clienteId } });
     if (!cliente) return error("No se encontró ese cliente.");
 
     const n = texto(nombre);
@@ -59,19 +58,19 @@ export async function actualizarCliente(clienteId: string, nombre: string, descu
     const pct = validarPorcentajeDescuento(descuentoPorcentaje);
     if (!pct.ok) return error(pct.mensaje);
 
-    const dup = await prisma.cliente.findFirst({ where: { id: { not: clienteId }, nombre: { equals: n, mode: "insensitive" } } });
+    const dup = await ctx.db.cliente.findFirst({ where: { id: { not: clienteId }, nombre: { equals: n, mode: "insensitive" } } });
     if (dup) return error(`Ya existe un cliente llamado "${dup.nombre}".`);
 
-    await prisma.cliente.update({ where: { id: clienteId }, data: { nombre: n, descuentoPorcentaje: pct.valor! } });
+    await ctx.db.cliente.update({ where: { id: clienteId }, data: { nombre: n, descuentoPorcentaje: pct.valor! } });
     return ok(`Cliente "${n}" actualizado.`);
   });
 }
 
 export async function actualizarActivoCliente(clienteId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("clientes", async () => {
-    const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
+  return conPermiso("clientes", async (ctx) => {
+    const cliente = await ctx.db.cliente.findUnique({ where: { id: clienteId } });
     if (!cliente) return error("No se encontró ese cliente.");
-    await prisma.cliente.update({ where: { id: clienteId }, data: { activo } });
+    await ctx.db.cliente.update({ where: { id: clienteId }, data: { activo } });
     // Se llama desde la lista sin redirigir después (ver src/server/actions/refrescar.ts).
     refrescarVistaSiHaceFalta();
     return ok(`Cliente "${cliente.nombre}" ${activo ? "activado" : "desactivado"}.`);

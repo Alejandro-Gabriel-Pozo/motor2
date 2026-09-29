@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
@@ -9,11 +8,11 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
 
 export async function listarCapacidades() {
-  await requerirVer("capacidades_sucursal");
+  const ctx = await requerirVer("capacidades_sucursal");
   const [acciones, sucursales, capacidades] = await Promise.all([
-    prisma.accion.findMany({ where: { clave: { not: "capacidades_sucursal" } }, orderBy: { clave: "asc" } }),
-    prisma.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    prisma.capacidadSucursal.findMany(),
+    ctx.db.accion.findMany({ where: { clave: { not: "capacidades_sucursal" } }, orderBy: { clave: "asc" } }),
+    ctx.db.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    ctx.db.capacidadSucursal.findMany(),
   ]);
   return { acciones, sucursales, capacidades };
 }
@@ -42,16 +41,16 @@ export async function actualizarCapacidad(
     // garantiza el índice único parcial agregado a mano en la migración
     // (ver schema.prisma, comentario en CapacidadSucursal) — Postgres no
     // la garantiza sola sobre una columna nullable dentro de un @@unique.
-    const existente = await prisma.capacidadSucursal.findFirst({ where: { accionClave, sucursalId } });
+    const existente = await ctx.db.capacidadSucursal.findFirst({ where: { accionClave, sucursalId } });
     let fila;
     if (existente) {
-      fila = await prisma.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } });
+      fila = await ctx.db.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } });
     } else {
-      fila = await prisma.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
+      fila = await ctx.db.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
     }
 
     // Auditoría administrativa (A3, Pivote 6).
-    await registrarCambioAuditado(prisma, {
+    await registrarCambioAuditado(ctx.db, {
       entidad: "CapacidadSucursal", entidadId: fila.id, campo: "habilitado",
       descripcion: `Capacidad "${accionClave}"${sucursalId ? "" : " (default)"}`,
       valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId,

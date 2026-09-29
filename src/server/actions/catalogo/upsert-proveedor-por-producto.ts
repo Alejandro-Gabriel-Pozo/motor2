@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 
 // Este archivo NO lleva `"use server"` a propósito: `upsertProveedorPorProducto` no tiene gate propio (lo gatea quien lo
 // llama), y todo lo que exporta un archivo `"use server"` es un endpoint que se puede invocar directo. Vivía en
@@ -19,7 +19,7 @@ import { prisma } from "@/lib/db";
  * que dos ejecuciones concurrentes sobre la misma clave nunca produzcan
  * dos filas — ver Catalogo.js:3278-3294 para el bug real que esto cierra.
  */
-export async function upsertProveedorPorProducto(datos: {
+export async function upsertProveedorPorProducto(db: Db, datos: {
   productoId: string;
   proveedorId: string;
   unidadCompraId: string;
@@ -33,7 +33,7 @@ export async function upsertProveedorPorProducto(datos: {
   const fecha = datos.fechaCompra ?? new Date();
   const referencia = datos.referenciaProveedor?.trim() || null;
 
-  await prisma.$executeRaw`
+  await db.$executeRaw`
     INSERT INTO "ProveedorPorProducto"
       (id, "productoId", "proveedorId", "unidadCompraId", "precioUnitario", "precioPorUnidadStock", "ultimaCompra", "referenciaProveedor")
     VALUES

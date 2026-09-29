@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
@@ -8,22 +7,22 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
 
 export async function listarRoles() {
-  await requerirVer("gestion_permisos");
-  return prisma.rol.findMany({ orderBy: { nombre: "asc" } });
+  const ctx = await requerirVer("gestion_permisos");
+  return ctx.db.rol.findMany({ orderBy: { nombre: "asc" } });
 }
 
 /** Equivalente de crearRolDesdePanel (Core.js:968-983). */
 export async function crearRol(nombre: string): Promise<ResultadoAccion> {
-  return conPermiso("gestion_permisos", async () => {
+  return conPermiso("gestion_permisos", async (ctx) => {
     const n = texto(nombre).toLowerCase();
     if (!n) return error("El nombre del rol no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del rol");
     if (invalido) return error(invalido);
 
-    const existente = await prisma.rol.findUnique({ where: { nombre: n } });
+    const existente = await ctx.db.rol.findUnique({ where: { nombre: n } });
     if (existente) return error(`Ya existe el rol "${n}".`);
 
-    await prisma.rol.create({ data: { nombre: n } });
+    await ctx.db.rol.create({ data: { nombre: n } });
     return ok(`Rol "${n}" creado.`);
   });
 }
@@ -38,7 +37,7 @@ export async function crearRol(nombre: string): Promise<ResultadoAccion> {
  */
 export async function actualizarActivoRol(rolId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("gestion_permisos", async (ctx) => {
-    const rol = await prisma.rol.findUnique({ where: { id: rolId } });
+    const rol = await ctx.db.rol.findUnique({ where: { id: rolId } });
     if (!rol) return error("No se encontró ese rol.");
 
     if (!activo && rol.nombre === "admin") {
@@ -46,16 +45,16 @@ export async function actualizarActivoRol(rolId: string, activo: boolean): Promi
     }
 
     if (!activo) {
-      const enUso = await prisma.usuarioSucursal.count({ where: { rolId, activo: true } });
+      const enUso = await ctx.db.usuarioSucursal.count({ where: { rolId, activo: true } });
       if (enUso > 0) {
         return error(`No se puede desactivar "${rol.nombre}": todavía hay usuarios activos con ese rol. Reasignalos primero.`);
       }
     }
 
-    await prisma.rol.update({ where: { id: rolId }, data: { activo } });
+    await ctx.db.rol.update({ where: { id: rolId }, data: { activo } });
 
     // Auditoría administrativa (A3, Pivote 6).
-    await registrarCambioAuditado(prisma, {
+    await registrarCambioAuditado(ctx.db, {
       entidad: "Rol", entidadId: rolId, campo: "activo",
       descripcion: `Rol "${rol.nombre}": activo`,
       valorAnterior: rol.activo, valorNuevo: activo, actorId: ctx.usuarioId,

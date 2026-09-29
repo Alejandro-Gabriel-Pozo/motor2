@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto } from "@/core/texto";
 import { construirIndiceRecetas } from "@/core/reportes/comun";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
@@ -10,15 +9,15 @@ import { requerirVerEnSucursal } from "../con-sesion";
 
 /** Port de obtenerPromocionesHabilitadas (Catalogo.js:2211-2213) — lectura simple; pide el «Ver» de la pantalla de Promociones (ver `requerirVer`). */
 export async function obtenerPromocionesHabilitadas(sucursalId: string): Promise<boolean> {
-  await requerirVerEnSucursal(sucursalId, "promociones_config");
-  const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
+  const ctx = await requerirVerEnSucursal(sucursalId, "promociones_config");
+  const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId } });
   return sucursal?.promocionesHabilitadas ?? false;
 }
 
 /** Port de actualizarPromocionesHabilitado (Catalogo.js:2216-2238) — prende/apaga la feature completa para esta sucursal. */
 export async function actualizarPromocionesHabilitado(activar: boolean): Promise<ResultadoAccion> {
   return conPermiso("promociones_config", async (ctx) => {
-    await prisma.sucursal.update({ where: { id: ctx.sucursalId }, data: { promocionesHabilitadas: activar } });
+    await ctx.db.sucursal.update({ where: { id: ctx.sucursalId }, data: { promocionesHabilitadas: activar } });
     return ok(`Promociones y Combos ${activar ? "activado" : "desactivado"}.`);
   });
 }
@@ -26,10 +25,10 @@ export async function actualizarPromocionesHabilitado(activar: boolean): Promise
 /** Port de marcarProductoComoPromocion (Catalogo.js:2253-2278). */
 export async function marcarProductoComoPromocion(productoId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("promociones_config", async (ctx) => {
-    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("Elegí un producto.");
 
-    await prisma.promocionProducto.upsert({
+    await ctx.db.promocionProducto.upsert({
       where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
       create: { sucursalId: ctx.sucursalId, productoId, activa },
       update: { activa },
@@ -47,12 +46,12 @@ export interface CandidatoPromocion {
 
 /** Port de buscarProductoParaPromocion (Catalogo.js:2281-2292) — PV con receta (candidatos a Promoción/Combo). */
 export async function buscarProductoParaPromocion(sucursalId: string, termino: string): Promise<CandidatoPromocion[]> {
-  await requerirVerEnSucursal(sucursalId, "promociones_config");
+  const ctx = await requerirVerEnSucursal(sucursalId, "promociones_config");
   const q = texto(termino).toLowerCase();
-  const { recetaPorProducto } = await construirIndiceRecetas(prisma);
+  const { recetaPorProducto } = await construirIndiceRecetas(ctx.db);
   const [productos, marcados] = await Promise.all([
-    prisma.producto.findMany({ where: { tipo: "PV", ...whereDisponibleEn(sucursalId) } }),
-    prisma.promocionProducto.findMany({ where: { sucursalId } }),
+    ctx.db.producto.findMany({ where: { tipo: "PV", ...whereDisponibleEn(sucursalId) } }),
+    ctx.db.promocionProducto.findMany({ where: { sucursalId } }),
   ]);
   const marcadoPorProducto = new Map(marcados.map((m) => [m.productoId, m.activa]));
 
