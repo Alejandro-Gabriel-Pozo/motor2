@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Permisos por reporte. Antes 18 de las 19 páginas de /reportes no tenían ningún permiso: cualquier usuario con sesión veía
@@ -24,7 +25,7 @@ async function paginaComoOperador(browser: import("@playwright/test").Browser, b
     await prisma.permisoRol.updateMany({ where: { rolId: operador.id, accionClave }, data: { puedeVer: false, puedeEditar: false } });
   }
   const usuario = await prisma.user.create({ data: { email: `e2e-operador-${Date.now()}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60 * 24) } });
 

@@ -3,6 +3,7 @@ import { PrismaClient, type Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { prisma } from "../../src/lib/db";
 import { baseDelContexto } from "../../src/core/auth/base";
+import { crearMembresia } from "./membresia";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
@@ -184,14 +185,7 @@ export async function crearUsuarioConMembresia(params: {
   activo?: boolean;
 }) {
   const usuario = await prisma.user.create({ data: { email: params.email } });
-  await prisma.usuarioSucursal.create({
-    data: {
-      usuarioId: usuario.id,
-      sucursalId: params.sucursalId,
-      rolId: params.rolId,
-      activo: params.activo ?? true,
-    },
-  });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId: params.sucursalId, rolId: params.rolId, activo: params.activo });
   return usuario;
 }
 

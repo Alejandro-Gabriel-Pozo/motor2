@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
+import { crearMembresias, crearMembresia } from "../setup/membresia";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
@@ -542,7 +543,7 @@ testAutenticado(
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const membresiaA = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: admin.id, sucursalId } });
     const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E A11y Norte ${marca}` } });
-    await prisma.usuarioSucursal.create({ data: { usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true } });
+    await crearMembresia({ usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true });
 
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PS-MP-${marca}`, nombre: `E2E A11y PS Salsa ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PS-PV-${marca}`, nombre: `E2E A11y PS Pizza ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
@@ -716,12 +717,10 @@ base(
     const segunda = await prisma.sucursal.create({ data: { nombre: `E2E A11y Sucursal Dos ${marca}` } });
     const rol = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
     const usuario = await prisma.user.create({ data: { email: `e2e-a11y-selector-sucursal-${marca}@local.test`, activoGlobal: true } });
-    await prisma.usuarioSucursal.createMany({
-      data: [
+    await crearMembresias([
         { usuarioId: usuario.id, sucursalId: central.id, rolId: rol.id, activo: true },
         { usuarioId: usuario.id, sucursalId: segunda.id, rolId: rol.id, activo: true },
-      ],
-    });
+      ]);
     const sessionToken = randomUUID();
     await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
 

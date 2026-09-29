@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Proveedores con rutas separadas (F4, mismo patrón que Productos F1/F2):
@@ -94,7 +95,7 @@ test("un rol sin «Ver» de proveedores no abre la ficha, la edición ni el alta
   const proveedor = await crearProveedor(Date.now());
   const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-proveedores-${Date.now()}` } });
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-proveedores-${Date.now()}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();

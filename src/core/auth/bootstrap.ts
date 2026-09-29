@@ -32,25 +32,35 @@ export async function intentarBootstrapAdmin(
   const emailsBootstrap = obtenerEmailsBootstrap();
   if (!emailsBootstrap.includes(email.trim().toLowerCase())) return;
 
+  // La empresa del bootstrap es la de la primera sucursal activa (la instalación de hoy tiene una sola, ADR-007): el
+  // chequeo "todavía no hay admin" y el rol admin se resuelven DENTRO de esa empresa.
+  const sucursal = await db.sucursal.findFirst({ where: { activo: true }, orderBy: { creadoEn: "asc" } });
+  // Si el seed todavía no corrió no hay ni rol admin ni sucursal — no hay
+  // dónde hacer bootstrap todavía; no es un error, solo "esperar al seed".
+  if (!sucursal) return;
+  const { empresaId } = sucursal;
+
   const yaHayAdmin = await db.usuarioSucursal.findFirst({
-    where: { activo: true, rol: { nombre: "admin", activo: true } },
+    where: { activo: true, rol: { nombre: "admin", activo: true }, sucursal: { empresaId } },
   });
   if (yaHayAdmin) return;
 
-  const [rolAdmin, sucursal] = await Promise.all([
-    db.rol.findFirst({ where: { nombre: "admin" } }),
-    db.sucursal.findFirst({ where: { activo: true }, orderBy: { creadoEn: "asc" } }),
-  ]);
-  // Si el seed todavía no corrió no hay ni rol admin ni sucursal — no hay
-  // dónde hacer bootstrap todavía; no es un error, solo "esperar al seed".
-  if (!rolAdmin || !sucursal) return;
+  const rolAdmin = await db.rol.findFirst({ where: { empresaId, nombre: "admin" } });
+  if (!rolAdmin) return;
 
+  // Las dos pertenencias (empresa y sucursal) van juntas: sin la de empresa el usuario no tendría contexto (contexto.ts).
+  await db.usuarioEmpresa.upsert({
+    where: { usuarioId_empresaId: { usuarioId, empresaId } },
+    update: { activo: true },
+    create: { usuarioId, empresaId },
+  });
   await db.usuarioSucursal.upsert({
     where: { usuarioId_sucursalId: { usuarioId, sucursalId: sucursal.id } },
     update: { rolId: rolAdmin.id, activo: true },
     create: {
       usuarioId,
       sucursalId: sucursal.id,
+      empresaId,
       rolId: rolAdmin.id,
       notas: "Alta automática por bootstrap (BOOTSTRAP_ADMIN_EMAILS).",
     },

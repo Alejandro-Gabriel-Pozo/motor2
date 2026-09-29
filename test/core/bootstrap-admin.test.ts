@@ -26,6 +26,25 @@ describe("bootstrap del primer admin", () => {
     });
     expect(membresia?.rol.nombre).toBe("admin");
     expect(membresia?.activo).toBe(true);
+    // ADR-007, A4: con la pertenencia a la empresa — sin ella el admin recién creado no tendría contexto.
+    const pertenencia = await prisma.usuarioEmpresa.findFirst({ where: { usuarioId: usuario.id, activo: true } });
+    expect(pertenencia?.empresaId).toBe(membresia?.empresaId);
+  });
+
+  it("el chequeo de \"todavía no hay admin\" es por empresa: un admin de otra empresa no bloquea el bootstrap de la primera sucursal", async () => {
+    await sembrarBase();
+    await prisma.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+    const sucursalOtra = await prisma.sucursal.create({ data: { nombre: "Otra sucursal", empresaId: "otra" } });
+    const rolOtra = await prisma.rol.create({ data: { nombre: "admin", empresaId: "otra" } });
+    await crearUsuarioConMembresia({ email: "admin-otra@negocio.com", sucursalId: sucursalOtra.id, rolId: rolOtra.id });
+
+    process.env.BOOTSTRAP_ADMIN_EMAILS = "dueño@negocio.com";
+    const usuario = await prisma.user.create({ data: { email: "dueño@negocio.com" } });
+    await intentarBootstrapAdmin(usuario.id, usuario.email);
+
+    const membresia = await prisma.usuarioSucursal.findFirst({ where: { usuarioId: usuario.id }, include: { sucursal: true } });
+    expect(membresia?.sucursal.nombre).toBe("Central");
+    expect(membresia?.empresaId).not.toBe("otra");
   });
 
   it("NO hace nada si el email no está en la allowlist", async () => {

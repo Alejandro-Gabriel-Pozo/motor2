@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Browser } from "@playwright/test";
 import { prisma } from "../../../src/lib/db";
 import type { AccionClave } from "../../../src/core/permisos/acciones";
+import { crearMembresia } from "../../setup/membresia";
 
 /** Nivel de un permiso del rol: "ver" = solo Ver; "editar" = Ver y Editar. Una clave ausente queda «sin asignar» (sin fila). */
 export type NivelPermiso = "ver" | "editar";
@@ -20,7 +21,7 @@ export async function abrirComoRol(browser: Browser, baseURL: string | undefined
     await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: clave, puedeVer: true, puedeEditar: permisos[clave] === "editar" } });
   }
   const usuario = await prisma.user.create({ data: { email: `e2e-pos-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();
@@ -33,6 +34,7 @@ export async function abrirComoRol(browser: Browser, baseURL: string | undefined
       await contexto.close();
       await prisma.session.deleteMany({ where: { userId: usuario.id } });
       await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+      await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
       await prisma.user.deleteMany({ where: { id: usuario.id } });
       await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
       await prisma.rol.deleteMany({ where: { id: rol.id } });

@@ -4,6 +4,7 @@ import { test as base, type Page } from "@playwright/test";
 import { prisma } from "../../../src/lib/db";
 import { ACCIONES } from "../../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
+import { crearMembresia } from "../../setup/membresia";
 
 const EMPRESA_E2E_ID = "empresa_principal";
 const SLUG_EMPRESA_E2E = "e2e";
@@ -94,7 +95,8 @@ async function crearSesionAdmin() {
   });
 
   const membresia = await prisma.usuarioSucursal.findFirst({ where: { usuarioId: user.id, sucursalId: sucursal.id } });
-  if (!membresia) await prisma.usuarioSucursal.create({ data: { usuarioId: user.id, sucursalId: sucursal.id, rolId: admin.id, activo: true } });
+  await prisma.usuarioEmpresa.upsert({ where: { usuarioId_empresaId: { usuarioId: user.id, empresaId: sucursal.empresaId } }, update: { activo: true }, create: { usuarioId: user.id, empresaId: sucursal.empresaId } });
+  if (!membresia) await crearMembresia({ usuarioId: user.id, sucursalId: sucursal.id, rolId: admin.id, activo: true });
 
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: user.id, expires: new Date(Date.now() + 1000 * 60 * 60 * 24) } });

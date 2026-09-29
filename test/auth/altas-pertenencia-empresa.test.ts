@@ -1,0 +1,85 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { agregarOActualizarUsuario } from "../../src/server/actions/auth/usuarios";
+import { crearSucursalConAdmin } from "../../src/server/actions/auth/sucursales";
+
+/**
+ * ADR-007, A4: todas las altas de usuario crean la pertenencia a la empresa (`UsuarioEmpresa`) junto con la de la sucursal —
+ * `obtenerContextoUsuario` no da contexto a quien tiene solo `UsuarioSucursal`. Y lo que un admin puede elegir (rol, sucursal)
+ * es siempre de SU empresa.
+ */
+describe("altas de usuario — pertenencia a la empresa", () => {
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+  });
+
+  it("agregarOActualizarUsuario crea el UsuarioEmpresa de la empresa del actor, y una segunda alta no lo duplica", async () => {
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    expect((await agregarOActualizarUsuario({ email: "nuevo@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id })).ok).toBe(true);
+    expect((await agregarOActualizarUsuario({ email: "nuevo@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).ok).toBe(true);
+
+    const nuevo = await prisma.user.findUniqueOrThrow({ where: { email: "nuevo@test.com" } });
+    const pertenencias = await prisma.usuarioEmpresa.findMany({ where: { usuarioId: nuevo.id } });
+    expect(pertenencias).toHaveLength(1);
+    expect(pertenencias[0].empresaId).toBe(base.sucursal.empresaId);
+    expect(pertenencias[0].activo).toBe(true);
+  });
+
+  it("agregarOActualizarUsuario reactiva una pertenencia a la empresa que estaba inactiva", async () => {
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    await prisma.usuarioEmpresa.updateMany({ where: { usuarioId: operador.id }, data: { activo: false } });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    expect((await agregarOActualizarUsuario({ email: operador.email, sucursalId: base.sucursal.id, rolId: base.operador.id })).ok).toBe(true);
+    expect((await prisma.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: operador.id } })).activo).toBe(true);
+  });
+
+  it("agregarOActualizarUsuario rechaza un rol o una sucursal de OTRA empresa y no deja rastro", async () => {
+    const base = await sembrarBase();
+    await prisma.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+    const sucursalOtra = await prisma.sucursal.create({ data: { nombre: "Ajena", empresaId: "otra" } });
+    const rolOtra = await prisma.rol.create({ data: { nombre: "admin", empresaId: "otra" } });
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    const rolAjeno = await agregarOActualizarUsuario({ email: "x@test.com", sucursalId: base.sucursal.id, rolId: rolOtra.id });
+    const sucursalAjena = await agregarOActualizarUsuario({ email: "x@test.com", sucursalId: sucursalOtra.id, rolId: base.operador.id });
+    expect(rolAjeno.ok).toBe(false);
+    expect(sucursalAjena.ok).toBe(false);
+    expect(await prisma.user.findUnique({ where: { email: "x@test.com" } })).toBeNull();
+    expect(await prisma.usuarioEmpresa.count({ where: { empresaId: "otra" } })).toBe(0);
+  });
+
+  it("crearSucursalConAdmin crea la sucursal en la empresa del actor y le da al primer admin su UsuarioEmpresa", async () => {
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    const r = await crearSucursalConAdmin({ nombre: "Nueva", emailPrimerAdmin: "primer-admin@test.com" });
+    expect(r.ok).toBe(true);
+
+    const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Nueva" } });
+    expect(nueva.empresaId).toBe(base.sucursal.empresaId);
+    const primerAdmin = await prisma.user.findUniqueOrThrow({ where: { email: "primer-admin@test.com" } });
+    const pertenencia = await prisma.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: primerAdmin.id } });
+    expect(pertenencia.empresaId).toBe(base.sucursal.empresaId);
+  });
+
+  it("crearSucursalConAdmin con un admin que ya pertenece a la empresa no duplica su UsuarioEmpresa", async () => {
+    const base = await sembrarBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+
+    expect((await crearSucursalConAdmin({ nombre: "Otra", emailPrimerAdmin: "admin@test.com" })).ok).toBe(true);
+    expect(await prisma.usuarioEmpresa.count({ where: { usuarioId: admin.id } })).toBe(1);
+  });
+});

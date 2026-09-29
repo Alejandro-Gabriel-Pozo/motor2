@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Administración — «Desactivar» un rol o un usuario pide confirmación.
@@ -57,7 +58,7 @@ test("usuarios: «Desactivar» pide confirmación, «Cancelar» no cambia nada y
   const operador = await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } });
   const email = `e2e-usuario-${Date.now()}@local.test`;
   const usuario = await prisma.user.create({ data: { email } });
-  const membresia = await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true } });
+  const membresia = await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true });
   const fila = () => page.getByRole("row", { name: new RegExp(email) });
 
   await page.goto("/administracion/usuarios");

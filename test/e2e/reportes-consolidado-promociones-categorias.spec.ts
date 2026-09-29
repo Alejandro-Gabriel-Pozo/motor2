@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresias } from "../setup/membresia";
 
 /**
  * Brecha detectada al planificar la consistencia del margen Real
@@ -20,12 +21,10 @@ test("consolidado: con dos o más sucursales, arma la tabla y suma los totales",
   const segunda = await prisma.sucursal.create({ data: { nombre: `E2E Sucursal Dos ${marca}` } });
   const rol = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-consolidado-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.createMany({
-    data: [
+  await crearMembresias([
       { usuarioId: usuario.id, sucursalId: central.id, rolId: rol.id, activo: true },
       { usuarioId: usuario.id, sucursalId: segunda.id, rolId: rol.id, activo: true },
-    ],
-  });
+    ]);
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
 

@@ -8,6 +8,7 @@ import { abrirCuenta, corregirComensales, liberarMesa } from "../../src/server/a
 import { agregarItems, enviarACocina, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
 import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { crearMembresia } from "../setup/membresia";
 
 /** Toma de pedido (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 4): abrir, agregar, quitar, enviar, liberar. */
 describe("tomar pedido (server actions)", () => {
@@ -295,7 +296,7 @@ describe("tomar pedido (server actions)", () => {
     it("un rol sin pos_tomar_pedido (el operador de fábrica) no puede abrir, agregar, quitar, enviar ni liberar", async () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
       const operador = await prisma.user.create({ data: { email: "operador@test.com" } });
-      await prisma.usuarioSucursal.create({ data: { usuarioId: operador.id, sucursalId: s.sucursalId, rolId: s.operador.id, activo: true } });
+      await crearMembresia({ usuarioId: operador.id, sucursalId: s.sucursalId, rolId: s.operador.id, activo: true });
       await entrarComo(operador);
       for (const r of [
         await abrirCuenta(s.mesa.id, 2),

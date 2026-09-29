@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Productos con rutas separadas: la lista (`/catalogo/productos`), el alta (`/nuevo`), la ficha de solo lectura (`/[id]`) y la edición
@@ -93,7 +94,7 @@ test("un rol sin «Ver» de productos no abre la ficha, la edición ni el alta",
   const producto = await crearProducto(Date.now());
   const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-productos-${Date.now()}` } });
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-productos-${Date.now()}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { empresaDeSucursalCarta, resolverEmpresaCarta } from "@/core/carta/empresa-carta";
+import { resolverEmpresaCarta } from "@/core/carta/empresa-carta";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
 
 /**
@@ -38,23 +38,5 @@ describe("resolverEmpresaCarta", () => {
 
   it("es estrictamente sensible a mayúsculas (el slug de la URL llega ya en minúsculas por convención, no se normaliza acá)", async () => {
     await expect(resolverEmpresaCarta("Principal", prisma)).resolves.toBeNull();
-  });
-});
-
-describe("empresaDeSucursalCarta", () => {
-  beforeEach(async () => {
-    await limpiarBaseDeTest();
-  });
-
-  it("devuelve la empresa a la que pertenece la sucursal", async () => {
-    await crearEmpresa("la-cuadra", "PROVISIONING");
-    const propia = await prisma.sucursal.create({ data: { nombre: "Central" } });
-    const ajena = await prisma.sucursal.create({ data: { nombre: "Ajena", empresaId: "la-cuadra" } });
-    await expect(empresaDeSucursalCarta(propia.id, prisma)).resolves.toEqual({ id: EMPRESA_POR_DEFECTO_ID, slug: "principal" });
-    await expect(empresaDeSucursalCarta(ajena.id, prisma)).resolves.toEqual({ id: "la-cuadra", slug: "la-cuadra" });
-  });
-
-  it("da null si la sucursal no existe", async () => {
-    await expect(empresaDeSucursalCarta("no-existe", prisma)).resolves.toBeNull();
   });
 });

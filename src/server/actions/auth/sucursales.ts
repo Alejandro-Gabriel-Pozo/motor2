@@ -33,10 +33,10 @@ export async function crearSucursalConAdmin(input: {
     const email = texto(input.emailPrimerAdmin).toLowerCase();
     if (!email) return error("El email del primer admin de la sucursal es obligatorio.");
 
-    const existente = await ctx.db.sucursal.findFirst({ where: { nombre } });
+    const existente = await ctx.db.sucursal.findFirst({ where: { empresaId: ctx.empresaId, nombre } });
     if (existente) return error(`Ya existe una sucursal "${nombre}".`);
 
-    const rolAdmin = await ctx.db.rol.findFirst({ where: { nombre: "admin" } });
+    const rolAdmin = await ctx.db.rol.findFirst({ where: { empresaId: ctx.empresaId, nombre: "admin" } });
     if (!rolAdmin || !rolAdmin.activo) {
       return error('No se encontró el rol "admin" (¿corriste el seed?) — no se puede asignar el primer admin.');
     }
@@ -46,7 +46,7 @@ export async function crearSucursalConAdmin(input: {
     // Nunca con los que son mayoría pero no unanimidad: un producto sucursal-específico no se contagia solo por ser común.
     // Se resuelve ANTES de la transacción (lectura pura, no hace falta el aislamiento) y con `sucursalIdsActivas` vacío
     // (la primerísima sucursal del sistema) `productosUniversales` da siempre `[]` — arranca en cero, no en "todos".
-    const sucursalIdsActivas = (await ctx.db.sucursal.findMany({ where: { activo: true }, select: { id: true } })).map((s) => s.id);
+    const sucursalIdsActivas = (await ctx.db.sucursal.findMany({ where: { empresaId: ctx.empresaId, activo: true }, select: { id: true } })).map((s) => s.id);
     const filasDisponibilidad = sucursalIdsActivas.length
       ? await ctx.db.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
       : [];
@@ -59,16 +59,22 @@ export async function crearSucursalConAdmin(input: {
     const universales = productosUniversales(disponibilidadPorProducto, sucursalIdsActivas);
 
     await ctx.transaccion(async (tx) => {
-      const sucursal = await tx.sucursal.create({ data: { nombre } });
+      const sucursal = await tx.sucursal.create({ data: { nombre, empresaId: ctx.empresaId } });
       const usuario = await tx.user.upsert({
         where: { email },
         update: {},
         create: { email },
       });
+      await tx.usuarioEmpresa.upsert({
+        where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } },
+        update: { activo: true },
+        create: { usuarioId: usuario.id, empresaId: ctx.empresaId },
+      });
       await tx.usuarioSucursal.create({
         data: {
           usuarioId: usuario.id,
           sucursalId: sucursal.id,
+          empresaId: ctx.empresaId,
           rolId: rolAdmin.id,
           notas: "Alta automática al crear la sucursal.",
         },

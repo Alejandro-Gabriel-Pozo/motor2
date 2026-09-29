@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Anular una compra desde «Compras registradas» (K1c). Se siembran las compras directo en la base, con un proveedor y un producto propios de cada prueba (marca
@@ -127,7 +128,7 @@ test("quien puede ver los reportes de dinero pero no tiene «anular_compra» ve 
   const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-anular-${marca}` } });
   await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "ver_reportes_dinero", puedeVer: true, puedeEditar: false } });
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-anular-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();
@@ -145,6 +146,7 @@ test("quien puede ver los reportes de dinero pero no tiene «anular_compra» ve 
     await c.limpiar();
     await prisma.session.deleteMany({ where: { userId: usuario.id } });
     await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+    await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
     await prisma.user.deleteMany({ where: { id: usuario.id } });
     await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
     await prisma.rol.deleteMany({ where: { id: rol.id } });

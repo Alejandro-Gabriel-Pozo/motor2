@@ -43,8 +43,11 @@ export async function agregarOActualizarUsuario(input: {
     const email = texto(input.email).toLowerCase();
     if (!email) return error("El email es obligatorio.");
 
-    const rol = await ctx.db.rol.findUnique({ where: { id: input.rolId } });
+    const rol = await ctx.db.rol.findFirst({ where: { id: input.rolId, empresaId: ctx.empresaId } });
     if (!rol || !rol.activo) return error("Rol inválido o inactivo.");
+
+    const sucursal = await ctx.db.sucursal.findFirst({ where: { id: input.sucursalId, empresaId: ctx.empresaId }, select: { id: true } });
+    if (!sucursal) return error("Sucursal inválida.");
 
     const usuario = await ctx.db.user.upsert({
       where: { email },
@@ -70,10 +73,16 @@ export async function agregarOActualizarUsuario(input: {
       }
     }
 
+    // Las dos pertenencias van juntas: sin la de empresa el usuario no tendría contexto (core/auth/contexto.ts).
+    await ctx.db.usuarioEmpresa.upsert({
+      where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } },
+      update: { activo: true },
+      create: { usuarioId: usuario.id, empresaId: ctx.empresaId },
+    });
     await ctx.db.usuarioSucursal.upsert({
       where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: input.sucursalId } },
       update: { rolId: rol.id, notas: input.notas, activo: true },
-      create: { usuarioId: usuario.id, sucursalId: input.sucursalId, rolId: rol.id, notas: input.notas },
+      create: { usuarioId: usuario.id, sucursalId: input.sucursalId, empresaId: ctx.empresaId, rolId: rol.id, notas: input.notas },
     });
 
     return ok(`Usuario "${email}" guardado en la sucursal.`);

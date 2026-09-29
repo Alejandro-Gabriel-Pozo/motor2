@@ -7,6 +7,7 @@ import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacion 
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
 import { SidebarColapsable } from "./sidebar-colapsable";
+import { SelectorEmpresa } from "./selector-empresa";
 import { SelectorSucursal } from "./selector-sucursal";
 
 /**
@@ -38,6 +39,11 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
         <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
           <CotizacionEncabezado cotizacion={cotizacion} />
           <span className="flex items-center gap-1">
+            {ctx.empresas.length > 1 && (
+              <>
+                <SelectorEmpresa empresas={ctx.empresas} actual={ctx.empresaId} /> ·{" "}
+              </>
+            )}
             {ctx.email} ·{" "}
             {ctx.membresias.length > 1 ? (
               <SelectorSucursal membresias={ctx.membresias} actual={ctx.sucursalId} />

@@ -3,6 +3,7 @@ import type { Browser } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Ver ≠ editar en las pantallas de la carta (/carta y /carta/agrupados): con «Ver» pero sin «Editar» de "carta" se
@@ -15,7 +16,7 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
   const rol = await prisma.rol.create({ data: { nombre: `e2e-carta-${puedeEditar ? "edita" : "solo-ve"}-${marca}` } });
   await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "carta", puedeVer: true, puedeEditar } });
   const usuario = await prisma.user.create({ data: { email: `e2e-carta-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();
@@ -27,6 +28,7 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
       await contexto.close();
       await prisma.session.deleteMany({ where: { userId: usuario.id } });
       await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+      await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
       await prisma.user.deleteMany({ where: { id: usuario.id } });
       await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
       await prisma.rol.deleteMany({ where: { id: rol.id } });

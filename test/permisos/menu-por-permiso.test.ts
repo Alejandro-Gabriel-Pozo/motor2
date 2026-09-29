@@ -115,7 +115,7 @@ describe("pantallaDeInicio (con la base)", () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], ...baseDeTest });
+    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
 
     expect(await pantallaDeInicio(ctxDe(admin))).toBe("/reportes");
 
@@ -131,7 +131,7 @@ describe("pantallaDeInicio (con la base)", () => {
     const usuario = await crearUsuarioConMembresia({ email: "mozo@test.com", sucursalId: base.sucursal.id, rolId: mozo.id });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], ...baseDeTest });
+    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
 
     expect(await pantallaDeInicio(ctxDe(usuario))).toBe("/mesas");
     expect(await pantallaDeInicio(ctxDe(admin))).toBe("/reportes");
@@ -143,7 +143,7 @@ describe("pantallaDeInicio (con la base)", () => {
     const base = await sembrarBase();
     const vacio = await prisma.rol.create({ data: { nombre: "sin-permisos" } });
     const usuario = await crearUsuarioConMembresia({ email: "vacio@test.com", sucursalId: base.sucursal.id, rolId: vacio.id });
-    const destino = await pantallaDeInicio({ usuarioId: usuario.id, email: usuario.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], ...baseDeTest });
+    const destino = await pantallaDeInicio({ usuarioId: usuario.id, email: usuario.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
     expect(destino).toBe(RUTA_SIN_PANTALLAS);
   });
 });

@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerResumenConsolidado } from "../../src/core/reportes/resumen-consolidado";
+import { crearMembresia } from "../setup/membresia";
 
 describe("obtenerResumenConsolidado", () => {
   beforeEach(async () => {
@@ -21,7 +22,7 @@ describe("obtenerResumenConsolidado", () => {
     const seccion1 = await sembrarSeccion(base.sucursal.id);
     const seccion2 = await sembrarSeccion(sucursal2.id);
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    await prisma.usuarioSucursal.create({ data: { usuarioId: admin.id, sucursalId: sucursal2.id, rolId: base.admin.id, activo: true } });
+    await crearMembresia({ usuarioId: admin.id, sucursalId: sucursal2.id, rolId: base.admin.id, activo: true });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     const pv1 = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan Central", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 }, base.sucursal.id);

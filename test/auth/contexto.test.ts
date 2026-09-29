@@ -6,6 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { obtenerContextoUsuario } from "../../src/core/auth/contexto";
+import { crearMembresia } from "../setup/membresia";
 
 describe("obtenerContextoUsuario — selector de sucursal", () => {
   beforeEach(async () => {
@@ -28,7 +29,7 @@ describe("obtenerContextoUsuario — selector de sucursal", () => {
     const sucursal2 = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const usuario = await crearUsuarioConMembresia({ email: "multi@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     // Creada después — no debería ganar sin cookie.
-    await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: sucursal2.id, rolId: base.admin.id, activo: true } });
+    await crearMembresia({ usuarioId: usuario.id, sucursalId: sucursal2.id, rolId: base.admin.id, activo: true });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
     const ctx = await obtenerContextoUsuario();
@@ -40,7 +41,7 @@ describe("obtenerContextoUsuario — selector de sucursal", () => {
     const base = await sembrarBase();
     const sucursal2 = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const usuario = await crearUsuarioConMembresia({ email: "multi@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: sucursal2.id, rolId: base.admin.id, activo: true } });
+    await crearMembresia({ usuarioId: usuario.id, sucursalId: sucursal2.id, rolId: base.admin.id, activo: true });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
     __setCookieDeTestParaSucursal(sucursal2.id);
@@ -63,7 +64,7 @@ describe("obtenerContextoUsuario — selector de sucursal", () => {
     const base = await sembrarBase();
     const sucursalInactiva = await prisma.sucursal.create({ data: { nombre: "Cerrada", activo: false } });
     const usuario = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: sucursalInactiva.id, rolId: base.admin.id, activo: true } });
+    await crearMembresia({ usuarioId: usuario.id, sucursalId: sucursalInactiva.id, rolId: base.admin.id, activo: true });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
     __setCookieDeTestParaSucursal(sucursalInactiva.id);

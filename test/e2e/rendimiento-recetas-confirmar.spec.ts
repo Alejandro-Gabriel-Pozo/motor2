@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * "Usar este valor" (Rendimiento real de recetas) nunca aplica directo: pide confirmación en la misma fila, con el porqué a
@@ -30,7 +31,7 @@ test("pide confirmación con comprado/vendido, calibra SOLO la sucursal activa (
   // activa en este spec — sirve para confirmar que calibrar en A no le mueve un solo número.
   const membresiaA = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: admin.id, sucursalId } });
   const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E Norte ${marca}` } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true } });
+  await crearMembresia({ usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true });
 
   const hoy = new Date();
   const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: hoy, usuarioId: admin.id } });

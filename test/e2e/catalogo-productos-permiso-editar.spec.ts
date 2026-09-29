@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Browser } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Permiso de EDITAR productos (`editar_producto`), distinto del de Ver de la familia (`alta_producto`). Con la semilla de fábrica NO existe un rol que
@@ -16,7 +17,7 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
   await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "alta_producto", puedeVer: true, puedeEditar: altaEditar } });
   if (puedeEditarProducto) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "editar_producto", puedeVer: true, puedeEditar: true } });
   const usuario = await prisma.user.create({ data: { email: `e2e-productos-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();
@@ -28,6 +29,7 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
       await contexto.close();
       await prisma.session.deleteMany({ where: { userId: usuario.id } });
       await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+      await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
       await prisma.user.deleteMany({ where: { id: usuario.id } });
       await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
       await prisma.rol.deleteMany({ where: { id: rol.id } });

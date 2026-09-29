@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * §4 (docs/planes-demo-y-claridad-reportes-2026-09-21.md) — "Cómo se compró"/"Cómo se vendió", el cartel "Producto de
@@ -156,7 +157,7 @@ async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undef
     create: { rolId: operador.id, accionClave: "ver_reportes_dinero", puedeVer: false, puedeEditar: false },
   });
   const usuario = await prisma.user.create({ data: { email: `e2e-operador-historial-${Date.now()}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60 * 24) } });
 
