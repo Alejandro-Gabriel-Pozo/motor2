@@ -1,0 +1,48 @@
+import { z } from "zod";
+
+/**
+ * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): Zod en env — "el proceso no
+ * arranca si falta una variable requerida". Relevado contra el `.env` real y `grep -rhoE "process\.env\.[A-Z0-9_]+" src/` el
+ * 2026-09-28 (no contra el ejemplo del checklist, que solo tenía 3 variables y ni `MULTI_TENANT_ENABLED` — que no existe hoy ni
+ * tiene propósito definido — ni las reales).
+ *
+ * A PROPÓSITO no se ejecuta `parseEnv()` a nivel de módulo (nada de `export const env = envSchema.parse(process.env)` corriendo
+ * solo con importar este archivo, como sugería el ejemplo del checklist): eso arriesgaría el arranque de dev/build/tests con solo
+ * agregar el import en algún lado, sin poder probar antes con cuidado que el schema refleja EXACTAMENTE lo que ya está
+ * configurado. `parseEnv()` es una función — quien la llama decide cuándo, y los tests le pasan un `process.env` de prueba en vez
+ * de mutar el global. **Conectarla al arranque real (`next.config.ts`, un layout raíz) es un paso APARTE, más riesgoso, que
+ * todavía no se hizo — este archivo, sin usar en ningún lado del arranque real, es inerte.**
+ *
+ * Requeridas (confirmadas en el `.env` real: sin ellas, Prisma o Auth.js ya fallan hoy, esto solo lo hace explícito y con un
+ * mensaje más claro): `DATABASE_URL`/`DIRECT_URL` (Prisma), `AUTH_SECRET`/`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (Auth.js, Google
+ * OAuth — único proveedor de login hoy).
+ *
+ * Opcionales (el proyecto funciona sin ellas, con la feature correspondiente deshabilitada — confirmado en el código real):
+ * `ALLOWED_EMAIL_DOMAINS` (`src/core/auth/acceso.ts` — "hoy no hay dominios configurados"), `BOOTSTRAP_ADMIN_EMAILS`
+ * (`src/core/auth/bootstrap.ts` — "hoy no hay emails configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
+ * `CARTA_API_TOKEN`/`CARTA_PORTAL_URL` (endpoints de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional).
+ *
+ * Fuera de este schema a propósito: `NODE_ENV`/`NEXT_RUNTIME` (los fija Next.js/Node, nunca el usuario) y
+ * `MOTOR2_SIN_DOLAR_AUTOMATICO`/`MOTOR2_E2E_DATABASE_URL` (flags de test/e2e, no configuración de la app en sí).
+ */
+const envSchema = z.object({
+  DATABASE_URL: z.string().min(1),
+  DIRECT_URL: z.string().min(1),
+  AUTH_SECRET: z.string().min(1),
+  AUTH_GOOGLE_ID: z.string().min(1),
+  AUTH_GOOGLE_SECRET: z.string().min(1),
+
+  ALLOWED_EMAIL_DOMAINS: z.string().min(1).optional(),
+  BOOTSTRAP_ADMIN_EMAILS: z.string().min(1).optional(),
+  CRON_SECRET: z.string().min(1).optional(),
+  CARTA_API_TOKEN: z.string().min(1).optional(),
+  CARTA_PORTAL_URL: z.string().min(1).optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+/** No lee `process.env` por defecto a propósito (ver el docstring del módulo) — quien la llama pasa la fuente explícita. */
+export function parseEnv(source: Record<string, string | undefined>): Env {
+  return envSchema.parse(source);
+}
