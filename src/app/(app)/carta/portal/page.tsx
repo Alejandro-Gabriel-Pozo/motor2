@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { empresaCartaActual } from "@/core/carta/public";
+import { empresaDeSucursalCarta } from "@/core/carta/public";
 import { cargarAdminPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
 import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -42,7 +42,7 @@ export default async function PortalSucursalesPage() {
 
   const sucursales = await cargarAdminPortal(ctx.db);
   const basePortal = urlBasePortal();
-  const empresa = await empresaCartaActual();
+  const empresa = await empresaDeSucursalCarta(ctx.sucursalId, ctx.db);
 
   return (
     <div className="flex flex-col gap-6">

@@ -39,9 +39,6 @@ const envSchema = z.object({
   CARTA_PORTAL_URL: z.string().min(1).optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
 
-  // ADR-006, Fase 2 (docs/adr/ADR-006-carta-como-modulo-interno.md): la carta pública absorbida como módulo interno,
-  // mientras Empresa no existe todavía en el schema real (una sola empresa hoy, ver core/carta/empresa-carta.ts).
-  CARTA_EMPRESA_SLUG: z.string().min(1).optional(),
   // Dominio base del subdominio de la carta (`carta.<empresa>.<dominioBase>`, core/carta/host.ts). Sin configurar, la
   // carta pública solo se sirve por path directo (`/carta-publica/...`), sin subdominio (Fase 6 del plan).
   CARTA_DOMINIO_BASE: z.string().min(1).optional(),

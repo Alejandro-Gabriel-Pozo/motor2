@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { resolverEmpresaCarta } from "@/core/carta/public";
-import { cartaPublica } from "@/core/carta/publica-sin-sesion";
+import { cartaPublica, empresaCartaPublica } from "@/core/carta/publica-sin-sesion";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 
 // ISR: se cachea 5 minutos, y las acciones del módulo carta la invalidan al instante (`revalidarCartasPublicas`). Sin
@@ -14,7 +13,7 @@ export function generateStaticParams() {
 }
 
 async function resolver(empresa: string, sucursal: string) {
-  const empresaCarta = await resolverEmpresaCarta(empresa);
+  const empresaCarta = await empresaCartaPublica(empresa);
   if (!empresaCarta) return null;
   return cartaPublica(empresaCarta, sucursal);
 }

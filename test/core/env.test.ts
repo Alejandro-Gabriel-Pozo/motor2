@@ -42,7 +42,6 @@ describe("parseEnv", () => {
       CRON_SECRET: "cron-secreto",
       CARTA_API_TOKEN: "token",
       CARTA_PORTAL_URL: "https://carta.example.com",
-      CARTA_EMPRESA_SLUG: "la-cuadra",
       CARTA_DOMINIO_BASE: "motor2carta.com",
       NEXT_PUBLIC_SENTRY_DSN: "https://sentry.example.com/1",
     };

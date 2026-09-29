@@ -6,6 +6,7 @@ import { ACCIONES } from "../../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
 
 const EMPRESA_E2E_ID = "empresa_principal";
+const SLUG_EMPRESA_E2E = "e2e";
 const SUCURSAL_NOMBRE = "Central";
 const SECCION_NOMBRE = "Depósito E2E";
 const EMAIL_ADMIN_E2E = "e2e-admin@local.test";
@@ -35,11 +36,12 @@ const UNIDADES_BASE: Array<{ nombre: string; magnitud: "PESO" | "VOLUMEN" | "CAN
  */
 export async function asegurarBaseSeed() {
   // resetearBaseE2E trunca TODO (Empresa incluida) y `empresaId` tiene default `app_empresa_actual()` (la única empresa ACTIVE):
-  // sin la empresa por defecto, ninguna fila de dominio se puede crear. Mismo id/slug que la migración multiempresa_estructura.
+  // sin la empresa por defecto, ninguna fila de dominio se puede crear. Mismo id que la migración multiempresa_estructura; el slug es
+  // `e2e` porque los specs de la carta pública navegan a /carta-publica/e2e/... (ADR-007, A3: la empresa sale de la base, no del env).
   const { id: empresaId } = await prisma.empresa.upsert({
     where: { id: EMPRESA_E2E_ID },
-    update: { estado: "ACTIVE" },
-    create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
+    update: { estado: "ACTIVE", slug: SLUG_EMPRESA_E2E },
+    create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: SLUG_EMPRESA_E2E, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
   });
   const [admin, operador] = await Promise.all([
     prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "admin" } }, update: {}, create: { nombre: "admin" } }),

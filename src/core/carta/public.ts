@@ -14,4 +14,4 @@ export type { Resultado } from "./validaciones";
 export { formatearPrecioCarta } from "./precio-carta";
 export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
-export { empresaCartaActual, resolverEmpresaCarta } from "./empresa-carta";
+export { empresaDeSucursalCarta } from "./empresa-carta";

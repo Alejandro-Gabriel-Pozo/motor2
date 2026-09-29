@@ -1,26 +1,25 @@
+import type { Db } from "@/lib/db-tipos";
+
 /**
- * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: resuelve qué empresa corresponde a un slug pedido por
- * la carta pública. Implementación de HOY (una sola empresa real, `Empresa` todavía no existe en `prisma/schema.prisma` —
- * solo en el schema experimental `prisma/fase-a/schema.prisma`, ver ADR-004): compara contra `CARTA_EMPRESA_SLUG`, sin
- * tocar la base.
- *
- * `async` a propósito, aunque hoy no haga ninguna espera real: cuando `Empresa` se adopte de verdad (Fase F del plan), esta
- * función pasa a `db.empresa.findUnique({ where: { slug } })` sin que cambie su firma ni haya que tocar a quien la llama
- * (`carta-publica/[empresa]/page.tsx` y el resto de la Fase 3).
+ * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`) y ADR-007 (A3): la empresa de la carta pública sale de la tabla
+ * `Empresa`, no de una variable de entorno. Solo resuelve empresas `ACTIVE`: una suspendida o en alta da el mismo `null` que un
+ * slug inexistente (la página responde 404 sin distinguir cuál caso es).
  */
 
 export interface EmpresaCarta {
+  id: string;
   slug: string;
 }
 
-export async function resolverEmpresaCarta(slug: string): Promise<EmpresaCarta | null> {
-  const esperado = process.env.CARTA_EMPRESA_SLUG?.trim();
-  if (!esperado || slug !== esperado) return null;
-  return { slug };
+const SELECCION_EMPRESA = { id: true, slug: true } as const;
+
+/** La empresa ACTIVE con ese slug (comparación exacta, sensible a mayúsculas: el slug de la URL llega ya en minúsculas). */
+export async function resolverEmpresaCarta(slug: string, db: Db): Promise<EmpresaCarta | null> {
+  return db.empresa.findFirst({ where: { slug, estado: "ACTIVE" }, select: SELECCION_EMPRESA });
 }
 
-/** La empresa a la que sirve ESTA instalación (hoy la única, `CARTA_EMPRESA_SLUG`); `null` si no está configurada. Lo usa el admin para armar el link "Ver en vivo". */
-export async function empresaCartaActual(): Promise<EmpresaCarta | null> {
-  const slug = process.env.CARTA_EMPRESA_SLUG?.trim();
-  return slug ? { slug } : null;
+/** La empresa dueña de una sucursal (`Sucursal.empresaId` es fijo, ADR-001). Lo usa el admin para armar los links "Ver la carta de motor2". */
+export async function empresaDeSucursalCarta(sucursalId: string, db: Db): Promise<EmpresaCarta | null> {
+  const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId }, select: { empresa: { select: SELECCION_EMPRESA } } });
+  return sucursal?.empresa ?? null;
 }

@@ -26,11 +26,11 @@ export interface EntradaPortalCarta {
  * `docs/plan-registro-tenants-2026-09-24.md`; sin sheet externa que reconciliar, no hace falta emitir lo que no se muestra).
  * Orden: `orden` y después `etiqueta` (`localeCompare("es")`), mismo criterio que `armarRegistroTenants`.
  *
- * `empresa` es contrato (ADR-007, N3): hoy la base no tiene `empresaId` y la consulta no lo usa; desde A2/A3 filtra por ella.
+ * Solo las sucursales de `empresa` (ADR-007, A3): el filtro es explícito además de lo que aportará RLS (A6).
  */
 export async function resolverPortalCarta(empresa: EmpresaCarta, db: Db): Promise<EntradaPortalCarta[]> {
   const filas = await db.sucursalPublica.findMany({
-    where: { publicada: true, sucursal: { activo: true } },
+    where: { empresaId: empresa.id, publicada: true, sucursal: { activo: true } },
     select: { slug: true, etiqueta: true, subtituloPortal: true, orden: true, sucursal: { select: { nombre: true } } },
   });
   return filas
@@ -51,11 +51,11 @@ export interface CartaPublicaResuelta {
  * El tema solo se usa si `aplicarEnCarta` (un borrador guardado pero no aplicado no debe verse en la carta pública, mismo
  * criterio que `docs/setup-sucursal.md` sección 3); sin eso, o sin fila de tema, el estilo es el default del catálogo.
  *
- * `empresa`: igual que en `resolverPortalCarta`, contrato hasta que la base tenga `empresaId`.
+ * El slug es único POR empresa (`@@unique([empresaId, slug])`): dos empresas pueden tener una sucursal `central`.
  */
 export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
-  const publica = await db.sucursalPublica.findFirst({
-    where: { slug },
+  const publica = await db.sucursalPublica.findUnique({
+    where: { empresaId_slug: { empresaId: empresa.id, slug } },
     select: {
       publicada: true,
       sucursal: { select: { id: true, activo: true, temaCarta: { select: { valores: true, aplicarEnCarta: true } } } },

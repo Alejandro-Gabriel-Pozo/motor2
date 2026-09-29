@@ -2,8 +2,8 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
 /**
- * Carta pública nueva (ADR-006, Fase 3): `/carta-publica/<empresa>/...`, sin sesión. `CARTA_EMPRESA_SLUG=e2e`
- * (playwright.config.ts) es la única empresa que resuelve hoy (src/core/carta/empresa-carta.ts).
+ * Carta pública nueva (ADR-006, Fase 3): `/carta-publica/<empresa>/...`, sin sesión. La empresa `e2e` es la de
+ * la base (fixtures/auth.ts, `asegurarBaseSeed`) y se resuelve por slug (src/core/carta/empresa-carta.ts).
  */
 const EMPRESA = "e2e";
 

@@ -6,7 +6,7 @@
  * que los dos quedan sincronizados por construcción, no por copiar la regex a mano en dos lugares y esperar que no diverjan.
  *
  * Slug de empresa: mismas reglas que un hostname válido (RFC 1123, una etiqueta) — minúsculas, dígitos y guiones, sin guion al
- * principio ni al final, 1 a 63 caracteres. Coincide con `Empresa.slug` (Fase A, `prisma/fase-a/schema.prisma`).
+ * principio ni al final, 1 a 63 caracteres. Coincide con `Empresa.slug` (tabla real desde ADR-007, A2).
  */
 
 const PATRON_SLUG_EMPRESA = "[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?";

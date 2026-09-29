@@ -1,8 +1,20 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { resolverCartaPublica, resolverPortalCarta } from "../../src/core/carta/publica-consulta";
 
-const empresa = { slug: "la-cuadra" };
+const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal" };
+const OTRA_EMPRESA_ID = "empresa_otra";
+const otraEmpresa = { id: OTRA_EMPRESA_ID, slug: "otra" };
+
+/** Una segunda empresa (PROVISIONING: la por defecto sigue siendo la única ACTIVE y `app_empresa_actual()` resuelve) con una sucursal propia. */
+async function crearSucursalDeOtraEmpresa(nombre: string): Promise<string> {
+  await prisma.empresa.upsert({
+    where: { id: OTRA_EMPRESA_ID },
+    update: {},
+    create: { id: OTRA_EMPRESA_ID, nombre: "Otra empresa", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "PROVISIONING" },
+  });
+  return (await prisma.sucursal.create({ data: { nombre, empresaId: OTRA_EMPRESA_ID } })).id;
+}
 
 /**
  * ADR-006, Fase 2: capa de lectura de la carta pública nueva contra Postgres real. La lógica de qué PV entran a la carta ya
@@ -53,6 +65,18 @@ describe("resolverPortalCarta", () => {
     const portal = await resolverPortalCarta(empresa, prisma);
     expect(portal.map((p) => p.slug)).toEqual(["norte", "central"]);
   });
+
+  it("aislamiento entre empresas: el portal de una no lista las sucursales publicadas de la otra", async () => {
+    const ajena = await crearSucursalDeOtraEmpresa("Ajena");
+    await prisma.sucursalPublica.createMany({
+      data: [
+        { sucursalId: central, slug: "central", publicada: true },
+        { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "ajena", publicada: true },
+      ],
+    });
+    expect((await resolverPortalCarta(empresa, prisma)).map((p) => p.slug)).toEqual(["central"]);
+    expect((await resolverPortalCarta(otraEmpresa, prisma)).map((p) => p.slug)).toEqual(["ajena"]);
+  });
 });
 
 describe("resolverCartaPublica", () => {
@@ -98,5 +122,24 @@ describe("resolverCartaPublica", () => {
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: true, valores: { restaurante_nombre: "La Cuadra" } } });
     const r = await resolverCartaPublica(empresa, "central", prisma);
     expect(r!.estilo.valores.restaurante_nombre).toBe("La Cuadra");
+  });
+
+  it("aislamiento entre empresas: el mismo slug de sucursal resuelve a la sucursal de CADA empresa", async () => {
+    const ajena = await crearSucursalDeOtraEmpresa("Ajena");
+    await prisma.sucursalPublica.createMany({
+      data: [
+        { sucursalId: central, slug: "central", publicada: true },
+        { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "central", publicada: true },
+      ],
+    });
+    expect((await resolverCartaPublica(empresa, "central", prisma))!.carta.sucursal.id).toBe(central);
+    expect((await resolverCartaPublica(otraEmpresa, "central", prisma))!.carta.sucursal.id).toBe(ajena);
+  });
+
+  it("aislamiento entre empresas: un slug publicado solo en la otra empresa da null", async () => {
+    const ajena = await crearSucursalDeOtraEmpresa("Ajena");
+    await prisma.sucursalPublica.create({ data: { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "solo-ajena", publicada: true } });
+    await expect(resolverCartaPublica(empresa, "solo-ajena", prisma)).resolves.toBeNull();
+    await expect(resolverCartaPublica(otraEmpresa, "solo-ajena", prisma)).resolves.not.toBeNull();
   });
 });

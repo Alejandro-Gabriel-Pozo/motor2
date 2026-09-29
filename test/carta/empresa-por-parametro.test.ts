@@ -1,7 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { prismaFalso, resolverPortalCarta, resolverCartaPublica, portalCartaPublico, cartaPublica } = vi.hoisted(() => ({
+const EMPRESA = { id: "empresa_la_cuadra", slug: "la-cuadra" };
+
+const { prismaFalso, resolverPortalCarta, resolverCartaPublica, portalCartaPublico, cartaPublica, resolverEmpresaCarta } = vi.hoisted(() => ({
   prismaFalso: { esPrismaFalso: true },
+  resolverEmpresaCarta: vi.fn(async (slug: string) => (slug === "la-cuadra" ? { id: "empresa_la_cuadra", slug } : null)),
   resolverPortalCarta: vi.fn(async () => []),
   resolverCartaPublica: vi.fn(async () => null),
   portalCartaPublico: vi.fn(async () => []),
@@ -10,6 +13,7 @@ const { prismaFalso, resolverPortalCarta, resolverCartaPublica, portalCartaPubli
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
 vi.mock("@/core/carta/publica-consulta", () => ({ resolverPortalCarta, resolverCartaPublica }));
+vi.mock("@/core/carta/empresa-carta", () => ({ resolverEmpresaCarta }));
 vi.mock("@/core/carta/publica-sin-sesion", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/core/carta/publica-sin-sesion")>();
   return { ...real, portalCartaPublico, cartaPublica };
@@ -26,35 +30,35 @@ import PortalPage from "@/app/(carta-publica)/carta-publica/[empresa]/page";
 import CartaPage from "@/app/(carta-publica)/carta-publica/[empresa]/[sucursal]/page";
 
 /**
- * ADR-007, paso N3: la empresa resuelta llega por parámetro hasta la consulta. Hoy la base no tiene `empresaId`, así que la
- * empresa no cambia el resultado de la consulta — lo que se protege acá es que el contrato no se corte en ningún tramo.
+ * ADR-007, N3 + A3: la empresa se resuelve desde la base por el slug del segmento de ruta y llega por parámetro hasta la
+ * consulta, que filtra por su id. Lo que se protege acá es que el contrato no se corte en ningún tramo.
  */
 beforeEach(() => {
-  vi.stubEnv("CARTA_EMPRESA_SLUG", "la-cuadra");
   vi.clearAllMocks();
 });
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 describe("punto público sin sesión", () => {
+  it("empresaCartaPublica resuelve el slug contra la base (el cliente sin sesión)", async () => {
+    const real = await vi.importActual<typeof import("@/core/carta/publica-sin-sesion")>("@/core/carta/publica-sin-sesion");
+    await real.empresaCartaPublica("la-cuadra");
+    expect(resolverEmpresaCarta).toHaveBeenCalledWith("la-cuadra", prismaFalso);
+  });
+
   it("portalCartaPublico y cartaPublica pasan la empresa recibida (y la base) a la consulta", async () => {
-    const empresa = { slug: "la-cuadra" };
     const real = await vi.importActual<typeof import("@/core/carta/publica-sin-sesion")>("@/core/carta/publica-sin-sesion");
 
-    await real.portalCartaPublico(empresa);
-    await real.cartaPublica(empresa, "central");
+    await real.portalCartaPublico(EMPRESA);
+    await real.cartaPublica(EMPRESA, "central");
 
-    expect(resolverPortalCarta).toHaveBeenCalledWith(empresa, prismaFalso);
-    expect(resolverCartaPublica).toHaveBeenCalledWith(empresa, "central", prismaFalso);
+    expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, prismaFalso);
+    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", prismaFalso);
   });
 });
 
 describe("páginas de la carta pública", () => {
   it("el portal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {
     await PortalPage({ params: Promise.resolve({ empresa: "la-cuadra" }) });
-    expect(portalCartaPublico).toHaveBeenCalledWith({ slug: "la-cuadra" });
+    expect(portalCartaPublico).toHaveBeenCalledWith(EMPRESA);
   });
 
   it("el portal no consulta nada si la empresa no resuelve", async () => {
@@ -65,7 +69,7 @@ describe("páginas de la carta pública", () => {
   it("la sucursal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {
     cartaPublica.mockResolvedValueOnce({ carta: {}, estilo: {} } as never);
     await CartaPage({ params: Promise.resolve({ empresa: "la-cuadra", sucursal: "central" }) });
-    expect(cartaPublica).toHaveBeenCalledWith({ slug: "la-cuadra" }, "central");
+    expect(cartaPublica).toHaveBeenCalledWith(EMPRESA, "central");
   });
 
   it("la sucursal no consulta nada si la empresa no resuelve", async () => {

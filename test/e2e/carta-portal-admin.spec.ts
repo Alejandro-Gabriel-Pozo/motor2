@@ -49,7 +49,7 @@ test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", as
     await expect(filaA.getByRole("status")).toHaveText(`Portal: "${nombreA}" guardada y publicada.`);
     await expect(filaA).toContainText(`/carta/${slug} · publicada`);
 
-    // Links a la carta nueva de motor2 (ADR-006, Fase 4): solo la sucursal publicada tiene el suyo (CARTA_EMPRESA_SLUG=e2e).
+    // Links a la carta nueva de motor2 (ADR-006, Fase 4): solo la sucursal publicada tiene el suyo (empresa `e2e` de la base).
     await expect(filaA.getByRole("link", { name: "Ver la carta de motor2 →" })).toHaveAttribute("href", `/carta-publica/e2e/${slug}`);
     await expect(filaB.getByRole("link", { name: "Ver la carta de motor2 →" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Ver el portal de motor2 →" })).toHaveAttribute("href", "/carta-publica/e2e");
