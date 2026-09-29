@@ -1,5 +1,6 @@
 import "server-only";
-import { prisma, type Db } from "@/lib/db";
+import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 
 /**
  * Lecturas del POS › Mapa de mesas para los Server Components (Task #41, Fase D8). Mismo contrato que el piloto

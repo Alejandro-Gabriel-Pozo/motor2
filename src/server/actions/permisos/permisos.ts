@@ -91,7 +91,7 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
     // desactivado, inocuo (un rol desactivado no otorga acceso). Reintentar este cuerpo es seguro: `efectivos` sale del input y del nombre del
     // rol, no del estado de `PermisoRol`, y lo de adentro son lecturas y upserts idempotentes. El limitador de mutaciones se evalúa en
     // `conPermiso`, por fuera: un guardado que reintenta cuenta como uno.
-    return conTransaccionSerializable(async (tx): Promise<ResultadoAccion> => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx): Promise<ResultadoAccion> => {
       const actuales = await tx.permisoRol.findMany({
         where: { OR: efectivos.map((e) => ({ rolId: e.rolId, accionClave: e.accionClave })) },
       });

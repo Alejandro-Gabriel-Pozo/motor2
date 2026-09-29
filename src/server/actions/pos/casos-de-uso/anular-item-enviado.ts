@@ -37,10 +37,10 @@ import { formatearCantidad } from "../cuenta-comun";
  * @sideEffects registrarCambioAuditado (campo cantidadVigente).
  */
 export async function anularItemEnviadoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoAnularItemEnviado
 ): Promise<ResultadoAnularItemEnviado> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAnularItemEnviado> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularItemEnviado> => {
     const item = await cargarItemParaAnular(tx, { cuentaItemId: comando.cuentaItemId, sucursalId: actor.sucursalId });
     if (!item) return fracaso("NO_ENCONTRADO", MENSAJE_ITEM_NO_ENCONTRADO);
     const mesa = item.mesaNumero;

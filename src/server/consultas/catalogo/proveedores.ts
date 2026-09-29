@@ -1,5 +1,6 @@
 import "server-only";
-import { prisma, type Db } from "@/lib/db";
+import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 
 /**
  * Lecturas de Catálogo › Proveedores para los Server Components (Task #41, Fase D2). Mismo contrato que

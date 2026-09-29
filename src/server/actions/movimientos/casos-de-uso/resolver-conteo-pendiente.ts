@@ -34,11 +34,11 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @sideEffects Escritura del Kardex SOLO si la diferencia contra el saldo de hoy es != 0 y la rama es "ajustar"; sin auditoría de permisos propia.
  */
 export async function resolverConteoPendienteCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   conteoId: string,
   comoResolver: ComoResolverConteo
 ): Promise<ResultadoResolverConteo> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoResolverConteo> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoResolverConteo> => {
     const conteo = await cargarConteoFisico(tx, conteoId);
     if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", "No se encontró ese conteo.");
     if (conteo.estado !== "PENDIENTE") return fracaso("CONTEO_NO_PENDIENTE", "Ese conteo no está pendiente.");

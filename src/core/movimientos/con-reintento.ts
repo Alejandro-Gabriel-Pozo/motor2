@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import type { Transaccion } from "@/lib/db-tipos";
 import { conReintento, type OpcionesEspera } from "./reintentar";
 
 /**
@@ -63,6 +63,7 @@ export function esConflictoDeEscritura(e: unknown): boolean {
  * recién ahí se decide subir `maxIntentos` — aparte, y con esos datos.
  */
 export async function conTransaccionSerializable<T>(
+  transaccion: Transaccion,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
   maxIntentos = 5,
   /** Solo para tests: la espera entre reintentos y su aleatoriedad (ver reintentar.ts). */
@@ -70,7 +71,7 @@ export async function conTransaccionSerializable<T>(
 ): Promise<T> {
   return conReintento(
     () =>
-      prisma.$transaction(fn, {
+      transaccion(fn, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         // Default de Prisma (maxWait 2s / timeout 5s) es corto para el caso
         // de latencia de red más alta de lo normal — esto da más margen sin

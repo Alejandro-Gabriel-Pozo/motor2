@@ -55,7 +55,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @sideEffects Ninguno además de la escritura del Kardex (un origen negativo + N destinos positivos) — sin auditoría de permisos propia.
  */
 export async function reclasificarStockCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: ComandoReclasificarStock
 ): Promise<ResultadoReclasificarStock> {
   // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
@@ -82,7 +82,7 @@ export async function reclasificarStockCasoDeUso(
     }
   }
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoReclasificarStock> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoReclasificarStock> => {
     // I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
     const payloadHash = comando.claveIdempotencia
       ? calcularPayloadHash("RECLASIFICACION", actor.sucursalId, { ...comando, claveIdempotencia: undefined })

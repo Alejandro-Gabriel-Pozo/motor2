@@ -35,12 +35,12 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno — solo la creación del traspaso (nunca tocó Kardex).
  */
 export async function crearSolicitudDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: ComandoCrearSolicitudTraspaso
 ): Promise<ResultadoCrearSolicitudTraspaso> {
   if (comando.origenSucursalId === actor.sucursalId) return fracaso("MISMA_SUCURSAL", "No podés pedirte una transferencia a vos mismo.");
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCrearSolicitudTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCrearSolicitudTraspaso> => {
     const origen = await cargarSucursalParaTraspaso(tx, comando.origenSucursalId);
     if (!origen || !origen.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", MENSAJE_SUCURSAL_NO_DISPONIBLE);
 

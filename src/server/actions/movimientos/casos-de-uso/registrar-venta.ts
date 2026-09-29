@@ -36,10 +36,10 @@ import { exito, fracaso } from "@/core/resultado-caso";
  * @sideEffects Ninguno además de lo que ya hace registrarVentaEnTx (Operacion + MovimientoStock por línea) — sin auditoría propia acá.
  */
 export async function registrarVentaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   datos: DatosVentaInput
 ): Promise<ResultadoRegistrarVenta> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoRegistrarVenta> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarVenta> => {
     const payloadHash = datos.claveIdempotencia ? calcularPayloadHash("VENTA", actor.sucursalId, { ...datos, claveIdempotencia: undefined }) : "";
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionIds: null, repetida: true });

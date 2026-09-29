@@ -133,7 +133,7 @@ export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readon
       }
     }
 
-    await prisma.$transaction(async (tx) => {
+    await ctx.transaccion(async (tx) => {
       await tx.promoCartaCupo.deleteMany({ where: { promoCartaId } });
       if (cuposValidados.length) await tx.promoCartaCupo.createMany({ data: cuposValidados.map((c) => ({ promoCartaId, ...c })) });
     });

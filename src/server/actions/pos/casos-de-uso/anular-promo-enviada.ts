@@ -36,10 +36,10 @@ import { formatearCantidad } from "../cuenta-comun";
  * @sideEffects registrarCambioAuditado (uno por cada componente anulado).
  */
 export async function anularPromoEnviadaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoAnularPromoEnviada
 ): Promise<ResultadoAnularPromoEnviada> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAnularPromoEnviada> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularPromoEnviada> => {
     const promo = await cargarPromoParaAnular(tx, { promoCuentaId: comando.promoCuentaId, sucursalId: actor.sucursalId });
     if (!promo) return fracaso("NO_ENCONTRADA", MENSAJE_PROMO_NO_ENCONTRADA);
     const mesa = promo.mesaNumero;

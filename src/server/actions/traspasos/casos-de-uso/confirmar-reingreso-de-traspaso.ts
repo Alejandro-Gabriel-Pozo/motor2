@@ -37,12 +37,12 @@ import { escribirReingresoDeTraspaso } from "@/server/persistencia/traspasos/esc
  * @sideEffects Ninguno además de la escritura del reingreso de Kardex y el cierre del traspaso.
  */
 export async function confirmarReingresoDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoConfirmarReingresoTraspaso
 ): Promise<ResultadoConfirmarReingresoTraspaso> {
   const { traspasoId, claveIdempotencia } = comando;
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoConfirmarReingresoTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConfirmarReingresoTraspaso> => {
     const payloadHash = claveIdempotencia ? calcularPayloadHash("REINGRESO_TRASPASO", actor.sucursalId, { id: traspasoId }) : "";
     const chequeo = await chequearIdempotencia(tx, claveIdempotencia ?? undefined, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { traspasoId, operacionId: null, repetida: true });

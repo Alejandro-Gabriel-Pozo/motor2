@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-venta";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
 import { detalleReversionDeVenta } from "../../src/core/movimientos/anulaciones";
@@ -19,7 +19,7 @@ describe("anularVentaCasoDeUso", () => {
   let adminId: string;
   let harinaId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDeTest });
 
   type Linea = { proceso?: "VENTA" | "CONSUMO" | "LIQUIDACION_CONSIGNACION"; cantidad: number; cantidadExacta?: number | null; precioTotal: number; precioPorUnidadStock: number; detalle: string };
 
@@ -167,7 +167,7 @@ describe("anularVentaCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
+    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDeTest }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });

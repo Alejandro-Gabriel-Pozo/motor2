@@ -36,10 +36,10 @@ import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ej
  * @sideEffects registrarCambioAuditado (campo ejemplarBoleta).
  */
 export async function emitirBoletaCorregidaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoEmitirBoletaCorregida
 ): Promise<ResultadoEmitirBoletaCorregida> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoEmitirBoletaCorregida> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoEmitirBoletaCorregida> => {
     const cuenta = await cargarCuentaParaCorregirBoleta(tx, { cuentaId: comando.cuentaId, sucursalId: actor.sucursalId });
     if (!cuenta) return fracaso("NO_ENCONTRADA", MENSAJE_CUENTA_NO_ENCONTRADA);
     const mesa = cuenta.mesaNumero;

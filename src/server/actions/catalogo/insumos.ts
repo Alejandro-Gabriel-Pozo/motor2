@@ -145,7 +145,7 @@ export async function renombrarOFusionarInsumo(
   nombreNuevo: string,
   confirmarFusion = false
 ): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async () => {
+  return conPermiso("grupos_familia", async (ctx) => {
     const nuevo = texto(nombreNuevo);
     if (!nuevo) return error("El nombre nuevo no puede estar vacío.");
     const invalido = validarTextoCatalogo(nuevo, "El nombre del insumo");
@@ -166,7 +166,7 @@ export async function renombrarOFusionarInsumo(
         return error(`Ya existe el insumo "${existente.nombre}" — hace falta confirmar la fusión antes de aplicarla.`);
       }
 
-      await prisma.$transaction(async (tx) => {
+      await ctx.transaccion(async (tx) => {
         await tx.producto.updateMany({ where: { insumoId }, data: { insumoId: existente.id } });
         await reapuntarSustitutosDeInsumoFusionado(tx, insumoId, existente.id);
         // DESPUÉS de reapuntar los sustitutos (FK RESTRICT: docs/plan-sustitucion-insumos-receta-2026-09-26.md, D9) — sin esto, la

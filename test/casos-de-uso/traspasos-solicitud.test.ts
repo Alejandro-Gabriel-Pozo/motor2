@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { aprobarYEnviarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso";
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso";
@@ -25,8 +25,8 @@ describe("casos de uso de la solicitud de traspaso", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central" });
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B" });
+  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ...baseDeTest });
+  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ...baseDeTest });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();

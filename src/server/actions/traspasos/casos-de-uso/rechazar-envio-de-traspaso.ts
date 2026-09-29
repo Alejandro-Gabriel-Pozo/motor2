@@ -27,10 +27,10 @@ import { escribirRechazoDeEnvio } from "@/server/persistencia/traspasos/escribir
  * @sideEffects Ninguno — solo el cambio de estado del traspaso (motivo incluido).
  */
 export async function rechazarEnvioDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoRechazarEnvioTraspaso
 ): Promise<ResultadoRechazarEnvioTraspaso> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoRechazarEnvioTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRechazarEnvioTraspaso> => {
     const traspaso = await cargarTraspaso(tx, comando.traspasoId);
     if (!traspaso) return fracaso("NO_ENCONTRADO", MENSAJE_TRASPASO_NO_ENCONTRADO);
     const transicion = guardTransicionTraspaso(traspaso, "rechazar_envio", actor.sucursalId);

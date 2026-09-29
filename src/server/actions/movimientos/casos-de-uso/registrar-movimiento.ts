@@ -130,7 +130,7 @@ async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, 
  * @sideEffects registrarProveedoresDeLaCompra (Compra, best-effort, FUERA de la transacción, solo si no es repetida) — un upsertProveedorPorProducto por línea con unidad de compra conocida.
  */
 export async function registrarMovimientoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   datos: DatosMovimientoInput
 ): Promise<ResultadoRegistrarMovimiento> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso ya validó el
@@ -176,7 +176,7 @@ export async function registrarMovimientoCasoDeUso(
     if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
   }
 
-  const { resultado, lineasParaProveedor } = await conTransaccionSerializable(async (tx): Promise<ResultadoConLineasParaProveedor> => {
+  const { resultado, lineasParaProveedor } = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConLineasParaProveedor> => {
     // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
     const payloadHash = datos.claveIdempotencia
       ? calcularPayloadHash(datos.proceso, actor.sucursalId, { ...datos, claveIdempotencia: undefined })

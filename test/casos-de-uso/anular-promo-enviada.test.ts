@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { anularPromoEnviadaCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/anular-promo-enviada";
 
@@ -19,7 +19,7 @@ describe("anularPromoEnviadaCasoDeUso", () => {
   let promoId: string;
   let mila: { id: string };
   let flan: { id: string };
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ...baseDeTest });
   const comando = (promoCuentaId: string, motivo: unknown) => ({ promoCuentaId, motivo });
 
   /** Una promo «Menú del día» con dos componentes (Milanesa ×1 y Flan ×2), con los envíos dados (`null` = borrador). */
@@ -126,7 +126,7 @@ describe("anularPromoEnviadaCasoDeUso", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const esperado = { ok: false, codigo: "NO_ENCONTRADA", mensaje: "No se encontró esa promo en esta sucursal." };
     expect(await anularPromoEnviadaCasoDeUso(actor(), comando("no-existe", "x"))).toEqual(esperado);
-    expect(await anularPromoEnviadaCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id }, comando(promoId, "x"))).toEqual(esperado);
+    expect(await anularPromoEnviadaCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ...baseDeTest }, comando(promoId, "x"))).toEqual(esperado);
     await nadaEscrito();
   });
 

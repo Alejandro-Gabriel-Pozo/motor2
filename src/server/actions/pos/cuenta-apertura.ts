@@ -34,7 +34,7 @@ export async function abrirCuenta(mesaId: string, comensales: number): Promise<R
     const mesa = typeof mesaId === "string" ? await prisma.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
     if (!mesa) return error("No se encontró esa mesa en esta sucursal.");
     try {
-      return await conTransaccionSerializable(async (tx) => {
+      return await conTransaccionSerializable(ctx.transaccion, async (tx) => {
         const yaAbierta = await tx.cuenta.findFirst({ where: { mesaId: mesa.id, cerradaEn: null }, select: { id: true } });
         if (yaAbierta) return ok(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`);
 
@@ -65,7 +65,7 @@ export async function abrirCuenta(mesaId: string, comensales: number): Promise<R
  */
 export async function corregirComensales(cuentaId: string, comensales: number): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
@@ -93,7 +93,7 @@ export async function corregirComensales(cuentaId: string, comensales: number): 
  */
 export async function asignarClienteACuenta(cuentaId: string, clienteId: string | null): Promise<ResultadoAccion> {
   return conPermiso("pos_asignar_cliente", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
@@ -119,7 +119,7 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
  */
 export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
       if ((await tx.cuentaItem.count({ where: { cuentaId: abierta.cuenta.id } })) > 0) {

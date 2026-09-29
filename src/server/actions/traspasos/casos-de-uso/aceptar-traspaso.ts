@@ -41,7 +41,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno además de la escritura de la entrada de Kardex y el cambio de estado del traspaso — sin auditoría de permisos propia.
  */
 export async function aceptarTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: ComandoAceptarTraspaso
 ): Promise<ResultadoAceptarTraspaso> {
   const { traspasoId, seccionDestinoId, claveIdempotencia } = comando;
@@ -49,7 +49,7 @@ export async function aceptarTraspasoCasoDeUso(
   const seccionDestino = await obtenerSeccionPropia(seccionDestinoId, actor.sucursalId);
   if (!seccionDestino) return fracaso("SECCION_NO_PROPIA", MENSAJE_SECCION_DESTINO_NO_PROPIA);
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAceptarTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAceptarTraspaso> => {
     const payloadHash = claveIdempotencia ? calcularPayloadHash("ACEPTAR_TRASPASO", actor.sucursalId, { id: traspasoId, seccionDestinoId }) : "";
     const chequeo = await chequearIdempotencia(tx, claveIdempotencia ?? undefined, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { traspasoId, operacionId: null, repetida: true });

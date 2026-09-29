@@ -36,13 +36,13 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno además de la escritura de la salida de Kardex y el cambio de estado del traspaso.
  */
 export async function aprobarYEnviarTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: ComandoAprobarYEnviarTraspaso
 ): Promise<ResultadoAprobarYEnviarTraspaso> {
   const seccionOrigen = await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId);
   if (!seccionOrigen) return fracaso("SECCION_NO_PROPIA", MENSAJE_SECCION_ORIGEN_NO_PROPIA);
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAprobarYEnviarTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAprobarYEnviarTraspaso> => {
     const traspaso = await cargarTraspaso(tx, comando.traspasoId);
     if (!traspaso) return fracaso("NO_ENCONTRADO", MENSAJE_TRASPASO_NO_ENCONTRADO);
     const transicion = guardTransicionTraspaso(traspaso, "aprobar", actor.sucursalId);

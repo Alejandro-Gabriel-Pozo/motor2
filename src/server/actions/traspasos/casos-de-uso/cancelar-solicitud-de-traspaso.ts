@@ -27,10 +27,10 @@ import { escribirCancelacionDeSolicitud } from "@/server/persistencia/traspasos/
  * @sideEffects Ninguno — solo el cambio de estado del traspaso (nunca tocó Kardex).
  */
 export async function cancelarSolicitudDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoCancelarSolicitudTraspaso
 ): Promise<ResultadoCancelarSolicitudTraspaso> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCancelarSolicitudTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCancelarSolicitudTraspaso> => {
     const traspaso = await cargarTraspaso(tx, comando.traspasoId);
     if (!traspaso) return fracaso("NO_ENCONTRADO", MENSAJE_TRASPASO_NO_ENCONTRADO);
     const transicion = guardTransicionTraspaso(traspaso, "cancelar_solicitud", actor.sucursalId);

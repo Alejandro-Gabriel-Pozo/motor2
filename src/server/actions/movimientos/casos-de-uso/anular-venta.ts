@@ -38,12 +38,12 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo).
  */
 export async function anularVentaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoAnularVenta
 ): Promise<ResultadoAnularVenta> {
   const { operacionId } = comando;
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAnularVenta> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularVenta> => {
     const venta = await cargarVentaParaAnular(tx, { operacionId, sucursalId: actor.sucursalId });
     if (!venta) return fracaso("NO_ENCONTRADA", MENSAJE_OPERACION_NO_ENCONTRADA);
 

@@ -25,7 +25,7 @@ export async function crearSucursalConAdmin(input: {
   nombre: string;
   emailPrimerAdmin: string;
 }): Promise<ResultadoAccion> {
-  return conPermiso("alta_sucursal", async () => {
+  return conPermiso("alta_sucursal", async (ctx) => {
     const nombre = texto(input.nombre);
     if (!nombre) return error("El nombre de la sucursal no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
@@ -59,7 +59,7 @@ export async function crearSucursalConAdmin(input: {
     }
     const universales = productosUniversales(disponibilidadPorProducto, sucursalIdsActivas);
 
-    await prisma.$transaction(async (tx) => {
+    await ctx.transaccion(async (tx) => {
       const sucursal = await tx.sucursal.create({ data: { nombre } });
       const usuario = await tx.user.upsert({
         where: { email },

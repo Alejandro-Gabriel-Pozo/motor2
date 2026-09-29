@@ -61,7 +61,7 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  * @sideEffects Escritura del Kardex (Operacion + MovimientoStock) SOLO si la diferencia es != 0 y la acción ajusta; sin auditoría de permisos propia.
  */
 export async function registrarConteoFisicoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: ComandoConteoFisico
 ): Promise<ResultadoConteoFisico> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso no valida que la
@@ -71,7 +71,7 @@ export async function registrarConteoFisicoCasoDeUso(
     return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
   }
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoConteoFisico> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConteoFisico> => {
     const producto = await cargarProductoConUnidadDeStock(tx, comando.productoId);
     if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "El producto no existe.");
     if (!(await productoDisponibleEn(actor.sucursalId, producto.id, tx))) {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, sembrarSeccion } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, prisma, sembrarSeccion } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { cerrarCuentaCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/cerrar-cuenta";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
@@ -15,7 +15,7 @@ import { aResultadoAccion } from "../../src/core/resultado-caso";
  */
 describe("cerrarCuentaCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com" });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", ...baseDeTest });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();

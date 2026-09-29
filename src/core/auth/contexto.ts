@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { baseDelContexto, type BaseDelContexto } from "./base";
 import { getUsuarioActual } from "./session";
 
 export const COOKIE_SUCURSAL_ACTIVA = "sucursalActivaId";
@@ -12,7 +13,7 @@ export interface MembresiaUsuario {
   rolNombre: string;
 }
 
-export interface ContextoUsuario {
+export interface ContextoUsuario extends BaseDelContexto {
   usuarioId: string;
   email: string;
   sucursalId: string;
@@ -62,5 +63,6 @@ export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | 
     sucursalNombre: activa.sucursal.nombre,
     rolNombre: activa.rol.nombre,
     membresias: membresias.map((m) => ({ sucursalId: m.sucursalId, sucursalNombre: m.sucursal.nombre, rolNombre: m.rol.nombre })),
+    ...baseDelContexto(),
   };
 });

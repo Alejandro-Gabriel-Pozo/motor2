@@ -45,7 +45,7 @@ import {
  * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
  */
 export async function guardarVersionDeRecetaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "transaccion">,
   comando: ComandoGuardarVersionDeReceta
 ): Promise<ResultadoGuardarVersionDeReceta> {
   const { productoId, items, pasos, cabecera } = comando;
@@ -83,7 +83,7 @@ export async function guardarVersionDeRecetaCasoDeUso(
       // ingrediente haya cambiado de unidad o haya salido de la receta. Fuera de la transacción, igual que antes.
       const ultima = await cargarUltimaVersionDeReceta(prisma, productoId);
       version = (ultima?.version ?? 0) + 1;
-      await conTransaccionSerializable(async (tx) => {
+      await conTransaccionSerializable(actor.transaccion, async (tx) => {
         const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera });
         recetaVersionId = creada.id;
 

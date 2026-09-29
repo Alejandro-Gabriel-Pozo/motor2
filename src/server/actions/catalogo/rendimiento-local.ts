@@ -66,7 +66,7 @@ export async function fijarRendimientoLocal(
       return error("Cambiaste de sucursal desde que abriste el reporte; recargalo.");
     }
 
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const ing = await tx.recetaIngrediente.findUnique({ where: { id: recetaIngredienteId }, include: INCLUDE_LINEA });
       if (!ing) return error("No se encontró esa línea de receta.");
 
@@ -119,7 +119,7 @@ export async function fijarRendimientoLocal(
 /** D4: "Volver al valor central" — pone los dos campos en `null` (NO borra la fila, mismo criterio append-only del resto del proyecto) y lo audita. */
 export async function volverAlRendimientoCentral(recetaIngredienteId: string): Promise<ResultadoAccion> {
   return conPermiso("calibrar_rendimiento_local", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const ing = await tx.recetaIngrediente.findUnique({ where: { id: recetaIngredienteId }, include: INCLUDE_LINEA });
       if (!ing) return error("No se encontró esa línea de receta.");
 

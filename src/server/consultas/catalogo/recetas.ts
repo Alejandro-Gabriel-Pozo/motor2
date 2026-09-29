@@ -1,5 +1,6 @@
 import "server-only";
-import { prisma, type Db } from "@/lib/db";
+import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 
 /**

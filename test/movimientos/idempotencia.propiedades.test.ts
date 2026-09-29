@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { beforeEach, describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { calcularPayloadHash, chequearIdempotencia, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { esClaveIdempotenciaValida } from "../../src/core/datos/clave-idempotencia";
 import { conTransaccionSerializable } from "../../src/core/movimientos/con-reintento";
@@ -240,7 +240,7 @@ describe("F3 — propiedades de chequearIdempotencia (Postgres real)", () => {
    * "duplicado", devolver el mensaje persistido; si es "conflicto", no hacer nada.
    */
   async function intentar(clave: string, payloadHash: string, mensaje: string) {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(baseDeTest.transaccion, async (tx) => {
       const chequeo = await chequearIdempotencia(tx, clave, payloadHash);
       if (chequeo.estado === "nueva") {
         await tx.operacion.create({
@@ -339,7 +339,7 @@ describe("F3 — propiedades de chequearIdempotencia (Postgres real)", () => {
           data: { sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId, claveIdempotencia: clave, payloadHash: sinHash ? null : hash, resultadoMensaje: null },
         });
 
-        const r = await conTransaccionSerializable((tx) => chequearIdempotencia(tx, clave, hash));
+        const r = await conTransaccionSerializable(baseDeTest.transaccion, (tx) => chequearIdempotencia(tx, clave, hash));
         expect(r).toEqual({ estado: "conflicto" });
         expect(await prisma.operacion.count({ where: { claveIdempotencia: clave } })).toBe(1);
       }),

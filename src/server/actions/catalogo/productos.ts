@@ -375,7 +375,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     const nombreActual = texto(datos.nombre);
     // El `update` y sus filas de auditoría van en UNA transacción (Task #41, M10): antes iban sueltos y, si la auditoría fallaba
     // (o el proceso se caía en el medio), el precio quedaba cambiado sin rastro.
-    await prisma.$transaction(async (tx) => {
+    await ctx.transaccion(async (tx) => {
       await tx.producto.update({ where: { id: productoId }, data: nuevos });
 
       // Auditoría administrativa (A3, Pivote 6) — solo los precios, que son
@@ -428,7 +428,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
 
     // Todo el grupo en UNA transacción, con su auditoría (Task #41, M10): o quedan todos los precios con su rastro, o ninguno.
-    const productos = await prisma.$transaction(async (tx) => {
+    const productos = await ctx.transaccion(async (tx) => {
       const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true }, orderBy: { nombre: "asc" } });
       for (const p of productos) {
         await tx.producto.update({ where: { id: p.id }, data: { precioVenta: precio } });

@@ -67,7 +67,7 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
 
-    await prisma.$transaction((tx) => guardarPrecioLocal(tx, ctx, producto, precio, habilitado));
+    await ctx.transaccion((tx) => guardarPrecioLocal(tx, ctx, producto, precio, habilitado));
 
     const mensaje = `Precio local de "${producto.nombre}" ${habilitado ? `fijado en ${precio}` : "cargado (deshabilitado, se usa el precio global)"}.`;
     if (habilitado) {
@@ -99,7 +99,7 @@ export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, produ
 
     const productos = await prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
     // Todo el grupo en UNA transacción (Task #41, M10): o quedan todos los precios locales con su auditoría, o ninguno.
-    await prisma.$transaction(async (tx) => {
+    await ctx.transaccion(async (tx) => {
       for (const p of productos) await guardarPrecioLocal(tx, ctx, p, precio, habilitado);
     });
     return ok(`Precio local de ${productos.map((p) => `"${p.nombre}"`).join(", ")} fijado en ${precio} en "${ctx.sucursalNombre}" («${grupo.nombreItem}»).`);

@@ -1,10 +1,14 @@
 import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../src/lib/db";
+import { baseDelContexto } from "../../src/core/auth/base";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
 export { prisma };
+
+/** La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. */
+export const baseDeTest = baseDelContexto();
 
 /** Borra todo (orden respetando FKs) — se llama en beforeEach de cada test file. */
 export async function limpiarBaseDeTest() {

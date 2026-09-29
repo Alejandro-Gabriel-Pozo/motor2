@@ -41,10 +41,10 @@ import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
  * @sideEffects registrarCambioAuditado (uno por cada insumo que quedó en negativo, B6bis) — best-effort, no bloquea el cierre.
  */
 export async function cerrarCuentaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "email">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "email" | "transaccion">,
   comando: ComandoCerrarCuenta
 ): Promise<ResultadoCerrarCuenta> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCerrarCuenta> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCerrarCuenta> => {
     const cuenta = await cargarCuentaParaCerrar(tx, { cuentaId: comando.cuentaId, sucursalId: actor.sucursalId });
     if (!cuenta) return fracaso("NO_ENCONTRADA", MENSAJE_CUENTA_NO_ENCONTRADA);
     const mesa = cuenta.mesaNumero;

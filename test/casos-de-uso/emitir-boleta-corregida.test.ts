@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { emitirBoletaCorregidaCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/emitir-boleta-corregida";
 
@@ -15,7 +15,7 @@ import { emitirBoletaCorregidaCasoDeUso } from "../../src/server/actions/pos/cas
  */
 describe("emitirBoletaCorregidaCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ...baseDeTest });
   const haceUnaHora = () => new Date(Date.now() - 60 * 60 * 1000);
   const haceUnMinuto = () => new Date(Date.now() - 60 * 1000);
 
@@ -90,7 +90,7 @@ describe("emitirBoletaCorregidaCasoDeUso", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
 
     expect(await emitirBoletaCorregidaCasoDeUso(actor(), { cuentaId: "no-existe", motivo: "x" })).toEqual({ ok: false, codigo: "NO_ENCONTRADA", mensaje: "No se encontró esa cuenta en esta sucursal." });
-    expect(await emitirBoletaCorregidaCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id }, { cuentaId: cuenta.id, motivo: "x" })).toEqual({
+    expect(await emitirBoletaCorregidaCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ...baseDeTest }, { cuentaId: cuenta.id, motivo: "x" })).toEqual({
       ok: false,
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa cuenta en esta sucursal.",

@@ -39,7 +39,7 @@ import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsigna
  * @sideEffects registrarCambioAuditado (campo importe).
  */
 export async function registrarPagoConsignanteCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoRegistrarPagoConsignante
 ): Promise<ResultadoRegistrarPagoConsignante> {
   const payloadHash = comando.claveIdempotencia
@@ -47,7 +47,7 @@ export async function registrarPagoConsignanteCasoDeUso(
     : "";
 
   try {
-    return await prisma.$transaction(async (tx): Promise<ResultadoRegistrarPagoConsignante> => {
+    return await actor.transaccion(async (tx): Promise<ResultadoRegistrarPagoConsignante> => {
       if (comando.claveIdempotencia) {
         const existente = await cargarPagoConsignantePorClave(tx, comando.claveIdempotencia);
         if (existente) {

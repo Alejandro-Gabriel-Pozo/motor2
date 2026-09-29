@@ -27,10 +27,10 @@ import { escribirRechazoDeSolicitud } from "@/server/persistencia/traspasos/escr
  * @sideEffects Ninguno — solo el cambio de estado del traspaso.
  */
 export async function rechazarSolicitudDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoRechazarSolicitudTraspaso
 ): Promise<ResultadoRechazarSolicitudTraspaso> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoRechazarSolicitudTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRechazarSolicitudTraspaso> => {
     const traspaso = await cargarTraspaso(tx, comando.traspasoId);
     if (!traspaso) return fracaso("NO_ENCONTRADO", MENSAJE_TRASPASO_NO_ENCONTRADO);
     const transicion = guardTransicionTraspaso(traspaso, "rechazar_solicitud", actor.sucursalId);
