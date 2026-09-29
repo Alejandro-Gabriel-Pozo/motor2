@@ -8,7 +8,7 @@ import { prisma } from "../../src/lib/db";
  * con más decimales de los que admite la unidad de stock (kg, 2 decimales) muestra el error y no crea nada.
  */
 async function sembrarProductoTransferible(sucursalId: string, otraSucursalId: string, marca: string) {
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E-TRD-${marca}`, nombre: `E2E Traspaso Decimal ${marca}`, tipo: "MP", unidadStockId: kg.id },
   });

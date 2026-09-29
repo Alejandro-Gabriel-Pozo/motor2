@@ -59,8 +59,8 @@ export async function agregarOActualizarUsuario(input: {
 
     // Salvaguarda: si esto le cambia el rol a la única persona admin activa
     // de todo el sistema, no dejarlo aplicar (Core.js:1159-1167 — "nunca
-    // queda el sistema sin ningún admin activo", chequeo GLOBAL porque acá
-    // es un solo negocio, no multi-tenant).
+    // queda el sistema sin ningún admin activo", chequeo a nivel EMPRESA, no por
+    // sucursal; hoy hay una sola empresa activa, ADR-007).
     if (existente?.activo && existente.rol.nombre === "admin" && rol.nombre !== "admin") {
       const quedan = await contarAdminsActivosExcluyendo(ctx.db, existente.id);
       if (quedan === 0) {

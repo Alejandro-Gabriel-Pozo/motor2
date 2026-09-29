@@ -9,7 +9,7 @@ import { prisma } from "../../src/lib/db";
  */
 test("rechaza un destino con más decimales de los que admite la unidad y no toca el stock", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = `${Date.now()}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const destino = await prisma.seccion.create({ data: { sucursalId, nombre: `E2E Reclasif Destino ${marca}` } });
   const producto = await prisma.producto.create({

@@ -54,7 +54,7 @@ export interface CartaPublicaResuelta {
  * `empresa`: igual que en `resolverPortalCarta`, contrato hasta que la base tenga `empresaId`.
  */
 export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
-  const publica = await db.sucursalPublica.findUnique({
+  const publica = await db.sucursalPublica.findFirst({
     where: { slug },
     select: {
       publicada: true,

@@ -40,7 +40,7 @@ test.describe("carta de una sucursal", () => {
   test("muestra la sección, un PV con precio formateado y la promo; slug inexistente da 404", async ({ page, sucursalId }) => {
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-carta-${marca}`;
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const producto = await prisma.producto.create({
       data: { codigo: `E2E_CARTAPUB_${marca}`, nombre: `E2E Plato ${marca}`, tipo: "PV", precioVenta: 12345, unidadStockId: unidad.id },
     });

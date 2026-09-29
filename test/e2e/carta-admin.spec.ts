@@ -12,7 +12,7 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreSeccion = `E2E Carta Sección ${marca}`;
   const nombrePromo = `E2E Carta Promo ${marca}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Carta Cat ${marca}` } });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E_CARTA_ADMIN_${marca}`, nombre: `E2E Carta Plato ${marca}`, tipo: "PV", categoriaId: categoria.id, precioVenta: 12345, unidadStockId: unidad.id },

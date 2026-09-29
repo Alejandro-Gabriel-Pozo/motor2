@@ -7,7 +7,7 @@ import { prisma } from "../../src/lib/db";
  */
 test("el listado muestra la factura con sus líneas, filtra por proveedor y se llega desde Compras por proveedor", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E-CR-${marca}`, nombre: `E2E Harina Compras ${marca}`, tipo: "MP", unidadStockId: unidad.id, unidadCompraId: unidad.id },

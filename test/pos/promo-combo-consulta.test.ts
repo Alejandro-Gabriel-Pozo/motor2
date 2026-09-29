@@ -75,7 +75,7 @@ describe("cargarPromoCartaParaAgregar", () => {
   });
 
   it("un producto oculto, apagado o sin sección de carta NO es elegible, igual que en el selector", async () => {
-    await prisma.contenidoCartaProducto.update({ where: { productoId: empanadaId }, data: { visibleEnCarta: false } });
+    await prisma.contenidoCartaProducto.updateMany({ where: { productoId: empanadaId }, data: { visibleEnCarta: false } });
     const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma);
     expect(def?.cupos[0].elegibles).toEqual(new Set());
   });

@@ -90,7 +90,7 @@ export async function calcularStockPorFamilia(sucursalId: string, db: Db): Promi
   const resultado: FilaStockPorFamilia[] = [];
   for (const g of grupos.values()) {
     const grupoRow = g.grupoNombre
-      ? await db.grupo.findUnique({ where: { nombre: g.grupoNombre }, select: { id: true } })
+      ? await db.grupo.findFirst({ where: { nombre: g.grupoNombre }, select: { id: true } })
       : null;
     const grupoCadena = grupoRow ? await textoCadenaDeGrupos(grupoRow.id, db) : "";
     resultado.push({

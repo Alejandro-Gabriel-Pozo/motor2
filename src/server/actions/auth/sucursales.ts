@@ -33,10 +33,10 @@ export async function crearSucursalConAdmin(input: {
     const email = texto(input.emailPrimerAdmin).toLowerCase();
     if (!email) return error("El email del primer admin de la sucursal es obligatorio.");
 
-    const existente = await ctx.db.sucursal.findUnique({ where: { nombre } });
+    const existente = await ctx.db.sucursal.findFirst({ where: { nombre } });
     if (existente) return error(`Ya existe una sucursal "${nombre}".`);
 
-    const rolAdmin = await ctx.db.rol.findUnique({ where: { nombre: "admin" } });
+    const rolAdmin = await ctx.db.rol.findFirst({ where: { nombre: "admin" } });
     if (!rolAdmin || !rolAdmin.activo) {
       return error('No se encontró el rol "admin" (¿corriste el seed?) — no se puede asignar el primer admin.');
     }

@@ -95,7 +95,7 @@ describe("seed de carta pública — demo pizzería La Cuadra", () => {
       // --- 0) Precondiciones: "La Cuadra" y sus PV ya sembrados por el seed de catálogo. ---
       const usuario = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL_ADMIN } });
       await mock({ id: usuario.id, email: usuario.email, nombre: usuario.name });
-      const sucursal = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+      const sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
       if (!sucursal) {
         throw new Error(`No existe la sucursal "${NOMBRE_SUCURSAL}": correr primero seed-demo-pizzeria.ts o seed-demo-pizzeria-6-meses.ts.`);
       }
@@ -153,9 +153,9 @@ describe("seed de carta pública — demo pizzería La Cuadra", () => {
       anotarSiFalla("cambiarAplicacionTema", await cambiarAplicacionTema(sucursal.id, true));
 
       // --- 4) Alta y publicación en el portal (idempotente: se salta el alta si ya está). ---
-      const yaEnPortal = await prisma.sucursalPublica.findUnique({ where: { sucursalId: sucursal.id } });
+      const yaEnPortal = await prisma.sucursalPublica.findFirst({ where: { sucursalId: sucursal.id } });
       if (!yaEnPortal) anotarSiFalla("agregarSucursalAlPortal", await agregarSucursalAlPortal(sucursal.id));
-      const enPortal = await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: sucursal.id } });
+      const enPortal = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: sucursal.id } });
       anotarSiFalla(
         "guardarSucursalPublica",
         await guardarSucursalPublica(sucursal.id, {
@@ -170,7 +170,7 @@ describe("seed de carta pública — demo pizzería La Cuadra", () => {
       if (fallos.length) console.error(`\nFALLOS (${fallos.length}):\n` + fallos.join("\n"));
       expect(fallos.length, `${fallos.length} fallos — ver arriba`).toBe(0);
 
-      const final = await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: sucursal.id } });
+      const final = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: sucursal.id } });
       console.log(`\nListo — carta de "${NOMBRE_SUCURSAL}" viva en /carta/${final.slug}.`);
     },
     300_000

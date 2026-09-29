@@ -116,7 +116,7 @@ describe("Server Actions de la carta", () => {
       expect((await actualizarVisibleEnCarta(pvId, false)).ok).toBe(true);
       expect((await resolverMenuCarta(sucursalId, prisma))!.secciones).toEqual([]);
       // Ocultar no borra lo cargado.
-      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).toMatchObject({ descripcion: "400 g", especial: true, seccionCartaId });
+      expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: pvId } })).toMatchObject({ descripcion: "400 g", especial: true, seccionCartaId });
       // Y volver a mostrarlo con el atajo funciona: ya tiene sección.
       expect((await actualizarVisibleEnCarta(pvId, true)).ok).toBe(true);
       expect((await resolverMenuCarta(sucursalId, prisma))!.secciones[0].items.map((i) => i.productoId)).toEqual([pvId]);
@@ -131,10 +131,10 @@ describe("Server Actions de la carta", () => {
 
       // Oculto, sin sección: se guarda (por si se vuelve a mostrar después).
       expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: false, descripcion: "Para después" })).ok).toBe(true);
-      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).toMatchObject({ visibleEnCarta: false, seccionCartaId: null, descripcion: "Para después" });
+      expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: pvId } })).toMatchObject({ visibleEnCarta: false, seccionCartaId: null, descripcion: "Para después" });
       // Mostrarlo con el atajo, sin sección: se rechaza y sigue oculto.
       expect(await actualizarVisibleEnCarta(pvId, true)).toMatchObject({ ok: false, mensaje: falta });
-      expect((await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).visibleEnCarta).toBe(false);
+      expect((await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: pvId } })).visibleEnCarta).toBe(false);
       // Sin fila todavía, tampoco se puede mostrar con el atajo.
       await prisma.contenidoCartaProducto.deleteMany();
       expect(await actualizarVisibleEnCarta(pvId, true)).toMatchObject({ ok: false, mensaje: falta });

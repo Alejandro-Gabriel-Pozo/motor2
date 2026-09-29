@@ -11,7 +11,7 @@ import { prisma } from "../../src/lib/db";
 async function sembrarPizzaFraccionada(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   // 0 decimales, a propósito: el bug corregido es EXACTAMENTE "0,5 en una unidad de 0 decimales se redondea en silencio".
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const pizza = await prisma.producto.create({
     data: { codigo: `E2E-VF-${marca}`, nombre: `E2E Pizza fraccionada ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000, pasoVenta: 0.5 },
   });

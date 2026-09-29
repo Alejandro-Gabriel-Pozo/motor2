@@ -13,7 +13,7 @@ import { interceptarImpresion } from "./fixtures/impresion";
 
 async function sembrar(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const [unidad, kg] = await Promise.all([prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } }), prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } })]);
+  const [unidad, kg] = await Promise.all([prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } }), prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } })]);
   const crear = async (data: Parameters<typeof prisma.producto.create>[0]["data"]) => {
     const p = await prisma.producto.create({ data });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });

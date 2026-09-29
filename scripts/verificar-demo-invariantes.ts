@@ -34,7 +34,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   let sucursalId: string;
 
   beforeAll(async () => {
-    const sucursal = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+    const sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
     if (!sucursal) throw new Error(`No existe la sucursal "${NOMBRE_SUCURSAL}" en esta base — ¿corriste el seed de 6 meses primero?`);
     sucursalId = sucursal.id;
   });
@@ -111,7 +111,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   });
 
   it("8) PV030 ('se produce'): tiene saldo real positivo en stock consolidado — el saldo de un PV que se produce SÍ significa algo (a diferencia del resto de la carta)", async () => {
-    const pv030 = await prisma.producto.findUniqueOrThrow({ where: { codigo: "PV030" } });
+    const pv030 = await prisma.producto.findFirstOrThrow({ where: { codigo: "PV030" } });
     expect(tieneStockReal(pv030.tipo, pv030.seProduce), "PV030 tiene que estar marcado 'se produce' para que esta conciliación tenga sentido").toBe(true);
     const consolidado = await calcularStockConsolidado(sucursalId, prisma);
     const filasPv030 = consolidado.filter((f) => f.productoId === pv030.id);

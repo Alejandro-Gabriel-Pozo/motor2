@@ -18,6 +18,9 @@ export const prismaAdmin = new PrismaClient({ adapter: new PrismaPg({ connection
 /** La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. */
 export const baseDeTest = baseDelContexto();
 
+/** Id de la empresa por defecto que crea la migración multiempresa_estructura (ADR-007, A2) y que `limpiarBaseDeTest` conserva. */
+export const EMPRESA_POR_DEFECTO_ID = "empresa_principal";
+
 /** Borra todo (orden respetando FKs) — se llama en beforeEach de cada test file. */
 export async function limpiarBaseDeTest() {
   // Carta antes que nada: sus tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
@@ -89,6 +92,7 @@ export async function limpiarBaseDeTest() {
   await prisma.registroAuditoria.deleteMany();
   await prisma.indicePrecio.deleteMany();
   await prisma.cotizacionDolar.deleteMany();
+  await prisma.usuarioEmpresa.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
   await prisma.user.deleteMany();
@@ -107,6 +111,15 @@ export async function limpiarBaseDeTest() {
   await prisma.categoriaProducto.deleteMany();
   await prisma.unidad.deleteMany();
   await prisma.proveedor.deleteMany();
+
+  // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test
+  // tiene que terminar con exactamente la empresa por defecto de la migración, en pie y ACTIVE, sea lo que sea que un test haya tocado.
+  await prisma.empresa.deleteMany({ where: { id: { not: EMPRESA_POR_DEFECTO_ID } } });
+  await prisma.empresa.upsert({
+    where: { id: EMPRESA_POR_DEFECTO_ID },
+    update: { estado: "ACTIVE" },
+    create: { id: EMPRESA_POR_DEFECTO_ID, nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
+  });
 }
 
 /**

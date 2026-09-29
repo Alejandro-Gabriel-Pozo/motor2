@@ -9,7 +9,7 @@ import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
  */
 test("registrar el conteo de varias filas es UNA llamada al servidor, y se registran todas", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const sucursal = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
 
@@ -54,7 +54,7 @@ test("registrar el conteo de varias filas es UNA llamada al servidor, y se regis
 
 test("una grilla de más de 50 filas se manda en tandas (2 llamadas), y se registran todas", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
 
@@ -91,7 +91,7 @@ test("una grilla de más de 50 filas se manda en tandas (2 llamadas), y se regis
 // redondeaba en silencio; ahora se RECHAZA, mismo criterio que Compra/Mesa/Traspasos (src/core/datos/cantidad.ts).
 test("cargar un conteo con más decimales de los que admite la unidad muestra el error y no registra nada", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const codigo = `E2E-CD-${ahora}`;
@@ -113,7 +113,7 @@ test("cargar un conteo con más decimales de los que admite la unidad muestra el
 
 test("con la sesión vencida, «Registrar conteo» lleva al login y no escribe nada (el aviso de corte no se traga el redirect)", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const codigo = `E2E-CS-${ahora}`;

@@ -43,6 +43,7 @@ model User {
   cuentaItemsCreados        CuentaItem[]        @relation("CuentaItemCreadoPor")
   ejemplaresBoletaEmitidos  EjemplarBoleta[]    @relation("EjemplarBoletaEmitidoPor")
   promosCreadas             PromoCuenta[]
+  empresas                  UsuarioEmpresa[]
 }
 
 model Account {
@@ -84,21 +85,26 @@ model VerificationToken {
 // ===================================================================
 // DOMINIO: sucursales, roles y permisos
 //
-// Un solo negocio, varias sucursales (NO multi-tenant SaaS) — ver Contexto
-// del plan. Roles y permisos son un catálogo ÚNICO compartido por todo el
-// negocio (decisión confirmada con el dueño); el alcance por sucursal se
-// resuelve aparte, en CapacidadSucursal y UsuarioSucursal, nunca como
-// columna dentro de la matriz de permisos — patrón validado contra ERPNext
-// ("User Permission" / "Company Restriction") frente a Dolibarr, que no
-// tiene ningún gate de este tipo dentro de una misma empresa.
+// Instalación multiempresa-capable (ADR-007), activada con UNA empresa: cada
+// tabla de dominio lleva `empresaId` (default `app_empresa_actual()`, que con
+// una sola empresa activa devuelve esa) y las referencias entre ellas son FK
+// compuestas [empresaId, xId]. Rol/PermisoRol/Unidad son por empresa (D3).
+// Dentro de una empresa, el alcance por sucursal se resuelve aparte, en
+// CapacidadSucursal y UsuarioSucursal, nunca como columna dentro de la matriz
+// de permisos — patrón validado contra ERPNext ("User Permission" / "Company
+// Restriction") frente a Dolibarr, que no tiene ningún gate de este tipo
+// dentro de una misma empresa. Globales (sin empresaId): User, Account,
+// Session, VerificationToken, Accion, IndicePrecio, CotizacionDolar.
 // ===================================================================
 
 model Sucursal {
-  id       String   @id @default(cuid())
+  id        String   @id @default(cuid())
+  empresaId String   @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa  @relation(fields: [empresaId], references: [id])
   /// Equivalente a Hosterias.Nombre (Sucursales.js) — nombre visible único.
-  nombre   String   @unique
-  activo   Boolean  @default(true)
-  creadoEn DateTime @default(now())
+  nombre    String
+  activo    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
 
   /// Feature opcional apagada por defecto (Catalogo.js:2183, clave de Config
   /// "PromocionesHabilitado") — no todos los clientes arman combos; ver
@@ -133,17 +139,25 @@ model Sucursal {
   mesas                    Mesa[]
   rendimientosLocales      RendimientoLocalIngrediente[]
   ejemplaresBoleta         EjemplarBoleta[]
+
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 model Rol {
-  id     String  @id @default(cuid())
+  id        String  @id @default(cuid())
+  empresaId String  @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
   /// Catálogo único para todo el negocio — guardar siempre en minúscula,
   /// mismo criterio que ROLES_VALIDOS/obtenerRolesActivos_ en Core.js.
-  nombre String  @unique
-  activo Boolean @default(true)
+  nombre    String
+  activo    Boolean @default(true)
 
   usuarios UsuarioSucursal[]
   permisos PermisoRol[]
+
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// Reemplaza el 1:1 "un usuario, una hostería" de hoy por N:M: una persona
@@ -152,18 +166,21 @@ model Rol {
 /// valores específicos de una dimensión), aplicado acá a Sucursal.
 model UsuarioSucursal {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   usuarioId  String
   usuario    User     @relation(fields: [usuarioId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   rolId      String
-  rol        Rol      @relation(fields: [rolId], references: [id])
+  rol        Rol      @relation(fields: [empresaId, rolId], references: [empresaId, id])
   /// Equivalente a la columna "Activo" de la hoja Usuarios.
   activo     Boolean  @default(true)
   notas      String?
   creadoEn   DateTime @default(now())
 
   @@unique([usuarioId, sucursalId])
+  @@unique([empresaId, id])
 }
 
 /// Catálogo de acciones gateables — clave global definida por el código
@@ -184,14 +201,17 @@ model Accion {
 /// (actualizarPermisoDesdeAdmin, equivalente a actualizarPermisoDesdePanel).
 model PermisoRol {
   id          String  @id @default(cuid())
+  empresaId   String  @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa @relation(fields: [empresaId], references: [id])
   rolId       String
-  rol         Rol     @relation(fields: [rolId], references: [id])
+  rol         Rol     @relation(fields: [empresaId, rolId], references: [empresaId, id])
   accionClave String
   accion      Accion  @relation(fields: [accionClave], references: [clave])
   puedeVer    Boolean @default(false)
   puedeEditar Boolean @default(false)
 
   @@unique([rolId, accionClave])
+  @@unique([empresaId, id])
 }
 
 /// Switch "esta acción está habilitada en esta sucursal", independiente del
@@ -202,13 +222,16 @@ model PermisoRol {
 /// máximo UNA fila default por acción (ver migration.sql).
 model CapacidadSucursal {
   id          String    @id @default(cuid())
+  empresaId   String    @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
   accionClave String
   accion      Accion    @relation(fields: [accionClave], references: [clave])
   sucursalId  String?
-  sucursal    Sucursal? @relation(fields: [sucursalId], references: [id])
+  sucursal    Sucursal? @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   habilitado  Boolean
 
   @@unique([accionClave, sucursalId])
+  @@unique([empresaId, id])
 }
 
 /// Auditoría administrativa (A3, Pivote 6 — docs/auditoria-motor2-pivotes-
@@ -228,6 +251,8 @@ model CapacidadSucursal {
 /// JOIN futuro contra una fila que podría ya no existir.
 model RegistroAuditoria {
   id            String    @id @default(cuid())
+  empresaId     String    @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa   @relation(fields: [empresaId], references: [id])
   /// "Producto" | "PrecioLocalProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol" | "Operacion"
   entidad       String
   entidadId     String
@@ -243,9 +268,10 @@ model RegistroAuditoria {
   /// Local, Capacidad por sucursal) — null si es global (ej. Producto,
   /// Rol, Permisos, que son Catálogo Central sin alcance por sucursal).
   sucursalId    String?
-  sucursal      Sucursal? @relation(fields: [sucursalId], references: [id])
+  sucursal      Sucursal? @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   creadoEn      DateTime  @default(now())
 
+  @@unique([empresaId, id])
   @@index([entidad, entidadId])
   @@index([actorId])
   @@index([creadoEn])
@@ -280,12 +306,14 @@ enum MagnitudUnidad {
 /// elimina de raíz reconstruirProductosDesdeListado (Catalogo.js:72-177) y
 /// la acción de permiso 'reconstruir_productos'.
 model Producto {
-  id     String       @id @default(cuid())
+  id        String       @id @default(cuid())
+  empresaId String       @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa      @relation(fields: [empresaId], references: [id])
   /// Clave real, fija desde el alta. Autogenerada como `${tipo}_<uuid6>` si
   /// no se pasa a mano (Catalogo.js:1151) — ver src/core/catalogo/generar-codigo.ts.
-  codigo String       @unique
-  nombre String
-  tipo   TipoProducto
+  codigo    String
+  nombre    String
+  tipo      TipoProducto
 
   /// "Uso" (Catalogo.js:1053-1062) NO se persiste: es 100% derivable de
   /// `tipo` (MP siempre COMPRA, PV siempre VENTA, sesión "eliminar
@@ -293,12 +321,12 @@ model Producto {
 
   /// Rubro comercial (Catalogo.js:2969-2989) — sin relación con Unidad.magnitud.
   categoriaId String?
-  categoria   CategoriaProducto? @relation(fields: [categoriaId], references: [id])
+  categoria   CategoriaProducto? @relation(fields: [empresaId, categoriaId], references: [empresaId, id])
 
   unidadCompraId   String?
-  unidadCompra     Unidad? @relation("ProductoUnidadCompra", fields: [unidadCompraId], references: [id])
+  unidadCompra     Unidad? @relation("ProductoUnidadCompra", fields: [empresaId, unidadCompraId], references: [empresaId, id])
   unidadStockId    String
-  unidadStock      Unidad  @relation("ProductoUnidadStock", fields: [unidadStockId], references: [id])
+  unidadStock      Unidad  @relation("ProductoUnidadStock", fields: [empresaId, unidadStockId], references: [empresaId, id])
   /// Unidades de stock por 1 unidad de compra (Catalogo.js:1083/1095): > 0.
   factorConversion Decimal @default(1) @db.Decimal(14, 4)
 
@@ -308,7 +336,7 @@ model Producto {
   /// se compra, no tiene Insumo. Se valida en la capa de aplicación, con el
   /// mismo criterio no-bloqueante que hoy (avisa, no impide el alta).
   insumoId String?
-  insumo   Insumo? @relation(fields: [insumoId], references: [id])
+  insumo   Insumo? @relation(fields: [empresaId, insumoId], references: [empresaId, id])
 
   precioVenta Decimal @default(0) @db.Decimal(14, 2)
 
@@ -331,7 +359,7 @@ model Producto {
 
   esConsignacion          Boolean    @default(false)
   proveedorConsignacionId String?
-  proveedorConsignacion   Proveedor? @relation("ProveedorConsignacionDe", fields: [proveedorConsignacionId], references: [id])
+  proveedorConsignacion   Proveedor? @relation("ProveedorConsignacionDe", fields: [empresaId, proveedorConsignacionId], references: [empresaId, id])
   precioConsignacion      Decimal?   @default(0) @db.Decimal(14, 2)
 
   creadoEn DateTime @default(now())
@@ -354,6 +382,8 @@ model Producto {
   cuentaItems             CuentaItem[]
   consumosQueLoSustituyen MovimientoStock[]          @relation("MovimientoSustituyeA")
 
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, id])
   @@index([insumoId])
   @@index([categoriaId])
 }
@@ -391,31 +421,38 @@ model Producto {
 /// docs/grounding-disponibilidad-por-sucursal-2026-09-23.md.
 model DisponibilidadProducto {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   disponible Boolean
 
   @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
 }
 
 /// Nombre interno histórico "Familia" (Catalogo.js:180-197) — de cara al
 /// usuario ya es "Insumo" desde v2.3.0; se adopta el nombre nuevo también
 /// acá para no arrastrar la confusión al código nuevo.
 model Insumo {
-  id     String  @id @default(cuid())
-  nombre String  @unique
-  activo Boolean @default(true)
+  id        String  @id @default(cuid())
+  empresaId String  @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre    String
+  activo    Boolean @default(true)
 
   /// Relación PLANA 1:1 (hoy "Grupos de Familia", una fila por Insumo) — no
   /// forma parte del árbol en sí, solo cuelga de un nodo de Grupo.
   grupoId String?
-  grupo   Grupo?  @relation(fields: [grupoId], references: [id])
+  grupo   Grupo?  @relation(fields: [empresaId, grupoId], references: [empresaId, id])
 
   productos   Producto[]
   sustitutoEn SustitutoRecetaIngrediente[]
 
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
   @@index([grupoId])
 }
 
@@ -426,14 +463,18 @@ model Insumo {
 /// src/core/catalogo/grupo.ts).
 model Grupo {
   id           String  @id @default(cuid())
-  nombre       String  @unique
+  empresaId    String  @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa @relation(fields: [empresaId], references: [id])
+  nombre       String
   activo       Boolean @default(true)
   grupoPadreId String?
-  grupoPadre   Grupo?  @relation("GrupoArbol", fields: [grupoPadreId], references: [id])
+  grupoPadre   Grupo?  @relation("GrupoArbol", fields: [empresaId, grupoPadreId], references: [empresaId, id])
   hijos        Grupo[] @relation("GrupoArbol")
 
   insumos Insumo[]
 
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
   @@index([grupoPadreId])
 }
 
@@ -442,9 +483,14 @@ model Grupo {
 /// el árbol de Grupo (ese agrupa Insumos, no productos de venta).
 model CategoriaProducto {
   id        String     @id @default(cuid())
-  nombre    String     @unique
+  empresaId String     @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa    @relation(fields: [empresaId], references: [id])
+  nombre    String
   activo    Boolean    @default(true)
   productos Producto[]
+
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// Catálogo cerrado (Catalogo.js:2634-2810). `magnitud` es solo
@@ -453,7 +499,9 @@ model CategoriaProducto {
 /// productos de un mismo Insumo deben compartir exactamente unidadStock).
 model Unidad {
   id        String         @id @default(cuid())
-  nombre    String         @unique
+  empresaId String         @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa        @relation(fields: [empresaId], references: [id])
+  nombre    String
   magnitud  MagnitudUnidad
   activa    Boolean        @default(true)
   /// 0-6, validado en la capa de aplicación (Catalogo.js:2777).
@@ -466,29 +514,37 @@ model Unidad {
   recetaIngredientes            RecetaIngrediente[]
   recetaVersionesPorRendimiento RecetaVersion[]        @relation("RecetaVersionRendimientoUnidad")
   recetaVersionesPorRacion      RecetaVersion[]        @relation("RecetaVersionRacionUnidad")
+
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// Presentaciones de compra ALTERNATIVAS a la default de Producto
 /// (unidadCompra/factorConversion propios) — Catalogo.js:3322-3472.
 model Presentacion {
   id               String   @id @default(cuid())
+  empresaId        String   @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa  @relation(fields: [empresaId], references: [id])
   productoId       String
-  producto         Producto @relation(fields: [productoId], references: [id])
+  producto         Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   unidadCompraId   String
-  unidadCompra     Unidad   @relation(fields: [unidadCompraId], references: [id])
+  unidadCompra     Unidad   @relation(fields: [empresaId, unidadCompraId], references: [empresaId, id])
   factorConversion Decimal  @db.Decimal(14, 4)
   activa           Boolean  @default(true)
 
   @@unique([productoId, unidadCompraId])
+  @@unique([empresaId, id])
 }
 
 /// Maestro de Proveedores (Catalogo.js:3677-3775).
 model Proveedor {
   id              String  @id @default(cuid())
+  empresaId       String  @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa @relation(fields: [empresaId], references: [id])
   /// `PRV_<uuid6>` (Catalogo.js:3737) — mismo patrón de generación/colisión
   /// que Producto.codigo.
-  codigo          String  @unique
-  nombre          String  @unique
+  codigo          String
+  nombre          String
   contacto        String?
   telefono        String?
   email           String?
@@ -501,6 +557,10 @@ model Proveedor {
   proveedorPorProducto ProveedorPorProducto[]
   operaciones          Operacion[]
   pagosConsignante     PagoConsignante[]
+
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// Pago registrado a un proveedor de consignación, para saldar (parcial o
@@ -511,10 +571,12 @@ model Proveedor {
 /// proveedor para llegar al saldo debido real.
 model PagoConsignante {
   id          String    @id @default(cuid())
+  empresaId   String    @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
   sucursalId  String
-  sucursal    Sucursal  @relation(fields: [sucursalId], references: [id])
+  sucursal    Sucursal  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   proveedorId String
-  proveedor   Proveedor @relation(fields: [proveedorId], references: [id])
+  proveedor   Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
   importe     Decimal   @db.Decimal(14, 4)
   fecha       DateTime
   notas       String?
@@ -536,6 +598,7 @@ model PagoConsignante {
   /// conoce ANTES del insert — proveedor e importe ya están resueltos — así que no hace falta un segundo `update` posterior).
   resultadoMensaje String?
 
+  @@unique([empresaId, id])
   @@index([sucursalId, proveedorId])
 }
 
@@ -552,12 +615,14 @@ model PagoConsignante {
 /// Catalogo.js:3303-3320) — acá no hay nada que detectar ni fusionar.
 model ProveedorPorProducto {
   id                   String    @id @default(cuid())
+  empresaId            String    @default(dbgenerated("app_empresa_actual()"))
+  empresa              Empresa   @relation(fields: [empresaId], references: [id])
   productoId           String
-  producto             Producto  @relation(fields: [productoId], references: [id])
+  producto             Producto  @relation(fields: [empresaId, productoId], references: [empresaId, id])
   proveedorId          String
-  proveedor            Proveedor @relation(fields: [proveedorId], references: [id])
+  proveedor            Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
   unidadCompraId       String
-  unidadCompra         Unidad    @relation(fields: [unidadCompraId], references: [id])
+  unidadCompra         Unidad    @relation(fields: [empresaId, unidadCompraId], references: [empresaId, id])
   /// Precio "crudo" tal como lo cobra el proveedor en esa unidad de compra.
   precioUnitario       Decimal   @default(0) @db.Decimal(14, 4)
   /// Normalizado a precio por unidad de stock del producto — permite
@@ -571,6 +636,7 @@ model ProveedorPorProducto {
   referenciaProveedor  String?
 
   @@unique([productoId, proveedorId, unidadCompraId])
+  @@unique([empresaId, id])
 }
 
 /// Cliente con % de descuento fijo (Task #14, docs/plan-clientes-descuento-2026-09-26.md): catálogo CENTRAL, sin `sucursalId` —
@@ -582,7 +648,9 @@ model ProveedorPorProducto {
 /// `descuentoPorcentaje` acá nunca reescribe una cuenta ya abierta ni una ya cerrada.
 model Cliente {
   id                  String   @id @default(cuid())
-  nombre              String   @unique
+  empresaId           String   @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa  @relation(fields: [empresaId], references: [id])
+  nombre              String
   /// 0 ≤ % < 100 (D4, validarPorcentajeDescuento) — Decimal(5,2): hasta 999,99, sobra para un porcentaje.
   descuentoPorcentaje Decimal  @db.Decimal(5, 2)
   activo              Boolean  @default(true)
@@ -590,6 +658,9 @@ model Cliente {
 
   cuentas     Cuenta[]
   operaciones Operacion[]
+
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// Versionado append-only real (Catalogo.js:1690-1779): NUNCA se pisa ni
@@ -599,9 +670,11 @@ model Cliente {
 /// un flag a mantener transaccionalmente.
 model RecetaVersion {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   /// El plato (PV) o la MP con seProduce=true.
   productoId String
-  producto   Producto @relation("RecetaVersionProducto", fields: [productoId], references: [id])
+  producto   Producto @relation("RecetaVersionProducto", fields: [empresaId, productoId], references: [empresaId, id])
   version    Int
   creadoEn   DateTime @default(now())
 
@@ -617,14 +690,14 @@ model RecetaVersion {
   /// versionado append-only").
   rendimientoCantidad      Decimal? @db.Decimal(14, 4)
   rendimientoUnidadId      String?
-  rendimientoUnidad        Unidad?  @relation("RecetaVersionRendimientoUnidad", fields: [rendimientoUnidadId], references: [id])
+  rendimientoUnidad        Unidad?  @relation("RecetaVersionRendimientoUnidad", fields: [empresaId, rendimientoUnidadId], references: [empresaId, id])
   racionesCantidad         Int?
   /// Tamaño de CADA ración — distinto de rendimientoCantidad (lo que
   /// produce la receta ENTERA). Ej.: rendimiento "1 unidad" (la pizza
   /// entera), racionesCantidad 8, racionTamano 150 (gramos cada porción).
   racionTamano             Decimal? @db.Decimal(14, 4)
   racionUnidadId           String?
-  racionUnidad             Unidad?  @relation("RecetaVersionRacionUnidad", fields: [racionUnidadId], references: [id])
+  racionUnidad             Unidad?  @relation("RecetaVersionRacionUnidad", fields: [empresaId, racionUnidadId], references: [empresaId, id])
   tiempoPreparacionMinutos Int?
   tiempoCoccionMinutos     Int?
   comentarios              String?
@@ -637,20 +710,23 @@ model RecetaVersion {
   equipamientoNecesario    String?
 
   @@unique([productoId, version])
+  @@unique([empresaId, id])
 }
 
 model RecetaIngrediente {
   id               String        @id @default(cuid())
+  empresaId        String        @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa       @relation(fields: [empresaId], references: [id])
   recetaVersionId  String
-  recetaVersion    RecetaVersion @relation(fields: [recetaVersionId], references: [id], onDelete: Cascade)
+  recetaVersion    RecetaVersion @relation(fields: [empresaId, recetaVersionId], references: [empresaId, id], onDelete: Cascade)
   /// La MP consumida — FK real a Producto. Reemplaza el "renombrar por
   /// nombre en Recetas" de renombrarProductoEnHistorial_ (Catalogo.js:
   /// 1270-1314): renombrar un producto ahora es un UPDATE de una fila.
   insumoProductoId String
-  insumoProducto   Producto      @relation("RecetaIngredienteInsumo", fields: [insumoProductoId], references: [id])
+  insumoProducto   Producto      @relation("RecetaIngredienteInsumo", fields: [empresaId, insumoProductoId], references: [empresaId, id])
   cantidad         Decimal       @db.Decimal(14, 4)
   unidadId         String
-  unidad           Unidad        @relation(fields: [unidadId], references: [id])
+  unidad           Unidad        @relation(fields: [empresaId, unidadId], references: [empresaId, id])
   mermaPorcentaje  Decimal       @default(0) @db.Decimal(6, 2)
   observaciones    String?
 
@@ -658,6 +734,7 @@ model RecetaIngrediente {
   sustitutos          SustitutoRecetaIngrediente[]
   rendimientosLocales RendimientoLocalIngrediente[]
 
+  @@unique([empresaId, id])
   @@index([insumoProductoId])
 }
 
@@ -666,14 +743,17 @@ model RecetaIngrediente {
 /// receta (append-only).
 model SustitutoRecetaIngrediente {
   id                  String            @id @default(cuid())
+  empresaId           String            @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa           @relation(fields: [empresaId], references: [id])
   recetaIngredienteId String
-  recetaIngrediente   RecetaIngrediente @relation(fields: [recetaIngredienteId], references: [id], onDelete: Cascade)
+  recetaIngrediente   RecetaIngrediente @relation(fields: [empresaId, recetaIngredienteId], references: [empresaId, id], onDelete: Cascade)
   insumoSustitutoId   String
-  insumoSustituto     Insumo            @relation(fields: [insumoSustitutoId], references: [id])
+  insumoSustituto     Insumo            @relation(fields: [empresaId, insumoSustitutoId], references: [empresaId, id])
   orden               Int
 
   @@unique([recetaIngredienteId, insumoSustitutoId], map: "SustitutoRecetaIngrediente_ingrediente_insumo_key")
   @@unique([recetaIngredienteId, orden])
+  @@unique([empresaId, id])
   @@index([insumoSustitutoId])
 }
 
@@ -684,8 +764,10 @@ model SustitutoRecetaIngrediente {
 /// la excepción puntual ("marinar con esto, salsa aparte"), no la norma.
 model RecetaPaso {
   id              String        @id @default(cuid())
+  empresaId       String        @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa       @relation(fields: [empresaId], references: [id])
   recetaVersionId String
-  recetaVersion   RecetaVersion @relation(fields: [recetaVersionId], references: [id], onDelete: Cascade)
+  recetaVersion   RecetaVersion @relation(fields: [empresaId, recetaVersionId], references: [empresaId, id], onDelete: Cascade)
   orden           Int
   nombre          String?
   instruccion     String
@@ -693,6 +775,7 @@ model RecetaPaso {
 
   ingredientes RecetaPasoIngrediente[]
 
+  @@unique([empresaId, id])
   @@index([recetaVersionId])
 }
 
@@ -703,12 +786,15 @@ model RecetaPaso {
 /// eso sigue viviendo solo en RecetaIngrediente, el paso solo referencia.
 model RecetaPasoIngrediente {
   id                  String            @id @default(cuid())
+  empresaId           String            @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa           @relation(fields: [empresaId], references: [id])
   recetaPasoId        String
-  recetaPaso          RecetaPaso        @relation(fields: [recetaPasoId], references: [id], onDelete: Cascade)
+  recetaPaso          RecetaPaso        @relation(fields: [empresaId, recetaPasoId], references: [empresaId, id], onDelete: Cascade)
   recetaIngredienteId String
-  recetaIngrediente   RecetaIngrediente @relation(fields: [recetaIngredienteId], references: [id], onDelete: Cascade)
+  recetaIngrediente   RecetaIngrediente @relation(fields: [empresaId, recetaIngredienteId], references: [empresaId, id], onDelete: Cascade)
 
   @@unique([recetaPasoId, recetaIngredienteId])
+  @@unique([empresaId, id])
 }
 
 // ===================================================================
@@ -777,19 +863,29 @@ enum Proceso {
 /// DELETE — desactivar lo saca del selector de Merma, pero un movimiento histórico sigue mostrando su motivo.
 model MotivoMerma {
   id          String      @id @default(cuid())
-  nombre      String      @unique
+  empresaId   String      @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  nombre      String
   descripcion String?
   activo      Boolean     @default(true)
   operaciones Operacion[]
+
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// Catálogo administrable de destinos de Consumo — ver el docstring de `MotivoMerma`, mismo patrón.
 model DestinoConsumo {
   id          String      @id @default(cuid())
-  nombre      String      @unique
+  empresaId   String      @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  nombre      String
   descripcion String?
   activo      Boolean     @default(true)
   operaciones Operacion[]
+
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// ACCIONES_CONTEO_FISICO (Stock.js:1066-1088).
@@ -815,8 +911,10 @@ enum EstadoConteo {
 /// porque ya no hay un contenedor propio que la implique.
 model Seccion {
   id                      String   @id @default(cuid())
+  empresaId               String   @default(dbgenerated("app_empresa_actual()"))
+  empresa                 Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId              String
-  sucursal                Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal                Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   nombre                  String
   activa                  Boolean  @default(true)
   /// ¿El cierre de cuenta del POS puede descontar de acá AUTOMÁTICAMENTE cuando la sección habitual de un producto no alcanza
@@ -837,6 +935,7 @@ model Seccion {
   /// criterio que Producto/Proveedor/Insumo/... en la porción Catálogo) —
   /// agregar a mano en la migración generada, ver README.
   @@unique([sucursalId, nombre])
+  @@unique([empresaId, id])
 }
 
 /// Encabezado de una confirmación de movimiento — agrupa 1+ líneas de
@@ -861,8 +960,10 @@ model Seccion {
 /// de MovimientoStock.proceso.
 model Operacion {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   proceso    Proceso
   fecha      DateTime
 
@@ -871,15 +972,15 @@ model Operacion {
   /// libre por defecto cuando no hay proveedor real; se modela como
   /// nullable en vez de forzar un Proveedor "Mostrador" ficticio).
   proveedorId String?
-  proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
+  proveedor   Proveedor? @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
 
   /// Cliente con descuento de una venta de mesa (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 3/4): NO reusa
   /// `proveedorId` a propósito — ese campo ya documentado como "a quién se vende" nunca se usó, y mezclaría el catálogo de
   /// proveedores con el de clientes. FK RESTRICT: una Operacion vieja sigue apuntando a su Cliente aunque se lo desactive.
   /// SOLO mesas en v1 (D6): `registrarVenta`, la venta de mostrador, todavía no pasa `clienteId` — el campo ya existe para que
   /// esa extensión, cuando llegue, no pida otra migración.
-  clienteId  String?
-  cliente    Cliente? @relation(fields: [clienteId], references: [id])
+  clienteId String?
+  cliente   Cliente? @relation(fields: [empresaId, clienteId], references: [empresaId, id])
 
   /// La `PromoCuenta` de la que esta Operacion VENTA es un COMPONENTE (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 7):
   /// hay UNA Operacion por componente neto, igual que hoy hay una por línea. `null` = una venta suelta de siempre (o
@@ -887,7 +988,7 @@ model Operacion {
   /// anule (D4: `anularVenta` anula TODAS las Operaciones hermanas de la misma `PromoCuenta`, nunca las borra). SOLO mesas en
   /// v1 (D7, mismo criterio que `clienteId`): `registrarVenta` (mostrador) nunca lo pasa.
   promoCuentaId String?
-  promoCuenta   PromoCuenta? @relation(fields: [promoCuentaId], references: [id])
+  promoCuenta   PromoCuenta? @relation(fields: [empresaId, promoCuentaId], references: [empresaId, id])
 
   /// Índice único parcial "Operacion_factura_unica_vigente_key" (sucursalId, proveedorId, nroFactura) WHERE
   /// nroFactura IS NOT NULL AND proceso = 'COMPRA' AND anuladaEn IS NULL — definido FUERA de este schema (Prisma
@@ -905,7 +1006,7 @@ model Operacion {
   /// MovimientoStock.seccionId — este campo es solo para no perder cuál
   /// era el destino elegido a nivel de la operación completa.
   seccionDestinoId String?
-  seccionDestino   Seccion? @relation("OperacionSeccionDestino", fields: [seccionDestinoId], references: [id])
+  seccionDestino   Seccion? @relation("OperacionSeccionDestino", fields: [empresaId, seccionDestinoId], references: [empresaId, id])
 
   /// Solo MERMA / CONSUMO respectivamente — null para cualquier otro
   /// proceso, validado en la capa de aplicación (mismo criterio
@@ -917,9 +1018,9 @@ model Operacion {
   /// llamadas `motivoLegacy`/`destinoLegacy` en ese tramo transitorio;
   /// dropeadas en la migración contract P8 junto con los enums `*Legacy`).
   motivoId     String?
-  motivo       MotivoMerma?    @relation(fields: [motivoId], references: [id])
+  motivo       MotivoMerma?    @relation(fields: [empresaId, motivoId], references: [empresaId, id])
   destinoId    String?
-  destino      DestinoConsumo? @relation(fields: [destinoId], references: [id])
+  destino      DestinoConsumo? @relation(fields: [empresaId, destinoId], references: [empresaId, id])
   /// Texto libre adicional (ctx.detalleLibre, Movimientos.js:767) — en
   /// Apps Script terminaba plegado dentro de "Movimiento detalle" de cada
   /// fila; acá queda en su propia columna, una vez por operación.
@@ -975,6 +1076,7 @@ model Operacion {
   cuentaItems CuentaItem[]
 
   @@unique([claveIdempotencia])
+  @@unique([empresaId, id])
   @@index([sucursalId, proceso, fecha])
   @@index([promoCuentaId])
 }
@@ -1017,13 +1119,15 @@ model Operacion {
 /// fila de REVERSIÓN nueva con el mismo ConteoFisico enlazado.
 model MovimientoStock {
   id          String    @id @default(cuid())
+  empresaId   String    @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
   operacionId String
-  operacion   Operacion @relation(fields: [operacionId], references: [id])
+  operacion   Operacion @relation(fields: [empresaId, operacionId], references: [empresaId, id])
 
   productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   seccionId  String
-  seccion    Seccion  @relation(fields: [seccionId], references: [id])
+  seccion    Seccion  @relation(fields: [empresaId, seccionId], references: [empresaId, id])
   proceso    Proceso
 
   /// Ya con signo — ver el docstring del modelo. + entra, − sale.
@@ -1103,7 +1207,7 @@ model MovimientoStock {
   /// "idOperacion === idConteo" (Stock.js:2129, Kardex e HOJA_CONTEOS_FISICOS
   /// comparten el mismo UUID a ciegas) por una FK real.
   conteoFisicoId String?
-  conteoFisico   ConteoFisico? @relation(fields: [conteoFisicoId], references: [id])
+  conteoFisico   ConteoFisico? @relation(fields: [empresaId, conteoFisicoId], references: [empresaId, id])
 
   /// Solo si esta línea la generó un paso de un Traspaso entre sucursales
   /// (salida/entrada/reingreso) — mismo criterio que `conteoFisicoId`: FK
@@ -1111,15 +1215,16 @@ model MovimientoStock {
   /// traspaso (Sucursales.js pasaba `idTraspaso` como `idOperacion` a
   /// ciegas, ver escribirMovimientoTransferenciaSucursal_).
   traspasoSucursalId String?
-  traspasoSucursal   TraspasoSucursal? @relation(fields: [traspasoSucursalId], references: [id])
+  traspasoSucursal   TraspasoSucursal? @relation(fields: [empresaId, traspasoSucursalId], references: [empresaId, id])
 
   /// Solo filas CONSUMO de una venta cuyo consumo salió de un Insumo SUSTITUTO declarado en la línea de receta: el producto
   /// de la receta al que reemplazó. null en todo lo demás (incluido un consumo de un hermano del mismo Insumo).
   sustituyeAProductoId String?
-  sustituyeAProducto   Producto? @relation("MovimientoSustituyeA", fields: [sustituyeAProductoId], references: [id])
+  sustituyeAProducto   Producto? @relation("MovimientoSustituyeA", fields: [empresaId, sustituyeAProductoId], references: [empresaId, id])
 
   creadoEn DateTime @default(now())
 
+  @@unique([empresaId, id])
   /// Clave de lectura real: "¿cuánto hay de este producto, en esta
   /// sección, de este lote?" — SUM(cantidad) filtrando por estos 3 campos.
   /// A diferencia de Apps Script (HOJA_STOCK, una hoja materializada
@@ -1141,14 +1246,16 @@ model MovimientoStock {
 /// igual queda registrado que se contó).
 model ConteoFisico {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   fecha      DateTime
 
   productoId      String
-  producto        Producto  @relation(fields: [productoId], references: [id])
+  producto        Producto  @relation(fields: [empresaId, productoId], references: [empresaId, id])
   seccionId       String
-  seccion         Seccion   @relation(fields: [seccionId], references: [id])
+  seccion         Seccion   @relation(fields: [empresaId, seccionId], references: [empresaId, id])
   /// El LOTE contado (puede quedar vacío: "total, sin lote puntual" — ver
   /// Stock.js:1094-1103), no la fecha del conteo (esa es `fecha` arriba).
   loteVencimiento DateTime? @db.Date
@@ -1173,6 +1280,7 @@ model ConteoFisico {
   /// MovimientoStock.conteoFisicoId.
   movimientos MovimientoStock[]
 
+  @@unique([empresaId, id])
   @@index([sucursalId, productoId, seccionId])
 }
 
@@ -1188,10 +1296,12 @@ model ConteoFisico {
 /// anticipando esta porción.
 model PrecioLocalProducto {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   precio     Decimal  @db.Decimal(14, 2)
   /// Local si está cargado Y habilitado; si no, fallback a
   /// Producto.precioVenta (mismo criterio que resolverPrecioVenta_,
@@ -1200,6 +1310,7 @@ model PrecioLocalProducto {
   habilitado Boolean  @default(true)
 
   @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
 }
 
 /// Rendimiento calibrado POR SUCURSAL de UNA línea de receta (override liviano, mismo patrón que PrecioLocalProducto).
@@ -1209,15 +1320,18 @@ model PrecioLocalProducto {
 /// (salvo cambio de unidad o ingrediente quitado, que se descartan y se auditan).
 model RendimientoLocalIngrediente {
   id                  String            @id @default(cuid())
+  empresaId           String            @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa           @relation(fields: [empresaId], references: [id])
   recetaIngredienteId String
-  recetaIngrediente   RecetaIngrediente @relation(fields: [recetaIngredienteId], references: [id], onDelete: Cascade)
+  recetaIngrediente   RecetaIngrediente @relation(fields: [empresaId, recetaIngredienteId], references: [empresaId, id], onDelete: Cascade)
   sucursalId          String
-  sucursal            Sucursal          @relation(fields: [sucursalId], references: [id])
+  sucursal            Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   cantidad            Decimal?          @db.Decimal(14, 4)
   mermaPorcentaje     Decimal?          @db.Decimal(6, 2)
   actualizadoEn       DateTime          @updatedAt
 
   @@unique([recetaIngredienteId, sucursalId])
+  @@unique([empresaId, id])
   @@index([sucursalId])
 }
 
@@ -1239,13 +1353,16 @@ model RendimientoLocalIngrediente {
 /// periódicos, comprometida por el dueño 2026-09-22).
 model FrecuenciaConteoProducto {
   id             String   @id @default(cuid())
+  empresaId      String   @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId     String
-  sucursal       Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal       Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   productoId     String
-  producto       Producto @relation(fields: [productoId], references: [id])
+  producto       Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   frecuenciaDias Int
 
   @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
 }
 
 // ===================================================================
@@ -1276,15 +1393,18 @@ model FrecuenciaConteoProducto {
 /// NULL) — ver README.
 model StockMinimoProducto {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   seccionId  String?
-  seccion    Seccion? @relation(fields: [seccionId], references: [id])
+  seccion    Seccion? @relation(fields: [empresaId, seccionId], references: [empresaId, id])
   minimo     Decimal  @db.Decimal(14, 4)
 
   @@unique([productoId, seccionId])
+  @@unique([empresaId, id])
 }
 
 /// Sección HABITUAL de la que sale un producto de venta (PV) en una sucursal — `Seccion` de STOCK (Barra/Cocina/Depósito),
@@ -1293,14 +1413,17 @@ model StockMinimoProducto {
 /// (docs/plan-seccion-habitual-stock-2026-09-25.md). Se usa aunque la sección no sirva de respaldo (Seccion.sirveDeRespaldoEnVentas).
 model SeccionHabitualProducto {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   seccionId  String
-  seccion    Seccion  @relation(fields: [seccionId], references: [id])
+  seccion    Seccion  @relation(fields: [empresaId, seccionId], references: [empresaId, id])
 
   @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
 }
 
 // ===================================================================
@@ -1323,13 +1446,16 @@ model SeccionHabitualProducto {
 /// catálogo).
 model PromocionProducto {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   activa     Boolean  @default(true)
 
   @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
 }
 
 // ===================================================================
@@ -1384,22 +1510,24 @@ enum EstadoTraspaso {
 /// null hasta que ese lado decide (recién Origen sabe de qué Sección sale
 /// al aprobar/enviar; recién Destino sabe a cuál entra al aceptar).
 model TraspasoSucursal {
-  id       String   @id @default(cuid())
-  creadoEn DateTime @default(now())
+  id        String   @id @default(cuid())
+  empresaId String   @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa  @relation(fields: [empresaId], references: [id])
+  creadoEn  DateTime @default(now())
 
   origenSucursalId  String
-  origenSucursal    Sucursal @relation("TraspasoOrigen", fields: [origenSucursalId], references: [id])
+  origenSucursal    Sucursal @relation("TraspasoOrigen", fields: [empresaId, origenSucursalId], references: [empresaId, id])
   destinoSucursalId String
-  destinoSucursal   Sucursal @relation("TraspasoDestino", fields: [destinoSucursalId], references: [id])
+  destinoSucursal   Sucursal @relation("TraspasoDestino", fields: [empresaId, destinoSucursalId], references: [empresaId, id])
 
   productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   cantidad   Decimal  @db.Decimal(14, 4)
 
   seccionOrigenId  String?
-  seccionOrigen    Seccion? @relation("TraspasoSeccionOrigen", fields: [seccionOrigenId], references: [id])
+  seccionOrigen    Seccion? @relation("TraspasoSeccionOrigen", fields: [empresaId, seccionOrigenId], references: [empresaId, id])
   seccionDestinoId String?
-  seccionDestino   Seccion? @relation("TraspasoSeccionDestino", fields: [seccionDestinoId], references: [id])
+  seccionDestino   Seccion? @relation("TraspasoSeccionDestino", fields: [empresaId, seccionDestinoId], references: [empresaId, id])
 
   iniciadoPor IniciadoPorTraspaso
   estado      EstadoTraspaso      @default(SOLICITADA)
@@ -1434,6 +1562,7 @@ model TraspasoSucursal {
 
   movimientos MovimientoStock[]
 
+  @@unique([empresaId, id])
   @@index([origenSucursalId, estado])
   @@index([destinoSucursalId, estado])
 }
@@ -1498,26 +1627,30 @@ model CotizacionDolar {
 /// por decisión D4 del plan: si hiciera falta un título o imagen distinto
 /// por sucursal, se agrega después un override aditivo.
 model SeccionCarta {
-  id          String                   @id @default(cuid())
+  id           String                   @id @default(cuid())
+  empresaId    String                   @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa                  @relation(fields: [empresaId], references: [id])
   /// "Platos Principales" → MenuCategory.label.
-  nombre      String                   @unique
+  nombre       String
   /// "Del fuego" → titulo_seccion (null = se usa `nombre`).
-  titulo      String?
-  descripcion String?
+  titulo       String?
+  descripcion  String?
   /// Solo `https://` sin espacios, comillas ni paréntesis: la carta la mete
   /// en `backgroundImage: url(...)` (ver src/core/carta/armar-menu.ts).
-  imagenUrl   String?
-  orden       Int                      @default(0)
+  imagenUrl    String?
+  orden        Int                      @default(0)
   /// Nunca se borra una sección: se apaga (mismo patrón que el catálogo).
-  activa      Boolean                  @default(true)
+  activa       Boolean                  @default(true)
   /// Lo que se ubica en esta sección, DIRECTO (docs/plan-carta-seccion-directa-2026-09-25.md): productos sueltos e ítems agrupados.
-  contenidos  ContenidoCartaProducto[]
-  agrupados   ItemAgrupadoCarta[]
-  promos      PromoCarta[]
+  contenidos   ContenidoCartaProducto[]
+  agrupados    ItemAgrupadoCarta[]
+  promos       PromoCarta[]
   /// Cupos de promos ARMABLES que eligen de ESTA sección (Task #16) — no es lo mismo que `promos` (la promo en sí, ubicada
   /// en su PROPIA sección): una promo de la sección "Menús" puede tener un cupo que elige de "Postres".
   cuposDePromo PromoCartaCupo[]
 
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
   @@index([activa, orden])
 }
 
@@ -1530,12 +1663,14 @@ model SeccionCarta {
 /// tiene ningún papel en la carta. Sin imagen propia: la carta pública solo dibuja la imagen de la SECCIÓN.
 model ContenidoCartaProducto {
   id             String        @id @default(cuid())
-  productoId     String        @unique
-  producto       Producto      @relation(fields: [productoId], references: [id])
+  empresaId      String        @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa       @relation(fields: [empresaId], references: [id])
+  productoId     String
+  producto       Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id])
   visibleEnCarta Boolean       @default(false)
   /// Obligatoria si `visibleEnCarta` (lo exige la Server Action, DA2); null solo en un contenido oculto.
   seccionCartaId String?
-  seccionCarta   SeccionCarta? @relation(fields: [seccionCartaId], references: [id])
+  seccionCarta   SeccionCarta? @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
   descripcion    String?
   tags           String[]      @default([])
   /// ★ "especial" de la carta.
@@ -1546,9 +1681,11 @@ model ContenidoCartaProducto {
   /// sustituibilidad (eso es ItemAgrupadoCarta) ni tiene nada que ver con Grupo (Insumo/stock) ni con CategoriaProducto (que no
   /// ubica nada en la carta): solo visual, solo del POS por ahora (G4, la carta pública `CartaV1` no lo usa).
   generoCartaId  String?
-  generoCarta    GeneroCarta?  @relation(fields: [generoCartaId], references: [id])
+  generoCarta    GeneroCarta?  @relation(fields: [empresaId, generoCartaId], references: [empresaId, id])
   actualizadoEn  DateTime      @updatedAt
 
+  @@unique([empresaId, productoId])
+  @@unique([empresaId, id])
   @@index([seccionCartaId])
   @@index([generoCartaId])
 }
@@ -1561,9 +1698,11 @@ model ContenidoCartaProducto {
 /// se apaga.
 model ItemAgrupadoCarta {
   id             String                    @id @default(cuid())
-  nombre         String                    @unique
+  empresaId      String                    @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa                   @relation(fields: [empresaId], references: [id])
+  nombre         String
   seccionCartaId String
-  seccionCarta   SeccionCarta              @relation(fields: [seccionCartaId], references: [id])
+  seccionCarta   SeccionCarta              @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
   descripcion    String?
   tags           String[]                  @default([])
   especial       Boolean                   @default(false)
@@ -1573,11 +1712,13 @@ model ItemAgrupadoCarta {
   /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. Las opciones del ítem agrupado
   /// heredan este género: nunca tienen uno propio.
   generoCartaId  String?
-  generoCarta    GeneroCarta?              @relation(fields: [generoCartaId], references: [id])
+  generoCarta    GeneroCarta?              @relation(fields: [empresaId, generoCartaId], references: [empresaId, id])
   creadoEn       DateTime                  @default(now())
   actualizadoEn  DateTime                  @updatedAt
   opciones       OpcionItemAgrupadoCarta[]
 
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
   @@index([seccionCartaId])
   @@index([activo])
   @@index([generoCartaId])
@@ -1591,13 +1732,17 @@ model ItemAgrupadoCarta {
 /// Nunca se borra: se apaga (mismo patrón que el resto del catálogo/carta).
 model GeneroCarta {
   id         String                   @id @default(cuid())
-  nombre     String                   @unique
+  empresaId  String                   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa                  @relation(fields: [empresaId], references: [id])
+  nombre     String
   orden      Int                      @default(0)
   activo     Boolean                  @default(true)
   creadoEn   DateTime                 @default(now())
   contenidos ContenidoCartaProducto[]
   agrupados  ItemAgrupadoCarta[]
 
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
   @@index([activo, orden])
 }
 
@@ -1606,14 +1751,18 @@ model GeneroCarta {
 /// solo una referencia).
 model OpcionItemAgrupadoCarta {
   id                  String            @id @default(cuid())
+  empresaId           String            @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa           @relation(fields: [empresaId], references: [id])
   itemAgrupadoCartaId String
-  itemAgrupadoCarta   ItemAgrupadoCarta @relation(fields: [itemAgrupadoCartaId], references: [id])
-  productoId          String            @unique
-  producto            Producto          @relation(fields: [productoId], references: [id])
+  itemAgrupadoCarta   ItemAgrupadoCarta @relation(fields: [empresaId, itemAgrupadoCartaId], references: [empresaId, id])
+  productoId          String
+  producto            Producto          @relation(fields: [empresaId, productoId], references: [empresaId, id])
   /// Orden de la opción dentro del ítem agrupado.
   orden               Int               @default(0)
   creadoEn            DateTime          @default(now())
 
+  @@unique([empresaId, productoId])
+  @@unique([empresaId, id])
   @@index([itemAgrupadoCartaId])
 }
 
@@ -1633,10 +1782,12 @@ model OpcionItemAgrupadoCarta {
 /// `CartaV1` no cambia (la carta pública nunca tuvo ni tiene cupos).
 model PromoCarta {
   id             String           @id @default(cuid())
+  empresaId      String           @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa          @relation(fields: [empresaId], references: [id])
   sucursalId     String
-  sucursal       Sucursal         @relation(fields: [sucursalId], references: [id])
+  sucursal       Sucursal         @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   seccionCartaId String
-  seccionCarta   SeccionCarta     @relation(fields: [seccionCartaId], references: [id])
+  seccionCarta   SeccionCarta     @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
   titulo         String
   descripcion    String?
   precio         Decimal          @db.Decimal(14, 2)
@@ -1646,6 +1797,7 @@ model PromoCarta {
   cupos          PromoCartaCupo[]
   instancias     PromoCuenta[]
 
+  @@unique([empresaId, id])
   @@index([sucursalId, activa])
   @@index([seccionCartaId])
 }
@@ -1663,10 +1815,12 @@ model PromoCarta {
 /// pueden borrar mientras tengan un cupo — se apagan (`PromoCarta.activa`/`SeccionCarta.activa`), nunca se borran.
 model PromoCartaCupo {
   id             String       @id @default(cuid())
+  empresaId      String       @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa      @relation(fields: [empresaId], references: [id])
   promoCartaId   String
-  promoCarta     PromoCarta   @relation(fields: [promoCartaId], references: [id])
+  promoCarta     PromoCarta   @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
   seccionCartaId String
-  seccionCarta   SeccionCarta @relation(fields: [seccionCartaId], references: [id])
+  seccionCarta   SeccionCarta @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
   /// D1: mínimo por cupo, 0 por defecto — un cupo puede ser opcional ("elegí hasta 2 postres, o ninguno").
   cantidadMinima Int          @default(0)
   cantidadMaxima Int
@@ -1674,6 +1828,7 @@ model PromoCartaCupo {
   orden          Int          @default(0)
 
   @@unique([promoCartaId, seccionCartaId])
+  @@unique([empresaId, id])
 }
 
 /// Registro público de una sucursal en el portal/carta (lo que hoy es una fila de la tab "tenant" de la sheet maestra de
@@ -1682,10 +1837,12 @@ model PromoCartaCupo {
 /// (las sucursales nunca se borran, se desactivan).
 model SucursalPublica {
   id              String   @id @default(cuid())
-  sucursalId      String   @unique
-  sucursal        Sucursal @relation(fields: [sucursalId], references: [id])
+  empresaId       String   @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa  @relation(fields: [empresaId], references: [id])
+  sucursalId      String
+  sucursal        Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   /// tenant_id / URL /carta/<slug>. Se genera UNA vez desde Sucursal.nombre (slugTenant) y se puede editar; nunca se recalcula.
-  slug            String   @unique
+  slug            String
   /// null = se usa Sucursal.nombre.
   etiqueta        String?
   /// Host desnudo, sin esquema ni puerto (hecho externo, manual). NULL no choca con el @unique en Postgres.
@@ -1706,6 +1863,10 @@ model SucursalPublica {
   /// TRANSICIÓN: tab del menú en esa sheet; solo importa con menuDesdeMotor2 = false.
   sheetMenuNombre String   @default("Menu")
   actualizadoEn   DateTime @updatedAt
+
+  @@unique([empresaId, sucursalId])
+  @@unique([empresaId, slug])
+  @@unique([empresaId, id])
 }
 
 /// Tema visual de la carta pública de una sucursal: lo que hoy es la tab "Config" de la sheet de cada tenant de
@@ -1715,13 +1876,18 @@ model SucursalPublica {
 /// agregar la sucursal al portal, y "Quitar del portal" no lo borra. Sin onDelete: RESTRICT (las sucursales nunca se borran).
 model TemaCartaSucursal {
   id             String   @id @default(cuid())
-  sucursalId     String   @unique
-  sucursal       Sucursal @relation(fields: [sucursalId], references: [id])
+  empresaId      String   @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa  @relation(fields: [empresaId], references: [id])
+  sucursalId     String
+  sucursal       Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   /// clave de SiteConfig → valor ya validado. Claves fuera del catálogo se ignoran al servir.
   valores        Json     @default("{}")
   /// false = borrador (se edita y previsualiza en motor2; la carta sigue con la sheet). true = la carta usa este tema.
   aplicarEnCarta Boolean  @default(false)
   actualizadoEn  DateTime @updatedAt
+
+  @@unique([empresaId, sucursalId])
+  @@unique([empresaId, id])
 }
 
 // ===================================================================
@@ -1748,13 +1914,16 @@ model TemaCartaSucursal {
 /// Mesa física del salón. El estado (libre/en_pedido/ocupada) NO se persiste: se deriva de su Cuenta abierta (src/core/pos/mesas.ts).
 model Mesa {
   id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
   sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   numero     Int
   creadoEn   DateTime @default(now())
   cuentas    Cuenta[]
 
   @@unique([sucursalId, numero])
+  @@unique([empresaId, id])
 }
 
 /// La CUENTA abierta de una mesa (no la comanda/KOT: ver docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§6).
@@ -1763,8 +1932,10 @@ model Mesa {
 /// Se cierra con `cerrarCuenta` (registra la venta) o `liberarMesa` (cuenta sin ningún ítem, sin venta).
 model Cuenta {
   id               String           @id @default(cuid())
+  empresaId        String           @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa          @relation(fields: [empresaId], references: [id])
   mesaId           String
-  mesa             Mesa             @relation(fields: [mesaId], references: [id])
+  mesa             Mesa             @relation(fields: [empresaId, mesaId], references: [empresaId, id])
   abiertaPorId     String
   abiertaPor       User             @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
   abiertaEn        DateTime         @default(now())
@@ -1789,13 +1960,14 @@ model Cuenta {
   /// `pos_tomar_pedido` puede asignarlo (D3, `asignarClienteACuenta`), sobre una cuenta abierta, en cualquier momento antes de
   /// cerrarla. FK RESTRICT: una cuenta ya cerrada sigue apuntando a su Cliente para siempre.
   clienteId           String?
-  cliente             Cliente? @relation(fields: [clienteId], references: [id])
+  cliente             Cliente? @relation(fields: [empresaId, clienteId], references: [empresaId, id])
   /// SNAPSHOT del `Cliente.descuentoPorcentaje` en el momento de asignarlo (D7): el % se CONGELA acá — si el % del cliente cambia
   /// después con la cuenta ya abierta, esta cuenta no se entera (nunca se vuelve a leer `Cliente.descuentoPorcentaje` para calcular
   /// lo cobrado). `null` = sin cliente asignado (el caso de siempre, sin descuento). Es el que usa `precioConDescuento`
   /// (src/core/moneda.ts) al cerrar la cuenta — `CuentaItem.precioUnitario` sigue siendo el precio de LISTA, sin cambiar de semántica.
   descuentoPorcentaje Decimal? @db.Decimal(5, 2)
 
+  @@unique([empresaId, id])
   @@index([mesaId])
 }
 
@@ -1808,10 +1980,12 @@ model Cuenta {
 /// estado de una promo se deriva de sus `CuentaItem` y de las `Operacion` que enlazan, igual que el resto del POS.
 model PromoCuenta {
   id           String       @id @default(cuid())
+  empresaId    String       @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa      @relation(fields: [empresaId], references: [id])
   cuentaId     String
-  cuenta       Cuenta       @relation(fields: [cuentaId], references: [id])
+  cuenta       Cuenta       @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
   promoCartaId String
-  promoCarta   PromoCarta   @relation(fields: [promoCartaId], references: [id])
+  promoCarta   PromoCarta   @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
   /// Precio CONGELADO al agregarla (`PromoCarta.precio` en ese momento) — lo que se prorratea entre los componentes (D3).
   precio       Decimal      @db.Decimal(14, 2)
   /// Snapshot del título en ese momento — la boleta ("1 × Menú del día") usa este, no el actual de `PromoCarta` (que puede
@@ -1823,15 +1997,18 @@ model PromoCuenta {
   items        CuentaItem[]
   operaciones  Operacion[]
 
+  @@unique([empresaId, id])
   @@index([cuentaId])
 }
 
 model CuentaItem {
   id              String       @id @default(cuid())
+  empresaId       String       @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa      @relation(fields: [empresaId], references: [id])
   cuentaId        String
-  cuenta          Cuenta       @relation(fields: [cuentaId], references: [id])
+  cuenta          Cuenta       @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
   productoId      String
-  producto        Producto     @relation(fields: [productoId], references: [id])
+  producto        Producto     @relation(fields: [empresaId, productoId], references: [empresaId, id])
   /// Mismo tipo que MovimientoStock.cantidad: desemboca en la venta al cerrar la cuenta. Negativa SOLO en una fila espejo (anulación).
   cantidad        Decimal      @db.Decimal(14, 4)
   /// Precio CONGELADO al agregar el ítem (Precio Local o global de ese momento, prorrateado si es un componente de promo, D3);
@@ -1845,25 +2022,26 @@ model CuentaItem {
   creadoPor       User?        @relation("CuentaItemCreadoPor", fields: [creadoPorId], references: [id])
   /// No nulo = esta fila es un ESPEJO que anula (parcial o totalmente) al ítem original indicado. RESTRICT: el original no se borra.
   anulaAItemId    String?
-  anulaAItem      CuentaItem?  @relation("CuentaItemAnulacion", fields: [anulaAItemId], references: [id], onDelete: Restrict)
+  anulaAItem      CuentaItem?  @relation("CuentaItemAnulacion", fields: [empresaId, anulaAItemId], references: [empresaId, id], onDelete: Restrict)
   anulaciones     CuentaItem[] @relation("CuentaItemAnulacion")
   /// Obligatorio en una fila espejo (validado en la aplicación).
   motivoAnulacion String?
   /// La Operacion VENTA que registró este ítem al cerrar la cuenta (una por línea neta producto+precio+promo). RESTRICT: no se borra.
   operacionId     String?
-  operacion       Operacion?   @relation(fields: [operacionId], references: [id], onDelete: Restrict)
+  operacion       Operacion?   @relation(fields: [empresaId, operacionId], references: [empresaId, id], onDelete: Restrict)
 
   /// Task #16 (docs/plan-promo-combo-2026-09-26.md): la `PromoCuenta` de la que este ítem es un COMPONENTE — null = un
   /// suelto de siempre. FK RESTRICT: no se borra mientras algún componente siga apuntándola. Junto con `precioUnitario` (y
   /// `operacionId`), forma la clave que evita mezclar un suelto con un componente del mismo producto al mismo precio
   /// (`lineasDeVenta`, D4).
-  promoCuentaId String?
-  promoCuenta   PromoCuenta? @relation(fields: [promoCuentaId], references: [id])
+  promoCuentaId       String?
+  promoCuenta         PromoCuenta? @relation(fields: [empresaId, promoCuentaId], references: [empresaId, id])
   /// Precio A LA CARTA de UNA unidad de este componente, al momento de agregarlo (antes de prorratear) — null en un suelto.
   /// Sirve para comparar "lo que se cobró prorrateado" contra "lo que costaría pedirlo suelto" (paso 12, margen de promos) y
   /// queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
-  precioCartaUnitario Decimal? @db.Decimal(14, 2)
+  precioCartaUnitario Decimal?     @db.Decimal(14, 2)
 
+  @@unique([empresaId, id])
   @@index([cuentaId])
   @@index([anulaAItemId])
   @@index([operacionId])
@@ -1875,21 +2053,110 @@ model CuentaItem {
 /// Corrección = fila NUEVA (mismo numero, ejemplar siguiente, corrigeAId → el ejemplar A, motivo); nunca se edita ni se borra.
 model EjemplarBoleta {
   id           String           @id @default(cuid())
+  empresaId    String           @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa          @relation(fields: [empresaId], references: [id])
   sucursalId   String
-  sucursal     Sucursal         @relation(fields: [sucursalId], references: [id])
+  sucursal     Sucursal         @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   cuentaId     String
-  cuenta       Cuenta           @relation(fields: [cuentaId], references: [id])
+  cuenta       Cuenta           @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
   numero       Int
   ejemplar     Int              @default(1)
   emitidoEn    DateTime         @default(now())
   emitidoPorId String
   emitidoPor   User             @relation("EjemplarBoletaEmitidoPor", fields: [emitidoPorId], references: [id])
   corrigeAId   String?
-  corrigeA     EjemplarBoleta?  @relation("EjemplarBoletaCorreccion", fields: [corrigeAId], references: [id], onDelete: Restrict)
+  corrigeA     EjemplarBoleta?  @relation("EjemplarBoletaCorreccion", fields: [empresaId, corrigeAId], references: [empresaId, id], onDelete: Restrict)
   correcciones EjemplarBoleta[] @relation("EjemplarBoletaCorreccion")
   motivo       String?
 
   @@unique([sucursalId, numero, ejemplar])
   @@unique([cuentaId, ejemplar])
+  @@unique([empresaId, id])
   @@index([corrigeAId])
+}
+
+// ===================================================================
+// PLATAFORMA (Fase F) — Empresa y su pertenencia de usuarios. Sin RLS por empresa.
+// ===================================================================
+
+enum EstadoEmpresa {
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  DELETING
+}
+
+model Empresa {
+  id          String        @id @default(cuid())
+  nombre      String        @unique
+  slug        String        @unique
+  cuit        String?
+  zonaHoraria String
+  moneda      String
+  estado      EstadoEmpresa @default(PROVISIONING)
+  creadoEn    DateTime      @default(now())
+
+  usuarios                       UsuarioEmpresa[]
+  sucursalRel                    Sucursal[]
+  rolRel                         Rol[]
+  usuarioSucursalRel             UsuarioSucursal[]
+  permisoRolRel                  PermisoRol[]
+  capacidadSucursalRel           CapacidadSucursal[]
+  registroAuditoriaRel           RegistroAuditoria[]
+  productoRel                    Producto[]
+  disponibilidadProductoRel      DisponibilidadProducto[]
+  insumoRel                      Insumo[]
+  grupoRel                       Grupo[]
+  categoriaProductoRel           CategoriaProducto[]
+  unidadRel                      Unidad[]
+  presentacionRel                Presentacion[]
+  proveedorRel                   Proveedor[]
+  pagoConsignanteRel             PagoConsignante[]
+  proveedorPorProductoRel        ProveedorPorProducto[]
+  clienteRel                     Cliente[]
+  recetaVersionRel               RecetaVersion[]
+  recetaIngredienteRel           RecetaIngrediente[]
+  sustitutoRecetaIngredienteRel  SustitutoRecetaIngrediente[]
+  recetaPasoRel                  RecetaPaso[]
+  recetaPasoIngredienteRel       RecetaPasoIngrediente[]
+  motivoMermaRel                 MotivoMerma[]
+  destinoConsumoRel              DestinoConsumo[]
+  seccionRel                     Seccion[]
+  operacionRel                   Operacion[]
+  movimientoStockRel             MovimientoStock[]
+  conteoFisicoRel                ConteoFisico[]
+  precioLocalProductoRel         PrecioLocalProducto[]
+  rendimientoLocalIngredienteRel RendimientoLocalIngrediente[]
+  frecuenciaConteoProductoRel    FrecuenciaConteoProducto[]
+  stockMinimoProductoRel         StockMinimoProducto[]
+  seccionHabitualProductoRel     SeccionHabitualProducto[]
+  promocionProductoRel           PromocionProducto[]
+  traspasoSucursalRel            TraspasoSucursal[]
+  seccionCartaRel                SeccionCarta[]
+  contenidoCartaProductoRel      ContenidoCartaProducto[]
+  itemAgrupadoCartaRel           ItemAgrupadoCarta[]
+  generoCartaRel                 GeneroCarta[]
+  opcionItemAgrupadoCartaRel     OpcionItemAgrupadoCarta[]
+  promoCartaRel                  PromoCarta[]
+  promoCartaCupoRel              PromoCartaCupo[]
+  sucursalPublicaRel             SucursalPublica[]
+  temaCartaSucursalRel           TemaCartaSucursal[]
+  mesaRel                        Mesa[]
+  cuentaRel                      Cuenta[]
+  promoCuentaRel                 PromoCuenta[]
+  cuentaItemRel                  CuentaItem[]
+  ejemplarBoletaRel              EjemplarBoleta[]
+}
+
+model UsuarioEmpresa {
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    User     @relation(fields: [usuarioId], references: [id])
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  rolEmpresa String?
+  activo     Boolean  @default(true)
+  creadoEn   DateTime @default(now())
+
+  @@unique([usuarioId, empresaId])
 }

@@ -36,7 +36,7 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
 }
 
 async function crearProducto(marca: number, sucursalId: string) {
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-PE-${marca}`, nombre: `E2E Permiso Editar ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
   // La columna "Disponible acá"/el botón «Desactivar» (P10) dependen de una fila real, no del activo global — sin esto el producto siempre aparece "No disponible".
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });

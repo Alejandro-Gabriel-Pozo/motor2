@@ -9,7 +9,7 @@ import { prisma } from "../../src/lib/db";
  */
 test("bajar el primer paso reordena la vigente y el historial conserva el orden original de la v1", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const mp = await prisma.producto.create({
     data: { codigo: `E2E-PASO-MP-${marca}`, nombre: `E2E Harina Pasos ${marca}`, tipo: "MP", unidadStockId: unidad.id },
   });

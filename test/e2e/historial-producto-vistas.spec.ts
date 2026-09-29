@@ -13,7 +13,7 @@ const dia = (n: number) => new Date(Date.now() - n * 86_400_000);
 
 test("MP con compras: 'Cómo se compró' muestra la mediana y la variación contra la compra anterior", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_HIST_${marca}`, nombre: `E2E Proveedor Historial ${marca}` } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-MP-${marca}`, nombre: `E2E Harina Historial ${marca}`, tipo: "MP", unidadStockId: kg.id } });
@@ -51,7 +51,7 @@ test("MP con compras: 'Cómo se compró' muestra la mediana y la variación cont
 
 test("PV sin stock propio: cartel 'Producto de reventa', sin saldo actual en el encabezado ni columna 'Saldo corriente'", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-REV-MP-${marca}`, nombre: `E2E Agua Caja ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-HIST-REV-PV-${marca}`, nombre: `E2E Agua Botella ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 1500 } });
@@ -86,7 +86,7 @@ test("PV sin stock propio: cartel 'Producto de reventa', sin saldo actual en el 
 
 test("filtro 'Qué mostrar' → 'Solo compras' reduce las filas del Kardex, sin cambiar el saldo corriente de las que quedan", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-FILT-${marca}`, nombre: `E2E Filtro Kardex ${marca}`, tipo: "MP", unidadStockId: kg.id } });
 
@@ -120,7 +120,7 @@ test("filtro 'Qué mostrar' → 'Solo compras' reduce las filas del Kardex, sin 
 
 test("la columna 'Origen' navega a la trazabilidad de la operación", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-ORIG-${marca}`, nombre: `E2E Origen Kardex ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: dia(1), usuarioId: admin.id } });
@@ -143,7 +143,8 @@ test("la columna 'Origen' navega a la trazabilidad de la operación", async ({ p
 /** Un operador con ver_reportes_operativos (entra a la pantalla) pero SIN ver_reportes_dinero (no ve precio). A diferencia del
  * helper de reportes-permisos.spec.ts, acá ver_reportes_operativos se deja en `true` a propósito. */
 async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undefined, sucursalId: string): Promise<Page> {
-  const operador = await prisma.rol.upsert({ where: { nombre: "operador" }, update: { activo: true }, create: { nombre: "operador" } });
+  const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
+  const operador = await prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador" } });
   await prisma.permisoRol.upsert({
     where: { rolId_accionClave: { rolId: operador.id, accionClave: "ver_reportes_operativos" } },
     update: { puedeVer: true },
@@ -167,7 +168,7 @@ async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undef
 
 test("un rol con ver_reportes_operativos pero SIN ver_reportes_dinero entra a la pantalla y ve 'Cómo se compró' sin precio ni variación", async ({ browser, baseURL, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-PERM-${marca}`, nombre: `E2E Sin Dinero ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: dia(1), usuarioId: admin.id } });

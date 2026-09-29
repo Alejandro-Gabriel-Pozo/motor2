@@ -25,7 +25,7 @@ const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la c
 
 async function sembrarPromoCombo(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const crear = async (clave: string, nombre: string, precioVenta: number) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-PC-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });

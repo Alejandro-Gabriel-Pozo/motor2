@@ -37,8 +37,8 @@ describe("server/consultas/permisos/roles", () => {
     });
 
     it("un rol que se desactiva deja de aparecer, y uno que se reactiva vuelve en su lugar alfabético", async () => {
-      await prisma.rol.update({ where: { nombre: "cajero" }, data: { activo: false } });
-      await prisma.rol.update({ where: { nombre: "bartender" }, data: { activo: true } });
+      await prisma.rol.updateMany({ where: { nombre: "cajero" }, data: { activo: false } });
+      await prisma.rol.updateMany({ where: { nombre: "bartender" }, data: { activo: true } });
       expect((await listarRolesActivos(prisma)).map((r) => r.nombre)).toEqual(["admin", "bartender", "mozo"]);
     });
 

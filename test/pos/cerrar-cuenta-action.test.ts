@@ -269,7 +269,7 @@ describe("cerrarCuenta (server action)", () => {
       await sembrarSeccion(norte.id, "Salón Norte");
       await prisma.disponibilidadProducto.create({ data: { sucursalId: norte.id, productoId: s.flan.id, disponible: true } });
       // Solo con membresía en Norte: es su sucursal activa.
-      const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+      const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
       const cajeroNorte = await crearUsuarioConMembresia({ email: "cajero-norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });
       const mesaNorte = await prisma.mesa.create({ data: { sucursalId: norte.id, numero: 1 } });
       const cuentaNorte = await sembrarCuenta(mesaNorte.id, cajeroNorte.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);

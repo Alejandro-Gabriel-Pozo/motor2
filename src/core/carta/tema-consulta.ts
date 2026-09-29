@@ -12,7 +12,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * false = borrador) o si la sucursal está inactiva. Si no, `armarTemaCarta`, que vuelve a validar cada valor del Json.
  */
 export async function resolverTemaCarta(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<TemaCartaV1 | null> {
-  const fila = await db.temaCartaSucursal.findUnique({
+  const fila = await db.temaCartaSucursal.findFirst({
     where: { sucursalId },
     select: { valores: true, aplicarEnCarta: true, actualizadoEn: true, sucursal: { select: { id: true, activo: true } } },
   });

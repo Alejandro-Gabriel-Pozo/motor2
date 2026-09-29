@@ -5,6 +5,7 @@ import { prisma } from "../../../src/lib/db";
 import { ACCIONES } from "../../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
 
+const EMPRESA_E2E_ID = "empresa_principal";
 const SUCURSAL_NOMBRE = "Central";
 const SECCION_NOMBRE = "Depósito E2E";
 const EMAIL_ADMIN_E2E = "e2e-admin@local.test";
@@ -33,9 +34,16 @@ const UNIDADES_BASE: Array<{ nombre: string; magnitud: "PESO" | "VOLUMEN" | "CAN
  * /login.
  */
 export async function asegurarBaseSeed() {
+  // resetearBaseE2E trunca TODO (Empresa incluida) y `empresaId` tiene default `app_empresa_actual()` (la única empresa ACTIVE):
+  // sin la empresa por defecto, ninguna fila de dominio se puede crear. Mismo id/slug que la migración multiempresa_estructura.
+  const { id: empresaId } = await prisma.empresa.upsert({
+    where: { id: EMPRESA_E2E_ID },
+    update: { estado: "ACTIVE" },
+    create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
+  });
   const [admin, operador] = await Promise.all([
-    prisma.rol.upsert({ where: { nombre: "admin" }, update: {}, create: { nombre: "admin" } }),
-    prisma.rol.upsert({ where: { nombre: "operador" }, update: {}, create: { nombre: "operador" } }),
+    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "admin" } }, update: {}, create: { nombre: "admin" } }),
+    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: {}, create: { nombre: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 
@@ -53,19 +61,19 @@ export async function asegurarBaseSeed() {
     }
   }
 
-  const sucursal = await prisma.sucursal.upsert({ where: { nombre: SUCURSAL_NOMBRE }, update: {}, create: { nombre: SUCURSAL_NOMBRE } });
+  const sucursal = await prisma.sucursal.upsert({ where: { empresaId_nombre: { empresaId, nombre: SUCURSAL_NOMBRE } }, update: {}, create: { nombre: SUCURSAL_NOMBRE } });
 
-  for (const u of UNIDADES_BASE) await prisma.unidad.upsert({ where: { nombre: u.nombre }, update: {}, create: u });
+  for (const u of UNIDADES_BASE) await prisma.unidad.upsert({ where: { empresaId_nombre: { empresaId, nombre: u.nombre } }, update: {}, create: u });
 
   // El catálogo Motivo de Merma / Destino de Consumo (plan "motivos de Consumo/Merma como catálogo administrable",
   // 2026-09-23) SÍ lo siembra la migración expand (P3), pero resetearBaseE2E (base-e2e.ts) trunca TODAS las tablas
   // antes de cada corrida — sin esto, cualquier spec que registre una Merma/Consumo por UI no encuentra ninguna
   // opción en el <select>. Mismo dato que sembrarMotivosYDestinos() (test/setup/test-db.ts) para Vitest.
   for (const m of MOTIVOS_MERMA_SEMILLA) {
-    await prisma.motivoMerma.upsert({ where: { nombre: m.nombre }, update: {}, create: { nombre: m.nombre, descripcion: m.descripcion ?? null } });
+    await prisma.motivoMerma.upsert({ where: { empresaId_nombre: { empresaId, nombre: m.nombre } }, update: {}, create: { nombre: m.nombre, descripcion: m.descripcion ?? null } });
   }
   for (const d of DESTINOS_CONSUMO_SEMILLA) {
-    await prisma.destinoConsumo.upsert({ where: { nombre: d.nombre }, update: {}, create: { nombre: d.nombre, descripcion: d.descripcion ?? null } });
+    await prisma.destinoConsumo.upsert({ where: { empresaId_nombre: { empresaId, nombre: d.nombre } }, update: {}, create: { nombre: d.nombre, descripcion: d.descripcion ?? null } });
   }
 
   let seccion = await prisma.seccion.findFirst({ where: { sucursalId: sucursal.id, nombre: SECCION_NOMBRE } });

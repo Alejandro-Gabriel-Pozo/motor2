@@ -78,17 +78,17 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       // --- 1) Usuario admin de "Central" (seed base), sucursal "La Cuadra". ---
       const usuario = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL_ADMIN } });
       await mock({ id: usuario.id, email: usuario.email, nombre: usuario.name });
-      const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+      const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
       __setCookieDeTestParaSucursal(central.id);
 
-      const sucursalExistente = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+      const sucursalExistente = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
       verificarBaseVacia(NOMBRE_SUCURSAL, sucursalExistente !== null, pideRehacer(process.env));
 
       let sucursal = sucursalExistente;
       if (!sucursal) {
         const r = await crearSucursalConAdmin({ nombre: NOMBRE_SUCURSAL, emailPrimerAdmin: EMAIL_ADMIN });
         anotarSiFalla("crearSucursalConAdmin", r);
-        sucursal = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: NOMBRE_SUCURSAL } });
+        sucursal = await prisma.sucursal.findFirstOrThrow({ where: { nombre: NOMBRE_SUCURSAL } });
       }
       __setCookieDeTestParaSucursal(sucursal.id);
 
@@ -158,10 +158,10 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       const grupoLimpieza = await resolverGrupo("Limpieza", grupoNoComestibles);
 
       async function resolverInsumoDeGrupo(nombre: string, grupoId: string): Promise<string> {
-        let insumo = await prisma.insumo.findUnique({ where: { nombre } });
+        let insumo = await prisma.insumo.findFirst({ where: { nombre } });
         if (!insumo) {
           anotarSiFalla(`crearInsumo(${nombre})`, await crearInsumo(nombre));
-          insumo = await prisma.insumo.findUniqueOrThrow({ where: { nombre } });
+          insumo = await prisma.insumo.findFirstOrThrow({ where: { nombre } });
         }
         if (insumo.grupoId !== grupoId) anotarSiFalla(`actualizarGrupoDeInsumo(${nombre})`, await actualizarGrupoDeInsumo(insumo.id, grupoId));
         return insumo.id;
@@ -171,10 +171,10 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       const insumoIdPorCodigoNoComestible: Record<string, string> = { MP019: insumoPackaging, MP020: insumoPackaging, OT001: insumoLimpieza, OT002: insumoLimpieza };
 
       // --- 6) Insumo "MORRON" (hermana MP011/MP011B). ---
-      let insumoMorron = await prisma.insumo.findUnique({ where: { nombre: "MORRON" } });
+      let insumoMorron = await prisma.insumo.findFirst({ where: { nombre: "MORRON" } });
       if (!insumoMorron) {
         anotarSiFalla("crearInsumo(MORRON)", await crearInsumo("MORRON"));
-        insumoMorron = await prisma.insumo.findUniqueOrThrow({ where: { nombre: "MORRON" } });
+        insumoMorron = await prisma.insumo.findFirstOrThrow({ where: { nombre: "MORRON" } });
       }
 
       // --- 7) Productos (incluye PV030, ya en PRODUCTOS — ver seed-demo-pizzeria-data.ts) + MP011B (compra de oportunidad, sin código de catálogo real). ---
@@ -197,7 +197,7 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
         });
         anotarSiFalla(`darDeAltaProducto(${p.codigo})`, r);
         if (r.ok) {
-          const creado = await prisma.producto.findUniqueOrThrow({ where: { codigo: p.codigo } });
+          const creado = await prisma.producto.findFirstOrThrow({ where: { codigo: p.codigo } });
           productoPorCodigo.set(p.codigo, creado);
           if (!p.activo) anotarSiFalla(`actualizarDisponibilidadProducto(${p.codigo})`, await actualizarDisponibilidadProducto(creado.id, false));
         }
@@ -217,7 +217,7 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
           seProduce: false,
         });
         anotarSiFalla("darDeAltaProducto(MP011B)", r);
-        if (r.ok) productoPorCodigo.set("MP011B", await prisma.producto.findUniqueOrThrow({ where: { codigo: "MP011B" } }));
+        if (r.ok) productoPorCodigo.set("MP011B", await prisma.producto.findFirstOrThrow({ where: { codigo: "MP011B" } }));
       }
       const idProd = (codigo: string): string => {
         const p = productoPorCodigo.get(codigo);

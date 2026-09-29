@@ -7,7 +7,7 @@ import { prisma } from "../../src/lib/db";
  * Date.now() y limpia en `finally`.
  */
 async function sembrar(marca: number, conReceta: boolean, sucursalId: string) {
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const insumo = await prisma.insumo.create({ data: { nombre: `E2E Insumo Desactivar ${marca}` } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-DS-MP-${marca}`, nombre: `E2E MP Desactivar ${marca}`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-DS-PV-${marca}`, nombre: `E2E Plato Desactivar ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });

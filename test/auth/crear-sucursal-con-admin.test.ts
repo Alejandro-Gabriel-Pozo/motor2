@@ -42,7 +42,7 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
 
     const r = await crearSucursalConAdmin({ nombre: "D", emailPrimerAdmin: "admin-d@test.com" });
     expect(r.ok).toBe(true);
-    const nueva = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "D" } });
+    const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "D" } });
     expect(await disponibleEn(universal, nueva.id)).toBe(true);
   });
 
@@ -60,7 +60,7 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
 
     const r = await crearSucursalConAdmin({ nombre: "D", emailPrimerAdmin: "admin-d2@test.com" });
     expect(r.ok).toBe(true);
-    const nueva = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "D" } });
+    const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "D" } });
     expect(await disponibleEn(parcial, nueva.id)).toBe(false);
   });
 
@@ -79,14 +79,14 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
 
     const r = await crearSucursalConAdmin({ nombre: "Nueva", emailPrimerAdmin: "admin-e@test.com" });
     expect(r.ok).toBe(true);
-    const nueva = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Nueva" } });
+    const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Nueva" } });
     expect(await disponibleEn(universalEntreLasActivas, nueva.id)).toBe(true);
   });
 
   it("sigue creando la sucursal y su primer admin, sin ningún producto de por medio", async () => {
     const r = await crearSucursalConAdmin({ nombre: "Sin catálogo", emailPrimerAdmin: "solo-admin@test.com" });
     expect(r.ok).toBe(true);
-    const nueva = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Sin catálogo" } });
+    const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Sin catálogo" } });
     const membresia = await prisma.usuarioSucursal.findFirst({ where: { sucursalId: nueva.id }, include: { usuario: true } });
     expect(membresia?.usuario.email).toBe("solo-admin@test.com");
   });

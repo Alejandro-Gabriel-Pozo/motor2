@@ -23,7 +23,7 @@ testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables p
   // Un producto de venta con receta cuyo insumo NO tiene ninguna compra: su costo queda incompleto y la tabla lo marca en ámbar (text-amber-700 / dark:
   // text-amber-600). Sin este dato la pantalla no dibuja ningún texto ámbar y el chequeo de contraste no auditaría nada.
   const marca = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CMP-${marca}`, nombre: `E2E Insumo Sin Compra ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CPV-${marca}`, nombre: `E2E Plato Costo Incompleto ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
   await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidad.id }] } } });
@@ -44,7 +44,7 @@ testAutenticado(
   "reportes/promociones: sin violaciones de accesibilidad, incluido el color de \"· parcial\" del Margen Real",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     const marca = Date.now();
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-MP-${marca}`, nombre: `E2E Harina A11y ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
     const combo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PV-${marca}`, nombre: `E2E Combo A11y ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
@@ -175,7 +175,7 @@ testAutenticado("administracion/capacidades-sucursal: sin violaciones de axe", a
 
 testAutenticado("movimientos/precio-local: sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
   const nombre = `E2E A11y Precio ${Date.now()}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PL-${Date.now()}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 120, habilitado: true } });
   try {
@@ -192,7 +192,7 @@ testAutenticado("movimientos/precio-local: sin violaciones de axe", async ({ pag
 testAutenticado("stock/seccion-habitual: la tabla con una fila, con «Quitar» a confirmar, en modo claro y oscuro, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
   // Pantalla nueva (docs/plan-seccion-habitual-stock-2026-09-25.md, C2): una fila sembrada para que la tabla y sus acciones se dibujen.
   const marca = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-SH-${marca}`, nombre: `E2E A11y Habitual ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
   const seccion = await prisma.seccion.create({ data: { sucursalId, nombre: `E2E A11y Cocina ${marca}` } });
   await prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId: producto.id, seccionId: seccion.id } });
@@ -224,7 +224,7 @@ testAutenticado("stock/seccion-habitual: la tabla con una fila, con «Quitar» a
 testAutenticado("movimientos/precio-local: el selector de producto abierto (con resultados y sin resultados) no tiene violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = Date.now();
   const nombre = `E2E A11y Selector ${marca}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-SEL-${marca}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   // El selector filtra { tipo: "PV", soloDisponibles: true } (precio-local-form.tsx) — sin esto no aparece ninguna opción.
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
@@ -266,7 +266,7 @@ testAutenticado("catalogo/productos: la lista, con la confirmación de «Desacti
   // desactivar se bloquee y se muestre el mensaje de error). `?q=` acota la tabla: no depende de lo que dejen otros specs. El "inactivo" queda sin fila de
   // DisponibilidadProducto a propósito — fila ausente = no disponible (docs/plan-disponibilidad-por-sucursal-2026-09-23.md).
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const insumo = await prisma.insumo.create({ data: { nombre: `E2E A11y Insumo Lista ${marca}` } });
   const activo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LA-${marca}`, nombre: `E2E A11y Lista ${marca} activo`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } });
   const inactivo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-LI-${marca}`, nombre: `E2E A11y Lista ${marca} inactivo`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } });
@@ -304,7 +304,7 @@ testAutenticado(
   "catalogo/productos/[id]: la tabla nueva «Disponibilidad por sucursal», con 2+ sucursales, sin violaciones de axe (mismo tipo de pantalla que ya dio empty-table-header/contraste en este proyecto)",
   async ({ paginaAutenticada: page, sucursalId }) => {
     const marca = Date.now();
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: `E2E A11y Norte ${marca}` } });
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-DISP-${marca}`, nombre: `E2E A11y Disponibilidad ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
     // Disponible en la propia (fila con botón «Desactivar») y NO disponible en la otra (fila sin ninguna acción, botón ausente para esa sucursal) — las
@@ -346,7 +346,7 @@ testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima,
 
 testAutenticado("catalogo/productos/[id]/editar: el formulario de edición sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-${marca}`, nombre: `E2E A11y Editar ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   try {
     await page.goto(`/catalogo/productos/${producto.id}/editar`);
@@ -363,7 +363,7 @@ testAutenticado(
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     // Dos compras de un proveedor propio: una con su stock intacto (se anula) y otra ya consumida (la anulación se rechaza). `proveedorId` acota la lista.
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_A11Y_AN_${marca}`, nombre: `E2E A11y Proveedor Anular ${marca}` } });
     const productos: string[] = [];
@@ -426,7 +426,7 @@ testAutenticado(
   "reportes/compras: la corrección de una compra (formulario abierto, con el rechazo por factura repetida y ya corregida) sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CO-${marca}`, nombre: `E2E A11y Corregir ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_A11Y_CO_${marca}`, nombre: `E2E A11y Proveedor Corregir ${marca}` } });
@@ -475,7 +475,7 @@ testAutenticado(
   "reportes/rendimiento-recetas: la tabla en reposo (con rótulo, banda de ruido y motivoSinEstimacion), con la confirmación de «Usar este valor» abierta (colSpan 11) y con la fila ya calibrada, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-MP-${marca}`, nombre: `E2E A11y Salsa Rendimiento ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RR-PV-${marca}`, nombre: `E2E A11y Pizza Rendimiento ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
@@ -538,7 +538,7 @@ testAutenticado(
   "reportes/rendimiento-recetas/por-sucursal: central + una sucursal calibrada + una sin calibrar, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId }) => {
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const membresiaA = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: admin.id, sucursalId } });
     const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E A11y Norte ${marca}` } });
@@ -573,7 +573,7 @@ testAutenticado(
   "catalogo/recetas/[productoId]: la nota «Calibrado en N sucursal(es)» de un ingrediente calibrado, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId }) => {
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-MP-${marca}`, nombre: `E2E A11y Editor Salsa ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-PV-${marca}`, nombre: `E2E A11y Editor Pizza ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
     const receta = await prisma.recetaVersion.create({
@@ -617,7 +617,7 @@ testAutenticado(
   "reportes/periodo y reportes: la tarjeta de margen (§2), plegada y desplegada, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-MRG-MP-${marca}`, nombre: `E2E A11y Margen MP ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-MRG-PV-${marca}`, nombre: `E2E A11y Margen PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
@@ -655,7 +655,7 @@ testAutenticado(
     // §4 (docs/plan-historial-producto-mp-pv-2026-09-22.md, paso 11): ninguna pantalla cubierta hasta ahora ejercita el
     // <details>/<summary> del Kardex, el <select> "Qué mostrar", ni el cartel de un PV sin stock propio.
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-HIST-MP-${marca}`, nombre: `E2E A11y Historial MP ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-HIST-PV-${marca}`, nombre: `E2E A11y Historial PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
@@ -712,9 +712,9 @@ base(
     // una sola, así que `<SelectorSucursal>` (app-shell.tsx: solo se dibuja con `membresias.length > 1`) nunca se había
     // auditado. Sin `aria-label`, un `<select>` con más de una opción no tiene nombre accesible (WCAG 4.1.2).
     const marca = Date.now();
-    const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+    const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
     const segunda = await prisma.sucursal.create({ data: { nombre: `E2E A11y Sucursal Dos ${marca}` } });
-    const rol = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+    const rol = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
     const usuario = await prisma.user.create({ data: { email: `e2e-a11y-selector-sucursal-${marca}@local.test`, activoGlobal: true } });
     await prisma.usuarioSucursal.createMany({
       data: [
@@ -771,7 +771,7 @@ testAutenticado(
     // de un producto que se ve en una sección de carta (tabla) y otra de uno sin contenido de carta (aviso en ámbar): sin las dos, la pantalla
     // no dibuja todo lo que se quiere auditar.
     const marca = `${Date.now()}`;
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const conSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Carta ${marca}` } });
     const sinSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Suelta ${marca}` } });
@@ -812,7 +812,7 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el av
   // —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
   // ellos el select "Sección de carta" del contenido, docs/plan-carta-seccion-directa-2026-09-25.md).
   const marca = `${Date.now()}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Carta Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Carta Sección ${marca}`, titulo: "Del fuego", orden: 1 } });
   const [conContenido, sinContenido] = await Promise.all(
@@ -848,7 +848,7 @@ testAutenticado("carta/agrupados: sin violaciones de axe, con un ítem abierto, 
   // sembrado directo: la acción de agregar lo bloquearía) dibuja el aviso ámbar; se abre su <details> para exponer el formulario del ítem,
   // las opciones (orden y quitar) y el select "Agregar producto" (hay un PV suelto disponible para listar).
   const marca = `${Date.now()}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Agrupado Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Agrupado Sección ${marca}` } });
   const productos = await Promise.all(
@@ -955,7 +955,7 @@ testAutenticado(
     // y sin datos no hay nada que auditar. Desde «tomar pedido» «Tomar pedido»/«Continuar pedido»/«Facturar» son enlaces HABILITADOS: axe ya
     // mide su contraste (antes los ignoraba por deshabilitados).
     const marca = Date.now();
-    const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-POS-${marca}`, nombre: `E2E A11y Plato Salón ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 1000 } });
     const mesas = await Promise.all([801, 802, 803].map((numero) => prisma.mesa.create({ data: { sucursalId, numero } })));
@@ -994,7 +994,7 @@ testAutenticado(
     // Pendiente «tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, paso 9). Hacen falta todos los estados de la lista para que axe audite algo:
     // un ítem sin enviar (con «Quitar»), dos envíos a cocina y una anulación tachada (texto en --ink-soft con line-through).
     const marca = Date.now();
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-TP-${marca}`, nombre: `E2E A11y Plato ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 804 } });
@@ -1052,7 +1052,7 @@ testAutenticado(
     // docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B10: la sección nueva con sus dos estados de fila (botón habilitado; «Venta anulada»
     // con el botón deshabilitado). Los documentos impresos no llevan caso propio: en pantalla son display:none.
     const marca = Date.now();
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-BOL-${marca}`, nombre: `E2E A11y Plato Boleta ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 975 } });
@@ -1103,7 +1103,7 @@ testAutenticado(
     // docs/plan-selector-carta-pos-2026-09-25.md, paso 6. Los dos casos de la mesa de arriba no siembran carta: sin ninguna sección de carta
     // el navegador no se dibuja (DP3) y axe nunca lo vería. Acá se siembra una sección con un suelto y un agrupado de dos opciones.
     const marca = Date.now();
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const crear = async (clave: string, nombre: string) => {
       const p = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CS-${clave}-${marca}`, nombre: `E2E A11y ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 5000 } });
@@ -1166,7 +1166,7 @@ testAutenticado(
   async ({ paginaAutenticada: page, sucursalId }) => {
     // docs/plan-numeracion-boleta-2026-09-25.md, paso 8: la fila con el número de la boleta y el botón nuevo, y el diálogo del motivo.
     const marca = Date.now();
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-COR-${marca}`, nombre: `E2E A11y Plato Corrección ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 977 } });
@@ -1253,7 +1253,7 @@ testAutenticado(
 testAutenticado("reportes/rotacion-mesas: con datos y sin datos, sin violaciones de accesibilidad detectables por axe", async ({ paginaAutenticada: page, sucursalId }) => {
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 979 } });
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const marcaProd = Date.now();
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ROT-${marcaProd}`, nombre: `E2E A11y Rotación ${marcaProd}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
   const cuenta = await prisma.cuenta.create({
@@ -1290,7 +1290,7 @@ testAutenticado(
   async ({ paginaAutenticada: page, sucursalId }) => {
     // Task #17: una fila por EjemplarBoleta — se siembra un A y su corrección B para que aparezcan las dos marcas a la vez.
     const marca = Date.now();
-    const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RB-${marca}`, nombre: `E2E A11y Boleta ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });

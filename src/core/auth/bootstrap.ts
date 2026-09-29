@@ -14,8 +14,8 @@ export function obtenerEmailsBootstrap(): string[] {
  *
  * Condición doble: (a) el email que hace login está en
  * BOOTSTRAP_ADMIN_EMAILS, Y (b) todavía no existe NINGÚN admin activo en
- * TODO el sistema (chequeo global, no por sucursal — es un solo negocio,
- * no multi-tenant). Reproduce la garantía de hoy (Core.js:892-898: solo
+ * TODA la empresa (chequeo a nivel empresa, no por sucursal; la instalación
+ * es multiempresa-capable pero hoy activa una sola, ADR-007). Reproduce la garantía de hoy (Core.js:892-898: solo
  * quien ya tenía acceso de Editor a la planilla podía ser "el primero") de
  * forma explícita en vez de implícita por orden de llegada.
  *
@@ -38,7 +38,7 @@ export async function intentarBootstrapAdmin(
   if (yaHayAdmin) return;
 
   const [rolAdmin, sucursal] = await Promise.all([
-    db.rol.findUnique({ where: { nombre: "admin" } }),
+    db.rol.findFirst({ where: { nombre: "admin" } }),
     db.sucursal.findFirst({ where: { activo: true }, orderBy: { creadoEn: "asc" } }),
   ]);
   // Si el seed todavía no corrió no hay ni rol admin ni sucursal — no hay

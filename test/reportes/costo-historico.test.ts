@@ -91,7 +91,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
   });
 
   it("margen Real por producto: fuente única para cada fila, mezclando costo congelado y reconstruido", async () => {
-    const kgTorta = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kgTorta = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const huevo = await sembrarProductoDisponible({ codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: kgTorta.id }, sucursalId);
     const torta = await sembrarProductoDisponible({ codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: kgTorta.id, precioVenta: 200 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: torta.id, version: 1, ingredientes: { create: [{ insumoProductoId: huevo.id, cantidad: 1, unidadId: kgTorta.id }] } } });

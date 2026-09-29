@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
-import { limpiarBaseDeTest, prisma } from "../../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../../setup/test-db";
 import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPorId } from "../../../src/server/consultas/catalogo/proveedores";
 
 /**
@@ -184,6 +184,7 @@ describe("server/consultas/catalogo/proveedores", () => {
       expect(Object.keys(p).sort()).toEqual(ESCALARES_PROVEEDOR);
       expect(p).toEqual({
         id: molino,
+        empresaId: EMPRESA_POR_DEFECTO_ID,
         codigo: "PRV_MOL001",
         nombre: "Molino del Sur",
         contacto: "Ana",

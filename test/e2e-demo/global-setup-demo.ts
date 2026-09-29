@@ -17,7 +17,7 @@ export default async function globalSetupDemo() {
     throw new Error("DATABASE_URL no coincide con MOTOR2_SEED_DATABASE_URL: la app arrancaría apuntando a otra base que la auditada.");
   }
 
-  const sucursal = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+  const sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
   if (!sucursal) {
     throw new Error(`No existe la sucursal "${NOMBRE_SUCURSAL}" en "${base.nombre}" — corré scripts/seed-demo-pizzeria-6-meses.ts primero.`);
   }

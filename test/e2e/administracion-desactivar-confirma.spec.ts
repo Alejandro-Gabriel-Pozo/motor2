@@ -54,7 +54,7 @@ test("roles: «Desactivar» pide confirmación, «Cancelar» no cambia nada y «
 });
 
 test("usuarios: «Desactivar» pide confirmación, «Cancelar» no cambia nada y «Sí, desactivar» sí", async ({ paginaAutenticada: page, sucursalId }) => {
-  const operador = await prisma.rol.findUniqueOrThrow({ where: { nombre: "operador" } });
+  const operador = await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } });
   const email = `e2e-usuario-${Date.now()}@local.test`;
   const usuario = await prisma.user.create({ data: { email } });
   const membresia = await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true } });

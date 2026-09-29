@@ -50,7 +50,7 @@ describe("resolverTemaCarta", () => {
     expect("precio_simbolo" in tema!.valores).toBe(false);
   });
 
-  it("hace exactamente una consulta (temaCartaSucursal.findUnique, con la sucursal incluida)", async () => {
+  it("hace exactamente una consulta (temaCartaSucursal.findFirst, con la sucursal incluida)", async () => {
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: true, valores: { color_marca: "red" } } });
     const operaciones: string[] = [];
     const contador = prisma.$extends({
@@ -65,7 +65,7 @@ describe("resolverTemaCarta", () => {
     }) as unknown as PrismaClient;
     const tema = await resolverTemaCarta(central, contador);
     expect(tema?.valores.color_marca).toBe("red");
-    expect(operaciones).toEqual(["TemaCartaSucursal.findUnique"]);
+    expect(operaciones).toEqual(["TemaCartaSucursal.findFirst"]);
   });
 });
 

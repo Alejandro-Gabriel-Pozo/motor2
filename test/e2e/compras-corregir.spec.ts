@@ -8,7 +8,7 @@ import { prisma } from "../../src/lib/db";
  */
 async function sembrar(sucursalId: string, seccionId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-CC-${marca}`, nombre: `E2E Harina Corregir ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const molino = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_CC1_${marca}`, nombre: `E2E Molino Corregir ${marca}` } });

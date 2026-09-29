@@ -134,7 +134,7 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
 
 /** El mensaje cuando el producto ya está en un ítem agrupado (el mismo u otro): un producto va en a lo sumo uno (D2). */
 async function mensajeYaAgrupado(db: Db, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
-  const ya = await db.opcionItemAgrupadoCarta.findUnique({ where: { productoId }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
+  const ya = await db.opcionItemAgrupadoCarta.findFirst({ where: { productoId }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
   if (!ya) return null;
   if (ya.itemAgrupadoCartaId === itemAgrupadoCartaId) return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}».`;
   return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}»: quitalo de ahí primero.`;

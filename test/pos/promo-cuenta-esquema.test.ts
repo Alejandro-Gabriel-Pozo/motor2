@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 
@@ -68,11 +69,17 @@ describe("POS: esquema de PromoCuenta (Task #16, migración M2)", () => {
     expect(await prisma.promoCuenta.count({ where: { id: promoCuenta.id } })).toBe(1);
   });
 
-  it("borrar una PromoCuenta con una Operacion enlazada falla (RESTRICT) y no borra nada", async () => {
+  // ADR-007 (A2): la FK pasó a compuesta [empresaId, promoCuentaId] y Prisma ya no puede generar SET NULL (empresaId es NOT NULL):
+  // la referencia es RESTRICT de verdad. Se exige el código de FK (P2003) y que la Operacion conserve su promoCuentaId, para que un
+  // ON DELETE SET NULL (que fallaría por otro motivo, un NOT NULL) o un CASCADE no pasen por un simple "rechaza".
+  it("borrar una PromoCuenta con una Operacion enlazada falla por la FK (RESTRICT, P2003) y la Operacion conserva su promoCuentaId", async () => {
     const promoCuenta = await crearPromoCuenta();
-    await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId, promoCuentaId: promoCuenta.id } });
-    await expect(prisma.promoCuenta.delete({ where: { id: promoCuenta.id } })).rejects.toThrow();
+    const operacion = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId, promoCuentaId: promoCuenta.id } });
+    const error = await prisma.promoCuenta.delete({ where: { id: promoCuenta.id } }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(Prisma.PrismaClientKnownRequestError);
+    expect((error as Prisma.PrismaClientKnownRequestError).code).toBe("P2003");
     expect(await prisma.promoCuenta.count({ where: { id: promoCuenta.id } })).toBe(1);
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: operacion.id } })).promoCuentaId).toBe(promoCuenta.id);
   });
 
   it("borrar la Cuenta de una PromoCuenta falla (RESTRICT)", async () => {

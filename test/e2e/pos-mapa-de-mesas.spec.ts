@@ -18,7 +18,7 @@ const tarjeta = (page: Page, numero: number) => page.locator(`li[data-mesa="${nu
 /** Tres mesas en «Central»: libre, en pedido (1 ítem sin enviar) y ocupada (ítems enviados en los envíos 1 y 2). */
 async function sembrarTresMesas(sucursalId: string, numeros: [number, number, number]) {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-POS-${marca}`, nombre: `E2E Plato Salón ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 18400 } });
   const [libre, enPedido, ocupada] = await Promise.all(numeros.map((numero) => prisma.mesa.create({ data: { sucursalId, numero } })));

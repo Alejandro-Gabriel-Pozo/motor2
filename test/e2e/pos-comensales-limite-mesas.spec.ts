@@ -154,7 +154,7 @@ test("mapa de mesas: el control de límite se ve y se edita con pos_mesas Editar
 
 test("reporte de rotación de mesas: cuenta atendida vs liberada sin consumo, comensales promedio y franja horaria", async ({ paginaAutenticada: page, sucursalId }) => {
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const producto = await prisma.producto.create({ data: { codigo: `E2E-ROT-${marca}`, nombre: `E2E Rotación ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
   const mesaAtendida = await prisma.mesa.create({ data: { sucursalId, numero: 995 } });

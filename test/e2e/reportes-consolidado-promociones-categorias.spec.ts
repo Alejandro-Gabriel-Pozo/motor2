@@ -16,9 +16,9 @@ test("consolidado: con una sola sucursal explica que no hay nada que consolidar"
 
 test("consolidado: con dos o más sucursales, arma la tabla y suma los totales", async ({ browser, baseURL }) => {
   const marca = Date.now();
-  const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+  const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
   const segunda = await prisma.sucursal.create({ data: { nombre: `E2E Sucursal Dos ${marca}` } });
-  const rol = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+  const rol = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-consolidado-${marca}@local.test`, activoGlobal: true } });
   await prisma.usuarioSucursal.createMany({
     data: [

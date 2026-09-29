@@ -27,12 +27,12 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
     const validados = validarValoresTema(valores);
     if (!validados.ok) return error(validados.mensaje);
 
-    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { nombre: true } });
+    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { empresaId: true, nombre: true } });
     if (!sucursal) return error("No se encontró la sucursal.");
 
     const json = validados.valor as Prisma.InputJsonObject;
     const fila = await ctx.db.temaCartaSucursal.upsert({
-      where: { sucursalId },
+      where: { empresaId_sucursalId: { empresaId: sucursal.empresaId, sucursalId } },
       create: { sucursalId, valores: json },
       update: { valores: json },
       select: { aplicarEnCarta: true },
@@ -51,21 +51,21 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
  */
 export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
-    const fila = await ctx.db.temaCartaSucursal.findUnique({
+    const fila = await ctx.db.temaCartaSucursal.findFirst({
       where: { sucursalId },
-      select: { valores: true, sucursal: { select: { nombre: true, publica: { select: { publicada: true } } } } },
+      select: { id: true, valores: true, sucursal: { select: { nombre: true, publica: { select: { publicada: true } } } } },
     });
     if (!fila) return error("Esta sucursal todavía no tiene tema: guardalo primero.");
     const nombre = fila.sucursal.nombre;
 
     if (!aplicar) {
-      await ctx.db.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: false } });
+      await ctx.db.temaCartaSucursal.update({ where: { id: fila.id }, data: { aplicarEnCarta: false } });
       revalidarCartasPublicas();
       return ok(`Tema de "${nombre}" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).`);
     }
 
     if (contarValoresTema(fila.valores) === 0) return error("No se puede aplicar un tema vacío: cargá al menos un valor y guardalo.");
-    await ctx.db.temaCartaSucursal.update({ where: { sucursalId }, data: { aplicarEnCarta: true } });
+    await ctx.db.temaCartaSucursal.update({ where: { id: fila.id }, data: { aplicarEnCarta: true } });
     revalidarCartasPublicas();
     const publica = fila.sucursal.publica;
     if (!publica) return ok(`Tema de "${nombre}" aplicado, pero sin efecto hasta agregarla al portal (Portal de sucursales).`);

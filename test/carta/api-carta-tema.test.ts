@@ -72,7 +72,7 @@ describe("GET /api/carta/[sucursal]/tema", () => {
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, valores: { color_marca: "red" } } });
     expect((await pedir(central, `Bearer ${TOKEN}`)).status).toBe(404);
     // Id larguísimo: ni se consulta.
-    const espia = vi.spyOn(prisma.temaCartaSucursal, "findUnique");
+    const espia = vi.spyOn(prisma.temaCartaSucursal, "findFirst");
     try {
       expect((await pedir("x".repeat(101), `Bearer ${TOKEN}`)).status).toBe(404);
       expect(espia).not.toHaveBeenCalled();
@@ -122,7 +122,7 @@ describe("GET /api/carta/[sucursal]/tema", () => {
   });
 
   it("un error inesperado → 500 genérico (sin el mensaje interno) y se reporta", async () => {
-    const espia = vi.spyOn(prisma.temaCartaSucursal, "findUnique").mockRejectedValueOnce(new Error("detalle interno de la base"));
+    const espia = vi.spyOn(prisma.temaCartaSucursal, "findFirst").mockRejectedValueOnce(new Error("detalle interno de la base"));
     try {
       const r = await pedir(central, `Bearer ${TOKEN}`);
       expect(r.status).toBe(500);

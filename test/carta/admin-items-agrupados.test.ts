@@ -115,7 +115,7 @@ describe("admin de ítems agrupados", () => {
   });
 
   it("cantidadItems por sección (base del orden sugerido, DA6): sueltos visibles sin agrupar + agrupados prendidos", async () => {
-    const otras = await prisma.seccionCarta.findUniqueOrThrow({ where: { nombre: "Otras bebidas" } });
+    const otras = await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: "Otras bebidas" } });
     await prisma.contenidoCartaProducto.createMany({
       data: [
         { productoId: ids.agua, visibleEnCarta: true, seccionCartaId: bebidasId },

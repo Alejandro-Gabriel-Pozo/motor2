@@ -14,7 +14,7 @@ test("caso real del Agua: Δ stock, banda de ruido, rótulo 'Producto de reventa
   seccionId,
 }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
 
   // Agua: compra de 72 (un solo lote, caja x12), 63 vendidos, receta 1:1 — desvío crudo +14,3%, Δstock +9, banda ±114,3% (cae
@@ -96,7 +96,7 @@ test("caso real del Agua: Δ stock, banda de ruido, rótulo 'Producto de reventa
 
 test("con merma, calibrar «Usar este valor» congela el estimado NETO y la merma EFECTIVA (no el bruto)", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
 
   // Receta neta 2 kg + 25% de merma → teórico bruto 2,5. Compra 30, venta 10 → estimado bruto 3 (+20% de desvío contra el

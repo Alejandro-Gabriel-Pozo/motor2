@@ -44,7 +44,7 @@ export async function agregarSucursalAlPortal(sucursalId: string): Promise<Resul
     if (!sucursal) return error("No se encontró la sucursal.");
 
     for (let intento = 0; intento < MAXIMO_INTENTOS_SLUG; intento++) {
-      const yaEsta = await ctx.db.sucursalPublica.findUnique({ where: { sucursalId }, select: { slug: true } });
+      const yaEsta = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { slug: true } });
       if (yaEsta) return error(`"${sucursal.nombre}" ya está en el portal (slug ${yaEsta.slug}).`);
 
       const ocupados = new Set((await ctx.db.sucursalPublica.findMany({ select: { slug: true } })).map((f) => f.slug));
@@ -102,7 +102,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
     const tab = validarNombreTabSheet(datos.sheetMenuNombre);
     if (!tab.ok) return error(tab.mensaje);
 
-    const existente = await ctx.db.sucursalPublica.findUnique({ where: { sucursalId }, select: { id: true, sucursal: { select: { nombre: true } } } });
+    const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { id: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal: agregala primero.");
 
     const conMismoSlug = await ctx.db.sucursalPublica.findFirst({ where: { slug: slug.valor, NOT: { sucursalId } }, select: { sucursal: { select: { nombre: true } } } });
@@ -114,7 +114,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
 
     try {
       await ctx.db.sucursalPublica.update({
-        where: { sucursalId },
+        where: { id: existente.id },
         data: {
           slug: slug.valor,
           etiqueta: etiqueta.valor,
@@ -146,7 +146,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
  */
 export async function quitarSucursalDelPortal(sucursalId: string): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
-    const existente = await ctx.db.sucursalPublica.findUnique({ where: { sucursalId }, select: { slug: true, sucursal: { select: { nombre: true } } } });
+    const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { slug: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal.");
     await ctx.db.sucursalPublica.deleteMany({ where: { sucursalId } });
     revalidarCartasPublicas();

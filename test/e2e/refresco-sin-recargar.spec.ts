@@ -229,7 +229,7 @@ test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y sol
 
 test("precio local: habilitar y deshabilitar un precio de la tabla se ve sin recargar la página", async ({ paginaAutenticada: page, sucursalId }) => {
   const nombre = `E2E Precio Local ${Date.now()}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-PL-${Date.now()}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 50, habilitado: true } });
   const fila = page.locator("tr", { hasText: nombre });

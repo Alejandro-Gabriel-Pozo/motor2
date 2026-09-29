@@ -10,7 +10,7 @@ import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
  */
 test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y, al confirmar, la carta queda pareja", async ({ paginaAutenticada: page, sucursalId, request }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Sync Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sync Sección ${marca}` } });
   const [coca, sprite, fanta] = await Promise.all(

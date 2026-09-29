@@ -37,7 +37,7 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
 /** Una sección con un PV suelto (con contenido), una promo de la sucursal y un ítem agrupado con una opción. */
 async function crearCarta(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Solo ver Sección ${marca}`, titulo: "Del horno", descripcion: `Descripción de sección ${marca}`, orden: 3 } });
   const crearPV = (q: string) =>
     prisma.producto.create({ data: { codigo: `E2E_CARTA_SV_${q}_${marca}`, nombre: `E2E Solo ver ${q} ${marca}`, tipo: "PV", precioVenta: 4200, unidadStockId: unidad.id } });

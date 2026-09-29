@@ -13,7 +13,8 @@ import { prisma } from "../../src/lib/db";
 async function paginaComoOperador(browser: import("@playwright/test").Browser, baseURL: string | undefined, sucursalId: string): Promise<Page> {
   // La base de pruebas puede traer restos de otros tests: se deja el rol activo y con el permiso que tiene de fábrica
   // (Conteos físicos va con proceso_control, que el operador ve) para que el test no dependa de lo que corrió antes.
-  const operador = await prisma.rol.upsert({ where: { nombre: "operador" }, update: { activo: true }, create: { nombre: "operador" } });
+  const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
+  const operador = await prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador" } });
   await prisma.permisoRol.upsert({
     where: { rolId_accionClave: { rolId: operador.id, accionClave: "proceso_control" } },
     update: { puedeVer: true, puedeEditar: true },

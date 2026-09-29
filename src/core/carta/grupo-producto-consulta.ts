@@ -31,7 +31,7 @@ export interface GrupoDeProducto {
 
 /** `null` si el producto no está en ningún ítem agrupado. */
 export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db): Promise<GrupoDeProducto | null> {
-  const opcion = await db.opcionItemAgrupadoCarta.findUnique({
+  const opcion = await db.opcionItemAgrupadoCarta.findFirst({
     where: { productoId },
     select: {
       itemAgrupadoCarta: {

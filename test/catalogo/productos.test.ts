@@ -249,13 +249,13 @@ describe("productos", () => {
       expect(r.ok).toBe(true);
       if (!r.ok) return;
 
-      expect(await disponibleEn(r.id, (await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
+      expect(await disponibleEn(r.id, (await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
       expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
     });
 
     it("sin tildar: queda disponible SOLO en la sucursal desde la que se da de alta", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-      const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+      const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
       const r = await darDeAltaProducto({ nombre: "Insumo exclusivo de Central", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, activoEnTodasLasSucursales: false });
       expect(r.ok).toBe(true);
       if (!r.ok) return;
@@ -266,7 +266,7 @@ describe("productos", () => {
 
     it("sin tildar: el producto no aparece en el selector de otra sucursal (paso P6 — buscarProductosSelector ya filtra por soloDisponibles)", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-      const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+      const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
       await crearUsuarioConMembresia({ email: "otro@test.com", sucursalId: otraSucursal.id, rolId: rolAdmin.id });
 
       const r = await darDeAltaProducto({ nombre: "Solo en Central", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, activoEnTodasLasSucursales: false });
@@ -289,7 +289,7 @@ describe("productos", () => {
       expect(r.ok).toBe(true);
       if (!r.ok) return;
 
-      expect(await disponibleEn(r.id, (await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
+      expect(await disponibleEn(r.id, (await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
       expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
     });
   });

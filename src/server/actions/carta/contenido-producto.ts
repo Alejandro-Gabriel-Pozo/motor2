@@ -31,7 +31,7 @@ export interface DatosContenidoCarta {
 
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { empresaId: true, nombre: true, tipo: true } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
 
@@ -62,7 +62,7 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
       orden: orden.valor,
       generoCartaId: genero.valor,
     };
-    await ctx.db.contenidoCartaProducto.upsert({ where: { productoId }, update: data, create: { productoId, ...data } });
+    await ctx.db.contenidoCartaProducto.upsert({ where: { empresaId_productoId: { empresaId: producto.empresaId, productoId } }, update: data, create: { productoId, ...data } });
     revalidarCartasPublicas();
     return ok(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`);
   });
@@ -74,11 +74,11 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
  */
 export async function actualizarVisibleEnCarta(productoId: string, visibleEnCarta: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true, contenidoCarta: { select: { seccionCartaId: true } } } });
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { empresaId: true, nombre: true, tipo: true, contenidoCarta: { select: { seccionCartaId: true } } } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
     if (visibleEnCarta && !producto.contenidoCarta?.seccionCartaId) return error(MENSAJE_FALTA_SECCION);
-    await ctx.db.contenidoCartaProducto.upsert({ where: { productoId }, update: { visibleEnCarta }, create: { productoId, visibleEnCarta } });
+    await ctx.db.contenidoCartaProducto.upsert({ where: { empresaId_productoId: { empresaId: producto.empresaId, productoId } }, update: { visibleEnCarta }, create: { productoId, visibleEnCarta } });
     revalidarCartasPublicas();
     return ok(`Carta: "${producto.nombre}" ${visibleEnCarta ? "se muestra" : "queda oculto"}.`);
   });

@@ -19,7 +19,7 @@ export async function crearRol(nombre: string): Promise<ResultadoAccion> {
     const invalido = validarTextoCatalogo(n, "El nombre del rol");
     if (invalido) return error(invalido);
 
-    const existente = await ctx.db.rol.findUnique({ where: { nombre: n } });
+    const existente = await ctx.db.rol.findFirst({ where: { nombre: n } });
     if (existente) return error(`Ya existe el rol "${n}".`);
 
     await ctx.db.rol.create({ data: { nombre: n } });

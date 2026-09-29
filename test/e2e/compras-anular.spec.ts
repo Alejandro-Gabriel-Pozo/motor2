@@ -8,7 +8,7 @@ import { prisma } from "../../src/lib/db";
  */
 async function sembrarCompra(sucursalId: string, seccionId: string, opciones: { consumirDeLo?: number } = {}) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-AN-${marca}`, nombre: `E2E Harina Anular ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_AN_${marca}`, nombre: `E2E Proveedor Anular ${marca}` } });
@@ -32,6 +32,8 @@ async function sembrarCompra(sucursalId: string, seccionId: string, opciones: { 
     await prisma.operacion.deleteMany({ where: { id: { in: [...new Set([...ids, ...reversiones.map((r) => r.id)])] } } });
     await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: operacion.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
+    // Con FK compuesta la operación ya no queda con proveedor NULL al borrarlo (RESTRICT): también las compras sin movimientos (p. ej. la recarga).
+    await prisma.operacion.deleteMany({ where: { proveedorId: proveedor.id } });
     await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
   };
   return { marca, producto, proveedor, factura, operacion, limpiar };

@@ -19,7 +19,7 @@ import { abrirComoRol } from "./fixtures/rol-pos";
 
 async function sembrarCarta(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const crear = async (clave: string, nombre: string, precioVenta: number, disponible = true) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-CS-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
     if (disponible) await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
@@ -282,7 +282,7 @@ test("a 1024px y a 390px, con un agrupado desplegado, no hay scroll horizontal",
  */
 async function sembrarCartaConGenero(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const crear = async (clave: string, nombre: string, precioVenta: number) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-GEN-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });

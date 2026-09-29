@@ -12,7 +12,7 @@ import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo en /api/carta/[sucursal]", async ({ paginaAutenticada: page, sucursalId, request }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreItem = `E2E Gaseosa 500 CC ${marca}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Gaseosa 500 CC Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas sin alcohol ${marca}`, orden: 1 } });
   const crear = (q: string, precioVenta: number) =>
@@ -65,11 +65,11 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
       `«${fanta.nombre}» cuesta $5.500 acá y «${nombreItem}» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.`
     );
     await expect(agregar.locator(`option[value="${fanta.id}"]`)).toHaveCount(1);
-    expect(await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId: fanta.id } })).toBeNull();
+    expect(await prisma.opcionItemAgrupadoCarta.findFirst({ where: { productoId: fanta.id } })).toBeNull();
 
     // 4. Sin aviso de precios distintos; la carta: un renglón a $5000 con 3 opciones, y Fanta suelta a $5500.
     await expect(fila.getByText(/no cuestan lo mismo/)).toHaveCount(0);
-    const item = await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { nombre: nombreItem } });
+    const item = await prisma.itemAgrupadoCarta.findFirstOrThrow({ where: { nombre: nombreItem } });
     let s = await leerSeccion();
     const renglon = s!.items.find((i) => i.productoId === item.id)!;
     expect(renglon).toMatchObject({ nombre: nombreItem, precio: 5000, especial: true, descripcion: "Bien fría" });
@@ -114,7 +114,7 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
 test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del mismo precio, y el mensaje dice cuál no", async ({ paginaAutenticada: page, sucursalId, request }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreItem = `E2E Alta con productos ${marca}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Alta Bebidas ${marca}`, orden: 1 } });
   const crear = (q: string, precioVenta: number) =>
     prisma.producto.create({ data: { codigo: `E2E_AGR_ALTA_${q}_${marca}`, nombre: `E2E Alta ${q} 500cc ${marca}`, tipo: "PV", precioVenta, unidadStockId: unidad.id } });
@@ -139,7 +139,7 @@ test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del
     await expect(nuevo.getByLabel(/^Productos del ítem/).locator(`option[value="${tonica.id}"]`)).toHaveCount(1);
     await expect(nuevo.getByLabel(/^Productos del ítem/).locator(`option[value="${coca.id}"]`)).toHaveCount(0);
 
-    const item = await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { nombre: nombreItem } });
+    const item = await prisma.itemAgrupadoCarta.findFirstOrThrow({ where: { nombre: nombreItem } });
     const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
     expect(r.status()).toBe(200);
     const s = (await r.json()).secciones.find((x: { id: string }) => x.id === seccion.id);

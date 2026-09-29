@@ -51,7 +51,7 @@ test.describe("API del tema de la carta", () => {
       expect(Object.keys(cuerpo.valores).filter((c) => c.startsWith("precio_"))).toEqual([]);
       expect(cuerpo.valores).toMatchObject({ ...valores, color_marca: null });
 
-      await prisma.temaCartaSucursal.update({ where: { sucursalId: sucursal.id }, data: { aplicarEnCarta: false } });
+      await prisma.temaCartaSucursal.updateMany({ where: { sucursalId: sucursal.id }, data: { aplicarEnCarta: false } });
       const desaplicado = await request.get(`/api/carta/${sucursal.id}/tema`, { headers: auth });
       expect(desaplicado.status()).toBe(404);
     } finally {

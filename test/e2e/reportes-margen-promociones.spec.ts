@@ -14,7 +14,7 @@ import { prisma } from "../../src/lib/db";
  */
 async function sembrar(sucursalId: string, seccionId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const pizza = await prisma.producto.create({ data: { codigo: `E2E-MP-PIZZA-${marca}`, nombre: `E2E Pizza Margen ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000 } });
   const flan = await prisma.producto.create({ data: { codigo: `E2E-MP-FLAN-${marca}`, nombre: `E2E Flan Margen ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 3000 } });

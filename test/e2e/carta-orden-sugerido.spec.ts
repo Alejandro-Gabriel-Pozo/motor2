@@ -11,7 +11,7 @@ import { prisma } from "../../src/lib/db";
  */
 test("el orden se autosugiere al crear una sección y al elegir la sección de un producto o ítem agrupado", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   // «Llena» ya tiene 2 ítems (un PV suelto visible y un ítem agrupado prendido); «Vacía», ninguno.
   const llena = await prisma.seccionCarta.create({ data: { nombre: `E2E Orden Llena ${marca}`, orden: 50 } });
   const vacia = await prisma.seccionCarta.create({ data: { nombre: `E2E Orden Vacía ${marca}`, orden: 51 } });
@@ -36,7 +36,7 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccionNueva);
     await nuevaSeccion.getByRole("button", { name: "Crear sección" }).click();
     await expect(nuevaSeccion.getByRole("status")).toHaveText(`Sección de carta "${nombreSeccionNueva}" creada.`);
-    expect((await prisma.seccionCarta.findUniqueOrThrow({ where: { nombre: nombreSeccionNueva } })).orden).toBe(cantidadSecciones);
+    expect((await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: nombreSeccionNueva } })).orden).toBe(cantidadSecciones);
     // Tras el alta (y el refresco), el formulario vuelve a arrancar con el siguiente.
     await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones + 1));
 
@@ -55,7 +55,7 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     await expect(ordenNuevo).toHaveValue("2");
     await filaNuevo.getByRole("button", { name: `Guardar contenido de «${nuevo.nombre}»` }).click();
     await expect(filaNuevo.getByRole("status")).toHaveText(`Carta: "${nuevo.nombre}" se muestra.`);
-    expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: nuevo.id } })).toMatchObject({ seccionCartaId: llena.id, orden: 2 });
+    expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: nuevo.id } })).toMatchObject({ seccionCartaId: llena.id, orden: 2 });
 
     // DA6: editar uno existente sin cambiar de sección conserva su orden; cambiar y volver lo recupera.
     const filaConOrden = page.locator(`[data-contenido-carta="${conOrden.nombre}"]`);

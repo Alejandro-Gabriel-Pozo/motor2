@@ -12,7 +12,7 @@ import { prisma } from "../../src/lib/db";
  */
 test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los datos del producto", async ({ paginaAutenticada: page }) => {
   const sufijo = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Categoría ${sufijo}` } });
   const producto = await prisma.producto.create({
     data: {

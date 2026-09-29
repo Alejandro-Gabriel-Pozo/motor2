@@ -23,7 +23,7 @@ let limpiar: () => Promise<void> = async () => {};
 test.beforeAll(async () => {
   const marca = Date.now();
   const largo = `E2E Maquetación producto de nombre bastante largo para forzar el ancho de las tablas ${marca}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const sucursal = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
   const seccion = await prisma.seccion.findFirstOrThrow({ where: { sucursalId: sucursal.id } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-MQ-${marca}`, nombre: largo, tipo: "PV", unidadStockId: kg.id, precioVenta: 1234.5 } });

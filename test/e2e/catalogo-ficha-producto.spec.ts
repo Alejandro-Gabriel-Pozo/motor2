@@ -7,7 +7,7 @@ import { prisma } from "../../src/lib/db";
  * (`/[id]/editar`). Al guardar se vuelve a la ficha, que muestra el aviso (antes se volvía a la lista y el aviso se perdía).
  */
 async function crearProducto(sufijo: number) {
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Categoría Ficha ${sufijo}` } });
   return prisma.producto.create({
     data: {

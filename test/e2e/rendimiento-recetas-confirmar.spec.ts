@@ -14,7 +14,7 @@ test("pide confirmación con comprado/vendido, calibra SOLO la sucursal activa (
   seccionId,
 }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-RR-MP-${marca}`, nombre: `E2E Salsa Rendimiento ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-RR-PV-${marca}`, nombre: `E2E Pizza Rendimiento ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });

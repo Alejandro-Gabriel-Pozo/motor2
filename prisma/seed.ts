@@ -3,12 +3,15 @@ import { prisma } from "../src/lib/db";
 import { ACCIONES } from "../src/core/permisos/acciones";
 
 async function main() {
+  // La empresa por defecto la crea la migración multiempresa_estructura (ADR-007, A2); acá solo se la busca.
+  const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
+
   // Roles: catálogo único compartido por todo el negocio (ver plan,
   // "Roles/permisos" — decisión confirmada con el dueño tras investigar
   // ERPNext/Dolibarr).
   const [admin, operador] = await Promise.all([
-    prisma.rol.upsert({ where: { nombre: "admin" }, update: {}, create: { nombre: "admin" } }),
-    prisma.rol.upsert({ where: { nombre: "operador" }, update: {}, create: { nombre: "operador" } }),
+    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "admin" } }, update: {}, create: { nombre: "admin" } }),
+    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: {}, create: { nombre: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 
@@ -41,7 +44,7 @@ async function main() {
   // Sucursal inicial — punto de anclaje para el bootstrap del primer admin
   // (ver src/core/auth/bootstrap.ts).
   await prisma.sucursal.upsert({
-    where: { nombre: "Central" },
+    where: { empresaId_nombre: { empresaId, nombre: "Central" } },
     update: {},
     create: { nombre: "Central" },
   });
@@ -58,7 +61,7 @@ async function main() {
     { nombre: "unidad", magnitud: "CANTIDAD", decimales: 0 },
   ];
   for (const u of unidadesBase) {
-    await prisma.unidad.upsert({ where: { nombre: u.nombre }, update: {}, create: u });
+    await prisma.unidad.upsert({ where: { empresaId_nombre: { empresaId, nombre: u.nombre } }, update: {}, create: u });
   }
 
   console.log(

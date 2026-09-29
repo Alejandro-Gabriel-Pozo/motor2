@@ -19,7 +19,7 @@ const SECCION = "Depósito E2E";
 
 async function sembrarCatalogo(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const [unidad, kg] = await Promise.all([prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } }), prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } })]);
+  const [unidad, kg] = await Promise.all([prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } }), prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } })]);
   const crear = async (data: Parameters<typeof prisma.producto.create>[0]["data"]) => {
     const p = await prisma.producto.create({ data });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
@@ -282,7 +282,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
 
 test("reimprimir un envío: la comanda sale de nuevo marcada REIMPRESIÓN, con lo vigente y lo anulado, sin precios y sin tocar la base", async ({ paginaAutenticada: page, sucursalId }) => {
   const cat = await sembrarCatalogo(sucursalId);
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   // Nombre largo a propósito: en un rollo de 58 mm tiene que cortar línea, no desbordar.
   const largo = await prisma.producto.create({

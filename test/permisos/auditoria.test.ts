@@ -127,7 +127,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
 
   it("actualizarActivoRol registra el cambio de activo", async () => {
     await crearRol("cajero");
-    const rol = await prisma.rol.findUniqueOrThrow({ where: { nombre: "cajero" } });
+    const rol = await prisma.rol.findFirstOrThrow({ where: { nombre: "cajero" } });
 
     await actualizarActivoRol(rol.id, false);
 

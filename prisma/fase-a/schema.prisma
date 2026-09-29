@@ -1,6 +1,6 @@
 // ===================================================================
-// SCHEMA OBJETIVO DE LA FASE F (ADR-007 A1) — GENERADO por
-// prisma/fase-a/generar-schema-objetivo.ts desde prisma/schema.prisma. No se edita a mano.
+// SCHEMA OBJETIVO DE LA FASE F (ADR-007 A1) — fotografía histórica generada en A1;
+// desde ADR-007 A2 el objetivo vive en prisma/schema.prisma (este archivo ya no se regenera).
 // Client aislado: nunca pisa @prisma/client. Ver ADR-004 y ADR-007.
 // ===================================================================
 

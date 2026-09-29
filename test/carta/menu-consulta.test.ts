@@ -75,11 +75,11 @@ describe("resolverMenuCarta", () => {
         { productoId: ids.oculto, visibleEnCarta: false, seccionCartaId: platos.id },
       ],
     });
-    await prisma.contenidoCartaProducto.update({
+    await prisma.contenidoCartaProducto.updateMany({
       where: { productoId: ids.bife },
       data: { descripcion: "400 g", tags: ["Regional"], especial: true, orden: 2 },
     });
-    await prisma.contenidoCartaProducto.update({ where: { productoId: ids.ojo }, data: { orden: 1 } });
+    await prisma.contenidoCartaProducto.updateMany({ where: { productoId: ids.ojo }, data: { orden: 1 } });
 
     await prisma.precioLocalProducto.createMany({
       data: [
@@ -166,9 +166,9 @@ describe("resolverMenuCarta", () => {
   });
 
   it("la categoría no ubica nada: un PV sin categoría con sección sale (con `categoria` = su sección), y uno de «Bife» puede ir a Entradas", async () => {
-    const entradas = await prisma.seccionCarta.findUniqueOrThrow({ where: { nombre: "Entradas" } });
-    await prisma.contenidoCartaProducto.update({ where: { productoId: ids.sinCategoria }, data: { seccionCartaId: entradas.id } });
-    await prisma.contenidoCartaProducto.update({ where: { productoId: ids.ojo }, data: { seccionCartaId: entradas.id } });
+    const entradas = await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: "Entradas" } });
+    await prisma.contenidoCartaProducto.updateMany({ where: { productoId: ids.sinCategoria }, data: { seccionCartaId: entradas.id } });
+    await prisma.contenidoCartaProducto.updateMany({ where: { productoId: ids.ojo }, data: { seccionCartaId: entradas.id } });
     const carta = (await resolverMenuCarta(central, prisma))!;
     const seccionEntradas = carta.secciones.find((s) => s.nombre === "Entradas")!;
     expect(seccionEntradas.items.map((i) => [i.nombre, i.categoria])).toEqual([
@@ -182,7 +182,7 @@ describe("resolverMenuCarta", () => {
   });
 
   it("imagen: la de la sección sale; ningún ítem tiene imagen propia (imagenUrl siempre null)", async () => {
-    await prisma.seccionCarta.update({ where: { nombre: "Platos Principales" }, data: { imagenUrl: "https://cdn.ejemplo.com/platos.jpg" } });
+    await prisma.seccionCarta.updateMany({ where: { nombre: "Platos Principales" }, data: { imagenUrl: "https://cdn.ejemplo.com/platos.jpg" } });
     const carta = (await resolverMenuCarta(central, prisma))!;
     const platos = carta.secciones.find((s) => s.nombre === "Platos Principales")!;
     expect(platos.imagenUrl).toBe("https://cdn.ejemplo.com/platos.jpg");

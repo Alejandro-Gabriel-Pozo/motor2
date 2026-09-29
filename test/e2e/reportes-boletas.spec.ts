@@ -11,7 +11,7 @@ import { abrirComoRol } from "./fixtures/rol-pos";
  */
 
 async function sembrarProducto(sucursalId: string, marca: string) {
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-RB-${marca}`, nombre: `E2E Boleta Producto ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 5000 } });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
   return producto;

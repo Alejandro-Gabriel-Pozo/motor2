@@ -54,7 +54,7 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
     await expect(page.locator('[name="carta_fuente_item_nombre"]')).toHaveValue("clamp(0.8rem, 2vw, 1rem)");
     await expect(page.locator('[name="carta_banda_alto_desktop"]')).toHaveValue("");
     await expect(page.locator('[name="color_item_precio"]')).toHaveValue("");
-    expect((await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId } })).valores).toEqual({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)" });
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).valores).toEqual({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)" });
 
     // 4. Aplicar: el endpoint responde 200 con lo guardado.
     const auth = { Authorization: `Bearer ${TOKEN_CARTA_E2E}` };
@@ -72,7 +72,7 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
     await expect(page.getByRole("status").filter({ hasText: "desaplicado" })).toBeVisible();
     await expect(page.locator("[data-estado-tema]")).toContainText("Tema: borrador");
     expect((await request.get(`/api/carta/${sucursalId}/tema`, { headers: auth })).status()).toBe(404);
-    expect((await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId } })).valores).toMatchObject({ color_item_nombre: "#aa3300" });
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).valores).toMatchObject({ color_item_nombre: "#aa3300" });
   } finally {
     await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   }
