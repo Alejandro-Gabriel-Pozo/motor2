@@ -16,7 +16,7 @@ export function generateStaticParams() {
 async function resolver(empresa: string, sucursal: string) {
   const empresaCarta = await resolverEmpresaCarta(empresa);
   if (!empresaCarta) return null;
-  return cartaPublica(sucursal);
+  return cartaPublica(empresaCarta, sucursal);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ empresa: string; sucursal: string }> }): Promise<Metadata> {

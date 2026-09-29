@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { CartaV1 } from "./armar-menu";
+import type { EmpresaCarta } from "./empresa-carta";
 import { estiloCartaPorDefecto, resolverEstiloCarta, type EstiloCarta } from "./estilo";
 import { resolverMenuCarta } from "./menu-consulta";
 
@@ -24,8 +25,10 @@ export interface EntradaPortalCarta {
  * TODAS con `activo: false` — esa lista completa existía para que la carta externa reconciliara contra su sheet, D4/D7 de
  * `docs/plan-registro-tenants-2026-09-24.md`; sin sheet externa que reconciliar, no hace falta emitir lo que no se muestra).
  * Orden: `orden` y después `etiqueta` (`localeCompare("es")`), mismo criterio que `armarRegistroTenants`.
+ *
+ * `empresa` es contrato (ADR-007, N3): hoy la base no tiene `empresaId` y la consulta no lo usa; desde A2/A3 filtra por ella.
  */
-export async function resolverPortalCarta(db: Db): Promise<EntradaPortalCarta[]> {
+export async function resolverPortalCarta(empresa: EmpresaCarta, db: Db): Promise<EntradaPortalCarta[]> {
   const filas = await db.sucursalPublica.findMany({
     where: { publicada: true, sucursal: { activo: true } },
     select: { slug: true, etiqueta: true, subtituloPortal: true, orden: true, sucursal: { select: { nombre: true } } },
@@ -47,8 +50,10 @@ export interface CartaPublicaResuelta {
  *
  * El tema solo se usa si `aplicarEnCarta` (un borrador guardado pero no aplicado no debe verse en la carta pública, mismo
  * criterio que `docs/setup-sucursal.md` sección 3); sin eso, o sin fila de tema, el estilo es el default del catálogo.
+ *
+ * `empresa`: igual que en `resolverPortalCarta`, contrato hasta que la base tenga `empresaId`.
  */
-export async function resolverCartaPublica(slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
+export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
   const publica = await db.sucursalPublica.findUnique({
     where: { slug },
     select: {

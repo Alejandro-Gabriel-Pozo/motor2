@@ -20,6 +20,6 @@ export default async function PortalPage({ params }: { params: Promise<{ empresa
   const empresaCarta = await resolverEmpresaCarta(empresa);
   if (!empresaCarta) notFound();
 
-  const sucursales = await portalCartaPublico();
+  const sucursales = await portalCartaPublico(empresaCarta);
   return <PortalVista sucursales={sucursales} empresaSlug={empresaCarta.slug} />;
 }
