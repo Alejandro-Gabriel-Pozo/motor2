@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
@@ -56,6 +57,23 @@ export interface EventoHistorialProducto {
   conteoReal?: number;
   diferencia?: number;
   estado?: string;
+}
+
+interface FilaMovimientoHistorial {
+  id: string;
+  operacionId: string;
+  proceso: string;
+  cantidad: Prisma.Decimal;
+  loteVencimiento: Date | null;
+  detalle: string;
+  precioTotal: Prisma.Decimal;
+  precioPorUnidadStock: Prisma.Decimal;
+  seccionNombre: string;
+  fecha: Date;
+  nroFactura: string | null;
+  anuladaEn: Date | null;
+  proveedorNombre: string | null;
+  sustituyeANombre: string | null;
 }
 
 export interface HistorialProducto {
@@ -134,10 +152,24 @@ export async function obtenerHistorialProducto(
     db.movimientoStock.aggregate({ where: whereMov, _sum: { cantidad: true } }).then((r) => Number(r._sum.cantidad ?? 0)),
     db.movimientoStock.count({ where: whereMov }),
     db.conteoFisico.count({ where: whereConteo }),
-    db.movimientoStock.findMany({
-      where: { ...whereMov, ...filtroFechaMov },
-      include: { seccion: true, operacion: { include: { proveedor: true } }, sustituyeAProducto: { select: { nombre: true } } },
-    }),
+    // Un solo SQL con los JOIN, no `findMany` + `include`: Prisma 7 resuelve cada relación con un `IN` de todos los ids y con ~60k
+    // movimientos superaba el límite de parámetros. La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK
+    // compuesta); el aislamiento entre empresas lo sigue haciendo el `db` recibido (RLS, A6). Mismo orden de siempre por fecha;
+    // el desempate por `m."id"` lo hace determinista.
+    db.$queryRaw<FilaMovimientoHistorial[]>`
+      SELECT m."id", m."operacionId", m."proceso", m."cantidad", m."loteVencimiento", m."detalle", m."precioTotal", m."precioPorUnidadStock",
+             s."nombre" AS "seccionNombre", o."fecha", o."nroFactura", o."anuladaEn", p."nombre" AS "proveedorNombre", sp."nombre" AS "sustituyeANombre"
+      FROM "MovimientoStock" m
+      JOIN "Seccion" s ON s."id" = m."seccionId"
+      JOIN "Operacion" o ON o."id" = m."operacionId"
+      LEFT JOIN "Proveedor" p ON p."id" = o."proveedorId"
+      LEFT JOIN "Producto" sp ON sp."id" = m."sustituyeAProductoId"
+      WHERE m."productoId" = ${productoId} AND s."sucursalId" = ${sucursalId}
+        ${seccionId ? Prisma.sql`AND m."seccionId" = ${seccionId}` : Prisma.empty}
+        ${desde ? Prisma.sql`AND o."fecha" >= ${desde}` : Prisma.empty}
+        ${finDia ? Prisma.sql`AND o."fecha" <= ${finDia}` : Prisma.empty}
+      ORDER BY o."fecha", m."id"
+    `,
     db.conteoFisico.findMany({
       where: { ...whereConteo, ...filtroFechaConteo },
       include: { seccion: true },
@@ -146,19 +178,19 @@ export async function obtenerHistorialProducto(
 
   const eventosMovimiento: EventoHistorialProducto[] = movimientos.map((m) => ({
     tipo: "movimiento",
-    fecha: m.operacion.fecha,
+    fecha: m.fecha,
     detalle: m.detalle,
-    seccionNombre: m.seccion.nombre,
+    seccionNombre: m.seccionNombre,
     proceso: m.proceso,
     loteVencimiento: m.loteVencimiento,
-    proveedorNombre: m.operacion.proveedor?.nombre ?? null,
-    nroFactura: m.operacion.nroFactura,
+    proveedorNombre: m.proveedorNombre,
+    nroFactura: m.nroFactura,
     idOperacion: m.operacionId,
     cantidadConSigno: Number(m.cantidad),
     precioTotal: Number(m.precioTotal),
     precioPorUnidadStock: Number(m.precioPorUnidadStock),
-    anulada: m.operacion.anuladaEn !== null,
-    sustituyeANombre: m.sustituyeAProducto?.nombre ?? null,
+    anulada: m.anuladaEn !== null,
+    sustituyeANombre: m.sustituyeANombre,
   }));
 
   const eventosConteo: EventoHistorialProducto[] = conteos.map((c) => ({
