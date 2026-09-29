@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, prisma } from "../setup/test-db";
 import { obtenerCostoActualPorMP } from "../../src/core/reportes/comun";
 
 /**
@@ -27,6 +27,8 @@ describe("obtenerCostoActualPorMP con mucha historia y con empates", () => {
       SELECT ${opciones.prefijo} || 'm' || g, ${opciones.prefijo} || g, ${productoId}, ${seccionId}, 'COMPRA'::"Proceso", 1, 'Compra', ${opciones.precio}::numeric, ${opciones.precio}::numeric
       FROM generate_series(1, ${cantidad}::int) g`;
   }
+
+  afterEach(vaciarOperacionesPorVolumen);
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
