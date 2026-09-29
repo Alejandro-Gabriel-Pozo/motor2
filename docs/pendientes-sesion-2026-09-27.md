@@ -780,9 +780,70 @@ pantalla/concepto) pero lo bastante grande como para ser su propio ítem.
    dado el mayor impacto de anular una boleta entera de una vez?
 4. Motivo obligatorio: ¿se agrega ya, aislado, o junto con el resto de
    este pendiente?
+5. **Venta de mostrador (`registrarVenta`) tiene el mismo problema, PERO
+   PEOR:** confirmado que `registrarVentaEnTx` (el mismo núcleo que usa
+   `cerrarCuenta`) también crea **una `Operacion` por línea** para
+   mostrador — mismo problema de "no hay correlato de la venta en
+   conjunto". A diferencia de Cuenta (que sí tiene `CuentaItem` enlazando
+   todas sus Operaciones), **las N Operaciones de un mismo `registrarVenta`
+   de mostrador no comparten NINGUNA clave que las agrupe después del
+   hecho** — ni siquiera la clave de idempotencia, que solo se guarda en
+   la PRIMERA Operacion del lote. Hoy no hay forma de reconstruir "qué
+   Operaciones vinieron del mismo ticket de mostrador". Cualquier solución
+   para mostrador necesita PRIMERO un identificador de agrupación nuevo
+   (cambio de schema) antes de poder pensar en una UI — ver #43.
 
 **Seguir investigando antes de diseñar un plan formal** (pedido explícito
 del usuario, 2026-09-28) — no confundir con "ya se puede implementar".
+
+### #43 — Nomenclatura de documentos de venta/compra: "boleta"/"ticket"/"comprobante"/"comanda" — sin decidir, a propósito
+Hallazgo del 2026-09-28, surgido al discutir #42. **No se decide nada
+todavía — el usuario pidió explícitamente dejarlo anotado para retomar más
+adelante, no resolverlo ahora ("es un cambio grande... hay que pensarlo
+bien").**
+
+**Lo confirmado contra el código (no es una opinión):**
+- "Boleta" hoy es el término establecido para el documento de CIERRE DE
+  CUENTA (mesa) — modelo real de Prisma `EjemplarBoleta` (con su propia
+  migración, `20260925200000_pos_numeracion_boleta`), `core/pos/boleta.ts`,
+  `numeracion-boleta.ts`, "Emitir boleta corregida", el reporte
+  `/reportes/boletas`. Su propio docstring lo llama "guest check control"
+  (el término de industria en inglés para esto es, de hecho, "ticket"/
+  "check") y aclara explícitamente "NO comprobante fiscal".
+- "Boleta" NO aparece en NINGÚN lado del dominio de Compras hoy (confirmado
+  con grep) — Compras usa `nroFactura` (texto libre, sin semántica fiscal),
+  sin ningún concepto de "boleta"/"remito"/"comprobante" propio todavía.
+- "Comanda" ya está anclado al KOT (envío a cocina, `core/pos/comanda.ts`)
+  — no es ambiguo, no hace falta tocarlo.
+- Venta de mostrador (`registrarVenta`/`registrar-venta.ts`) no tiene HOY
+  ningún documento impreso ni ningún nombre propio — no usa "boleta",
+  "ticket", "comanda" ni "comprobante" en ningún lado.
+
+**La pregunta de fondo que el usuario planteó, sin resolver:** el
+"mostrador" actual es un remanente PRE-POS (existía antes de que existiera
+el sistema de mesas/`Cuenta` — Task #41 y anteriores lo dejaron intacto
+porque nunca hizo falta tocarlo). ¿Tiene sentido seguir tratándolo como un
+flujo aparte y ponerle un nombre a SU documento tal como existe hoy, o la
+solución real es reformular "una venta que no pasa por una mesa" como una
+modalidad DENTRO del mismo sistema de POS (con un ciclo de vida más
+parecido al de `Cuenta`, no al legado actual)? Eso cambiaría qué es lo que
+realmente hay que nombrar.
+
+**Términos en danza, ninguno decidido:**
+- "Comprobante" — reservado para cuando exista facturación fiscal real
+  (Task #40), no usar antes para no generar expectativa de valor fiscal.
+- "Boleta" — candidato para Compras (documento del proveedor), idea nueva
+  del usuario, nada construido todavía en ese sentido.
+- "Ticket" — candidato para reemplazar "boleta" en Cuenta, y/o para lo que
+  hoy es "mostrador" si se lo repiensa como parte del POS.
+- "Comanda" — sin cambios, ya resuelto.
+
+**Sin decisión de alcance tampoco:** si se termina renombrando Cuenta
+("boleta"→"ticket"), es un rename real de schema (`EjemplarBoleta` con
+migración), no cosmético — toca decenas de archivos y tests con texto
+literal. Vinculado a #42 (comparten el mismo dominio) pero es una decisión
+más amplia y previa: no tiene sentido diseñar la UI de "anular en
+conjunto" de #42 hasta no saber qué nombre va a llevar cada cosa.
 
 ---
 
