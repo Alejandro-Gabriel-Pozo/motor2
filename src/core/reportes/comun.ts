@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 
@@ -223,25 +223,29 @@ export interface CostoMP {
  * "como era antes de este período" y compararlo contra el costo de hoy.
  */
 export async function obtenerCostoActualPorMP(sucursalId: string, db: Db, antesDe?: Date): Promise<Map<string, CostoMP>> {
-  const compras = await db.movimientoStock.findMany({
-    where: {
-      proceso: "COMPRA",
-      seccion: { sucursalId },
-      precioPorUnidadStock: { gt: 0 },
-      // Una compra anulada no fija el costo de reposición.
-      operacion: { anuladaEn: null, ...(antesDe ? { fecha: { lt: antesDe } } : {}) },
-    },
-    orderBy: { operacion: { fecha: "desc" } },
-    select: { productoId: true, precioPorUnidadStock: true, operacion: { select: { fecha: true, proveedor: { select: { nombre: true } } } } },
-  });
+  // 1 fila por producto (la compra más reciente), no una por compra: traer toda la historia de la sucursal con `include`
+  // superaba el límite de parámetros de Prisma 7 con ~55k compras. Empate de fecha: gana el `m."id"` mayor (determinista).
+  // La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK compuesta); el aislamiento entre empresas lo
+  // sigue haciendo el `db` recibido (RLS, A6).
+  const compras = await db.$queryRaw<Array<{ productoId: string; precioPorUnidadStock: Prisma.Decimal; fecha: Date; proveedorNombre: string | null }>>`
+    SELECT DISTINCT ON (m."productoId") m."productoId", m."precioPorUnidadStock", o."fecha", p."nombre" AS "proveedorNombre"
+    FROM "MovimientoStock" m
+    JOIN "Operacion" o ON o."id" = m."operacionId"
+    JOIN "Seccion" s ON s."id" = m."seccionId"
+    LEFT JOIN "Proveedor" p ON p."id" = o."proveedorId"
+    WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = ${sucursalId}
+      AND m."precioPorUnidadStock" > 0
+      AND o."anuladaEn" IS NULL
+      ${antesDe ? Prisma.sql`AND o."fecha" < ${antesDe}` : Prisma.empty}
+    ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
+  `;
 
   const map = new Map<string, CostoMP>();
   for (const c of compras) {
-    if (map.has(c.productoId)) continue; // ya se quedó con la compra más reciente (orden desc)
     map.set(c.productoId, {
       precioPorUnidadStock: Number(c.precioPorUnidadStock),
-      proveedorNombre: c.operacion.proveedor?.nombre ?? null,
-      fecha: c.operacion.fecha,
+      proveedorNombre: c.proveedorNombre,
+      fecha: c.fecha,
     });
   }
   return map;
