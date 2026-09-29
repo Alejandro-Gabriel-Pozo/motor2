@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolverUrlE2E } from "../e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E } from "../e2e/fixtures/base-e2e";
 
 /**
  * Las guardas de la base E2E (test/e2e/fixtures/base-e2e.ts) son lo único que
@@ -45,4 +45,33 @@ describe("resolverUrlE2E — qué base se rechaza (nunca se conecta)", () => {
       expect(() => resolverUrlE2E(env)).toThrow(mensaje);
     });
   }
+});
+
+describe("resolverUrlAppE2E — el runtime de los E2E es motor2_app, no el dueño (ADR-007 A0)", () => {
+  const APP = "postgresql://motor2_app:x@localhost:5432/motor2_e2e";
+  const entorno = (app: string | undefined) => ({ MOTOR2_E2E_DATABASE_URL: OK, MOTOR2_E2E_APP_DATABASE_URL: app });
+
+  it("acepta un rol distinto del dueño sobre la misma base", () => {
+    expect(resolverUrlAppE2E(entorno(APP))).toEqual({ url: APP, host: "localhost", nombre: "motor2_e2e" });
+  });
+
+  it("rechaza si falta (no hay fallback al dueño)", () => {
+    expect(() => resolverUrlAppE2E(entorno(undefined))).toThrow(/Falta MOTOR2_E2E_APP_DATABASE_URL/);
+  });
+
+  it("rechaza si es idéntica a la del dueño", () => {
+    expect(() => resolverUrlAppE2E(entorno(OK))).toThrow(/idéntica/);
+  });
+
+  it("rechaza si apunta a otra base que la del dueño", () => {
+    expect(() => resolverUrlAppE2E(entorno("postgresql://motor2_app:x@localhost:5432/otra_e2e"))).toThrow(/misma base/);
+  });
+
+  it("rechaza si apunta a la base de desarrollo", () => {
+    expect(() => resolverUrlAppE2E(entorno("postgresql://motor2_app:x@localhost:5432/motor2_dev"))).toThrow(/terminar en "_e2e"/);
+  });
+
+  it("rechaza un host remoto", () => {
+    expect(() => resolverUrlAppE2E(entorno("postgresql://motor2_app:x@db.ejemplo.com:5432/motor2_e2e"))).toThrow(/Host rechazado/);
+  });
 });

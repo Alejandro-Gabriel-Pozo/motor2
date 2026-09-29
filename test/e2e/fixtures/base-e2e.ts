@@ -44,10 +44,34 @@ export interface BaseE2E {
  * desarrollo es exactamente el accidente que esta guarda existe para impedir.
  */
 export function resolverUrlE2E(env: Record<string, string | undefined>): BaseE2E {
-  const url = env.MOTOR2_E2E_DATABASE_URL;
+  return validarUrlE2E(env, "MOTOR2_E2E_DATABASE_URL");
+}
+
+/**
+ * La URL del RUNTIME de los E2E (ADR-007, A0): el rol `motor2_app` (sin superusuario, sin BYPASSRLS, no dueño) con el que
+ * corren el servidor de Playwright y los specs, contra la MISMA base que `resolverUrlE2E` (el dueño, que solo resetea y migra).
+ * Mismas guardas, y además tiene que apuntar al mismo host y a la misma base que el dueño. No hay fallback al dueño: correr la
+ * app como dueño anularía el RLS sin aviso, que es justo lo que el rol aparte existe para impedir.
+ */
+export function resolverUrlAppE2E(env: Record<string, string | undefined>): BaseE2E {
+  const dueno = resolverUrlE2E(env);
+  const app = validarUrlE2E(env, "MOTOR2_E2E_APP_DATABASE_URL");
+  if (app.host !== dueno.host || app.nombre !== dueno.nombre) {
+    throw new Error(
+      `MOTOR2_E2E_APP_DATABASE_URL (${app.host}/${app.nombre}) tiene que apuntar a la misma base que MOTOR2_E2E_DATABASE_URL (${dueno.host}/${dueno.nombre}).`,
+    );
+  }
+  if (app.url === dueno.url) {
+    throw new Error("MOTOR2_E2E_APP_DATABASE_URL es idéntica a MOTOR2_E2E_DATABASE_URL: el runtime tiene que usar el rol motor2_app, no el dueño.");
+  }
+  return app;
+}
+
+function validarUrlE2E(env: Record<string, string | undefined>, variable: string): BaseE2E {
+  const url = env[variable];
   if (!url) {
     throw new Error(
-      "Falta MOTOR2_E2E_DATABASE_URL (ver .env.example). Los E2E corren contra una base local dedicada cuyo nombre termina en \"_e2e\"; no hay fallback a DATABASE_URL a propósito.",
+      `Falta ${variable} (ver .env.example). Los E2E corren contra una base local dedicada cuyo nombre termina en "_e2e"; no hay fallback a DATABASE_URL a propósito.`,
     );
   }
   if (env.NODE_ENV === "production" || env.VERCEL || env.VERCEL_ENV) {
@@ -57,14 +81,14 @@ export function resolverUrlE2E(env: Record<string, string | undefined>): BaseE2E
   try {
     parsed = new URL(url);
   } catch {
-    throw new Error("MOTOR2_E2E_DATABASE_URL no es una URL válida.");
+    throw new Error(`${variable} no es una URL válida.`);
   }
   const host = parsed.hostname;
   if (!HOSTS_PERMITIDOS.includes(host)) {
     throw new Error(`Host rechazado (${host}): los E2E solo corren contra un Postgres LOCAL (localhost o 127.0.0.1).`);
   }
   if (PROHIBIDOS.some((p) => url.includes(p))) {
-    throw new Error("MOTOR2_E2E_DATABASE_URL parece apuntar a un proveedor gestionado — rechazada.");
+    throw new Error(`${variable} parece apuntar a un proveedor gestionado — rechazada.`);
   }
   const nombre = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
   if (!nombre || nombre.includes("/") || !nombre.endsWith(SUFIJO_OBLIGATORIO)) {

@@ -47,8 +47,11 @@ aislamiento.) Nada de la Fase F bloquea la entrega al cliente.
 - Carta: `resolverEmpresaCarta` compara contra `CARTA_EMPRESA_SLUG`;
   `resolverPortalCarta()` no filtra por empresa; `resolverCartaPublica` busca
   `findUnique({slug})` global.
-- Tests: el `.env` usa el usuario docker `motor2`, **superusuario** (hoy un RLS
-  quedaría anulado sin aviso); el reset e2e hace `TRUNCATE` de todas las
+- Tests: el `.env` usa el usuario local `motor2`, que NO es superusuario pero
+  sí **dueño** de las tablas (verificado 2026-09-29 en `motor2_dev`/`motor2_e2e`/
+  `motor2_demo`); como el RLS es `ENABLE` sin `FORCE`, el dueño lo salta igual
+  (un RLS quedaría anulado sin aviso); crear `motor2_app` exige el
+  superusuario `postgres` del Postgres local (A0); el reset e2e hace `TRUNCATE` de todas las
   tablas; `npm run build` corre `prisma migrate deploy` contra `DIRECT_URL`.
 
 ## Decisión

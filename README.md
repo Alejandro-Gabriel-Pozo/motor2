@@ -75,7 +75,11 @@ psql -h localhost -U postgres -c "CREATE DATABASE motor2_e2e OWNER motor2"
 DIRECT_URL="postgresql://motor2:motor2@localhost:5432/motor2_e2e" npx prisma migrate deploy
 ```
 
-y se pone la URL en `.env` (ver `.env.example`). Cada corrida la deja vacía
+y se pone la URL en `.env` (ver `.env.example`). Esa URL es la del dueño
+(reset con `TRUNCATE`, migraciones); el servidor y los specs corren con el rol
+sin privilegios `motor2_app` sobre la misma base, vía
+`MOTOR2_E2E_APP_DATABASE_URL` (ADR-007, A0; el rol se crea con
+`scripts/operaciones/crear-rol-motor2-app.sql`). Cada corrida la deja vacía
 antes (`globalSetup`, más un seed mínimo) y después (`globalTeardown`), así que
 no se acumulan datos entre corridas ni se toca `motor2_dev`. Las guardas
 (`test/e2e/fixtures/base-e2e.ts`) abortan sin conectarse si el host no es

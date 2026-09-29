@@ -1,11 +1,19 @@
 import "dotenv/config";
-import type { Prisma } from "@prisma/client";
+import { PrismaClient, type Prisma } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { prisma } from "../../src/lib/db";
 import { baseDelContexto } from "../../src/core/auth/base";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
 export { prisma };
+
+/**
+ * Cliente del DUEÑO de las tablas (`DIRECT_URL`, el mismo rol que migra), para lo que el rol de ejecución no puede hacer a propósito
+ * (TRUNCATE, DDL, saltar el RLS). `prisma` (arriba) es el runtime real: `DATABASE_URL`, rol `motor2_app` (ADR-007, A0). No se conecta
+ * hasta la primera consulta.
+ */
+export const prismaAdmin = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DIRECT_URL ?? "" }) });
 
 /** La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. */
 export const baseDeTest = baseDelContexto();

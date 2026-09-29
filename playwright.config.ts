@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { defineConfig } from "@playwright/test";
-import { resolverUrlE2E } from "./test/e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E } from "./test/e2e/fixtures/base-e2e";
 import { TOKEN_CARTA_E2E } from "./test/e2e/fixtures/carta-token";
 
 /**
@@ -13,7 +13,8 @@ import { TOKEN_CARTA_E2E } from "./test/e2e/fixtures/carta-token";
  * real puede atrapar. Encontrado así, no por Vitest/tsc/eslint: el bug de
  * `<form>` anidado en QuickCrearProducto/QuickCrear (sesión 2026-09-17).
  *
- * BASE DE DATOS DEDICADA: los E2E corren contra `MOTOR2_E2E_DATABASE_URL`
+ * BASE DE DATOS DEDICADA: los E2E corren contra `MOTOR2_E2E_DATABASE_URL` (el DUEÑO: reset y migraciones) y
+ * `MOTOR2_E2E_APP_DATABASE_URL` (el rol `motor2_app` del runtime, misma base; ADR-007 A0)
  * (una base LOCAL cuyo nombre termina en "_e2e", validada por
  * `resolverUrlE2E` — ver test/e2e/fixtures/base-e2e.ts), nunca contra la de
  * desarrollo. `globalSetup` la deja vacía + seed mínimo antes de cada
@@ -39,7 +40,9 @@ import { TOKEN_CARTA_E2E } from "./test/e2e/fixtures/carta-token";
  * hasta que cada uno garantice datos con nombres únicos.
  */
 const base = resolverUrlE2E(process.env);
-process.env.DATABASE_URL = base.url;
+const baseApp = resolverUrlAppE2E(process.env);
+// ADR-007 (A0): el runtime (servidor y specs, `src/lib/db.ts`) usa el rol sin privilegios `motor2_app`; migrar y resetear (dueño) va por DIRECT_URL.
+process.env.DATABASE_URL = baseApp.url;
 process.env.DIRECT_URL = base.url;
 
 // Puerto propio de ESTE worktree (feat/promo-combo, Task #16): 56471, distinto de los ya tomados por ramas
@@ -90,7 +93,7 @@ export default defineConfig({
   webServer: {
     command: COMANDOS[MODO],
     env: {
-      DATABASE_URL: base.url,
+      DATABASE_URL: baseApp.url,
       DIRECT_URL: base.url,
       PORT: String(PUERTO),
       // Las pruebas no deben pedir el dólar a internet ni depender de él (ver actualizarDolarSiHaceFalta).
