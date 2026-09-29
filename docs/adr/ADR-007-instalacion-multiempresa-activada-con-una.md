@@ -151,7 +151,7 @@ segunda empresa se activa **después de la Fase 8** (D9).
 | # | Paso | Requiere autorización | Riesgo | Depende de |
 |---|---|---|---|---|
 | N1 | Este ADR y correcciones a ADR-004/006 | No | Bajo | — |
-| N2 | «Base explícita»: sacar los `= prisma` por defecto, `ctx.db`/`ctx.transaccion` (hoy siguen siendo `prisma`), migrar los 12 `$transaction`, regla de dependency-cruiser; un commit por dominio | No | Medio (diff grande, sin cambio de comportamiento) | — |
+| N2 | «Base explícita»: sacar los `= prisma` por defecto, `ctx.db`/`ctx.transaccion` (hoy siguen siendo `prisma`), migrar los 12 `$transaction`, regla de dependency-cruiser; un commit por dominio. **HECHO (local, sin push)**: `c526e12` (base en el contexto: `core/auth/base.ts` `baseDelContexto()`, `Db`/`Transaccion` en `lib/db-tipos.ts`), `8147b0b`, `a3b8d53`, `f986098` (dominios sin `= prisma`; actions con `ctx.db`/`ctx.transaccion`), `850257c` (regla `db-solo-desde-auth-y-carta-publica`, 6 importadores de `lib/db` con motivo). Desvíos: `baseDelContexto()` (lo piden también los crons) y `core/carta/publica-sin-sesion.ts` (único punto público de la carta) no estaban en el plan. Línea base tras N2: arquitectura 0 violaciones (538 módulos), tests 292 archivos / 3422, e2e 379. | No | Medio (diff grande, sin cambio de comportamiento) | — |
 | N3 | Carta con empresa por parámetro (`EmpresaCarta` llega a portal y sucursal), todavía con la env | No | Bajo | N2 |
 | A0 | Crear `motor2_app` en local y e2e, grants, `.env`, `prismaAdmin`; suite verde SIN RLS | **EXPRESA** (roles y base local) | Medio | N2 |
 | A1 | Prueba previa en `prisma/fase-a/` con el objetivo completo (`validate` + `generate`; ver qué pasa con `create`/`connect` ante FK compuestas) | **EXPRESA** (schema) | Bajo | N1 |
