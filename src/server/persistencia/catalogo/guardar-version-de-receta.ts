@@ -44,7 +44,7 @@ export type UltimaVersionDeReceta = Prisma.RecetaVersionGetPayload<{ include: ty
 /**
  * La versión vigente (MAX(version)) con sus overrides locales, o `null` si el producto todavía no tiene receta. Corre FUERA de la
  * transacción, una vez por intento del reintento de `guardarReceta` (ver el docstring del archivo; `test/catalogo/recetas-concurrencia`
- * cuenta estas lecturas para saber que hubo reintentos).
+ * cuenta las transacciones por intento para saber que hubo reintentos).
  */
 export async function cargarUltimaVersionDeReceta(db: Prisma.TransactionClient, productoId: string): Promise<UltimaVersionDeReceta | null> {
   return db.recetaVersion.findFirst({

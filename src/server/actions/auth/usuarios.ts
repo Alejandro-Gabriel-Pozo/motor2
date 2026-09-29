@@ -6,9 +6,10 @@ import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 
-async function contarAdminsActivosExcluyendo(db: Db, idExcluido?: string): Promise<number> {
+async function contarAdminsActivosExcluyendo(db: Db, empresaId: string, idExcluido?: string): Promise<number> {
   return db.usuarioSucursal.count({
     where: {
+      empresaId,
       activo: true,
       rol: { nombre: "admin", activo: true },
       ...(idExcluido ? { id: { not: idExcluido } } : {}),
@@ -65,7 +66,7 @@ export async function agregarOActualizarUsuario(input: {
     // queda el sistema sin ningún admin activo", chequeo a nivel EMPRESA, no por
     // sucursal; hoy hay una sola empresa activa, ADR-007).
     if (existente?.activo && existente.rol.nombre === "admin" && rol.nombre !== "admin") {
-      const quedan = await contarAdminsActivosExcluyendo(ctx.db, existente.id);
+      const quedan = await contarAdminsActivosExcluyendo(ctx.db, ctx.empresaId, existente.id);
       if (quedan === 0) {
         return error(
           "Esta operación dejaría el sistema sin ningún admin activo — no se puede aplicar. Dejá al menos un admin activo antes de cambiar este."
@@ -99,7 +100,7 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
     if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
 
     if (!activo && membresia.rol.nombre === "admin") {
-      const quedan = await contarAdminsActivosExcluyendo(ctx.db, membresiaId);
+      const quedan = await contarAdminsActivosExcluyendo(ctx.db, ctx.empresaId, membresiaId);
       if (quedan === 0) {
         return error(
           "Esta operación dejaría el sistema sin ningún admin activo — no se puede desactivar. Activá otro admin antes."

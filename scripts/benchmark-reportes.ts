@@ -29,7 +29,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 const N_MP = 150;
 const N_PV = 20;
-const DIAS_HISTORIAL = 3 * 365; // 3 años
+const DIAS_HISTORIAL = Number(process.env.MOTOR2_BENCH_DIAS_HISTORIAL) || 3 * 365; // 3 años por defecto; con ~55k compras, Prisma 7 excede su límite de parámetros en comun.ts (obtenerCostoActualPorMP)
 const INTERVALO_COMPRA_DIAS = 3; // 1 compra por (producto, día) cada 3 días — sin empates, ver docstring de arriba.
 const DIAS_VENTANA_VENTAS = 10; // ventas reales (para el chequeo de periodo.ts), concentradas en los últimos N días.
 const VENTAS_POR_DIA_POR_PV = 3;
@@ -281,7 +281,8 @@ async function main() {
   }));
   console.log(`Caso "ventana larga" (~${DIAS_HISTORIAL} días, sintético — mismos productos, fechas repartidas en todo el histórico): ${ventasVentanaLarga.length} ventas.\n`);
 
-  for (const [nombre, ventas] of [["ventana corta", ventasVentanaCorta], ["ventana larga", ventasVentanaLarga]] as const) {
+  const soloContexto = process.argv.includes("--solo-contexto"); // salta el A/B de costo-historico (su brazo legacy excede el límite de parámetros de Prisma 7 con ~55k compras) y mide solo el sobrecosto de A5
+  for (const [nombre, ventas] of soloContexto ? [] : ([["ventana corta", ventasVentanaCorta], ["ventana larga", ventasVentanaLarga]] as const)) {
     console.log(`--- Caso: ${nombre} ---`);
     const filasLegacy = await filasLeidas(db, () => reconstruirCostosDeVentaLegacy(sucursal.id, ventas));
     const filasNuevo = await filasLeidas(db, () => reconstruirCostosDeVenta(sucursal.id, ventas, db));
@@ -303,19 +304,21 @@ async function main() {
   // MovimientoStock, la conclusión NO es que la optimización esté mal — el chequeo de equivalencia y el
   // tiempo de pared ya la validan — es que un índice nuevo por "proceso" sería un paso SEPARADO, que
   // requeriría su propia migración autorizada (nunca decidido acá).
-  console.log("--- EXPLAIN (ANALYZE, BUFFERS) de la query de la semilla (ventana corta) ---");
-  const primerDiaCorta = [...ventasVentanaCorta.map((v) => diaUtc(v.fecha))].sort()[0];
-  const explainSemilla = await db.$queryRawUnsafe<{ "QUERY PLAN": string }[]>(`
-    EXPLAIN (ANALYZE, BUFFERS) SELECT DISTINCT ON (m."productoId") m."productoId", m."precioPorUnidadStock", o."fecha"
-    FROM "MovimientoStock" m
-    JOIN "Operacion" o ON o."id" = m."operacionId"
-    JOIN "Seccion" s ON s."id" = m."seccionId"
-    WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = '${sucursal.id}'
-      AND m."precioPorUnidadStock" > 0 AND o."fecha" < '${primerDiaCorta}T00:00:00Z'::timestamp
-    ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
-  `);
-  console.log(explainSemilla.map((r) => `  ${r["QUERY PLAN"]}`).join("\n"));
-  console.log();
+  if (!soloContexto) {
+    console.log("--- EXPLAIN (ANALYZE, BUFFERS) de la query de la semilla (ventana corta) ---");
+    const primerDiaCorta = [...ventasVentanaCorta.map((v) => diaUtc(v.fecha))].sort()[0];
+    const explainSemilla = await db.$queryRawUnsafe<{ "QUERY PLAN": string }[]>(`
+      EXPLAIN (ANALYZE, BUFFERS) SELECT DISTINCT ON (m."productoId") m."productoId", m."precioPorUnidadStock", o."fecha"
+      FROM "MovimientoStock" m
+      JOIN "Operacion" o ON o."id" = m."operacionId"
+      JOIN "Seccion" s ON s."id" = m."seccionId"
+      WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = '${sucursal.id}'
+        AND m."precioPorUnidadStock" > 0 AND o."fecha" < '${primerDiaCorta}T00:00:00Z'::timestamp
+      ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
+    `);
+    console.log(explainSemilla.map((r) => `  ${r["QUERY PLAN"]}`).join("\n"));
+    console.log();
+  }
 
   console.log("=== periodo.ts: carga única de catálogo en obtenerReportePorPeriodo ===\n");
   let llamadasAProductoFindMany = 0;
@@ -346,6 +349,33 @@ async function main() {
   }
   const { medianaMs: medianaPeriodo } = await medir("obtenerReportePorPeriodo (10 días)", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador), 3);
   console.log(`  Tiempo mediana del reporte completo: ${medianaPeriodo.toFixed(1)}ms\n`);
+
+  // Sobrecosto del contexto de empresa (ADR-007, A5). Réplica LITERAL de `dbDeEmpresa` (src/core/auth/base.ts) sobre el cliente del
+  // bench —el real usa el singleton de `src/lib/db.ts`, que apunta a DATABASE_URL—: cada operación pasa a ser una transacción
+  // `[set_config('app.empresa_id', $1, true), operación]`. Mismo reporte, sin y con la extensión.
+  console.log("=== Sobrecosto de dbDeEmpresa (set_config por operación, ADR-007 A5) ===\n");
+  const { id: empresaId } = await db.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" }, select: { id: true } });
+  const dbConEmpresa = db.$extends({
+    query: {
+      async $allOperations({ args, query }) {
+        const [, resultado] = await db.$transaction([db.$executeRaw`SELECT set_config('app.empresa_id', ${empresaId}, true)`, query(args)]);
+        return resultado;
+      },
+    },
+  }) as unknown as PrismaClient;
+
+  const { medianaMs: reporteSin } = await medir("obtenerReportePorPeriodo sin contexto", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, db), 7);
+  const { medianaMs: reporteCon } = await medir("obtenerReportePorPeriodo con contexto", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConEmpresa), 7);
+  console.log(`  Reporte completo: +${(reporteCon - reporteSin).toFixed(1)}ms (${((reporteCon / reporteSin - 1) * 100).toFixed(1)}%)\n`);
+
+  const LECTURAS = 200;
+  const { medianaMs: lecturasSin } = await medir(`${LECTURAS} lecturas simples en serie sin contexto`, async () => {
+    for (let i = 0; i < LECTURAS; i++) await db.sucursal.findUnique({ where: { id: sucursal.id } });
+  }, 5);
+  const { medianaMs: lecturasCon } = await medir(`${LECTURAS} lecturas simples en serie con contexto`, async () => {
+    for (let i = 0; i < LECTURAS; i++) await dbConEmpresa.sucursal.findUnique({ where: { id: sucursal.id } });
+  }, 5);
+  console.log(`  Por operación: +${((lecturasCon - lecturasSin) / LECTURAS).toFixed(2)}ms (${(lecturasSin / LECTURAS).toFixed(2)}ms -> ${(lecturasCon / LECTURAS).toFixed(2)}ms; en red real suma ~1 ida y vuelta por operación)\n`);
 
   console.log("=== Memoria del proceso Node ===");
   const mem = process.memoryUsage();

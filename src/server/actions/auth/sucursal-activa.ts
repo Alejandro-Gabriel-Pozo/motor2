@@ -2,9 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { baseDelContexto } from "@/core/auth/base";
-import { getUsuarioActual } from "@/core/auth/session";
-import { COOKIE_SUCURSAL_ACTIVA } from "@/core/auth/contexto";
+import { COOKIE_SUCURSAL_ACTIVA, obtenerContextoUsuario } from "@/core/auth/contexto";
 
 /**
  * Cambia qué sucursal ve el usuario en esta sesión — solo entre las que YA
@@ -14,11 +12,12 @@ import { COOKIE_SUCURSAL_ACTIVA } from "@/core/auth/contexto";
  * (ver docstring de obtenerContextoUsuario).
  */
 export async function cambiarSucursalActiva(sucursalId: string): Promise<void> {
-  const usuario = await getUsuarioActual();
-  if (!usuario) return;
+  const ctx = await obtenerContextoUsuario();
+  if (!ctx) return;
 
-  const membresia = await baseDelContexto().db.usuarioSucursal.findUnique({
-    where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId } },
+  // Solo entre las sucursales de la empresa activa (la cookie de otra empresa no valdría en `obtenerContextoUsuario`).
+  const membresia = await ctx.db.usuarioSucursal.findUnique({
+    where: { usuarioId_sucursalId: { usuarioId: ctx.usuarioId, sucursalId } },
   });
   if (!membresia?.activo) return;
 

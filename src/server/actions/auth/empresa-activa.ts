@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { baseDelContexto } from "@/core/auth/base";
+import { baseDeEmpresa } from "@/core/auth/base";
 import { getUsuarioActual } from "@/core/auth/session";
 import { COOKIE_EMPRESA_ACTIVA, COOKIE_SUCURSAL_ACTIVA } from "@/core/auth/contexto";
 
@@ -18,7 +18,8 @@ export async function cambiarEmpresaActiva(empresaId: string): Promise<void> {
   const usuario = await getUsuarioActual();
   if (!usuario) return;
 
-  const { db } = baseDelContexto();
+  // Ambas lecturas son de la empresa pedida: con RLS, su `app.empresa_id` es lo único que deja verlas.
+  const { db } = baseDeEmpresa(empresaId);
   const pertenencia = await db.usuarioEmpresa.findUnique({
     where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId } },
     include: { empresa: true },

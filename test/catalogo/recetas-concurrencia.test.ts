@@ -43,8 +43,10 @@ describe("guardarReceta — concurrencia real", () => {
   });
 
   it("dos guardados simultáneos de la MISMA receta terminan los dos, como versiones distintas y contiguas, sin mezclar ingredientes", async () => {
-    const lecturasDelMaximo = vi.spyOn(prisma.recetaVersion, "findFirst");
-    lecturasDelMaximo.mockClear();
+    // Un intento = una transacción interactiva (`fn` es una función) sobre el cliente base: `ctx.db` ya no es `prisma` (ADR-007, A5), así que
+    // espiar `prisma.recetaVersion.findFirst` no vería nada. Las operaciones sueltas del contexto usan la forma de arreglo y no cuentan.
+    const intentos = vi.spyOn(prisma, "$transaction");
+    intentos.mockClear();
 
     for (let i = 0; i < ITERACIONES; i++) {
       const settled = await Promise.allSettled([
@@ -73,8 +75,9 @@ describe("guardarReceta — concurrencia real", () => {
       expect(registros, `iteración ${i}: cantidad de registros de auditoría distinta de la cantidad de versiones`).toBe(versiones.length);
     }
 
-    // Guarda contra el falso verde: cada guardado lee el máximo UNA vez por intento; más de 2 lecturas por iteración = hubo reintentos.
-    expect(lecturasDelMaximo.mock.calls.length, "en ninguna iteración hubo un choque: el test no ejercitó el reintento").toBeGreaterThan(2 * ITERACIONES);
-    lecturasDelMaximo.mockRestore();
+    // Guarda contra el falso verde: cada guardado abre UNA transacción por intento; más de 2 por iteración = hubo reintentos.
+    const transaccionesInteractivas = intentos.mock.calls.filter(([primero]) => typeof primero === "function").length;
+    expect(transaccionesInteractivas, "en ninguna iteración hubo un choque: el test no ejercitó el reintento").toBeGreaterThan(2 * ITERACIONES);
+    intentos.mockRestore();
   });
 });

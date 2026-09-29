@@ -80,7 +80,7 @@ export async function crearSucursalConAdmin(input: {
         },
       });
       if (universales.length) {
-        await tx.disponibilidadProducto.createMany({ data: universales.map((productoId) => ({ sucursalId: sucursal.id, productoId, disponible: true })) });
+        await tx.disponibilidadProducto.createMany({ data: universales.map((productoId) => ({ sucursalId: sucursal.id, empresaId: ctx.empresaId, productoId, disponible: true })) });
       }
     }, { maxWait: 5_000, timeout: 15_000 });
 

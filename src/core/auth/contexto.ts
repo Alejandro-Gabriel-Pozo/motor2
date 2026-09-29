@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { baseDelContexto, type BaseDelContexto } from "./base";
+import { baseDeEmpresa, verificarRolDeEjecucionDelProceso, type BaseDelContexto } from "./base";
 import { getUsuarioActual } from "./session";
 
 export const COOKIE_SUCURSAL_ACTIVA = "sucursalActivaId";
@@ -65,6 +65,8 @@ export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | 
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
 
+  await verificarRolDeEjecucionDelProceso();
+
   const pertenencias = await prisma.usuarioEmpresa.findMany({
     where: { usuarioId: usuario.id, activo: true, empresa: { estado: "ACTIVE" } },
     include: { empresa: true },
@@ -100,6 +102,6 @@ export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | 
     sucursalNombre: activa.sucursal.nombre,
     rolNombre: activa.rol.nombre,
     membresias: membresias.map((m) => ({ sucursalId: m.sucursalId, sucursalNombre: m.sucursal.nombre, rolNombre: m.rol.nombre })),
-    ...baseDelContexto(),
+    ...baseDeEmpresa(empresaActiva.empresaId),
   };
 });
