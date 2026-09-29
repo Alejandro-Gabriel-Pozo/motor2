@@ -275,6 +275,16 @@ con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
    `CapacidadSucursal_accionClave_default_key`), con autorización EXPRESA. El
    costo actual sigue dominado por ~54.000 búsquedas en `Operacion` (una por
    compra): el próximo escalón sería otra forma de la consulta, no otro índice.
+5. **Los otros tres sitios con riesgo de volumen — resueltos** (2026-09-29, sin
+   migración ni índice nuevo; los tres pasan a SQL con el `db` del contexto):
+   `ventas-sin-receta` (`ef44e11`: GROUP BY + NOT EXISTS en vez de `in:` con
+   todos los `operacionId`; reventaba con ~60k ventas), `historial-producto`
+   (`004b08a`: JOINs en vez de `findMany` con `include`; reventaba con ~60k
+   movimientos sin rango) y `periodo-precios` (`b94ee23`: `DISTINCT ON` por
+   producto y desempate por `id`; no reventaba —con 400k compras previas pasó
+   de ~6,2 s a ~3,8 s—, la mejora es acotar y volver determinista el empate).
+   Los tests de volumen vaciaban 60k operaciones con `deleteMany` (hasta 10 s,
+   vencía el hook del test siguiente); ahora usan `TRUNCATE` (`e5e4b80`).
 
 ## Riesgos abiertos
 Rendimiento (cada consulta suma BEGIN + `set_config` + COMMIT; se mide en A5
