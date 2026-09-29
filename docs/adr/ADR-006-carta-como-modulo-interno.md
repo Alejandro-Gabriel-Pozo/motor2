@@ -9,6 +9,10 @@
 > dueño, tomada en la misma conversación. **Reemplaza ADR-005 por completo**
 > — no es una corrección menor, es un cambio de dirección: no hay más app
 > externa que autenticar.
+>
+> Plan de implementación diseñado el mismo día (agente `Plan`, modelo
+> Opus) — ver el Paso 0: `TokenCartaEmpresa` (construido para ADR-005)
+> revertido en el commit `f0b38f4`.
 
 ## Contexto
 
