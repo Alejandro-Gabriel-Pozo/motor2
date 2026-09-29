@@ -37,6 +37,40 @@ const CORE_CON_REACT_NEXT = [
 ];
 
 /**
+ * `db-solo-desde-auth-y-carta-publica` (ADR-007, paso N2): el ÚNICO grupo de archivos de `src/` que puede importar `src/lib/db.ts`
+ * (el cliente Prisma global). Todo el resto recibe la base del contexto (`ctx.db` / `ctx.transaccion` de `ContextoUsuario`, o `db: Db`
+ * por parámetro), de modo que elegir la base de un pedido (hoy `prisma`; con RLS, una transacción con la empresa fijada) es un
+ * único punto: `core/auth/base.ts`. Los crons (`api/cron/`) la piden con `baseDelContexto()`; los seeds, scripts y tests viven fuera
+ * de `src/` y la regla no los alcanza.
+ */
+const IMPORTADORES_DE_DB = [
+  {
+    ruta: "src/core/auth/base.ts",
+    motivo: "`baseDelContexto()`: el único lugar donde un pedido elige su cliente de base (hoy `prisma` + `$transaction`).",
+  },
+  {
+    ruta: "src/core/auth/contexto.ts",
+    motivo: "`obtenerContextoUsuario` resuelve las membresías y el rol del usuario ANTES de que exista un contexto (es quien lo construye).",
+  },
+  {
+    ruta: "src/core/auth/acceso.ts",
+    motivo: "Resolución de acceso del usuario de sesión (login/jerarquía de roles): corre antes del contexto; `db` es parámetro con default solo aquí.",
+  },
+  {
+    ruta: "src/core/auth/bootstrap.ts",
+    motivo: "Alta del primer admin al primer login: corre antes de que el usuario tenga contexto.",
+  },
+  {
+    ruta: "src/lib/auth.ts",
+    motivo: "Auth.js: `PrismaAdapter(prisma)` — el adaptador de sesiones necesita el cliente global; no hay contexto de usuario durante el login.",
+  },
+  {
+    ruta: "src/core/carta/publica-sin-sesion.ts",
+    motivo: "Resolución PÚBLICA de la carta (portal, tenants, menú, tema): sin sesión no hay contexto que dé la base. Único punto de entrada de las rutas/páginas públicas.",
+  },
+];
+
+/**
  * `ui-sin-prisma`: páginas que todavía leen la base directo (`import { prisma } from "@/lib/db"`). Se migran en tareas
  * FUTURAS (Fase D) a una capa `src/server/consultas/`; cada migración saca su página de esta lista en el mismo commit
  * (el complemento de Vitest falla si una página listada deja de importar `@/lib/db`). Verificado el 2026-09-27: las 11
@@ -137,6 +171,7 @@ const ACCIONES_CON_CASO_DE_USO = [
 module.exports = {
   "core-sin-react-next": CORE_CON_REACT_NEXT,
   "ui-sin-prisma": PENDIENTES_DE_MIGRAR,
+  "db-solo-desde-auth-y-carta-publica": IMPORTADORES_DE_DB,
   "sin-ciclos": CICLOS_CONOCIDOS,
   PENDIENTES_DE_MIGRAR,
   ACCIONES_CON_CASO_DE_USO,

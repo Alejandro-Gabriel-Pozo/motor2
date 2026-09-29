@@ -100,6 +100,14 @@ module.exports = {
       to: { path: ["^src/lib/db\\.ts$", "^node_modules/(@prisma/client|\\.prisma/client)/"], dependencyTypesNot: ["type-only"] },
     },
     {
+      name: "db-solo-desde-auth-y-carta-publica",
+      comment:
+        "Solo core/auth, lib/auth.ts y la resolución pública de la carta importan src/lib/db.ts (ADR-007 N2): el resto recibe la base del contexto (ctx.db / ctx.transaccion) o por parámetro (db: Db). Lista con motivo: .dependency-cruiser-excepciones.cjs.",
+      severity: "error",
+      from: { path: "^src/", pathNot: excepcionesDe("db-solo-desde-auth-y-carta-publica") },
+      to: { path: "^src/lib/db\\.ts$" },
+    },
+    {
       name: "acciones-sin-ui",
       comment: "server/actions/ no importa de la UI (app/, components/) ni de server/consultas/. A server/persistencia/ solo llegan sus casos de uso (ver persistencia-solo-desde-casos-de-uso).",
       severity: "error",

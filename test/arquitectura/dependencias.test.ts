@@ -36,6 +36,7 @@ interface ExcepcionDeCiclo {
 interface Excepciones {
   "core-sin-react-next": ExcepcionDeArchivo[];
   "ui-sin-prisma": ExcepcionDeArchivo[];
+  "db-solo-desde-auth-y-carta-publica": ExcepcionDeArchivo[];
   "sin-ciclos": ExcepcionDeCiclo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
   ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
@@ -113,7 +114,7 @@ describe("dependency-cruiser: la config no se afloja por la puerta de atrás", (
 });
 
 describe(".dependency-cruiser-excepciones.cjs: toda excepción tiene motivo y apunta a algo que existe", () => {
-  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["ui-sin-prisma"]];
+  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["ui-sin-prisma"], ...EXCEPCIONES["db-solo-desde-auth-y-carta-publica"]];
 
   it("toda excepción lleva un motivo no vacío", () => {
     const sinMotivo = [
@@ -154,6 +155,17 @@ describe("ui-sin-prisma: PENDIENTES_DE_MIGRAR, en las dos direcciones", () => {
       EXCEPCIONES.PENDIENTES_DE_MIGRAR.map((e) => e.ruta)
     );
     expect(sinListar, `Estos archivos de la UI importan @/lib/db y no están en PENDIENTES_DE_MIGRAR:\n${sinListar.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("db-solo-desde-auth-y-carta-publica: los importadores de @/lib/db, en las dos direcciones", () => {
+  it("el conjunto de archivos de src/ que importan @/lib/db es exactamente el de la lista", () => {
+    const reales = modulosCon(/^src\//, (d) => RE_DB.test(d.resolved));
+    const listados = EXCEPCIONES["db-solo-desde-auth-y-carta-publica"].map((e) => e.ruta).sort();
+    const sobran = diferencia(listados, reales);
+    const faltan = diferencia(reales, listados);
+    expect(sobran, `Estos ya no importan @/lib/db: sacalos de db-solo-desde-auth-y-carta-publica en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
+    expect(faltan, `Estos archivos importan @/lib/db sin estar en la lista (reciban la base del contexto: ctx.db / db: Db):\n${faltan.join("\n")}`).toEqual([]);
   });
 });
 
