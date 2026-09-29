@@ -1,4 +1,4 @@
-import type { Resultado } from "@/core/carta/validaciones";
+import type { Resultado } from "@/core/carta/public";
 
 /**
  * Sincronización de precio local entre sucursales de una misma empresa (Fase A de multi-tenancy, `Downloads/Motor 2/plan-panel-

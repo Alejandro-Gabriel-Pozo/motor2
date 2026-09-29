@@ -1,0 +1,103 @@
+import { describe, expect, it } from "vitest";
+import { estiloCartaPorDefecto, resolverEstiloCarta } from "@/core/carta/estilo";
+
+describe("resolverEstiloCarta", () => {
+  it("sin valores cargados, todo sale en su default del catálogo", () => {
+    const estilo = resolverEstiloCarta({});
+    expect(estilo.valores.restaurante_nombre).toBe("");
+    expect(estilo.valores.carta_banda_alto_mobile).toBe("90");
+    expect(estilo.variablesCss["--carta-banda-alto-mobile"]).toBe("90");
+  });
+
+  it("las claves que ya arrancan con carta_ no duplican el prefijo en el nombre de la variable CSS", () => {
+    const estilo = resolverEstiloCarta({});
+    expect(estilo.variablesCss).toHaveProperty("--carta-banda-alto-mobile");
+    expect(estilo.variablesCss).not.toHaveProperty("--carta-carta-banda-alto-mobile");
+    // Una clave que NO arranca con carta_ sigue llevando el prefijo entero.
+    expect(estilo.variablesCss).toHaveProperty("--carta-restaurante-nombre");
+  });
+
+  it("un valor válido reemplaza al default", () => {
+    const estilo = resolverEstiloCarta({ restaurante_nombre: "La Cuadra" });
+    expect(estilo.valores.restaurante_nombre).toBe("La Cuadra");
+    expect(estilo.variablesCss["--carta-restaurante-nombre"]).toBe("La Cuadra");
+  });
+
+  it("un valor inválido cae al default, no rompe ni se cuela crudo", () => {
+    const estilo = resolverEstiloCarta({ carta_imagen_opacidad: "no es un número" });
+    expect(estilo.valores.carta_imagen_opacidad).toBe("38");
+  });
+
+  it("una clave que no es texto (número, objeto) cae al default", () => {
+    const estilo = resolverEstiloCarta({ carta_imagen_opacidad: 50 });
+    expect(estilo.valores.carta_imagen_opacidad).toBe("38");
+  });
+
+  it("claves fuera del catálogo (precio_*, claves no-por-tenant) se ignoran sin error", () => {
+    const estilo = resolverEstiloCarta({ precio_simbolo: "€", empresa_nombre: "Otra cosa", color_marca: "#8b4513" });
+    expect(estilo.valores.color_marca).toBe("#8b4513");
+  });
+
+  it("un Json que no es un objeto (null, array, string) se trata como vacío, sin explotar", () => {
+    expect(resolverEstiloCarta(null).valores.restaurante_nombre).toBe("");
+    expect(resolverEstiloCarta([1, 2, 3]).valores.restaurante_nombre).toBe("");
+    expect(resolverEstiloCarta("no es un objeto").valores.restaurante_nombre).toBe("");
+  });
+
+  describe("hero_ink", () => {
+    it("sin valor cargado, heroInk es null (el CSS base decide)", () => {
+      expect(resolverEstiloCarta({}).heroInk).toBeNull();
+    });
+
+    it("'claro' y 'oscuro' se resuelven a un color CSS real, no quedan crudos", () => {
+      const claro = resolverEstiloCarta({ hero_ink: "claro" });
+      expect(claro.heroInk).toBe("oklch(0.96 0.005 80)");
+      expect(claro.variablesCss["--carta-hero-ink"]).toBe("oklch(0.96 0.005 80)");
+
+      const oscuro = resolverEstiloCarta({ hero_ink: "oscuro" });
+      expect(oscuro.heroInk).toBe("oklch(0.18 0.02 40)");
+    });
+
+    it("un color CSS directo se resuelve tal cual", () => {
+      const estilo = resolverEstiloCarta({ hero_ink: "#8b4513" });
+      expect(estilo.heroInk).toBe("#8b4513");
+    });
+  });
+
+  describe("imagenSeccion — nombres honestos pese a las claves mal nombradas de la base", () => {
+    it("carta_imagen_ancho_mobile es en realidad el alto de la miniatura, expuesto como altoMiniaturaMobilePct", () => {
+      const estilo = resolverEstiloCarta({ carta_imagen_ancho_mobile: "200" });
+      expect(estilo.imagenSeccion.altoMiniaturaMobilePct).toBe(200);
+    });
+
+    it("carta_imagen_ancho_desktop es el background-size, expuesto como tamanoFondoDesktop", () => {
+      const estilo = resolverEstiloCarta({ carta_imagen_ancho_desktop: "cover" });
+      expect(estilo.imagenSeccion.tamanoFondoDesktop).toBe("cover");
+    });
+
+    it("modo, posición y overlay salen tipados, no como strings sueltos", () => {
+      const estilo = resolverEstiloCarta({ carta_imagen_modo: "miniatura", carta_imagen_pos_x: "right", carta_imagen_pos_y: "bottom", carta_imagen_overlay: "no" });
+      expect(estilo.imagenSeccion.modo).toBe("miniatura");
+      expect(estilo.imagenSeccion.posicionX).toBe("right");
+      expect(estilo.imagenSeccion.posicionY).toBe("bottom");
+      expect(estilo.imagenSeccion.overlay).toBe(false);
+    });
+
+    it("overlay acepta los alias sí/no de la sheet (ALIAS_SI_NO)", () => {
+      expect(resolverEstiloCarta({ carta_imagen_overlay: "sí" }).imagenSeccion.overlay).toBe(true);
+      expect(resolverEstiloCarta({ carta_imagen_overlay: "false" }).imagenSeccion.overlay).toBe(false);
+    });
+
+    it("opacidad sale como número, no como string", () => {
+      const estilo = resolverEstiloCarta({ carta_imagen_opacidad: "75" });
+      expect(estilo.imagenSeccion.opacidadPct).toBe(75);
+      expect(typeof estilo.imagenSeccion.opacidadPct).toBe("number");
+    });
+  });
+});
+
+describe("estiloCartaPorDefecto", () => {
+  it("es exactamente resolverEstiloCarta({})", () => {
+    expect(estiloCartaPorDefecto()).toEqual(resolverEstiloCarta({}));
+  });
+});

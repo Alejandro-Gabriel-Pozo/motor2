@@ -57,7 +57,6 @@ const DOMINIOS_SIN_PUBLIC_TODAVIA = {
   pos: "5 sitios externos importan core/pos/* directo (confirmado con depcruise: core/reportes/boletas-emitidas.ts → boleta.ts/cuenta.ts/mesas.ts/numeracion-boleta.ts, y server/persistencia/pos/cargar-cuenta-para-corregir-boleta.ts → boleta.ts) — candidato C4, sin construir todavía.",
   stock: "4 sitios externos (confirmado con depcruise: core/reportes/salud-por-producto.ts → consolidado.ts/alertas.ts, resumen-operativo.ts → alertas.ts, diferencias-ajustes.ts → frecuencia-conteo.ts) — candidato C5, sin construir todavía.",
   compras: "5 sitios externos (confirmado con depcruise: server/persistencia/compras/{escribir-correccion,escribir-anulacion,cargar-compra-para-corregir,cargar-compra-para-anular}.ts y core/features/compras/compra.schema.ts, todos importando core/compras/{anulacion,correccion}.ts) — sin evaluar todavía si necesita fachada.",
-  carta: "3 sitios externos (confirmado con depcruise: core/pos/selector-carta.ts y selector-carta-consulta.ts, importando core/carta/{armar-menu,menu-consulta}.ts) — sin evaluar todavía si necesita fachada.",
 };
 
 const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => !(dominio in DOMINIOS_SIN_PUBLIC_TODAVIA)).map((dominio) => ({

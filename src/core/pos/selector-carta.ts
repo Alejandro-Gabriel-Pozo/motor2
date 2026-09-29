@@ -1,4 +1,4 @@
-import type { CartaV1 } from "@/core/carta/armar-menu";
+import type { CartaV1 } from "@/core/carta/public";
 
 /**
  * «Agregar al pedido» del POS organizado por SECCIÓN DE CARTA (docs/plan-selector-carta-pos-2026-09-25.md) y, dentro de cada
