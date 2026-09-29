@@ -141,3 +141,71 @@ nivel, evaluados y descartados por el dueño).
   rendimiento o de aislamiento real (ver "más difícil" arriba) — ahí sí
   valdría reconsiderar separar el módulo de carta en su propio deployment,
   aunque siga siendo el mismo repo/monorepo.
+
+## Progreso de implementación
+
+> Esta sección es la fuente de verdad del avance — no la conversación que
+> lo produjo (que se compacta/pierde detalle). Antes de seguir con
+> cualquier fase, leer esto y el plan completo (el mensaje del agente
+> `Plan` que lo diseñó, 2026-09-29) en vez de asumir contexto de memoria.
+> Rama: `multitenancy-fase-a`. Todo lo de abajo es local, sin push.
+
+**Hecho, en orden, cada uno gate-verificado (7 comandos: tsc, lint,
+arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
+
+1. **Paso 0** (`f0b38f4`, y la nota de referencia en `b226ede`): revertido
+   `TokenCartaEmpresa` (era de ADR-005, ya superado). Línea de base tomada:
+   tsc/lint limpios, arquitectura 515 módulos, analizar:muerto 0
+   hallazgos, test 287/3364, build limpio, test:e2e 369/66.
+2. **Fase 1** (`29a901c`): admin de carta movida de `/catalogo/carta` a
+   `/carta` (rutas, menú, redirect legado, regla de arquitectura
+   `carta-admin-sin-rutas-de-catalogo`). test:e2e 370/66.
+3. **Fase 2** (`e6ba7a4`): base pura de lectura —
+   `src/core/carta/{estilo,publica-consulta,host,empresa-carta}.ts` +
+   fachada del dominio (`public.ts`/`public-servidor.ts`, saca `carta` de
+   `DOMINIOS_SIN_PUBLIC_TODAVIA`). test 291/3406.
+4. **Fase 3** (`a452cea`): la carta pública nueva, servida desde motor2 —
+   `src/app/(carta-publica)/` (layout, error, not-found, las 2 páginas) +
+   `src/components/carta-publica/` (6 componentes, desenredados del
+   diagnóstico de UI: sin duplicación mobile/desktop, sin
+   `querySelectorAll`, `ResizeObserver` bien desconectado, landmarks para
+   axe, piso de contraste/legibilidad). Accesible por PATH directo
+   (`/carta-publica/<empresa>/<sucursal>`), todavía sin subdominio (eso es
+   la Fase 6). Páginas `dynamic = "force-dynamic"` a propósito: no hay
+   `revalidatePath` todavía, cachear sin invalidar sería peor que no
+   cachear (encontrado con un test real: con `revalidate=300` un spec veía
+   la respuesta cacheada de otro). test 292/3415, test:e2e 375/67.
+
+**Pendiente, en el orden del plan (ver el plan completo para el detalle de
+cada una — no reinventarlas de memoria):**
+
+- **Fase 4** [HOY, sin autorización]: `/carta/tema` usa `CartaVista` real
+  para la vista previa (borrar `src/components/carta/vista-previa-tema.tsx`,
+  281 líneas duplicadas); `/carta/portal` arma el link "Ver en vivo" hacia
+  `/carta-publica/<empresa>/<slug>`; sumar el `revalidatePath` que falta
+  (ver nota de Fase 3 arriba) y recién ahí volver a poner `revalidate` en
+  las páginas públicas.
+- **Fase 5** [HOY, opcional, con aprobación del dueño]: decisión sobre
+  cambiar el layout de "libro" (slider horizontal) a scroll vertical único
+  — capturas antes/después, nunca decidir solo. La Fase 3 ya construyó la
+  base (resolver de estilo, navegación por datos, variables CSS) que sirve
+  para cualquiera de los dos layouts.
+- **Fase 6** [código HOY; DNS real requiere autorización]: rewrite en
+  `next.config.ts` para `carta.<empresa>.<dominioBase>` (con
+  `CARTA_DOMINIO_BASE` configurada), probado con `*.localhost` en
+  Playwright sin DNS real.
+- **Fase 7** [requiere autorización, operación de producción]: comparar en
+  staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
+  retirar el deployment externo.
+- **Fase 8** [código HOY, pero solo DESPUÉS de la Fase 7]: borrar el
+  boundary HTTP (`src/app/api/carta/**`, `autorizar-servicio.ts`,
+  `token-servicio.ts`, el contrato `RegistroTenantsV1`) — mientras el repo
+  externo siga en producción, `/api/carta/*` sigue siendo su única fuente,
+  no se toca.
+- **Fase F** [requiere autorización en todos sus pasos]: depende de que
+  `Empresa` se adopte de verdad en `prisma/schema.prisma` (ADR-004,
+  "Revisar cuando") — `resolverEmpresaCarta` pasa a consultar la base en
+  vez de comparar contra `CARTA_EMPRESA_SLUG`, `SucursalPublica.slug` pasa
+  a único por empresa (corregir también en el schema experimental,
+  `prisma/fase-a/schema.prisma`, que hoy lo tiene como único global), DNS
+  wildcard real, y e2e multiempresa.
