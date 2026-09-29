@@ -31,7 +31,7 @@ describe("anularItemEnviado (server action)", () => {
   const espejosDe = (itemId: string) => prisma.cuentaItem.findMany({ where: { anulaAItemId: itemId }, orderBy: { creadoEn: "asc" } });
 
   it("anulación parcial: fila espejo negativa con el mismo producto/precio/envío, el motivo y quién; el original intacto; el total baja", async () => {
-    expect((await obtenerMapaDeMesas(s.sucursalId)).mesas[0].total).toBe(30000);
+    expect((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0].total).toBe(30000);
 
     const r = await anularItemEnviado(mila.id, 1, "  Pidió una menos  ", 3);
     expect(r).toEqual({ ok: true, mensaje: "Se anuló 1 × «Milanesa» de la mesa 4." });
@@ -42,12 +42,12 @@ describe("anularItemEnviado (server action)", () => {
     });
     const original = await prisma.cuentaItem.findUniqueOrThrow({ where: { id: mila.id } });
     expect([Number(original.cantidad), original.numeroEnvio, original.anulaAItemId]).toEqual([3, 1, null]);
-    expect((await obtenerMapaDeMesas(s.sucursalId)).mesas[0].total).toBe(21000);
+    expect((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0].total).toBe(21000);
   });
 
   it("deja la auditoría con actor, motivo y la cantidad vigente antes/después", async () => {
     await anularItemEnviado(mila.id, 2, "Salió frío", 3);
-    const { items } = await listarRegistrosAuditoria({ entidad: "CuentaItem" });
+    const { items } = await listarRegistrosAuditoria({ entidad: "CuentaItem" }, prisma);
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({
       entidad: "CuentaItem",
@@ -66,7 +66,7 @@ describe("anularItemEnviado (server action)", () => {
     expect((await anularItemEnviado(mila.id, 2, "Se fueron", 2)).ok).toBe(true);
     expect((await espejosDe(mila.id)).map((e) => Number(e.cantidad))).toEqual([-1, -2]);
     expect(await anularItemEnviado(mila.id, 1, "Otra más", 0)).toEqual({ ok: false, mensaje: "No se puede anular más de lo que queda de «Milanesa» (0)." });
-    expect((await obtenerMapaDeMesas(s.sucursalId)).mesas[0].total).toBe(3000);
+    expect((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0].total).toBe(3000);
   });
 
   it("exceder lo que queda se rechaza", async () => {

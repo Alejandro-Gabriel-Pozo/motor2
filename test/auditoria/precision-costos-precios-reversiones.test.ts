@@ -181,7 +181,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.045, unidadId: unidadKgId, mermaPorcentaje: 7 }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
 
-      const saldoInsumoPreVenta = await calcularSaldoTotal(mpInsumo.id, seccionId);
+      const saldoInsumoPreVenta = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
 
       const venta = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 13 }] });
       expect(venta.ok, venta.mensaje).toBe(true);
@@ -192,7 +192,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
 
       // El saldo del insumo debe volver EXACTO al valor previo a la venta
       // — ni una unidad de más ni de menos por arrastre de redondeo.
-      const saldoInsumoPostReversion = await calcularSaldoTotal(mpInsumo.id, seccionId);
+      const saldoInsumoPostReversion = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
       expect(saldoInsumoPostReversion).toBe(saldoInsumoPreVenta);
 
       // El neto de precioTotal (venta + reversión) sobre TODAS las líneas
@@ -218,7 +218,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.3, unidadId: unidadSinDecimales.id, mermaPorcentaje: 5 }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 100 }] });
 
-      const saldoPre = await calcularSaldoTotal(mpInsumo.id, seccionId);
+      const saldoPre = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
       const venta = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 7 }] });
       expect(venta.ok, venta.mensaje).toBe(true);
 
@@ -226,7 +226,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       const anulacion = await anularVenta(operacionVenta.id);
       expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
-      const saldoPost = await calcularSaldoTotal(mpInsumo.id, seccionId);
+      const saldoPost = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
       // Aunque el consumo se redondeó a un entero antes de persistir, la
       // reversión revierte EXACTAMENTE esa misma cantidad ya redondeada
       // (no recalcula desde cero) — el saldo vuelve exacto al original.

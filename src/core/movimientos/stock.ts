@@ -16,13 +16,13 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * SUM real sobre el índice `@@index([productoId, seccionId, loteVencimiento])`
  * — no hace falta una tabla aparte para que sea barato.
  */
-export async function calcularSaldoTotal(productoId: string, seccionId: string, db: Db = prisma): Promise<number> {
+export async function calcularSaldoTotal(productoId: string, seccionId: string, db: Db): Promise<number> {
   const r = await db.movimientoStock.aggregate({ where: { productoId, seccionId }, _sum: { cantidad: true } });
   return Number(r._sum.cantidad ?? 0);
 }
 
 /** Saldo de un producto en una sección, para UN lote puntual (o el bucket "sin lote" si loteVencimiento es null) — a diferencia de calcularSaldoTotal, no suma entre lotes. Usado por Conteo Físico cuando se cuenta un lote específico. */
-export async function calcularSaldoPorLote(productoId: string, seccionId: string, loteVencimiento: Date | null, db: Db = prisma): Promise<number> {
+export async function calcularSaldoPorLote(productoId: string, seccionId: string, loteVencimiento: Date | null, db: Db): Promise<number> {
   const r = await db.movimientoStock.aggregate({ where: { productoId, seccionId, loteVencimiento }, _sum: { cantidad: true } });
   return Number(r._sum.cantidad ?? 0);
 }
@@ -38,7 +38,7 @@ export async function validarStockSuficiente(
   productoId: string,
   seccionId: string,
   requerido: number,
-  db: Db = prisma
+  db: Db
 ): Promise<ResultadoValidacionStock> {
   const actual = await calcularSaldoTotal(productoId, seccionId, db);
   return { ok: actual >= requerido, actual, requerido };
@@ -49,7 +49,7 @@ export async function validarStockSuficiente(
  * la "pista" del error de sección obligatoria (Movimientos.js:744-751,
  * "Tiene stock en: ...").
  */
-export async function seccionesConStock(productoId: string, sucursalId: string, db: Db = prisma): Promise<string[]> {
+export async function seccionesConStock(productoId: string, sucursalId: string, db: Db): Promise<string[]> {
   const filas = await db.movimientoStock.groupBy({
     by: ["seccionId"],
     where: { productoId, seccion: { sucursalId } },
@@ -77,7 +77,7 @@ export async function seccionesConStock(productoId: string, sucursalId: string, 
  * `traspasos.ts` (copia local de esta misma función) — centralizado acá
  * para no repetirlo divergente una cuarta vez.
  */
-export async function obtenerSeccionPropia(seccionId: string, sucursalId: string, db: Db = prisma) {
+export async function obtenerSeccionPropia(seccionId: string, sucursalId: string, db: Db) {
   const seccion = await db.seccion.findUnique({ where: { id: seccionId } });
   if (!seccion || seccion.sucursalId !== sucursalId) return null;
   return seccion;
@@ -93,7 +93,7 @@ export async function obtenerSeccionPropia(seccionId: string, sucursalId: string
  * Ya no lo usa la VENTA (mostrador ni cierre del POS): ahí el lote lo elige el libro de `origen-venta.ts`, que descuenta lo ya asignado
  * entre líneas de la misma venta (docs/plan-seccion-habitual-stock-2026-09-25.md). Lo siguen usando Producción y el Consumo manual.
  */
-export async function obtenerLoteMasProximoAVencer(productoId: string, seccionId: string, db: Db = prisma): Promise<Date | null> {
+export async function obtenerLoteMasProximoAVencer(productoId: string, seccionId: string, db: Db): Promise<Date | null> {
   const grupos = await db.movimientoStock.groupBy({
     by: ["loteVencimiento"],
     where: { productoId, seccionId, loteVencimiento: { not: null } },
@@ -126,7 +126,7 @@ export interface FilaStockParaConteo {
  * sabe (nunca contado, sin factura), se agrega a mano en la grilla, que sí
  * admite contar sobre saldo 0.
  */
-export async function listarStockParaConteo(seccionId: string, db: Db = prisma): Promise<FilaStockParaConteo[]> {
+export async function listarStockParaConteo(seccionId: string, db: Db): Promise<FilaStockParaConteo[]> {
   const grupos = await db.movimientoStock.groupBy({
     by: ["productoId", "loteVencimiento"],
     where: { seccionId },
@@ -195,7 +195,7 @@ export async function resolverConsumoPorFamilia(
   productoId: string,
   cantidadNecesaria: number,
   seccionId: string,
-  db: Db = prisma,
+  db: Db,
   // Permite reusar un cache de producto por transacción (ver
   // producto-cache.ts) en vez de volver a pedir el mismo producto que el
   // llamador ya tiene — por defecto pide directo, para los llamadores que

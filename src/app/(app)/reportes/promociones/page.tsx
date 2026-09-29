@@ -12,7 +12,7 @@ export default async function PromocionesPage({ searchParams }: { searchParams: 
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "promociones_config");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "promociones_config", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;

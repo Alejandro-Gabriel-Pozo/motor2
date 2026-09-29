@@ -6,7 +6,7 @@ import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 /**
  * Lecturas de Catálogo › Recetas para los Server Components (Task #41, Fase D3/D4). Mismo contrato que
  * `server/consultas/catalogo/productos.ts` (ver su cabecera): `server-only`, sin guarda de permiso adentro (la página la hace
- * antes), `db: Db = prisma` al final y devuelve EXACTAMENTE lo que devolvía la consulta Prisma que reemplaza.
+ * antes), `db: Db` al final y devuelve EXACTAMENTE lo que devolvía la consulta Prisma que reemplaza.
  *
  * El producto suelto del historial (`/catalogo/recetas/[productoId]/historial`) NO vive acá: reusa `obtenerProductoPorId`
  * de `productos.ts` (el editor, `/catalogo/recetas/[productoId]`, también).
@@ -18,7 +18,7 @@ import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
  * conteo de ingredientes de esa versión (`_count.ingredientes`). Lectura CENTRAL (lista de lectores-de-receta.test.ts): no
  * lee cantidad ni merma, así que no resuelve nada por sucursal.
  */
-export async function listarProductosConReceta(db: Db = prisma) {
+export async function listarProductosConReceta(db: Db) {
   return db.producto.findMany({
     where: { ...whereDisponibleEnAlguna(), recetaVersiones: { some: {} } },
     orderBy: { nombre: "asc" },
@@ -33,7 +33,7 @@ export async function listarProductosConReceta(db: Db = prisma) {
 }
 
 /** Editor de receta (`/catalogo/recetas/[productoId]`): las materias primas disponibles en alguna sucursal, para el selector de "Agregar ingrediente". */
-export async function listarMpDisponiblesEnAlguna(db: Db = prisma) {
+export async function listarMpDisponiblesEnAlguna(db: Db) {
   return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, orderBy: { nombre: "asc" } });
 }
 
@@ -43,7 +43,7 @@ export async function listarMpDisponiblesEnAlguna(db: Db = prisma) {
  */
 export async function listarOpcionesDeSustituto(
   ing: { insumoIdExcluido: string | null; unidadId: string },
-  db: Db = prisma,
+  db: Db,
 ) {
   return db.insumo.findMany({
     where: {
@@ -60,7 +60,7 @@ export async function listarOpcionesDeSustituto(
  * Editor de receta: notas "Calibrado en N sucursal(es)" por ingrediente — UNA sola consulta por lotes (no una por
  * ingrediente) a `RendimientoLocalIngrediente`, para los ingredientes de la receta vigente que se pasen.
  */
-export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db = prisma) {
+export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db) {
   return db.rendimientoLocalIngrediente.findMany({
     where: { recetaIngredienteId: { in: recetaIngredienteIds }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
     include: { sucursal: { select: { nombre: true } } },

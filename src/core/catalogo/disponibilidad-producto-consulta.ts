@@ -25,13 +25,13 @@ export function whereDisponibleEnAlguna(): Prisma.ProductoWhereInput {
   return { disponibilidades: { some: { disponible: true } } };
 }
 
-export async function productoDisponibleEn(sucursalId: string, productoId: string, db: Db = prisma): Promise<boolean> {
+export async function productoDisponibleEn(sucursalId: string, productoId: string, db: Db): Promise<boolean> {
   const fila = await db.disponibilidadProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } });
   return resolverDisponibilidad(fila);
 }
 
 /** Batch — para listados/reportes, sin N+1. Todo id que no tenga fila para `sucursalId` cae en `false`. */
-export async function disponibilidadDeProductos(sucursalId: string, productoIds: readonly string[], db: Db = prisma): Promise<Map<string, boolean>> {
+export async function disponibilidadDeProductos(sucursalId: string, productoIds: readonly string[], db: Db): Promise<Map<string, boolean>> {
   if (productoIds.length === 0) return new Map();
   const filas = await db.disponibilidadProducto.findMany({ where: { sucursalId, productoId: { in: [...productoIds] } } });
   const porProducto = new Map(filas.map((f) => [f.productoId, f.disponible]));
@@ -45,7 +45,7 @@ export interface DisponibilidadEnSucursal {
 }
 
 /** Para la ficha de producto: el estado en TODAS las sucursales activas, incluidas las que no tienen fila propia (quedan en `false`). */
-export async function disponibilidadPorSucursalDeProducto(productoId: string, db: Db = prisma): Promise<DisponibilidadEnSucursal[]> {
+export async function disponibilidadPorSucursalDeProducto(productoId: string, db: Db): Promise<DisponibilidadEnSucursal[]> {
   const [sucursales, filas] = await Promise.all([
     db.sucursal.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
     db.disponibilidadProducto.findMany({ where: { productoId } }),

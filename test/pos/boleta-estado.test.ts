@@ -33,7 +33,7 @@ describe("obtenerBoletasRecientes — estado derivado (vigente / desactualizada 
     const operacionDe = async (productoId: string) => (await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId } })).operacionId!;
     return { cuenta, ventaMilanesa: await operacionDe(s.milanesa.id), ventaFlan: await operacionDe(s.flan.id) };
   }
-  const laBoleta = async () => (await obtenerBoletasRecientes(s.sucursalId, s.mesa.id))[0];
+  const laBoleta = async () => (await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma))[0];
 
   it("recién cerrada: vigente, con todas sus líneas y sin corrección", async () => {
     const { cuenta } = await cerrarMilanesaYFlan();
@@ -116,7 +116,7 @@ describe("obtenerBoletasRecientes — estado derivado (vigente / desactualizada 
     const operacionFlan = await prisma.operacion.findUniqueOrThrow({ where: { id: itemFlan.operacionId! } });
     expect(operacionFlan.anuladaEn).not.toBeNull(); // el hermano se anuló también, sin que nadie lo pidiera a mano
 
-    const boleta = (await obtenerBoletasRecientes(s.sucursalId, s.mesa.id))[0];
+    const boleta = (await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma))[0];
     expect(boleta).toMatchObject({ estado: "anulada", ventaAnulada: true, lineas: [], total: 0 });
   });
 });

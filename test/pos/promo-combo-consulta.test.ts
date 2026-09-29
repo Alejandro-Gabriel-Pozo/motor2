@@ -42,18 +42,18 @@ describe("cargarPromoCartaParaAgregar", () => {
   });
 
   it("null si la promo no existe, es de otra sucursal, está apagada, o no tiene cupos", async () => {
-    expect(await cargarPromoCartaParaAgregar(s.sucursalId, "no-existe")).toBeNull();
+    expect(await cargarPromoCartaParaAgregar(s.sucursalId, "no-existe", prisma)).toBeNull();
     const otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
-    expect(await cargarPromoCartaParaAgregar(otra, promoCartaId)).toBeNull();
+    expect(await cargarPromoCartaParaAgregar(otra, promoCartaId, prisma)).toBeNull();
     await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { activa: false } });
-    expect(await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId)).toBeNull();
+    expect(await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma)).toBeNull();
     await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { activa: true } });
     const sinCupos = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionEntradasId, titulo: "Informativa", precio: 100 } });
-    expect(await cargarPromoCartaParaAgregar(s.sucursalId, sinCupos.id)).toBeNull();
+    expect(await cargarPromoCartaParaAgregar(s.sucursalId, sinCupos.id, prisma)).toBeNull();
   });
 
   it("trae los dos cupos con nombre, mínimo y máximo", async () => {
-    const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId);
+    const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma);
     expect(def).not.toBeNull();
     if (!def) return;
     expect(def).toMatchObject({ id: promoCartaId, titulo: "Menú del día", precio: 2000 });
@@ -63,7 +63,7 @@ describe("cargarPromoCartaParaAgregar", () => {
   });
 
   it("PARIDAD: los elegibles de cada cupo son EXACTO los mismos que el selector del POS ofrece en esa sección (D5)", async () => {
-    const [def, selector] = await Promise.all([cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId), cargarSelectorCartaPos(s.sucursalId)]);
+    const [def, selector] = await Promise.all([cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma), cargarSelectorCartaPos(s.sucursalId, prisma)]);
     expect(def).not.toBeNull();
     if (!def) return;
     const pediblesPorSeccion = new Map(selector.seccionesCarta.map((sec) => [sec.seccionCartaId, new Set(sec.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId))]));
@@ -76,13 +76,13 @@ describe("cargarPromoCartaParaAgregar", () => {
 
   it("un producto oculto, apagado o sin sección de carta NO es elegible, igual que en el selector", async () => {
     await prisma.contenidoCartaProducto.update({ where: { productoId: empanadaId }, data: { visibleEnCarta: false } });
-    const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId);
+    const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma);
     expect(def?.cupos[0].elegibles).toEqual(new Set());
   });
 
   it("precioCartaPorProducto trae el precio de carta (Precio Local si lo hay) de cada elegible", async () => {
     await prisma.precioLocalProducto.create({ data: { sucursalId: s.sucursalId, productoId: empanadaId, precio: 750, habilitado: true } });
-    const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId);
+    const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma);
     expect(def?.precioCartaPorProducto.get(empanadaId)).toBe(750);
     expect(def?.precioCartaPorProducto.get(s.flan.id)).toBe(3000);
   });

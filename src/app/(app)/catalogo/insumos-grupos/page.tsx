@@ -18,11 +18,11 @@ export default async function InsumosGruposPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "grupos_familia");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "grupos_familia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [insumos, grupos] = await Promise.all([listarInsumos(), listarGrupos()]);
-  const cadenas = await Promise.all(grupos.map((g) => textoCadenaDeGrupos(g.id)));
+  const cadenas = await Promise.all(grupos.map((g) => textoCadenaDeGrupos(g.id, ctx.db)));
 
   return (
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">

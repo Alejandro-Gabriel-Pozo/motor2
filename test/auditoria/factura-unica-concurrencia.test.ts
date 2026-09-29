@@ -66,7 +66,7 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
       });
       expect(operacionesConEsaFactura, `iteración ${i}: una sola Operacion con esa factura, nunca dos`).toBe(1);
 
-      expect(await calcularSaldoTotal(mp.id, seccionId), `iteración ${i}: el saldo refleja UNA sola compra, no dos`).toBe(10);
+      expect(await calcularSaldoTotal(mp.id, seccionId, prisma), `iteración ${i}: el saldo refleja UNA sola compra, no dos`).toBe(10);
     }
   });
 

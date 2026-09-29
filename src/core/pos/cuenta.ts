@@ -186,7 +186,7 @@ export interface DetalleDeMesa {
  * La mesa pedida con su cuenta abierta (si tiene), agrupada por envío — una sola consulta. `null` si la mesa no existe o no es de
  * esta sucursal (el aislamiento por sucursal vive acá, no en quien llama).
  */
-export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, db: Db = prisma, ahora: Date = new Date()): Promise<DetalleDeMesa | null> {
+export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, db: Db, ahora: Date = new Date()): Promise<DetalleDeMesa | null> {
   const mesa = await db.mesa.findFirst({
     where: { id: mesaId, sucursalId },
     include: {

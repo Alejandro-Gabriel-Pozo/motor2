@@ -43,7 +43,7 @@ export default async function RecetaEditorPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;
@@ -54,8 +54,8 @@ export default async function RecetaEditorPage({
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpDisponibles, unidades] = await Promise.all([
-    obtenerProductoPorId(productoId),
-    listarMpDisponiblesEnAlguna(),
+    obtenerProductoPorId(productoId, ctx.db),
+    listarMpDisponiblesEnAlguna(ctx.db),
     listarUnidadesActivas(),
   ]);
 
@@ -100,7 +100,7 @@ export default async function RecetaEditorPage({
   if (vigente?.ingredientes.length) {
     await Promise.all(
       vigente.ingredientes.map(async (ing) => {
-        const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId);
+        const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId, ctx.db);
         const faltantes = porSucursal.filter((s) => !s.disponible).map((s) => s.sucursalNombre);
         if (faltantes.length) sucursalesSinIngrediente.set(ing.insumoProductoId, faltantes);
 
@@ -108,7 +108,7 @@ export default async function RecetaEditorPage({
           const opciones = await listarOpcionesDeSustituto({
             insumoIdExcluido: ing.insumoProducto.insumoId,
             unidadId: ing.unidadId,
-          });
+          }, ctx.db);
           opcionesSustitutoPorIngrediente.set(ing.insumoProductoId, opciones);
         }
       })
@@ -119,7 +119,7 @@ export default async function RecetaEditorPage({
   // (no una por ingrediente) a RendimientoLocalIngrediente.
   const calibracionesPorIngrediente = new Map<string, string[]>();
   if (vigente?.ingredientes.length) {
-    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id));
+    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id), ctx.db);
     for (const c of calibraciones) {
       const lista = calibracionesPorIngrediente.get(c.recetaIngredienteId) ?? [];
       lista.push(c.sucursal.nombre);

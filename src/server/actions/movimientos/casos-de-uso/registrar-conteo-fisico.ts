@@ -61,13 +61,13 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  * @sideEffects Escritura del Kardex (Operacion + MovimientoStock) SOLO si la diferencia es != 0 y la acción ajusta; sin auditoría de permisos propia.
  */
 export async function registrarConteoFisicoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   comando: ComandoConteoFisico
 ): Promise<ResultadoConteoFisico> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso no valida que la
   // sección sea de ESTA sucursal, solo el permiso de quien llama — ver el
   // mismo chequeo en registrarMovimientoCasoDeUso/reclasificarStockCasoDeUso.
-  if (!(await obtenerSeccionPropia(comando.seccionId, actor.sucursalId))) {
+  if (!(await obtenerSeccionPropia(comando.seccionId, actor.sucursalId, actor.db))) {
     return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
   }
 

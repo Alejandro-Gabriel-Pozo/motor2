@@ -81,7 +81,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   });
 
   it("6) Stock consolidado (teórico, por sección) y Valuación (saldo, agregado) coinciden por producto — dos reportes independientes del mismo saldo", async () => {
-    const [consolidado, valuacion] = await Promise.all([calcularStockConsolidado(sucursalId), calcularValuacionInventario(sucursalId)]);
+    const [consolidado, valuacion] = await Promise.all([calcularStockConsolidado(sucursalId, prisma), calcularValuacionInventario(sucursalId)]);
     const teoricoPorProducto = new Map<string, number>();
     for (const fila of consolidado) teoricoPorProducto.set(fila.productoId, (teoricoPorProducto.get(fila.productoId) ?? 0) + fila.teorico);
 
@@ -100,7 +100,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
     // saldo real casi nunca baja del mínimo heurístico (40% de la necesidad semanal) — cero alertas es un resultado
     // válido (vacuamente cumple la conciliación), no un error. Lo que este test verifica es la PROPIEDAD: si hay
     // alguna alerta, que sea consistente con un mínimo de verdad configurado y con el saldo real.
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     for (const a of alertas) {
       const minimo = await prisma.stockMinimoProducto.findFirst({ where: { sucursalId, productoId: a.productoId, OR: [{ seccionId: a.seccionId }, { seccionId: null }] } });
       expect(minimo, `${a.productoCodigo}/${a.seccionNombre}: alertó sin tener un mínimo configurado`).toBeTruthy();
@@ -113,7 +113,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   it("8) PV030 ('se produce'): tiene saldo real positivo en stock consolidado — el saldo de un PV que se produce SÍ significa algo (a diferencia del resto de la carta)", async () => {
     const pv030 = await prisma.producto.findUniqueOrThrow({ where: { codigo: "PV030" } });
     expect(tieneStockReal(pv030.tipo, pv030.seProduce), "PV030 tiene que estar marcado 'se produce' para que esta conciliación tenga sentido").toBe(true);
-    const consolidado = await calcularStockConsolidado(sucursalId);
+    const consolidado = await calcularStockConsolidado(sucursalId, prisma);
     const filasPv030 = consolidado.filter((f) => f.productoId === pv030.id);
     const teoricoTotal = filasPv030.reduce((a, f) => a + f.teorico, 0);
     expect(teoricoTotal).toBeGreaterThan(0);

@@ -42,18 +42,18 @@ export async function requerirSesionEnSucursal(sucursalId: string): Promise<Cont
  */
 export async function requerirVer(accion: AccionClave): Promise<ContextoUsuario> {
   const ctx = await requerirSesion();
-  await exigirVer(ctx.usuarioId, ctx.sucursalId, accion);
+  await exigirVer(ctx, ctx.sucursalId, accion);
   return ctx;
 }
 
 /** Como `requerirVer` para las lecturas que reciben la sucursal por parámetro: además exige membresía activa en ella. */
 export async function requerirVerEnSucursal(sucursalId: string, accion: AccionClave): Promise<ContextoUsuario> {
   const ctx = await requerirSesionEnSucursal(sucursalId);
-  await exigirVer(ctx.usuarioId, sucursalId, accion);
+  await exigirVer(ctx, sucursalId, accion);
   return ctx;
 }
 
-async function exigirVer(usuarioId: string, sucursalId: string, accion: AccionClave): Promise<void> {
-  const gate = await requierePermisoVer(usuarioId, sucursalId, accion);
+async function exigirVer(ctx: ContextoUsuario, sucursalId: string, accion: AccionClave): Promise<void> {
+  const gate = await requierePermisoVer(ctx.usuarioId, sucursalId, accion, ctx.db);
   if (!gate.ok) throw new Error(gate.mensaje);
 }

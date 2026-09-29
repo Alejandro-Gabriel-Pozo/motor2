@@ -76,14 +76,14 @@ describe("anularCompra", () => {
 
   it("anula la compra: el stock vuelve a lo de antes, la original queda marcada y se escribe el contra-asiento", async () => {
     const compra = await comprar({ nroFactura: "A-0001" });
-    expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(10);
+    expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 
     const r = await anularCompra(compra.id);
     expect(r.ok, r.mensaje).toBe(true);
     expect(r.mensaje).toContain("Compra anulada");
     expect(r.mensaje).toContain("A-0001");
 
-    expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(0);
+    expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
 
     const original = await prisma.operacion.findUniqueOrThrow({ where: { id: compra.id } });
     expect(original.anuladaEn).not.toBeNull();
@@ -128,7 +128,7 @@ describe("anularCompra", () => {
     const centavos = lineas.reduce((suma, l) => suma + Math.round(Number(l.precioTotal) * 100), 0);
     expect(centavos).toBe(0);
     expect(lineas.reduce((suma, l) => suma + Number(l.cantidad), 0)).toBe(0);
-    expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(7); // solo queda la otra
+    expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(7); // solo queda la otra
   });
 
   it("el gasto del período deja de contar la compra anulada, y solo esa", async () => {
@@ -155,7 +155,7 @@ describe("anularCompra", () => {
       expect(r.mensaje).toContain("Devolución a proveedor");
       expect((await prisma.operacion.findUniqueOrThrow({ where: { id: compra.id } })).anuladaEn).toBeNull();
       expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
-      expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(4);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(4);
       expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
     });
 
@@ -167,8 +167,8 @@ describe("anularCompra", () => {
       await consumir(10, { lote: loteNuevo }); // el lote de esta compra se agotó
 
       // Hay 50 kg en total: contra el total pasaría; por lote no.
-      expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(50);
-      expect(await calcularSaldoPorLote(harinaId, seccionId, loteNuevo)).toBe(0);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(50);
+      expect(await calcularSaldoPorLote(harinaId, seccionId, loteNuevo, prisma)).toBe(0);
 
       const r = await anularCompra(compra.id);
       expect(r.ok).toBe(false);
@@ -183,7 +183,7 @@ describe("anularCompra", () => {
 
       const r = await anularCompra(compra.id);
       expect(r.ok, r.mensaje).toBe(true);
-      expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(5);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(5);
     });
   });
 
@@ -263,7 +263,7 @@ describe("anularCompra", () => {
       expect(reenvio.ok).toBe(true);
       expect(reenvio.mensaje).toBe(primera.mensaje);
       expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(1);
-      expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(0);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
     });
 
     it("la misma clave usada para anular OTRA compra es un conflicto, no un duplicado silencioso", async () => {
@@ -293,7 +293,7 @@ describe("anularCompra", () => {
         expect(resultados.filter((r) => !r.ok)[0].mensaje).toContain("ya está anulada");
         expect(await prisma.operacion.count({ where: { proceso: "AJUSTE", detalleLibre: { contains: compra.id } } }), `iteración ${i}: una sola reversión`).toBe(1);
       }
-      expect(await calcularSaldoTotal(harinaId, seccionId), "el saldo no quedó doblemente revertido").toBe(0);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma), "el saldo no quedó doblemente revertido").toBe(0);
     });
   });
 
@@ -309,7 +309,7 @@ describe("anularCompra", () => {
       const hasta = new Date(Date.now() + 86_400_000);
       const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta);
       expect(rep.compras.totalGastado).toBe(100);
-      expect(await calcularSaldoTotal(harinaId, seccionId)).toBe(10);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 
       // Y la recarga, ya vigente, vuelve a ocupar el número.
       const repetida = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy(), seccionId, proveedorId, nroFactura: "F-9", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }] });

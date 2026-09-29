@@ -15,7 +15,7 @@ export default async function ConteosPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;

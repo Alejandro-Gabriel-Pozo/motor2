@@ -82,7 +82,7 @@ export interface FiltroAuditoria {
 }
 
 /** Más reciente primero, paginado por cursor — mismo patrón que el resto de los listados largos del proyecto (ver obtenerHistorialConteosFisicos). */
-export async function listarRegistrosAuditoria(filtro: FiltroAuditoria = {}, db: Db = prisma) {
+export async function listarRegistrosAuditoria(filtro: FiltroAuditoria = {}, db: Db) {
   const filas = await db.registroAuditoria.findMany({
     where: filtro.entidad ? { entidad: filtro.entidad } : undefined,
     include: { actor: { select: { email: true, name: true } }, sucursal: { select: { nombre: true } } },

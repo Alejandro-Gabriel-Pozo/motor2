@@ -21,7 +21,7 @@ export default async function MotivosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "motivos_movimiento");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "motivos_movimiento", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [motivos, destinos] = await Promise.all([listarMotivosMermaParaPanel(), listarDestinosConsumoParaPanel()]);

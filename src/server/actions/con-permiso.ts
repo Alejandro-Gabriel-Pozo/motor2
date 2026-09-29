@@ -30,7 +30,7 @@ export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
     return error("Demasiadas acciones seguidas — esperá un minuto e intentá de nuevo.") as T;
   }
 
-  const gate = await requierePermiso(ctx.usuarioId, ctx.sucursalId, accionClave);
+  const gate = await requierePermiso(ctx.usuarioId, ctx.sucursalId, accionClave, ctx.db);
   if (!gate.ok) return error(gate.mensaje) as T;
 
   return fn(ctx);

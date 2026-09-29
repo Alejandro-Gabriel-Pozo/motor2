@@ -45,7 +45,7 @@ describe("obtenerBoletasRecientes", () => {
     const cierre = await cerrarCuenta(cuenta.id);
     expect(cierre.ok).toBe(true);
 
-    const [boleta, ...otras] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    const [boleta, ...otras] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
     expect(otras).toEqual([]);
     expect(boleta).toMatchObject({ cuentaId: cuenta.id, mesero: "admin", total: 27500, ventaAnulada: false });
     expect(boleta.lineas).toEqual([
@@ -71,14 +71,14 @@ describe("obtenerBoletasRecientes", () => {
     expect((await anularItemEnviado(anulada.items[0].id, 1, "Se fue", 1)).ok).toBe(true);
     expect(await cerrarCuenta(anulada.id)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar." });
 
-    expect(await obtenerBoletasRecientes(s.sucursalId, s.mesa.id)).toEqual([]);
+    expect(await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma)).toEqual([]);
   });
 
   it(`como mucho ${BOLETAS_RECIENTES_POR_MESA}, de la más nueva a la más vieja`, async () => {
     const cuentas = [];
     for (const cantidad of [1, 2, 3, 4]) cuentas.push(await cerrarUna(cantidad));
 
-    const boletas = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    const boletas = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
     expect(boletas.map((b) => b.cuentaId)).toEqual([cuentas[3].id, cuentas[2].id, cuentas[1].id]);
     expect(boletas.map((b) => b.total)).toEqual([12000, 9000, 6000]);
     expect(boletas.every((b, i) => i === 0 || b.cerradaEn <= boletas[i - 1].cerradaEn)).toBe(true);
@@ -87,15 +87,15 @@ describe("obtenerBoletasRecientes", () => {
   it("aislada por sucursal: la misma mesa pedida desde otra sucursal no da nada", async () => {
     await cerrarUna(1);
     const otra = await prisma.sucursal.create({ data: { nombre: "Otra" } });
-    expect(await obtenerBoletasRecientes(otra.id, s.mesa.id)).toEqual([]);
-    expect(await obtenerBoletasRecientes(s.sucursalId, s.mesa.id)).toHaveLength(1);
+    expect(await obtenerBoletasRecientes(otra.id, s.mesa.id, prisma)).toEqual([]);
+    expect(await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma)).toHaveLength(1);
   });
 
   it("cada boleta trae su número: el ejemplar A que emitió cerrarCuenta (docs/plan-numeracion-boleta-2026-09-25.md, paso 4)", async () => {
     const primera = await cerrarUna(1);
     const segunda = await cerrarUna(2);
 
-    const boletas = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    const boletas = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
     expect(boletas.map((b) => [b.cuentaId, b.numero])).toEqual([
       [segunda.id, { numero: 2, ejemplar: 1 }],
       [primera.id, { numero: 1, ejemplar: 1 }],
@@ -116,7 +116,7 @@ describe("obtenerBoletasRecientes", () => {
       },
     });
 
-    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
     expect(boleta).toMatchObject({ cuentaId: vieja.id, numero: null, total: 3000 });
   });
 
@@ -125,7 +125,7 @@ describe("obtenerBoletasRecientes", () => {
     const item = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id } });
     expect((await anularVenta(item.operacionId!)).ok).toBe(true);
 
-    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
     expect(boleta).toMatchObject({ cuentaId: cuenta.id, ventaAnulada: true });
   });
 });

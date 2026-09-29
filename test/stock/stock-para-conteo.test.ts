@@ -31,13 +31,13 @@ describe("listarStockParaConteo", () => {
   });
 
   it("sin ningún movimiento en la sección, da vacío", async () => {
-    expect(await listarStockParaConteo(seccionId)).toEqual([]);
+    expect(await listarStockParaConteo(seccionId, prisma)).toEqual([]);
   });
 
   it("trae el producto con su saldo actual", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
 
-    const filas = await listarStockParaConteo(seccionId);
+    const filas = await listarStockParaConteo(seccionId, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0]).toMatchObject({ productoId: mpId, productoCodigo: "MP_1", saldoSistema: 10, loteVencimiento: null });
   });
@@ -55,7 +55,7 @@ describe("listarStockParaConteo", () => {
       ],
     });
 
-    const filas = await listarStockParaConteo(seccionId);
+    const filas = await listarStockParaConteo(seccionId, prisma);
     expect(filas).toHaveLength(2);
     expect(filas.map((f) => f.saldoSistema).sort()).toEqual([4, 6]);
   });
@@ -64,7 +64,7 @@ describe("listarStockParaConteo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
 
-    expect(await listarStockParaConteo(seccionId)).toEqual([]);
+    expect(await listarStockParaConteo(seccionId, prisma)).toEqual([]);
   });
 
   it("excluye PV comunes (no tienen stock real) aunque tengan movimientos", async () => {
@@ -78,13 +78,13 @@ describe("listarStockParaConteo", () => {
       data: { operacionId: operacion.id, productoId: pv.id, seccionId, proceso: "AJUSTE", cantidad: 5, detalle: "AJUSTE", precioTotal: 0, precioPorUnidadStock: 0 },
     });
 
-    expect(await listarStockParaConteo(seccionId)).toEqual([]);
+    expect(await listarStockParaConteo(seccionId, prisma)).toEqual([]);
   });
 
   it("no mezcla stock de otra sección", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
     const otraSeccion = await sembrarSeccion(sucursalId, "Barra");
 
-    expect(await listarStockParaConteo(otraSeccion.id)).toEqual([]);
+    expect(await listarStockParaConteo(otraSeccion.id, prisma)).toEqual([]);
   });
 });

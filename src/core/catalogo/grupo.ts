@@ -10,7 +10,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * Devuelve los NOMBRES, del grupo dado hacia la raíz (el propio grupo va
  * primero).
  */
-async function cadenaDeGrupos(grupoId: string, db: Db = prisma): Promise<string[]> {
+async function cadenaDeGrupos(grupoId: string, db: Db): Promise<string[]> {
   const cadena: string[] = [];
   const vistos = new Set<string>();
   let actualId: string | null = grupoId;
@@ -29,7 +29,7 @@ async function cadenaDeGrupos(grupoId: string, db: Db = prisma): Promise<string[
 }
 
 /** Breadcrumb legible "Bebidas > Bebidas sin alcohol" (raíz primero) — equivalente de textoCadenaDeGrupos_ (Catalogo.js:2477-2480). */
-export async function textoCadenaDeGrupos(grupoId: string, db: Db = prisma): Promise<string> {
+export async function textoCadenaDeGrupos(grupoId: string, db: Db): Promise<string> {
   const cadena = await cadenaDeGrupos(grupoId, db);
   return cadena.reverse().join(" > ");
 }
@@ -43,7 +43,7 @@ export async function textoCadenaDeGrupos(grupoId: string, db: Db = prisma): Pro
 export async function creariaCiclo(
   grupoId: string,
   padreNuevoId: string | null,
-  db: Db = prisma
+  db: Db
 ): Promise<boolean> {
   if (!padreNuevoId) return false; // sin padre = pasa a ser raíz, nunca hay ciclo
   if (padreNuevoId === grupoId) return true;

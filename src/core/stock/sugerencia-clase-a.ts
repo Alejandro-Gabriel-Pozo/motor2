@@ -24,7 +24,7 @@ export interface InsumoClaseA {
  * nombre de Insumo pero cada una tiene su propia fila de
  * `FrecuenciaConteoProducto`).
  */
-export async function sugerirInsumosClaseA(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<InsumoClaseA[]> {
+export async function sugerirInsumosClaseA(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<InsumoClaseA[]> {
   const compras = await db.movimientoStock.groupBy({
     by: ["productoId"],
     where: { seccion: { sucursalId }, proceso: "COMPRA", operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null } },

@@ -66,7 +66,7 @@ describe("server/consultas/catalogo/recetas", () => {
 
   describe("listarProductosConReceta", () => {
     it("con la base sin recetas devuelve []", async () => {
-      await expect(listarProductosConReceta()).resolves.toEqual([]);
+      await expect(listarProductosConReceta(prisma)).resolves.toEqual([]);
     });
 
     it("devuelve EXACTAMENTE los productos disponibles en alguna sucursal con receta, por nombre, con su última versión y el conteo de ingredientes de esa versión", async () => {
@@ -100,7 +100,7 @@ describe("server/consultas/catalogo/recetas", () => {
       // Disponible pero SIN receta: fuera.
       await crearProducto("PV_GASEOSA", "Gaseosa", "PV", { [sucursalA]: true });
 
-      const lista = await listarProductosConReceta();
+      const lista = await listarProductosConReceta(prisma);
 
       // Sin duplicados aunque la pizza esté disponible en las dos sucursales.
       expect(lista.map((p) => p.nombre)).toEqual(["Empanada", "Pizza muzza", "Salsa base"]);
@@ -133,7 +133,7 @@ describe("server/consultas/catalogo/recetas", () => {
         },
       });
 
-      const [p] = await listarProductosConReceta();
+      const [p] = await listarProductosConReceta(prisma);
       expect(Object.keys(p).sort()).toEqual([...ESCALARES_PRODUCTO, "recetaVersiones"].sort());
       expect(p).toMatchObject({ id: pizza, codigo: "PV_PIZZA", nombre: "Pizza muzza", tipo: "PV", unidadStockId: kg });
       expect(Number(p.precioVenta)).toBe(9000);
@@ -151,11 +151,11 @@ describe("server/consultas/catalogo/recetas", () => {
       const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
       await crearVersion(pizza, 1, [harina, queso, tomate]);
 
-      let [p] = await listarProductosConReceta();
+      let [p] = await listarProductosConReceta(prisma);
       expect(p.recetaVersiones.map((v) => [v.version, v._count.ingredientes])).toEqual([[1, 3]]);
 
       await crearVersion(pizza, 2, [harina]);
-      [p] = await listarProductosConReceta();
+      [p] = await listarProductosConReceta(prisma);
       expect(p.recetaVersiones.map((v) => [v.version, v._count.ingredientes])).toEqual([[2, 1]]);
     });
 
@@ -164,10 +164,10 @@ describe("server/consultas/catalogo/recetas", () => {
       await crearVersion(pizza, 1, [harina]);
 
       await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId: sucursalA, productoId: pizza } }, data: { disponible: false } });
-      expect((await listarProductosConReceta()).map((p) => p.id)).toEqual([pizza]);
+      expect((await listarProductosConReceta(prisma)).map((p) => p.id)).toEqual([pizza]);
 
       await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId: sucursalB, productoId: pizza } }, data: { disponible: false } });
-      await expect(listarProductosConReceta()).resolves.toEqual([]);
+      await expect(listarProductosConReceta(prisma)).resolves.toEqual([]);
     });
 
     it("acepta el cliente de una transacción como `db` (ve lo escrito dentro de la misma transacción)", async () => {
@@ -185,7 +185,7 @@ describe("server/consultas/catalogo/recetas", () => {
     it("devuelve solo las MP disponibles en alguna sucursal, por nombre — nunca un PV", async () => {
       await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
 
-      const lista = await listarMpDisponiblesEnAlguna();
+      const lista = await listarMpDisponiblesEnAlguna(prisma);
       expect(lista.map((p) => p.nombre)).toEqual(["Aceite", "Harina", "Queso", "Tomate"]);
     });
 
@@ -193,7 +193,7 @@ describe("server/consultas/catalogo/recetas", () => {
       await crearProducto("MP_SAL", "Sal", "MP", {});
       await crearProducto("MP_PIMIENTA", "Pimienta", "MP", { [sucursalA]: false, [sucursalB]: false });
 
-      expect((await listarMpDisponiblesEnAlguna()).map((p) => p.nombre)).toEqual(["Aceite", "Harina", "Queso", "Tomate"]);
+      expect((await listarMpDisponiblesEnAlguna(prisma)).map((p) => p.nombre)).toEqual(["Aceite", "Harina", "Queso", "Tomate"]);
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {
@@ -223,7 +223,7 @@ describe("server/consultas/catalogo/recetas", () => {
     });
 
     it("devuelve solo id+nombre de los insumos activos con alguna MP de esa unidad de stock disponible en alguna sucursal, excluyendo el insumo indicado", async () => {
-      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: insumoHarina, unidadId: kg });
+      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: insumoHarina, unidadId: kg }, prisma);
       expect(opciones).toEqual(
         expect.arrayContaining([
           { id: insumoQueso, nombre: "Queso (insumo)" },
@@ -235,7 +235,7 @@ describe("server/consultas/catalogo/recetas", () => {
     });
 
     it("sin excluir ninguno (insumoIdExcluido null), los devuelve todos — la unidad de stock filtra, no el insumo", async () => {
-      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: null, unidadId: kg });
+      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: null, unidadId: kg }, prisma);
       expect(opciones.map((o) => o.id).sort()).toEqual([insumoHarina, insumoQueso, insumoTomate].sort());
     });
 
@@ -246,7 +246,7 @@ describe("server/consultas/catalogo/recetas", () => {
       const insumoNoDisponible = (await prisma.insumo.create({ data: { nombre: "Sin disponibilidad" } })).id;
       await prisma.producto.update({ where: { id: soloTomateDisponible }, data: { insumoId: insumoNoDisponible } });
 
-      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: null, unidadId: kg });
+      const opciones = await listarOpcionesDeSustituto({ insumoIdExcluido: null, unidadId: kg }, prisma);
       expect(opciones.map((o) => o.id)).toEqual([insumoHarina]);
     });
   });
@@ -261,7 +261,7 @@ describe("server/consultas/catalogo/recetas", () => {
       await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ingQueso.id, sucursalId: sucursalA, mermaPorcentaje: 5 } });
       // Fila "vacía" (ni cantidad ni merma): no debería poder crearse con datos reales, pero si existiera no debe volver.
 
-      const calibraciones = await listarCalibracionesDeIngredientes([ingHarina.id, ingQueso.id]);
+      const calibraciones = await listarCalibracionesDeIngredientes([ingHarina.id, ingQueso.id], prisma);
       expect(calibraciones.map((c) => [c.recetaIngredienteId, c.sucursal.nombre]).sort()).toEqual(
         [
           [ingHarina.id, "Sucursal A"],
@@ -275,7 +275,7 @@ describe("server/consultas/catalogo/recetas", () => {
       const version = await crearVersion(pizza, 1, [harina]);
       const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
 
-      await expect(listarCalibracionesDeIngredientes([ing.id])).resolves.toEqual([]);
+      await expect(listarCalibracionesDeIngredientes([ing.id], prisma)).resolves.toEqual([]);
     });
   });
 });

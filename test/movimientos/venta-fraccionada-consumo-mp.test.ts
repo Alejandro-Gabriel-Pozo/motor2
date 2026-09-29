@@ -74,7 +74,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     for (const f of filas) expect(Number.isInteger(Number(f.cantidad))).toBe(true);
     expect(filas.map((f) => Number(f.cantidad))).toEqual([-1, 0]);
     expect(sumaCantidad(filas)).toBe(-1);
-    expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(9);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9);
   });
 
   it("POS: dos mesas distintas, cada una con 0,5, cerradas con cerrarCuenta en momentos DISTINTOS — total -1", async () => {
@@ -146,7 +146,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     const filas = await consumosDe(mp.id);
     expect(filas.map((f) => Number(f.cantidad))).toEqual([0, -1, 0, 0]);
     expect(sumaCantidad(filas)).toBe(-1);
-    expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(9);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9);
   });
 
   it("anulación: vender 0,5, vender 0,5, anular la primera, vender 0,5 — saldo final 8 (2 medias vigentes = 1 bollo) y D vuelve a 0", async () => {
@@ -167,7 +167,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     const v3 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(v3.ok, v3.mensaje).toBe(true);
 
-    expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(8);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(8);
 
     // D = Σcantidad − ΣcantidadExacta sobre TODAS las filas con cantidadExacta no nulo (CONSUMO + su reversión AJUSTE) — tiene que
     // volver a 0: las dos ventas vigentes (v2, v3) consumieron exactamente 1 bollo entre las dos, sin resto pendiente.
@@ -204,8 +204,8 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     const r2 = await registrarVenta({ fecha: new Date(), seccionId: seccion2.id, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(r2.ok, r2.mensaje).toBe(true);
 
-    expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(9);
-    expect(await calcularSaldoTotal(mp.id, seccion2.id)).toBe(9);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9);
+    expect(await calcularSaldoTotal(mp.id, seccion2.id, prisma)).toBe(9);
     const consumoSucursal1 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId, proceso: "CONSUMO" } });
     const consumoSucursal2 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId: seccion2.id, proceso: "CONSUMO" } });
     expect(Number(consumoSucursal1.cantidad)).toBe(-1);

@@ -30,7 +30,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * La pantalla de la mesa la llama DESPUÉS de su guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`): no hace falta
  * ninguna Server Action nueva.
  */
-export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma): Promise<SelectorCartaPos> {
+export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promise<SelectorCartaPos> {
   const [carta, productos, preciosLocales, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
     resolverMenuCarta(sucursalId, db),
     db.producto.findMany({

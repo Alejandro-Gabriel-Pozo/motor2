@@ -39,7 +39,7 @@ export interface FilaAlertaStock {
  * deliberada de esta primera versión, el dato real (quién es el proveedor
  * habitual) ya está en la comparativa de precios de Catálogo.
  */
-export async function calcularAlertasStock(sucursalId: string, db: Db = prisma): Promise<FilaAlertaStock[]> {
+export async function calcularAlertasStock(sucursalId: string, db: Db): Promise<FilaAlertaStock[]> {
   const saldos = await db.movimientoStock.groupBy({
     by: ["productoId", "seccionId"],
     where: { seccion: { sucursalId } },
@@ -103,7 +103,7 @@ export interface ResumenAlertasStock {
 }
 
 /** Port de obtenerResumenAlertasStock (Stock.js:2329-2340). */
-export async function obtenerResumenAlertasStock(sucursalId: string, db: Db = prisma): Promise<ResumenAlertasStock> {
+export async function obtenerResumenAlertasStock(sucursalId: string, db: Db): Promise<ResumenAlertasStock> {
   const data = await calcularAlertasStock(sucursalId, db);
   return {
     total: data.length,

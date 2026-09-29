@@ -10,7 +10,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * "mínimo cargado en 0" son cosas distintas (0 es un mínimo real: "avisame
  * si esto se termina del todo").
  */
-export async function resolverStockMinimo(sucursalId: string, productoId: string, seccionId: string | null, db: Db = prisma): Promise<number | null> {
+export async function resolverStockMinimo(sucursalId: string, productoId: string, seccionId: string | null, db: Db): Promise<number | null> {
   if (seccionId) {
     const porSeccion = await db.stockMinimoProducto.findUnique({ where: { productoId_seccionId: { productoId, seccionId } } });
     if (porSeccion) return Number(porSeccion.minimo);

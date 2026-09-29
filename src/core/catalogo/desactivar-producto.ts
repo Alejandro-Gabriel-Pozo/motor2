@@ -21,7 +21,7 @@ export interface DependenciasDeProducto {
  * - saldo por sección, de ESTA sucursal únicamente. Se agrupa por sección y se ignoran las que suman cero (un +5 y un −5 en la
  *   misma sección no es saldo), pero no se netea entre secciones distintas.
  */
-export async function dependenciasParaDesactivar(productoId: string, sucursalId: string, db: PrismaClient = prisma): Promise<DependenciasDeProducto> {
+export async function dependenciasParaDesactivar(productoId: string, sucursalId: string, db: PrismaClient): Promise<DependenciasDeProducto> {
   const usos = await db.recetaIngrediente.findMany({
     where: { insumoProductoId: productoId, recetaVersion: { producto: whereDisponibleEn(sucursalId) } },
     select: { recetaVersion: { select: { productoId: true, version: true, producto: { select: { nombre: true } } } } },

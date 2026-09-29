@@ -13,7 +13,7 @@ export default async function UnidadesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "unidades");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "unidades", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [unidades, mezclados] = await Promise.all([listarUnidadesParaPanel(), detectarInsumosConUnidadMezclada()]);

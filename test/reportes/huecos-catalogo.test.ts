@@ -80,7 +80,7 @@ describe("generarReporteHuecosCatalogo", () => {
 
     const base = await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId } });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } })).id });
-    const gate = await requierePermisoVer(operador.id, base.id, "insumos_mezclados");
+    const gate = await requierePermisoVer(operador.id, base.id, "insumos_mezclados", prisma);
     expect(gate.ok).toBe(false);
   });
 });

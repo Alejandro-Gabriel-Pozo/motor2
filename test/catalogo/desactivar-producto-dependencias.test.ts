@@ -42,7 +42,7 @@ describe("dependenciasParaDesactivar", () => {
   });
 
   it("un producto que nadie usa y sin movimientos no depende de nada", async () => {
-    expect(await dependenciasParaDesactivar(harinaId, sucursalId)).toEqual({ recetasVigentes: [], saldos: [] });
+    expect(await dependenciasParaDesactivar(harinaId, sucursalId, prisma)).toEqual({ recetasVigentes: [], saldos: [] });
   });
 
   it("lista los platos DISPONIBLES ACÁ cuya receta VIGENTE lo usa, por nombre; ignora versiones viejas y platos no disponibles acá", async () => {
@@ -51,7 +51,7 @@ describe("dependenciasParaDesactivar", () => {
     await plato("Calzone", true, [[harinaId], []]); // v1 sí, pero la vigente es v2 y no lo usa → NO cuenta
     await plato("Empanada", false, [[harinaId]]); // lo usa pero NO está disponible acá → NO cuenta
 
-    const { recetasVigentes } = await dependenciasParaDesactivar(harinaId, sucursalId);
+    const { recetasVigentes } = await dependenciasParaDesactivar(harinaId, sucursalId, prisma);
     expect(recetasVigentes.map((r) => r.nombre)).toEqual(["Fainá", "Pizza"]);
   });
 
@@ -61,7 +61,7 @@ describe("dependenciasParaDesactivar", () => {
     await prisma.disponibilidadProducto.create({ data: { sucursalId: otraSucursal.id, productoId: plato2.id, disponible: true } });
     await prisma.recetaVersion.create({ data: { productoId: plato2.id, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 1, unidadId: kgId }] } } });
 
-    const { recetasVigentes } = await dependenciasParaDesactivar(harinaId, sucursalId);
+    const { recetasVigentes } = await dependenciasParaDesactivar(harinaId, sucursalId, prisma);
     expect(recetasVigentes).toEqual([]);
   });
 
@@ -74,7 +74,7 @@ describe("dependenciasParaDesactivar", () => {
     await mover(cocina.id, 5);
     await mover(cocina.id, -5, "VENTA"); // Cocina: 0 → no se lista
 
-    const { saldos } = await dependenciasParaDesactivar(harinaId, sucursalId);
+    const { saldos } = await dependenciasParaDesactivar(harinaId, sucursalId, prisma);
     expect(saldos).toEqual([{ sucursalNombre: "Central", seccionNombre: "Depósito", saldo: 6 }]);
   });
 
@@ -84,7 +84,7 @@ describe("dependenciasParaDesactivar", () => {
     const op = await prisma.operacion.create({ data: { sucursalId: otraSucursal.id, proceso: "COMPRA", fecha: new Date(), usuarioId } });
     await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: harinaId, seccionId: barra.id, proceso: "COMPRA", cantidad: 2.5, detalle: "test" } });
 
-    const { saldos } = await dependenciasParaDesactivar(harinaId, sucursalId);
+    const { saldos } = await dependenciasParaDesactivar(harinaId, sucursalId, prisma);
     expect(saldos).toEqual([]);
   });
 });

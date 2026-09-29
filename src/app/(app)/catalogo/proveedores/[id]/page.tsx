@@ -32,17 +32,17 @@ export default async function FichaProveedorPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { id } = await params;
   const { guardado } = await searchParams;
-  const p = await obtenerFichaProveedor(id);
+  const p = await obtenerFichaProveedor(id, ctx.db);
   if (!p) notFound();
 
   const [productosQueLeCompran, puedeVerPrecios] = await Promise.all([
-    listarProductosQueLeCompran(id),
-    accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, ["comparar_precios"]),
+    listarProductosQueLeCompran(id, ctx.db),
+    accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, ["comparar_precios"], ctx.db),
   ]);
 
   return (

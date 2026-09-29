@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { validarCantidad } from "@/core/datos/cantidad";
@@ -64,20 +64,20 @@ export interface CabeceraRecetaInput {
  * TODAS sus MP disponibles compartiendo la unidad de stock del ingrediente principal (mismo criterio que `validarUnidadInsumo`,
  * ya usado para un producto suelto y para la fusión de Insumos).
  */
-async function validarSustitutosDeIngrediente(insumoSustitutoIds: string[], mp: { insumoId: string | null; unidadStockId: string }): Promise<string | null> {
+async function validarSustitutosDeIngrediente(db: Db, insumoSustitutoIds: string[], mp: { insumoId: string | null; unidadStockId: string }): Promise<string | null> {
   if (new Set(insumoSustitutoIds).size !== insumoSustitutoIds.length) return "Un ingrediente no puede tener el mismo sustituto declarado dos veces.";
   for (const insumoSustitutoId of insumoSustitutoIds) {
     if (mp.insumoId && insumoSustitutoId === mp.insumoId) return "Un sustituto no puede ser el mismo Insumo que el ingrediente principal.";
-    const insumo = await prisma.insumo.findUnique({ where: { id: insumoSustitutoId } });
+    const insumo = await db.insumo.findUnique({ where: { id: insumoSustitutoId } });
     if (!insumo) return "No se encontró uno de los insumos sustitutos.";
     if (!insumo.activo) return `El insumo sustituto "${insumo.nombre}" está inactivo.`;
-    const invalidoUnidad = await validarUnidadInsumo(insumoSustitutoId, mp.unidadStockId);
+    const invalidoUnidad = await validarUnidadInsumo(insumoSustitutoId, mp.unidadStockId, undefined, db);
     if (invalidoUnidad) return invalidoUnidad;
   }
   return null;
 }
 
-export async function validarIngredientes(items: IngredienteInput[], producto: { seProduce: boolean }) {
+export async function validarIngredientes(db: Db, items: IngredienteInput[], producto: { seProduce: boolean }) {
   if (!items.length) return "La receta necesita al menos un ingrediente.";
   // D2: la sustitución automática solo tiene sentido donde el libro de origen-venta.ts decide la sección (venta de un PV que se
   // vende tal cual) — Producción usa resolverConsumoPorFamilia, que no la conoce (fuera de alcance de este plan).
@@ -89,19 +89,19 @@ export async function validarIngredientes(items: IngredienteInput[], producto: {
     if (!esNumeroFinito(item.cantidad)) return "Cada ingrediente necesita una cantidad válida.";
     if (Number(item.mermaPorcentaje ?? 0) < 0) return "La merma no puede ser negativa.";
     if (!esNumeroFinito(item.mermaPorcentaje ?? 0)) return "La merma no es un número válido.";
-    const mp = await prisma.producto.findUnique({ where: { id: item.insumoProductoId } });
+    const mp = await db.producto.findUnique({ where: { id: item.insumoProductoId } });
     if (!mp || mp.tipo !== "MP") {
       return `Cada ingrediente tiene que ser una materia prima (MP) (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
     }
     // Global, no por sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6): la receta es del Catálogo
     // Central, compartida entre sucursales — bloquear el editor porque UNA sucursal desactivó esta MP impediría editar
     // una receta de todas. Basta con que esté disponible EN ALGUNA; la aplicación local ya la bloquea en venta.ts/movimientos.ts.
-    const disponibleEnAlguna = await prisma.producto.findFirst({ where: { id: mp.id, ...whereDisponibleEnAlguna() } });
+    const disponibleEnAlguna = await db.producto.findFirst({ where: { id: mp.id, ...whereDisponibleEnAlguna() } });
     if (!disponibleEnAlguna) {
       return `Cada ingrediente tiene que ser una materia prima (MP) disponible en alguna sucursal (${mp.nombre} no lo está en ninguna).`;
     }
     if (item.insumoSustitutoIds?.length) {
-      const invalidoSustitutos = await validarSustitutosDeIngrediente(item.insumoSustitutoIds, mp);
+      const invalidoSustitutos = await validarSustitutosDeIngrediente(db, item.insumoSustitutoIds, mp);
       if (invalidoSustitutos) return invalidoSustitutos;
     }
   }
@@ -133,17 +133,17 @@ export function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): str
  * admite, así que se rechaza). Las tres restantes son enteros >= 0 sin unidad — mismo criterio que ya usaba `validarPasos`
  * más arriba para los minutos de un paso.
  */
-export async function validarCabecera(cabecera: CabeceraRecetaInput): Promise<string | null> {
+export async function validarCabecera(db: Db, cabecera: CabeceraRecetaInput): Promise<string | null> {
   if (cabecera.rendimientoCantidad !== undefined) {
     if (!cabecera.rendimientoUnidadId) return "Falta la unidad del rendimiento.";
-    const unidad = await prisma.unidad.findUnique({ where: { id: cabecera.rendimientoUnidadId }, select: { nombre: true, decimales: true } });
+    const unidad = await db.unidad.findUnique({ where: { id: cabecera.rendimientoUnidadId }, select: { nombre: true, decimales: true } });
     if (!unidad) return "No se encontró la unidad del rendimiento.";
     const resultado = validarCantidad(cabecera.rendimientoCantidad, unidad, { etiqueta: "El rendimiento" });
     if (!resultado.ok) return resultado.mensaje;
   }
   if (cabecera.racionTamano !== undefined) {
     if (!cabecera.racionUnidadId) return "Falta la unidad del tamaño de ración.";
-    const unidad = await prisma.unidad.findUnique({ where: { id: cabecera.racionUnidadId }, select: { nombre: true, decimales: true } });
+    const unidad = await db.unidad.findUnique({ where: { id: cabecera.racionUnidadId }, select: { nombre: true, decimales: true } });
     if (!unidad) return "No se encontró la unidad del tamaño de ración.";
     const resultado = validarCantidad(cabecera.racionTamano, unidad, { etiqueta: "El tamaño de ración" });
     if (!resultado.ok) return resultado.mensaje;

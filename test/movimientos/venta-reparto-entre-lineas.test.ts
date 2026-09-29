@@ -63,15 +63,15 @@ describe("H9: reparto por familia entre líneas de la misma venta", () => {
   it("control: Pizza ×2 en UNA línea reparte bien (A queda en 0, B en 0,1)", async () => {
     const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pizza, cantidadVendida: 2 }] });
     expect(r.ok, r.mensaje).toBe(true);
-    expect(await calcularSaldoTotal(muzzaA, seccionId)).toBe(0);
-    expect(await calcularSaldoTotal(muzzaB, seccionId)).toBe(0.1);
+    expect(await calcularSaldoTotal(muzzaA, seccionId, prisma)).toBe(0);
+    expect(await calcularSaldoTotal(muzzaB, seccionId, prisma)).toBe(0.1);
   });
 
   it("mostrador: Pizza y Fugazzeta en DOS líneas se venden (el insumo alcanza) y reparten igual que en una sola línea", async () => {
     const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pizza, cantidadVendida: 1 }, { productoId: fugazzeta, cantidadVendida: 1 }] });
     expect(r).toEqual({ ok: true, mensaje: "Se registraron 2 venta(s) correctamente." });
-    expect(await calcularSaldoTotal(muzzaA, seccionId)).toBe(0);
-    expect(await calcularSaldoTotal(muzzaB, seccionId)).toBe(0.1);
+    expect(await calcularSaldoTotal(muzzaA, seccionId, prisma)).toBe(0);
+    expect(await calcularSaldoTotal(muzzaB, seccionId, prisma)).toBe(0.1);
   });
 
   it("POS (permitirStockNegativo): las mismas dos líneas no dejan ningún lote en negativo ni avisan", async () => {
@@ -84,7 +84,7 @@ describe("H9: reparto por familia entre líneas de la misma venta", () => {
       )
     );
     expect(r).toMatchObject({ ok: true, avisosStockNegativo: [] });
-    expect(await calcularSaldoTotal(muzzaA, seccionId)).toBe(0);
-    expect(await calcularSaldoTotal(muzzaB, seccionId)).toBe(0.1);
+    expect(await calcularSaldoTotal(muzzaA, seccionId, prisma)).toBe(0);
+    expect(await calcularSaldoTotal(muzzaB, seccionId, prisma)).toBe(0.1);
   });
 });

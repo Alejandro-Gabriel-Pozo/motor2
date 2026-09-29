@@ -8,7 +8,7 @@ export default async function ReclasificarPage() {
   if (!ctx) return null;
 
   // Mismo permiso que Conteo Físico (proceso_control) — reclasificarStock no tiene Accion propia, ver src/server/actions/reclasificacion.ts.
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const secciones = await listarSeccionesActivas(ctx.sucursalId);

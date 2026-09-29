@@ -135,7 +135,7 @@ export interface MapaDeMesas {
  * ítems + quién la abrió). La página la llama directo, después de `requierePermisoVer(…, "pos_mesas")`: no es una Server Action
  * de lectura (mismo patrón que stock/conteo-frecuencia/page.tsx con `sugerirInsumosClaseA`).
  */
-export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient = prisma, ahora: Date = new Date()): Promise<MapaDeMesas> {
+export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient, ahora: Date = new Date()): Promise<MapaDeMesas> {
   const filas = await db.mesa.findMany({
     where: { sucursalId },
     orderBy: { numero: "asc" },

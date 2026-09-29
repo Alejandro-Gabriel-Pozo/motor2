@@ -15,20 +15,20 @@ describe("accionesQueElUsuarioPuedeVer", () => {
   it("un admin ve las cuatro claves de reportes", async () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    const visibles = await accionesQueElUsuarioPuedeVer(admin.id, base.sucursal.id, CLAVES_REPORTES);
+    const visibles = await accionesQueElUsuarioPuedeVer(admin.id, base.sucursal.id, CLAVES_REPORTES, prisma);
     expect([...visibles].sort()).toEqual([...CLAVES_REPORTES].sort());
   });
 
   it("un operador arranca sin ninguna de las claves nuevas de reportes (decisión del usuario: quedan sin asignar)", async () => {
     const base = await sembrarBase();
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    expect((await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, CLAVES_REPORTES)).size).toBe(0);
+    expect((await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, CLAVES_REPORTES, prisma)).size).toBe(0);
   });
 
   it("conserva lo que un operador ya tenía por otra acción (Conteos físicos va con proceso_control)", async () => {
     const base = await sembrarBase();
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, ["proceso_control", "pagar_consignante", "promociones_config"]);
+    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, ["proceso_control", "pagar_consignante", "promociones_config"], prisma);
     expect([...visibles]).toEqual(["proceso_control"]);
   });
 
@@ -39,7 +39,7 @@ describe("accionesQueElUsuarioPuedeVer", () => {
       where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "ver_reportes_operativos" } },
       data: { puedeVer: true },
     });
-    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, CLAVES_REPORTES);
+    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, CLAVES_REPORTES, prisma);
     expect([...visibles]).toEqual(["ver_reportes_operativos"]);
   });
 
@@ -47,7 +47,7 @@ describe("accionesQueElUsuarioPuedeVer", () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await prisma.capacidadSucursal.create({ data: { accionClave: "ver_reportes_dinero", sucursalId: base.sucursal.id, habilitado: false } });
-    const visibles = await accionesQueElUsuarioPuedeVer(admin.id, base.sucursal.id, CLAVES_REPORTES);
+    const visibles = await accionesQueElUsuarioPuedeVer(admin.id, base.sucursal.id, CLAVES_REPORTES, prisma);
     expect(visibles.has("ver_reportes_dinero")).toBe(false);
     expect(visibles.has("ver_reportes_control")).toBe(true);
   });
@@ -55,7 +55,7 @@ describe("accionesQueElUsuarioPuedeVer", () => {
   it("una membresía desactivada no ve nada", async () => {
     const base = await sembrarBase();
     const inactivo = await crearUsuarioConMembresia({ email: "inactivo@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id, activo: false });
-    expect((await accionesQueElUsuarioPuedeVer(inactivo.id, base.sucursal.id, CLAVES_REPORTES)).size).toBe(0);
+    expect((await accionesQueElUsuarioPuedeVer(inactivo.id, base.sucursal.id, CLAVES_REPORTES, prisma)).size).toBe(0);
   });
 });
 

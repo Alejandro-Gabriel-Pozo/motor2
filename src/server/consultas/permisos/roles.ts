@@ -5,7 +5,7 @@ import type { Db } from "@/lib/db-tipos";
 /**
  * Lecturas de Permisos › Roles para los Server Components (Task #41, Fase D5). Mismo contrato que
  * `src/server/consultas/catalogo/productos.ts` (piloto D1): `server-only`, sin `"use server"`, sin guarda de permiso adentro
- * (la página hace `requierePermisoVer(...)` antes), `db: Db = prisma` al final, devuelve exactamente lo que devolvía la
+ * (la página hace `requierePermisoVer(...)` antes), `db: Db` al final, devuelve exactamente lo que devolvía la
  * consulta Prisma que reemplaza.
  *
  * Por qué NO se reusa la Server Action `listarRoles` (`src/server/actions/permisos/roles.ts`), aunque lea la misma tabla:
@@ -16,6 +16,6 @@ import type { Db } from "@/lib/db-tipos";
  */
 
 /** Roles activos, por nombre ascendente: los que el alta/edición de una membresía (`/administracion/usuarios`) ofrece asignar. */
-export async function listarRolesActivos(db: Db = prisma) {
+export async function listarRolesActivos(db: Db) {
   return db.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } });
 }

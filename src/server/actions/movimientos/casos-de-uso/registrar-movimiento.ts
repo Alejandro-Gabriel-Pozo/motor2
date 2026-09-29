@@ -130,15 +130,15 @@ async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, 
  * @sideEffects registrarProveedoresDeLaCompra (Compra, best-effort, FUERA de la transacción, solo si no es repetida) — un upsertProveedorPorProducto por línea con unidad de compra conocida.
  */
 export async function registrarMovimientoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   datos: DatosMovimientoInput
 ): Promise<ResultadoRegistrarMovimiento> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso ya validó el
   // permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó
   // el cliente sea realmente de esa sucursal — sin esto, cualquier
   // seccionId ajeno (de otra sucursal) se aceptaba igual.
-  if (!(await obtenerSeccionPropia(datos.seccionId, actor.sucursalId))) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
-  if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId))) {
+  if (!(await obtenerSeccionPropia(datos.seccionId, actor.sucursalId, actor.db))) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId, actor.db))) {
     return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró la sección destino.");
   }
 

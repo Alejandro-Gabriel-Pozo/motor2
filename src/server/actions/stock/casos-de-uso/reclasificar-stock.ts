@@ -55,18 +55,18 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @sideEffects Ninguno además de la escritura del Kardex (un origen negativo + N destinos positivos) — sin auditoría de permisos propia.
  */
 export async function reclasificarStockCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   comando: ComandoReclasificarStock
 ): Promise<ResultadoReclasificarStock> {
   // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
   // registrarMovimiento — conPermiso no valida que las secciones sean
   // de ESTA sucursal, solo el permiso de quien llama.
-  if (!(await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId))) {
+  if (!(await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId, actor.db))) {
     return fracaso("SECCION_ORIGEN_NO_ENCONTRADA", "No se encontró la sección de origen.");
   }
   const seccionesDestino = new Map<string, { id: string; nombre: string }>();
   for (const d of comando.destinos) {
-    const seccion = await obtenerSeccionPropia(d.seccionId, actor.sucursalId);
+    const seccion = await obtenerSeccionPropia(d.seccionId, actor.sucursalId, actor.db);
     if (!seccion) return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró una de las secciones de destino.");
     seccionesDestino.set(d.seccionId, seccion);
   }

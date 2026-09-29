@@ -2,6 +2,7 @@
 
 import type { TipoProducto } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { validarImporte } from "@/core/datos/importe";
@@ -111,12 +112,12 @@ export async function obtenerInsumoDeProducto(productoId: string): Promise<Insum
  * activo del mismo Insumo con otra unidad de stock.
  */
 export async function asignarInsumoAProducto(productoId: string, insumoId: string): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async () => {
+  return conPermiso("editar_producto", async (ctx) => {
     const producto = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "MP") return error("Solo una materia prima (MP) puede tener Insumo asignado.");
 
-    const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId);
+    const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId, ctx.db);
     if (invalido) return error(invalido);
 
     await prisma.producto.update({ where: { id: productoId }, data: { insumoId } });
@@ -217,7 +218,7 @@ export interface DatosProducto {
   activoEnTodasLasSucursales?: boolean;
 }
 
-async function validarComun(datos: DatosProducto, productoIdExcluir?: string): Promise<string | null> {
+async function validarComun(db: Db, datos: DatosProducto, productoIdExcluir?: string): Promise<string | null> {
   const nombre = texto(datos.nombre);
   if (!nombre) return "El nombre no puede estar vacío.";
   const invalido = validarTextoCatalogo(nombre, "El nombre");
@@ -225,7 +226,7 @@ async function validarComun(datos: DatosProducto, productoIdExcluir?: string): P
   if (!datos.unidadStockId) return "La unidad de stock es obligatoria.";
   // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
   // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.
-  const unidadStock = await prisma.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
+  const unidadStock = await db.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
   if (!unidadStock) return "La unidad de stock es obligatoria.";
 
   const factorConversion = validarCantidad(datos.factorConversion, unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
@@ -246,7 +247,7 @@ async function validarComun(datos: DatosProducto, productoIdExcluir?: string): P
     if (!r.ok) return r.mensaje;
   }
 
-  const dup = await prisma.producto.findFirst({
+  const dup = await db.producto.findFirst({
     where: {
       ...whereDisponibleEnAlguna(),
       nombre: { equals: nombre, mode: "insensitive" },
@@ -255,7 +256,7 @@ async function validarComun(datos: DatosProducto, productoIdExcluir?: string): P
   });
   if (dup) return `Ya existe un producto disponible llamado "${nombre}".`;
 
-  return validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir);
+  return validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir, db);
 }
 
 function datosParaGuardar(datos: DatosProducto) {
@@ -325,7 +326,7 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
  */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
   return conPermiso("alta_producto", async (ctx) => {
-    const invalido = await validarComun(datos);
+    const invalido = await validarComun(ctx.db, datos);
     if (invalido) return error(invalido);
 
     try {
@@ -368,7 +369,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       return error(`El tipo no se puede cambiar — este producto ya es "${existente.tipo}". Dado de baja y creá uno nuevo si necesitás el otro tipo.`);
     }
 
-    const invalido = await validarComun(datos, productoId);
+    const invalido = await validarComun(ctx.db, datos, productoId);
     if (invalido) return error(invalido);
 
     const nuevos = datosParaGuardar(datos);
@@ -465,7 +466,7 @@ export async function actualizarDisponibilidadProducto(productoId: string, dispo
     const existente = await prisma.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     if (!disponible) {
-      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, ctx.sucursalId);
+      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, ctx.sucursalId, ctx.db);
       const motivos: string[] = [];
       if (recetasVigentes.length) motivos.push(`está en la receta vigente de ${enumerar(recetasVigentes.map((r) => r.nombre))}: sacalo de esas recetas`);
       if (saldos.length) {
@@ -476,7 +477,7 @@ export async function actualizarDisponibilidadProducto(productoId: string, dispo
     }
     // El valor anterior se lee ANTES del upsert — registrarCambioAuditado necesita comparar contra el estado previo real, no
     // contra el que se está por escribir (si no, "repetir el mismo estado no deja registro" dejaría de cumplirse).
-    const anterior = await productoDisponibleEn(ctx.sucursalId, productoId);
+    const anterior = await productoDisponibleEn(ctx.sucursalId, productoId, ctx.db);
     await prisma.disponibilidadProducto.upsert({
       where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
       update: { disponible },

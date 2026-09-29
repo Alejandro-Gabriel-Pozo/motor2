@@ -6,10 +6,10 @@ export default async function AlertasStockPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const alertas = await calcularAlertasStock(ctx.sucursalId);
+  const alertas = await calcularAlertasStock(ctx.sucursalId, ctx.db);
   const criticos = alertas.filter((a) => a.estado === "CRITICO").length;
   const bajos = alertas.filter((a) => a.estado === "BAJO").length;
 

@@ -26,12 +26,12 @@ export default async function AuditoriaPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_auditoria");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_auditoria", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
   const entidad = ENTIDADES.includes(sp.entidad as CambioAuditable["entidad"]) ? (sp.entidad as CambioAuditable["entidad"]) : undefined;
-  const { items, nextCursor } = await listarRegistrosAuditoria({ entidad, cursor: sp.cursor });
+  const { items, nextCursor } = await listarRegistrosAuditoria({ entidad, cursor: sp.cursor }, ctx.db);
 
   const filas: FilaAuditoria[] = items.map((r) => ({
     id: r.id,

@@ -84,7 +84,7 @@ describe("server/consultas/catalogo/proveedores", () => {
 
   describe("obtenerFichaProveedor", () => {
     it("trae el proveedor con EXACTAMENTE `productosConsignados` como relación, y solo los consignados a él", async () => {
-      const p = await obtenerFichaProveedor(molino);
+      const p = await obtenerFichaProveedor(molino, prisma);
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -109,7 +109,7 @@ describe("server/consultas/catalogo/proveedores", () => {
     });
 
     it("sin consignados, `productosConsignados` viene como [] (clave presente)", async () => {
-      const p = await obtenerFichaProveedor(sinNada);
+      const p = await obtenerFichaProveedor(sinNada, prisma);
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -120,7 +120,7 @@ describe("server/consultas/catalogo/proveedores", () => {
     });
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
-      await expect(obtenerFichaProveedor("no-existe")).resolves.toBeNull();
+      await expect(obtenerFichaProveedor("no-existe", prisma)).resolves.toBeNull();
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {
@@ -132,7 +132,7 @@ describe("server/consultas/catalogo/proveedores", () => {
 
   describe("listarProductosQueLeCompran", () => {
     it("trae SOLO las filas de ese proveedor, ordenadas por nombre de producto, con `producto` y `unidadCompra`", async () => {
-      const filas = await listarProductosQueLeCompran(molino);
+      const filas = await listarProductosQueLeCompran(molino, prisma);
 
       expect(filas.map((f) => f.producto.nombre)).toEqual(["Azúcar", "Harina 000", "Yerba"]);
       expect(filas.every((f) => f.proveedorId === molino)).toBe(true);
@@ -159,14 +159,14 @@ describe("server/consultas/catalogo/proveedores", () => {
     });
 
     it("filtra por proveedor: el otro proveedor ve solo su fila", async () => {
-      const filas = await listarProductosQueLeCompran(otroProveedor);
+      const filas = await listarProductosQueLeCompran(otroProveedor, prisma);
       expect(filas).toHaveLength(1);
       expect(filas[0]).toMatchObject({ proveedorId: otroProveedor, productoId: harina, unidadCompraId: kg.id });
     });
 
     it("proveedor sin compras (o inexistente) devuelve []", async () => {
-      await expect(listarProductosQueLeCompran(sinNada)).resolves.toEqual([]);
-      await expect(listarProductosQueLeCompran("no-existe")).resolves.toEqual([]);
+      await expect(listarProductosQueLeCompran(sinNada, prisma)).resolves.toEqual([]);
+      await expect(listarProductosQueLeCompran("no-existe", prisma)).resolves.toEqual([]);
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {
@@ -177,7 +177,7 @@ describe("server/consultas/catalogo/proveedores", () => {
 
   describe("obtenerProveedorPorId", () => {
     it("trae SOLO los escalares del proveedor, sin ninguna relación", async () => {
-      const p = await obtenerProveedorPorId(molino);
+      const p = await obtenerProveedorPorId(molino, prisma);
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -197,7 +197,7 @@ describe("server/consultas/catalogo/proveedores", () => {
     });
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
-      await expect(obtenerProveedorPorId("no-existe")).resolves.toBeNull();
+      await expect(obtenerProveedorPorId("no-existe", prisma)).resolves.toBeNull();
     });
   });
 });

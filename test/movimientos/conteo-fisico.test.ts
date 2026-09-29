@@ -41,7 +41,7 @@ describe("Conteo Físico", () => {
       productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR",
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7);
 
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
     expect(conteo.estado).toBe("RESUELTO");
@@ -59,7 +59,7 @@ describe("Conteo Físico", () => {
     if (resultado.ok) return;
     expect(resultado.mensaje).toContain("decimales");
     expect(await prisma.conteoFisico.count()).toBe(0);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10); // sin cambios
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10); // sin cambios
   });
 
   it("sigue aceptando un conteo con los decimales exactos que admite la unidad", async () => {
@@ -67,7 +67,7 @@ describe("Conteo Físico", () => {
       productoId: mpId, seccionId, conteoReal: 7.13, fechaConteo: new Date(), accion: "AJUSTAR",
     });
     expect(resultado.ok, resultado.ok ? "" : resultado.mensaje).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7.13);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7.13);
   });
 
   it("FALTA_MOVIMIENTO no toca el stock y queda PENDIENTE", async () => {
@@ -75,7 +75,7 @@ describe("Conteo Físico", () => {
       productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO",
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10); // sin cambios
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10); // sin cambios
 
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
     expect(conteo.estado).toBe("PENDIENTE");
@@ -83,7 +83,7 @@ describe("Conteo Físico", () => {
 
   it("DESCARTAR no toca el stock y no cuenta como conteo válido", async () => {
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 2, fechaConteo: new Date(), accion: "DESCARTAR" });
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10);
 
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
     expect(conteo.estado).toBe("DESCARTADO");
@@ -101,7 +101,7 @@ describe("Conteo Físico", () => {
 
     const resultado = await resolverConteoPendiente(conteo.id, "resuelto");
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10);
     expect((await prisma.conteoFisico.findUniqueOrThrow({ where: { id: conteo.id } })).estado).toBe("RESUELTO");
   });
 
@@ -114,17 +114,17 @@ describe("Conteo Físico", () => {
 
     const resultado = await resolverConteoPendiente(conteo.id, "ajustar");
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(15); // 13 (10+3) + ajuste de 2 = 15
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(15); // 13 (10+3) + ajuste de 2 = 15
   });
 
   it("cancelarConteoFisico revierte exactamente el ajuste, y una segunda cancelación falla", async () => {
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7);
 
     const cancelado = await cancelarConteoFisico(conteo.id);
     expect(cancelado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10); // vuelve al saldo de antes del ajuste
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10); // vuelve al saldo de antes del ajuste
 
     const segundaCancelacion = await cancelarConteoFisico(conteo.id);
     expect(segundaCancelacion.ok).toBe(false);
@@ -254,8 +254,8 @@ describe("Conteo Físico", () => {
       expect(r.mensaje).toBe("3 de 3 conteo(s) registrado(s).");
 
       expect(await prisma.conteoFisico.count()).toBe(3);
-      expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7); // ajustado
-      expect(await calcularSaldoTotal(c.id, seccionId)).toBe(4); // FALTA_MOVIMIENTO no toca el stock
+      expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7); // ajustado
+      expect(await calcularSaldoTotal(c.id, seccionId, prisma)).toBe(4); // FALTA_MOVIMIENTO no toca el stock
     });
 
     it("una fila con error no frena a las demás: cada una devuelve su propio resultado", async () => {

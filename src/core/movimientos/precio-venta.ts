@@ -8,7 +8,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * está cargado Y habilitado para esta sucursal; si no, el global
  * (Producto.precioVenta) como fallback.
  */
-export async function resolverPrecioVenta(sucursalId: string, productoId: string, precioGlobal: number, db: Db = prisma): Promise<number> {
+export async function resolverPrecioVenta(sucursalId: string, productoId: string, precioGlobal: number, db: Db): Promise<number> {
   const local = await db.precioLocalProducto.findUnique({
     where: { sucursalId_productoId: { sucursalId, productoId } },
   });

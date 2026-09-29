@@ -34,15 +34,15 @@ export default async function FichaProductoPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `editar_producto` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
-  const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
+  const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto", ctx.db);
 
   const { id } = await params;
   const { guardado } = await searchParams;
-  const p = await obtenerFichaProducto(id);
+  const p = await obtenerFichaProducto(id, ctx.db);
   if (!p) notFound();
 
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
@@ -50,10 +50,10 @@ export default async function FichaProductoPage({
 
   const [presentaciones, disponibilidadPorSucursal, seccionHabitual] = await Promise.all([
     p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
-    disponibilidadPorSucursalDeProducto(p.id),
+    disponibilidadPorSucursalDeProducto(p.id, ctx.db),
     // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
     // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).
-    p.tipo === "PV" ? obtenerSeccionHabitualEnSucursal(ctx.sucursalId, p.id) : Promise.resolve(null),
+    p.tipo === "PV" ? obtenerSeccionHabitualEnSucursal(ctx.sucursalId, p.id, ctx.db) : Promise.resolve(null),
   ]);
   const tieneReceta = p.tipo === "PV" || p.seProduce;
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;

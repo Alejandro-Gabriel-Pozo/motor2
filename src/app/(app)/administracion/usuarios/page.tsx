@@ -9,12 +9,12 @@ export default async function UsuariosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null; // el layout ya redirige
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "gestion_usuarios");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "gestion_usuarios", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [membresias, roles, sucursales] = await Promise.all([
     listarUsuariosDeSucursal(ctx.sucursalId),
-    listarRolesActivos(),
+    listarRolesActivos(ctx.db),
     listarSucursales(),
   ]);
 

@@ -1,5 +1,4 @@
 import "server-only";
-import { prisma } from "@/lib/db";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { describirCambioVersionReceta, describirDescarteArrastre } from "@/core/catalogo/public";
 import { esErrorDeUnicidad, validarCabecera, validarIngredientes, validarPasos } from "@/core/catalogo/public-servidor";
@@ -45,12 +44,12 @@ import {
  * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
  */
 export async function guardarVersionDeRecetaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion">,
   comando: ComandoGuardarVersionDeReceta
 ): Promise<ResultadoGuardarVersionDeReceta> {
   const { productoId, items, pasos, cabecera } = comando;
 
-  const producto = await cargarProductoParaReceta(prisma, productoId);
+  const producto = await cargarProductoParaReceta(actor.db, productoId);
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", MENSAJE_PRODUCTO_NO_ENCONTRADO);
 
   const elegible = producto.tipo === "PV" || (producto.tipo === "MP" && producto.seProduce);
@@ -58,13 +57,13 @@ export async function guardarVersionDeRecetaCasoDeUso(
     return fracaso("PRODUCTO_NO_ELEGIBLE", `"${producto.nombre}" no es elegible para tener receta — tiene que ser PV, o MP con "Se produce" activado.`);
   }
 
-  const invalidoIngredientes = await validarIngredientes(items, producto);
+  const invalidoIngredientes = await validarIngredientes(actor.db, items, producto);
   if (invalidoIngredientes) return fracaso("INGREDIENTES_INVALIDOS", invalidoIngredientes);
 
   const invalidoPasos = validarPasos(pasos, items);
   if (invalidoPasos) return fracaso("PASOS_INVALIDOS", invalidoPasos);
 
-  const invalidoCabecera = await validarCabecera(cabecera);
+  const invalidoCabecera = await validarCabecera(actor.db, cabecera);
   if (invalidoCabecera) return fracaso("CABECERA_INVALIDA", invalidoCabecera);
 
   // Reintento con backoff y jitter (mismo ciclo de siempre, core/movimientos/reintentar.ts): dos ediciones simultáneas de la
@@ -81,7 +80,7 @@ export async function guardarVersionDeRecetaCasoDeUso(
       descartes = [];
       // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el
       // ingrediente haya cambiado de unidad o haya salido de la receta. Fuera de la transacción, igual que antes.
-      const ultima = await cargarUltimaVersionDeReceta(prisma, productoId);
+      const ultima = await cargarUltimaVersionDeReceta(actor.db, productoId);
       version = (ultima?.version ?? 0) + 1;
       await conTransaccionSerializable(actor.transaccion, async (tx) => {
         const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera });

@@ -108,7 +108,7 @@ test("cargar un conteo con más decimales de los que admite la unidad muestra el
 
   await expect(page.getByText(/decimales/)).toBeVisible();
   expect(await prisma.conteoFisico.count({ where: { productoId: producto.id } })).toBe(0);
-  expect(await calcularSaldoTotal(producto.id, seccionId)).toBe(10);
+  expect(await calcularSaldoTotal(producto.id, seccionId, prisma)).toBe(10);
 });
 
 test("con la sesión vencida, «Registrar conteo» lleva al login y no escribe nada (el aviso de corte no se traga el redirect)", async ({ paginaAutenticada: page, seccionId }) => {

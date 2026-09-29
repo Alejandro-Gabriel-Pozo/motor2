@@ -46,7 +46,7 @@ describe("cerrarCuenta: secciones que no sirven de respaldo automático", () => 
       ["CONSUMO", deposito.id, -0.5],
       ["VENTA", deposito.id, -2],
     ]);
-    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id)).toBe(1);
+    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(1);
   });
 
   it("ni para el faltante: aunque el insumo solo se haya movido en la excluida, lo que falta va a un respaldo", async () => {
@@ -60,7 +60,7 @@ describe("cerrarCuenta: secciones que no sirven de respaldo automático", () => 
       ["CONSUMO", deposito.id, -0.5],
       ["VENTA", deposito.id, -2],
     ]);
-    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id)).toBe(1);
+    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(1);
   });
 
   it("una habitual excluida del respaldo se sigue usando igual (la preferencia explícita manda)", async () => {
@@ -117,7 +117,7 @@ describe("cerrarCuenta: secciones que no sirven de respaldo automático", () => 
         ok: true,
         mensaje: "Se registraron 1 venta(s) correctamente.",
       });
-      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id)).toBe(0.5);
+      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id, prisma)).toBe(0.5);
     });
   });
 });

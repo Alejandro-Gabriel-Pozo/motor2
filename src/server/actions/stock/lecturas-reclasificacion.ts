@@ -33,6 +33,6 @@ export async function obtenerSaldoDisponibleParaReclasificar(
   // para mostrar» y el cliente no podía distinguir un producto sin datos de una sesión vencida.
   const ctx = await requerirSesion();
   if (!productoId || !seccionId) return null;
-  if (!(await obtenerSeccionPropia(seccionId, ctx.sucursalId))) return null;
-  return calcularSaldoPorLote(productoId, seccionId, loteVencimiento);
+  if (!(await obtenerSeccionPropia(seccionId, ctx.sucursalId, ctx.db))) return null;
+  return calcularSaldoPorLote(productoId, seccionId, loteVencimiento, ctx.db);
 }

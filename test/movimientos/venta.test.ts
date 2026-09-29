@@ -76,9 +76,9 @@ describe("registrarVenta", () => {
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] });
     expect(resultado.ok).toBe(true);
 
-    expect(await calcularSaldoTotal(mp.id, seccionId)).toBeCloseTo(10 - 3 * 0.2);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBeCloseTo(10 - 3 * 0.2);
     // El PV no "Se produce": su saldo negativo es un artefacto contable de las ventas, no inventario real.
-    expect(await calcularSaldoTotal(pv.id, seccionId)).toBe(-3);
+    expect(await calcularSaldoTotal(pv.id, seccionId, prisma)).toBe(-3);
   });
 
   it("un PV \"Se produce\" no vuelve a consumir su receta al venderse (ya se consumió al producir)", async () => {
@@ -91,13 +91,13 @@ describe("registrarVenta", () => {
     const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 5 }] });
     expect(produccion.ok).toBe(true);
 
-    const saldoMpTrasProducir = await calcularSaldoTotal(mp.id, seccionId);
+    const saldoMpTrasProducir = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldoMpTrasProducir).toBe(15); // 20 compradas - 5 consumidas al producir
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
     expect(resultado.ok).toBe(true);
 
-    expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(saldoMpTrasProducir); // sin cambios: la receta no se vuelve a consumir
-    expect(await calcularSaldoTotal(pv.id, seccionId)).toBe(3); // 5 producidas - 2 vendidas
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(saldoMpTrasProducir); // sin cambios: la receta no se vuelve a consumir
+    expect(await calcularSaldoTotal(pv.id, seccionId, prisma)).toBe(3); // 5 producidas - 2 vendidas
   });
 
   it("vender una MP en consignación (vía receta) genera Consumo + Liquidación con importe según precioConsignacion", async () => {
@@ -153,7 +153,7 @@ describe("registrarVenta", () => {
       const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
       expect(resultado.ok).toBe(true);
       // Ni redondea ni rechaza: `g` tiene 0 decimales pero el mostrador nunca validó eso (a diferencia del POS).
-      expect(await calcularSaldoTotal(pv.id, seccionId)).toBe(-0.5);
+      expect(await calcularSaldoTotal(pv.id, seccionId, prisma)).toBe(-0.5);
     });
 
     it("con pasoVenta, un múltiplo exacto se acepta TAL CUAL (nunca se redondea a los decimales de la unidad)", async () => {
@@ -163,7 +163,7 @@ describe("registrarVenta", () => {
       );
       const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
       expect(resultado.ok).toBe(true);
-      expect(await calcularSaldoTotal(pv.id, seccionId)).toBe(-0.5);
+      expect(await calcularSaldoTotal(pv.id, seccionId, prisma)).toBe(-0.5);
       const venta = await prisma.movimientoStock.findFirst({ where: { productoId: pv.id, proceso: "VENTA" } });
       expect(Number(venta!.precioTotal)).toBe(6000); // proporcional: 0,5 × 12000
     });
@@ -216,15 +216,15 @@ describe("anularVenta", () => {
     });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] });
-    const saldoMpTrasVender = await calcularSaldoTotal(mp.id, seccionId);
+    const saldoMpTrasVender = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldoMpTrasVender).toBeCloseTo(10 - 3 * 0.2);
 
     const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", sucursalId } });
     const resultado = await anularVenta(operacionVenta.id);
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
-    expect(await calcularSaldoTotal(mp.id, seccionId)).toBeCloseTo(10); // el consumo se revirtió del todo
-    expect(await calcularSaldoTotal(pv.id, seccionId)).toBe(0); // la línea VENTA (artefacto contable) también se revirtió
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBeCloseTo(10); // el consumo se revirtió del todo
+    expect(await calcularSaldoTotal(pv.id, seccionId, prisma)).toBe(0); // la línea VENTA (artefacto contable) también se revirtió
 
     const venta = await prisma.operacion.findUniqueOrThrow({ where: { id: operacionVenta.id } });
     expect(venta.anuladaEn).not.toBeNull();

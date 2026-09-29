@@ -44,7 +44,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;
 
   const params = await searchParams;
@@ -53,9 +53,9 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const q = (primero(params.q) ?? "").trim();
 
   const [nivel, mapa, sucursal] = await Promise.all([
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_mesas"),
-    obtenerMapaDeMesas(ctx.sucursalId),
-    obtenerLimiteMesasAbiertas(ctx.sucursalId),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db),
+    obtenerMapaDeMesas(ctx.sucursalId, ctx.db),
+    obtenerLimiteMesasAbiertas(ctx.sucursalId, ctx.db),
   ]);
   const { metricas } = mapa;
   const visibles = filtrarMesas(mapa.mesas, { estado: estado ?? undefined, q });

@@ -49,9 +49,9 @@ describe("reclasificarStock", () => {
     });
     expect(resultado.ok).toBe(true);
 
-    expect(await calcularSaldoTotal(mpId, origenId)).toBe(0);
-    expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(6);
-    expect(await calcularSaldoTotal(mpId, destinoBId)).toBe(4);
+    expect(await calcularSaldoTotal(mpId, origenId, prisma)).toBe(0);
+    expect(await calcularSaldoTotal(mpId, destinoAId, prisma)).toBe(6);
+    expect(await calcularSaldoTotal(mpId, destinoBId, prisma)).toBe(4);
   });
 
   // Task #32 (docs/pendientes-*.md): Reclasificación no tenía NINGÚN chequeo de decimales en los montos de destino — ni
@@ -64,8 +64,8 @@ describe("reclasificarStock", () => {
     expect(resultado.ok).toBe(false);
     if (resultado.ok) return;
     expect(resultado.mensaje).toContain("decimales");
-    expect(await calcularSaldoTotal(mpId, origenId)).toBe(10); // nada se tocó
-    expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(0);
+    expect(await calcularSaldoTotal(mpId, origenId, prisma)).toBe(10); // nada se tocó
+    expect(await calcularSaldoTotal(mpId, destinoAId, prisma)).toBe(0);
   });
 
   it("sigue aceptando destinos con los decimales exactos que admite la unidad", async () => {
@@ -75,8 +75,8 @@ describe("reclasificarStock", () => {
       fecha: new Date(),
     });
     expect(resultado.ok, resultado.ok ? "" : resultado.mensaje).toBe(true);
-    expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(6.25);
-    expect(await calcularSaldoTotal(mpId, destinoBId)).toBe(3.75);
+    expect(await calcularSaldoTotal(mpId, destinoAId, prisma)).toBe(6.25);
+    expect(await calcularSaldoTotal(mpId, destinoBId, prisma)).toBe(3.75);
   });
 
   it("rechaza si la suma de los destinos no coincide exacto con el disponible (ni de más ni de menos)", async () => {
@@ -91,7 +91,7 @@ describe("reclasificarStock", () => {
     expect(deMas.ok).toBe(false);
 
     // Nada se escribió: el saldo del origen sigue intacto.
-    expect(await calcularSaldoTotal(mpId, origenId)).toBe(10);
+    expect(await calcularSaldoTotal(mpId, origenId, prisma)).toBe(10);
   });
 
   it("rechaza si no hay saldo disponible en el origen", async () => {
@@ -111,9 +111,9 @@ describe("reclasificarStock", () => {
     });
     expect(resultado.ok).toBe(true);
 
-    expect(await calcularSaldoPorLote(mpId, origenId, lote1)).toBe(0);
-    expect(await calcularSaldoPorLote(mpId, origenId, null)).toBe(10); // el lote "sin fecha" original, intacto
-    expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(5);
+    expect(await calcularSaldoPorLote(mpId, origenId, lote1, prisma)).toBe(0);
+    expect(await calcularSaldoPorLote(mpId, origenId, null, prisma)).toBe(10); // el lote "sin fecha" original, intacto
+    expect(await calcularSaldoTotal(mpId, destinoAId, prisma)).toBe(5);
   });
 
   describe("obtenerSaldoDisponibleParaReclasificar (hallazgo de la auditoría: el form no mostraba el disponible antes de enviar)", () => {
@@ -141,7 +141,7 @@ describe("reclasificarStock", () => {
         productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: origenId, cantidad: 10 }], fecha: new Date(),
       });
       expect(resultado.ok).toBe(false);
-      expect(await calcularSaldoTotal(mpId, origenId)).toBe(10); // nada se tocó
+      expect(await calcularSaldoTotal(mpId, origenId, prisma)).toBe(10); // nada se tocó
     });
 
     it("rechaza un único destino con la misma sección y el mismo lote puntual que el origen", async () => {
@@ -162,8 +162,8 @@ describe("reclasificarStock", () => {
         destinos: [{ seccionId: origenId, loteVencimiento: lote1, cantidad: 10 }], fecha: new Date(),
       });
       expect(resultado.ok, resultado.mensaje).toBe(true);
-      expect(await calcularSaldoPorLote(mpId, origenId, lote1)).toBe(10);
-      expect(await calcularSaldoPorLote(mpId, origenId, null)).toBe(0);
+      expect(await calcularSaldoPorLote(mpId, origenId, lote1, prisma)).toBe(10);
+      expect(await calcularSaldoPorLote(mpId, origenId, null, prisma)).toBe(0);
     });
 
     it("permite repartir entre 2+ destinos aunque uno de ellos coincida con el origen", async () => {
@@ -190,7 +190,7 @@ describe("reclasificarStock", () => {
       expect(segundo.mensaje).toBe(primero.mensaje);
 
       expect(await prisma.operacion.count({ where: { proceso: "RECLASIFICACION" } })).toBe(1);
-      expect(await calcularSaldoTotal(mpId, destinoAId)).toBe(10); // no se duplicó el reparto
+      expect(await calcularSaldoTotal(mpId, destinoAId, prisma)).toBe(10); // no se duplicó el reparto
     });
 
     it("la misma clave con un payload distinto da conflicto, no una segunda reclasificación", async () => {
@@ -220,7 +220,7 @@ describe("reclasificarStock", () => {
         // Repone el saldo del origen para esta iteración: el `beforeEach` ya deja 10 antes de la primera vuelta, así que se lee
         // el disponible REAL en vez de asumir un número fijo (evita "la suma no coincide" por acumular de más).
         await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 10 }] });
-        const disponible = await calcularSaldoTotal(mpId, origenId);
+        const disponible = await calcularSaldoTotal(mpId, origenId, prisma);
         const claveIdempotencia = crypto.randomUUID();
         const payload = { productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: destinoAId, cantidad: disponible }], fecha: new Date(), claveIdempotencia };
 
@@ -233,7 +233,7 @@ describe("reclasificarStock", () => {
       }
 
       expect(await prisma.operacion.count({ where: { proceso: "RECLASIFICACION" } })).toBe(10); // una por iteración, nunca el doble
-      expect(await calcularSaldoTotal(mpId, origenId)).toBe(0); // sin sobras ni faltantes acumulados
+      expect(await calcularSaldoTotal(mpId, origenId, prisma)).toBe(0); // sin sobras ni faltantes acumulados
     });
   });
 
@@ -260,7 +260,7 @@ describe("reclasificarStock", () => {
       });
 
       expect(resultado.ok).toBe(false);
-      expect(await calcularSaldoTotal(mpId, origenId)).toBe(10); // nada se movió
+      expect(await calcularSaldoTotal(mpId, origenId, prisma)).toBe(10); // nada se movió
     });
 
     it("obtenerSaldoDisponibleParaReclasificar devuelve null para una sección de OTRA sucursal", async () => {

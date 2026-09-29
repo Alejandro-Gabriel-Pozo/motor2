@@ -9,7 +9,7 @@ export default async function CapacidadesSucursalPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "capacidades_sucursal");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "capacidades_sucursal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { acciones, sucursales, capacidades } = await listarCapacidades();

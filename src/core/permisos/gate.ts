@@ -43,7 +43,7 @@ export async function requierePermiso(
   usuarioId: string,
   sucursalId: string,
   accionClave: AccionClave,
-  db: PrismaClient = prisma
+  db: PrismaClient
 ): Promise<ResultadoGate> {
   if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
     return denegado(`La Central no habilitó "${accionClave}" para esta sucursal.`);
@@ -73,7 +73,7 @@ export async function requierePermisoVer(
   usuarioId: string,
   sucursalId: string,
   accionClave: AccionClave,
-  db: PrismaClient = prisma
+  db: PrismaClient
 ): Promise<ResultadoGate> {
   if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
     return denegado(`La Central no habilitó "${accionClave}" para esta sucursal.`);
@@ -104,7 +104,7 @@ export async function obtenerMiNivelPermiso(
   usuarioId: string,
   sucursalId: string,
   accionClave: AccionClave,
-  db: PrismaClient = prisma
+  db: PrismaClient
 ): Promise<{ ver: boolean; editar: boolean }> {
   if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
     return { ver: false, editar: false };
@@ -125,7 +125,7 @@ export async function accionesQueElUsuarioPuedeVer(
   usuarioId: string,
   sucursalId: string,
   claves: readonly AccionClave[],
-  db: PrismaClient = prisma
+  db: PrismaClient
 ): Promise<Set<AccionClave>> {
   const unicas = [...new Set(claves)];
   if (!unicas.length) return new Set();

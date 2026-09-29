@@ -175,7 +175,7 @@ describe("casos de uso de la creación de un traspaso", () => {
       expect(operacion.movimientos).toHaveLength(1);
       expect(operacion.movimientos[0]).toMatchObject({ seccionId: seccionAId, productoId: mp.id, traspasoSucursalId: t.id, detalle: 'Transferencia a sucursal "Sucursal B".' });
       expect(Number(operacion.movimientos[0].cantidad)).toBe(-4);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
     });
 
     it("STOCK_INSUFICIENTE: el mismo texto de antes y nada escrito", async () => {
@@ -183,7 +183,7 @@ describe("casos de uso de la creación de un traspaso", () => {
       const r = await crearEnvioDirectoDeTraspasoCasoDeUso(comoA(), comando(mp.id));
       expect(r).toMatchObject({ ok: false, codigo: "STOCK_INSUFICIENTE", mensaje: 'Stock insuficiente de "Harina" en "Depósito A". Actual: 3, requerido: 4.' });
       await nadaEscrito();
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(3);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(3);
     });
 
     it("CANTIDAD_INVALIDA se chequea ANTES que el stock (el error nombra la cantidad tecleada)", async () => {
@@ -227,7 +227,7 @@ describe("casos de uso de la creación de un traspaso", () => {
       expect(resultados.filter((r) => r.ok)).toHaveLength(1);
       expect(resultados.find((r) => !r.ok)).toMatchObject({ codigo: "STOCK_INSUFICIENTE", mensaje: 'Stock insuficiente de "Harina" en "Depósito A". Actual: 1, requerido: 4.' });
       expect(await prisma.traspasoSucursal.count()).toBe(1);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(1);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(1);
     });
   });
 });

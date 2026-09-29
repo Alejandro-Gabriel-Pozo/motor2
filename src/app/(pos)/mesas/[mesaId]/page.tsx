@@ -41,11 +41,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;
 
   const { mesaId } = await params;
-  const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId);
+  const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId, ctx.db);
   if (!detalle) {
     return (
       <div className="space-y-3">
@@ -58,21 +58,21 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   }
 
   const [tomarPedido, asignarCliente, anularItem, cerrarCuenta, verReportesDinero, secciones, boletas] = await Promise.all([
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido"),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_asignar_cliente"),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item"),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta"),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_asignar_cliente", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta", ctx.db),
     // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Boletas emitidas» se
     // condiciona a mano, del lado del servidor (Task #17).
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero"),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db),
     listarSeccionesActivas(ctx.sucursalId),
-    obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id),
+    obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id, ctx.db),
   ]);
   const { mesa, cuenta } = detalle;
   // «Agregar al pedido» por sección de CARTA (docs/plan-selector-carta-pos-2026-09-25.md): solo con cuenta abierta y si quien mira
   // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
   // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
-  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaPos(ctx.sucursalId) : null;
+  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaPos(ctx.sucursalId, ctx.db) : null;
   // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
   // a un Client Component (`ClienteCuenta`).

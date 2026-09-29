@@ -43,7 +43,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.1 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.2 }] });
 
-    const saldo = await calcularSaldoTotal(mp.id, seccionId);
+    const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldo).toBe(0.3);
     expect(0.1 + 0.2).not.toBe(0.3); // referencia: el bug clásico de floats SÍ existe en JS puro
     // Confirma que el patrón "sumar en Postgres (Decimal exacto), convertir
@@ -56,7 +56,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
   it("cantidades con 4 decimales sobreviven el roundtrip completo (COMPRA → Kardex → saldo) sin pérdida", async () => {
     const mp = await crearMP("Test4dec", 4);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1.2345 }] });
-    const saldo = await calcularSaldoTotal(mp.id, seccionId);
+    const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldo).toBe(1.2345);
   });
 
@@ -68,7 +68,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
 
     const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 7 }] });
     expect(resultado.ok, resultado.mensaje).toBe(true);
-    const saldo = await calcularSaldoTotal(mp.id, seccionId);
+    const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
 
     // HALLAZGO A DOCUMENTAR: acá el cálculo cantidadStock = numCant * factor
     // (movimientos.ts:147) SÍ ocurre en JS puro, ANTES de redondear a los
@@ -85,7 +85,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
       const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.07 }] });
       expect(r.ok, r.mensaje).toBe(true);
     }
-    const saldo = await calcularSaldoTotal(mp.id, seccionId);
+    const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldo).toBe(3.5); // 50 × 0.07 = 3.5 exacto — un acumulador JS ingenuo (suma += 0.07 en un loop) puede desviarse
   });
 
@@ -103,7 +103,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 7 }] });
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
-    const saldoInsumo = await calcularSaldoTotal(mpInsumo.id, seccionId);
+    const saldoInsumo = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
     expect(saldoInsumo).toBe(10 - 0.788); // 9.212 exacto, ya no una aproximación
   });
 
@@ -122,7 +122,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     const sumaManual = movimientos.reduce((acc, m) => acc + Number(m.cantidad), 0);
     const sumaRedondeada = Math.round(sumaManual * 100) / 100;
 
-    const saldoOficial = await calcularSaldoTotal(mp.id, seccionId);
+    const saldoOficial = await calcularSaldoTotal(mp.id, seccionId, prisma);
 
     expect(movimientos.length).toBe(5);
     expect(saldoOficial).toBe(sumaRedondeada);

@@ -57,7 +57,7 @@ describe("anularVenta: auditoría", () => {
     const venta = await vender();
     await anularVenta(venta.id);
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "Operacion" });
+    const { items } = await listarRegistrosAuditoria({ entidad: "Operacion" }, prisma);
     expect(items.map((f) => f.entidadId)).toContain(venta.id);
   });
 

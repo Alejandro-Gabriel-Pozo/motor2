@@ -24,12 +24,12 @@ export default async function ComprasRegistradasPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [{ editar: puedeAnular }, { editar: puedeCorregir }] = await Promise.all([
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_compra"),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "corregir_compra"),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_compra", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "corregir_compra", ctx.db),
   ]);
   const sp = await searchParams;
   const desde = sp.desde && !Number.isNaN(new Date(sp.desde).getTime()) ? sp.desde : "";

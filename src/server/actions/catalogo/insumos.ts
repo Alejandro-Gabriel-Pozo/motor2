@@ -159,7 +159,7 @@ export async function renombrarOFusionarInsumo(
     });
 
     if (existente) {
-      const chocaUnidad = await validarFusionInsumos(insumoId, existente.id);
+      const chocaUnidad = await validarFusionInsumos(insumoId, existente.id, ctx.db);
       if (chocaUnidad) return error(chocaUnidad);
 
       if (!confirmarFusion) {
@@ -183,7 +183,7 @@ export async function renombrarOFusionarInsumo(
 
 /** Equivalente de crearOActualizarGrupo/actualizarGrupoPadre_ (Catalogo.js:2483-2519), con la misma validación de ciclo. */
 export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string | null): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async () => {
+  return conPermiso("grupos_familia", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del grupo no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del grupo");
@@ -192,7 +192,7 @@ export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string
     const existente = await prisma.grupo.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
 
     if (existente) {
-      if (grupoPadreId && (await creariaCiclo(existente.id, grupoPadreId))) {
+      if (grupoPadreId && (await creariaCiclo(existente.id, grupoPadreId, ctx.db))) {
         return error(`Ese padre ya desciende de "${n}", o es el mismo grupo — crearía un ciclo.`);
       }
       await prisma.grupo.update({ where: { id: existente.id }, data: { grupoPadreId } });

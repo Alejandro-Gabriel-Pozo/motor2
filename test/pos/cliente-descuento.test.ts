@@ -170,7 +170,7 @@ describe("Cliente con descuento", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.milanesa.id, cantidad: 2, precioUnitario: 1000, numeroEnvio: 1 }]);
       await asignarClienteACuenta(cuenta.id, clienteId);
 
-      const detalle = await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id);
+      const detalle = await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma);
       expect(detalle?.cuenta?.total).toBe(1700);
       expect(detalle?.cuenta?.cliente).toBe("Fulano");
       expect(detalle?.cuenta?.descuentoPorcentaje).toBe(15);
@@ -182,7 +182,7 @@ describe("Cliente con descuento", () => {
       await asignarClienteACuenta(cuenta.id, clienteId);
       expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-      const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
+      const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
       expect(boleta.cliente).toEqual({ nombre: "Fulano", descuentoPorcentaje: 15 });
       expect(boleta.lineas).toEqual([{ producto: "Milanesa", cantidad: 2, precioUnitario: 850, precioListaUnitario: 1000, subtotal: 1700 }]);
       expect(boleta.total).toBe(1700);

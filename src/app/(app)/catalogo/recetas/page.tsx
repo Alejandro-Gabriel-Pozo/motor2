@@ -16,10 +16,10 @@ export default async function RecetasPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const conReceta = await listarProductosConReceta();
+  const conReceta = await listarProductosConReceta(ctx.db);
 
   return (
     <div className="flex flex-col gap-4">

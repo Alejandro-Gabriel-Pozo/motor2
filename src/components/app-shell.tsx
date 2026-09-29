@@ -21,7 +21,7 @@ import { SelectorSucursal } from "./selector-sucursal";
 export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
   // El menú solo muestra las pantallas que el rol puede ver (la página igual se protege por su cuenta: esto evita enlaces a «no tenés
   // permiso»). Lo mismo vale para los enlaces entre pantallas (`EnlaceInterno`), que reciben este conjunto por contexto.
-  const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDeNavegacion());
+  const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDeNavegacion(), ctx.db);
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
   const cotizacion = await obtenerUltimaCotizacion().catch(() => null);

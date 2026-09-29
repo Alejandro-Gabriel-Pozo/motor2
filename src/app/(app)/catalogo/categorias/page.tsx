@@ -8,7 +8,7 @@ export default async function CategoriasPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "categorias");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "categorias", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const categorias = await listarCategoriasProducto();

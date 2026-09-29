@@ -9,6 +9,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import { obtenerHistorialProducto } from "../../src/core/reportes/historial-producto";
 import { limitadorMutaciones } from "../../src/core/permisos/limitador-tasa";
+import { prisma } from "../setup/test-db";
 
 /**
  * Property-based testing (Task #41, Fase F4): la vista de historial de un producto (`obtenerHistorialProducto`, saldo
@@ -97,7 +98,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
         const productoId = await productoNuevo();
         const { saldoModelo, prefijosAceptados } = await aplicar(productoId, pasos, (i) => new Date(Date.UTC(2026, 0, 1 + i)));
 
-        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId);
+        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId, prisma);
         expect(aCentesimas(saldoDirecto)).toBe(saldoModelo);
 
         const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined);
@@ -119,7 +120,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
         const fecha = new Date(Date.UTC(2026, 5, 15));
         const { saldoModelo, prefijosAceptados } = await aplicar(productoId, pasos, () => fecha);
 
-        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId);
+        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId, prisma);
         expect(aCentesimas(saldoDirecto)).toBe(saldoModelo);
 
         const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined);

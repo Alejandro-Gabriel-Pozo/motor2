@@ -10,11 +10,11 @@ export default async function EditarProveedorPage({ params }: { params: Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { id } = await params;
-  const p = await obtenerProveedorPorId(id);
+  const p = await obtenerProveedorPorId(id, ctx.db);
   if (!p) notFound();
 
   const proveedorExistente: ProveedorExistente = {

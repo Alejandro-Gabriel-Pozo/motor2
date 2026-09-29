@@ -15,13 +15,13 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;
 
   const [producto, versiones] = await Promise.all([
-    obtenerProductoPorId(productoId),
+    obtenerProductoPorId(productoId, ctx.db),
     listarVersionesDeReceta(productoId),
   ]);
 

@@ -22,17 +22,17 @@ describe("server/consultas/pos/mesas", () => {
 
   describe("obtenerLimiteMesasAbiertas", () => {
     it("devuelve SOLO { maxMesasAbiertas } con el límite sembrado de ESA sucursal", async () => {
-      const r = await obtenerLimiteMesasAbiertas(conLimite);
+      const r = await obtenerLimiteMesasAbiertas(conLimite, prisma);
       expect(r).toEqual({ maxMesasAbiertas: 7 });
       expect(Object.keys(r)).toEqual(["maxMesasAbiertas"]);
     });
 
     it("una sucursal sin límite devuelve { maxMesasAbiertas: null } (no la de otra sucursal)", async () => {
-      await expect(obtenerLimiteMesasAbiertas(sinLimite)).resolves.toEqual({ maxMesasAbiertas: null });
+      await expect(obtenerLimiteMesasAbiertas(sinLimite, prisma)).resolves.toEqual({ maxMesasAbiertas: null });
     });
 
     it("un id que no existe LANZA (findUniqueOrThrow, P2025), no devuelve null", async () => {
-      await expect(obtenerLimiteMesasAbiertas("no-existe")).rejects.toMatchObject({ code: "P2025" });
+      await expect(obtenerLimiteMesasAbiertas("no-existe", prisma)).rejects.toMatchObject({ code: "P2025" });
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {

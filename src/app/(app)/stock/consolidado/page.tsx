@@ -7,10 +7,10 @@ export default async function StockConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const filas = await calcularStockConsolidado(ctx.sucursalId);
+  const filas = await calcularStockConsolidado(ctx.sucursalId, ctx.db);
 
   return (
     <div>

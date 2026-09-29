@@ -41,12 +41,12 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno además de la escritura de la entrada de Kardex y el cambio de estado del traspaso — sin auditoría de permisos propia.
  */
 export async function aceptarTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   comando: ComandoAceptarTraspaso
 ): Promise<ResultadoAceptarTraspaso> {
   const { traspasoId, seccionDestinoId, claveIdempotencia } = comando;
 
-  const seccionDestino = await obtenerSeccionPropia(seccionDestinoId, actor.sucursalId);
+  const seccionDestino = await obtenerSeccionPropia(seccionDestinoId, actor.sucursalId, actor.db);
   if (!seccionDestino) return fracaso("SECCION_NO_PROPIA", MENSAJE_SECCION_DESTINO_NO_PROPIA);
 
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAceptarTraspaso> => {

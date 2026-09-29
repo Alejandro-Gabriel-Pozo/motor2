@@ -17,12 +17,12 @@ export default async function ProductosPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `editar_producto` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
-  const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
-  const { editar: puedeDarDeAlta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "alta_producto");
+  const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto", ctx.db);
+  const { editar: puedeDarDeAlta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "alta_producto", ctx.db);
 
   const { id, q, cursor } = await searchParams;
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/productos?id=…` (la edición estaba en esta misma pantalla).

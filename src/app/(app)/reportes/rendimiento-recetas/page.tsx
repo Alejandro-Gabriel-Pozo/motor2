@@ -50,7 +50,7 @@ export default async function RendimientoRecetasPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
@@ -63,7 +63,7 @@ export default async function RendimientoRecetasPage({
   const [todasLasSimples, todasLasCompartidas, { editar: puedeCalibrar }] = await Promise.all([
     calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta),
     calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local"),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local", ctx.db),
   ]);
   const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;
   const filasCompartidas = sp.productoId ? todasLasCompartidas.filter((f) => f.productoVentaId === sp.productoId) : todasLasCompartidas;

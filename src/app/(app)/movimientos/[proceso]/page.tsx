@@ -26,7 +26,7 @@ export default async function MovimientoPage({
   const accionClave = ACCION_POR_PROCESO[config.proceso];
   if (!accionClave) notFound();
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, accionClave);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, accionClave, ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await searchParams;
@@ -43,7 +43,7 @@ export default async function MovimientoPage({
     // Deep-link accionable desde un reporte (ej. "Costo incompleto" ->
     // "cargale precio a este insumo") — resuelto server-side así el form
     // cliente no tiene que pedirlo aparte.
-    productoId ? obtenerProductoOpcion(productoId) : Promise.resolve(null),
+    productoId ? obtenerProductoOpcion(productoId, ctx.db) : Promise.resolve(null),
   ]);
 
   return (

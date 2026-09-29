@@ -15,7 +15,7 @@ export default async function ClientesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "clientes");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "clientes", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const clientes = await listarClientes();

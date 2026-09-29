@@ -106,7 +106,7 @@ export async function detectarInsumosConUnidadMezclada(): Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return { ok: false, mensaje: "No autenticado, o tu usuario no tiene ninguna sucursal asignada." };
 
-  const gate = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "insumos_mezclados");
+  const gate = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "insumos_mezclados", ctx.db);
   if (!gate.ok) return { ok: false, mensaje: gate.mensaje };
 
   const insumos = await prisma.insumo.findMany({

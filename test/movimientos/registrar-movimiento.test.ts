@@ -63,7 +63,7 @@ describe("registrarMovimiento", () => {
       items: [{ productoId: mp.id, cantidad: 10 }],
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
   });
 
   it("rechaza un producto no disponible en esta sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.4)", async () => {
@@ -92,7 +92,7 @@ describe("registrarMovimiento", () => {
     });
     expect(resultado.ok, resultado.mensaje).toBe(true);
     // 2 cajas × 20kg/caja = 40kg de stock, no 2kg (que daría el factor default de 1).
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(40);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(40);
   });
 
   it("Compra ignora un unidadCompraId que no es una Presentación real/activa de ese producto, y usa el factor default", async () => {
@@ -102,7 +102,7 @@ describe("registrarMovimiento", () => {
       items: [{ productoId: mp.id, cantidad: 5, unidadCompraId: unidadGId }], // no existe ninguna Presentacion para este producto
     });
     expect(resultado.ok, resultado.mensaje).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(5);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(5);
   });
 
   it("Merma resta stock (signoStock -1) — el bug de v2.1.0 (Merma sin signo) no puede repetirse: el signo sale de un solo lugar (TRANSICIONES), no de una lista aparte", async () => {
@@ -114,7 +114,7 @@ describe("registrarMovimiento", () => {
       items: [{ productoId: mp.id, cantidad: 4 }],
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
   });
 
   it("Merma rechaza un motivoId que no existe, y uno que existe pero está desactivado — el mensaje no revienta como error 500 crudo", async () => {
@@ -137,7 +137,7 @@ describe("registrarMovimiento", () => {
     expect(desactivado.mensaje).toBe("El motivo elegido ya no está disponible.");
 
     // El saldo no se movió: ninguno de los dos rechazos escribió nada.
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
   });
 
   it("Consumo rechaza un destinoId que no existe o que está desactivado, igual que Merma con motivoId", async () => {
@@ -159,7 +159,7 @@ describe("registrarMovimiento", () => {
     expect(desactivado.ok).toBe(false);
     expect(desactivado.mensaje).toBe("El destino elegido ya no está disponible.");
 
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
   });
 
   it("Ajuste: el usuario carga el delta ya con signo, no se multiplica por signoStock", async () => {
@@ -171,11 +171,11 @@ describe("registrarMovimiento", () => {
 
     const bajaAjuste = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: -3 }] });
     expect(bajaAjuste.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(5);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(5);
 
     const subeAjuste = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }] });
     expect(subeAjuste.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
   });
 
   it("sección obligatoria: rechaza Consumo/Merma/Ajuste sin sección elegida", async () => {
@@ -205,7 +205,7 @@ describe("registrarMovimiento", () => {
     expect(resultado.ok).toBe(false);
 
     // Ninguna fila parcial quedó escrita — el saldo sigue en 10, no en 4.
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
   });
 
   it("dos requests CONCURRENTES (no el mismo payload) nunca sobre-venden: aislamiento Serializable + reintento, equivalente real a conLock_", async () => {
@@ -220,7 +220,7 @@ describe("registrarMovimiento", () => {
     // Juntas piden 12 sobre un stock de 10: como mucho una de las dos puede haber ganado la carrera.
     const exitos = [a, b].filter((r) => r.ok).length;
     expect(exitos).toBe(1);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(4);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(4);
   });
 
   it("Transferencia mueve stock entre 2 secciones sin cambiar el total global", async () => {
@@ -232,8 +232,8 @@ describe("registrarMovimiento", () => {
       items: [{ productoId: mp.id, cantidad: 4 }],
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
-    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(4);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
+    expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(4);
   });
 
   it("Transferencia rechaza si la sección destino es la misma que el origen", async () => {
@@ -309,7 +309,7 @@ describe("registrarMovimiento", () => {
       items: [{ productoId: mp.id, cantidad: 500 }], // 500 g de unidad de compra
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBeCloseTo(0.5); // 500 * 0.001 kg
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBeCloseTo(0.5); // 500 * 0.001 kg
   });
 
   it("Producción rechaza una MP que no está marcada \"Se produce\" (hallazgo real 2026-09-23: antes dejaba \"producir\" cualquier MP comprada, sin consumir ninguna receta)", async () => {
@@ -319,7 +319,7 @@ describe("registrarMovimiento", () => {
       items: [{ productoId: harinaComprada.id, cantidad: 10 }],
     });
     expect(resultado.ok).toBe(false);
-    expect(await calcularSaldoTotal(harinaComprada.id, seccionAId)).toBe(0); // no se escribió nada
+    expect(await calcularSaldoTotal(harinaComprada.id, seccionAId, prisma)).toBe(0); // no se escribió nada
   });
 
   it("Producción reparte el consumo de receta entre \"hermanos\" del mismo Insumo cuando el puntual no alcanza", async () => {
@@ -343,12 +343,12 @@ describe("registrarMovimiento", () => {
     });
     expect(resultado.ok).toBe(true);
 
-    const saldoA = await calcularSaldoTotal(mpA.id, seccionAId);
-    const saldoB = await calcularSaldoTotal(mpB.id, seccionAId);
+    const saldoA = await calcularSaldoTotal(mpA.id, seccionAId, prisma);
+    const saldoB = await calcularSaldoTotal(mpB.id, seccionAId, prisma);
     expect(saldoA).toBeGreaterThanOrEqual(0);
     expect(saldoB).toBeGreaterThanOrEqual(0);
     expect(saldoA + saldoB).toBeCloseTo(3 + 10 - 5); // se consumieron 5kg en total entre ambos "hermanos"
-    expect(await calcularSaldoTotal(pv.id, seccionAId)).toBe(1);
+    expect(await calcularSaldoTotal(pv.id, seccionAId, prisma)).toBe(1);
   });
 
   it("Producción: dos líneas que consumen 0.3 c/u de un insumo con decimales=0 no exigen stock (hallazgo post-cierre 2026-09-28, docs/pendientes-sesion-2026-09-27.md: antes se sumaba el consumo CRUDO de consumosReceta para validar stock — 0.3+0.3=0.6, 'insuficiente' con saldo 0 — aunque lo que realmente se persiste es cada consumo YA redondeado a los decimales de su insumo, 0+0=0)", async () => {
@@ -370,7 +370,7 @@ describe("registrarMovimiento", () => {
       items: [{ productoId: pv1.id, cantidad: 1 }, { productoId: pv2.id, cantidad: 1 }],
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(salPizca.id, seccionAId)).toBe(0);
+    expect(await calcularSaldoTotal(salPizca.id, seccionAId, prisma)).toBe(0);
   });
 
   it("Producción de un insumo en consignación genera Consumo + Liquidación (cantidad 0, importe según precioConsignacion)", async () => {
@@ -428,7 +428,7 @@ describe("registrarMovimiento", () => {
       });
 
       expect(resultado.ok).toBe(false);
-      expect(await calcularSaldoTotal(mp.id, seccionAjena.id)).toBe(0);
+      expect(await calcularSaldoTotal(mp.id, seccionAjena.id, prisma)).toBe(0);
     });
 
     it("rechaza una sección destino de TRANSFERENCIA que sea de otra sucursal", async () => {
@@ -443,7 +443,7 @@ describe("registrarMovimiento", () => {
       });
 
       expect(resultado.ok).toBe(false);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // nada se movió
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // nada se movió
     });
   });
 
@@ -531,9 +531,9 @@ describe("registrarMovimiento", () => {
     it("peso real válido se usa como cantidad de stock; vacío (null) sigue sin peso real", async () => {
       const mp = await crearMP("Carne");
       expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 2.35 }])).ok).toBe(true);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(2.35);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(2.35);
       expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: null }])).ok).toBe(true);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(3.35);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(3.35);
     });
 
     it("N.º de factura sin ninguna letra ni número ('---') → error, sin Operacion", async () => {
@@ -576,7 +576,7 @@ describe("registrarMovimiento", () => {
         items: [{ productoId: mp.id, cantidad: 2, precioTotal: Number.NaN }],
       });
       expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" no es un número válido.' });
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
     });
 
     it("los procesos sin aplicaFactorConversion no cambian: una línea de Merma con cantidad 0 se sigue salteando", async () => {
@@ -588,8 +588,8 @@ describe("registrarMovimiento", () => {
         items: [{ productoId: harina.id, cantidad: 2 }, { productoId: azucar.id, cantidad: 0 }],
       });
       expect(resultado.ok, resultado.mensaje).toBe(true);
-      expect(await calcularSaldoTotal(harina.id, seccionAId)).toBe(8);
-      expect(await calcularSaldoTotal(azucar.id, seccionAId)).toBe(10);
+      expect(await calcularSaldoTotal(harina.id, seccionAId, prisma)).toBe(8);
+      expect(await calcularSaldoTotal(azucar.id, seccionAId, prisma)).toBe(10);
     });
   });
 });

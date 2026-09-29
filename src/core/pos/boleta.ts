@@ -193,7 +193,7 @@ export function armarBoleta(
  * Las últimas cuentas cerradas CON VENTA de la mesa (al menos un ítem con `operacionId`: quedan afuera las liberadas sin ítems y las
  * cerradas sin venta), de la más nueva a la más vieja — una sola consulta. Aislada por sucursal: una mesa de otra sucursal no da nada.
  */
-export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string, db: Db = prisma, limite: number = BOLETAS_RECIENTES_POR_MESA): Promise<BoletaDeCuenta[]> {
+export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string, db: Db, limite: number = BOLETAS_RECIENTES_POR_MESA): Promise<BoletaDeCuenta[]> {
   const cuentas = await db.cuenta.findMany({
     where: { mesaId, mesa: { sucursalId }, cerradaEn: { not: null }, items: { some: { operacionId: { not: null } } } },
     orderBy: [{ cerradaEn: "desc" }, { id: "desc" }],

@@ -27,7 +27,7 @@ export interface PromoCartaParaAgregar {
  * el selector, `test/pos/promo-combo-consulta.test.ts`). `null` si la promo no existe en esta sucursal, está apagada, o
  * todavía no tiene ningún cupo (sigue siendo informativa: el POS la ignora).
  */
-export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCartaId: string, db: Db = prisma): Promise<PromoCartaParaAgregar | null> {
+export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCartaId: string, db: Db): Promise<PromoCartaParaAgregar | null> {
   const promo =
     typeof promoCartaId === "string"
       ? await db.promoCarta.findFirst({

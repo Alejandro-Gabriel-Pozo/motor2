@@ -81,8 +81,8 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     expect(envio.ok, envio.mensaje).toBe(true);
     if (!envio.ok) throw new Error(envio.mensaje);
 
-    const saldoA = await calcularSaldoTotal(mp.id, seccionAId);
-    const saldoB = await calcularSaldoTotal(mp.id, seccionBId);
+    const saldoA = await calcularSaldoTotal(mp.id, seccionAId, prisma);
+    const saldoB = await calcularSaldoTotal(mp.id, seccionBId, prisma);
     expect(saldoA).toBe(6); // 10 - 4, ya descontado
     expect(saldoB).toBe(0); // todavía no llegó
 
@@ -113,7 +113,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     // ambos lados — estado intermedio válido (RECHAZADA_DESTINO).
     let traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("RECHAZADA_DESTINO");
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
 
     await comoA();
     const reingreso = await confirmarReingresoTransferencia(envio.id);
@@ -121,8 +121,8 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
 
     traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("CERRADA");
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // exactamente el original, ni más ni menos
-    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(0);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // exactamente el original, ni más ni menos
+    expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(0);
 
     const movimientosDelTraspaso = await prisma.movimientoStock.count({ where: { traspasoSucursalId: envio.id } });
     expect(movimientosDelTraspaso).toBe(2); // salida + reingreso, nunca se tocó/borró la salida original
@@ -143,7 +143,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     expect(segundaAceptacion.ok).toBe(false);
     expect(segundaAceptacion.mensaje).toMatch(/no se puede aceptar/i);
 
-    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(4); // no 8
+    expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(4); // no 8
   });
 
   it("HALLAZGO A VERIFICAR: aceptar y rechazar simultáneos sobre el MISMO traspaso ENVIADA — ¿el guard de estado dentro de la transacción evita que ambos tengan efecto?", async () => {
@@ -242,7 +242,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     const movimientosDeReingreso = await prisma.movimientoStock.count({ where: { traspasoSucursalId: envio.id, proceso: "REINGRESO_TRANSFERENCIA_SUCURSAL" } });
     expect(movimientosDeReingreso).toBe(1); // nunca 2
 
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // exactamente el original, ni 14 ni 6
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // exactamente el original, ni 14 ni 6
 
     const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(traspaso.estado).toBe("CERRADA");
@@ -293,7 +293,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
 
     // Invariante: lo que queda en el origen + lo que sigue en tránsito (ENVIADA) = lo que se compró. Nada se perdió en el medio.
     const enTransito = await prisma.traspasoSucursal.aggregate({ where: { productoId: mp.id, estado: "ENVIADA" }, _sum: { cantidad: true } });
-    expect((await calcularSaldoTotal(mp.id, seccionAId)) + Number(enTransito._sum.cantidad ?? 0)).toBe(20);
+    expect((await calcularSaldoTotal(mp.id, seccionAId, prisma)) + Number(enTransito._sum.cantidad ?? 0)).toBe(20);
   });
 
   it("REGRESIÓN (stock en tránsito): doble cancelación simultánea de la misma solicitud — exactamente una tiene efecto, la otra recibe el error de estado", async () => {
@@ -315,7 +315,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
 
     const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
     expect(traspaso.estado).toBe("CANCELADA");
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // una solicitud nunca tocó stock
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // una solicitud nunca tocó stock
   });
 
   it("REGRESIÓN (stock en tránsito): doble rechazo simultáneo de la misma solicitud — exactamente uno gana, el otro recibe el error de estado, nunca se pisa el motivo en silencio", async () => {
@@ -391,6 +391,6 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     const movimientosDeTraspaso = await prisma.movimientoStock.count({ where: { traspasoSucursalId: { not: null } } });
     expect(traspasosHuerfanos).toBe(0);
     expect(movimientosDeTraspaso).toBe(0);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // intacto, como si el intento nunca hubiera ocurrido
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // intacto, como si el intento nunca hubiera ocurrido
   });
 });

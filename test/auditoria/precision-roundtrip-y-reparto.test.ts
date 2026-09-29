@@ -99,7 +99,7 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-03"), seccionId, items: [{ productoId: h3.id, cantidad: 1.81 }] });
 
       const totalDisponible = 3.37 + 2.19 + 1.81; // 7.37
-      const partes = await resolverConsumoPorFamilia(h1.id, totalDisponible, seccionId);
+      const partes = await resolverConsumoPorFamilia(h1.id, totalDisponible, seccionId, prisma);
 
       const sumaPartes = partes.reduce((acc, p) => acc + p.cantidad, 0);
       console.log("[auditoria] partes:", partes.map((p) => p.cantidad), "suma:", sumaPartes, "pedido:", totalDisponible);
@@ -133,7 +133,7 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       // Pide un monto que corta al tercer hermano a mitad de camino:
       // 1.1234 + 0.9876 + 1.5 = 3.611 (menos que el saldo completo del 3ro).
       const pedido = 1.1234 + 0.9876 + 1.5;
-      const partes = await resolverConsumoPorFamilia(hermanos[0]!.id, pedido, seccionId);
+      const partes = await resolverConsumoPorFamilia(hermanos[0]!.id, pedido, seccionId, prisma);
       const sumaPartes = partes.reduce((acc, p) => acc + p.cantidad, 0);
 
       console.log("[auditoria] partes (parcial):", partes.map((p) => ({ productoId: p.productoId, cantidad: p.cantidad })), "suma:", sumaPartes, "pedido:", pedido);
