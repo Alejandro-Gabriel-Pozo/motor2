@@ -49,10 +49,11 @@ export async function intentarBootstrapAdmin(
   if (!rolAdmin) return;
 
   // Las dos pertenencias (empresa y sucursal) van juntas: sin la de empresa el usuario no tendría contexto (contexto.ts).
+  // Quien crea la empresa (su primer admin) es su gerente; el `update` no pisa un rol que ya tuviera cargado.
   await db.usuarioEmpresa.upsert({
     where: { usuarioId_empresaId: { usuarioId, empresaId } },
     update: { activo: true },
-    create: { usuarioId, empresaId },
+    create: { usuarioId, empresaId, rolEmpresa: "gerente" },
   });
   await db.usuarioSucursal.upsert({
     where: { usuarioId_sucursalId: { usuarioId, sucursalId: sucursal.id } },

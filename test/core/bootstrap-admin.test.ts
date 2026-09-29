@@ -31,6 +31,31 @@ describe("bootstrap del primer admin", () => {
     expect(pertenencia?.empresaId).toBe(membresia?.empresaId);
   });
 
+  it("quien crea la empresa (su primer admin) queda como gerente de la empresa", async () => {
+    await sembrarBase();
+    process.env.BOOTSTRAP_ADMIN_EMAILS = "dueño@negocio.com";
+    const usuario = await prisma.user.create({ data: { email: "dueño@negocio.com" } });
+
+    await intentarBootstrapAdmin(usuario.id, usuario.email);
+
+    const pertenencia = await prisma.usuarioEmpresa.findFirst({ where: { usuarioId: usuario.id } });
+    expect(pertenencia?.rolEmpresa).toBe("gerente");
+  });
+
+  it("el bootstrap no pisa un rol de empresa que el usuario ya tuviera cargado", async () => {
+    const { sucursal } = await sembrarBase();
+    process.env.BOOTSTRAP_ADMIN_EMAILS = "dueño@negocio.com";
+    const usuario = await prisma.user.create({ data: { email: "dueño@negocio.com" } });
+    await prisma.usuarioEmpresa.create({ data: { usuarioId: usuario.id, empresaId: sucursal.empresaId, rolEmpresa: "auditor", activo: false } });
+
+    await intentarBootstrapAdmin(usuario.id, usuario.email);
+
+    const pertenencia = await prisma.usuarioEmpresa.findFirst({ where: { usuarioId: usuario.id } });
+    expect(pertenencia?.rolEmpresa).toBe("auditor");
+    expect(pertenencia?.activo).toBe(true);
+  });
+
+
   it("el chequeo de \"todavía no hay admin\" es por empresa: un admin de otra empresa no bloquea el bootstrap de la primera sucursal", async () => {
     await sembrarBase();
     await prisma.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
