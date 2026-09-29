@@ -174,8 +174,11 @@ nivel, evaluados y descartados por el dueño).
   existe siempre, y una instalación de una sola empresa funciona sin fricción
   (sin exigir subdominios/DNS wildcard, con esa empresa como default). Sumar
   una segunda empresa después = dato + configuración, no otra migración de
-  estructura. El plan de la Fase F se diseña con este requisito; ver el
-  documento de plan que se enlace acá cuando exista.
+  estructura. **El plan de la Fase F ya está diseñado y aprobado por el
+  dueño (2026-09-29): ver `ADR-007-instalacion-multiempresa-activada-con-
+  una.md`** (pasos N1-N3 sin autorización; A0-A8 con autorización expresa
+  por paso). Se hace en el MISMO repo, en pasos chicos integrables a la
+  línea principal, con el modo «una empresa» como default.
 - **Cómo retomar:** (1) `git log --oneline -6` y `git status`; (2) leer esta
   sección + el ADR-004 + `prisma/fase-a/`; (3) el siguiente paso es el PLAN de
   la Fase F (skill `plan-con-verificacion-e2e`, agente `Plan`, `opus`), sin

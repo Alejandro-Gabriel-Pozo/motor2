@@ -1,0 +1,239 @@
+# ADR-007: Instalación multiempresa-capable, activada con una sola empresa
+
+> Redactado el 2026-09-29. Plan diseñado por el agente `Plan` (opus, skill
+> `plan-con-verificacion-e2e`) verificando el código real en `5d0f331`, y
+> aprobado por el dueño el mismo día ("te doy el visto bueno": se toman las
+> opciones recomendadas de D1-D6 y D9). Amplía ADR-002 y sustituye su frase
+> "RLS modelo por modelo, Fase B" (ver "Correcciones a otros ADR"). Este
+> documento es el punto de retomada de la Fase F de ADR-006.
+
+## Contexto
+
+**Requisito del dueño:** motor2 se instala ya multiempresa-capable (`Empresa`,
+`empresaId`, RLS, resolución por slug/host) pero se activa con UNA sola
+empresa, sin fricción (sin subdominios ni DNS wildcard). Sumar una segunda
+empresa = dato + configuración, nunca otra migración de estructura. Decisión
+"X reemplaza Y" ⇒ aplica a TODAS las capas, sin alcance parcial.
+
+**Contexto de negocio:** el cliente actual pidió solo lo que ya existe (hasta
+la carta). La Fase F es inversión propia del dueño para poder lanzar motor2
+como producto (SaaS). Un solo repositorio y un solo código; lo que cambia
+entre instalaciones es configuración. El cliente actual puede seguir en una
+**instalación propia** (su base y su deploy, modo una empresa) y el SaaS ser
+otra instalación del mismo código con varias empresas; mudar al cliente al
+SaaS más adelante sería un traslado de datos, no un cambio de estructura.
+(ADR-002 ya prevé "base dedicada" para una empresa con requisito de
+aislamiento.) Nada de la Fase F bloquea la entrega al cliente.
+
+## Estado verificado (código en `5d0f331`)
+
+- `prisma/schema.prisma`: 56 modelos, ninguno con `Empresa`/`empresaId`.
+  Unicidades globales que pasan a ser por empresa: `Sucursal.nombre`,
+  `Rol.nombre`, `Producto.codigo`, nombres de Insumo, Grupo,
+  CategoriaProducto, Unidad, Proveedor, Cliente, MotivoMerma,
+  DestinoConsumo, SeccionCarta, ItemAgrupadoCarta, GeneroCarta,
+  `SucursalPublica.slug`, los índices manuales `lower(nombre)` y el índice
+  parcial `CapacidadSucursal_accionClave_default_key`.
+- `src/lib/db.ts`: singleton (PrismaNeon si la URL es de neon.tech, PrismaPg
+  si no); 102 archivos lo importan (58 dentro de `src/core/`, 27 en
+  `core/reportes`). **`core/` no es puro** respecto de Prisma: solo las
+  fachadas `public.ts` lo garantizan (regla `publico-puro`). ~62 archivos usan
+  el patrón `db: Db = prisma`; 12 `$transaction`, más
+  `conTransaccionSerializable`; 2 consultas SQL directas
+  (`costo-historico.ts`, `upsert-proveedor-por-producto.ts`).
+- Sesión: `obtenerContextoUsuario` (con `cache()`) lee `UsuarioSucursal` y la
+  cookie `sucursalActivaId`; `conPermiso` y `requerirSesion*` lo usan;
+  `acceso.ts` (vía 3) y `bootstrap.ts` no tienen noción de empresa.
+- Carta: `resolverEmpresaCarta` compara contra `CARTA_EMPRESA_SLUG`;
+  `resolverPortalCarta()` no filtra por empresa; `resolverCartaPublica` busca
+  `findUnique({slug})` global.
+- Tests: el `.env` usa el usuario docker `motor2`, **superusuario** (hoy un RLS
+  quedaría anulado sin aviso); el reset e2e hace `TRUNCATE` de todas las
+  tablas; `npm run build` corre `prisma migrate deploy` contra `DIRECT_URL`.
+
+## Decisión
+
+### Modelo de datos
+- **Globales (sin `empresaId`), 7 tablas:** User, Account, Session,
+  VerificationToken, Accion (catálogo definido por código), IndicePrecio,
+  CotizacionDolar (datos de mercado; los crons no necesitan empresa).
+- **Nuevas de plataforma, sin RLS de empresa:** `Empresa` (con `cuit`
+  opcional) y `UsuarioEmpresa` (`rolEmpresa String?`, `activo`).
+- **Las otras 49 tablas llevan `empresaId NOT NULL`**, hijas incluidas
+  (RLS necesita la columna en cada tabla; una política con subconsulta sería
+  lenta). Rol, PermisoRol, Unidad, MotivoMerma y DestinoConsumo son **por
+  empresa** (D3) porque un admin los edita. `Sucursal.empresaId` es fijo
+  (ADR-001: no se muda una sucursal entre empresas).
+- Cada tabla declara `@@unique([empresaId, id])` y las referencias son FK
+  compuestas `[empresaId, xId]` (ADR-002): una FK simple no pasa por RLS y
+  permitiría que una Operación de A apunte a un Proveedor de B. El alcance
+  exacto (todas las tablas o solo las que referencian catálogo) se cierra con
+  el resultado del paso A1 (D4).
+- Unicidades por empresa: todas las de nombre/código de arriba,
+  `SucursalPublica.slug` → `@@unique([empresaId, slug])`, y el default de
+  CapacidadSucursal → `(empresaId, accionClave) WHERE sucursalId IS NULL`.
+  Siguen globales: `SucursalPublica.dominio` (un host, una sucursal),
+  `Empresa.slug` y las `claveIdempotencia` (UUID; D10 se resuelve al
+  implementar).
+- Default de columna: `empresaId @default(dbgenerated("app_empresa_actual()"))`:
+  los `create` existentes no pasan `empresaId` y RLS igual verifica el valor.
+
+### Modo «una sola empresa» (D1 = V1)
+Función SQL: `app_empresa_actual() = COALESCE(NULLIF(current_setting(
+'app.empresa_id', true),''), (SELECT CASE WHEN count(*)=1 THEN min(id) END
+FROM "Empresa" WHERE estado='ACTIVE'))`. La migración siembra la empresa por
+defecto ACTIVE (id fijo `empresa_principal`). Con **una** empresa activa, seed,
+crons, scripts, tests y `/api/carta/*` funcionan sin tocar nada. Con **dos o
+más** la función devuelve NULL: lo que no fije contexto devuelve 0 filas o
+falla con `NOT NULL` (se equivoca hacia el lado seguro). Sumar la segunda
+empresa = script `crear-empresa` (empresa, roles, unidades, motivos, sucursal,
+primer admin) + pasarla a ACTIVE: sin migración.
+
+Descartadas: V2 (bandera `esPredeterminada`: el fallback seguiría activo con
+varias empresas y una ruta sin contexto escribiría en la empresa por defecto),
+V3 (env `EMPRESA_UNICA`: puede no coincidir con la base y exige redeploy para
+pasar a varias), V4 (sin fallback: obliga a tocar seed, crons y 292 archivos
+de test).
+
+Admin: un solo host, sin subdominio; la empresa activa sale de la sesión
+(única membresía, o selector con cookie `empresaActivaId` validada contra
+`UsuarioEmpresa`). Carta: por path `/carta-publica/<slug>/…` sin DNS;
+`CARTA_DOMINIO_BASE` sigue opcional (el wildcard solo cuando haya 2ª empresa).
+
+### Aislamiento (D2 = `ENABLE` + rol aparte)
+- RLS `ENABLE` (sin `FORCE`) con política en las 49 tablas:
+  `USING/WITH CHECK ("empresaId" = (SELECT app_empresa_actual()))`.
+- Rol de base `motor2_app`: sin superusuario, sin BYPASSRLS, no dueño de las
+  tablas; lo usa `DATABASE_URL`. `DIRECT_URL` sigue con el dueño (migraciones,
+  limpieza de tests). El rol se crea con un script de operaciones fuera de las
+  migraciones; las migraciones solo hacen `GRANT` condicional (bloque `DO`).
+- Contexto por request: `dbDeEmpresa(empresaId)` envuelve cada operación en
+  una transacción `[set_config('app.empresa_id',$1,true), query]`;
+  `transaccionDeEmpresa(empresaId, fn, opts)` para las interactivas. La
+  configuración es **local a la transacción** (segura con pgbouncer en modo
+  transacción; nunca `SET` de sesión).
+- Defensa en la capa de aplicación: (1) "base explícita": se eliminan los
+  `= prisma` por defecto, `ctx.db`/`ctx.transaccion` llegan del contexto y
+  `tsc` marca lo que falte; (2) regla de dependency-cruiser: solo `core/auth`,
+  `lib/auth.ts`, la resolución de carta y `api/cron` pueden importar
+  `lib/db.ts` (el tipo `Db` pasa a `lib/db-tipos.ts`);
+  (3) `requerirSesionEnSucursal` verifica que la sucursal sea de la empresa
+  activa; (4) FK compuestas; (5) autochequeo: si `current_user` es dueño,
+  superusuario o BYPASSRLS y hay más de una empresa activa, se niega a operar
+  (`crear-empresa` también).
+
+### Migración y backfill
+Migración 1 (estructura; un commit) y Migración 2 (RLS; otro commit, D11):
+por tabla, columna nullable → backfill a `empresa_principal` → `NOT NULL` +
+default + uniques + FK compuestas; completa `UsuarioEmpresa` desde
+`UsuarioSucursal`. Cada una con `down.sql` escrito a mano, probada aplicar →
+revertir → aplicar, y `prisma migrate diff --from-migrations
+--to-schema-datamodel` vacío. Producción: ensayo previo en rama de Neon
+copiada de producción, con snapshot; el slug de la empresa por defecto debe
+coincidir con el `CARTA_EMPRESA_SLUG` vigente en producción para no romper
+links ni QR (D5). Nunca `npm run build` contra producción sin autorización
+(migra contra `DIRECT_URL`); antes de cualquier push confirmar que los Preview
+de Vercel no apuntan a producción.
+
+### Resolución en runtime
+Admin: sesión → `UsuarioEmpresa` → empresa activa → sus sucursales;
+`ContextoUsuario` suma `empresaId`, `empresaSlug`, `rolEmpresa`, `empresas[]`,
+`db`, y **absorbe** a `contexto-empresa.ts` (D7: no pueden convivir). Carta:
+`resolverEmpresaCarta(slug)` consulta `Empresa` ACTIVE; el portal filtra por
+esa empresa; la sucursal se busca por `empresaId_slug`;
+`CARTA_EMPRESA_SLUG` desaparece de todas las capas (`env.ts`,
+`playwright.config.ts`, `.env.example`, `empresaCartaActual`) en el MISMO
+commit. `/api/carta/*` heredada no tiene contexto con varias empresas: la
+segunda empresa se activa **después de la Fase 8** (D9).
+
+## Pasos (un commit cada uno)
+
+| # | Paso | Requiere autorización | Riesgo | Depende de |
+|---|---|---|---|---|
+| N1 | Este ADR y correcciones a ADR-004/006 | No | Bajo | — |
+| N2 | «Base explícita»: sacar los `= prisma` por defecto, `ctx.db`/`ctx.transaccion` (hoy siguen siendo `prisma`), migrar los 12 `$transaction`, regla de dependency-cruiser; un commit por dominio | No | Medio (diff grande, sin cambio de comportamiento) | — |
+| N3 | Carta con empresa por parámetro (`EmpresaCarta` llega a portal y sucursal), todavía con la env | No | Bajo | N2 |
+| A0 | Crear `motor2_app` en local y e2e, grants, `.env`, `prismaAdmin`; suite verde SIN RLS | **EXPRESA** (roles y base local) | Medio | N2 |
+| A1 | Prueba previa en `prisma/fase-a/` con el objetivo completo (`validate` + `generate`; ver qué pasa con `create`/`connect` ante FK compuestas) | **EXPRESA** (schema) | Bajo | N1 |
+| A2 | Migración 1 + `schema.prisma` + `down.sql` + arreglos de compilación, seed y helpers | **EXPRESA** | Alto | A0, A1 |
+| A3 | Carta desde la base; se elimina `CARTA_EMPRESA_SLUG` en todas las capas | No (código) | Medio | A2 |
+| A4 | Empresa activa en la sesión, selector, `UsuarioEmpresa` en login/bootstrap/altas; se funde `ContextoEmpresa` | No | Medio | A2 |
+| A5 | `dbDeEmpresa`/`transaccionDeEmpresa` + medición con `scripts/benchmark-reportes.ts` | No | Medio (rendimiento) | A4 |
+| A6 | Migración 2: RLS, políticas, grants condicionales, `down.sql` + tests de catálogo | **EXPRESA** | Alto | A5 |
+| A7 | Tests de aislamiento + e2e multiempresa + script `crear-empresa` | No (correrlo contra una base real sí) | Bajo | A6 |
+| A8 | Producción: ensayo en rama de Neon, rol en Neon, `DATABASE_URL` en Vercel, slug real, push y DNS wildcard (Fase 7) | **EXPRESA** | Alto | A7 |
+| V | Verificación final (abajo) | — | — | todos |
+
+## Impacto en tests
+- `test/setup/test-db.ts`: `prismaAdmin` (dueño, `DIRECT_URL`) para la
+  limpieza; `limpiarBaseDeTest` borra también `UsuarioEmpresa` y `Empresa`;
+  `sembrarBase` crea la empresa ACTIVE; helpers `sembrarSegundaEmpresa()` y
+  `comoEmpresa(id)`.
+- e2e: `crearPrismaE2E` usa la URL del dueño (`MOTOR2_E2E_DIRECT_URL`) porque
+  bajo RLS el conteo de verificación mentiría; `asegurarBaseSeed` crea la
+  empresa con slug `e2e` (el `TRUNCATE` también la borra).
+- Vitest `test/aislamiento/*` con dos empresas activas: A no ve
+  productos/operaciones/cartas de B (lectura, escritura, `updateMany`/
+  `deleteMany`, SQL directo); un insert cruzado por FK falla; sin contexto no
+  se ve nada. Tests de catálogo: toda tabla no global tiene `empresaId`, RLS y
+  política; el rol de ejecución no es superusuario, ni BYPASSRLS, ni dueño.
+- e2e `multiempresa-*.spec.ts` (activan B en `beforeAll`, la suspenden en
+  `afterAll`; `workers: 1` lo hace seguro): un usuario de B solo ve B;
+  `carta.b.localhost` solo el portal de B; un slug de A en el host de B da
+  404; un usuario en las dos empresas ve el selector. La suite actual sigue
+  corriendo con una sola empresa.
+
+## Verificación final obligatoria (paso V)
+Línea de base: arquitectura 535 módulos y 0 violaciones; test 292 archivos /
+3421 tests; e2e 379. En la MISMA corrida, todo limpio: `npx tsc --noEmit`
+(vacío), `npm run lint` (0/0), `npm run arquitectura` (≥535 módulos, 0
+violaciones, sin bajar severidades ni excepciones sin motivo),
+`npm run analizar:muerto` (0 hallazgos; quitar de `knip.jsonc` las entradas de
+`prisma/fase-a/` si se borra la carpeta), `npm test` (≥292/3421, con el rol
+`motor2_app`), `npm run build` (base local autorizada), `npm run test:e2e`
+(≥379). Demostraciones por mutación (rojo → revertir → verde), cada una en su
+commit: (a) `DISABLE ROW LEVEL SECURITY` en `Producto` rompe el test de
+aislamiento; (b) FK compuesta → simple rompe el test de insert cruzado;
+(c) quitar la política de una tabla rompe el test de catálogo;
+(d) `DATABASE_URL` al superusuario rompe el test de rol; (e) en e2e, sacar el
+filtro de empresa de `resolverPortalCarta` **sigue verde** porque RLS sostiene
+el aislamiento, y se pone rojo si además se desactiva RLS en la base e2e. Mirar
+con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
+`enlaces-con-permiso`, `*-sesion-vencida`, `servidor-en-modo-produccion`, y
+`test/auth`, `test/permisos`, `test/reportes`, `test/arquitectura`.
+
+## Decisiones del dueño (2026-09-29)
+- **D1** V1 (fallback a la única empresa activa). **D2** RLS `ENABLE` + rol
+  `motor2_app` aparte. **D3** Rol, PermisoRol y Unidad por empresa.
+  **D4** se cierra con A1. **D5** el slug de la empresa por defecto = el
+  `CARTA_EMPRESA_SLUG` de producción. **D6** `AlcanceCarta` (+ tablas puente),
+  `GrupoSincroPrecio` y `PrecioLocalProducto.sincronizado` son funciones nuevas
+  del producto, no multiempresa: quedan FUERA de la Fase F. **D7** el
+  `ContextoUsuario` absorbe a `ContextoEmpresa`. **D9** la segunda empresa se
+  activa después de la Fase 8. **D8, D10, D11** se resuelven al implementar
+  (D11: A2 y A6 como dos commits).
+
+## Correcciones a otros ADR (incoherencias halladas)
+1. El schema experimental (`prisma/fase-a/schema.prisma`) pone `empresaId` solo
+   en Sucursal y 5 tablas de carta/precio; deja el catálogo y las operaciones
+   globales, lo que contradice ADR-001/002. Es un experimento, no el objetivo:
+   el objetivo es el de este ADR.
+2. `SucursalPublica.slug` es global en el schema experimental (pendiente ya
+   anotado): pasa a único por empresa.
+3. ADR-002 dice "RLS modelo por modelo, Fase B"; choca con la regla de "todas
+   las capas". **Reemplazado:** RLS en las 49 tablas a la vez (Migración 2).
+4. ADR-004 nombra `smoke-test.mjs`; el archivo es `smoke-test.ts` (corregido).
+5. La migración experimental siembra el slug `empresa-por-defecto`, que no
+   coincide con `CARTA_EMPRESA_SLUG` (ver D5).
+6. Comentarios en `schema.prisma` y `bootstrap.ts` dicen «NO multi-tenant»:
+   se corrigen en A2/A4.
+7. El supuesto de "consultas de `core/` puras" no se cumple (58 archivos de
+   `core/` usan Prisma): por eso N2 y la regla de dependency-cruiser.
+8. `contexto-empresa.ts` dice que 88 archivos consumen `ContextoUsuario`; hoy
+   lo mencionan ~112.
+
+## Riesgos abiertos
+Rendimiento (cada consulta suma BEGIN + `set_config` + COMMIT; se mide en A5
+con `scripts/benchmark-reportes.ts`); el adaptador PrismaNeon hay que
+verificarlo en A8; los tipos de Prisma cambian con las FK compuestas; un
+Preview de Vercel podría migrar producción si apunta a esa base.

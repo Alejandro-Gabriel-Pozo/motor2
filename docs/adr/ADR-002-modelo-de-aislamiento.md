@@ -7,6 +7,11 @@
 > nada nuevo. Documentación pura: no toca código ni schema. RLS **no se
 > activa con este ADR** — se activa modelo por modelo durante la Fase B,
 > una vez que cada tabla ya tiene `empresaId` (Fase 2 del checklist).
+>
+> **Actualización 2026-09-29 (ADR-007):** lo de "modelo por modelo" queda
+> reemplazado: RLS se activa en todas las tablas con `empresaId` a la vez
+> (Migración 2 de ADR-007), con rol `motor2_app` aparte y modo «una sola
+> empresa» como default. El resto de este ADR sigue vigente.
 
 ## Contexto
 

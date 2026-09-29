@@ -46,7 +46,7 @@ El schema de Fase A vive **fuera** de `prisma/schema.prisma`, en
 - `prisma/fase-a/migraciones-manuales/`: SQL escrito a mano (patrón de 3
   pasos: columna nullable → backfill → `NOT NULL` + constraints), pensado
   para aplicarse tal cual sobre una base con `Sucursal` ya pobladas.
-- `prisma/fase-a/smoke-test.mjs`: script manual (Prisma Client aislado +
+- `prisma/fase-a/smoke-test.ts`: script manual (Prisma Client aislado +
   `PrismaPg`) que probó el modelo de punta a punta contra Neon.
 - `knip.jsonc`: `schema.prisma` y `prisma.config.ts` de esta carpeta se
   declaran en `entry` (RESERVADO) — se invocan a mano vía `--schema`/
