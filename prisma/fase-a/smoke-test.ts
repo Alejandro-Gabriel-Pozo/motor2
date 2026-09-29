@@ -4,8 +4,11 @@
 // No se ejecuta en CI ni en el gate de verificación real — es una
 // herramienta de esta rama mientras el schema todavía no se integra a
 // prisma/schema.prisma. Requiere FASE_A_DIRECT_URL en el entorno.
+// Se corre con `npx tsx prisma/fase-a/smoke-test.ts` (import de un .ts real
+// desde afuera de src/ — .mjs no puede importar TS sin un loader).
 import { PrismaClient } from "../../node_modules/.prisma/fase-a-client/index.js";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { extraerTokenBearer, generarTokenCartaPlano, hashTokenCarta, tokenCoincideConHash } from "../../src/core/carta/token-servicio-empresa";
 
 const adapter = new PrismaPg({ connectionString: process.env.FASE_A_DIRECT_URL });
 const prisma = new PrismaClient({ adapter });
@@ -42,9 +45,9 @@ async function main() {
   });
   console.log(
     "Empresa con relaciones -> sucursales:",
-    conRelaciones.sucursales.length,
+    conRelaciones!.sucursales.length,
     "usuarios:",
-    conRelaciones.usuarios.length
+    conRelaciones!.usuarios.length
   );
 
   // Carta multisucursal + sincronización de precios (plan del panel, 2.4/2.5).
@@ -78,6 +81,35 @@ async function main() {
   });
   console.log("GrupoSincroPrecio creado:", grupo.id, "sucursal:", grupoSucursal.sucursalId);
 
+  // ADR-005: TokenCartaEmpresa — emitir, resolver por hash, revocar.
+  const tokenPlano = generarTokenCartaPlano();
+  const token = await prisma.tokenCartaEmpresa.create({
+    data: { empresaId: empresa.id, tokenHash: hashTokenCarta(tokenPlano) },
+  });
+  console.log("TokenCartaEmpresa creado:", token.id, "(el texto plano NUNCA se persiste)");
+
+  // Simula lo que haría autorizarServicioCarta: recibe el header, extrae el token, resuelve la empresa por hash.
+  const headerRecibido = `Bearer ${tokenPlano}`;
+  const tokenRecibido = extraerTokenBearer(headerRecibido);
+  if (!tokenRecibido) throw new Error("extraerTokenBearer falló con un header bien formado");
+  const filaResuelta = await prisma.tokenCartaEmpresa.findUnique({ where: { tokenHash: hashTokenCarta(tokenRecibido) } });
+  if (!filaResuelta || filaResuelta.revocadoEn !== null || !tokenCoincideConHash(tokenRecibido, filaResuelta.tokenHash)) {
+    throw new Error("El token recién emitido debería resolver a su empresa y no lo hizo");
+  }
+  console.log("Token resuelto -> empresaId:", filaResuelta.empresaId, "(coincide:", filaResuelta.empresaId === empresa.id, ")");
+
+  // Un token con el texto plano correcto pero de OTRA fila (simula un intento de reusar el hash de otra empresa) no debe colar.
+  const otroTokenPlano = generarTokenCartaPlano();
+  const noDeberiaResolver = await prisma.tokenCartaEmpresa.findUnique({ where: { tokenHash: hashTokenCarta(otroTokenPlano) } });
+  if (noDeberiaResolver) throw new Error("Un token nunca emitido no debería resolver ninguna fila");
+  console.log("Token nunca emitido: correctamente no resuelve ninguna fila.");
+
+  // Revocar: la fila sigue existiendo (auditoría) pero deja de autorizar.
+  const revocado = await prisma.tokenCartaEmpresa.update({ where: { id: token.id }, data: { revocadoEn: new Date() } });
+  if (revocado.revocadoEn === null) throw new Error("El token debería quedar revocado");
+  console.log("Token revocado:", revocado.id, "revocadoEn:", revocado.revocadoEn?.toISOString());
+
+  await prisma.tokenCartaEmpresa.delete({ where: { id: token.id } });
   await prisma.grupoSincroPrecioSucursal.delete({
     where: { grupoId_sucursalId: { grupoId: grupo.id, sucursalId: sucursal.id } },
   });

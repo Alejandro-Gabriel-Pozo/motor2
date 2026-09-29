@@ -55,7 +55,10 @@
     // local. Se invocan a mano vía `--schema`/`--config`, nunca importados desde
     // código — igual que el resto de esta lista.
     "prisma/fase-a/schema.prisma",
-    "prisma/fase-a/prisma.config.ts"
+    "prisma/fase-a/prisma.config.ts",
+    // Igual motivo: smoke test manual de esa carpeta, se corre a mano con
+    // `npx tsx prisma/fase-a/smoke-test.ts`, nadie lo importa.
+    "prisma/fase-a/smoke-test.ts"
   ],
 
   // Archivos que se analizan: src, test, scripts y prisma. Se incluyen `.css` (el `@import "tailwindcss"` de

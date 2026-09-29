@@ -129,6 +129,25 @@ model Empresa {
   promosCarta         PromoCarta[]
   preciosLocales      PrecioLocalProducto[]
   gruposSincroPrecio  GrupoSincroPrecio[]
+  tokensCarta         TokenCartaEmpresa[]
+}
+
+/// ADR-005: acceso al portal de carta por empresa — reemplaza el
+/// `CARTA_API_TOKEN` global de proceso. Se guarda SOLO el hash (nunca el
+/// token en texto plano — ver src/core/carta/token-servicio-empresa.ts,
+/// que ya existe en el repo real como lógica pura). Rotación sin cortar
+/// servicio: se genera un token nuevo, se revoca el viejo (`revocadoEn`)
+/// recién después de actualizar el deployment de Vercel de esa empresa —
+/// mismo criterio que "nuevo,viejo" en el `CARTA_API_TOKEN` de hoy.
+model TokenCartaEmpresa {
+  id         String    @id @default(cuid())
+  empresaId  String
+  empresa    Empresa   @relation(fields: [empresaId], references: [id])
+  tokenHash  String    @unique
+  creadoEn   DateTime  @default(now())
+  revocadoEn DateTime?
+
+  @@index([empresaId])
 }
 
 /// Pertenencia usuario↔empresa, separada de UsuarioSucursal (rol por
