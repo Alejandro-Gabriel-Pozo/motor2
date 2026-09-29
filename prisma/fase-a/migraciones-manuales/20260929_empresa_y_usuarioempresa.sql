@@ -27,7 +27,7 @@ CREATE TABLE "UsuarioEmpresa" (
     "id" TEXT NOT NULL,
     "usuarioId" TEXT NOT NULL,
     "empresaId" TEXT NOT NULL,
-    "esGerente" BOOLEAN NOT NULL DEFAULT false,
+    "rolEmpresa" TEXT,
     "activo" BOOLEAN NOT NULL DEFAULT true,
     "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "UsuarioEmpresa_pkey" PRIMARY KEY ("id"),

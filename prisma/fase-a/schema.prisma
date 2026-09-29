@@ -126,21 +126,25 @@ model Empresa {
 }
 
 /// Pertenencia usuario↔empresa, separada de UsuarioSucursal (rol por
-/// sucursal). `esGerente` queda boolean en Fase A a propósito: la decisión
-/// de reemplazar el dicotómico por un rol de empresa (rolId/rolEmpresa) ya
-/// está tomada (Downloads/Motor 2/idea-roles-contextuales-empresa-sucursal-2026-09-28.md)
-/// pero hoy solo aplica a `ContextoEmpresa` (src/core/auth/contexto-empresa.ts,
-/// que todavía no tiene resolvedor real). Esta columna migra recién en Fase B,
-/// cuando haga falta más de un perfil a nivel empresa.
+/// sucursal). `rolEmpresa` — NO `esGerente: Boolean` — desde el día uno: la
+/// decisión del dueño (2026-09-28, Downloads/Motor 2/idea-roles-contextuales-empresa-sucursal-2026-09-28.md)
+/// es que el flag dicotómico y un campo de rol NO conviven en ninguna capa,
+/// ni en `ContextoEmpresa` (src/core/auth/contexto-empresa.ts) ni acá. Texto
+/// libre, no enum (mismo criterio que `sucursales[].rol`); no se clona el
+/// catálogo Rol/PermisoRol a nivel empresa (ya rechazado en
+/// plan-panel-gerenciamiento-empresa-sucursal-2026-09-27.md, líneas 77-79).
+/// `null` = sin rol de empresa. `"gerente"` es el único valor documentado
+/// hoy — solo habilita gestionar usuarios/asignaciones, nada de precios ni
+/// catálogo.
 model UsuarioEmpresa {
-  id        String   @id @default(cuid())
-  usuarioId String
-  usuario   User     @relation(fields: [usuarioId], references: [id])
-  empresaId String
-  empresa   Empresa  @relation(fields: [empresaId], references: [id])
-  esGerente Boolean  @default(false)
-  activo    Boolean  @default(true)
-  creadoEn  DateTime @default(now())
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    User     @relation(fields: [usuarioId], references: [id])
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  rolEmpresa String?
+  activo     Boolean  @default(true)
+  creadoEn   DateTime @default(now())
 
   @@unique([usuarioId, empresaId])
 }
@@ -952,8 +956,8 @@ model Operacion {
   /// proveedores con el de clientes. FK RESTRICT: una Operacion vieja sigue apuntando a su Cliente aunque se lo desactive.
   /// SOLO mesas en v1 (D6): `registrarVenta`, la venta de mostrador, todavía no pasa `clienteId` — el campo ya existe para que
   /// esa extensión, cuando llegue, no pida otra migración.
-  clienteId  String?
-  cliente    Cliente? @relation(fields: [clienteId], references: [id])
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
 
   /// La `PromoCuenta` de la que esta Operacion VENTA es un COMPONENTE (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 7):
   /// hay UNA Operacion por componente neto, igual que hoy hay una por línea. `null` = una venta suelta de siempre (o
@@ -1572,22 +1576,22 @@ model CotizacionDolar {
 /// por decisión D4 del plan: si hiciera falta un título o imagen distinto
 /// por sucursal, se agrega después un override aditivo.
 model SeccionCarta {
-  id          String                   @id @default(cuid())
+  id           String                   @id @default(cuid())
   /// "Platos Principales" → MenuCategory.label.
-  nombre      String                   @unique
+  nombre       String                   @unique
   /// "Del fuego" → titulo_seccion (null = se usa `nombre`).
-  titulo      String?
-  descripcion String?
+  titulo       String?
+  descripcion  String?
   /// Solo `https://` sin espacios, comillas ni paréntesis: la carta la mete
   /// en `backgroundImage: url(...)` (ver src/core/carta/armar-menu.ts).
-  imagenUrl   String?
-  orden       Int                      @default(0)
+  imagenUrl    String?
+  orden        Int                      @default(0)
   /// Nunca se borra una sección: se apaga (mismo patrón que el catálogo).
-  activa      Boolean                  @default(true)
+  activa       Boolean                  @default(true)
   /// Lo que se ubica en esta sección, DIRECTO (docs/plan-carta-seccion-directa-2026-09-25.md): productos sueltos e ítems agrupados.
-  contenidos  ContenidoCartaProducto[]
-  agrupados   ItemAgrupadoCarta[]
-  promos      PromoCarta[]
+  contenidos   ContenidoCartaProducto[]
+  agrupados    ItemAgrupadoCarta[]
+  promos       PromoCarta[]
   /// Cupos de promos ARMABLES que eligen de ESTA sección (Task #16) — no es lo mismo que `promos` (la promo en sí, ubicada
   /// en su PROPIA sección): una promo de la sección "Menús" puede tener un cupo que elige de "Postres".
   cuposDePromo PromoCartaCupo[]
@@ -1931,12 +1935,12 @@ model CuentaItem {
   /// suelto de siempre. FK RESTRICT: no se borra mientras algún componente siga apuntándola. Junto con `precioUnitario` (y
   /// `operacionId`), forma la clave que evita mezclar un suelto con un componente del mismo producto al mismo precio
   /// (`lineasDeVenta`, D4).
-  promoCuentaId String?
-  promoCuenta   PromoCuenta? @relation(fields: [promoCuentaId], references: [id])
+  promoCuentaId       String?
+  promoCuenta         PromoCuenta? @relation(fields: [promoCuentaId], references: [id])
   /// Precio A LA CARTA de UNA unidad de este componente, al momento de agregarlo (antes de prorratear) — null en un suelto.
   /// Sirve para comparar "lo que se cobró prorrateado" contra "lo que costaría pedirlo suelto" (paso 12, margen de promos) y
   /// queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
-  precioCartaUnitario Decimal? @db.Decimal(14, 2)
+  precioCartaUnitario Decimal?     @db.Decimal(14, 2)
 
   @@index([cuentaId])
   @@index([anulaAItemId])

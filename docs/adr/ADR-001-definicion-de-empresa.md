@@ -31,9 +31,11 @@ con `empresaId`): en el código de la carta ya significa otra cosa (una
 sucursal publicada en el portal — `registro-tenants.ts`, `SucursalPublica`,
 `GET /api/carta/tenants`, contrato externo). No confundirlos.
 
-Un usuario con `UsuarioEmpresa.esGerente` gestiona usuarios y sus
-asignaciones a sucursales en toda la empresa; nada más — no da permiso
-sobre precios ni catálogo.
+Un usuario con `UsuarioEmpresa.rolEmpresa === "gerente"` gestiona usuarios y
+sus asignaciones a sucursales en toda la empresa; nada más — no da permiso
+sobre precios ni catálogo. (Actualizado 2026-09-29: el diseño original de
+esta fase usaba `esGerente: Boolean`; reemplazado por `rolEmpresa: String?`
+en todas las capas — ver ADR-004.)
 
 ## Jerarquía
 

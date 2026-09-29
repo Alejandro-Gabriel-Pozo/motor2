@@ -32,9 +32,9 @@ async function main() {
   });
 
   const membresia = await prisma.usuarioEmpresa.create({
-    data: { usuarioId: usuario.id, empresaId: empresa.id, esGerente: true },
+    data: { usuarioId: usuario.id, empresaId: empresa.id, rolEmpresa: "gerente" },
   });
-  console.log("UsuarioEmpresa creada:", membresia.id, "esGerente:", membresia.esGerente);
+  console.log("UsuarioEmpresa creada:", membresia.id, "rolEmpresa:", membresia.rolEmpresa);
 
   const conRelaciones = await prisma.empresa.findUnique({
     where: { id: empresa.id },
