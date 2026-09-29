@@ -47,6 +47,47 @@ async function main() {
     conRelaciones.usuarios.length
   );
 
+  // Carta multisucursal + sincronización de precios (plan del panel, 2.4/2.5).
+  const seccion = await prisma.seccionCarta.create({
+    data: { id: "smoke_seccion_1", nombre: "Sección Smoke", empresaId: empresa.id },
+  });
+  console.log("SeccionCarta creada:", seccion.id, "alcance:", seccion.alcance);
+
+  const seccionSucursal = await prisma.seccionCartaSucursal.create({
+    data: { empresaId: empresa.id, seccionCartaId: seccion.id, sucursalId: sucursal.id },
+  });
+  console.log("SeccionCartaSucursal creada:", seccionSucursal.seccionCartaId, seccionSucursal.sucursalId);
+
+  const promo = await prisma.promoCarta.create({
+    data: {
+      id: "smoke_promo_1",
+      empresaId: empresa.id,
+      sucursalId: sucursal.id,
+      seccionCartaId: seccion.id,
+      titulo: "Promo Smoke",
+      precio: "100.00",
+    },
+  });
+  console.log("PromoCarta creada:", promo.id, "empresaId:", promo.empresaId);
+
+  const grupo = await prisma.grupoSincroPrecio.create({
+    data: { id: "smoke_grupo_1", empresaId: empresa.id, nombre: "Grupo Smoke" },
+  });
+  const grupoSucursal = await prisma.grupoSincroPrecioSucursal.create({
+    data: { empresaId: empresa.id, grupoId: grupo.id, sucursalId: sucursal.id },
+  });
+  console.log("GrupoSincroPrecio creado:", grupo.id, "sucursal:", grupoSucursal.sucursalId);
+
+  await prisma.grupoSincroPrecioSucursal.delete({
+    where: { grupoId_sucursalId: { grupoId: grupo.id, sucursalId: sucursal.id } },
+  });
+  await prisma.grupoSincroPrecio.delete({ where: { id: grupo.id } });
+  await prisma.promoCarta.delete({ where: { id: promo.id } });
+  await prisma.seccionCartaSucursal.delete({
+    where: { seccionCartaId_sucursalId: { seccionCartaId: seccion.id, sucursalId: sucursal.id } },
+  });
+  await prisma.seccionCarta.delete({ where: { id: seccion.id } });
+
   await prisma.usuarioEmpresa.delete({ where: { id: membresia.id } });
   await prisma.user.delete({ where: { id: usuario.id } });
   await prisma.sucursal.delete({ where: { id: sucursal.id } });

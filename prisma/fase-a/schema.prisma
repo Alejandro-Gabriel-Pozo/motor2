@@ -121,8 +121,14 @@ model Empresa {
   estado      EstadoEmpresa @default(PROVISIONING)
   creadoEn    DateTime      @default(now())
 
-  sucursales Sucursal[]
-  usuarios   UsuarioEmpresa[]
+  sucursales          Sucursal[]
+  usuarios            UsuarioEmpresa[]
+  seccionesCarta      SeccionCarta[]
+  itemsAgrupadosCarta ItemAgrupadoCarta[]
+  generosCarta        GeneroCarta[]
+  promosCarta         PromoCarta[]
+  preciosLocales      PrecioLocalProducto[]
+  gruposSincroPrecio  GrupoSincroPrecio[]
 }
 
 /// Pertenencia usuario↔empresa, separada de UsuarioSucursal (rol por
@@ -185,27 +191,31 @@ model Sucursal {
   /// (`abrirCuenta`, chequeo dentro de la misma transacción serializable que crea la `Cuenta`).
   maxMesasAbiertas Int?
 
-  usuarios                 UsuarioSucursal[]
-  capacidades              CapacidadSucursal[]
-  secciones                Seccion[]
-  operaciones              Operacion[]
-  conteosFisicos           ConteoFisico[]
-  preciosLocales           PrecioLocalProducto[]
-  stockMinimos             StockMinimoProducto[]
-  seccionesHabituales      SeccionHabitualProducto[]
-  frecuenciasConteo        FrecuenciaConteoProducto[]
-  disponibilidadesProducto DisponibilidadProducto[]
-  promociones              PromocionProducto[]
-  traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
-  traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
-  pagosConsignante         PagoConsignante[]
-  registrosAuditoria       RegistroAuditoria[]
-  promosCarta              PromoCarta[]
-  publica                  SucursalPublica?
-  temaCarta                TemaCartaSucursal?
-  mesas                    Mesa[]
-  rendimientosLocales      RendimientoLocalIngrediente[]
-  ejemplaresBoleta         EjemplarBoleta[]
+  usuarios                  UsuarioSucursal[]
+  capacidades               CapacidadSucursal[]
+  secciones                 Seccion[]
+  operaciones               Operacion[]
+  conteosFisicos            ConteoFisico[]
+  preciosLocales            PrecioLocalProducto[]
+  stockMinimos              StockMinimoProducto[]
+  seccionesHabituales       SeccionHabitualProducto[]
+  frecuenciasConteo         FrecuenciaConteoProducto[]
+  disponibilidadesProducto  DisponibilidadProducto[]
+  promociones               PromocionProducto[]
+  traspasosComoOrigen       TraspasoSucursal[]            @relation("TraspasoOrigen")
+  traspasosComoDestino      TraspasoSucursal[]            @relation("TraspasoDestino")
+  pagosConsignante          PagoConsignante[]
+  registrosAuditoria        RegistroAuditoria[]
+  promosCarta               PromoCarta[]
+  publica                   SucursalPublica?
+  temaCarta                 TemaCartaSucursal?
+  mesas                     Mesa[]
+  rendimientosLocales       RendimientoLocalIngrediente[]
+  ejemplaresBoleta          EjemplarBoleta[]
+  seccionesCartaPuente      SeccionCartaSucursal[]
+  itemsAgrupadosCartaPuente ItemAgrupadoCartaSucursal[]
+  promosCartaPuente         PromoCartaSucursal[]
+  grupoSincroPrecio         GrupoSincroPrecioSucursal?
 
   /// Ancla para FKs compuestas [empresaId, sucursalId] que llegarán en Fase B
   /// cuando se denormalice empresaId hacia tablas hijas de Sucursal.
@@ -1265,19 +1275,56 @@ model ConteoFisico {
 /// `precio_local` ya está seedeado en ACCIONES (acciones.ts) desde Core,
 /// anticipando esta porción.
 model PrecioLocalProducto {
-  id         String   @id @default(cuid())
-  sucursalId String
-  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
-  productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
-  precio     Decimal  @db.Decimal(14, 2)
+  id           String   @id @default(cuid())
+  empresaId    String
+  empresa      Empresa  @relation(fields: [empresaId], references: [id])
+  sucursalId   String
+  sucursal     Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId   String
+  producto     Producto @relation(fields: [productoId], references: [id])
+  precio       Decimal  @db.Decimal(14, 2)
   /// Local si está cargado Y habilitado; si no, fallback a
   /// Producto.precioVenta (mismo criterio que resolverPrecioVenta_,
   /// Catalogo.js:2072-2077) — no se borra la fila al deshabilitar, mismo
   /// patrón que el resto del catálogo (activo/habilitado, nunca DELETE).
-  habilitado Boolean  @default(true)
+  habilitado   Boolean  @default(true)
+  /// Nace en false: nadie sincroniza nada por default — feature apagada.
+  /// Solo participa si `habilitado = true` Y la sucursal pertenece a un
+  /// `GrupoSincroPrecio` (invariante de negocio, no de schema: se hace
+  /// cumplir en el guard, no acá).
+  sincronizado Boolean  @default(false)
 
+  @@unique([empresaId, id])
   @@unique([sucursalId, productoId])
+}
+
+/// Grupo de sincronización de precios entre sucursales (plan del panel,
+/// 2.5): peer-to-peer, sin cabecera, por producto (no por sucursal
+/// entera). Una sucursal está a lo sumo en UN grupo — ver
+/// `GrupoSincroPrecioSucursal.@@unique([sucursalId])`.
+model GrupoSincroPrecio {
+  id         String                      @id @default(cuid())
+  empresaId  String
+  empresa    Empresa                     @relation(fields: [empresaId], references: [id])
+  nombre     String
+  sucursales GrupoSincroPrecioSucursal[]
+
+  @@unique([empresaId, id])
+}
+
+model GrupoSincroPrecioSucursal {
+  empresaId  String
+  grupoId    String
+  grupo      GrupoSincroPrecio @relation(fields: [empresaId, grupoId], references: [empresaId, id])
+  sucursalId String
+  sucursal   Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+
+  @@id([grupoId, sucursalId])
+  /// Una sucursal está en A LO SUMO UN grupo: si no, el reparto de un
+  /// precio sería ambiguo. Declarada con empresaId para que coincida
+  /// exactamente con los campos de la relación uno-a-uno de arriba.
+  @@unique([empresaId, sucursalId])
+  @@unique([sucursalId])
 }
 
 /// Rendimiento calibrado POR SUCURSAL de UNA línea de receta (override liviano, mismo patrón que PrecioLocalProducto).
@@ -1575,10 +1622,21 @@ model CotizacionDolar {
 /// `MenuCategory`). Global — Catálogo Central, como CategoriaProducto —
 /// por decisión D4 del plan: si hiciera falta un título o imagen distinto
 /// por sucursal, se agrega después un override aditivo.
+/// Alcance de visibilidad multisucursal de la carta (Fase A, plan del panel
+/// 2.4): `TODAS` (default, incluye sucursales futuras) o `SUCURSALES`
+/// (subconjunto explícito vía la tabla puente correspondiente) — nunca
+/// "puente vacía = todas", que se rompe al crear una sucursal nueva.
+enum AlcanceCarta {
+  TODAS
+  SUCURSALES
+}
+
 model SeccionCarta {
   id           String                   @id @default(cuid())
+  empresaId    String
+  empresa      Empresa                  @relation(fields: [empresaId], references: [id])
   /// "Platos Principales" → MenuCategory.label.
-  nombre       String                   @unique
+  nombre       String
   /// "Del fuego" → titulo_seccion (null = se usa `nombre`).
   titulo       String?
   descripcion  String?
@@ -1588,6 +1646,11 @@ model SeccionCarta {
   orden        Int                      @default(0)
   /// Nunca se borra una sección: se apaga (mismo patrón que el catálogo).
   activa       Boolean                  @default(true)
+  /// Nace TODAS al backfill/creación (no cambia lo que ve nadie hoy). Un
+  /// ítem agrupado nunca puede tener alcance más amplio que su sección
+  /// (regla de guard, no de schema — checklist Fase A 2.4).
+  alcance      AlcanceCarta             @default(TODAS)
+  sucursales   SeccionCartaSucursal[]
   /// Lo que se ubica en esta sección, DIRECTO (docs/plan-carta-seccion-directa-2026-09-25.md): productos sueltos e ítems agrupados.
   contenidos   ContenidoCartaProducto[]
   agrupados    ItemAgrupadoCarta[]
@@ -1596,7 +1659,22 @@ model SeccionCarta {
   /// en su PROPIA sección): una promo de la sección "Menús" puede tener un cupo que elige de "Postres".
   cuposDePromo PromoCartaCupo[]
 
+  @@unique([empresaId, id])
+  @@unique([empresaId, nombre])
   @@index([activa, orden])
+}
+
+/// Tabla puente: en qué sucursales se ve una `SeccionCarta` con
+/// `alcance = SUCURSALES`. La FK compuesta `[empresaId, …]` hace imposible
+/// por diseño compartir una sección con una sucursal de otra empresa.
+model SeccionCartaSucursal {
+  empresaId      String
+  seccionCartaId String
+  seccionCarta   SeccionCarta @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  sucursalId     String
+  sucursal       Sucursal     @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+
+  @@id([seccionCartaId, sucursalId])
 }
 
 /// El texto de cara al cliente de un PV. FILA AUSENTE = NO SE MUESTRA
@@ -1638,27 +1716,47 @@ model ContenidoCartaProducto {
 /// (docs/plan-carta-seccion-directa-2026-09-25.md). Sin imagen propia. Un solo nivel, sin árbol (no es Grupo). Nunca se borra:
 /// se apaga.
 model ItemAgrupadoCarta {
-  id             String                    @id @default(cuid())
-  nombre         String                    @unique
+  id             String                      @id @default(cuid())
+  empresaId      String
+  empresa        Empresa                     @relation(fields: [empresaId], references: [id])
+  nombre         String
   seccionCartaId String
-  seccionCarta   SeccionCarta              @relation(fields: [seccionCartaId], references: [id])
+  seccionCarta   SeccionCarta                @relation(fields: [seccionCartaId], references: [id])
   descripcion    String?
-  tags           String[]                  @default([])
-  especial       Boolean                   @default(false)
+  tags           String[]                    @default([])
+  especial       Boolean                     @default(false)
   /// Orden dentro de su sección de carta (misma escala que ContenidoCartaProducto.orden).
-  orden          Int                       @default(0)
-  activo         Boolean                   @default(true)
+  orden          Int                         @default(0)
+  activo         Boolean                     @default(true)
+  /// Nace TODAS. NO puede ser más amplio que el alcance de su sección
+  /// (regla de guard, no de schema).
+  alcance        AlcanceCarta                @default(TODAS)
+  sucursales     ItemAgrupadoCartaSucursal[]
   /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. Las opciones del ítem agrupado
   /// heredan este género: nunca tienen uno propio.
   generoCartaId  String?
-  generoCarta    GeneroCarta?              @relation(fields: [generoCartaId], references: [id])
-  creadoEn       DateTime                  @default(now())
-  actualizadoEn  DateTime                  @updatedAt
+  generoCarta    GeneroCarta?                @relation(fields: [generoCartaId], references: [id])
+  creadoEn       DateTime                    @default(now())
+  actualizadoEn  DateTime                    @updatedAt
   opciones       OpcionItemAgrupadoCarta[]
 
+  @@unique([empresaId, id])
+  @@unique([empresaId, nombre])
   @@index([seccionCartaId])
   @@index([activo])
   @@index([generoCartaId])
+}
+
+/// Tabla puente de `ItemAgrupadoCarta` con `alcance = SUCURSALES` — mismo
+/// patrón que `SeccionCartaSucursal`.
+model ItemAgrupadoCartaSucursal {
+  empresaId           String
+  itemAgrupadoCartaId String
+  itemAgrupadoCarta   ItemAgrupadoCarta @relation(fields: [empresaId, itemAgrupadoCartaId], references: [empresaId, id])
+  sucursalId          String
+  sucursal            Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+
+  @@id([itemAgrupadoCartaId, sucursalId])
 }
 
 /// Carpeta VISUAL del POS que agrupa, dentro de una sección de carta, tanto productos sueltos como ítems agrupados que
@@ -1669,13 +1767,16 @@ model ItemAgrupadoCarta {
 /// Nunca se borra: se apaga (mismo patrón que el resto del catálogo/carta).
 model GeneroCarta {
   id         String                   @id @default(cuid())
-  nombre     String                   @unique
+  empresaId  String
+  empresa    Empresa                  @relation(fields: [empresaId], references: [id])
+  nombre     String
   orden      Int                      @default(0)
   activo     Boolean                  @default(true)
   creadoEn   DateTime                 @default(now())
   contenidos ContenidoCartaProducto[]
   agrupados  ItemAgrupadoCarta[]
 
+  @@unique([empresaId, nombre])
   @@index([activo, orden])
 }
 
@@ -1710,22 +1811,43 @@ model OpcionItemAgrupadoCarta {
 /// Sin backfill: una promo existente sigue informativa hasta que alguien le agrega cupos a propósito. El contrato público
 /// `CartaV1` no cambia (la carta pública nunca tuvo ni tiene cupos).
 model PromoCarta {
-  id             String           @id @default(cuid())
+  id             String               @id @default(cuid())
+  empresaId      String
+  empresa        Empresa              @relation(fields: [empresaId], references: [id])
+  /// Sucursal de ORIGEN (informativa desde la migración de Fase A, plan
+  /// 2.4): no bloquea nada, puede salir de `sucursales` sin problema. Se
+  /// decide en una migración posterior si se elimina.
   sucursalId     String
-  sucursal       Sucursal         @relation(fields: [sucursalId], references: [id])
+  sucursal       Sucursal             @relation(fields: [sucursalId], references: [id])
   seccionCartaId String
-  seccionCarta   SeccionCarta     @relation(fields: [seccionCartaId], references: [id])
+  seccionCarta   SeccionCarta         @relation(fields: [seccionCartaId], references: [id])
   titulo         String
   descripcion    String?
-  precio         Decimal          @db.Decimal(14, 2)
-  orden          Int              @default(0)
-  activa         Boolean          @default(true)
-  creadoEn       DateTime         @default(now())
+  precio         Decimal              @db.Decimal(14, 2)
+  orden          Int                  @default(0)
+  activa         Boolean              @default(true)
+  creadoEn       DateTime             @default(now())
+  /// En qué sucursales se comparte (backfill: una fila con el `sucursalId`
+  /// de origen de arriba). Compartir/dejar de compartir = sumar/quitar acá.
+  sucursales     PromoCartaSucursal[]
   cupos          PromoCartaCupo[]
   instancias     PromoCuenta[]
 
+  @@unique([empresaId, id])
   @@index([sucursalId, activa])
   @@index([seccionCartaId])
+}
+
+/// Tabla puente: sucursales que comparten esta `PromoCarta` (mismo título,
+/// descripción y precio — es la MISMA fila referenciada, sin propagación).
+model PromoCartaSucursal {
+  empresaId    String
+  promoCartaId String
+  promoCarta   PromoCarta @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
+  sucursalId   String
+  sucursal     Sucursal   @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+
+  @@id([promoCartaId, sucursalId])
 }
 
 /// UN cupo de una promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): "elegí entre `cantidadMinima` y
