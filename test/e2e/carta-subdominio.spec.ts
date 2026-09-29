@@ -35,6 +35,36 @@ test.describe("carta por subdominio", () => {
     }
   });
 
+  test("los links internos (portal → carta, ← Menú) y los paths /carta-publica/... quedan en la URL limpia del subdominio", async ({ page, sucursalId, baseURL }) => {
+    const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    const slug = `e2e-sub-${marca}`;
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true, etiqueta: `Sub ${marca}` } });
+    const host = origen(baseURL, "e2e");
+    try {
+      await page.goto(`${host}/`);
+      await page.getByRole("link", { name: new RegExp(`Sub ${marca}`) }).click();
+      await expect(page).toHaveURL(`${host}/${slug}`);
+      await expect(page.locator(".carta-slider")).toBeVisible();
+
+      await page.getByRole("link", { name: "← Menú" }).click();
+      await expect(page).toHaveURL(`${host}/`);
+      await expect(page.getByRole("link", { name: new RegExp(`Sub ${marca}`) })).toBeVisible();
+
+      // Un path viejo escrito a mano también termina en la URL limpia.
+      await page.goto(`${host}/carta-publica/e2e/${slug}`);
+      await expect(page).toHaveURL(`${host}/${slug}`);
+      await page.goto(`${host}/carta-publica/e2e`);
+      await expect(page).toHaveURL(`${host}/`);
+
+      // En el host común de la app el path /carta-publica/... sigue siendo el de siempre (no redirige).
+      await page.goto(`/carta-publica/e2e/${slug}`);
+      await expect(page).toHaveURL(`/carta-publica/e2e/${slug}`);
+    } finally {
+      await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    }
+  });
+
   test("una empresa que no resuelve da 404, y el host sin subdominio no reescribe /<sucursal>", async ({ page, sucursalId, baseURL }) => {
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-sub-${marca}`;

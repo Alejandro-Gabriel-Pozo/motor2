@@ -29,6 +29,29 @@ export interface ReglaRewriteCarta {
   destination: string;
 }
 
+export interface ReglaRedirectCarta {
+  source: string;
+  has: { type: "host"; value: string }[];
+  destination: string;
+  permanent: false;
+}
+
+/**
+ * Fase 6 (pulido): en el host de la carta, los links internos de las páginas (`hrefVolver`, los del portal) son paths
+ * `/carta-publica/<empresa>/...` — las páginas no leen el Host (son ISR) — y acá se llevan a la forma limpia: `/carta-publica/<e>` → `/` y
+ * `/carta-publica/<e>/<sucursal>` → `/<sucursal>`. No permanente: si el esquema de URLs cambia, un 308 cacheado sería difícil de deshacer. Va en
+ * `redirects()`, que corre antes de los rewrites. Mismo patrón de host que `reglasRewriteCarta`; sin `dominioBase`, sin reglas.
+ */
+export function reglasRedirectCarta(dominioBase: string | null | undefined): ReglaRedirectCarta[] {
+  const base = dominioBase?.trim().toLowerCase();
+  if (!base) return [];
+  const has = [{ type: "host" as const, value: patronHostCarta(base, "?<empresaDelHost>") }];
+  return [
+    { source: "/carta-publica/:empresa", has, destination: "/", permanent: false },
+    { source: "/carta-publica/:empresa/:sucursal", has, destination: "/:sucursal", permanent: false },
+  ];
+}
+
 /**
  * Fase 6: las reglas de `rewrites().beforeFiles` de `next.config.ts` para servir la carta en `carta.<empresa>.<dominioBase>`. La `/` del
  * host es el portal de la empresa y `/<sucursal>` la carta de esa sucursal; ambas se reescriben a `/carta-publica/...` (la URL del

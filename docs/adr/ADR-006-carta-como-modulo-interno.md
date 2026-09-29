@@ -204,8 +204,8 @@ cada una — no reinventarlas de memoria):**
   (páginas: portada → índice → secciones, de a una). No se cambia a scroll
   vertical; no hay código que hacer. La base de la Fase 3 sigue sirviendo si
   algún día se reabre.
-- **Fase 6 — código HECHO (commit local; test 292/3419, arquitectura 535
-  módulos, test:e2e 378); DNS real requiere autorización**:
+- **Fase 6 — código HECHO (commit local; test 292/3421, arquitectura 535
+  módulos, test:e2e 379); DNS real requiere autorización**:
   `reglasRewriteCarta` (`src/core/carta/host.ts`, mismo patrón de host que
   `interpretarHostCarta`) alimenta `rewrites().beforeFiles` de
   `next.config.ts`: en `carta.<empresa>.<CARTA_DOMINIO_BASE>`, `/` → portal
@@ -215,10 +215,12 @@ cada una — no reinventarlas de memoria):**
   por mutación). Límites conocidos: (1) el host de la carta NO bloquea el
   resto de la app (`/login`, `/carta/...` de dos segmentos siguen
   resolviendo; el acceso lo deciden el layout y cada acción, como siempre);
-  (2) los links internos de la carta (`hrefVolver`, links del portal) son
-  paths `/carta-publica/...`, que también funcionan en el subdominio pero
-  muestran ese path — pulirlo (links relativos al host) queda para antes de
-  la Fase 7. Falta para producción (Fase 7/F): DNS wildcard
+  (2) los links internos de la carta (`hrefVolver`, links del portal) siguen
+  siendo paths `/carta-publica/...` (las páginas no leen el Host, son ISR);
+  en el host de la carta `reglasRedirectCarta` (`redirects()` de
+  `next.config.ts`, 307) los lleva a la URL limpia (`/` y `/<sucursal>`),
+  al costo de un salto por clic; en el host común no redirige. Cubierto por
+  e2e y demostrado por mutación. Falta para producción (Fase 7/F): DNS wildcard
   `*.<dominioBase>` y configurar `CARTA_DOMINIO_BASE` en Vercel.
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,

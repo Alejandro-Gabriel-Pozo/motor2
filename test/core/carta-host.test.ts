@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { armarHostCarta, interpretarHostCarta, reglasRewriteCarta } from "@/core/carta/host";
+import { armarHostCarta, interpretarHostCarta, reglasRedirectCarta, reglasRewriteCarta } from "@/core/carta/host";
 
 describe("interpretarHostCarta", () => {
   const BASE = "motor2carta.com";
@@ -82,6 +82,24 @@ describe("reglasRewriteCarta", () => {
 
   it("el punto del dominioBase es literal, no comodín", () => {
     expect(regexDelHost("motor2carta.com").test("carta.x.motor2cartaXcom")).toBe(false);
+  });
+});
+
+describe("reglasRedirectCarta", () => {
+  it("sin dominioBase no hay reglas", () => {
+    expect(reglasRedirectCarta(undefined)).toEqual([]);
+    expect(reglasRedirectCarta(" ")).toEqual([]);
+  });
+
+  it("lleva /carta-publica/<empresa>[/<sucursal>] a la URL limpia, solo en el host de la carta, sin redirección permanente", () => {
+    const reglas = reglasRedirectCarta("motor2carta.com");
+    expect(reglas.map(({ source, destination, permanent }) => ({ source, destination, permanent }))).toEqual([
+      { source: "/carta-publica/:empresa", destination: "/", permanent: false },
+      { source: "/carta-publica/:empresa/:sucursal", destination: "/:sucursal", permanent: false },
+    ]);
+    // El grupo del host NO puede llamarse :empresa: chocaría con el segmento de la ruta.
+    for (const r of reglas) expect(r.has[0].value).toContain("?<empresaDelHost>");
+    expect(reglas[0].has[0].value.replace("?<empresaDelHost>", "")).toBe(reglasRewriteCarta("motor2carta.com")[0].has[0].value.replace("?<empresa>", ""));
   });
 });
 

@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { reglasRewriteCarta } from "./src/core/carta/host";
+import { reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
 
 const nextConfig: NextConfig = {
   // Silencia el warning de Turbopack: hay otro package-lock.json en la raíz
@@ -14,7 +14,11 @@ const nextConfig: NextConfig = {
   // cambia de nuevo más adelante, un 308 cacheado por el navegador sería
   // más difícil de corregir que un 307.
   async redirects() {
-    return [{ source: "/catalogo/carta/:path*", destination: "/carta/:path*", permanent: false }];
+    return [
+      { source: "/catalogo/carta/:path*", destination: "/carta/:path*", permanent: false },
+      // En el host de la carta, los links internos /carta-publica/... se llevan a la URL limpia (ver reglasRedirectCarta).
+      ...reglasRedirectCarta(process.env.CARTA_DOMINIO_BASE),
+    ];
   },
   // ADR-006, Fase 6: carta.<empresa>.<CARTA_DOMINIO_BASE> sirve la carta pública sin mostrar /carta-publica en la URL. Sin la variable
   // (leída al compilar) no hay reglas. `revalidatePath` sigue operando sobre el path destino, no sobre el host.
