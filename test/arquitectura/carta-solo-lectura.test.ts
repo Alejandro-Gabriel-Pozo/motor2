@@ -26,7 +26,7 @@ import { describe, expect, it } from "vitest";
  * carta (paso 5, `guardarCuposPromoCarta`), nunca del camino público.
  */
 const SRC = join(__dirname, "../../src");
-const CARPETAS = ["core/carta", "app/api/carta"];
+const CARPETAS = ["core/carta", "app/api/carta", "app/(carta-publica)", "components/carta-publica"];
 /** Captura el modelo de una escritura `cliente.modelo.op(`. */
 const ESCRITURA_POR_MODELO = /\w\s*\.\s*(\w+)\s*\.\s*(?:create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(/;
 const ESCRITURA = /\w\s*\.\s*\w+\s*\.\s*(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(|\$executeRaw/;

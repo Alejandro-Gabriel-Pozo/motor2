@@ -70,6 +70,69 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Carta pública (módulo interno, ADR-006, route group `(carta-publica)`): mismo criterio que `.pos-shell` — tokens propios,
+   NUNCA en `:root`, para no ensuciar el namespace de la administración ni heredar el problema de contraste del tema por
+   defecto de `restaurant-menu-design` (ámbar sobre casi blanco). Sin tema aplicado (`TemaCartaSucursal.aplicarEnCarta`,
+   `resolverEstiloCarta` en `src/core/carta/estilo.ts`), estos son los valores que se ven — ya pensados para contraste WCAG
+   AA. Con tema aplicado, `--carta-color-marca`/`--carta-hero-ink`/etc. (puestos inline por `CartaVista`) los pisan. */
+.carta-shell {
+  color-scheme: light;
+  --carta-bg: #ffffff;
+  --carta-ink: #1c1b19;
+  --carta-ink-soft: #57534e;
+  --carta-primary: #92400e; /* ámbar oscuro: ~5.1:1 sobre --carta-bg, cumple AA para texto normal */
+  --carta-border: #e7e5e4;
+
+  background: var(--carta-bg);
+  color: var(--carta-ink);
+  font-family: var(--font-carta-serif, ui-serif, serif), serif;
+}
+
+.carta-shell .carta-slider {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.carta-shell .carta-slider::-webkit-scrollbar {
+  display: none;
+}
+
+.carta-shell .carta-pagina {
+  min-width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  overflow-y: auto;
+}
+
+@media print {
+  .carta-shell [data-carta-nav],
+  .carta-shell [data-carta-topbar] {
+    display: none !important;
+  }
+  .carta-shell .carta-slider {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    scroll-snap-type: none !important;
+  }
+  .carta-shell .carta-pagina {
+    width: 100% !important;
+    min-width: unset !important;
+    height: auto !important;
+    scroll-snap-align: none !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .carta-shell {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
 /* Impresión desde la pantalla de la mesa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B9): la comanda de cocina y la boleta
    del cliente se montan en un portal directo en <body> con `data-imprimible` (src/app/(pos)/mesas/[mesaId]/imprimir.tsx) y se imprimen
    con `window.print()` y el diálogo nativo, que deja elegir la térmica (58/80 mm) o la impresora común.

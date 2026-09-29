@@ -173,6 +173,16 @@ module.exports = {
       to: { path: "^node_modules/next/" },
     },
     {
+      name: "carta-publica-aislada",
+      comment:
+        "ADR-006, Fase 3: la carta pública nueva (sin sesión) no puede alcanzar auth, permisos ni Server Actions — es " +
+        "la disciplina de código que reemplaza al boundary HTTP/token que tenía la app externa. Lee por " +
+        "core/carta/public(-servidor).ts como cualquier otro consumidor externo al dominio.",
+      severity: "error",
+      from: { path: "^src/(app/\\(carta-publica\\)/|components/carta-publica/)" },
+      to: { path: "^src/(core/auth/|server/actions/|core/permisos/)" },
+    },
+    {
       name: "carta-admin-sin-rutas-de-catalogo",
       comment:
         "ADR-006 (docs/adr/ADR-006-carta-como-modulo-interno.md): la carta es su propio módulo, separado de catálogo " +

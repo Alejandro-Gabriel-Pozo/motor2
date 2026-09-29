@@ -1,5 +1,5 @@
 import { resolveHeroInk } from "./color-css";
-import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema } from "./tema";
+import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema } from "./tema";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: resuelve el Json guardado de `TemaCartaSucursal.valores`
@@ -55,16 +55,26 @@ function aVariableCss(clave: string): string {
 }
 
 /**
+ * Un tamaño de fuente guardado como número pelado ("14") necesita su unidad para ser CSS válido — `validarTamanoFuente`
+ * (`css-valores.ts`) lo acepta tal cual a propósito (es el mismo criterio que la sheet vieja), y era `normFuente`
+ * (`restaurant-menu-design/lib/format-utils.ts`) quien le agregaba "px" recién al dibujar. Acá se hace en el mismo lugar
+ * que el resto de la normalización, para que `variablesCss`/`valores` ya salgan listos para usar como `font-size`.
+ */
+function normalizarFuente(v: string): string {
+  return /^\d+(\.\d+)?$/.test(v) ? `${v}px` : v;
+}
+
+/**
  * Valor final de una clave: el del Json si pasa `validarValorTema`, si no (ausente, vacío, o inválido) el `defaultCarta` del
  * catálogo. Mismo criterio que `armarTemaCarta`, salvo que acá el resultado siempre es un string (nunca `null`): una clave
  * sin default queda en `""`, no en `null` — más simple para el consumidor, que de todos modos trataría `null` como "sin
- * valor, usar el default" y volvería a caer en `""`.
+ * valor, usar el default" y volvería a caer en `""`. Un `tamanoFuente` sale ya normalizado con su unidad.
  */
-function valorResuelto(obj: Record<string, unknown>, clave: string, defaultCarta: string): string {
-  const crudo = Object.hasOwn(obj, clave) ? obj[clave] : undefined;
-  if (typeof crudo !== "string") return defaultCarta;
-  const r = validarValorTema(clave, crudo);
-  return r.ok && r.valor !== null ? r.valor : defaultCarta;
+function valorResuelto(obj: Record<string, unknown>, d: DefinicionClaveTema): string {
+  const crudo = Object.hasOwn(obj, d.clave) ? obj[d.clave] : undefined;
+  const valido = typeof crudo === "string" ? validarValorTema(d.clave, crudo) : null;
+  const v = valido && valido.ok && valido.valor !== null ? valido.valor : d.defaultCarta;
+  return d.tipo === "tamanoFuente" ? normalizarFuente(v) : v;
 }
 
 export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
@@ -74,7 +84,7 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
   const valores = {} as Record<ClaveTema, string>;
   const variablesCss: Record<string, string> = {};
   for (const d of CLAVES_TEMA_V1) {
-    const v = valorResuelto(obj, d.clave, d.defaultCarta);
+    const v = valorResuelto(obj, d);
     valores[d.clave] = v;
     variablesCss[aVariableCss(d.clave)] = v;
   }

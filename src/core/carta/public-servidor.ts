@@ -11,3 +11,5 @@
  * (`core/pos/selector-carta-consulta.ts`).
  */
 export { resolverMenuCarta } from "./menu-consulta";
+export type { EntradaPortalCarta } from "./publica-consulta";
+export { resolverCartaPublica, resolverPortalCarta } from "./publica-consulta";

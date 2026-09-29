@@ -928,6 +928,25 @@ testAutenticado("carta/tema: sin violaciones de axe, con zonas del editor abiert
   }
 });
 
+testAutenticado("carta-publica (ADR-006): portal y carta de una sucursal, sin violaciones de axe (confirma el arreglo de contraste del tema por defecto)", async ({ page, sucursalId }) => {
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const slug = `e2e-a11y-carta-${marca}`;
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección ${marca}` } });
+  await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
+  await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
+  try {
+    await page.goto("/carta-publica/e2e");
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+    await page.goto(`/carta-publica/e2e/${slug}`);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await prisma.promoCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
+    await prisma.seccionCarta.delete({ where: { id: seccion.id } });
+  }
+});
+
 testAutenticado(
   "pos/mesas: el mapa con los tres estados, con el diálogo de «Nueva mesa» abierto y con el sistema en modo oscuro, sin violaciones de axe (confirma los contrastes aprobados)",
   async ({ paginaAutenticada: page, sucursalId }) => {

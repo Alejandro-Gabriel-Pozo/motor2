@@ -112,6 +112,10 @@ const CLAVES_SITE_CONFIG = [
 /**
  * Los defaults NO VACÍOS de los bloques A a D en `defaults` de restaurant-menu-design/lib/get-config.ts (commit f4529ce), copiados
  * tal cual. Los de las 3 de precio y los de la raíz (lang, meta_twitter_card, hero_pos_*, portal_bg_overlay) no entran.
+ *
+ * DIVERGENCIA INTENCIONAL (ADR-006, Fase 3, `docs/adr/ADR-006-carta-como-modulo-interno.md`): 10 tamaños de fuente que
+ * quedaban por debajo del piso de legibilidad de 11px (`0.6875rem`) se subieron a ese piso — ya no son "tal cual" el
+ * original. Quedan marcados con el comentario `// piso 11px` al lado; el resto de la tabla sigue siendo paridad real.
  */
 const DEFAULTS_CARTA_NO_VACIOS: Record<string, string> = {
   topbar_back_label: "← Menú",
@@ -127,22 +131,22 @@ const DEFAULTS_CARTA_NO_VACIOS: Record<string, string> = {
   carta_imagen_pos_y: "top",
   carta_imagen_overlay: "si",
   carta_imagen_opacidad: "38",
-  carta_fuente_banda_etiqueta: "0.55rem",
+  carta_fuente_banda_etiqueta: "0.6875rem", // piso 11px (original: 0.55rem)
   carta_fuente_banda_titulo: "0.95rem",
-  carta_fuente_banda_descripcion: "0.6rem",
+  carta_fuente_banda_descripcion: "0.6875rem", // piso 11px (original: 0.6rem)
   carta_fuente_item_nombre: "0.88rem",
   carta_fuente_item_precio: "0.88rem",
-  carta_fuente_item_descripcion: "0.68rem",
-  carta_fuente_item_tags: "0.6rem",
-  carta_fuente_portada_etiqueta: "0.58rem",
+  carta_fuente_item_descripcion: "0.6875rem", // piso 11px (original: 0.68rem)
+  carta_fuente_item_tags: "0.6875rem", // piso 11px (original: 0.6rem)
+  carta_fuente_portada_etiqueta: "0.6875rem", // piso 11px (original: 0.58rem)
   carta_fuente_portada_nombre: "clamp(1.7rem, 7vw, 2.1rem)",
-  carta_fuente_portada_subtitulo: "0.6rem",
+  carta_fuente_portada_subtitulo: "0.6875rem", // piso 11px (original: 0.6rem)
   carta_fuente_portada_descripcion: "0.75rem",
-  carta_fuente_portada_cta: "0.5rem",
-  carta_fuente_indice_etiqueta: "0.5rem",
+  carta_fuente_portada_cta: "0.6875rem", // piso 11px (original: 0.5rem)
+  carta_fuente_indice_etiqueta: "0.6875rem", // piso 11px (original: 0.5rem)
   carta_fuente_indice_titulo: "clamp(1.2rem, 4vw, 1.75rem)",
-  carta_fuente_indice_numero: "0.6rem",
-  carta_fuente_indice_categoria: "0.58rem",
+  carta_fuente_indice_numero: "0.6875rem", // piso 11px (original: 0.6rem)
+  carta_fuente_indice_categoria: "0.6875rem", // piso 11px (original: 0.58rem)
   carta_fuente_indice_item: "clamp(0.82rem, 2.5vw, 0.95rem)",
 };
 
@@ -203,7 +207,7 @@ describe("catálogo CLAVES_TEMA_V1", () => {
 });
 
 describe("paridad con los defaults de la carta", () => {
-  it("defaultCarta es el default de get-config.ts (los no vacíos, tal cual; el resto vacío)", () => {
+  it("defaultCarta es el default de get-config.ts (los no vacíos, tal cual salvo el piso de 11px de ADR-006; el resto vacío)", () => {
     for (const d of CLAVES_TEMA_V1) expect(d.defaultCarta, d.clave).toBe(DEFAULTS_CARTA_NO_VACIOS[d.clave] ?? "");
     expect(Object.keys(DEFAULTS_CARTA_NO_VACIOS).every((c) => claves.includes(c))).toBe(true);
   });

@@ -153,29 +153,29 @@ export const CLAVES_TEMA_V1 = [
   { clave: "restaurante_footer_maps_url", bloque: "C", zona: "Contacto", etiqueta: "Link de Google Maps", defaultCarta: "", tipo: "urlHttps" },
 
   // Tipografía de portada
-  { clave: "carta_fuente_portada_etiqueta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la etiqueta de la portada", defaultCarta: "0.58rem", ...FUENTE },
+  { clave: "carta_fuente_portada_etiqueta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la etiqueta de la portada", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_portada_nombre", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del nombre en la portada", defaultCarta: "clamp(1.7rem, 7vw, 2.1rem)", ...FUENTE },
-  { clave: "carta_fuente_portada_subtitulo", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del subtítulo de la portada", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_portada_subtitulo", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del subtítulo de la portada", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_portada_descripcion", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la descripción de la portada", defaultCarta: "0.75rem", ...FUENTE },
-  { clave: "carta_fuente_portada_cta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del CTA de la portada", defaultCarta: "0.5rem", ...FUENTE },
+  { clave: "carta_fuente_portada_cta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del CTA de la portada", defaultCarta: "0.6875rem", ...FUENTE },
 
   // Tipografía de índice
-  { clave: "carta_fuente_indice_etiqueta", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la etiqueta del índice", defaultCarta: "0.5rem", ...FUENTE },
+  { clave: "carta_fuente_indice_etiqueta", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la etiqueta del índice", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_indice_titulo", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño del título del índice", defaultCarta: "clamp(1.2rem, 4vw, 1.75rem)", ...FUENTE },
-  { clave: "carta_fuente_indice_numero", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de los números del índice", defaultCarta: "0.6rem", ...FUENTE },
-  { clave: "carta_fuente_indice_categoria", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la categoría en el índice", defaultCarta: "0.58rem", ...FUENTE },
+  { clave: "carta_fuente_indice_numero", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de los números del índice", defaultCarta: "0.6875rem", ...FUENTE },
+  { clave: "carta_fuente_indice_categoria", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la categoría en el índice", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_indice_item", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de las secciones del índice", defaultCarta: "clamp(0.82rem, 2.5vw, 0.95rem)", ...FUENTE },
 
   // Tipografía de banda
-  { clave: "carta_fuente_banda_etiqueta", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la etiqueta de la banda", defaultCarta: "0.55rem", ...FUENTE },
+  { clave: "carta_fuente_banda_etiqueta", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la etiqueta de la banda", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_banda_titulo", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño del título de la banda", defaultCarta: "0.95rem", ...FUENTE },
-  { clave: "carta_fuente_banda_descripcion", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la descripción de la banda", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_banda_descripcion", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la descripción de la banda", defaultCarta: "0.6875rem", ...FUENTE },
 
   // Tipografía de ítems
   { clave: "carta_fuente_item_nombre", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del nombre del ítem", defaultCarta: "0.88rem", ...FUENTE },
   { clave: "carta_fuente_item_precio", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del precio del ítem", defaultCarta: "0.88rem", ...FUENTE },
-  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de la descripción del ítem", defaultCarta: "0.68rem", ...FUENTE },
-  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de los tags del ítem", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de la descripción del ítem", defaultCarta: "0.6875rem", ...FUENTE },
+  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de los tags del ítem", defaultCarta: "0.6875rem", ...FUENTE },
 
   // Banda e imagen de sección
   { clave: "carta_banda_alto_mobile", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la banda en mobile", defaultCarta: "90", tipo: "altoBandaMobile" },

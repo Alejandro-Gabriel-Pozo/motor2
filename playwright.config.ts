@@ -101,6 +101,8 @@ export default defineConfig({
       AUTH_TRUST_HOST: "1",
       // Token de servicio de los endpoints de la carta pública (GET /api/carta/[sucursal] y /api/carta/tenants); lo usan test/e2e/api-carta*.spec.ts.
       CARTA_API_TOKEN: TOKEN_CARTA_E2E,
+      // ADR-006: slug de la única empresa real de hoy para la carta pública nueva (src/core/carta/empresa-carta.ts); lo usa test/e2e/carta-publica.spec.ts.
+      CARTA_EMPRESA_SLUG: "e2e",
     },
     url: URL_BASE,
     reuseExistingServer: false,

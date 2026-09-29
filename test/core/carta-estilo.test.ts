@@ -23,6 +23,21 @@ describe("resolverEstiloCarta", () => {
     expect(estilo.variablesCss["--carta-restaurante-nombre"]).toBe("La Cuadra");
   });
 
+  it("un tamaño de fuente guardado como número pelado sale con su unidad (normFuente)", () => {
+    const estilo = resolverEstiloCarta({ carta_fuente_item_nombre: "14", topbar_back_size: "11" });
+    expect(estilo.valores.carta_fuente_item_nombre).toBe("14px");
+    expect(estilo.valores.topbar_back_size).toBe("11px");
+  });
+
+  it("un tamaño de fuente que ya trae unidad o es una función CSS no se toca", () => {
+    const estilo = resolverEstiloCarta({ carta_fuente_item_nombre: "0.9rem" });
+    expect(estilo.valores.carta_fuente_item_nombre).toBe("0.9rem");
+  });
+
+  it("el default de una fuente que ya es una función clamp() no se normaliza (no es un número pelado)", () => {
+    expect(resolverEstiloCarta({}).valores.carta_fuente_portada_nombre).toBe("clamp(1.7rem, 7vw, 2.1rem)");
+  });
+
   it("un valor inválido cae al default, no rompe ni se cuela crudo", () => {
     const estilo = resolverEstiloCarta({ carta_imagen_opacidad: "no es un número" });
     expect(estilo.valores.carta_imagen_opacidad).toBe("38");

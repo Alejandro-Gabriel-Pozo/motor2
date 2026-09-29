@@ -8,6 +8,9 @@
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio
  * (`core/pos/selector-carta.ts` y `selector-carta-consulta.ts`).
  */
-export type { CartaV1 } from "./armar-menu";
+export type { CartaV1, ItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
 export { precioDeCarta } from "./armar-menu";
 export type { Resultado } from "./validaciones";
+export { formatearPrecioCarta } from "./precio-carta";
+export type { EstiloCarta } from "./estilo";
+export { resolverEmpresaCarta } from "./empresa-carta";
