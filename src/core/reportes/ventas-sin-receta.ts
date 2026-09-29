@@ -19,35 +19,27 @@ export interface FilaVentaSinReceta {
  * asociada (acá se resuelve con una FK real, no comparando IDs de texto).
  */
 export async function generarReporteVentasSinReceta(sucursalId: string, db: Db): Promise<FilaVentaSinReceta[]> {
-  const ventas = await db.movimientoStock.findMany({
-    // Una venta ANULADA no cuenta: no ocurrió.
-    where: { proceso: "VENTA", seccion: { sucursalId }, operacion: { anuladaEn: null } },
-    select: { productoId: true, operacionId: true, operacion: { select: { fecha: true } } },
-  });
+  // Se agrega en SQL: traer una fila por venta (y luego un `in` con todos sus `operacionId`) superaba el límite de parámetros de
+  // Prisma 7 con ~60k ventas. La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK compuesta); el aislamiento
+  // entre empresas lo sigue haciendo el `db` recibido (RLS, A6).
+  const ventas = await db.$queryRaw<Array<{ productoId: string; cantidad: bigint; primeraFecha: Date; ultimaFecha: Date }>>`
+    SELECT m."productoId", count(*) AS "cantidad", min(o."fecha") AS "primeraFecha", max(o."fecha") AS "ultimaFecha"
+    FROM "MovimientoStock" m
+    JOIN "Operacion" o ON o."id" = m."operacionId"
+    JOIN "Seccion" s ON s."id" = m."seccionId"
+    WHERE m."proceso" = 'VENTA' AND s."sucursalId" = ${sucursalId}
+      AND o."anuladaEn" IS NULL
+      AND NOT EXISTS (SELECT 1 FROM "MovimientoStock" c WHERE c."operacionId" = m."operacionId" AND c."proceso" = 'CONSUMO')
+    GROUP BY m."productoId"
+  `;
   if (!ventas.length) return [];
-
-  const operacionIds = Array.from(new Set(ventas.map((v) => v.operacionId)));
-  const consumos = await db.movimientoStock.findMany({
-    where: { proceso: "CONSUMO", operacionId: { in: operacionIds } },
-    select: { operacionId: true },
-    distinct: ["operacionId"],
-  });
-  const operacionesConConsumo = new Set(consumos.map((c) => c.operacionId));
 
   const productos = await construirMapaProductos(undefined, db);
   const porProducto = new Map<string, { cantidadVentasSinReceta: number; primeraFecha: Date; ultimaFecha: Date }>();
 
   for (const v of ventas) {
-    const info = productos.get(v.productoId);
-    if (!info || info.tipo !== "PV") continue;
-    if (operacionesConConsumo.has(v.operacionId)) continue; // esta venta puntual sí generó consumo: no es "sin receta"
-
-    const fecha = v.operacion.fecha;
-    if (!porProducto.has(v.productoId)) porProducto.set(v.productoId, { cantidadVentasSinReceta: 0, primeraFecha: fecha, ultimaFecha: fecha });
-    const acc = porProducto.get(v.productoId)!;
-    acc.cantidadVentasSinReceta += 1;
-    if (fecha < acc.primeraFecha) acc.primeraFecha = fecha;
-    if (fecha > acc.ultimaFecha) acc.ultimaFecha = fecha;
+    if (productos.get(v.productoId)?.tipo !== "PV") continue;
+    porProducto.set(v.productoId, { cantidadVentasSinReceta: Number(v.cantidad), primeraFecha: v.primeraFecha, ultimaFecha: v.ultimaFecha });
   }
 
   return Array.from(porProducto.entries())
