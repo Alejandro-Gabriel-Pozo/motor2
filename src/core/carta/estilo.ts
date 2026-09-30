@@ -63,6 +63,12 @@ export interface VolverEstilo {
   tamano: string;
 }
 
+/** Alto de la banda de cada sección; ambos ya con unidad (o función CSS), listos para `height`. */
+export interface BandaEstilo {
+  altoMobile: string;
+  altoDesktop: string;
+}
+
 export interface EstiloCarta {
   /**
    * Una variable CSS por cada una de las 66 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
@@ -79,6 +85,7 @@ export interface EstiloCarta {
   colores: ColoresCartaEstilo;
   portada: PortadaEstilo;
   volver: VolverEstilo;
+  banda: BandaEstilo;
   /** Tinta base (`--carta-ink`) derivada de `color_fondo_dia` por contraste WCAG; `null` si no hay fondo cargado (o no se puede leer) y manda el token de `.carta-shell`. */
   tintaBase: string | null;
 }
@@ -109,13 +116,14 @@ function normalizarFuente(v: string): string {
  * Valor final de una clave: el del Json si pasa `validarValorTema`, si no (ausente, vacío, o inválido) el `defaultCarta` del
  * catálogo. Mismo criterio que `armarTemaCarta`, salvo que acá el resultado siempre es un string (nunca `null`): una clave
  * sin default queda en `""`, no en `null` — más simple para el consumidor, que de todos modos trataría `null` como "sin
- * valor, usar el default" y volvería a caer en `""`. Un `tamanoFuente` sale ya normalizado con su unidad.
+ * valor, usar el default" y volvería a caer en `""`. Un `tamanoFuente` y el alto de banda mobile (que el validador deja como
+ * número pelado, "90") salen ya normalizados con su unidad, listos para usar como `height`.
  */
 function valorResuelto(obj: Record<string, unknown>, d: DefinicionClaveTema): string {
   const crudo = Object.hasOwn(obj, d.clave) ? obj[d.clave] : undefined;
   const valido = typeof crudo === "string" ? validarValorTema(d.clave, crudo) : null;
   const v = valido && valido.ok && valido.valor !== null ? valido.valor : d.defaultCarta;
-  return d.tipo === "tamanoFuente" ? normalizarFuente(v) : v;
+  return d.tipo === "tamanoFuente" || d.tipo === "altoBandaMobile" ? normalizarFuente(v) : v;
 }
 
 export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
@@ -171,6 +179,10 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
       etiqueta: valores.topbar_back_label || "← Menú",
       color: o(valores.topbar_back_color),
       tamano: valores.topbar_back_size || "12px",
+    },
+    banda: {
+      altoMobile: valores.carta_banda_alto_mobile,
+      altoDesktop: valores.carta_banda_alto_desktop,
     },
     tintaBase: valores.color_fondo_dia ? resolvePrimaryForeground(valores.color_fondo_dia) : null,
   };

@@ -300,6 +300,63 @@ test.describe("carta pública: portada (fondo y posición, C7)", () => {
   });
 });
 
+test.describe("carta pública: alto de la banda (C6)", () => {
+  async function irASeccion(page: import("@playwright/test").Page) {
+    await page.getByRole("button", { name: "Página siguiente" }).click();
+    await page.locator("[data-ir-a]").first().click();
+    const banda = page.locator("[data-carta-banda]").first();
+    await expect(banda).toBeVisible();
+    return banda;
+  }
+
+  test("por defecto: 90px en mobile y clamp(80px, 18vh, 140px) en desktop, con el contenido adentro de la banda", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 3 });
+    try {
+      await page.setViewportSize(MOBILE);
+      await page.goto(carta.ruta);
+      let banda = await irASeccion(page);
+      expect((await banda.boundingBox())!.height).toBeCloseTo(90, 0);
+      const h2m = await banda.locator("h2").boundingBox();
+      const bm = (await banda.boundingBox())!;
+      expect(h2m!.y).toBeGreaterThanOrEqual(bm.y);
+      expect(h2m!.y + h2m!.height).toBeLessThanOrEqual(bm.y + bm.height + 0.5);
+      const fsMobile = await banda.locator("h2").evaluate((n) => parseFloat(getComputedStyle(n).fontSize));
+
+      await page.setViewportSize(DESKTOP);
+      await page.goto(carta.ruta);
+      banda = await irASeccion(page);
+      // 18vh de 900 = 162 → tope 140.
+      expect((await banda.boundingBox())!.height).toBeCloseTo(140, 0);
+      const fsDesktop = await banda.locator("h2").evaluate((n) => parseFloat(getComputedStyle(n).fontSize));
+      expect(fsDesktop / fsMobile).toBeCloseTo(1.5, 1);
+      const h2d = await banda.locator("h2").boundingBox();
+      const bd = (await banda.boundingBox())!;
+      expect(h2d!.y).toBeGreaterThanOrEqual(bd.y);
+      expect(h2d!.y + h2d!.height).toBeLessThanOrEqual(bd.y + bd.height + 0.5);
+      // La etiqueta no queda tapada por el topbar fijo.
+      const topbar = await page.locator("[data-carta-topbar]").first().boundingBox().catch(() => null);
+      const etiqueta = (await banda.locator("p").first().boundingBox())!;
+      if (topbar) expect(etiqueta.y).toBeGreaterThanOrEqual(topbar.y + topbar.height - 0.5);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+
+  test("los valores del tema mandan: un número pelado es px, una medida se respeta", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 3, valores: { carta_banda_alto_mobile: "130", carta_banda_alto_desktop: "200" } });
+    try {
+      await page.setViewportSize(MOBILE);
+      await page.goto(carta.ruta);
+      expect((await (await irASeccion(page)).boundingBox())!.height).toBeCloseTo(130, 0);
+      await page.setViewportSize(DESKTOP);
+      await page.goto(carta.ruta);
+      expect((await (await irASeccion(page)).boundingBox())!.height).toBeCloseTo(200, 0);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+});
+
 test.describe("carta pública: navegación y layout (C1–C4)", () => {
   test("C1: cada página respeta el alto real de la nav y el topbar, y el deslizamiento para en cada página", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 3 });

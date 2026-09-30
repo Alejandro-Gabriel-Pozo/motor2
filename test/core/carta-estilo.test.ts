@@ -5,8 +5,8 @@ describe("resolverEstiloCarta", () => {
   it("sin valores cargados, todo sale en su default del catálogo", () => {
     const estilo = resolverEstiloCarta({});
     expect(estilo.valores.restaurante_nombre).toBe("");
-    expect(estilo.valores.carta_banda_alto_mobile).toBe("90");
-    expect(estilo.variablesCss["--carta-banda-alto-mobile"]).toBe("90");
+    expect(estilo.valores.carta_banda_alto_mobile).toBe("90px");
+    expect(estilo.variablesCss["--carta-banda-alto-mobile"]).toBe("90px");
   });
 
   it("las claves que ya arrancan con carta_ no duplican el prefijo en el nombre de la variable CSS", () => {
@@ -184,6 +184,23 @@ describe("colores por zona, portada, volver y tinta base", () => {
 
   it("volver: una etiqueta vacía o inválida cae a '← Menú', nunca a un botón sin texto", () => {
     expect(resolverEstiloCarta({ topbar_back_label: "" }).volver.etiqueta).toBe("← Menú");
+  });
+
+  it("banda: defaults 90px mobile / clamp(80px, 18vh, 140px) desktop", () => {
+    expect(resolverEstiloCarta({}).banda).toEqual({ altoMobile: "90px", altoDesktop: "clamp(80px, 18vh, 140px)" });
+  });
+
+  it("banda: un número pelado sale en px en ambos, una medida o clamp() pasa tal cual", () => {
+    expect(resolverEstiloCarta({ carta_banda_alto_mobile: "120", carta_banda_alto_desktop: "200" }).banda).toEqual({ altoMobile: "120px", altoDesktop: "200px" });
+    expect(resolverEstiloCarta({ carta_banda_alto_mobile: "12vh", carta_banda_alto_desktop: "clamp(100px, 20vh, 180px)" }).banda).toEqual({
+      altoMobile: "12vh",
+      altoDesktop: "clamp(100px, 20vh, 180px)",
+    });
+  });
+
+  it("banda: un valor inválido o fuera de rango (10, 900) cae al default", () => {
+    const e = resolverEstiloCarta({ carta_banda_alto_mobile: "10", carta_banda_alto_desktop: "900" });
+    expect(e.banda).toEqual({ altoMobile: "90px", altoDesktop: "clamp(80px, 18vh, 140px)" });
   });
 
   it("tintaBase se deriva del fondo: fondo oscuro → tinta clara, fondo claro → tinta oscura", () => {

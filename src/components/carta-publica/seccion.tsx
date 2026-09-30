@@ -14,18 +14,25 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
   const c = estilo.colores;
   return (
     <div className="carta-pagina flex flex-col">
-      <div data-carta-banda className="relative shrink-0 overflow-hidden border-b" style={{ height: "clamp(90px, 22vh, 160px)", borderColor: "var(--carta-border)" }}>
+      <div
+        data-carta-banda
+        className="relative h-[var(--banda-alto-m)] shrink-0 overflow-hidden border-b sm:h-[var(--banda-alto-d)]"
+        style={{ "--banda-alto-m": estilo.banda.altoMobile, "--banda-alto-d": estilo.banda.altoDesktop, borderColor: "var(--carta-border)" } as React.CSSProperties}
+      >
         {seccion.imagenUrl && (img.modo === "fondo" || img.modo === "ambos") && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={seccion.imagenUrl} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" style={{ opacity: img.opacidadPct / 100, objectPosition: `${img.posicionX} ${img.posicionY}` }} />
         )}
         {seccion.imagenUrl && img.overlay && <div className="absolute inset-0" style={{ background: "linear-gradient(to right, var(--carta-bg), transparent 60%)" }} aria-hidden />}
 
-        <div className="absolute inset-0 flex flex-col justify-end gap-0.5 px-6 pb-3 sm:px-10">
+        <div className="absolute inset-0 flex flex-col justify-end gap-0.5 px-6 pb-3 sm:justify-center sm:px-10 sm:pt-12 sm:pb-4">
           <p className="overflow-hidden text-ellipsis whitespace-nowrap font-light uppercase tracking-[0.4em]" style={{ fontSize: estilo.valores.carta_fuente_banda_etiqueta, color: c.bandaEtiqueta ?? "var(--carta-primary)" }}>
             {String(indice + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
           </p>
-          <h2 className="line-clamp-2 font-serif font-medium leading-tight tracking-tight" style={{ fontSize: estilo.valores.carta_fuente_banda_titulo, color: c.bandaTitulo ?? undefined }}>
+          <h2
+            className="line-clamp-2 text-[length:var(--banda-titulo-fs)] font-serif font-medium leading-tight tracking-tight sm:text-[length:calc(var(--banda-titulo-fs)*1.5)]"
+            style={{ "--banda-titulo-fs": estilo.valores.carta_fuente_banda_titulo, color: c.bandaTitulo ?? undefined } as React.CSSProperties}
+          >
             {seccion.titulo ?? seccion.nombre}
           </h2>
           {seccion.descripcion && (
