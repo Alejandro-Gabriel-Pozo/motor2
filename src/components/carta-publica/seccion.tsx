@@ -36,7 +36,7 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
         </div>
       </div>
 
-      <ul className="min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10" style={{ borderColor: "var(--carta-border)" }}>
+      <ul data-carta-scroll className="min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10" style={{ borderColor: "var(--carta-border)" }}>
         {seccion.items.map((item) => (
           <ItemFila key={item.productoId} item={item} estilo={estilo} />
         ))}

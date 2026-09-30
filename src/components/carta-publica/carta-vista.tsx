@@ -26,16 +26,16 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
     <NavegacionCarta paginas={paginas} hrefVolver={hrefVolver} embebida={embebida} redesSociales={redesSociales} variablesCss={variablesCss}>
       <Portada estilo={estilo} restauranteNombre={restauranteNombre} />
 
-      <div className="carta-pagina flex flex-col px-6 pb-16 pt-14 sm:px-10">
+      <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
-          <p className="mb-0.5 text-xs font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
+          <p className="mb-0.5 mt-4text-xs font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
             {estilo.valores.carta_texto_indice_etiqueta}
           </p>
         )}
-        <h1 className="font-serif font-medium" style={{ fontSize: estilo.valores.carta_fuente_indice_titulo }}>
+        <h1 className={`font-serif font-medium${estilo.valores.carta_texto_indice_etiqueta ? "" : " mt-4"}`} style={{ fontSize: estilo.valores.carta_fuente_indice_titulo }}>
           {estilo.valores.carta_texto_indice_titulo || "Índice"}
         </h1>
-        <ol data-carta-indice-lista className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+        <ol data-carta-indice-lista data-carta-scroll className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
           {carta.secciones.map((seccion, i) => (
             <li key={seccion.id} className="border-b border-dotted" style={{ borderColor: "var(--carta-border)" }}>
               <button

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { hayMasParaVer } from "./aviso-scroll";
 import { IconFacebook, IconInstagram, IconMaps, IconWhatsApp } from "./iconos";
 
 /**
@@ -51,19 +52,48 @@ interface Props {
 }
 
 export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, variablesCss, embebida = false }: Props) {
+  const raizRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const [current, setCurrent] = useState(0);
+  const [hayMas, setHayMas] = useState(false);
 
+  // El alto real de la nav (cambia con la fila de redes) se publica en la RAÍZ: lo heredan las páginas (`.carta-pagina` deja ese
+  // relleno abajo) y el degradé del aviso de scroll se apoya justo encima.
   useEffect(() => {
     const nav = navRef.current;
-    if (!nav) return;
-    const actualizarAltoNav = () => nav.style.setProperty("--carta-nav-h-local", `${nav.offsetHeight}px`);
+    const raiz = raizRef.current;
+    if (!nav || !raiz) return;
+    const actualizarAltoNav = () => raiz.style.setProperty("--carta-nav-h-local", `${nav.offsetHeight}px`);
     actualizarAltoNav();
     const ro = new ResizeObserver(actualizarAltoNav);
     ro.observe(nav);
     return () => ro.disconnect();
   }, []);
+
+  // ¿La página visible tiene más contenido por debajo? Se mira la propia página y sus listas con scroll propio (`data-carta-scroll`).
+  // La portada no lleva aviso: su fondo no es --carta-bg y el degradé desentonaría.
+  const recalcularAviso = useCallback(() => {
+    const slider = sliderRef.current;
+    if (!slider || slider.clientWidth === 0) return;
+    const idx = Math.round(slider.scrollLeft / slider.clientWidth);
+    const pag = slider.children[idx] as HTMLElement | undefined;
+    if (!pag || paginas[idx]?.tipo === "portada") return setHayMas(false);
+    const candidatos = [pag, ...pag.querySelectorAll<HTMLElement>("[data-carta-scroll]")];
+    setHayMas(candidatos.some((el) => hayMasParaVer(el)));
+  }, [paginas]);
+
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const ro = new ResizeObserver(recalcularAviso);
+    ro.observe(slider);
+    const inicial = requestAnimationFrame(recalcularAviso);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(inicial);
+    };
+  }, [recalcularAviso]);
 
   const onScroll = useCallback(() => {
     const el = sliderRef.current;
@@ -89,13 +119,19 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
   const hayRedes = redesSociales.length > 0;
 
   return (
-    <div className={`relative w-full overflow-hidden ${embebida ? "h-[32rem]" : "h-svh"}`} style={variablesCss as React.CSSProperties}>
+    <div
+      ref={raizRef}
+      {...(embebida ? {} : { "data-carta-libro": "" })}
+      className={`relative w-full overflow-hidden ${embebida ? "h-[32rem]" : "h-dvh"}`}
+      style={variablesCss as React.CSSProperties}
+    >
       <Topbar embebida={embebida} hrefVolver={hrefVolver} />
 
       <Slider
         embebida={embebida}
         sliderRef={sliderRef}
         onScroll={onScroll}
+        onScrollCapture={recalcularAviso}
         onClickCapture={(e) => {
           const boton = (e.target as HTMLElement).closest<HTMLElement>("[data-ir-a]");
           if (boton?.dataset.irA) irAId(boton.dataset.irA);
@@ -103,6 +139,15 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
       >
         {children}
       </Slider>
+
+      {hayMas && (
+        <div
+          data-carta-aviso-scroll
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 z-30 h-10"
+          style={{ bottom: "var(--carta-nav-h-local, 3.5rem)", background: "linear-gradient(to top, var(--carta-bg), transparent)" }}
+        />
+      )}
 
       {total > 1 && (
         <nav
@@ -118,9 +163,10 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
               onClick={() => irA(Math.max(0, current - 1))}
               disabled={current === 0}
               aria-label="Página anterior"
-              className="flex h-11 w-11 items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:opacity-20"
+              className={CLASE_FLECHA}
+              style={ESTILO_FLECHA}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" aria-hidden>
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
@@ -164,9 +210,10 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
               onClick={() => irA(Math.min(total - 1, current + 1))}
               disabled={current === total - 1}
               aria-label="Página siguiente"
-              className="flex h-11 w-11 items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:opacity-20"
+              className={`${CLASE_FLECHA}${current < 2 && current < total - 1 ? " carta-nudge" : ""}`}
+              style={ESTILO_FLECHA}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" aria-hidden>
                 <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
@@ -189,6 +236,15 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
     </div>
   );
 }
+
+// Flechas de página: circulares, con borde y fondo tenues del color de marca (la portada y el índice son las páginas donde más
+// hace falta ver que se puede deslizar). `--carta-flechas` lo pone `CartaVista` si el tema carga `color_nav_flechas`.
+const CLASE_FLECHA = "flex h-12 w-12 items-center justify-center rounded-full border transition-opacity hover:opacity-80 disabled:opacity-25";
+const ESTILO_FLECHA = {
+  color: "var(--carta-flechas, var(--carta-primary))",
+  borderColor: "color-mix(in oklch, var(--carta-flechas, var(--carta-primary)) 45%, transparent)",
+  backgroundColor: "color-mix(in oklch, var(--carta-flechas, var(--carta-primary)) 10%, transparent)",
+} as const;
 
 const ESTILO_TOPBAR = { backgroundColor: "color-mix(in oklch, var(--carta-bg) 88%, transparent)", borderColor: "var(--carta-border)" } as const;
 const CLASE_TOPBAR = "absolute left-0 right-0 top-0 z-40 flex h-10 items-center justify-between border-b px-3 backdrop-blur-sm";
@@ -231,20 +287,21 @@ interface PropsSlider {
   embebida: boolean;
   sliderRef: React.RefObject<HTMLElement | null>;
   onScroll: () => void;
+  onScrollCapture: () => void;
   onClickCapture: (e: React.MouseEvent<HTMLElement>) => void;
   children: ReactNode;
 }
 
-function Slider({ embebida, sliderRef, onScroll, onClickCapture, children }: PropsSlider) {
+function Slider({ embebida, sliderRef, onScroll, onScrollCapture, onClickCapture, children }: PropsSlider) {
   if (embebida) {
     return (
-      <div ref={sliderRef as React.RefObject<HTMLDivElement | null>} onScroll={onScroll} onClickCapture={onClickCapture} className="carta-slider h-full w-full" data-carta-slider>
+      <div ref={sliderRef as React.RefObject<HTMLDivElement | null>} onScroll={onScroll} onScrollCapture={onScrollCapture} onClickCapture={onClickCapture} className="carta-slider h-full w-full" data-carta-slider>
         {children}
       </div>
     );
   }
   return (
-    <main ref={sliderRef} onScroll={onScroll} onClickCapture={onClickCapture} className="carta-slider h-full w-full" data-carta-slider>
+    <main ref={sliderRef} onScroll={onScroll} onScrollCapture={onScrollCapture} onClickCapture={onClickCapture} className="carta-slider h-full w-full" data-carta-slider>
       {children}
     </main>
   );
