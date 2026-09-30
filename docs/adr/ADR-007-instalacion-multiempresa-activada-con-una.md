@@ -375,6 +375,20 @@ branch `main` `br-steep-wind-af8iop63`, PG 17.11):
 - Admin candidato a gerente: el ADMIN más antiguo (`alepogabriel@gmail.com`,
   2026-09-15); el dueño debe confirmarlo por email concreto.
 
+Previews de Vercel (verificado 2026-09-29 con `gh api .../deployments` y
+`vercel env ls`, solo lectura): el repo `Alejandro-Gabriel-Pozo/motor2` es
+PÚBLICO y lo despliegan DOS proyectos Vercel (`motor2-demo` y `stockhneuquen`),
+con más de 400 previews históricos por push de rama. En `stockhneuquen`,
+`DATABASE_URL` y `DIRECT_URL` están definidas para «Production, Preview» (la
+MISMA base): publicar una rama en `origin` dispararía `npm run build` →
+`prisma migrate deploy` contra su base de producción. En `motor2-demo`,
+`DATABASE_URL`/`DIRECT_URL` de Preview son secretos propios (destino no
+verificable). Conclusión: NO publicar `multitenancy-fase-a` en `origin`
+mientras no exista un freno por rama (por ejemplo `git.deploymentEnabled` y/o
+`ignoreCommand` en `vercel.json` del último commit, o «Ignored Build Step» en
+ambos proyectos). Respaldo remoto alternativo: repositorio privado aparte no
+conectado a Vercel.
+
 Pendiente para retomar A8 (en este orden): (1) reautenticar Vercel con el scope
 `alepozod` o aportar `CARTA_EMPRESA_SLUG`, formato de `DATABASE_URL` y variables
 de Preview; (2) confirmar el email del gerente; (3) autorización de mutación en
