@@ -124,27 +124,6 @@ export function validarAltoBanda(v: unknown, opciones: { normalizarPx: boolean }
   return parsearLongitudCss(v, { funciones: true });
 }
 
-/** Ancho de la imagen de sección en mobile: número solo entre 1 y 400 (% del alto de la banda) o una longitud (sin funciones). */
-export function validarAnchoImagenMobile(v: unknown): Resultado<string> {
-  const s = valorCssSeguro(v);
-  if (s !== null) {
-    const n = numeroSolo(s, 1, 400);
-    if (n) return n.ok ? ok(s) : mal(n.mensaje);
-  }
-  return parsearLongitudCss(v, { funciones: false });
-}
-
-/** `background-size` de la imagen de sección en desktop: contain, cover, auto, o 1-2 tokens que sean `auto` o una longitud. */
-export function validarTamanoFondo(v: unknown): Resultado<string> {
-  const s = valorCssSeguro(v);
-  const mensaje = "tiene que ser contain, cover, auto o una o dos medidas (ej. auto 100%)";
-  if (s === null) return mal(mensaje);
-  if (s === "contain" || s === "cover" || s === "auto") return ok(s);
-  const tokens = s.split(/ +/);
-  if (tokens.length > 2 || !tokens.every((t) => t === "auto" || esLongitud(t))) return mal(mensaje);
-  return ok(tokens.join(" "));
-}
-
 /** Porcentaje de posición (bloque y CTA de la portada): número entre 0 y 100, hasta 2 decimales, sin `%` (la carta se lo agrega). */
 export function validarPorcentaje(v: unknown): Resultado<string> {
   const s = valorCssSeguro(v);

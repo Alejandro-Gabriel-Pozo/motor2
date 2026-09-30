@@ -914,12 +914,12 @@ testAutenticado("carta/tema: sin violaciones de axe, con zonas del editor abiert
   // oklch(0.76 0.14 80) sobre casi blanco) no cumple color-contrast. Es un problema conocido de la carta pública (restaurant-menu-design), fuera
   // de este plan: acá solo se simula, y lo que se audita es el editor de motor2.
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
-  await prisma.temaCartaSucursal.create({ data: { sucursalId, valores: { color_marca: "#8b4513", hero_ink: "claro", carta_imagen_modo: "miniatura", carta_imagen_opacidad: "60", color_item_precio: "red;x" } } });
+  await prisma.temaCartaSucursal.create({ data: { sucursalId, valores: { color_marca: "#8b4513", hero_ink: "claro", carta_imagen_pos_x: "center", carta_imagen_opacidad: "60", color_item_precio: "red;x" } } });
   try {
     await page.goto("/carta/tema");
     await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
     for (const zona of ["Colores generales", "Banda e imagen de sección", "Ítems"]) await page.locator(`[data-zona-tema="${zona}"] summary`).click();
-    await expect(page.locator('select[name="carta_imagen_modo"]')).toBeVisible();
+    await expect(page.locator('select[name="carta_imagen_pos_x"]')).toBeVisible();
     await expect(page.locator('[data-campo-tema="color_item_precio"]')).toContainText("No es válido");
     expect((await new AxeBuilder({ page }).exclude("[data-vista-previa-tema]").analyze()).violations).toEqual([]);
   } finally {

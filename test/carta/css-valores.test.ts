@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   parsearLongitudCss,
   validarAltoBanda,
-  validarAnchoImagenMobile,
   validarEnum,
   validarOpacidad,
   validarPorcentaje,
   validarRedSocial,
-  validarTamanoFondo,
   validarTamanoFuente,
   validarTelefono,
   validarUrlHttps,
@@ -123,19 +121,6 @@ describe("alto de banda", () => {
 });
 
 describe("imagen de sección", () => {
-  it("ancho mobile: número 1-400 o una longitud, sin funciones", () => {
-    expect(valor(validarAnchoImagenMobile("160"))).toBe("160");
-    expect(valor(validarAnchoImagenMobile("80px"))).toBe("80px");
-    expect(validarAnchoImagenMobile("0").ok).toBe(false);
-    expect(validarAnchoImagenMobile("401").ok).toBe(false);
-    expect(validarAnchoImagenMobile("clamp(1px, 2px, 3px)").ok).toBe(false);
-  });
-
-  it("tamaño de fondo: contain/cover/auto o 1-2 tokens auto|longitud", () => {
-    for (const v of ["auto 100%", "contain", "cover", "auto", "50%", "100px auto", "Contain"]) expect(validarTamanoFondo(v)).toEqual({ ok: true, valor: v.toLowerCase() });
-    for (const v of ["auto auto auto", "100", "contain cover", "url(x)", "auto;x:y", "min(1px, 2px)"]) expect(validarTamanoFondo(v).ok).toBe(false);
-  });
-
   it("porcentaje: 0-100, hasta 2 decimales, sin %", () => {
     expect(valor(validarPorcentaje("50"))).toBe("50");
     expect(valor(validarPorcentaje("0"))).toBe("0");

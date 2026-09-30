@@ -79,20 +79,9 @@ describe("resolverEstiloCarta", () => {
     });
   });
 
-  describe("imagenSeccion — nombres honestos pese a las claves mal nombradas de la base", () => {
-    it("carta_imagen_ancho_mobile es en realidad el alto de la miniatura, expuesto como altoMiniaturaMobilePct", () => {
-      const estilo = resolverEstiloCarta({ carta_imagen_ancho_mobile: "200" });
-      expect(estilo.imagenSeccion.altoMiniaturaMobilePct).toBe(200);
-    });
-
-    it("carta_imagen_ancho_desktop es el background-size, expuesto como tamanoFondoDesktop", () => {
-      const estilo = resolverEstiloCarta({ carta_imagen_ancho_desktop: "cover" });
-      expect(estilo.imagenSeccion.tamanoFondoDesktop).toBe("cover");
-    });
-
-    it("modo, posición y overlay salen tipados, no como strings sueltos", () => {
-      const estilo = resolverEstiloCarta({ carta_imagen_modo: "miniatura", carta_imagen_pos_x: "right", carta_imagen_pos_y: "bottom", carta_imagen_overlay: "no" });
-      expect(estilo.imagenSeccion.modo).toBe("miniatura");
+  describe("imagenSeccion", () => {
+    it("posición y overlay salen tipados, no como strings sueltos", () => {
+      const estilo = resolverEstiloCarta({ carta_imagen_pos_x: "right", carta_imagen_pos_y: "bottom", carta_imagen_overlay: "no" });
       expect(estilo.imagenSeccion.posicionX).toBe("right");
       expect(estilo.imagenSeccion.posicionY).toBe("bottom");
       expect(estilo.imagenSeccion.overlay).toBe(false);

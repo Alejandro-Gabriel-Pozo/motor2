@@ -1,12 +1,10 @@
 import { sanitizeCssColor } from "./color-css";
 import {
   validarAltoBanda,
-  validarAnchoImagenMobile,
   validarEnum,
   validarOpacidad,
   validarPorcentaje,
   validarRedSocial,
-  validarTamanoFondo,
   validarTamanoFuente,
   validarTelefono,
   validarUrlHttps,
@@ -18,14 +16,14 @@ import { validarImagenUrlCarta, validarTextoLibreCarta, type Resultado } from ".
  * tenant de restaurant-menu-design (`SiteConfig`, lib/get-config.ts), pasado a motor2 (`TemaCartaSucursal.valores`, un Json con
  * las MISMAS claves que `SiteConfig`).
  *
- * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 67
+ * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 64
  * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla), el importador ("Pegar
  * desde la sheet") y el contrato `TemaCartaV1` (lo arma `armarTemaCarta` para la carta pública interna).
  *
  * De las 109 claves de `SiteConfig`:
- *  - 66 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=28; D3 del plan). Más 1 propia de motor2, sin
- *    equivalente en la sheet: `carta_fuente_familia` (D=29) — la familia tipográfica de títulos, nombres y precios.
- *  - 1 está RETIRADA (`CLAVES_RETIRADAS`): el original nunca la dibujaba, la carta de motor2 tampoco.
+ *  - 63 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=25; D3 del plan). Más 1 propia de motor2, sin
+ *    equivalente en la sheet: `carta_fuente_familia` (D=26) — la familia tipográfica de títulos, nombres y precios.
+ *  - 4 están RETIRADAS (`CLAVES_RETIRADAS`): 1 que el original nunca dibujaba y las 3 de miniatura de la imagen de sección (decisión del dueño).
  *  - 3 son de precio y son CONVENCIÓN FIJA del sistema (es-AR, "$", a la izquierda) → `CLAVES_FIJAS_DEL_SISTEMA`: motor2 no las
  *    guarda ni las emite; la carta las sigue tomando de la sheet o de su default, que es esa misma convención.
  *  - 39 no son por tenant (config raíz del portal, SEO, o solo del modo single de `/`) → `CLAVES_NO_POR_TENANT`.
@@ -42,8 +40,6 @@ export type TipoValorTema =
   | { tipo: "tamanoFuente" }
   | { tipo: "altoBandaMobile" }
   | { tipo: "altoBandaDesktop" }
-  | { tipo: "anchoImagenMobile" }
-  | { tipo: "tamanoFondo" }
   | { tipo: "porcentaje" }
   | { tipo: "opacidad" }
   | { tipo: "enum"; opciones: readonly string[]; alias?: Readonly<Record<string, string>> }
@@ -97,7 +93,7 @@ const texto = (maximo: number) => ({ tipo: "texto", maximo }) as const;
 const ALIAS_SI_NO: Readonly<Record<string, string>> = { "sí": "si", true: "si", "1": "si", yes: "si", false: "no", "0": "no" };
 
 /**
- * Las 67 claves por tenant (D3 menos la retirada `carta_fuente_indice_categoria`, más `carta_fuente_familia`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
+ * Las 64 claves por tenant (D3 menos las 4 retiradas de `CLAVES_RETIRADAS`, más `carta_fuente_familia`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
  */
 export const CLAVES_TEMA_V1 = [
   // Portada e identidad (A + la posición del bloque y del CTA en la portada mobile)
@@ -189,9 +185,6 @@ export const CLAVES_TEMA_V1 = [
   // Banda e imagen de sección
   { clave: "carta_banda_alto_mobile", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la banda en mobile", defaultCarta: "90", tipo: "altoBandaMobile" },
   { clave: "carta_banda_alto_desktop", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la banda en desktop", defaultCarta: "clamp(80px, 18vh, 140px)", tipo: "altoBandaDesktop" },
-  { clave: "carta_imagen_modo", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Modo de la imagen de sección", defaultCarta: "fondo", tipo: "enum", opciones: ["fondo", "miniatura", "ambos"] },
-  { clave: "carta_imagen_ancho_mobile", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la miniatura en mobile (% de la banda)", defaultCarta: "160", tipo: "anchoImagenMobile" },
-  { clave: "carta_imagen_ancho_desktop", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Tamaño de la imagen de fondo en desktop", defaultCarta: "auto 100%", tipo: "tamanoFondo" },
   { clave: "carta_imagen_pos_x", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Posición horizontal de la imagen", defaultCarta: "left", tipo: "enum", opciones: ["left", "center", "right"] },
   { clave: "carta_imagen_pos_y", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Posición vertical de la imagen", defaultCarta: "top", tipo: "enum", opciones: ["top", "center", "bottom"] },
   { clave: "carta_imagen_overlay", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Degradé sobre la imagen", defaultCarta: "si", tipo: "enum", opciones: ["si", "no"], alias: ALIAS_SI_NO },
@@ -218,10 +211,12 @@ export function esClaveTema(clave: string): clave is ClaveTema {
 export const CLAVES_FIJAS_DEL_SISTEMA = { precio_locale: "es-AR", precio_simbolo: "$", precio_posicion: "izquierda" } as const;
 
 /**
- * Claves de `SiteConfig` que existían en el catálogo y se retiraron porque nunca tuvieron efecto visual (ni en la carta original
- * ni en la interna). Una tab Config vieja que las traiga no las muestra como "desconocidas": se avisa que ya no existen.
+ * Claves de `SiteConfig` que existían en el catálogo y se retiraron. `carta_fuente_indice_categoria` nunca tuvo efecto visual
+ * (ni en la carta original ni en la interna). Las 3 `carta_imagen_*` de miniatura (modo, alto mobile, tamaño desktop) se
+ * retiraron por decisión del dueño: la imagen de sección se dibuja siempre como fondo de la banda. Una tab Config vieja que las
+ * traiga no las muestra como "desconocidas": se avisa que ya no existen.
  */
-export const CLAVES_RETIRADAS = ["carta_fuente_indice_categoria"] as const;
+export const CLAVES_RETIRADAS = ["carta_fuente_indice_categoria", "carta_imagen_modo", "carta_imagen_ancho_mobile", "carta_imagen_ancho_desktop"] as const;
 
 /**
  * Las 39 claves de `SiteConfig` que NO son por tenant (A.1/A.2 del plan): la carta las lee de la config raíz (portal, SEO,
@@ -286,7 +281,7 @@ export interface TemaCartaV1 {
   generadoEn: string;
   sucursalId: string;
   actualizadoEn: string;
-  /** SIEMPRE las 67 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
+  /** SIEMPRE las 64 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
   valores: Record<ClaveTema, string | null>;
 }
 
@@ -331,10 +326,6 @@ export function validarValorDefinicion(v: string, d: TipoValorTema & { etiqueta:
       return validarAltoBanda(v, { normalizarPx: false });
     case "altoBandaDesktop":
       return validarAltoBanda(v, { normalizarPx: true });
-    case "anchoImagenMobile":
-      return validarAnchoImagenMobile(v);
-    case "tamanoFondo":
-      return validarTamanoFondo(v);
     case "porcentaje":
       return validarPorcentaje(v);
     case "opacidad":
@@ -477,7 +468,7 @@ export interface FilaTemaCarta {
 
 /**
  * Arma `TemaCartaV1` desde la fila, VOLVIENDO A VALIDAR cada valor del Json (una carga por `db:studio` no pasa por las Server
- * Actions): emite siempre las 67 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
+ * Actions): emite siempre las 64 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
  * ajenas al catálogo se ignoran (incluidas las `precio_*`, si alguien las cargara a mano).
  */
 export function armarTemaCarta(fila: FilaTemaCarta, ahora: Date = new Date()): TemaCartaV1 {

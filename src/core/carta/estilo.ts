@@ -12,17 +12,6 @@ import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveT
  */
 
 export interface ImagenSeccionEstilo {
-  modo: "fondo" | "miniatura" | "ambos";
-  /**
-   * `carta_imagen_ancho_mobile` en la base: pese al nombre ("ancho"), es el ALTO de la miniatura en mobile, en % del alto de
-   * la banda (confirmado en `CLAVES_TEMA_V1`, etiqueta real: "Alto de la miniatura en mobile"). Nombre honesto acá.
-   */
-  altoMiniaturaMobilePct: number;
-  /**
-   * `carta_imagen_ancho_desktop` en la base: es el `background-size` de la imagen en modo "fondo" (ej. "auto 100%"), no un
-   * ancho de miniatura — la miniatura de escritorio no tiene tamaño configurable propio.
-   */
-  tamanoFondoDesktop: string;
   posicionX: "left" | "center" | "right";
   posicionY: "top" | "center" | "bottom";
   overlay: boolean;
@@ -84,7 +73,7 @@ const FAMILIA_CSS: Readonly<Record<FamiliaTipografica, string>> = {
 
 export interface EstiloCarta {
   /**
-   * Una variable CSS por cada una de las 67 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
+   * Una variable CSS por cada una de las 64 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
    * guiones>`). Valor validado si lo hay, si no el default de `CLAVES_TEMA_V1` (`""` = sin default: la variable queda vacía
    * y el CSS base de `.carta-shell` decide). `--carta-hero-ink` lleva el valor YA RESUELTO (`resolveHeroInk`), no el
    * "claro"/"oscuro" crudo — eso no es un color CSS válido por sí solo.
@@ -108,7 +97,7 @@ export interface EstiloCarta {
 const o = (v: string): string | null => (v === "" ? null : v);
 
 /**
- * `snake_case` → `kebab-case` con el prefijo `--carta-`, para el nombre de la variable CSS. Casi la mitad de las 67 claves ya
+ * `snake_case` → `kebab-case` con el prefijo `--carta-`, para el nombre de la variable CSS. Casi la mitad de las 64 claves ya
  * arrancan con `carta_` (`carta_banda_alto_mobile`, `carta_fuente_*`…): se lo saca antes de agregar el prefijo, si no
  * quedaría `--carta-carta-banda-alto-mobile`.
  */
@@ -159,7 +148,6 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
   const familiaTipografica = valores.carta_fuente_familia as FamiliaTipografica;
   variablesCss[aVariableCss("carta_fuente_familia")] = FAMILIA_CSS[familiaTipografica];
 
-  const modo = valores.carta_imagen_modo as ImagenSeccionEstilo["modo"];
   const posicionX = valores.carta_imagen_pos_x as ImagenSeccionEstilo["posicionX"];
   const posicionY = valores.carta_imagen_pos_y as ImagenSeccionEstilo["posicionY"];
 
@@ -168,9 +156,6 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
     valores,
     heroInk,
     imagenSeccion: {
-      modo,
-      altoMiniaturaMobilePct: Number(valores.carta_imagen_ancho_mobile),
-      tamanoFondoDesktop: valores.carta_imagen_ancho_desktop,
       posicionX,
       posicionY,
       overlay: valores.carta_imagen_overlay === "si",

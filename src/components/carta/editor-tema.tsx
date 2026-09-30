@@ -179,8 +179,6 @@ const AYUDA: Partial<Record<DefinicionClaveTema["tipo"], string>> = {
   tamanoFuente: "Número = px, o una medida: 0.9rem, 12px, clamp(…).",
   altoBandaMobile: "Número = px (20 a 600), o una medida: 12vh, clamp(…).",
   altoBandaDesktop: "Número = px (20 a 600), o una medida: 18vh, clamp(80px, 18vh, 140px).",
-  anchoImagenMobile: "Número = % del alto de la banda (1 a 400), o una medida: 80px.",
-  tamanoFondo: "contain, cover, auto o dos medidas (ej. auto 100%).",
   colorHeroInk: "claro, oscuro o un color.",
   colorHex: "Solo hex #rrggbb: la carta le suma transparencia cuando hay imagen de fondo.",
   redSocial: "El usuario (@usuario) o la URL https:// del perfil.",

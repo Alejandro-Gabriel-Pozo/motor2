@@ -6,7 +6,7 @@ import { TagIcon } from "./iconos";
  * ADR-006, Fase 3: banda + ítems + promos de UNA sección de la carta — desenredado de `carta-view.tsx` (el `BandaContenido`
  * del original vivía DEFINIDO DENTRO del render de todo el componente, remontándose en cada render; acá es su propia
  * función a nivel de módulo). Sin la duplicación banda mobile/banda desktop del original: un solo bloque, con Tailwind
- * responsive. La imagen de sección (fondo/miniatura) se simplifica a un `<img>` de fondo con `object-fit`, sin la lógica de
+ * responsive. La imagen de sección es siempre el fondo de la banda: un `<img>` de fondo con `object-fit`, sin la lógica de
  * posicionamiento fino del original (nivel (a) del diagnóstico: correcto y accesible, no pixel-a-pixel idéntico).
  */
 export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCartaV1; indice: number; total: number; estilo: EstiloCarta }) {
@@ -19,7 +19,7 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
         className="relative h-[var(--banda-alto-m)] shrink-0 overflow-hidden border-b sm:h-[var(--banda-alto-d)]"
         style={{ "--banda-alto-m": estilo.banda.altoMobile, "--banda-alto-d": estilo.banda.altoDesktop, borderColor: "var(--carta-border)" } as React.CSSProperties}
       >
-        {seccion.imagenUrl && (img.modo === "fondo" || img.modo === "ambos") && (
+        {seccion.imagenUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={seccion.imagenUrl} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" style={{ opacity: img.opacidadPct / 100, objectPosition: `${img.posicionX} ${img.posicionY}` }} />
         )}
