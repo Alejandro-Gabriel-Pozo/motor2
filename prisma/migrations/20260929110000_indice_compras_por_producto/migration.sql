@@ -1,0 +1,11 @@
+-- Índice parcial de compras por producto (ADR-007, decisión posterior 2026-09-29; autorizado por el dueño).
+-- Prisma no puede declarar índices parciales (precedentes: `20260915034450_indices_manuales`, `CapacidadSucursal_accionClave_default_key`);
+-- por eso vive acá a mano y no en `schema.prisma` (`prisma migrate diff` lo ignora, igual que a los otros).
+--
+-- Sirve a las consultas "última compra de cada producto" (`obtenerCostoActualPorMP`, `periodo-precios`, `historial-producto`): todas
+-- filtran `proceso = 'COMPRA'` y por `productoId`. Solo indexa las compras (~5 % de los movimientos), así que ocupa una fracción del
+-- índice existente `(productoId, seccionId, loteVencimiento)`, que las mezcla con ventas, consumos y mermas.
+-- Va solo por `productoId` (no por `empresaId`): los ids son únicos globalmente (cuid) y la política de RLS (A6) filtra igual.
+-- Sin CONCURRENTLY: Prisma corre cada migración en una transacción; con el volumen de un año (<1 MB de índice) el bloqueo es de segundos.
+-- Reversa: down.sql.
+CREATE INDEX IF NOT EXISTS "MovimientoStock_productoId_compra_idx" ON "MovimientoStock" ("productoId") WHERE "proceso" = 'COMPRA';
