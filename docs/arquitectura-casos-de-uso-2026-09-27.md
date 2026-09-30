@@ -31,7 +31,7 @@ Rutas verificadas contra el repo el 2026-09-27 (base `91f37d3`).
 
 | Idea | Decisión |
 |---|---|
-| Fábrica de conexión Prisma con nombres explícitos tipo `tenantDb` | No aplica: motor2 no es multi-tenant (una base, varias sucursales con `sucursalId`), y "tenant" ya significa otra cosa en este repo — el registro del portal de la carta (`docs/plan-registro-tenants-2026-09-24.md`, `SucursalPublica`). La conexión sigue siendo el singleton de `src/lib/db.ts`; la persistencia de escritura recibe el `tx` de quien la llama. |
+| Fábrica de conexión Prisma con nombres explícitos tipo `tenantDb` | No aplicaba al escribirse (una base, varias sucursales con `sucursalId`) y "tenant" ya significa otra cosa en este repo — el registro del portal de la carta (`docs/plan-registro-tenants-2026-09-24.md`, `SucursalPublica`). Desde ADR-007 (A5/A6) el equivalente es `dbDeEmpresa`/`transaccionDeEmpresa` (`src/core/auth/base.ts`), con RLS por empresa; el singleton de `src/lib/db.ts` solo lo importan `core/auth`, `lib/auth.ts`, la carta pública y los crons; la persistencia de escritura recibe el `tx` de quien la llama. |
 | `puertos.ts` separado de `public-servidor.ts` | Redundante: `public-servidor.ts` (Fase C) ya es la fachada de lo que un dominio expone solo del lado del servidor. No se crea. |
 | `Prisma TypedSQL` para reportes | No prioritario. Hoy el único candidato real es `core/reportes/costo-historico.ts` (el único `$queryRaw` de `src/`). Se reevalúa si aparecen más de 3 consultas crudas. |
 

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
 import { obtenerHistorialProducto } from "../../src/core/reportes/historial-producto";
 
 /**
@@ -49,6 +49,7 @@ describe("obtenerHistorialProducto con decenas de miles de movimientos", () => {
     await prisma.$executeRaw`
       INSERT INTO "MovimientoStock" ("id", "operacionId", "productoId", "seccionId", "proceso", "cantidad", "detalle") VALUES ('otrom', 'otro', ${azucarId}, ${seccionId}, 'COMPRA'::"Proceso", 5, 'Compra')`;
 
+    await analizarDespuesDeCargaMasiva();
     const historial = await obtenerHistorialProducto(sucursalId, harinaId, undefined, undefined, undefined, prisma);
 
     expect(historial).not.toBeNull();

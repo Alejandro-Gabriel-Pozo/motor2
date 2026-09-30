@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { baseDeEmpresa, verificarRolDeEjecucionDelProceso, type BaseDelContexto } from "./base";
+import { baseDeEmpresa, dbDeEmpresa, verificarRolDeEjecucionDelProceso, type BaseDelContexto } from "./base";
 import { getUsuarioActual } from "./session";
 
 export const COOKIE_SUCURSAL_ACTIVA = "sucursalActivaId";
@@ -74,11 +74,19 @@ export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | 
   });
   if (!pertenencias.length) return null;
 
-  const membresiasTodas = await prisma.usuarioSucursal.findMany({
-    where: { usuarioId: usuario.id, activo: true, sucursal: { activo: true, empresaId: { in: pertenencias.map((p) => p.empresaId) } } },
-    include: { sucursal: true, rol: true },
-    orderBy: { creadoEn: "asc" },
-  });
+  // `UsuarioEmpresa` y `Empresa` no tienen RLS (la lectura de arriba va con `prisma`, sin empresa). `UsuarioSucursal` SÍ: se lee una vez
+  // por empresa del usuario, cada una bajo su propio contexto (`dbDeEmpresa`), no en una consulta cruzada.
+  const membresiasTodas = (
+    await Promise.all(
+      pertenencias.map((p) =>
+        dbDeEmpresa(p.empresaId).usuarioSucursal.findMany({
+          where: { usuarioId: usuario.id, activo: true, sucursal: { activo: true, empresaId: p.empresaId } },
+          include: { sucursal: true, rol: true },
+          orderBy: { creadoEn: "asc" },
+        })
+      )
+    )
+  ).flat();
   const empresasConAcceso = pertenencias.filter((p) => membresiasTodas.some((m) => m.sucursal.empresaId === p.empresaId));
   if (!empresasConAcceso.length) return null;
 

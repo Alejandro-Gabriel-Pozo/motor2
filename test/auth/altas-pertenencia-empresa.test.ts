@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { agregarOActualizarUsuario } from "../../src/server/actions/auth/usuarios";
 import { crearSucursalConAdmin } from "../../src/server/actions/auth/sucursales";
@@ -25,8 +25,8 @@ describe("altas de usuario — pertenencia a la empresa", () => {
     expect((await agregarOActualizarUsuario({ email: "nuevo@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id })).ok).toBe(true);
     expect((await agregarOActualizarUsuario({ email: "nuevo@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).ok).toBe(true);
 
-    const nuevo = await prisma.user.findUniqueOrThrow({ where: { email: "nuevo@test.com" } });
-    const pertenencias = await prisma.usuarioEmpresa.findMany({ where: { usuarioId: nuevo.id } });
+    const nuevo = await prismaAdmin.user.findUniqueOrThrow({ where: { email: "nuevo@test.com" } });
+    const pertenencias = await prismaAdmin.usuarioEmpresa.findMany({ where: { usuarioId: nuevo.id } });
     expect(pertenencias).toHaveLength(1);
     expect(pertenencias[0].empresaId).toBe(base.sucursal.empresaId);
     expect(pertenencias[0].activo).toBe(true);
@@ -36,18 +36,18 @@ describe("altas de usuario — pertenencia a la empresa", () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    await prisma.usuarioEmpresa.updateMany({ where: { usuarioId: operador.id }, data: { activo: false } });
+    await prismaAdmin.usuarioEmpresa.updateMany({ where: { usuarioId: operador.id }, data: { activo: false } });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     expect((await agregarOActualizarUsuario({ email: operador.email, sucursalId: base.sucursal.id, rolId: base.operador.id })).ok).toBe(true);
-    expect((await prisma.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: operador.id } })).activo).toBe(true);
+    expect((await prismaAdmin.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: operador.id } })).activo).toBe(true);
   });
 
   it("agregarOActualizarUsuario rechaza un rol o una sucursal de OTRA empresa y no deja rastro", async () => {
     const base = await sembrarBase();
-    await prisma.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
-    const sucursalOtra = await prisma.sucursal.create({ data: { nombre: "Ajena", empresaId: "otra" } });
-    const rolOtra = await prisma.rol.create({ data: { nombre: "admin", empresaId: "otra" } });
+    await prismaAdmin.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+    const sucursalOtra = await prismaAdmin.sucursal.create({ data: { nombre: "Ajena", empresaId: "otra" } });
+    const rolOtra = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "otra" } });
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
@@ -55,8 +55,8 @@ describe("altas de usuario — pertenencia a la empresa", () => {
     const sucursalAjena = await agregarOActualizarUsuario({ email: "x@test.com", sucursalId: sucursalOtra.id, rolId: base.operador.id });
     expect(rolAjeno.ok).toBe(false);
     expect(sucursalAjena.ok).toBe(false);
-    expect(await prisma.user.findUnique({ where: { email: "x@test.com" } })).toBeNull();
-    expect(await prisma.usuarioEmpresa.count({ where: { empresaId: "otra" } })).toBe(0);
+    expect(await prismaAdmin.user.findUnique({ where: { email: "x@test.com" } })).toBeNull();
+    expect(await prismaAdmin.usuarioEmpresa.count({ where: { empresaId: "otra" } })).toBe(0);
   });
 
   it("crearSucursalConAdmin crea la sucursal en la empresa del actor y le da al primer admin su UsuarioEmpresa", async () => {
@@ -67,10 +67,10 @@ describe("altas de usuario — pertenencia a la empresa", () => {
     const r = await crearSucursalConAdmin({ nombre: "Nueva", emailPrimerAdmin: "primer-admin@test.com" });
     expect(r.ok).toBe(true);
 
-    const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Nueva" } });
+    const nueva = await prismaAdmin.sucursal.findFirstOrThrow({ where: { nombre: "Nueva" } });
     expect(nueva.empresaId).toBe(base.sucursal.empresaId);
-    const primerAdmin = await prisma.user.findUniqueOrThrow({ where: { email: "primer-admin@test.com" } });
-    const pertenencia = await prisma.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: primerAdmin.id } });
+    const primerAdmin = await prismaAdmin.user.findUniqueOrThrow({ where: { email: "primer-admin@test.com" } });
+    const pertenencia = await prismaAdmin.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: primerAdmin.id } });
     expect(pertenencia.empresaId).toBe(base.sucursal.empresaId);
   });
 
@@ -80,6 +80,6 @@ describe("altas de usuario — pertenencia a la empresa", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     expect((await crearSucursalConAdmin({ nombre: "Otra", emailPrimerAdmin: "admin@test.com" })).ok).toBe(true);
-    expect(await prisma.usuarioEmpresa.count({ where: { usuarioId: admin.id } })).toBe(1);
+    expect(await prismaAdmin.usuarioEmpresa.count({ where: { usuarioId: admin.id } })).toBe(1);
   });
 });

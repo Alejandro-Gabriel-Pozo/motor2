@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __cookiesDeTest, __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
@@ -19,14 +19,14 @@ import { cambiarEmpresaActiva } from "../../src/server/actions/auth/empresa-acti
  * siempre, y "norte") trabaja en una por vez; la cookie de empresa nunca se confía a ciegas.
  */
 async function crearEmpresa(id: string, estado: "ACTIVE" | "SUSPENDED" = "ACTIVE") {
-  return prisma.empresa.create({ data: { id, nombre: `Empresa ${id}`, slug: id, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado } });
+  return prismaAdmin.empresa.create({ data: { id, nombre: `Empresa ${id}`, slug: id, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado } });
 }
 
 /** Una empresa nueva con su sucursal y su rol admin (con más de una empresa el `empresaId` de las tablas por empresa va explícito). */
 async function empresaConSucursal(id: string, estado: "ACTIVE" | "SUSPENDED" = "ACTIVE") {
   await crearEmpresa(id, estado);
-  const sucursal = await prisma.sucursal.create({ data: { nombre: `Sucursal ${id}`, empresaId: id } });
-  const rolAdmin = await prisma.rol.create({ data: { nombre: "admin", empresaId: id } });
+  const sucursal = await prismaAdmin.sucursal.create({ data: { nombre: `Sucursal ${id}`, empresaId: id } });
+  const rolAdmin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: id } });
   return { sucursal, rolAdmin };
 }
 
@@ -93,8 +93,8 @@ describe("obtenerContextoUsuario — empresa activa", () => {
 
   it("una membresía de sucursal SIN pertenencia a la empresa (UsuarioEmpresa) no da contexto", async () => {
     const base = await sembrarBase();
-    const usuario = await prisma.user.create({ data: { email: "sin-empresa@test.com" } });
-    await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: base.sucursal.id, rolId: base.admin.id, activo: true } });
+    const usuario = await prismaAdmin.user.create({ data: { email: "sin-empresa@test.com" } });
+    await prismaAdmin.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: base.sucursal.id, rolId: base.admin.id, activo: true } });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
     expect(await obtenerContextoUsuario()).toBeNull();
@@ -112,7 +112,7 @@ describe("obtenerContextoUsuario — empresa activa", () => {
     expect(ctx?.empresaId).toBe(base.sucursal.empresaId);
     expect(ctx?.empresas.map((e) => e.empresaId)).toEqual([base.sucursal.empresaId]);
 
-    await prisma.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id, empresaId: base.sucursal.empresaId }, data: { activo: false } });
+    await prismaAdmin.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id, empresaId: base.sucursal.empresaId }, data: { activo: false } });
     expect(await obtenerContextoUsuario()).toBeNull();
   });
 
@@ -132,7 +132,7 @@ describe("obtenerContextoUsuario — empresa activa", () => {
   it("rolEmpresa de la pertenencia llega al contexto", async () => {
     const base = await sembrarBase();
     const usuario = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    await prisma.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id }, data: { rolEmpresa: "gerente" } });
+    await prismaAdmin.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id }, data: { rolEmpresa: "gerente" } });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
     expect((await obtenerContextoUsuario())?.rolEmpresa).toBe("gerente");
@@ -172,18 +172,18 @@ describe("cambiarEmpresaActiva", () => {
 
   it("a una empresa suspendida, o con la pertenencia inactiva: no hace nada", async () => {
     const { usuario } = await usuarioEnDosEmpresas();
-    await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "SUSPENDED" } });
+    await prismaAdmin.empresa.update({ where: { id: "norte" }, data: { estado: "SUSPENDED" } });
     await expect(cambiarEmpresaActiva("norte")).resolves.toBeUndefined();
 
-    await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "ACTIVE" } });
-    await prisma.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id, empresaId: "norte" }, data: { activo: false } });
+    await prismaAdmin.empresa.update({ where: { id: "norte" }, data: { estado: "ACTIVE" } });
+    await prismaAdmin.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id, empresaId: "norte" }, data: { activo: false } });
     await expect(cambiarEmpresaActiva("norte")).resolves.toBeUndefined();
     expect(__cookiesDeTest().escritas.size).toBe(0);
   });
 
   it("a una empresa donde pertenece pero sin ninguna sucursal activa suya: no hace nada", async () => {
     const { norte } = await usuarioEnDosEmpresas();
-    await prisma.usuarioSucursal.updateMany({ where: { sucursalId: norte.sucursal.id }, data: { activo: false } });
+    await prismaAdmin.usuarioSucursal.updateMany({ where: { sucursalId: norte.sucursal.id }, data: { activo: false } });
 
     await expect(cambiarEmpresaActiva("norte")).resolves.toBeUndefined();
     expect(__cookiesDeTest().escritas.size).toBe(0);

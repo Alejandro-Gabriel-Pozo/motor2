@@ -1,11 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
-import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 
 /**
  * Estructura que deja la migración `multiempresa_estructura` (ADR-007, paso A2): instalación multiempresa-capable activada con UNA
  * empresa. El catálogo de la base se lee de `pg_catalog` (no del schema.prisma) para que un cambio en la migración o un modelo nuevo
- * sin `empresaId` rompa acá. Sin RLS todavía (paso A6).
+ * sin `empresaId` rompa acá. El RLS (paso A6) se prueba en test/aislamiento; acá las unicidades y FK son propiedades de la estructura y se ejercitan como dueño (`prismaAdmin`).
  */
 const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"];
 const PLATAFORMA = ["Empresa", "UsuarioEmpresa"];
@@ -116,6 +116,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
   });
 
   describe("unicidades por empresa (ADR-007, «Unicidades por empresa»)", () => {
+    const prisma = prismaAdmin;
     beforeEach(async () => {
       await crearEmpresa("empresa_b");
     });
@@ -169,6 +170,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
   });
 
   describe("FK compuestas: una fila no puede apuntar a otra empresa", () => {
+    const prisma = prismaAdmin;
     it("una Mesa de la empresa por defecto no puede colgar de una Sucursal de otra empresa (P2003)", async () => {
       await crearEmpresa("empresa_b");
       const sucursalB = await prisma.sucursal.create({ data: { empresaId: "empresa_b", nombre: "Sucursal B" } });

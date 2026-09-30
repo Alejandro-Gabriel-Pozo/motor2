@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
 import { generarReporteVentasSinReceta } from "../../src/core/reportes/ventas-sin-receta";
 
 /**
@@ -48,6 +48,7 @@ describe("generarReporteVentasSinReceta con decenas de miles de ventas", () => {
       SELECT 'vc' || g, 'v' || g, ${mpId}, ${seccionId}, 'CONSUMO'::"Proceso", -1, 'Consumo'
       FROM generate_series(1, ${conConsumo}::int) g`;
 
+    await analizarDespuesDeCargaMasiva();
     const filas = await generarReporteVentasSinReceta(sucursalId, prisma);
 
     expect(filas).toHaveLength(1);

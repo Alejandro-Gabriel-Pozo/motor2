@@ -164,7 +164,7 @@ segunda empresa se activa **después de la Fase 8** (D9).
 | A5 | **HECHO (`22c0541`)** — `dbDeEmpresa`/`transaccionDeEmpresa` (`set_config('app.empresa_id', $1, true)` local a la transacción; el contexto de usuario ya sale de `baseDeEmpresa`), autochequeo del rol de ejecución (se niega con superusuario/BYPASSRLS/dueño y más de una empresa activa) y los dos pendientes de A4 (`empresaId` explícito en la disponibilidad de `crearSucursalConAdmin`; admins activos contados por empresa). Medición local (`scripts/benchmark-reportes.ts`, 1 año de historia, 18.250 compras): ≈ +0,46 ms por operación (0,26 → 0,72 ms) y +3,2 % en `obtenerReportePorPeriodo` (2355 → 2430 ms). Línea base: 298 archivos/3480 tests, 540 módulos/0 violaciones, e2e 379, knip 0. | No | Medio (rendimiento) | A4 |
 | A6 | Migración 2: RLS, políticas, grants condicionales, `down.sql` + tests de catálogo | **EXPRESA** | Alto | A5 |
 | A7 | Tests de aislamiento + e2e multiempresa + script `crear-empresa` | No (correrlo contra una base real sí) | Bajo | A6 |
-| A8 | Producción: ensayo en rama de Neon, rol en Neon, `DATABASE_URL` en Vercel, slug real, push y DNS wildcard (Fase 7). Paso de datos (no migración): la `empresa_principal` de producción ya existía, así que asignar `rolEmpresa = 'gerente'` a su primer admin (el dueño confirma quién; candidato: el usuario ADMIN más antiguo) | **EXPRESA** | Alto | A7 |
+| A8 | Producción: ensayo en rama de Neon, rol en Neon, `DATABASE_URL` en Vercel, slug real, push y DNS wildcard (Fase 7). **Lo que A6 exige en producción (NO ejecutado, no autorizado)**: (a) aplicar la migración `20260929120000_multiempresa_rls` en Neon (con el dueño, `DIRECT_URL`) — antes, en una rama de Neon, ensayar migración + `down.sql` + un pedido real de cada tipo (login, POS, carta pública, crons); (b) crear en Neon el rol `motor2_app` (`LOGIN NOSUPERUSER NOBYPASSRLS`, sin ser dueño) con los mismos grants que `scripts/operaciones/crear-rol-motor2-app.sql` (`USAGE` en `public`, `SELECT/INSERT/UPDATE/DELETE` en todas las tablas, `USAGE/SELECT` en las secuencias y `ALTER DEFAULT PRIVILEGES` para las futuras); ese script está atado a `motor2_dev`/`motor2_e2e` y a un superusuario local, así que para Neon hay que adaptarlo (`app_empresa_actual()` es ejecutable por PUBLIC, no necesita grant); las migraciones solo hacen el `GRANT` condicional; (c) en Vercel `DATABASE_URL` = `motor2_app` (runtime) y `DIRECT_URL` = el dueño (migraciones); con la URL de dueño en runtime el RLS no aplica y el autochequeo se niega a operar con 2+ empresas; (d) verificar el adaptador y el pooler de Neon con `set_config(..., true)` (local a la transacción, seguro en modo transacción). Paso de datos (no migración): la `empresa_principal` de producción ya existía, así que asignar `rolEmpresa = 'gerente'` a su primer admin (el dueño confirma quién; candidato: el usuario ADMIN más antiguo) | **EXPRESA** | Alto | A7 |
 | V | Verificación final (abajo) | — | — | todos |
 
 ## Impacto en tests
@@ -299,6 +299,47 @@ con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
    ese `productoId`; sin selectividad por producto es ~0. Test:
    `test/persistencia/indice-compras-por-producto.test.ts` (el índice existe y el
    planificador lo usa).
+
+7. **A6 — RLS: cómo se resolvieron las lecturas anteriores al contexto**
+   (2026-09-29). Bajo RLS con 2+ empresas ACTIVE una consulta sin contexto no
+   ve nada y no puede insertar (`app_empresa_actual()` es NULL), así que cada
+   lectura que corre antes de tener empresa se decidió por separado:
+   - `obtenerContextoUsuario`: `UsuarioEmpresa`/`Empresa` (sin RLS) con `prisma`;
+     `UsuarioSucursal` (con RLS) una vez POR empresa del usuario, cada una con
+     `dbDeEmpresa(p.empresaId)`.
+   - `emailPuedeIniciarSesion` (gate de login, `acceso.ts`): `User` con `prisma`;
+     la membresía de sucursal por cada `UsuarioEmpresa` activo, bajo el contexto
+     de esa empresa. Cambio de semántica menor: exige `UsuarioEmpresa` activa
+     (la misma condición con la que `obtenerContextoUsuario` da contexto).
+   - `intentarBootstrapAdmin(usuarioId, email)` (`bootstrap.ts`): opera solo con
+     EXACTAMENTE una empresa ACTIVE (la instalación de hoy); con 2+ no adivina y
+     no hace nada (el primer admin de una empresa nueva lo crea `crear-empresa`).
+   - Carta pública con empresa por parámetro (`publica-sin-sesion.ts`):
+     `portalCartaPublico`/`cartaPublica` usan `dbDeEmpresa(empresa.id)`.
+   - Rutas legadas `/api/carta/*` (D9, sin empresa): siguen con `prisma`, o sea
+     con la empresa por defecto (única ACTIVE); con 2+ ACTIVE devuelven vacío/404
+     (sentido seguro). Los crons tocan solo tablas globales: sin cambios.
+   - `getUsuarioActual`/`lib/auth.ts`: solo tablas globales (`User`, `Account`,
+     `Session`); sin cambios.
+   `limpiarBaseDeTest` y los fixtures de varias empresas (`crearMembresia`) van
+   como dueño (`prismaAdmin`, `test/setup/cliente-duenio.ts`): el rol de
+   ejecución no puede sembrar filas de otra empresa. Se descartó `FORCE`: el
+   dueño que migra y siembra tiene que poder saltar el RLS.
+
+8. **A6 — RLS y estadísticas del planificador tras una carga masiva**
+   (2026-09-29). Los 4 tests de volumen (60k filas cargadas por SQL) pasaban
+   solos pero se colgaban (más de 5 minutos, bloqueando el `TRUNCATE` del test
+   siguiente) al correr en la suite: con estadísticas viejas de la carga anterior
+   (`proceso` = solo `COMPRA`, ver `pg_stats`) el filtro de la política
+   (`"empresaId" = (SELECT app_empresa_actual())`) deja al planificador
+   estimando ~1 fila, elige un nested loop con un scan de `MovimientoStock` por
+   `empresaId` en el lado interno del `NOT EXISTS` y hace 60k × 60k. Con
+   estadísticas reales (`empresaId` con 1 valor distinto) no pasa. Causa raíz
+   corregida en los tests con `analizarDespuesDeCargaMasiva()` (ANALYZE del
+   dueño tras la carga, `test/setup/test-db.ts`); no se tocó ni se debilitó el
+   RLS. **Para A8**: tras la importación masiva de datos históricos a Neon
+   (Fase 7) correr `ANALYZE` antes de abrir el tráfico, en vez de esperar al
+   autovacuum.
 
 ## Riesgos abiertos
 Rendimiento (cada consulta suma BEGIN + `set_config` + COMMIT; se mide en A5

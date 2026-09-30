@@ -89,6 +89,9 @@ model VerificationToken {
 // tabla de dominio lleva `empresaId` (default `app_empresa_actual()`, que con
 // una sola empresa activa devuelve esa) y las referencias entre ellas son FK
 // compuestas [empresaId, xId]. Rol/PermisoRol/Unidad son por empresa (D3).
+// RLS (migración 2, A6): política `aislamiento_empresa` en esas tablas; el rol de
+// ejecución `motor2_app` la cumple y el dueño la salta (`ENABLE`, sin `FORCE`).
+// Prisma no expresa políticas: viven solo en la migración, no acá.
 // Dentro de una empresa, el alcance por sucursal se resuelve aparte, en
 // CapacidadSucursal y UsuarioSucursal, nunca como columna dentro de la matriz
 // de permisos — patrón validado contra ERPNext ("User Permission" / "Company

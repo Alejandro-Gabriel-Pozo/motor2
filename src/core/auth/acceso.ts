@@ -1,5 +1,5 @@
-import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { dbDeEmpresa } from "./base";
 import { obtenerEmailsBootstrap } from "./bootstrap";
 
 function obtenerDominiosPermitidos(): string[] {
@@ -26,11 +26,7 @@ function obtenerDominiosPermitidos(): string[] {
  *     (UsuarioSucursal activo vía agregarOActualizarUsuario) aunque no sea
  *     del dominio de la empresa — para alguien externo con Gmail personal.
  */
-export async function emailPuedeIniciarSesion(
-  email: string,
-  hd: string | undefined,
-  db: PrismaClient = prisma
-): Promise<boolean> {
+export async function emailPuedeIniciarSesion(email: string, hd: string | undefined): Promise<boolean> {
   const emailNorm = email.trim().toLowerCase();
   if (!emailNorm) return false;
 
@@ -40,10 +36,7 @@ export async function emailPuedeIniciarSesion(
   // ALLOWED_EMAIL_DOMAINS podría seguir entrando por esas vías sin que el
   // kill-switch aplicara nunca. Un usuario que todavía no existe (login
   // nuevo) no tiene fila que consultar acá — no lo bloquea.
-  const usuarioExistente = await db.user.findUnique({
-    where: { email: emailNorm },
-    include: { sucursales: { where: { activo: true }, take: 1 } },
-  });
+  const usuarioExistente = await prisma.user.findUnique({ where: { email: emailNorm } });
   if (usuarioExistente && !usuarioExistente.activoGlobal) return false;
 
   if (obtenerEmailsBootstrap().includes(emailNorm)) return true;
@@ -54,5 +47,18 @@ export async function emailPuedeIniciarSesion(
     return true;
   }
 
-  return Boolean(usuarioExistente && usuarioExistente.sucursales.length > 0);
+  return usuarioExistente ? tieneSucursalActiva(usuarioExistente.id) : false;
+}
+
+/**
+ * Este chequeo corre ANTES de tener una empresa (login), así que no hay contexto de donde sacar `db`. `User` y `UsuarioEmpresa` no
+ * tienen RLS (se leen con `prisma`); `UsuarioSucursal` sí, y se consulta por cada empresa del usuario bajo su propio contexto. Solo cuentan
+ * las empresas donde su `UsuarioEmpresa` está activa: es la misma condición con la que `obtenerContextoUsuario` le da contexto.
+ */
+async function tieneSucursalActiva(usuarioId: string): Promise<boolean> {
+  const pertenencias = await prisma.usuarioEmpresa.findMany({ where: { usuarioId, activo: true }, select: { empresaId: true } });
+  const conSucursal = await Promise.all(
+    pertenencias.map(async ({ empresaId }) => Boolean(await dbDeEmpresa(empresaId).usuarioSucursal.findFirst({ where: { usuarioId, activo: true }, select: { id: true } })))
+  );
+  return conSucursal.some(Boolean);
 }

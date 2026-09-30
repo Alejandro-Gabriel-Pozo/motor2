@@ -12,6 +12,7 @@ const { prismaFalso, resolverPortalCarta, resolverCartaPublica, portalCartaPubli
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
+vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }) }));
 vi.mock("@/core/carta/publica-consulta", () => ({ resolverPortalCarta, resolverCartaPublica }));
 vi.mock("@/core/carta/empresa-carta", () => ({ resolverEmpresaCarta }));
 vi.mock("@/core/carta/publica-sin-sesion", async (importOriginal) => {
@@ -44,14 +45,14 @@ describe("punto público sin sesión", () => {
     expect(resolverEmpresaCarta).toHaveBeenCalledWith("la-cuadra", prismaFalso);
   });
 
-  it("portalCartaPublico y cartaPublica pasan la empresa recibida (y la base) a la consulta", async () => {
+  it("portalCartaPublico y cartaPublica pasan la empresa recibida y la base DE ESA empresa (con contexto RLS) a la consulta", async () => {
     const real = await vi.importActual<typeof import("@/core/carta/publica-sin-sesion")>("@/core/carta/publica-sin-sesion");
 
     await real.portalCartaPublico(EMPRESA);
     await real.cartaPublica(EMPRESA, "central");
 
-    expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, prismaFalso);
-    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", prismaFalso);
+    expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
+    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id });
   });
 });
 

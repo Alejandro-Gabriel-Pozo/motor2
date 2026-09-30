@@ -1,5 +1,5 @@
-import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { dbDeEmpresa } from "./base";
 
 export function obtenerEmailsBootstrap(): string[] {
   return (process.env.BOOTSTRAP_ADMIN_EMAILS ?? "")
@@ -23,17 +23,21 @@ export function obtenerEmailsBootstrap(): string[] {
  * única vía para sumar gente pasa a ser la acción 'gestion_usuarios' (sumar
  * a alguien a una sucursal existente) o 'alta_sucursal' (crear una sucursal
  * nueva con su primer admin).
+ *
+ * Corre en el evento de login, o sea ANTES de tener empresa: sin contexto de usuario y bajo RLS. Solo opera cuando hay EXACTAMENTE una
+ * empresa ACTIVE (la instalación de hoy, ADR-007): esa es la empresa del bootstrap y todo lo demás va con `dbDeEmpresa`. Con dos o más
+ * no adivina a cuál sumar al usuario y no hace nada (el primer admin de una empresa nueva lo crea `crear-empresa`).
  */
-export async function intentarBootstrapAdmin(
-  usuarioId: string,
-  email: string,
-  db: PrismaClient = prisma
-): Promise<void> {
+export async function intentarBootstrapAdmin(usuarioId: string, email: string): Promise<void> {
   const emailsBootstrap = obtenerEmailsBootstrap();
   if (!emailsBootstrap.includes(email.trim().toLowerCase())) return;
 
-  // La empresa del bootstrap es la de la primera sucursal activa (la instalación de hoy tiene una sola, ADR-007): el
-  // chequeo "todavía no hay admin" y el rol admin se resuelven DENTRO de esa empresa.
+  // `Empresa` no tiene RLS: se puede leer sin contexto. `take: 2` alcanza para distinguir "una sola" de "varias".
+  const empresasActivas = await prisma.empresa.findMany({ where: { estado: "ACTIVE" }, select: { id: true }, take: 2 });
+  if (empresasActivas.length !== 1) return;
+  const db = dbDeEmpresa(empresasActivas[0].id);
+
+  // El chequeo "todavía no hay admin" y el rol admin se resuelven DENTRO de esa empresa.
   const sucursal = await db.sucursal.findFirst({ where: { activo: true }, orderBy: { creadoEn: "asc" } });
   // Si el seed todavía no corrió no hay ni rol admin ni sucursal — no hay
   // dónde hacer bootstrap todavía; no es un error, solo "esperar al seed".

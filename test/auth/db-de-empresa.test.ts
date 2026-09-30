@@ -37,7 +37,7 @@ describe("dbDeEmpresa / transaccionDeEmpresa", () => {
     const db = dbDeEmpresa("norte");
     expect(await contextoDeLaConexion(db)).toBe("norte");
     await db.$executeRaw`INSERT INTO "Sucursal" (id, nombre) VALUES ('suc-cruda', 'Cruda')`;
-    expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: "suc-cruda" } })).empresaId).toBe("norte");
+    expect((await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id: "suc-cruda" } })).empresaId).toBe("norte");
   });
 
   it("sin contexto, con dos empresas activas, un alta sin empresaId falla (el sentido seguro)", async () => {

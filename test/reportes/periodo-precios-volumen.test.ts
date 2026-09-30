@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
 import { construirMapaProductos } from "../../src/core/reportes/comun";
 import { calcularTendenciaPreciosDelPeriodo } from "../../src/core/reportes/periodo-precios";
 import type { ItemPeriodo } from "../../src/core/reportes/periodo-tipos";
@@ -33,6 +33,7 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
       SELECT ${opciones.prefijo} || 'm' || g, ${opciones.prefijo} || g, ${productoId}, ${seccionId}, 'COMPRA'::"Proceso", ${opciones.unidades}::numeric, 'Compra',
              ${opciones.precioTotal}::numeric, CASE WHEN ${opciones.unidades}::numeric > 0 THEN ${opciones.precioTotal}::numeric / ${opciones.unidades}::numeric ELSE 0 END
       FROM generate_series(1, ${cantidad}::int) g`;
+    await analizarDespuesDeCargaMasiva();
   }
 
   function compraDelPeriodo(productoId: string, cantidad: number, precioTotal: number): ItemPeriodo {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { dbDeEmpresa } from "../../src/core/auth/base";
 import { resolverCartaPublica, resolverPortalCarta } from "../../src/core/carta/publica-consulta";
 
 const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal" };
@@ -8,12 +9,12 @@ const otraEmpresa = { id: OTRA_EMPRESA_ID, slug: "otra" };
 
 /** Una segunda empresa (PROVISIONING: la por defecto sigue siendo la única ACTIVE y `app_empresa_actual()` resuelve) con una sucursal propia. */
 async function crearSucursalDeOtraEmpresa(nombre: string): Promise<string> {
-  await prisma.empresa.upsert({
+  await prismaAdmin.empresa.upsert({
     where: { id: OTRA_EMPRESA_ID },
     update: {},
     create: { id: OTRA_EMPRESA_ID, nombre: "Otra empresa", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "PROVISIONING" },
   });
-  return (await prisma.sucursal.create({ data: { nombre, empresaId: OTRA_EMPRESA_ID } })).id;
+  return (await prismaAdmin.sucursal.create({ data: { nombre, empresaId: OTRA_EMPRESA_ID } })).id;
 }
 
 /**
@@ -34,7 +35,7 @@ describe("resolverPortalCarta", () => {
   });
 
   it("sin filas, lista vacía", async () => {
-    await expect(resolverPortalCarta(empresa, prisma)).resolves.toEqual([]);
+    await expect(resolverPortalCarta(empresa, dbDeEmpresa(empresa.id))).resolves.toEqual([]);
   });
 
   it("solo publicada && sucursal.activo entran — a diferencia del registro completo de la carta externa, acá NO se emite lo que no se muestra", async () => {
@@ -45,13 +46,13 @@ describe("resolverPortalCarta", () => {
         { sucursalId: inactiva, slug: "cerrada", publicada: true },
       ],
     });
-    const portal = await resolverPortalCarta(empresa, prisma);
+    const portal = await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id));
     expect(portal.map((p) => p.slug)).toEqual(["central"]);
   });
 
   it("etiqueta cae al nombre de la sucursal si no está cargada", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
-    const [entrada] = await resolverPortalCarta(empresa, prisma);
+    const [entrada] = await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id));
     expect(entrada).toEqual({ slug: "central", etiqueta: "Central", subtitulo: null });
   });
 
@@ -62,20 +63,20 @@ describe("resolverPortalCarta", () => {
         { sucursalId: norte, slug: "norte", publicada: true, etiqueta: "Alfa", orden: 0 },
       ],
     });
-    const portal = await resolverPortalCarta(empresa, prisma);
+    const portal = await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id));
     expect(portal.map((p) => p.slug)).toEqual(["norte", "central"]);
   });
 
   it("aislamiento entre empresas: el portal de una no lista las sucursales publicadas de la otra", async () => {
     const ajena = await crearSucursalDeOtraEmpresa("Ajena");
-    await prisma.sucursalPublica.createMany({
+    await prismaAdmin.sucursalPublica.createMany({
       data: [
         { sucursalId: central, slug: "central", publicada: true },
         { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "ajena", publicada: true },
       ],
     });
-    expect((await resolverPortalCarta(empresa, prisma)).map((p) => p.slug)).toEqual(["central"]);
-    expect((await resolverPortalCarta(otraEmpresa, prisma)).map((p) => p.slug)).toEqual(["ajena"]);
+    expect((await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id))).map((p) => p.slug)).toEqual(["central"]);
+    expect((await resolverPortalCarta(otraEmpresa, dbDeEmpresa(otraEmpresa.id))).map((p) => p.slug)).toEqual(["ajena"]);
   });
 });
 
@@ -88,23 +89,23 @@ describe("resolverCartaPublica", () => {
   });
 
   it("null si el slug no existe", async () => {
-    await expect(resolverCartaPublica(empresa, "no-existe", prisma)).resolves.toBeNull();
+    await expect(resolverCartaPublica(empresa, "no-existe", dbDeEmpresa(empresa.id))).resolves.toBeNull();
   });
 
   it("null si existe pero no está publicada", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: false } });
-    await expect(resolverCartaPublica(empresa, "central", prisma)).resolves.toBeNull();
+    await expect(resolverCartaPublica(empresa, "central", dbDeEmpresa(empresa.id))).resolves.toBeNull();
   });
 
   it("null si la sucursal está inactiva, aunque esté publicada", async () => {
     const inactiva = (await prisma.sucursal.create({ data: { nombre: "Cerrada", activo: false } })).id;
     await prisma.sucursalPublica.create({ data: { sucursalId: inactiva, slug: "cerrada", publicada: true } });
-    await expect(resolverCartaPublica(empresa, "cerrada", prisma)).resolves.toBeNull();
+    await expect(resolverCartaPublica(empresa, "cerrada", dbDeEmpresa(empresa.id))).resolves.toBeNull();
   });
 
   it("sin tema (ninguna fila), el estilo es el default del catálogo", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
-    const r = await resolverCartaPublica(empresa, "central", prisma);
+    const r = await resolverCartaPublica(empresa, "central", dbDeEmpresa(empresa.id));
     expect(r).not.toBeNull();
     expect(r!.carta.sucursal.id).toBe(central);
     expect(r!.estilo.valores.restaurante_nombre).toBe("");
@@ -113,33 +114,33 @@ describe("resolverCartaPublica", () => {
   it("con tema guardado pero SIN aplicar, sigue en el default — un borrador nunca se filtra a la carta pública", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: false, valores: { restaurante_nombre: "Borrador" } } });
-    const r = await resolverCartaPublica(empresa, "central", prisma);
+    const r = await resolverCartaPublica(empresa, "central", dbDeEmpresa(empresa.id));
     expect(r!.estilo.valores.restaurante_nombre).toBe("");
   });
 
   it("con tema aplicado, el estilo usa esos valores", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
     await prisma.temaCartaSucursal.create({ data: { sucursalId: central, aplicarEnCarta: true, valores: { restaurante_nombre: "La Cuadra" } } });
-    const r = await resolverCartaPublica(empresa, "central", prisma);
+    const r = await resolverCartaPublica(empresa, "central", dbDeEmpresa(empresa.id));
     expect(r!.estilo.valores.restaurante_nombre).toBe("La Cuadra");
   });
 
   it("aislamiento entre empresas: el mismo slug de sucursal resuelve a la sucursal de CADA empresa", async () => {
     const ajena = await crearSucursalDeOtraEmpresa("Ajena");
-    await prisma.sucursalPublica.createMany({
+    await prismaAdmin.sucursalPublica.createMany({
       data: [
         { sucursalId: central, slug: "central", publicada: true },
         { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "central", publicada: true },
       ],
     });
-    expect((await resolverCartaPublica(empresa, "central", prisma))!.carta.sucursal.id).toBe(central);
-    expect((await resolverCartaPublica(otraEmpresa, "central", prisma))!.carta.sucursal.id).toBe(ajena);
+    expect((await resolverCartaPublica(empresa, "central", dbDeEmpresa(empresa.id)))!.carta.sucursal.id).toBe(central);
+    expect((await resolverCartaPublica(otraEmpresa, "central", dbDeEmpresa(otraEmpresa.id)))!.carta.sucursal.id).toBe(ajena);
   });
 
   it("aislamiento entre empresas: un slug publicado solo en la otra empresa da null", async () => {
     const ajena = await crearSucursalDeOtraEmpresa("Ajena");
-    await prisma.sucursalPublica.create({ data: { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "solo-ajena", publicada: true } });
-    await expect(resolverCartaPublica(empresa, "solo-ajena", prisma)).resolves.toBeNull();
-    await expect(resolverCartaPublica(otraEmpresa, "solo-ajena", prisma)).resolves.not.toBeNull();
+    await prismaAdmin.sucursalPublica.create({ data: { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "solo-ajena", publicada: true } });
+    await expect(resolverCartaPublica(empresa, "solo-ajena", dbDeEmpresa(empresa.id))).resolves.toBeNull();
+    await expect(resolverCartaPublica(otraEmpresa, "solo-ajena", dbDeEmpresa(otraEmpresa.id))).resolves.not.toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { prisma } from "../../src/lib/db";
+import { prismaAdmin } from "./cliente-duenio";
 
 interface DatosMembresia {
   usuarioId: string;
@@ -13,14 +13,15 @@ interface DatosMembresia {
  * de la sucursal (`UsuarioSucursal`) van juntas — sin la primera `obtenerContextoUsuario` no devuelve contexto. Todo test o
  * fixture que necesite "un usuario en una sucursal" pasa por acá en vez de crear `UsuarioSucursal` a mano.
  */
+/** Va como dueño (`prismaAdmin`): es un fixture, y con el RLS del paso A6 el rol de ejecución no puede sembrar filas de una empresa que no es la de su contexto. */
 export async function crearMembresia(datos: DatosMembresia) {
-  const { empresaId } = await prisma.sucursal.findUniqueOrThrow({ where: { id: datos.sucursalId }, select: { empresaId: true } });
-  await prisma.usuarioEmpresa.upsert({
+  const { empresaId } = await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id: datos.sucursalId }, select: { empresaId: true } });
+  await prismaAdmin.usuarioEmpresa.upsert({
     where: { usuarioId_empresaId: { usuarioId: datos.usuarioId, empresaId } },
     update: {},
     create: { usuarioId: datos.usuarioId, empresaId },
   });
-  return prisma.usuarioSucursal.create({ data: { ...datos, empresaId, activo: datos.activo ?? true } });
+  return prismaAdmin.usuarioSucursal.create({ data: { ...datos, empresaId, activo: datos.activo ?? true } });
 }
 
 export async function crearMembresias(lista: DatosMembresia[]) {
