@@ -107,6 +107,8 @@ test("apariencia del portal: guardar, ver el mapa en la vista previa y arrastrar
     page.context().on("page", (p) => paginasAbiertas.push(p.url()));
     const tarjeta = preview.locator(`[data-portal-slug="${slug}"] a`);
     await expect(tarjeta).toBeVisible();
+    // El mouse de Playwright trabaja en coordenadas del viewport: con más sucursales cargadas por otras pruebas la vista previa puede quedar bajo el pliegue.
+    await tarjeta.scrollIntoViewIfNeeded();
     const caja = await tarjeta.boundingBox();
     const cajaMapa = await preview.locator(".portal-mapa").boundingBox();
     if (!caja || !cajaMapa) throw new Error("sin cajas");
