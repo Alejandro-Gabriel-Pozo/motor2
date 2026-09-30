@@ -108,7 +108,7 @@ function aVariableCss(clave: string): string {
 
 /**
  * Un tamaño de fuente guardado como número pelado ("14") necesita su unidad para ser CSS válido — `validarTamanoFuente`
- * (`css-valores.ts`) lo acepta tal cual a propósito (es el mismo criterio que la sheet vieja), y era `normFuente`
+ * (`css-valores.ts`) lo acepta tal cual a propósito (es el mismo criterio que la carta original), y era `normFuente`
  * (`restaurant-menu-design/lib/format-utils.ts`) quien le agregaba "px" recién al dibujar. Acá se hace en el mismo lugar
  * que el resto de la normalización, para que `variablesCss`/`valores` ya salgan listos para usar como `font-size`.
  */

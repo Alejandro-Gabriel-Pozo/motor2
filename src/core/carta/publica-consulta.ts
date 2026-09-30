@@ -26,8 +26,8 @@ export interface EntradaPortalCarta {
 
 /**
  * El portal: solo las sucursales `publicada && sucursal.activo` (el registro HTTP anterior emitía TODAS con `activo: false` para que la
- * carta externa reconciliara contra su sheet, D4/D7 de `docs/plan-registro-tenants-2026-09-24.md`; sin sheet externa que
- * reconciliar, no hace falta emitir lo que no se muestra). Orden: `orden` y después `etiqueta` (`localeCompare("es")`).
+ * carta externa las reconciliara, D4/D7 de `docs/plan-registro-tenants-2026-09-24.md`; sin carta externa, no hace falta emitir lo
+ * que no se muestra). Orden: `orden` y después `etiqueta` (`localeCompare("es")`).
  *
  * Solo las sucursales de `empresa` (ADR-007, A3): el filtro es explícito además de lo que aportará RLS (A6).
  */

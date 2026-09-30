@@ -27,7 +27,7 @@ const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_TEMA_V1
 
 function estadoDelTema(d: TemaAdmin): string {
   const portal = !d.publica ? "no está en el portal" : `/carta/${d.publica.slug}${d.publica.publicada ? "" : " (sin publicar)"}`;
-  const tema = !d.tema ? "sin tema en motor2 (la carta usa la tab Config de la sheet)" : d.tema.aplicarEnCarta ? "tema aplicado" : "borrador (la carta sigue con la sheet)";
+  const tema = !d.tema ? "sin tema (la carta usa el estilo por defecto)" : d.tema.aplicarEnCarta ? "tema aplicado" : "borrador (la carta usa el estilo por defecto)";
   return `Portal: ${portal} · Tema: ${tema}`;
 }
 
@@ -48,8 +48,8 @@ export default async function TemaCartaPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Tema de la carta</h1>
         <p className="text-sm text-neutral-500">
-          Colores, textos, tipografía y layout de la carta pública de «{datos.nombre}»: lo que hoy es la tab Config de su sheet. Mientras el tema no esté
-          aplicado es un borrador y la carta sigue con la sheet; aplicado, la carta lo toma en hasta 5 minutos. Vacío = default de la carta.
+          Colores, textos, tipografía y layout de la carta pública de «{datos.nombre}». Mientras el tema no esté
+          aplicado es un borrador y la carta usa el estilo por defecto; aplicado, la carta lo toma en hasta 5 minutos. Vacío = default de la carta.
         </p>
         <p className="text-sm" data-estado-tema>
           {estadoDelTema(datos)}
@@ -98,7 +98,7 @@ export default async function TemaCartaPage() {
         >
           <p className="text-sm text-neutral-500">
             {aplicado
-              ? "Desaplicarlo es la vuelta atrás: la carta vuelve a la tab Config de la sheet y los valores se conservan."
+              ? "Desaplicarlo es la vuelta atrás: la carta vuelve al estilo por defecto y los valores se conservan."
               : "Aplica lo GUARDADO (guardá antes los cambios). No se puede aplicar un tema vacío."}
           </p>
           <button type="submit" className="mt-2 rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">

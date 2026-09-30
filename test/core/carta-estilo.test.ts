@@ -87,7 +87,7 @@ describe("resolverEstiloCarta", () => {
       expect(estilo.imagenSeccion.overlay).toBe(false);
     });
 
-    it("overlay acepta los alias sí/no de la sheet (ALIAS_SI_NO)", () => {
+    it("overlay acepta los alias sí/no (ALIAS_SI_NO)", () => {
       expect(resolverEstiloCarta({ carta_imagen_overlay: "sí" }).imagenSeccion.overlay).toBe(true);
       expect(resolverEstiloCarta({ carta_imagen_overlay: "false" }).imagenSeccion.overlay).toBe(false);
     });

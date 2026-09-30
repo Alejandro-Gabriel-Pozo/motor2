@@ -206,7 +206,7 @@ function textoDelModo(modo: "mapa" | "grilla", enMapa: number, enGrilla: number,
 
 const AYUDA: Partial<Record<DefinicionClavePortal["tipo"], string>> = {
   tamanoFuente: "Número = px, o una medida: 0.9rem, 12px, clamp(…).",
-  imagen: "URL https:// de la imagen (también sirve pegar el link tal como lo da la sheet: [texto](https://…)).",
+  imagen: "URL https:// de la imagen (también sirve un link de markdown: [texto](https://…)).",
   fraccion: "0 = sin oscurecer, 1 = negro. Ayuda a leer las tarjetas sobre una imagen clara.",
   proporcion: "Ancho/alto de la imagen, para que el mapa tenga su forma antes de cargar: 1080/1533, 16/9 o un número (0.7).",
   porcentaje: "Porcentaje del alto del mapa (0 a 100). Cada sucursal puede tener su propio alto en su posición.",

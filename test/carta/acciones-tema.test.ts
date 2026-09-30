@@ -57,7 +57,7 @@ describe("Server Actions del tema de la carta", () => {
   it("guarda las 64 claves válidas en borrador (al crear no aplica)", async () => {
     expect(Object.keys(TODAS_VALIDAS)).toHaveLength(64);
     const r = await guardarTemaCarta(centralId, TODAS_VALIDAS);
-    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (64 valores cargados; el resto usa el default de la carta). Es un borrador: la carta sigue con la sheet hasta que lo apliques.' });
+    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (64 valores cargados; el resto usa el default de la carta). Es un borrador: la carta usa el estilo por defecto hasta que lo apliques.' });
     const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(false);
     expect(Object.keys(fila.valores as object)).toHaveLength(64);
@@ -145,7 +145,7 @@ describe("Server Actions del tema de la carta", () => {
     await guardarTemaCarta(centralId, { color_marca: "red", restaurante_nombre: "La Parrilla" });
     await cambiarAplicacionTema(centralId, true);
     expect(await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({ aplicarEnCarta: true, valores: { color_marca: "red" } });
-    expect(await cambiarAplicacionTema(centralId, false)).toEqual({ ok: true, mensaje: 'Tema de "Central" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).' });
+    expect(await cambiarAplicacionTema(centralId, false)).toEqual({ ok: true, mensaje: 'Tema de "Central" desaplicado: la carta vuelve al estilo por defecto (los valores guardados se conservan).' });
     const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(false);
     expect(fila.valores).toEqual({ color_marca: "red", restaurante_nombre: "La Parrilla" });

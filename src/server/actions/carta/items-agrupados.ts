@@ -37,7 +37,7 @@ export interface DatosItemAgrupadoCarta {
   /** La sección de carta donde se ubica (obligatoria). */
   seccionCartaId: string;
   descripcion?: string | null;
-  /** Lista, o texto separado por comas (como en la sheet). */
+  /** Lista, o texto separado por comas (separado por comas). */
   tags?: readonly string[] | string | null;
   especial?: boolean;
   orden?: number | string | null;

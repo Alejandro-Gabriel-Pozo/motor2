@@ -5,7 +5,6 @@ import {
   CLAVES_NO_POR_TENANT,
   CLAVES_RETIRADAS,
   CLAVES_TEMA_V1,
-  parsearConfigPegada,
   validarValoresTema,
   validarValorTema,
   ZONAS_TEMA,
@@ -13,7 +12,7 @@ import {
 
 /**
  * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 64 claves por tenant, la clasificación del
- * resto de `SiteConfig`, la paridad con los defaults de la carta, un validador por tipo, el importador ("Pegar desde la sheet")
+ * resto de `SiteConfig`, la paridad con los defaults de la carta, un validador por tipo
  * y el saneamiento de la salida del endpoint.
  */
 
@@ -116,7 +115,7 @@ const CLAVES_SITE_CONFIG = [
  * original. Quedan marcados con el comentario `// piso 11px` al lado; el resto de la tabla sigue siendo paridad real.
  */
 const DEFAULTS_CARTA_NO_VACIOS: Record<string, string> = {
-  carta_fuente_familia: "playfair", // propia de motor2: sin equivalente en la sheet (el default es la Playfair Display de siempre)
+  carta_fuente_familia: "playfair", // propia de motor2: sin equivalente en `SiteConfig` (el default es la Playfair Display de siempre)
   topbar_back_label: "← Menú",
   topbar_back_size: "12px",
   carta_pos_bloque: "50",
@@ -283,53 +282,6 @@ describe("validarValoresTema", () => {
     expect(r.mensaje).not.toContain("Alto de la banda en desktop: ");
     expect(r.mensaje.split(" · ")).toHaveLength(5);
     expect(r.mensaje).toMatch(/\(y 2 más\)\.$/);
-  });
-});
-
-describe("parsearConfigPegada (Pegar desde la sheet)", () => {
-  it("clasifica un pegado real de la tab Config", () => {
-    const pegado = [
-      "clave\tvalor",
-      "",
-      "restaurante_nombre\t  La Parrilla  ",
-      "color_marca\t#8B4513",
-      "meta_title\tLa Parrilla — Carta 2026",
-      "precio_locale\tes-AR",
-      "color_item_precio\tno-es-un-color;",
-      "carta_banda_alto_desktop\t90px}body{display:none",
-      "carta_fuente_item_nombre\tclamp(0.8rem, 2vw, 1rem)",
-      "color_banda_titulo\t",
-      "clave_vieja	x",
-      "carta_fuente_indice_categoria	0.7rem",
-      "carta_imagen_modo	miniatura",
-      "carta_imagen_ancho_mobile	160",
-      "carta_imagen_ancho_desktop	auto 100%",
-      "   ",
-      "carta_banda_alto_mobile\t120\tcolumna C ignorada",
-      'restaurante_descripcion\t"Cocina de ""autor"""',
-    ].join("\r\n");
-    const r = parsearConfigPegada(pegado);
-    expect(r.valores).toEqual({
-      restaurante_nombre: "La Parrilla",
-      color_marca: "#8B4513",
-      carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)",
-      carta_banda_alto_mobile: "120",
-      restaurante_descripcion: 'Cocina de "autor"',
-    });
-    expect(r.fijasDelSistema).toEqual(["precio_locale"]);
-    expect(r.noPorTenant).toEqual(["meta_title"]);
-    expect(r.retiradas).toEqual(["carta_fuente_indice_categoria", "carta_imagen_modo", "carta_imagen_ancho_mobile", "carta_imagen_ancho_desktop"]);
-    expect(r.desconocidas).toEqual(["clave_vieja"]);
-    expect(r.invalidas.map((i) => i.clave)).toEqual(["color_item_precio", "carta_banda_alto_desktop"]);
-    expect(r.invalidas.every((i) => i.motivo.length > 0)).toBe(true);
-  });
-
-  it("si una clave se repite gana la última (como getConfig)", () => {
-    expect(parsearConfigPegada("color_marca\tred\ncolor_marca\tblue").valores).toEqual({ color_marca: "blue" });
-  });
-
-  it("vacío → todo vacío", () => {
-    expect(parsearConfigPegada("")).toEqual({ valores: {}, fijasDelSistema: [], noPorTenant: [], retiradas: [], desconocidas: [], invalidas: [] });
   });
 });
 

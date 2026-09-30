@@ -32,8 +32,7 @@ function esChoqueDeUnicidad(e: unknown): boolean {
 
 /**
  * Agrega la sucursal al registro del portal (D3, opt-in): crea su fila SIN publicar, con el slug calculado UNA vez desde el
- * nombre (`slugTenant`) y desambiguado contra los que ya existen (`-2`, `-3`…). Si al migrar un tenant de la sheet el slug no
- * coincide con su `tenant_id`, se edita después a mano. Ante una carrera con otra alta que tomó el mismo slug (P2002), reintenta.
+ * nombre (`slugTenant`) y desambiguado contra los que ya existen (`-2`, `-3`…). Si hace falta otra dirección, el slug se edita después a mano. Ante una carrera con otra alta que tomó el mismo slug (P2002), reintenta.
  */
 export async function agregarSucursalAlPortal(sucursalId: string): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
@@ -117,8 +116,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
 }
 
 /**
- * Saca la sucursal del registro de motor2: borra su fila. Es la vuelta atrás por tenant (D7): si la sheet maestra todavía
- * tiene una fila con ese `tenant_id`, la carta vuelve a usarla; si no, el tenant desaparece del portal.
+ * Saca la sucursal del registro de motor2: borra su fila. Es la vuelta atrás del alta: la sucursal desaparece del portal.
  */
 export async function quitarSucursalDelPortal(sucursalId: string): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {

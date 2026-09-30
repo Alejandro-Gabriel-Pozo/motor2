@@ -29,7 +29,7 @@ export function validarImagenUrlCarta(valor: unknown, etiqueta = "La URL de la i
 }
 
 /**
- * Acepta una lista o un texto separado por comas (como la columna de la sheet de hoy). Recorta, descarta vacíos y repetidos
+ * Acepta una lista o un texto separado por comas (como en un campo de tags). Recorta, descarta vacíos y repetidos
  * (sin distinguir mayúsculas), y valida cantidad, largo y caracteres.
  */
 export function normalizarTagsCarta(valor: readonly string[] | string | null | undefined): Resultado<string[]> {

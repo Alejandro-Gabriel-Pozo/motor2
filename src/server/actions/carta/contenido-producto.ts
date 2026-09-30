@@ -21,7 +21,7 @@ export interface DatosContenidoCarta {
   /** Obligatoria si `visibleEnCarta` (DA2); vacío/null = sin sección (solo para un contenido oculto). */
   seccionCartaId?: string | null;
   descripcion?: string | null;
-  /** Lista, o texto separado por comas (como en la sheet). */
+  /** Lista, o texto separado por comas (separado por comas). */
   tags?: readonly string[] | string | null;
   especial?: boolean;
   orden?: number | string | null;

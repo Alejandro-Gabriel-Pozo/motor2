@@ -376,7 +376,7 @@ export interface SucursalPortalAdmin {
   id: string;
   nombre: string;
   activo: boolean;
-  /** null = la sucursal no está en el registro de motor2 (la carta sigue con la fila de la sheet, si la hay). */
+  /** null = la sucursal no está en el registro de motor2 (no sale en el portal). */
   publica: RegistroPublicoAdmin | null;
   /** true = tiene un tema aplicado en motor2 (/carta/tema): el registro emite `temaDesdeMotor2` (docs/plan-tema-carta-2026-09-24.md, M6). */
   temaDesdeMotor2: boolean;
@@ -415,7 +415,7 @@ export async function cargarAdminPortal(db: Db): Promise<SucursalPortalAdmin[]> 
 export interface TemaAdmin {
   sucursalId: string;
   nombre: string;
-  /** null = la sucursal todavía no tiene tema en motor2 (la carta usa la tab Config de su sheet). */
+  /** null = la sucursal todavía no tiene tema en motor2 (la carta usa el estilo por defecto). */
   tema: {
     /**
      * Lo guardado TAL CUAL (sin volver a validar), solo las claves del catálogo con valor de texto: si alguien cargó algo inválido

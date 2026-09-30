@@ -79,7 +79,7 @@ export function esClavePortal(clave: string): clave is ClavePortal {
 // ---------------------------------------------------------------------------------------------------------------------------
 
 /**
- * La URL de una imagen tal como se copia de la sheet vieja: `[texto](https://…)` (link de markdown), `(https://…)` o la URL
+ * La URL de una imagen tal como se copia de un documento: `[texto](https://…)` (link de markdown), `(https://…)` o la URL
  * pelada. Los paréntesis no pasan `validarImagenUrlCarta`, así que se sacan ANTES de validar.
  */
 export function extraerUrlImagen(crudo: string): string {

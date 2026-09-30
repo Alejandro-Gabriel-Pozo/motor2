@@ -13,7 +13,7 @@ import { EditorPortal } from "@/components/carta/editor-portal";
 /**
  * Portal de sucursales (docs/plan-registro-tenants-2026-09-24.md, M7): el registro que arma el portal de la carta pública
  * (ADR-006: módulo interno; antes lo leía restaurant-menu-design por HTTP) — slug (/carta/<slug>), etiqueta, dominio, subtítulo,
- * posición en el mapa, orden, si está publicada, de dónde sale el menú y los datos de la sheet mientras dure la transición.
+ * posición en el mapa, orden, si está publicada, y de dónde sale el menú.
  *
  * Todas las sucursales (el mapa es entre sucursales, no depende de la activa). Sin fila → "Agregar al portal"; con fila → su
  * formulario. Mismo estilo que /carta: las mutaciones pasan por las Server Actions de
@@ -45,8 +45,7 @@ export default async function PortalSucursalesPage() {
       <div>
         <h1 className="mb-1 text-xl font-semibold">Portal de sucursales</h1>
         <p className="text-sm text-neutral-500">
-          Qué sucursales muestra la carta pública en su portal y con qué dirección (/carta/&lt;slug&gt;). Una sucursal cargada acá reemplaza a la fila con
-          el mismo slug de la sheet maestra de la carta; «Quitar del portal» vuelve a esa fila. Solo sale en el portal si está publicada y la sucursal está
+          Qué sucursales muestra la carta pública en su portal y con qué dirección (/carta/&lt;slug&gt;). «Quitar del portal» la saca del portal. Solo sale en el portal si está publicada y la sucursal está
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
@@ -122,7 +121,7 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
       {p && (
         // Solo lectura (docs/plan-tema-carta-2026-09-24.md, M6): de dónde saca la carta los colores y textos de esta sucursal.
         <p className="text-sm text-neutral-500">
-          Tema: {s.temaDesdeMotor2 ? "motor2 (aplicado en Tema de la carta)" : "sheet (tab Config)"}
+          Tema: {s.temaDesdeMotor2 ? "aplicado (Tema de la carta)" : "estilo por defecto"}
         </p>
       )}
 
@@ -203,7 +202,7 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
             }}
             className="mt-3 border-t pt-3"
           >
-            <p className="text-sm text-neutral-500">Quitarla borra estos datos: la carta vuelve a usar la fila de la sheet maestra con ese slug, si la tiene.</p>
+            <p className="text-sm text-neutral-500">Quitarla borra estos datos: la sucursal deja de aparecer en el portal.</p>
             <button type="submit" className="text-sm underline">
               Quitar «{s.nombre}» del portal
             </button>

@@ -1834,9 +1834,8 @@ model PromoCartaCupo {
   @@unique([empresaId, id])
 }
 
-/// Registro público de una sucursal en el portal/carta (lo que hoy es una fila de la tab "tenant" de la sheet maestra de
-/// restaurant-menu-design; docs/plan-registro-tenants-2026-09-24.md). FILA AUSENTE = esta sucursal no está en el registro de
-/// motor2 (opt-in; sin backfill). Lo lee GET /api/carta/tenants; se carga en /catalogo/carta/portal. Sin onDelete: RESTRICT
+/// Registro público de una sucursal en el portal/carta (docs/plan-registro-tenants-2026-09-24.md, ADR-006). FILA AUSENTE = esta
+/// sucursal no está en el portal (opt-in; sin backfill). Lo lee la carta pública interna; se carga en /carta/portal. Sin onDelete: RESTRICT
 /// (las sucursales nunca se borran, se desactivan).
 model SucursalPublica {
   id              String   @id @default(cuid())
@@ -1864,9 +1863,9 @@ model SucursalPublica {
   @@unique([empresaId, id])
 }
 
-/// Tema visual de la carta pública de una sucursal: lo que hoy es la tab "Config" de la sheet de cada tenant de
-/// restaurant-menu-design (las 66 claves por tenant del catálogo CLAVES_TEMA_V1 de src/core/carta/tema.ts; los precios
-/// son convención fija del sistema y no están acá). FILA AUSENTE = la carta sigue con la tab Config (opt-in; sin backfill).
+/// Tema visual de la carta pública de una sucursal (las claves por sucursal del catálogo CLAVES_TEMA_V1 de
+/// src/core/carta/tema.ts; los precios son convención fija del sistema y no están acá). FILA AUSENTE = la carta usa el estilo
+/// por defecto (opt-in; sin backfill).
 /// 1:1 con Sucursal y no con SucursalPublica (docs/plan-tema-carta-2026-09-24.md, D1): el tema se puede preparar antes de
 /// agregar la sucursal al portal, y "Quitar del portal" no lo borra. Sin onDelete: RESTRICT (las sucursales nunca se borran).
 model TemaCartaSucursal {
@@ -1877,7 +1876,7 @@ model TemaCartaSucursal {
   sucursal       Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   /// clave de SiteConfig → valor ya validado. Claves fuera del catálogo se ignoran al servir.
   valores        Json     @default("{}")
-  /// false = borrador (se edita y previsualiza en motor2; la carta sigue con la sheet). true = la carta usa este tema.
+  /// false = borrador (se edita y previsualiza en motor2; la carta usa el estilo por defecto). true = la carta usa este tema.
   aplicarEnCarta Boolean  @default(false)
   actualizadoEn  DateTime @updatedAt
 

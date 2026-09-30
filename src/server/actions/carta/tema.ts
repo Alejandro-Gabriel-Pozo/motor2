@@ -13,7 +13,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  * hace falta una migración de permisos).
  *
  * Reciben el `Sucursal.id` (la fila es 1:1 con la sucursal; la pantalla trabaja sobre la sucursal activa). Guardar y aplicar son
- * acciones separadas (D4): un tema guardado sin aplicar es un borrador y la carta sigue con la sheet.
+ * acciones separadas (D4): un tema guardado sin aplicar es un borrador y la carta usa el estilo por defecto.
  */
 
 /**
@@ -39,7 +39,7 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
     });
     revalidarCartasPublicas();
     const cantidad = Object.keys(validados.valor).length;
-    const estado = fila.aplicarEnCarta ? "Está aplicado: la carta toma los cambios en hasta 5 minutos." : "Es un borrador: la carta sigue con la sheet hasta que lo apliques.";
+    const estado = fila.aplicarEnCarta ? "Está aplicado: la carta toma los cambios en hasta 5 minutos." : "Es un borrador: la carta usa el estilo por defecto hasta que lo apliques.";
     return ok(`Tema de "${sucursal.nombre}" guardado (${cantidad} ${cantidad === 1 ? "valor cargado" : "valores cargados"}; el resto usa el default de la carta). ${estado}`);
   });
 }
@@ -47,7 +47,7 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
 /**
  * Aplica o desaplica el tema en la carta. Aplicar exige que el tema exista y tenga al menos un valor válido (no se aplica un tema
  * vacío, D4). Si la sucursal no está en el portal (o no está publicada) se guarda igual y se avisa: no tiene efecto hasta que la
- * carta la conozca. Desaplicar es la vuelta atrás: la carta vuelve a la tab Config de la sheet y los valores se conservan.
+ * carta la conozca. Desaplicar es la vuelta atrás: la carta vuelve al estilo por defecto y los valores se conservan.
  */
 export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
@@ -61,7 +61,7 @@ export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean
     if (!aplicar) {
       await ctx.db.temaCartaSucursal.update({ where: { id: fila.id }, data: { aplicarEnCarta: false } });
       revalidarCartasPublicas();
-      return ok(`Tema de "${nombre}" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).`);
+      return ok(`Tema de "${nombre}" desaplicado: la carta vuelve al estilo por defecto (los valores guardados se conservan).`);
     }
 
     if (contarValoresTema(fila.valores) === 0) return error("No se puede aplicar un tema vacío: cargá al menos un valor y guardalo.");

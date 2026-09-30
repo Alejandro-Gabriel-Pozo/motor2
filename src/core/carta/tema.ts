@@ -12,20 +12,19 @@ import {
 import { validarImagenUrlCarta, validarTextoLibreCarta, type Resultado } from "./validaciones";
 
 /**
- * Tema visual de la carta pública (docs/plan-tema-carta-2026-09-24.md, M3): lo que hoy es la tab "Config" de la sheet de cada
- * tenant de restaurant-menu-design (`SiteConfig`, lib/get-config.ts), pasado a motor2 (`TemaCartaSucursal.valores`, un Json con
- * las MISMAS claves que `SiteConfig`).
+ * Tema visual de la carta pública (docs/plan-tema-carta-2026-09-24.md, M3): `TemaCartaSucursal.valores`, un Json con las claves de
+ * `SiteConfig` de la carta original (restaurant-menu-design).
  *
  * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 64
- * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla), el importador ("Pegar
- * desde la sheet") y el contrato `TemaCartaV1` (lo arma `armarTemaCarta` para la carta pública interna).
+ * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla) y el contrato `TemaCartaV1` (lo arma
+ * `armarTemaCarta` para la carta pública interna).
  *
  * De las 109 claves de `SiteConfig`:
  *  - 63 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=25; D3 del plan). Más 1 propia de motor2, sin
- *    equivalente en la sheet: `carta_fuente_familia` (D=26) — la familia tipográfica de títulos, nombres y precios.
+ *    equivalente en `SiteConfig`: `carta_fuente_familia` (D=26) — la familia tipográfica de títulos, nombres y precios.
  *  - 4 están RETIRADAS (`CLAVES_RETIRADAS`): 1 que el original nunca dibujaba y las 3 de miniatura de la imagen de sección (decisión del dueño).
  *  - 3 son de precio y son CONVENCIÓN FIJA del sistema (es-AR, "$", a la izquierda) → `CLAVES_FIJAS_DEL_SISTEMA`: motor2 no las
- *    guarda ni las emite; la carta las sigue tomando de la sheet o de su default, que es esa misma convención.
+ *    guarda ni las emite; la carta usa esa misma convención.
  *  - 39 no son por tenant (config raíz del portal, SEO, o solo del modo single de `/`) → `CLAVES_NO_POR_TENANT`.
  */
 
@@ -205,16 +204,15 @@ export function esClaveTema(clave: string): clave is ClaveTema {
 
 /**
  * Las 3 claves de precio: convención fija del sistema argentino (decisión del dueño). No están en el editor ni en el contrato;
- * la carta las toma de la sheet del tenant o de su default, que es este mismo. Solo se usan para clasificar lo que se pega y para
- * que la vista previa formatee los precios.
+ * la carta usa este valor. Lo usa `precio-carta.ts` para formatear los precios.
  */
 export const CLAVES_FIJAS_DEL_SISTEMA = { precio_locale: "es-AR", precio_simbolo: "$", precio_posicion: "izquierda" } as const;
 
 /**
  * Claves de `SiteConfig` que existían en el catálogo y se retiraron. `carta_fuente_indice_categoria` nunca tuvo efecto visual
  * (ni en la carta original ni en la interna). Las 3 `carta_imagen_*` de miniatura (modo, alto mobile, tamaño desktop) se
- * retiraron por decisión del dueño: la imagen de sección se dibuja siempre como fondo de la banda. Una tab Config vieja que las
- * traiga no las muestra como "desconocidas": se avisa que ya no existen.
+ * retiraron por decisión del dueño: la imagen de sección se dibuja siempre como fondo de la banda. Se conservan solo para el test de paridad
+ * con `SiteConfig`.
  */
 export const CLAVES_RETIRADAS = ["carta_fuente_indice_categoria", "carta_imagen_modo", "carta_imagen_ancho_mobile", "carta_imagen_ancho_desktop"] as const;
 
@@ -281,7 +279,7 @@ export interface TemaCartaV1 {
   generadoEn: string;
   sucursalId: string;
   actualizadoEn: string;
-  /** SIEMPRE las 64 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
+  /** SIEMPRE las 64 claves del catálogo; `null` = no cargada (la carta usa su default). */
   valores: Record<ClaveTema, string | null>;
 }
 
@@ -386,73 +384,6 @@ export function validarValoresTema(entrada: Readonly<Record<string, unknown>>): 
     return { ok: false, mensaje: `Revisá ${errores.length === 1 ? "este campo" : "estos campos"}: ${errores.slice(0, MAXIMO_ERRORES_JUNTOS).join(" · ")}${extra}.` };
   }
   return { ok: true, valor: valores };
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------
-// "Pegar desde la sheet" (D12)
-// ---------------------------------------------------------------------------------------------------------------------------
-
-export interface ConfigPegada {
-  /** Claves del catálogo con valor válido, ya normalizado: rellenan el formulario (sin guardar). */
-  valores: ValoresTema;
-  /** Las 3 de precio: convención fija del sistema, no se importan. */
-  fijasDelSistema: string[];
-  /** De la config raíz o del modo single: no son por tenant. */
-  noPorTenant: string[];
-  /** Claves que existieron en el catálogo y se retiraron (`CLAVES_RETIRADAS`): no se importan. */
-  retiradas: string[];
-  /** Ninguna clave de `SiteConfig` (una errata, o una clave vieja). */
-  desconocidas: string[];
-  /** Del catálogo, pero con un valor que no pasa la validación (queda el default de la carta). */
-  invalidas: { clave: string; motivo: string }[];
-}
-
-const FIJAS = new Set<string>(Object.keys(CLAVES_FIJAS_DEL_SISTEMA));
-const NO_POR_TENANT = new Set<string>(CLAVES_NO_POR_TENANT);
-const RETIRADAS = new Set<string>(CLAVES_RETIRADAS);
-/** Primera columna de un encabezado habitual de la tab Config: no es una clave, no se lista como desconocida. */
-const ENCABEZADOS = new Set(["clave", "claves", "key", "keys", "campo", "config", "parametro", "parámetro", "nombre"]);
-
-/** Una celda copiada de Google Sheets como TSV: si trae comillas (tenía comillas o saltos de línea), se las saca. */
-function celda(c: string | undefined): string {
-  const t = (c ?? "").trim();
-  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) return t.slice(1, -1).replace(/""/g, '"').trim();
-  return t;
-}
-
-/**
- * Lee lo que se pega de las columnas A:B de la tab Config (TSV: clave, TAB, valor). Recorta cada celda; ignora las líneas
- * vacías, un encabezado y las filas sin valor (en la sheet, vacío = default). Si una clave se repite gana la última, como en
- * `getConfig`. Pura: no guarda nada.
- */
-export function parsearConfigPegada(textoPegado: string): ConfigPegada {
-  const porClave = new Map<string, string>();
-  const lineas = textoPegado.replace(/\r\n?/g, "\n").split("\n");
-  let primera = true;
-  for (const linea of lineas) {
-    if (!linea.trim()) continue;
-    const [a, b] = linea.split("\t");
-    const clave = celda(a);
-    const valor = celda(b);
-    const esEncabezado = primera && ENCABEZADOS.has(clave.toLowerCase());
-    primera = false;
-    if (!clave || esEncabezado || !valor) continue;
-    porClave.set(clave, valor);
-  }
-
-  const r: ConfigPegada = { valores: {}, fijasDelSistema: [], noPorTenant: [], retiradas: [], desconocidas: [], invalidas: [] };
-  for (const [clave, valor] of porClave) {
-    if (FIJAS.has(clave)) r.fijasDelSistema.push(clave);
-    else if (NO_POR_TENANT.has(clave)) r.noPorTenant.push(clave);
-    else if (RETIRADAS.has(clave)) r.retiradas.push(clave);
-    else if (!esClaveTema(clave)) r.desconocidas.push(clave);
-    else {
-      const v = validarValorTema(clave, valor);
-      if (!v.ok) r.invalidas.push({ clave, motivo: v.mensaje });
-      else if (v.valor !== null) r.valores[clave] = v.valor;
-    }
-  }
-  return r;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------

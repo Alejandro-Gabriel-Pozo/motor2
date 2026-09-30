@@ -2,7 +2,7 @@ import type { Resultado } from "./validaciones";
 
 /**
  * Validadores de los valores de tipografía, layout y contacto del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M2, D13).
- * Puros, sin Prisma: los usa `tema.ts` (catálogo de claves) en la entrada (Server Actions, "Pegar desde la sheet") y en la salida
+ * Puros, sin Prisma: los usa `tema.ts` (catálogo de claves) en la entrada (Server Actions) y en la salida
  * (el endpoint vuelve a validar el Json guardado, porque una carga por `db:studio` no pasa por las acciones).
  *
  * Todo lo que es CSS termina en la carta pública dentro de un `style` de React o, en el caso del alto de banda en desktop,
