@@ -14,3 +14,12 @@ export type { Resultado } from "./validaciones";
 export { formatearPrecioCarta } from "./precio-carta";
 export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
+export type { ClavePortal, EstiloPortal, PosicionPortal, ValoresPortal } from "./portal";
+export {
+  CLAVES_PORTAL_V1,
+  decidirLayoutPortal,
+  posicionCompleta,
+  resolverEstiloPortal,
+  validarValoresPortal,
+  ZONAS_PORTAL,
+} from "./portal";
