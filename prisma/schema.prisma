@@ -1848,8 +1848,6 @@ model SucursalPublica {
   slug            String
   /// null = se usa Sucursal.nombre.
   etiqueta        String?
-  /// Host desnudo, sin esquema ni puerto (hecho externo, manual). NULL no choca con el @unique en Postgres.
-  dominio         String?  @unique
   /// Público: subtítulo de la tarjeta del portal (restaurant-menu-design lo dibuja como `notas`).
   subtituloPortal String?
   /// Posición en el mapa del portal, % 0-100 (centro). x/y/w van juntos; h opcional (la carta usa 5).
@@ -1859,12 +1857,6 @@ model SucursalPublica {
   posH            Decimal? @db.Decimal(5, 2)
   orden           Int      @default(0)
   publicada       Boolean  @default(false)
-  /// true = el menú sale de GET /api/carta/[sucursal] (se emite motor2_sucursal_id); false = de la tab `sheetMenuNombre`.
-  menuDesdeMotor2 Boolean  @default(false)
-  /// TRANSICIÓN: spreadsheet del tenant. Hace falta mientras SiteConfig (tab Config) viva en la sheet — para TODOS los tenants.
-  sheetId         String?
-  /// TRANSICIÓN: tab del menú en esa sheet; solo importa con menuDesdeMotor2 = false.
-  sheetMenuNombre String   @default("Menu")
   actualizadoEn   DateTime @updatedAt
 
   @@unique([empresaId, sucursalId])
