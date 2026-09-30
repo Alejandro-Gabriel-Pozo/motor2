@@ -65,6 +65,25 @@ test.describe("carta por subdominio", () => {
     }
   });
 
+  test("en el host de la app (no el de la carta) /carta-publica/... redirige al host de la carta en vez de servir la carta", async ({ request, baseURL }) => {
+    const { port } = new URL(baseURL ?? "http://localhost");
+    const hostApp = `app-e2e.localhost${port ? `:${port}` : ""}`;
+    // El pedido va a loopback con otro header Host (Node no resuelve *.localhost; el matching de Next es por header).
+    const pedir = (path: string) => request.get(`${baseURL}${path}`, { headers: { host: hostApp }, maxRedirects: 0 });
+
+    const portal = await pedir("/carta-publica/e2e");
+    expect(portal.status()).toBe(307);
+    expect(portal.headers()["location"]).toBe("https://carta-e2e.localhost/");
+
+    const carta = await pedir("/carta-publica/e2e/central");
+    expect(carta.status()).toBe(307);
+    expect(carta.headers()["location"]).toBe("https://carta-e2e.localhost/central");
+
+    // `localhost` pelado (desarrollo) sigue sirviendo por path, sin redirigir.
+    const local = await request.get(`${baseURL}/carta-publica/e2e/central`, { maxRedirects: 0 });
+    expect(local.status()).not.toBe(307);
+  });
+
   test("una empresa que no resuelve da 404, y el host sin subdominio no reescribe /<sucursal>", async ({ page, sucursalId, baseURL }) => {
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-sub-${marca}`;

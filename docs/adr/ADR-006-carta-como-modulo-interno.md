@@ -261,6 +261,16 @@ cada una — no reinventarlas de memoria):**
   e2e y demostrado por mutación. Falta para producción (Fase 7/F): DNS wildcard
   `*.<dominioBase>` (cubre `carta-<empresa>.<dominioBase>` desde el cambio a un
   solo nivel del 2026-09-30) y configurar `CARTA_DOMINIO_BASE` en Vercel.
+  **Fase 7, staging en motor2-demo (2026-09-30):** `app.zuluhub.com.ar` y
+  `*.app.zuluhub.com.ar` agregados al proyecto (DNS de `zuluhub.com.ar` ya en
+  Vercel), `CARTA_DOMINIO_BASE=app.zuluhub.com.ar` en Production, cartas en
+  `carta-<empresa>.app.zuluhub.com.ar`. **Con `CARTA_DOMINIO_BASE` configurado,
+  el host de la app ya NO sirve la carta:** `/carta-publica/<empresa>[/<sucursal>]`
+  en cualquier host que no sea el de la carta redirige (307) al host de la carta
+  (`reglasRedirectAppACarta`; `localhost` y `127.0.0.1` pelados quedan afuera,
+  para desarrollo y e2e). Sin la variable, la carta se sirve por path como
+  antes (instalación de una empresa sin subdominio propio). Demostrado por
+  mutación (sin la regla, el spec recibe 200 en vez de 307).
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
   retirar el deployment externo.

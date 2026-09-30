@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
+import { reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
 
 const nextConfig: NextConfig = {
   // Silencia el warning de Turbopack: hay otro package-lock.json en la raíz
@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
       { source: "/catalogo/carta/:path*", destination: "/carta/:path*", permanent: false },
       // En el host de la carta, los links internos /carta-publica/... se llevan a la URL limpia (ver reglasRedirectCarta).
       ...reglasRedirectCarta(process.env.CARTA_DOMINIO_BASE),
+      // En cualquier otro host (el de la app), esos paths redirigen al host de la carta (ver reglasRedirectAppACarta).
+      ...reglasRedirectAppACarta(process.env.CARTA_DOMINIO_BASE),
     ];
   },
   // ADR-006, Fase 6: carta-<empresa>.<CARTA_DOMINIO_BASE> sirve la carta pública sin mostrar /carta-publica en la URL. Sin la variable

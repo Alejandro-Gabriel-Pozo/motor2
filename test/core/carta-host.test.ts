@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { armarHostCarta, interpretarHostCarta, reglasRedirectCarta, reglasRewriteCarta } from "@/core/carta/host";
+import { armarHostCarta, interpretarHostCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "@/core/carta/host";
 
 describe("interpretarHostCarta", () => {
   const BASE = "motor2carta.com";
@@ -105,6 +105,40 @@ describe("reglasRedirectCarta", () => {
     // El grupo del host NO puede llamarse :empresa: chocaría con el segmento de la ruta.
     for (const r of reglas) expect(r.has[0].value).toContain("?<empresaDelHost>");
     expect(reglas[0].has[0].value.replace("?<empresaDelHost>", "")).toBe(reglasRewriteCarta("motor2carta.com")[0].has[0].value.replace("?<empresa>", ""));
+  });
+});
+
+describe("reglasRedirectAppACarta", () => {
+  const BASE = "app.zuluhub.com.ar";
+  const regexMissing = () => new RegExp(`^(?:${reglasRedirectAppACarta(BASE)[0].missing[0].value})$`);
+
+  it("sin dominioBase no hay reglas (instalación sin subdominio: la carta se sirve por path)", () => {
+    expect(reglasRedirectAppACarta(undefined)).toEqual([]);
+    expect(reglasRedirectAppACarta(" ")).toEqual([]);
+  });
+
+  it("lleva /carta-publica/<empresa>[/<sucursal>] al host de la carta, sin redirección permanente", () => {
+    expect(reglasRedirectAppACarta(BASE).map(({ source, destination, permanent }) => ({ source, destination, permanent }))).toEqual([
+      { source: "/carta-publica/:empresa", destination: "https://carta-:empresa.app.zuluhub.com.ar/", permanent: false },
+      { source: "/carta-publica/:empresa/:sucursal", destination: "https://carta-:empresa.app.zuluhub.com.ar/:sucursal", permanent: false },
+    ]);
+  });
+
+  it("aplica en el host de la app y en cualquier otro, pero no en el host de la carta ni en localhost pelado", () => {
+    const re = regexMissing();
+    // `missing` = "no coincide con esto": los hosts que matchean quedan afuera de la redirección.
+    for (const excluido of ["carta-principal.app.zuluhub.com.ar", "localhost", "127.0.0.1"]) expect(re.test(excluido), excluido).toBe(true);
+    for (const redirige of ["app.zuluhub.com.ar", "motor2-demo.vercel.app", "app-e2e.localhost", "carta.principal.app.zuluhub.com.ar", "carta-a.b.app.zuluhub.com.ar"]) expect(re.test(redirige), redirige).toBe(false);
+  });
+
+  it("no tiene grupos de captura (Next no debe interpretarlos como parámetros)", () => {
+    expect(new RegExp(`${reglasRedirectAppACarta(BASE)[0].missing[0].value}|`).exec("")?.length).toBe(1);
+  });
+
+  it("es disjunta de reglasRedirectCarta: el host de la carta nunca cae en las dos", () => {
+    const host = "carta-principal.app.zuluhub.com.ar";
+    expect(interpretarHostCarta(host, BASE)).not.toBeNull();
+    expect(regexMissing().test(host)).toBe(true);
   });
 });
 

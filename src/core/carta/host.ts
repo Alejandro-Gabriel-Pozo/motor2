@@ -52,6 +52,29 @@ export function reglasRedirectCarta(dominioBase: string | null | undefined): Reg
   ];
 }
 
+export interface ReglaRedirectAppACarta {
+  source: string;
+  missing: { type: "host"; value: string }[];
+  destination: string;
+  permanent: false;
+}
+
+/**
+ * Con `dominioBase` configurado, el host de la app NO sirve la carta: `/carta-publica/<empresa>[/<sucursal>]` en cualquier host que no
+ * sea el de la carta redirige (307) a `https://carta-<empresa>.<dominioBase>/[<sucursal>]`. `localhost` y `127.0.0.1` pelados quedan
+ * afuera (desarrollo y la suite e2e entran por path). Sin `dominioBase` no hay reglas: una instalación sin subdominio sirve la carta
+ * por path. Va en `redirects()`, junto a `reglasRedirectCarta` (que actúa solo EN el host de la carta; las dos condiciones son disjuntas).
+ */
+export function reglasRedirectAppACarta(dominioBase: string | null | undefined): ReglaRedirectAppACarta[] {
+  const base = dominioBase?.trim().toLowerCase();
+  if (!base) return [];
+  const missing = [{ type: "host" as const, value: `(?:${patronHostCarta(base, "?:")}|localhost|127\\.0\\.0\\.1)` }];
+  return [
+    { source: "/carta-publica/:empresa", missing, destination: `https://carta-:empresa.${base}/`, permanent: false },
+    { source: "/carta-publica/:empresa/:sucursal", missing, destination: `https://carta-:empresa.${base}/:sucursal`, permanent: false },
+  ];
+}
+
 /**
  * Fase 6: las reglas de `rewrites().beforeFiles` de `next.config.ts` para servir la carta en `carta-<empresa>.<dominioBase>`. La `/` del
  * host es el portal de la empresa y `/<sucursal>` la carta de esa sucursal; ambas se reescriben a `/carta-publica/...` (la URL del
