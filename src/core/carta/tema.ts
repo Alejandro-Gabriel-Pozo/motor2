@@ -18,12 +18,13 @@ import { validarImagenUrlCarta, validarTextoLibreCarta, type Resultado } from ".
  * tenant de restaurant-menu-design (`SiteConfig`, lib/get-config.ts), pasado a motor2 (`TemaCartaSucursal.valores`, un Json con
  * las MISMAS claves que `SiteConfig`).
  *
- * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 67
+ * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 66
  * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla), el importador ("Pegar
  * desde la sheet") y el contrato `TemaCartaV1` (lo arma `armarTemaCarta` para la carta pública interna).
  *
  * De las 109 claves de `SiteConfig`:
- *  - 67 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=29; D3 del plan).
+ *  - 66 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=28; D3 del plan).
+ *  - 1 está RETIRADA (`CLAVES_RETIRADAS`): el original nunca la dibujaba, la carta de motor2 tampoco.
  *  - 3 son de precio y son CONVENCIÓN FIJA del sistema (es-AR, "$", a la izquierda) → `CLAVES_FIJAS_DEL_SISTEMA`: motor2 no las
  *    guarda ni las emite; la carta las sigue tomando de la sheet o de su default, que es esa misma convención.
  *  - 39 no son por tenant (config raíz del portal, SEO, o solo del modo single de `/`) → `CLAVES_NO_POR_TENANT`.
@@ -90,7 +91,7 @@ const texto = (maximo: number) => ({ tipo: "texto", maximo }) as const;
 const ALIAS_SI_NO: Readonly<Record<string, string>> = { "sí": "si", true: "si", "1": "si", yes: "si", false: "no", "0": "no" };
 
 /**
- * Las 67 claves por tenant (D3). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
+ * Las 66 claves por tenant (D3 menos la retirada `carta_fuente_indice_categoria`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
  */
 export const CLAVES_TEMA_V1 = [
   // Portada e identidad (A + la posición del bloque y del CTA en la portada mobile)
@@ -163,7 +164,6 @@ export const CLAVES_TEMA_V1 = [
   { clave: "carta_fuente_indice_etiqueta", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la etiqueta del índice", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_indice_titulo", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño del título del índice", defaultCarta: "clamp(1.2rem, 4vw, 1.75rem)", ...FUENTE },
   { clave: "carta_fuente_indice_numero", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de los números del índice", defaultCarta: "0.6875rem", ...FUENTE },
-  { clave: "carta_fuente_indice_categoria", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la categoría en el índice", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_indice_item", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de las secciones del índice", defaultCarta: "clamp(0.82rem, 2.5vw, 0.95rem)", ...FUENTE },
 
   // Tipografía de banda
@@ -207,6 +207,12 @@ export function esClaveTema(clave: string): clave is ClaveTema {
  * que la vista previa formatee los precios.
  */
 export const CLAVES_FIJAS_DEL_SISTEMA = { precio_locale: "es-AR", precio_simbolo: "$", precio_posicion: "izquierda" } as const;
+
+/**
+ * Claves de `SiteConfig` que existían en el catálogo y se retiraron porque nunca tuvieron efecto visual (ni en la carta original
+ * ni en la interna). Una tab Config vieja que las traiga no las muestra como "desconocidas": se avisa que ya no existen.
+ */
+export const CLAVES_RETIRADAS = ["carta_fuente_indice_categoria"] as const;
 
 /**
  * Las 39 claves de `SiteConfig` que NO son por tenant (A.1/A.2 del plan): la carta las lee de la config raíz (portal, SEO,
@@ -271,7 +277,7 @@ export interface TemaCartaV1 {
   generadoEn: string;
   sucursalId: string;
   actualizadoEn: string;
-  /** SIEMPRE las 67 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
+  /** SIEMPRE las 66 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
   valores: Record<ClaveTema, string | null>;
 }
 
@@ -393,6 +399,8 @@ export interface ConfigPegada {
   fijasDelSistema: string[];
   /** De la config raíz o del modo single: no son por tenant. */
   noPorTenant: string[];
+  /** Claves que existieron en el catálogo y se retiraron (`CLAVES_RETIRADAS`): no se importan. */
+  retiradas: string[];
   /** Ninguna clave de `SiteConfig` (una errata, o una clave vieja). */
   desconocidas: string[];
   /** Del catálogo, pero con un valor que no pasa la validación (queda el default de la carta). */
@@ -401,6 +409,7 @@ export interface ConfigPegada {
 
 const FIJAS = new Set<string>(Object.keys(CLAVES_FIJAS_DEL_SISTEMA));
 const NO_POR_TENANT = new Set<string>(CLAVES_NO_POR_TENANT);
+const RETIRADAS = new Set<string>(CLAVES_RETIRADAS);
 /** Primera columna de un encabezado habitual de la tab Config: no es una clave, no se lista como desconocida. */
 const ENCABEZADOS = new Set(["clave", "claves", "key", "keys", "campo", "config", "parametro", "parámetro", "nombre"]);
 
@@ -431,10 +440,11 @@ export function parsearConfigPegada(textoPegado: string): ConfigPegada {
     porClave.set(clave, valor);
   }
 
-  const r: ConfigPegada = { valores: {}, fijasDelSistema: [], noPorTenant: [], desconocidas: [], invalidas: [] };
+  const r: ConfigPegada = { valores: {}, fijasDelSistema: [], noPorTenant: [], retiradas: [], desconocidas: [], invalidas: [] };
   for (const [clave, valor] of porClave) {
     if (FIJAS.has(clave)) r.fijasDelSistema.push(clave);
     else if (NO_POR_TENANT.has(clave)) r.noPorTenant.push(clave);
+    else if (RETIRADAS.has(clave)) r.retiradas.push(clave);
     else if (!esClaveTema(clave)) r.desconocidas.push(clave);
     else {
       const v = validarValorTema(clave, valor);
@@ -458,7 +468,7 @@ export interface FilaTemaCarta {
 
 /**
  * Arma `TemaCartaV1` desde la fila, VOLVIENDO A VALIDAR cada valor del Json (una carga por `db:studio` no pasa por las Server
- * Actions): emite siempre las 67 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
+ * Actions): emite siempre las 66 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
  * ajenas al catálogo se ignoran (incluidas las `precio_*`, si alguien las cargara a mano).
  */
 export function armarTemaCarta(fila: FilaTemaCarta, ahora: Date = new Date()): TemaCartaV1 {

@@ -31,7 +31,7 @@ export interface ImagenSeccionEstilo {
 
 export interface EstiloCarta {
   /**
-   * Una variable CSS por cada una de las 67 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
+   * Una variable CSS por cada una de las 66 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
    * guiones>`). Valor validado si lo hay, si no el default de `CLAVES_TEMA_V1` (`""` = sin default: la variable queda vacía
    * y el CSS base de `.carta-shell` decide). `--carta-hero-ink` lleva el valor YA RESUELTO (`resolveHeroInk`), no el
    * "claro"/"oscuro" crudo — eso no es un color CSS válido por sí solo.
@@ -45,7 +45,7 @@ export interface EstiloCarta {
 }
 
 /**
- * `snake_case` → `kebab-case` con el prefijo `--carta-`, para el nombre de la variable CSS. Casi la mitad de las 67 claves ya
+ * `snake_case` → `kebab-case` con el prefijo `--carta-`, para el nombre de la variable CSS. Casi la mitad de las 66 claves ya
  * arrancan con `carta_` (`carta_banda_alto_mobile`, `carta_fuente_*`…): se lo saca antes de agregar el prefijo, si no
  * quedaría `--carta-carta-banda-alto-mobile`.
  */

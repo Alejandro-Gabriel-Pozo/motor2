@@ -21,7 +21,7 @@ const POS: PosicionPortal = { x: 30, y: 40, w: 50, h: null };
 const suc = (slug: string, posicion: PosicionPortal | null) => ({ slug, posicion });
 
 describe("catálogo CLAVES_PORTAL_V1", () => {
-  it("sin claves repetidas y sin cruce con las 67 del tema por sucursal", () => {
+  it("sin claves repetidas y sin cruce con las 66 del tema por sucursal", () => {
     expect(new Set(claves).size).toBe(claves.length);
     const tema = new Set<string>(CLAVES_TEMA_V1.map((d) => d.clave));
     expect(claves.filter((c) => tema.has(c))).toEqual([]);

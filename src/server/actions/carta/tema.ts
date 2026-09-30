@@ -17,7 +17,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  */
 
 /**
- * Guarda los valores del tema (reemplaza TODO lo guardado por lo que llega: el formulario manda las 67 claves). Valida con
+ * Guarda los valores del tema (reemplaza TODO lo guardado por lo que llega: el formulario manda las 66 claves). Valida con
  * `validarValoresTema`: normaliza, ignora lo que no es del catálogo (incluidas las `precio_*`, convención fija del sistema) y, si
  * hay errores, devuelve hasta 5 juntos sin escribir nada. `upsert` por `sucursalId`: al crear la fila no toca `aplicarEnCarta`
  * (queda en borrador); al editar, un tema ya aplicado sigue aplicado.

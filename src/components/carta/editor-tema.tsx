@@ -134,6 +134,7 @@ function ResultadoPegado({ r }: { r: ConfigPegada }) {
     { id: "valores", titulo: `Cargadas en el formulario (${cargados.length})`, items: cargados },
     { id: "fijasDelSistema", titulo: "Fijas del sistema (precios: es-AR, $ a la izquierda; no se importan)", items: r.fijasDelSistema },
     { id: "noPorTenant", titulo: "No son por sucursal (config de la raíz del portal o del modo single; no se importan)", items: r.noPorTenant },
+    { id: "retiradas", titulo: "Retiradas (ya no existen en la carta; no se importan)", items: r.retiradas },
     { id: "desconocidas", titulo: "Desconocidas (no son claves de la tab Config)", items: r.desconocidas },
     { id: "invalidas", titulo: "Inválidas (quedan con el default de la carta)", items: r.invalidas.map((i) => `${i.clave}: ${i.motivo}`) },
   ];

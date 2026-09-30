@@ -3,6 +3,7 @@ import {
   armarTemaCarta,
   CLAVES_FIJAS_DEL_SISTEMA,
   CLAVES_NO_POR_TENANT,
+  CLAVES_RETIRADAS,
   CLAVES_TEMA_V1,
   parsearConfigPegada,
   validarValoresTema,
@@ -11,7 +12,7 @@ import {
 } from "../../src/core/carta/tema";
 
 /**
- * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 67 claves por tenant, la clasificación del
+ * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 66 claves por tenant, la clasificación del
  * resto de `SiteConfig`, la paridad con los defaults de la carta, un validador por tipo, el importador ("Pegar desde la sheet")
  * y el saneamiento de la salida del endpoint.
  */
@@ -70,7 +71,6 @@ const BLOQUE_D = [
   "carta_fuente_indice_etiqueta",
   "carta_fuente_indice_titulo",
   "carta_fuente_indice_numero",
-  "carta_fuente_indice_categoria",
   "carta_fuente_indice_item",
   "topbar_back_size",
   "carta_pos_bloque",
@@ -146,7 +146,6 @@ const DEFAULTS_CARTA_NO_VACIOS: Record<string, string> = {
   carta_fuente_indice_etiqueta: "0.6875rem", // piso 11px (original: 0.5rem)
   carta_fuente_indice_titulo: "clamp(1.2rem, 4vw, 1.75rem)",
   carta_fuente_indice_numero: "0.6875rem", // piso 11px (original: 0.6rem)
-  carta_fuente_indice_categoria: "0.6875rem", // piso 11px (original: 0.58rem)
   carta_fuente_indice_item: "clamp(0.82rem, 2.5vw, 0.95rem)",
 };
 
@@ -154,15 +153,15 @@ const claves = CLAVES_TEMA_V1.map((d) => d.clave as string);
 const ordenar = (xs: readonly string[]) => [...xs].sort();
 
 describe("catálogo CLAVES_TEMA_V1", () => {
-  it("exactamente las 67 claves de D3, con 6/23/9/29 por bloque", () => {
-    expect(claves).toHaveLength(67);
+  it("exactamente las 66 claves de D3 (menos la retirada), con 6/23/9/28 por bloque", () => {
+    expect(claves).toHaveLength(66);
     expect(ordenar(claves)).toEqual(ordenar([...BLOQUE_A, ...BLOQUE_B, ...BLOQUE_C, ...BLOQUE_D]));
     const porBloque = (b: string) => ordenar(CLAVES_TEMA_V1.filter((d) => d.bloque === b).map((d) => d.clave));
     expect(porBloque("A")).toEqual(ordenar(BLOQUE_A));
     expect(porBloque("B")).toEqual(ordenar(BLOQUE_B));
     expect(porBloque("C")).toEqual(ordenar(BLOQUE_C));
     expect(porBloque("D")).toEqual(ordenar(BLOQUE_D));
-    expect([BLOQUE_A.length, BLOQUE_B.length, BLOQUE_C.length, BLOQUE_D.length]).toEqual([6, 23, 9, 29]);
+    expect([BLOQUE_A.length, BLOQUE_B.length, BLOQUE_C.length, BLOQUE_D.length]).toEqual([6, 23, 9, 28]);
   });
 
   it("sin repetidas y sin intersección con las fijas del sistema ni con las que no son por tenant", () => {
@@ -174,11 +173,13 @@ describe("catálogo CLAVES_TEMA_V1", () => {
     expect(fijas.filter((c) => (CLAVES_NO_POR_TENANT as readonly string[]).includes(c))).toEqual([]);
   });
 
-  it("67 + 3 + 39 = las 109 claves de SiteConfig, ni una más ni una menos", () => {
+  it("66 + 3 + 39 + 1 retirada = las 109 claves de SiteConfig, ni una más ni una menos", () => {
     expect(CLAVES_SITE_CONFIG).toHaveLength(109);
     expect(Object.keys(CLAVES_FIJAS_DEL_SISTEMA)).toHaveLength(3);
     expect(CLAVES_NO_POR_TENANT).toHaveLength(39);
-    expect(ordenar([...claves, ...Object.keys(CLAVES_FIJAS_DEL_SISTEMA), ...CLAVES_NO_POR_TENANT])).toEqual(ordenar(CLAVES_SITE_CONFIG));
+    expect(CLAVES_RETIRADAS).toEqual(["carta_fuente_indice_categoria"]);
+    expect(claves).not.toContain("carta_fuente_indice_categoria");
+    expect(ordenar([...claves, ...Object.keys(CLAVES_FIJAS_DEL_SISTEMA), ...CLAVES_NO_POR_TENANT, ...CLAVES_RETIRADAS])).toEqual(ordenar(CLAVES_SITE_CONFIG));
   });
 
   it("las 3 fijas del sistema son las de precio, con la convención argentina", () => {
@@ -303,7 +304,8 @@ describe("parsearConfigPegada (Pegar desde la sheet)", () => {
       "carta_banda_alto_desktop\t90px}body{display:none",
       "carta_fuente_item_nombre\tclamp(0.8rem, 2vw, 1rem)",
       "color_banda_titulo\t",
-      "clave_vieja\tx",
+      "clave_vieja	x",
+      "carta_fuente_indice_categoria	0.7rem",
       "   ",
       "carta_banda_alto_mobile\t120\tcolumna C ignorada",
       'restaurante_descripcion\t"Cocina de ""autor"""',
@@ -318,6 +320,7 @@ describe("parsearConfigPegada (Pegar desde la sheet)", () => {
     });
     expect(r.fijasDelSistema).toEqual(["precio_locale"]);
     expect(r.noPorTenant).toEqual(["meta_title"]);
+    expect(r.retiradas).toEqual(["carta_fuente_indice_categoria"]);
     expect(r.desconocidas).toEqual(["clave_vieja"]);
     expect(r.invalidas.map((i) => i.clave)).toEqual(["color_item_precio", "carta_banda_alto_desktop"]);
     expect(r.invalidas.every((i) => i.motivo.length > 0)).toBe(true);
@@ -328,7 +331,7 @@ describe("parsearConfigPegada (Pegar desde la sheet)", () => {
   });
 
   it("vacío → todo vacío", () => {
-    expect(parsearConfigPegada("")).toEqual({ valores: {}, fijasDelSistema: [], noPorTenant: [], desconocidas: [], invalidas: [] });
+    expect(parsearConfigPegada("")).toEqual({ valores: {}, fijasDelSistema: [], noPorTenant: [], retiradas: [], desconocidas: [], invalidas: [] });
   });
 });
 
@@ -336,7 +339,7 @@ describe("armarTemaCarta: saneamiento de la salida", () => {
   const ahora = new Date("2026-09-24T12:00:00.000Z");
   const actualizadoEn = new Date("2026-09-24T11:00:00.000Z");
 
-  it("con un Json cargado a mano: lo inválido sale null, lo ajeno no sale, y siempre salen exactamente las 67 claves", () => {
+  it("con un Json cargado a mano: lo inválido sale null, lo ajeno no sale, y siempre salen exactamente las 66 claves", () => {
     const tema = armarTemaCarta(
       {
         sucursalId: "suc-1",
@@ -372,9 +375,9 @@ describe("armarTemaCarta: saneamiento de la salida", () => {
     expect(armarTemaCarta({ sucursalId: "s", actualizadoEn, valores: { carta_banda_alto_desktop: "120" } }, ahora).valores.carta_banda_alto_desktop).toBe("120px");
   });
 
-  it.each([null, [], "texto", 42])("un Json que no es un objeto (%j) → las 67 en null", (valores) => {
+  it.each([null, [], "texto", 42])("un Json que no es un objeto (%j) → las 66 en null", (valores) => {
     const tema = armarTemaCarta({ sucursalId: "s", actualizadoEn, valores }, ahora);
-    expect(Object.keys(tema.valores)).toHaveLength(67);
+    expect(Object.keys(tema.valores)).toHaveLength(66);
     expect(Object.values(tema.valores).every((v) => v === null)).toBe(true);
   });
 });

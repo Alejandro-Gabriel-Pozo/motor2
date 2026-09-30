@@ -1873,7 +1873,7 @@ model SucursalPublica {
 }
 
 /// Tema visual de la carta pública de una sucursal: lo que hoy es la tab "Config" de la sheet de cada tenant de
-/// restaurant-menu-design (las 67 claves por tenant del catálogo CLAVES_TEMA_V1 de src/core/carta/tema.ts; los precios
+/// restaurant-menu-design (las 66 claves por tenant del catálogo CLAVES_TEMA_V1 de src/core/carta/tema.ts; los precios
 /// son convención fija del sistema y no están acá). FILA AUSENTE = la carta sigue con la tab Config (opt-in; sin backfill).
 /// 1:1 con Sucursal y no con SucursalPublica (docs/plan-tema-carta-2026-09-24.md, D1): el tema se puede preparar antes de
 /// agregar la sucursal al portal, y "Quitar del portal" no lo borra. Sin onDelete: RESTRICT (las sucursales nunca se borran).

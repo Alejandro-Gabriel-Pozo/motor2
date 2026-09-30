@@ -22,7 +22,7 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   return r;
 };
 
-/** Las 67 claves del catálogo, como texto (un campo vacío llega como ""; guardarTemaCarta lo omite). */
+/** Las 66 claves del catálogo, como texto (un campo vacío llega como ""; guardarTemaCarta lo omite). */
 const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
 
 function estadoDelTema(d: TemaAdmin): string {
