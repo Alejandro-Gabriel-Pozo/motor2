@@ -224,8 +224,13 @@ html:has([data-carta-libro]) body {
     page-break-after: always;
     break-after: page;
   }
-  .carta-shell {
+  .carta-shell,
+  .carta-shell [data-carta-libro] {
     background: #fff !important;
+    color: #000 !important;
+  }
+  /* Los colores del tema van inline (texto claro sobre fondo oscuro): sin esto, imprimir sobre papel blanco dejaría texto blanco. */
+  .carta-shell [data-carta-libro] * {
     color: #000 !important;
   }
 }

@@ -21,18 +21,33 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
   const variablesCss: Record<string, string> = { ...estilo.variablesCss };
   if (estilo.valores.color_marca) variablesCss["--carta-primary"] = estilo.valores.color_marca;
   if (estilo.valores.color_fondo_dia) variablesCss["--carta-bg"] = estilo.valores.color_fondo_dia;
+  // La tinta base sigue al fondo cargado: sin esto, un fondo oscuro dejaba el texto casi negro (el token de `.carta-shell` es para fondo claro).
+  if (estilo.tintaBase) {
+    variablesCss["--carta-ink"] = estilo.tintaBase;
+    variablesCss["--carta-ink-soft"] = `color-mix(in oklch, ${estilo.tintaBase} 70%, var(--carta-bg))`;
+  }
+  if (estilo.colores.navFlechas) variablesCss["--carta-flechas"] = estilo.colores.navFlechas;
+  const c = estilo.colores;
 
   return (
-    <NavegacionCarta paginas={paginas} hrefVolver={hrefVolver} embebida={embebida} redesSociales={redesSociales} variablesCss={variablesCss}>
+    <NavegacionCarta
+      paginas={paginas}
+      hrefVolver={hrefVolver}
+      embebida={embebida}
+      redesSociales={redesSociales}
+      variablesCss={variablesCss}
+      volver={estilo.volver}
+      colorIconos={c.navIconos}
+    >
       <Portada estilo={estilo} restauranteNombre={restauranteNombre} />
 
       <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
-          <p className="mb-0.5 mt-4text-xs font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
+          <p className="mb-0.5 mt-4 text-xs font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
             {estilo.valores.carta_texto_indice_etiqueta}
           </p>
         )}
-        <h1 className={`font-serif font-medium${estilo.valores.carta_texto_indice_etiqueta ? "" : " mt-4"}`} style={{ fontSize: estilo.valores.carta_fuente_indice_titulo }}>
+        <h1 className={`font-serif font-medium${estilo.valores.carta_texto_indice_etiqueta ? "" : " mt-4"}`} style={{ fontSize: estilo.valores.carta_fuente_indice_titulo, color: c.indiceTitulo ?? undefined }}>
           {estilo.valores.carta_texto_indice_titulo || "Índice"}
         </h1>
         <ol data-carta-indice-lista data-carta-scroll className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
@@ -43,12 +58,12 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
                 data-ir-a={seccion.id}
                 className="group flex w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
               >
-                <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: "var(--carta-primary)" }}>
+                <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: c.indiceNumeros ?? "var(--carta-primary)" }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
                   className="flex-1 font-serif font-medium leading-snug"
-                  style={{ fontSize: estilo.valores.carta_fuente_indice_item }}
+                  style={{ fontSize: estilo.valores.carta_fuente_indice_item, color: c.indiceTitulos ?? undefined }}
                 >
                   {seccion.titulo ?? seccion.nombre}
                 </span>

@@ -11,9 +11,10 @@ import { TagIcon } from "./iconos";
  */
 export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCartaV1; indice: number; total: number; estilo: EstiloCarta }) {
   const img = estilo.imagenSeccion;
+  const c = estilo.colores;
   return (
     <div className="carta-pagina flex flex-col">
-      <div className="relative shrink-0 overflow-hidden border-b" style={{ height: "clamp(90px, 22vh, 160px)", borderColor: "var(--carta-border)" }}>
+      <div data-carta-banda className="relative shrink-0 overflow-hidden border-b" style={{ height: "clamp(90px, 22vh, 160px)", borderColor: "var(--carta-border)" }}>
         {seccion.imagenUrl && (img.modo === "fondo" || img.modo === "ambos") && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={seccion.imagenUrl} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" style={{ opacity: img.opacidadPct / 100, objectPosition: `${img.posicionX} ${img.posicionY}` }} />
@@ -21,15 +22,14 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
         {seccion.imagenUrl && img.overlay && <div className="absolute inset-0" style={{ background: "linear-gradient(to right, var(--carta-bg), transparent 60%)" }} aria-hidden />}
 
         <div className="absolute inset-0 flex flex-col justify-end gap-0.5 px-6 pb-3 sm:px-10">
-          <p className="overflow-hidden text-ellipsis whitespace-nowrap font-light uppercase tracking-[0.4em]" style={{ fontSize: estilo.valores.carta_fuente_banda_etiqueta, color: "var(--carta-primary)" }}>
-            {seccion.nombre && seccion.nombre !== seccion.titulo ? `${seccion.nombre} · ` : ""}
+          <p className="overflow-hidden text-ellipsis whitespace-nowrap font-light uppercase tracking-[0.4em]" style={{ fontSize: estilo.valores.carta_fuente_banda_etiqueta, color: c.bandaEtiqueta ?? "var(--carta-primary)" }}>
             {String(indice + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
           </p>
-          <h2 className="line-clamp-2 font-serif font-medium leading-tight tracking-tight" style={{ fontSize: estilo.valores.carta_fuente_banda_titulo }}>
+          <h2 className="line-clamp-2 font-serif font-medium leading-tight tracking-tight" style={{ fontSize: estilo.valores.carta_fuente_banda_titulo, color: c.bandaTitulo ?? undefined }}>
             {seccion.titulo ?? seccion.nombre}
           </h2>
           {seccion.descripcion && (
-            <p className="line-clamp-1 font-light leading-snug opacity-70" style={{ fontSize: estilo.valores.carta_fuente_banda_descripcion }}>
+            <p className={`line-clamp-1 font-light leading-snug${c.bandaDescripcion ? "" : " opacity-70"}`} style={{ fontSize: estilo.valores.carta_fuente_banda_descripcion, color: c.bandaDescripcion ?? undefined }}>
               {seccion.descripcion}
             </p>
           )}

@@ -1,4 +1,4 @@
-import { resolveHeroInk } from "./color-css";
+import { resolveHeroInk, resolvePrimaryForeground } from "./color-css";
 import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema } from "./tema";
 
 /**
@@ -29,6 +29,31 @@ export interface ImagenSeccionEstilo {
   opacidadPct: number;
 }
 
+/** Colores por zona: `null` = la clave no está cargada y el componente usa su color de siempre (los `color_*` no tienen default). */
+export interface ColoresCartaEstilo {
+  indiceTitulo: string | null;
+  indiceNumeros: string | null;
+  indiceTitulos: string | null;
+  bandaEtiqueta: string | null;
+  bandaTitulo: string | null;
+  bandaDescripcion: string | null;
+  navFlechas: string | null;
+  navIconos: string | null;
+}
+
+export interface PortadaEstilo {
+  /** `color_portada_textos`: gana sobre `hero_ink` y sobre cualquier color derivado. */
+  colorTexto: string | null;
+  colorCta: string | null;
+}
+
+/** Botón "volver" del topbar. `etiqueta` nunca sale vacía (el default del catálogo es "← Menú"); `tamano` ya lleva unidad. */
+export interface VolverEstilo {
+  etiqueta: string;
+  color: string | null;
+  tamano: string;
+}
+
 export interface EstiloCarta {
   /**
    * Una variable CSS por cada una de las 66 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
@@ -42,7 +67,14 @@ export interface EstiloCarta {
   /** `hero_ink` ya resuelto a un color CSS real, o `null` si no hay valor cargado ni default (el CSS base decide). */
   heroInk: string | null;
   imagenSeccion: ImagenSeccionEstilo;
+  colores: ColoresCartaEstilo;
+  portada: PortadaEstilo;
+  volver: VolverEstilo;
+  /** Tinta base (`--carta-ink`) derivada de `color_fondo_dia` por contraste WCAG; `null` si no hay fondo cargado (o no se puede leer) y manda el token de `.carta-shell`. */
+  tintaBase: string | null;
 }
+
+const o = (v: string): string | null => (v === "" ? null : v);
 
 /**
  * `snake_case` → `kebab-case` con el prefijo `--carta-`, para el nombre de la variable CSS. Casi la mitad de las 66 claves ya
@@ -109,6 +141,26 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
       overlay: valores.carta_imagen_overlay === "si",
       opacidadPct: Number(valores.carta_imagen_opacidad),
     },
+    colores: {
+      indiceTitulo: o(valores.color_indice_titulo),
+      indiceNumeros: o(valores.color_indice_numeros),
+      indiceTitulos: o(valores.color_indice_titulos),
+      bandaEtiqueta: o(valores.color_banda_etiqueta),
+      bandaTitulo: o(valores.color_banda_titulo),
+      bandaDescripcion: o(valores.color_banda_descripcion),
+      navFlechas: o(valores.color_nav_flechas),
+      navIconos: o(valores.color_nav_iconos),
+    },
+    portada: {
+      colorTexto: o(valores.color_portada_textos),
+      colorCta: o(valores.color_portada_cta),
+    },
+    volver: {
+      etiqueta: valores.topbar_back_label || "← Menú",
+      color: o(valores.topbar_back_color),
+      tamano: valores.topbar_back_size || "12px",
+    },
+    tintaBase: valores.color_fondo_dia ? resolvePrimaryForeground(valores.color_fondo_dia) : null,
   };
 }
 

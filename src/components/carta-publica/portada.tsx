@@ -15,7 +15,9 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
   // Sin `hero_ink` cargado: con imagen de fondo, el overlay aclara hacia --carta-bg (texto oscuro contrasta bien); sin
   // imagen, el fondo es --carta-primary sólido (un ámbar oscuro) y el --carta-ink por defecto (casi negro) no alcanza
   // 3:1 — blanco sí. Puesto una sola vez acá y heredado por todo el contenido (currentColor en los separadores).
-  const colorTexto = estilo.heroInk ?? (bgUrl ? "var(--carta-ink)" : "#fff");
+  // `color_portada_textos` (explícito) gana sobre `hero_ink`.
+  const colorTexto = estilo.portada.colorTexto ?? estilo.heroInk ?? (bgUrl ? "var(--carta-ink)" : "#fff");
+  const colorCta = estilo.portada.colorCta;
 
   return (
     <div
@@ -68,7 +70,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
       )}
 
       {v.carta_texto_portada_cta && (
-        <p className="font-light uppercase tracking-[0.4em] opacity-50" style={{ fontSize: v.carta_fuente_portada_cta }}>
+        <p className={`font-light uppercase tracking-[0.4em]${colorCta ? "" : " opacity-50"}`} style={{ fontSize: v.carta_fuente_portada_cta, color: colorCta ?? undefined }}>
           {v.carta_texto_portada_cta}
         </p>
       )}

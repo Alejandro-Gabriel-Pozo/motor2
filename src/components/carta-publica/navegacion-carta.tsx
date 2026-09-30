@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { EstiloCarta } from "@/core/carta/public";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { hayMasParaVer } from "./aviso-scroll";
 import { IconFacebook, IconInstagram, IconMaps, IconWhatsApp } from "./iconos";
@@ -41,6 +42,10 @@ interface Props {
   paginas: PaginaCarta[];
   /** A dónde vuelve el link "← Menú" del topbar: el portal de la empresa. */
   hrefVolver?: string;
+  /** Texto, color y tamaño del botón de volver (`topbar_back_*`). */
+  volver: EstiloCarta["volver"];
+  /** `color_nav_iconos`: si está cargado, los íconos de redes salen de ESE color, sin la opacidad decorativa. */
+  colorIconos: string | null;
   redesSociales: readonly RedSocial[];
   /** `EstiloCarta.variablesCss` (`src/core/carta/estilo.ts`): pisa los defaults de `.carta-shell` para ESTA sucursal. */
   variablesCss: Readonly<Record<string, string>>;
@@ -51,7 +56,7 @@ interface Props {
   embebida?: boolean;
 }
 
-export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, variablesCss, embebida = false }: Props) {
+export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIconos, redesSociales, variablesCss, embebida = false }: Props) {
   const raizRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -123,9 +128,11 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
       ref={raizRef}
       {...(embebida ? {} : { "data-carta-libro": "" })}
       className={`relative w-full overflow-hidden ${embebida ? "h-[32rem]" : "h-dvh"}`}
-      style={variablesCss as React.CSSProperties}
+      // Los tokens del tema (`--carta-bg`, `--carta-ink`…) se pisan ACÁ, en un descendiente de `.carta-shell`: el fondo y el color
+      // que `.carta-shell` pinta se resolvieron con SUS tokens, no con los del tema, así que la raíz los vuelve a pintar.
+      style={{ ...variablesCss, backgroundColor: "var(--carta-bg)", color: "var(--carta-ink)" } as React.CSSProperties}
     >
-      <Topbar embebida={embebida} hrefVolver={hrefVolver} />
+      <Topbar embebida={embebida} hrefVolver={hrefVolver} volver={volver} />
 
       <Slider
         embebida={embebida}
@@ -178,7 +185,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
                     {redesSociales.map((r) => {
                       const Icono = ICONO_POR_RED[r.id];
                       return (
-                        <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className="flex h-10 w-10 items-center justify-center rounded-full opacity-55 transition-opacity hover:opacity-100">
+                        <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className={`flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-100${colorIconos ? "" : " opacity-55"}`} style={colorIconos ? { color: colorIconos } : undefined}>
                           <Icono />
                         </a>
                       );
@@ -224,7 +231,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, redesSociales, 
               {redesSociales.map((r) => {
                 const Icono = ICONO_POR_RED[r.id];
                 return (
-                  <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className="flex h-8 w-8 items-center justify-center opacity-40 transition-opacity hover:opacity-100">
+                  <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className={`flex h-8 w-8 items-center justify-center transition-opacity hover:opacity-100${colorIconos ? "" : " opacity-40"}`} style={colorIconos ? { color: colorIconos } : undefined}>
                     <Icono />
                   </a>
                 );
@@ -248,21 +255,28 @@ const ESTILO_FLECHA = {
 
 const ESTILO_TOPBAR = { backgroundColor: "color-mix(in oklch, var(--carta-bg) 88%, transparent)", borderColor: "var(--carta-border)" } as const;
 const CLASE_TOPBAR = "absolute left-0 right-0 top-0 z-40 flex h-10 items-center justify-between border-b px-3 backdrop-blur-sm";
-const CLASE_VOLVER = "text-xs font-light uppercase tracking-[0.3em] opacity-60";
+const CLASE_VOLVER = "font-light uppercase tracking-[0.3em]";
 
-function Topbar({ embebida, hrefVolver }: { embebida: boolean; hrefVolver?: string }) {
+// Con `topbar_back_color` cargado el color es FINAL (sin la opacidad decorativa); sin él, el gris tenue de siempre.
+function estiloVolver(volver: Props["volver"]): React.CSSProperties {
+  return { fontSize: volver.tamano, color: volver.color ?? undefined, opacity: volver.color ? undefined : 0.6 };
+}
+
+function Topbar({ embebida, hrefVolver, volver }: { embebida: boolean; hrefVolver?: string; volver: Props["volver"] }) {
   if (embebida) {
     return (
       <div data-carta-topbar className={CLASE_TOPBAR} style={ESTILO_TOPBAR}>
-        <span className={CLASE_VOLVER}>← Menú</span>
+        <span className={CLASE_VOLVER} style={estiloVolver(volver)}>
+          {volver.etiqueta}
+        </span>
       </div>
     );
   }
   return (
     <header data-carta-topbar className={CLASE_TOPBAR} style={ESTILO_TOPBAR}>
       {hrefVolver ? (
-        <Link href={hrefVolver} className={`${CLASE_VOLVER} transition-opacity hover:opacity-90`}>
-          ← Menú
+        <Link href={hrefVolver} className={`${CLASE_VOLVER} transition-opacity hover:opacity-90`} style={estiloVolver(volver)}>
+          {volver.etiqueta}
         </Link>
       ) : (
         <span />

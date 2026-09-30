@@ -111,6 +111,62 @@ describe("resolverEstiloCarta", () => {
   });
 });
 
+describe("colores por zona, portada, volver y tinta base", () => {
+  it("sin nada cargado: los colores son null (cada componente usa su color de siempre) y 'volver' trae los defaults del catálogo", () => {
+    const e = resolverEstiloCarta({});
+    expect(Object.values(e.colores).every((c) => c === null)).toBe(true);
+    expect(e.portada).toEqual({ colorTexto: null, colorCta: null });
+    expect(e.volver).toEqual({ etiqueta: "← Menú", color: null, tamano: "12px" });
+    expect(e.tintaBase).toBeNull();
+  });
+
+  it("los colores cargados salen en su campo, tal cual", () => {
+    const e = resolverEstiloCarta({
+      color_indice_titulo: "#111111",
+      color_indice_numeros: "#b9b5f0",
+      color_indice_titulos: "#222222",
+      color_banda_etiqueta: "#b9b5f0",
+      color_banda_titulo: "#333333",
+      color_banda_descripcion: "#444444",
+      color_nav_flechas: "#555555",
+      color_nav_iconos: "#666666",
+      color_portada_textos: "#ffffff",
+      color_portada_cta: "#eeeeee",
+    });
+    expect(e.colores).toEqual({
+      indiceTitulo: "#111111",
+      indiceNumeros: "#b9b5f0",
+      indiceTitulos: "#222222",
+      bandaEtiqueta: "#b9b5f0",
+      bandaTitulo: "#333333",
+      bandaDescripcion: "#444444",
+      navFlechas: "#555555",
+      navIconos: "#666666",
+    });
+    expect(e.portada).toEqual({ colorTexto: "#ffffff", colorCta: "#eeeeee" });
+  });
+
+  it("un color inválido cae a null (no se cuela crudo al CSS)", () => {
+    const e = resolverEstiloCarta({ color_indice_numeros: "red; background:url(x)", color_portada_textos: "no-es-color" });
+    expect(e.colores.indiceNumeros).toBeNull();
+    expect(e.portada.colorTexto).toBeNull();
+  });
+
+  it("volver: etiqueta, color y tamaño (número pelado → px) del topbar", () => {
+    const e = resolverEstiloCarta({ topbar_back_label: "← PORTAL", topbar_back_color: "#ffffff", topbar_back_size: "14" });
+    expect(e.volver).toEqual({ etiqueta: "← PORTAL", color: "#ffffff", tamano: "14px" });
+  });
+
+  it("volver: una etiqueta vacía o inválida cae a '← Menú', nunca a un botón sin texto", () => {
+    expect(resolverEstiloCarta({ topbar_back_label: "" }).volver.etiqueta).toBe("← Menú");
+  });
+
+  it("tintaBase se deriva del fondo: fondo oscuro → tinta clara, fondo claro → tinta oscura", () => {
+    expect(resolverEstiloCarta({ color_fondo_dia: "#181818" }).tintaBase).toBe("oklch(0.96 0.005 80)");
+    expect(resolverEstiloCarta({ color_fondo_dia: "#ffffff" }).tintaBase).toBe("oklch(0.18 0.02 40)");
+  });
+});
+
 describe("estiloCartaPorDefecto", () => {
   it("es exactamente resolverEstiloCarta({})", () => {
     expect(estiloCartaPorDefecto()).toEqual(resolverEstiloCarta({}));
