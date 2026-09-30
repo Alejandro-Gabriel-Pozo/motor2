@@ -21,11 +21,12 @@ export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {
  * Autochequeo del rol de ejecución (ADR-007, A5): si `db` se conecta como superusuario, con BYPASSRLS o como dueño de las tablas, el RLS
  * de la Migración 2 no lo frena. Con UNA empresa activa eso no tiene consecuencias (no hay con quién mezclarse) y se tolera; con MÁS de una
  * se niega a operar, en vez de mezclar datos de empresas sin ningún aviso. `datos` permite reusar la lectura del rol (no cambia mientras dura el proceso).
+ * `empresasNuevas` suma las que la operación en curso va a dejar activas (`crearEmpresa`: 1): dar de alta una segunda empresa con un rol que salta el RLS es justo lo que se rechaza.
  */
-export async function verificarRolDeEjecucion(db: Db, datos?: DatosDelRol): Promise<void> {
+export async function verificarRolDeEjecucion(db: Db, datos?: DatosDelRol, empresasNuevas = 0): Promise<void> {
   const rol = datos ?? (await datosDelRolDeEjecucion(db));
   if (!rol.superusuario && !rol.bypassRls && !rol.duenio) return;
-  const empresasActivas = await db.empresa.count({ where: { estado: "ACTIVE" } });
+  const empresasActivas = (await db.empresa.count({ where: { estado: "ACTIVE" } })) + empresasNuevas;
   if (empresasActivas <= 1) return;
   const motivo = rol.superusuario ? "es superusuario" : rol.bypassRls ? "tiene BYPASSRLS" : "es dueño de las tablas";
   throw new Error(`El rol de ejecución "${rol.usuario}" ${motivo}: no queda aislado por empresa y hay ${empresasActivas} empresas activas. Usar el rol motor2_app en DATABASE_URL.`);

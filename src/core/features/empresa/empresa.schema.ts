@@ -2,10 +2,9 @@ import { z } from "zod";
 
 /**
  * Fase 1.4 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): "Provisioning de empresa
- * (contrato, no automatización completa)". Contrato SOLO — nada de esto está conectado a Prisma todavía: el modelo `Empresa`
- * (`plan-panel-gerenciamiento-empresa-sucursal-2026-09-27.md`, sección 2.1) no existe en `prisma/schema.prisma` hasta la Fase A.
- * El alta de una empresa real sigue siendo manual/semi-manual en la v1 (aclaración del dueño, 2026-09-28): esto es el contrato
- * de FORMA + la máquina de estados documentada, no una automatización de alta.
+ * (contrato, no automatización completa)". El alta de una empresa real sigue siendo manual/semi-manual en la v1 (aclaración del
+ * dueño, 2026-09-28): esto es el contrato de FORMA + la máquina de estados documentada. Lo consume `crearEmpresa`
+ * (`crear-empresa.ts`, ADR-007 A7) desde `scripts/crear-empresa.ts`: no hay UI ni circuito de suscripción.
  *
  * Campos tomados EXACTOS del modelo `Empresa` planeado: `nombre` (único global), `slug` (único, minúsculas/dígitos/guiones —
  * usado como prefijo del slug público de la carta, `<empresa>-<sucursal>`), `zonaHoraria`, `moneda` (ISO 4217, 3 letras).
@@ -18,6 +17,14 @@ export const crearEmpresaSchema = z.object({
 });
 
 export type ComandoCrearEmpresa = z.infer<typeof crearEmpresaSchema>;
+
+/** Lo que pide `crearEmpresa` (ADR-007, A7): la empresa, su primera sucursal y el email de su primer admin (que queda como `gerente`). */
+export const crearEmpresaConAdminSchema = crearEmpresaSchema.extend({
+  emailPrimerAdmin: z.string().trim().toLowerCase().pipe(z.email()),
+  nombreSucursal: z.string().trim().min(1).max(120).default("Central"),
+});
+
+export type ComandoCrearEmpresaConAdmin = z.input<typeof crearEmpresaConAdminSchema>;
 
 /**
  * `EstadoEmpresa` — mismo enum planeado para el modelo Prisma (sección 2.1 del plan del panel). Una empresa `SUSPENDED`: su
