@@ -170,6 +170,26 @@ body {
   overflow-y: auto;
 }
 
+/* Portada en mobile (< sm = 640px): el bloque (logo, nombre, textos) se ubica por % desde arriba (`carta_pos_bloque`, y se corre
+   su propio alto en la misma proporción: 0 = pegado arriba, 100 = pegado abajo, 50 = centrado) y el CTA por % desde el pie
+   (`carta_pos_cta`). Desde `sm` ninguna regla aplica y ambos quedan en el flujo centrado de siempre. */
+@media (max-width: 39.99rem) {
+  .carta-shell .portada-bloque {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--portada-pos-bloque, 50) * 1%);
+    width: min(calc(100% - 4rem), 32rem);
+    transform: translate(-50%, calc(var(--portada-pos-bloque, 50) * -1%));
+  }
+  .carta-shell .portada-cta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--portada-pos-cta, 18) * 1%);
+    padding-inline: 2rem;
+  }
+}
+
 /* Carta a pantalla completa (no la vista previa del editor): el documento no scrollea, solo el slider y el contenido de cada
    página. Solo CSS, sin JS: `:has` engancha con la marca `data-carta-libro` de `NavegacionCarta` (que no la pone si `embebida`),
    así que /carta/tema, que vive dentro de la administración, nunca queda bloqueada. */

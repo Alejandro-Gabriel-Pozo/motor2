@@ -212,6 +212,94 @@ test.describe("carta pública: colores del tema (claves de color, C8 y tinta bas
   });
 });
 
+test.describe("carta pública: portada (fondo y posición, C7)", () => {
+  const PORTADA = { color_marca: "#5c57a2", hero_color_fondo: "#181818", carta_texto_portada_cta: "Deslizá", restaurante_subtitulo: "Sub e2e" };
+
+  test("hero_color_fondo pinta la portada y el texto se deriva por contraste (sin color_portada_textos)", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 2, valores: PORTADA });
+    try {
+      for (const vp of [MOBILE, DESKTOP]) {
+        await page.setViewportSize(vp);
+        await page.goto(carta.ruta);
+        const portada = page.locator(".carta-pagina").first();
+        expect(await portada.evaluate((n) => getComputedStyle(n).backgroundColor)).toBe("rgb(24, 24, 24)");
+        expect(await color(portada)).toContain("oklch(0.96");
+        expect(await page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight)).toBe(false);
+      }
+    } finally {
+      await carta.limpiar();
+    }
+  });
+
+  test("mobile 390×844: el bloque va a carta_pos_bloque % desde arriba y el CTA a carta_pos_cta % del pie", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 2, valores: { ...PORTADA, carta_pos_bloque: "20", carta_pos_cta: "30" } });
+    try {
+      await page.setViewportSize(MOBILE);
+      await page.goto(carta.ruta);
+      const bloque = (await page.locator("[data-portada-bloque]").boundingBox())!;
+      const cta = (await page.locator("[data-portada-cta]").boundingBox())!;
+      // top:20% del alto de la portada (844), corrido su propio alto × 20%.
+      expect(bloque.y).toBeCloseTo(0.2 * MOBILE.height - 0.2 * bloque.height, 0);
+      expect(cta.y + cta.height).toBeCloseTo(MOBILE.height - 0.3 * MOBILE.height, 0);
+      expect(Math.abs(bloque.x + bloque.width / 2 - MOBILE.width / 2)).toBeLessThan(1);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+
+  test("mobile con los defaults (50 / 18): bloque centrado, CTA cerca del pie y sin superponerse", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 2, valores: PORTADA });
+    try {
+      await page.setViewportSize(MOBILE);
+      await page.goto(carta.ruta);
+      const bloque = (await page.locator("[data-portada-bloque]").boundingBox())!;
+      const cta = (await page.locator("[data-portada-cta]").boundingBox())!;
+      expect(bloque.y + bloque.height / 2).toBeCloseTo(MOBILE.height / 2, 0);
+      expect(cta.y + cta.height).toBeCloseTo(MOBILE.height - 0.18 * MOBILE.height, 0);
+      expect(bloque.y + bloque.height).toBeLessThan(cta.y);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+
+  test("desktop 1280×900: las posiciones de mobile NO aplican (bloque y CTA en el flujo centrado)", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 2, valores: { ...PORTADA, carta_pos_bloque: "10", carta_pos_cta: "40" } });
+    try {
+      await page.setViewportSize(DESKTOP);
+      await page.goto(carta.ruta);
+      const pos = await page.evaluate(() => ({
+        bloque: getComputedStyle(document.querySelector("[data-portada-bloque]")!).position,
+        cta: getComputedStyle(document.querySelector("[data-portada-cta]")!).position,
+      }));
+      expect(pos).toEqual({ bloque: "static", cta: "static" });
+      const bloque = (await page.locator("[data-portada-bloque]").boundingBox())!;
+      const cta = (await page.locator("[data-portada-cta]").boundingBox())!;
+      expect(bloque.y).toBeGreaterThan(0.2 * DESKTOP.height); // no pegado arriba (10 %): centrado con el CTA
+      expect(cta.y).toBeGreaterThan(bloque.y + bloque.height - 1);
+      expect(Math.abs(bloque.x + bloque.width / 2 - DESKTOP.width / 2)).toBeLessThan(1);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+
+  test("con imagen de fondo, hero_color_fondo tiñe el velo (mix del color, no el --carta-bg)", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 2, valores: { ...PORTADA, hero_imagen_fondo_url: "https://example.com/fondo.jpg" } });
+    try {
+      await page.setViewportSize(MOBILE);
+      await page.goto(carta.ruta);
+      const velo = page.locator(".carta-pagina").first().locator("div[aria-hidden]").first();
+      const fondo = await velo.evaluate((n) => getComputedStyle(n).backgroundColor);
+      // 75 % de #181818 sobre transparente (oklch, luminosidad ≈ 0,21 y opacidad .75), no el blanco de --carta-bg (luminosidad 1).
+      const m = fondo.match(/^oklch\(([\d.]+) [^/]*\/ ([\d.]+)\)$/);
+      expect(m).not.toBeNull();
+      expect(Number(m![1])).toBeLessThan(0.3);
+      expect(Number(m![2])).toBeCloseTo(0.75, 2);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+});
+
 test.describe("carta pública: navegación y layout (C1–C4)", () => {
   test("C1: cada página respeta el alto real de la nav y el topbar, y el deslizamiento para en cada página", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 3 });

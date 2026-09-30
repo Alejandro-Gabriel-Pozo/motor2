@@ -15,19 +15,27 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
   // Sin `hero_ink` cargado: con imagen de fondo, el overlay aclara hacia --carta-bg (texto oscuro contrasta bien); sin
   // imagen, el fondo es --carta-primary sólido (un ámbar oscuro) y el --carta-ink por defecto (casi negro) no alcanza
   // 3:1 — blanco sí. Puesto una sola vez acá y heredado por todo el contenido (currentColor en los separadores).
-  // `color_portada_textos` (explícito) gana sobre `hero_ink`.
-  const colorTexto = estilo.portada.colorTexto ?? estilo.heroInk ?? (bgUrl ? "var(--carta-ink)" : "#fff");
-  const colorCta = estilo.portada.colorCta;
+  // `estilo.portada.colorTexto` ya trae la prioridad textos > hero_ink > derivado del fondo cargado.
+  const p = estilo.portada;
+  const colorTexto = p.colorTexto ?? (bgUrl ? "var(--carta-ink)" : "#fff");
+  const colorCta = p.colorCta;
 
   return (
     <div
       className="carta-pagina relative isolate flex flex-col items-center justify-center gap-4 overflow-hidden px-8 text-center"
-      style={{ backgroundColor: bgUrl ? undefined : "var(--carta-primary)", color: colorTexto }}
+      style={{ backgroundColor: bgUrl ? undefined : (p.fondo ?? "var(--carta-primary)"), color: colorTexto }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- fondo full-bleed de tamaño desconocido, no candidato de next/image */}
       {bgUrl && <img src={bgUrl} alt="" aria-hidden loading="eager" className="absolute inset-0 -z-10 h-full w-full object-cover" />}
-      {bgUrl && <div className="absolute inset-0 -z-10" style={{ backgroundColor: "color-mix(in oklch, var(--carta-bg) 75%, transparent)" }} aria-hidden />}
+      {bgUrl && <div className="absolute inset-0 -z-10" style={{ backgroundColor: `color-mix(in oklch, ${p.fondo ?? "var(--carta-bg)"} 75%, transparent)` }} aria-hidden />}
 
+      {/* Bloque y CTA: en mobile van posicionados por % (`carta_pos_bloque` / `carta_pos_cta`, ver `.portada-bloque`/`.portada-cta` en
+          globals.css); desde `sm` vuelven al flujo centrado de siempre. */}
+      <div
+        data-portada-bloque
+        className="portada-bloque flex flex-col items-center gap-4"
+        style={{ "--portada-pos-bloque": p.posBloquePct } as React.CSSProperties}
+      >
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={restauranteNombre} className="h-16 w-16 object-contain" />
@@ -68,9 +76,14 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
           <span className="block h-px w-10 opacity-30" style={{ backgroundColor: "currentColor" }} />
         </div>
       )}
+      </div>
 
       {v.carta_texto_portada_cta && (
-        <p className={`font-light uppercase tracking-[0.4em]${colorCta ? "" : " opacity-50"}`} style={{ fontSize: v.carta_fuente_portada_cta, color: colorCta ?? undefined }}>
+        <p
+          data-portada-cta
+          className={`portada-cta font-light uppercase tracking-[0.4em]${colorCta ? "" : " opacity-50"}`}
+          style={{ fontSize: v.carta_fuente_portada_cta, color: colorCta ?? undefined, "--portada-pos-cta": p.posCtaPct } as React.CSSProperties}
+        >
           {v.carta_texto_portada_cta}
         </p>
       )}

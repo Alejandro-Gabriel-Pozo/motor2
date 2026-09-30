@@ -42,9 +42,18 @@ export interface ColoresCartaEstilo {
 }
 
 export interface PortadaEstilo {
-  /** `color_portada_textos`: gana sobre `hero_ink` y sobre cualquier color derivado. */
+  /** `hero_color_fondo`: fondo sólido de la portada (y velo sobre la imagen de fondo). `null` = los tokens de siempre. */
+  fondo: string | null;
+  /**
+   * Color del texto de la portada, por prioridad: `color_portada_textos` (explícito) > `hero_ink` > derivado por contraste de
+   * `hero_color_fondo` (sin esto, un fondo oscuro cargado dejaba la tinta oscura de siempre). `null` = decide el componente.
+   */
   colorTexto: string | null;
   colorCta: string | null;
+  /** `carta_pos_bloque`: % desde arriba donde va el bloque de la portada en mobile (0–100). */
+  posBloquePct: number;
+  /** `carta_pos_cta`: % de distancia del CTA al pie de la portada en mobile (0–100). */
+  posCtaPct: number;
 }
 
 /** Botón "volver" del topbar. `etiqueta` nunca sale vacía (el default del catálogo es "← Menú"); `tamano` ya lleva unidad. */
@@ -152,8 +161,11 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
       navIconos: o(valores.color_nav_iconos),
     },
     portada: {
-      colorTexto: o(valores.color_portada_textos),
+      fondo: o(valores.hero_color_fondo),
+      colorTexto: o(valores.color_portada_textos) ?? heroInk ?? (valores.hero_color_fondo ? resolvePrimaryForeground(valores.hero_color_fondo) : null),
       colorCta: o(valores.color_portada_cta),
+      posBloquePct: Number(valores.carta_pos_bloque),
+      posCtaPct: Number(valores.carta_pos_cta),
     },
     volver: {
       etiqueta: valores.topbar_back_label || "← Menú",

@@ -115,7 +115,7 @@ describe("colores por zona, portada, volver y tinta base", () => {
   it("sin nada cargado: los colores son null (cada componente usa su color de siempre) y 'volver' trae los defaults del catálogo", () => {
     const e = resolverEstiloCarta({});
     expect(Object.values(e.colores).every((c) => c === null)).toBe(true);
-    expect(e.portada).toEqual({ colorTexto: null, colorCta: null });
+    expect(e.portada).toEqual({ fondo: null, colorTexto: null, colorCta: null, posBloquePct: 50, posCtaPct: 18 });
     expect(e.volver).toEqual({ etiqueta: "← Menú", color: null, tamano: "12px" });
     expect(e.tintaBase).toBeNull();
   });
@@ -143,7 +143,32 @@ describe("colores por zona, portada, volver y tinta base", () => {
       navFlechas: "#555555",
       navIconos: "#666666",
     });
-    expect(e.portada).toEqual({ colorTexto: "#ffffff", colorCta: "#eeeeee" });
+    expect(e.portada.colorTexto).toBe("#ffffff");
+    expect(e.portada.colorCta).toBe("#eeeeee");
+  });
+
+  describe("portada: fondo, color de texto por prioridad y posiciones", () => {
+    it("hero_color_fondo sale en portada.fondo", () => {
+      expect(resolverEstiloCarta({ hero_color_fondo: "#181818" }).portada.fondo).toBe("#181818");
+    });
+
+    it("sin textos ni hero_ink, el texto se deriva por contraste del fondo cargado", () => {
+      expect(resolverEstiloCarta({ hero_color_fondo: "#181818" }).portada.colorTexto).toBe("oklch(0.96 0.005 80)");
+      expect(resolverEstiloCarta({ hero_color_fondo: "#ffffff" }).portada.colorTexto).toBe("oklch(0.18 0.02 40)");
+    });
+
+    it("prioridad: color_portada_textos > hero_ink > derivado del fondo", () => {
+      const base = { hero_color_fondo: "#181818" };
+      expect(resolverEstiloCarta({ ...base, hero_ink: "oscuro" }).portada.colorTexto).toBe("oklch(0.18 0.02 40)");
+      expect(resolverEstiloCarta({ ...base, hero_ink: "oscuro", color_portada_textos: "#ff0000" }).portada.colorTexto).toBe("#ff0000");
+    });
+
+    it("las posiciones salen como número y un valor inválido cae al default", () => {
+      const e = resolverEstiloCarta({ carta_pos_bloque: "30", carta_pos_cta: "5.5" });
+      expect([e.portada.posBloquePct, e.portada.posCtaPct]).toEqual([30, 5.5]);
+      const mal = resolverEstiloCarta({ carta_pos_bloque: "150", carta_pos_cta: "abc" });
+      expect([mal.portada.posBloquePct, mal.portada.posCtaPct]).toEqual([50, 18]);
+    });
   });
 
   it("un color inválido cae a null (no se cuela crudo al CSS)", () => {
