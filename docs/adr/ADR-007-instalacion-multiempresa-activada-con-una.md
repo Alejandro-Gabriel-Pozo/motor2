@@ -341,6 +341,51 @@ con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
    (Fase 7) correr `ANALYZE` antes de abrir el tráfico, en vez de esperar al
    autovacuum.
 
+## Checkpoint A8 (2026-09-29, pre-flight de solo lectura hecho, nada mutado)
+Estado: A0–A6 hechos en local (rama `multitenancy-fase-a`, HEAD `d2d8074`
+antes de este commit, 58 commits por delante de `origin/main` `72acca5`, NO
+publicada; incluye carta ADR-006 y N1–N3, no solo A0–A6). El dueño autorizó A8
+(«Si y confirmo»), pero la ejecución en producción quedó frenada por permisos
+de la herramienta y se pidió primero el pre-flight de lectura.
+
+Hallazgos del pre-flight (Neon `inventario-api` `morning-field-10188884`,
+branch `main` `br-steep-wind-af8iop63`, PG 17.11):
+- `_prisma_migrations`: 57 aplicadas, ninguna fallida; el repo tiene 60. Faltan
+  exactamente `20260929100000_multiempresa_estructura`,
+  `20260929110000_indice_compras_por_producto` y
+  `20260929120000_multiempresa_rls`. El punto de partida coincide: existen los
+  94 FK y los 27 índices que A2 elimina, con esos nombres; no existen `Empresa`,
+  `UsuarioEmpresa`, `app_empresa_actual` ni `motor2_app`.
+- Producción casi vacía: `User` 2, `Sucursal` 1, `Rol` 2, `UsuarioSucursal` 2,
+  `Accion` 52, `PermisoRol` 86, `IndicePrecio` 125; `Producto`, `Operacion` y
+  `MovimientoStock` con 0 filas; `SucursalPublica` 0. Base de 10 MB (límite 512
+  MB por branch). Sin riesgo de duplicados/huérfanos; las migraciones tardan
+  segundos.
+- `neondb_owner` es miembro de `neon_superuser` (BYPASSRLS): sirve para migrar;
+  `motor2_app` debe crearse por SQL verificando `rolbypassrls=false` y sin
+  membresía en `neon_superuser` (no verificable en solo lectura).
+- `npm run build` corre `prisma migrate deploy`: el primer deploy con el código
+  nuevo migra producción solo, así que rol y datos deben estar listos antes.
+  Un Preview de Vercel también migraría si su `DIRECT_URL` apunta a producción.
+- Entre migrar y desplegar, el código viejo solo fallaría en los upserts de
+  `ContenidoCartaProducto(productoId)` y `TemaCartaSucursal(sucursalId)`;
+  impacto nulo con producción vacía y sin carta.
+- Vercel (proyecto `motor2-demo`, scope `alepozod`) devolvió 403: no se leyeron
+  variables, `CARTA_EMPRESA_SLUG`, formato de `DATABASE_URL` ni último deploy.
+- Admin candidato a gerente: el ADMIN más antiguo (`alepogabriel@gmail.com`,
+  2026-09-15); el dueño debe confirmarlo por email concreto.
+
+Pendiente para retomar A8 (en este orden): (1) reautenticar Vercel con el scope
+`alepozod` o aportar `CARTA_EMPRESA_SLUG`, formato de `DATABASE_URL` y variables
+de Preview; (2) confirmar el email del gerente; (3) autorización de mutación en
+Neon con el permiso de herramienta habilitado; (4) branch de respaldo de
+`main` (retención de historial de solo 6 h); (5) crear `motor2_app` por SQL y
+verificarlo; (6) `migrate deploy` de las 3 migraciones con `DIRECT_URL` +
+`ANALYZE`; (7) `UPDATE` de `Empresa.slug` y `rolEmpresa='gerente'`; (8)
+`DATABASE_URL` (`motor2_app`) y `DIRECT_URL` (dueño) en Vercel; (9) push por
+hash aprobado por el dueño y deploy; (10) verificación de conteos y autochequeo
+del rol. Reversa: restaurar desde el branch de respaldo.
+
 ## Riesgos abiertos
 Rendimiento (cada consulta suma BEGIN + `set_config` + COMMIT; se mide en A5
 con `scripts/benchmark-reportes.ts`); el adaptador PrismaNeon hay que
