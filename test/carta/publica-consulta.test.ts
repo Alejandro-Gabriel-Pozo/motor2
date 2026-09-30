@@ -53,7 +53,7 @@ describe("resolverPortalCarta", () => {
   it("etiqueta cae al nombre de la sucursal si no está cargada", async () => {
     await prisma.sucursalPublica.create({ data: { sucursalId: central, slug: "central", publicada: true } });
     const [entrada] = await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id));
-    expect(entrada).toEqual({ slug: "central", etiqueta: "Central", subtitulo: null });
+    expect(entrada).toEqual({ slug: "central", etiqueta: "Central", subtitulo: null, posicion: null });
   });
 
   it("orden por `orden` y después por etiqueta", async () => {
@@ -65,6 +65,23 @@ describe("resolverPortalCarta", () => {
     });
     const portal = await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id));
     expect(portal.map((p) => p.slug)).toEqual(["norte", "central"]);
+  });
+
+  it("posicion: x, y y w completos (Decimal → número, h opcional); si falta uno de los tres, null", async () => {
+    const sur = (await prisma.sucursal.create({ data: { nombre: "Sur" } })).id;
+    await prisma.sucursalPublica.createMany({
+      data: [
+        { sucursalId: central, slug: "central", publicada: true, orden: 0, posX: 12.5, posY: 40, posW: 30.25, posH: 8 },
+        { sucursalId: norte, slug: "norte", publicada: true, orden: 1, posX: 50, posY: 60, posW: 25 },
+        { sucursalId: sur, slug: "sur", publicada: true, orden: 2, posX: 50, posY: 60, posH: 5 },
+      ],
+    });
+    const portal = await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id));
+    expect(portal.map((p) => [p.slug, p.posicion])).toEqual([
+      ["central", { x: 12.5, y: 40, w: 30.25, h: 8 }],
+      ["norte", { x: 50, y: 60, w: 25, h: null }],
+      ["sur", null],
+    ]);
   });
 
   it("aislamiento entre empresas: el portal de una no lista las sucursales publicadas de la otra", async () => {

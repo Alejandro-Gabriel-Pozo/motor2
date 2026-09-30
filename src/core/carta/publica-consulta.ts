@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { CartaV1 } from "./armar-menu";
 import type { EmpresaCarta } from "./empresa-carta";
+import { posicionCompleta, type PosicionPortal } from "./portal";
 import { estiloCartaPorDefecto, resolverEstiloCarta, type EstiloCarta } from "./estilo";
 import { resolverMenuCarta } from "./menu-consulta";
 
@@ -13,10 +14,14 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * `/api/carta/*` que consumía `restaurant-menu-design` (borrados en la Fase 8).
  */
 
+const numeroOnull = (d: { toNumber(): number } | null): number | null => (d === null ? null : d.toNumber());
+
 export interface EntradaPortalCarta {
   slug: string;
   etiqueta: string;
   subtitulo: string | null;
+  /** Lugar de la tarjeta sobre el mapa del portal; `null` si `posX`/`posY`/`posW` no están los tres. */
+  posicion: PosicionPortal | null;
 }
 
 /**
@@ -29,12 +34,18 @@ export interface EntradaPortalCarta {
 export async function resolverPortalCarta(empresa: EmpresaCarta, db: Db): Promise<EntradaPortalCarta[]> {
   const filas = await db.sucursalPublica.findMany({
     where: { empresaId: empresa.id, publicada: true, sucursal: { activo: true } },
-    select: { slug: true, etiqueta: true, subtituloPortal: true, orden: true, sucursal: { select: { nombre: true } } },
+    select: { slug: true, etiqueta: true, subtituloPortal: true, orden: true, posX: true, posY: true, posW: true, posH: true, sucursal: { select: { nombre: true } } },
   });
   return filas
-    .map((f) => ({ slug: f.slug, etiqueta: f.etiqueta ?? f.sucursal.nombre, subtitulo: f.subtituloPortal, orden: f.orden }))
+    .map((f) => ({
+      slug: f.slug,
+      etiqueta: f.etiqueta ?? f.sucursal.nombre,
+      subtitulo: f.subtituloPortal,
+      posicion: posicionCompleta(numeroOnull(f.posX), numeroOnull(f.posY), numeroOnull(f.posW), numeroOnull(f.posH)),
+      orden: f.orden,
+    }))
     .sort((a, b) => a.orden - b.orden || a.etiqueta.localeCompare(b.etiqueta, "es"))
-    .map(({ slug, etiqueta, subtitulo }) => ({ slug, etiqueta, subtitulo }));
+    .map(({ slug, etiqueta, subtitulo, posicion }) => ({ slug, etiqueta, subtitulo, posicion }));
 }
 
 export interface CartaPublicaResuelta {
