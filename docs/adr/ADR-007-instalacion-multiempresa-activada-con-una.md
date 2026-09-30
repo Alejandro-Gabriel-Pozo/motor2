@@ -285,6 +285,20 @@ con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
    de ~6,2 s a ~3,8 s—, la mejora es acotar y volver determinista el empate).
    Los tests de volumen vaciaban 60k operaciones con `deleteMany` (hasta 10 s,
    vencía el hook del test siguiente); ahora usan `TRUNCATE` (`e5e4b80`).
+6. **Índice parcial de compras — aplicado** (`30a63a1`, migración
+   `20260929110000_indice_compras_por_producto`, con `down.sql`; autorización
+   expresa del dueño 2026-09-29): `("productoId") WHERE "proceso" = 'COMPRA'`,
+   solo `productoId` (los ids son cuid únicos y la política RLS ya filtra por
+   empresa). `prisma migrate diff` contra la base migrada: sin diferencias (no lo
+   trata como deriva). Remedido con tablas TEMP de 1,2 M movimientos (5 % compras,
+   consultas reales; índice 416 kB vs 190 MB de índices existentes): lookup de
+   compras de un producto 26 → 5,2 ms (~5×), `periodo-precios` (30 productos)
+   105 → 71 ms (~1,5×), costo actual 574 → 486 ms (~1,2×, dominado por el seq scan
+   de `Operacion`). **El «100×» del punto 4 NO se reproduce**: la ganancia depende
+   de qué fracción de los movimientos son compras y de cuántos productos comparten
+   ese `productoId`; sin selectividad por producto es ~0. Test:
+   `test/persistencia/indice-compras-por-producto.test.ts` (el índice existe y el
+   planificador lo usa).
 
 ## Riesgos abiertos
 Rendimiento (cada consulta suma BEGIN + `set_config` + COMMIT; se mide en A5
