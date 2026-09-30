@@ -205,6 +205,23 @@ con atención: e2e `carta-*`, `api-carta*`, `permisos-matriz-guardar`,
 `enlaces-con-permiso`, `*-sesion-vencida`, `servidor-en-modo-produccion`, y
 `test/auth`, `test/permisos`, `test/reportes`, `test/arquitectura`.
 
+**V HECHO (2026-09-30, sobre `8abdc8d`).** Gate de 7 comandos limpio en la misma
+corrida: tsc vacío, lint 0/0, arquitectura 541 módulos / 0 violaciones, knip 0,
+`npm test` 307 archivos / 3527 tests (como `motor2_app`), build ok, e2e 383.
+Mutaciones corridas el mismo día sobre `motor2_dev` (rojo → restaurar → verde, 24/24):
+(a) `DISABLE ROW LEVEL SECURITY` en `Producto` → 3 tests rojos; (c) `DROP POLICY` de
+`Producto` → 3 tests rojos; (d) y (b) constan en A0 y A2; (e) en A7 (RLS apagado en
+`Proveedor` de `motor2_e2e`).
+
+**A8 ejecutado en las dos bases reales (2026-09-30)**: demo (`motor2-demo`) y
+`stockhneuquen`, con backup previo de cada rama de Neon, rol `motor2_app` creado por
+SQL en la consola (por la API, Neon lo hace `neon_superuser`/BYPASSRLS), `DATABASE_URL`
+= `motor2_app` (pooled) y `DIRECT_URL` = dueño, deploy de producción desde la rama
+(sin merge a `main`), `rolEmpresa = 'gerente'` para el primer admin. Empresa de
+`stockhneuquen`: nombre «Pozo SRL», slug `pozo-srl` (ejemplo: la razón social real de
+cada empresa se carga en su configuración, que es posterior). La demo conserva
+`principal` porque su carta pública (`/carta-publica/principal/…`) ya está publicada.
+
 ## Decisiones del dueño (2026-09-29)
 - **D1** V1 (fallback a la única empresa activa). **D2** RLS `ENABLE` + rol
   `motor2_app` aparte. **D3** Rol, PermisoRol y Unidad por empresa.
