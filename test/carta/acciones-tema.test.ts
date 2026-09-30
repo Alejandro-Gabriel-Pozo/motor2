@@ -54,13 +54,13 @@ describe("Server Actions del tema de la carta", () => {
 
   const guardado = async () => (await prisma.temaCartaSucursal.findFirst({ where: { sucursalId: centralId } }))?.valores;
 
-  it("guarda las 66 claves válidas en borrador (al crear no aplica)", async () => {
-    expect(Object.keys(TODAS_VALIDAS)).toHaveLength(66);
+  it("guarda las 67 claves válidas en borrador (al crear no aplica)", async () => {
+    expect(Object.keys(TODAS_VALIDAS)).toHaveLength(67);
     const r = await guardarTemaCarta(centralId, TODAS_VALIDAS);
-    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (66 valores cargados; el resto usa el default de la carta). Es un borrador: la carta sigue con la sheet hasta que lo apliques.' });
+    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (67 valores cargados; el resto usa el default de la carta). Es un borrador: la carta sigue con la sheet hasta que lo apliques.' });
     const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(false);
-    expect(Object.keys(fila.valores as object)).toHaveLength(66);
+    expect(Object.keys(fila.valores as object)).toHaveLength(67);
     expect(fila.valores).toEqual(TODAS_VALIDAS);
   });
 

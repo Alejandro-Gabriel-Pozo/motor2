@@ -1,5 +1,5 @@
 import { resolveHeroInk, resolvePrimaryForeground } from "./color-css";
-import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema } from "./tema";
+import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema, type FamiliaTipografica } from "./tema";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: resuelve el Json guardado de `TemaCartaSucursal.valores`
@@ -69,9 +69,22 @@ export interface BandaEstilo {
   altoDesktop: string;
 }
 
+/**
+ * `font-family` CSS de cada familia de `carta_fuente_familia`: la variable que define `next/font` en `fuente-carta.ts` (con el
+ * respaldo genérico por si la fuente no llega) — serif o sans según corresponda. Es un mapa cerrado: el valor guardado nunca
+ * llega al CSS como texto libre.
+ */
+const FAMILIA_CSS: Readonly<Record<FamiliaTipografica, string>> = {
+  playfair: "var(--font-carta-serif, ui-serif, serif), serif",
+  lora: "var(--font-carta-lora, ui-serif, serif), serif",
+  cormorant: "var(--font-carta-cormorant, ui-serif, serif), serif",
+  montserrat: "var(--font-carta-montserrat, ui-sans-serif, sans-serif), sans-serif",
+  geist: "var(--font-geist-sans, ui-sans-serif, sans-serif), sans-serif",
+};
+
 export interface EstiloCarta {
   /**
-   * Una variable CSS por cada una de las 66 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
+   * Una variable CSS por cada una de las 67 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
    * guiones>`). Valor validado si lo hay, si no el default de `CLAVES_TEMA_V1` (`""` = sin default: la variable queda vacía
    * y el CSS base de `.carta-shell` decide). `--carta-hero-ink` lleva el valor YA RESUELTO (`resolveHeroInk`), no el
    * "claro"/"oscuro" crudo — eso no es un color CSS válido por sí solo.
@@ -86,6 +99,8 @@ export interface EstiloCarta {
   portada: PortadaEstilo;
   volver: VolverEstilo;
   banda: BandaEstilo;
+  /** `carta_fuente_familia` ya validada (un valor inválido o ausente cae a la de siempre, Playfair). Con su `font-family` en `--carta-fuente-familia` de `variablesCss`. */
+  familiaTipografica: FamiliaTipografica;
   /** Tinta base (`--carta-ink`) derivada de `color_fondo_dia` por contraste WCAG; `null` si no hay fondo cargado (o no se puede leer) y manda el token de `.carta-shell`. */
   tintaBase: string | null;
 }
@@ -93,7 +108,7 @@ export interface EstiloCarta {
 const o = (v: string): string | null => (v === "" ? null : v);
 
 /**
- * `snake_case` → `kebab-case` con el prefijo `--carta-`, para el nombre de la variable CSS. Casi la mitad de las 66 claves ya
+ * `snake_case` → `kebab-case` con el prefijo `--carta-`, para el nombre de la variable CSS. Casi la mitad de las 67 claves ya
  * arrancan con `carta_` (`carta_banda_alto_mobile`, `carta_fuente_*`…): se lo saca antes de agregar el prefijo, si no
  * quedaría `--carta-carta-banda-alto-mobile`.
  */
@@ -141,6 +156,9 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
   const heroInk = valores.hero_ink ? resolveHeroInk(valores.hero_ink) : null;
   if (heroInk) variablesCss[aVariableCss("hero_ink")] = heroInk;
 
+  const familiaTipografica = valores.carta_fuente_familia as FamiliaTipografica;
+  variablesCss[aVariableCss("carta_fuente_familia")] = FAMILIA_CSS[familiaTipografica];
+
   const modo = valores.carta_imagen_modo as ImagenSeccionEstilo["modo"];
   const posicionX = valores.carta_imagen_pos_x as ImagenSeccionEstilo["posicionX"];
   const posicionY = valores.carta_imagen_pos_y as ImagenSeccionEstilo["posicionY"];
@@ -184,6 +202,7 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
       altoMobile: valores.carta_banda_alto_mobile,
       altoDesktop: valores.carta_banda_alto_desktop,
     },
+    familiaTipografica,
     tintaBase: valores.color_fondo_dia ? resolvePrimaryForeground(valores.color_fondo_dia) : null,
   };
 }

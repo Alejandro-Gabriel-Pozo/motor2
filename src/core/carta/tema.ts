@@ -18,12 +18,13 @@ import { validarImagenUrlCarta, validarTextoLibreCarta, type Resultado } from ".
  * tenant de restaurant-menu-design (`SiteConfig`, lib/get-config.ts), pasado a motor2 (`TemaCartaSucursal.valores`, un Json con
  * las MISMAS claves que `SiteConfig`).
  *
- * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 66
+ * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 67
  * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla), el importador ("Pegar
  * desde la sheet") y el contrato `TemaCartaV1` (lo arma `armarTemaCarta` para la carta pública interna).
  *
  * De las 109 claves de `SiteConfig`:
- *  - 66 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=28; D3 del plan).
+ *  - 66 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=28; D3 del plan). Más 1 propia de motor2, sin
+ *    equivalente en la sheet: `carta_fuente_familia` (D=29) — la familia tipográfica de títulos, nombres y precios.
  *  - 1 está RETIRADA (`CLAVES_RETIRADAS`): el original nunca la dibujaba, la carta de motor2 tampoco.
  *  - 3 son de precio y son CONVENCIÓN FIJA del sistema (es-AR, "$", a la izquierda) → `CLAVES_FIJAS_DEL_SISTEMA`: motor2 no las
  *    guarda ni las emite; la carta las sigue tomando de la sheet o de su default, que es esa misma convención.
@@ -54,7 +55,7 @@ export type TipoValorTema =
 
 export type BloqueTema = "A" | "B" | "C" | "D";
 
-/** Las 14 zonas del formulario, en el orden en que se muestran. */
+/** Las 15 zonas del formulario, en el orden en que se muestran. */
 export const ZONAS_TEMA = [
   "Portada e identidad",
   "Colores generales",
@@ -65,6 +66,7 @@ export const ZONAS_TEMA = [
   "Navegación y barra superior",
   "Textos fijos",
   "Contacto",
+  "Tipografía general",
   "Tipografía de portada",
   "Tipografía de índice",
   "Tipografía de banda",
@@ -83,6 +85,10 @@ export type DefinicionClaveTema = TipoValorTema & {
   defaultCarta: string;
 };
 
+/** Familias tipográficas de la carta (`carta_fuente_familia`); la primera es el default. Cada una se carga con `next/font` en `fuente-carta.ts`. */
+export const FAMILIAS_TIPOGRAFICAS = ["playfair", "lora", "cormorant", "montserrat", "geist"] as const;
+export type FamiliaTipografica = (typeof FAMILIAS_TIPOGRAFICAS)[number];
+
 const COLOR = { tipo: "color" } as const;
 const FUENTE = { tipo: "tamanoFuente" } as const;
 const texto = (maximo: number) => ({ tipo: "texto", maximo }) as const;
@@ -91,7 +97,7 @@ const texto = (maximo: number) => ({ tipo: "texto", maximo }) as const;
 const ALIAS_SI_NO: Readonly<Record<string, string>> = { "sí": "si", true: "si", "1": "si", yes: "si", false: "no", "0": "no" };
 
 /**
- * Las 66 claves por tenant (D3 menos la retirada `carta_fuente_indice_categoria`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
+ * Las 67 claves por tenant (D3 menos la retirada `carta_fuente_indice_categoria`, más `carta_fuente_familia`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
  */
 export const CLAVES_TEMA_V1 = [
   // Portada e identidad (A + la posición del bloque y del CTA en la portada mobile)
@@ -152,6 +158,9 @@ export const CLAVES_TEMA_V1 = [
   { clave: "restaurante_facebook", bloque: "C", zona: "Contacto", etiqueta: "Facebook (usuario o URL)", defaultCarta: "", tipo: "redSocial", red: "facebook" },
   { clave: "restaurante_whatsapp", bloque: "C", zona: "Contacto", etiqueta: "WhatsApp (teléfono con código de país)", defaultCarta: "", tipo: "telefono" },
   { clave: "restaurante_footer_maps_url", bloque: "C", zona: "Contacto", etiqueta: "Link de Google Maps", defaultCarta: "", tipo: "urlHttps" },
+
+  // Tipografía general
+  { clave: "carta_fuente_familia", bloque: "D", zona: "Tipografía general", etiqueta: "Tipografía de títulos, nombres y precios", defaultCarta: "playfair", tipo: "enum", opciones: FAMILIAS_TIPOGRAFICAS },
 
   // Tipografía de portada
   { clave: "carta_fuente_portada_etiqueta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la etiqueta de la portada", defaultCarta: "0.6875rem", ...FUENTE },
@@ -277,7 +286,7 @@ export interface TemaCartaV1 {
   generadoEn: string;
   sucursalId: string;
   actualizadoEn: string;
-  /** SIEMPRE las 66 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
+  /** SIEMPRE las 67 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
   valores: Record<ClaveTema, string | null>;
 }
 
@@ -468,7 +477,7 @@ export interface FilaTemaCarta {
 
 /**
  * Arma `TemaCartaV1` desde la fila, VOLVIENDO A VALIDAR cada valor del Json (una carga por `db:studio` no pasa por las Server
- * Actions): emite siempre las 66 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
+ * Actions): emite siempre las 67 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
  * ajenas al catálogo se ignoran (incluidas las `precio_*`, si alguien las cargara a mano).
  */
 export function armarTemaCarta(fila: FilaTemaCarta, ahora: Date = new Date()): TemaCartaV1 {

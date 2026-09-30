@@ -12,7 +12,7 @@ import {
 } from "../../src/core/carta/tema";
 
 /**
- * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 66 claves por tenant, la clasificación del
+ * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 67 claves por tenant, la clasificación del
  * resto de `SiteConfig`, la paridad con los defaults de la carta, un validador por tipo, el importador ("Pegar desde la sheet")
  * y el saneamiento de la salida del endpoint.
  */
@@ -56,6 +56,7 @@ const BLOQUE_C = [
   "restaurante_footer_maps_url",
 ];
 const BLOQUE_D = [
+  "carta_fuente_familia",
   "carta_fuente_banda_etiqueta",
   "carta_fuente_banda_titulo",
   "carta_fuente_banda_descripcion",
@@ -118,6 +119,7 @@ const CLAVES_SITE_CONFIG = [
  * original. Quedan marcados con el comentario `// piso 11px` al lado; el resto de la tabla sigue siendo paridad real.
  */
 const DEFAULTS_CARTA_NO_VACIOS: Record<string, string> = {
+  carta_fuente_familia: "playfair", // propia de motor2: sin equivalente en la sheet (el default es la Playfair Display de siempre)
   topbar_back_label: "← Menú",
   topbar_back_size: "12px",
   carta_pos_bloque: "50",
@@ -153,15 +155,15 @@ const claves = CLAVES_TEMA_V1.map((d) => d.clave as string);
 const ordenar = (xs: readonly string[]) => [...xs].sort();
 
 describe("catálogo CLAVES_TEMA_V1", () => {
-  it("exactamente las 66 claves de D3 (menos la retirada), con 6/23/9/28 por bloque", () => {
-    expect(claves).toHaveLength(66);
+  it("exactamente las 66 claves de D3 (menos la retirada) más carta_fuente_familia, con 6/23/9/29 por bloque", () => {
+    expect(claves).toHaveLength(67);
     expect(ordenar(claves)).toEqual(ordenar([...BLOQUE_A, ...BLOQUE_B, ...BLOQUE_C, ...BLOQUE_D]));
     const porBloque = (b: string) => ordenar(CLAVES_TEMA_V1.filter((d) => d.bloque === b).map((d) => d.clave));
     expect(porBloque("A")).toEqual(ordenar(BLOQUE_A));
     expect(porBloque("B")).toEqual(ordenar(BLOQUE_B));
     expect(porBloque("C")).toEqual(ordenar(BLOQUE_C));
     expect(porBloque("D")).toEqual(ordenar(BLOQUE_D));
-    expect([BLOQUE_A.length, BLOQUE_B.length, BLOQUE_C.length, BLOQUE_D.length]).toEqual([6, 23, 9, 28]);
+    expect([BLOQUE_A.length, BLOQUE_B.length, BLOQUE_C.length, BLOQUE_D.length]).toEqual([6, 23, 9, 29]);
   });
 
   it("sin repetidas y sin intersección con las fijas del sistema ni con las que no son por tenant", () => {
@@ -173,13 +175,13 @@ describe("catálogo CLAVES_TEMA_V1", () => {
     expect(fijas.filter((c) => (CLAVES_NO_POR_TENANT as readonly string[]).includes(c))).toEqual([]);
   });
 
-  it("66 + 3 + 39 + 1 retirada = las 109 claves de SiteConfig, ni una más ni una menos", () => {
+  it("66 (+ carta_fuente_familia, propia de motor2) + 3 + 39 + 1 retirada = las 109 claves de SiteConfig, ni una más ni una menos", () => {
     expect(CLAVES_SITE_CONFIG).toHaveLength(109);
     expect(Object.keys(CLAVES_FIJAS_DEL_SISTEMA)).toHaveLength(3);
     expect(CLAVES_NO_POR_TENANT).toHaveLength(39);
     expect(CLAVES_RETIRADAS).toEqual(["carta_fuente_indice_categoria"]);
     expect(claves).not.toContain("carta_fuente_indice_categoria");
-    expect(ordenar([...claves, ...Object.keys(CLAVES_FIJAS_DEL_SISTEMA), ...CLAVES_NO_POR_TENANT, ...CLAVES_RETIRADAS])).toEqual(ordenar(CLAVES_SITE_CONFIG));
+    expect(ordenar([...claves.filter((c) => c !== "carta_fuente_familia"), ...Object.keys(CLAVES_FIJAS_DEL_SISTEMA), ...CLAVES_NO_POR_TENANT, ...CLAVES_RETIRADAS])).toEqual(ordenar(CLAVES_SITE_CONFIG));
   });
 
   it("las 3 fijas del sistema son las de precio, con la convención argentina", () => {
@@ -195,14 +197,14 @@ describe("catálogo CLAVES_TEMA_V1", () => {
     expect(claves.filter((c) => c.startsWith("precio_"))).toEqual([]);
   });
 
-  it("cada clave tiene tipo, zona (de las 14), etiqueta y defaultCarta; las 14 zonas se usan", () => {
+  it("cada clave tiene tipo, zona (de las 15), etiqueta y defaultCarta; las 15 zonas se usan", () => {
     for (const d of CLAVES_TEMA_V1) {
       expect(typeof d.tipo, d.clave).toBe("string");
       expect(ZONAS_TEMA, d.clave).toContain(d.zona);
       expect(d.etiqueta.trim().length, d.clave).toBeGreaterThan(0);
       expect(typeof d.defaultCarta, d.clave).toBe("string");
     }
-    expect(ZONAS_TEMA).toHaveLength(14);
+    expect(ZONAS_TEMA).toHaveLength(15);
     expect(ordenar([...new Set(CLAVES_TEMA_V1.map((d) => d.zona))])).toEqual(ordenar(ZONAS_TEMA));
   });
 });
@@ -230,6 +232,7 @@ describe("validarValorTema: un caso bueno y uno malo de cada tipo", () => {
     { clave: "carta_imagen_ancho_desktop", bueno: "contain", malo: "auto auto auto" },
     { clave: "carta_pos_bloque", bueno: "42.5", malo: "150" },
     { clave: "carta_imagen_opacidad", bueno: "60", malo: "0" },
+    { clave: "carta_fuente_familia", bueno: "Cormorant", normalizado: "cormorant", malo: "Comic Sans MS" },
     { clave: "carta_imagen_modo", bueno: "Miniatura", normalizado: "miniatura", malo: "mosaico" },
     { clave: "carta_imagen_overlay", bueno: "Sí", normalizado: "si", malo: "tal vez" },
     { clave: "restaurante_instagram", bueno: "@laparrilla", normalizado: "laparrilla", malo: "https://evil.com/x" },
@@ -339,7 +342,7 @@ describe("armarTemaCarta: saneamiento de la salida", () => {
   const ahora = new Date("2026-09-24T12:00:00.000Z");
   const actualizadoEn = new Date("2026-09-24T11:00:00.000Z");
 
-  it("con un Json cargado a mano: lo inválido sale null, lo ajeno no sale, y siempre salen exactamente las 66 claves", () => {
+  it("con un Json cargado a mano: lo inválido sale null, lo ajeno no sale, y siempre salen exactamente las 67 claves", () => {
     const tema = armarTemaCarta(
       {
         sucursalId: "suc-1",
@@ -375,9 +378,9 @@ describe("armarTemaCarta: saneamiento de la salida", () => {
     expect(armarTemaCarta({ sucursalId: "s", actualizadoEn, valores: { carta_banda_alto_desktop: "120" } }, ahora).valores.carta_banda_alto_desktop).toBe("120px");
   });
 
-  it.each([null, [], "texto", 42])("un Json que no es un objeto (%j) → las 66 en null", (valores) => {
+  it.each([null, [], "texto", 42])("un Json que no es un objeto (%j) → las 67 en null", (valores) => {
     const tema = armarTemaCarta({ sucursalId: "s", actualizadoEn, valores }, ahora);
-    expect(Object.keys(tema.valores)).toHaveLength(66);
+    expect(Object.keys(tema.valores)).toHaveLength(67);
     expect(Object.values(tema.valores).every((v) => v === null)).toBe(true);
   });
 });

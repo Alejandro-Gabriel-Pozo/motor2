@@ -209,6 +209,38 @@ describe("colores por zona, portada, volver y tinta base", () => {
   });
 });
 
+describe("familia tipográfica (carta_fuente_familia)", () => {
+  it("sin valor cargado: Playfair, con su variable de next/font y respaldo serif en --carta-fuente-familia", () => {
+    const e = resolverEstiloCarta({});
+    expect(e.familiaTipografica).toBe("playfair");
+    expect(e.valores.carta_fuente_familia).toBe("playfair");
+    expect(e.variablesCss["--carta-fuente-familia"]).toBe("var(--font-carta-serif, ui-serif, serif), serif");
+  });
+
+  it.each([
+    ["lora", "var(--font-carta-lora, ui-serif, serif), serif"],
+    ["cormorant", "var(--font-carta-cormorant, ui-serif, serif), serif"],
+    ["montserrat", "var(--font-carta-montserrat, ui-sans-serif, sans-serif), sans-serif"],
+    ["geist", "var(--font-geist-sans, ui-sans-serif, sans-serif), sans-serif"],
+  ])("%s → su variable de fuente", (familia, css) => {
+    const e = resolverEstiloCarta({ carta_fuente_familia: familia });
+    expect(e.familiaTipografica).toBe(familia);
+    expect(e.variablesCss["--carta-fuente-familia"]).toBe(css);
+  });
+
+  it("es un enum cerrado: un valor libre o desconocido cae a Playfair y nunca llega al CSS", () => {
+    for (const malo of ["Comic Sans MS", "serif; color:red", "PLAYFAIR2", "", 42]) {
+      const e = resolverEstiloCarta({ carta_fuente_familia: malo });
+      expect(e.familiaTipografica).toBe("playfair");
+      expect(e.variablesCss["--carta-fuente-familia"]).toBe("var(--font-carta-serif, ui-serif, serif), serif");
+    }
+  });
+
+  it("acepta mayúsculas (se normaliza como el resto de los enum)", () => {
+    expect(resolverEstiloCarta({ carta_fuente_familia: "Lora" }).familiaTipografica).toBe("lora");
+  });
+});
+
 describe("estiloCartaPorDefecto", () => {
   it("es exactamente resolverEstiloCarta({})", () => {
     expect(estiloCartaPorDefecto()).toEqual(resolverEstiloCarta({}));
