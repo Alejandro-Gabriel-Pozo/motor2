@@ -34,6 +34,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prototipo de la Fase A (fuera de tsconfig: su cliente generado solo existe en local).
+    "prisma/fase-a/**",
   ]),
   {
     // test/e2e/ y test/e2e-demo/ no son código React — son fixtures de Playwright, cuyo API

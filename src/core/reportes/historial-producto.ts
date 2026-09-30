@@ -130,7 +130,6 @@ export async function obtenerHistorialProducto(
   // reportes/periodo.ts.
   const finDia = hasta ? new Date(hasta) : undefined;
   finDia?.setUTCHours(23, 59, 59, 999);
-  const filtroFechaMov = desde || finDia ? { operacion: { fecha: { ...(desde ? { gte: desde } : {}), ...(finDia ? { lte: finDia } : {}) } } } : {};
   const filtroFechaConteo = desde || finDia ? { fecha: { ...(desde ? { gte: desde } : {}), ...(finDia ? { lte: finDia } : {}) } } : {};
 
   // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md
