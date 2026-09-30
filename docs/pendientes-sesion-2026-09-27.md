@@ -845,6 +845,73 @@ literal. Vinculado a #42 (comparten el mismo dominio) pero es una decisión
 más amplia y previa: no tiene sentido diseñar la UI de "anular en
 conjunto" de #42 hasta no saber qué nombre va a llevar cada cosa.
 
+### #44 — UX: no hay feedback al hacer click ("la página se teletransporta")
+Hallazgo del 2026-09-30 (palabras del dueño: al hacer click "no hay nada que
+te haga sentir que lo hiciste y que está pasando algo", y la página cambia de
+golpe). **Solo anotado, sin plan ni código todavía.**
+
+**Lo confirmado contra el código (no es una opinión):**
+- No existe ningún `loading.tsx` en `src/app` (0 archivos): ninguna navegación
+  muestra un estado de carga, así que entre el click y la página nueva no hay
+  nada visible (el "teletransporte").
+- `FormConResultado` (21 usos) llama a `useTransition()` pero **descarta
+  `isPending`** (`const [, startTransition]`): durante el envío el botón no se
+  deshabilita ni cambia de texto, y el mensaje de resultado solo aparece al
+  final. `ActivarDesactivarFila` y `sincronizar-precio-grupo` sí usan el
+  estado pendiente; `BotonConConfirmacion` ya tiene `etiquetaEnCurso`. Es
+  decir: el patrón existe, falta aplicarlo de forma uniforme.
+- `useFormStatus`/`aria-busy` no se usan en ningún lado.
+
+**Dirección probable (a validar al planificar):**
+1. `loading.tsx` por sección (`(app)`, `(pos)`) y/o barra de progreso de
+   navegación; `<Link>` con estado pendiente (`useLinkStatus`).
+2. `FormConResultado`: usar `isPending` → botón deshabilitado + etiqueta
+   «Guardando…», `aria-busy` en el formulario. Un solo cambio cubre los 21
+   usos.
+3. Confirmación visible tras guardar (hoy el mensaje está al pie del form y
+   puede quedar fuera de vista).
+4. Criterio: que los e2e (axe-core incluido) sigan pasando y que el estado
+   pendiente se anuncie a lectores de pantalla (`role="status"`).
+
+Relacionado con #45 (un botón primario con acento hace más visible la acción),
+pero es independiente y de mayor valor inmediato.
+
+### #45 — Mejora visual de UI/UX con herramientas externas (consulta, sin decidir)
+Consulta del 2026-09-30. Hoy la UI es casi blanco y negro, sobria, con Tailwind
+4 + Geist y modo oscuro en administración; el color se usa solo con función
+(rojo error, ámbar aviso, verde éxito, neutrales). Al dueño le parece bien;
+esto es una idea futura, **no una decisión**.
+
+**Conclusión de la consulta:** no sumar una librería de UI completa (MUI,
+Mantine, Ant Design: imponen su sistema de estilos y chocan con Tailwind y con
+Server Components). Orden sugerido, de menor a mayor compromiso:
+1. **Tokens de diseño propios** en `@theme` (superficie, borde, texto
+   secundario, acento, peligro, aviso, éxito) en vez de clases sueltas
+   (`neutral-500` ×360, `red-600` ×155).
+2. **Un solo color de acento** para botones primarios, enlaces y foco (hoy las
+   acciones son `text-sm underline`: no se distingue la principal).
+3. **Componentes compartidos** que fijen estilos: `<Campo>` (230 inputs/selects/
+   textareas; `rounded border px-3 py-2` ×30), `<Tabla>` básica (37 tablas con
+   `w-full text-sm`), `<Titulo>` (41 `h1` idénticos), y `PaginaProtegida` para
+   el esqueleto permiso + título. Con esto los maestros CRUD simples
+   (`unidades`, `categorias`, `motivos`, `secciones`, `sucursales`, ~500
+   líneas) bajan sin generador de CRUD.
+4. **Iconos** (`lucide-react`), cuidando el tamaño del bundle.
+5. **shadcn/ui solo por piezas** donde falte algo (combobox, popover, tooltip,
+   toasts, date picker; `Dialog` en lugar de `modal.tsx`), no la paleta entera.
+
+Evaluadas y NO adoptadas por ahora (ver consulta): Refine (modelo de datos
+REST/GraphQL, duplica auth/permisos/router), next-safe-action (`conPermiso` ya
+centraliza el gate), TanStack Table (`tabla-reporte` cubre lo necesario),
+Conform (`FormConResultado` resuelve reseteo, Enter y `role` a11y que
+Conform habría que reproducir; Zod no está instalado). Posible: nuqs, si los
+filtros en URL hoy se arman a mano y se pierden.
+
+**No tocar sin plan aparte:** el POS (`(pos)`), que tiene tokens propios y
+contraste medido, sin modo oscuro a propósito. Cualquier paleta nueva debe
+pasar axe-core en claro y oscuro. Para la parte de componentes, lanzar
+`auditor-estructura` y planificar con `plan-con-verificacion-e2e`.
+
 ---
 
 ## Hallazgo post-cierre (2026-09-28): cobertura de test de la carrera real de I3, inventario
