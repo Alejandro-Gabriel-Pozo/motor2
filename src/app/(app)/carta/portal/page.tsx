@@ -1,11 +1,14 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { cargarAdminPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
+import { cargarAdminPortal, cargarPortalEmpresaAdmin, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
+import { CLAVES_PORTAL_V1 } from "@/core/carta/portal";
 import { urlCartaPublica } from "@/core/carta/host";
+import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
 import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { EditorPortal } from "@/components/carta/editor-portal";
 
 /**
  * Portal de sucursales (docs/plan-registro-tenants-2026-09-24.md, M7): el registro que arma el portal de la carta pública
@@ -23,6 +26,8 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   return r;
 };
 
+const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
+
 const CLASE_INPUT = "rounded border px-2 py-1";
 const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 
@@ -33,7 +38,7 @@ export default async function PortalSucursalesPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sucursales = await cargarAdminPortal(ctx.db);
+  const [sucursales, apariencia] = await Promise.all([cargarAdminPortal(ctx.db), cargarPortalEmpresaAdmin(ctx.db)]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,6 +55,24 @@ export default async function PortalSucursalesPage() {
           </a>
         </div>
       </div>
+
+      <section aria-labelledby="titulo-apariencia-portal" className="flex flex-col gap-2">
+        <h2 id="titulo-apariencia-portal" className="text-lg font-medium">
+          Apariencia del portal
+        </h2>
+        <p className="text-sm text-neutral-500">
+          Título, colores, logo, imagen del mapa y tamaños de las tarjetas. Con imagen del mapa y al menos una sucursal con posición (más abajo), el portal
+          muestra las tarjetas sobre la imagen; sin eso, es una lista. Vacío = el default. El portal toma los cambios al recargarlo.
+        </p>
+        <EditorPortal
+          valoresIniciales={apariencia.valores}
+          version={apariencia.actualizadoEn?.toISOString() ?? "sin-apariencia"}
+          accion={async (fd: FormData) => {
+            "use server";
+            return refrescarSiOk(await guardarPortalEmpresa(valoresDelFormulario(fd)));
+          }}
+        />
+      </section>
 
       <ul className="flex flex-col gap-3">
         {sucursales.map((s) => (

@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
+import { esClavePortal } from "./portal";
 import { esClaveTema } from "./tema";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -461,4 +462,31 @@ export async function cargarTemaAdmin(sucursalId: string, db: Db): Promise<TemaA
     tema: s.temaCarta && { valores, aplicarEnCarta: s.temaCarta.aplicarEnCarta, actualizadoEn: s.temaCarta.actualizadoEn },
     publica: s.publica,
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Apariencia del portal de la empresa (/carta/portal, ADR-006)
+// ---------------------------------------------------------------------------------------------------------------------------
+
+export interface PortalEmpresaAdmin {
+  /**
+   * Lo guardado TAL CUAL (sin volver a validar), solo las claves del catálogo del portal con valor de texto: si alguien cargó algo
+   * inválido por `db:studio`, el formulario lo muestra para corregirlo (el portal público, en cambio, cae al default).
+   */
+  valores: Record<string, string>;
+  /** null = todavía no se guardó nada (el portal usa los defaults). Sirve de `key` del formulario para que se reinicie al guardar. */
+  actualizadoEn: Date | null;
+}
+
+/** La apariencia del portal de la empresa activa (una fila por empresa; RLS deja ver solo la propia). */
+export async function cargarPortalEmpresaAdmin(db: Db): Promise<PortalEmpresaAdmin> {
+  const fila = await db.portalCartaEmpresa.findFirst({ select: { valores: true, actualizadoEn: true } });
+  const json = fila?.valores;
+  const obj: Record<string, unknown> = typeof json === "object" && json !== null && !Array.isArray(json) ? (json as Record<string, unknown>) : {};
+  const valores: Record<string, string> = {};
+  for (const clave of Object.keys(obj)) {
+    const v = obj[clave];
+    if (esClavePortal(clave) && typeof v === "string") valores[clave] = v;
+  }
+  return { valores, actualizadoEn: fila?.actualizadoEn ?? null };
 }
