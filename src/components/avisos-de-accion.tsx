@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useState, useTransition, type ReactNode } from "react";
+import { createContext, use, useRef, useState, useTransition, type ReactNode } from "react";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 
 type Publicar = (resultado: ResultadoAccion | null) => void;
@@ -53,15 +53,23 @@ export function FormConAviso({
 }) {
   const publicar = use(ContextoDeAvisos);
   if (!publicar) throw new Error("FormConAviso tiene que ir dentro de <AvisosDeAccion>.");
-  const [, startTransition] = useTransition();
+  const [pendiente, startTransition] = useTransition();
+  const enviando = useRef(false);
 
   return (
     <form
       className={className}
+      aria-busy={pendiente || undefined}
       action={(formData: FormData) => {
+        if (enviando.current) return;
+        enviando.current = true;
         publicar(null);
         startTransition(async () => {
-          publicar(await accion(formData));
+          try {
+            publicar(await accion(formData));
+          } finally {
+            enviando.current = false;
+          }
         });
       }}
     >

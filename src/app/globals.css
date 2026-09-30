@@ -31,6 +31,13 @@
   }
 }
 
+/* Feedback mientras un formulario guarda (`FormConResultado`/`FormConAviso` ponen `aria-busy`): el botón de envío se atenúa y el cursor pasa a espera.
+   No se deshabilita de verdad para no perder el foco del teclado (ver `form-con-resultado.tsx`). */
+form[aria-busy="true"] [type="submit"] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
 /* Salón (módulo POS, route group `(pos)`): tokens de color del mapa de mesas, aplicados por `PosShell` en `.pos-shell` y NUNCA en
    `:root`. Dos razones: (1) `:root` declara `color-scheme: light dark` y en modo oscuro pinta texto casi blanco (#ededed), pero las
    tarjetas del salón son blancas fijas: el número de mesa y los totales quedarían ilegibles; (2) nombres genéricos como `--border` o
