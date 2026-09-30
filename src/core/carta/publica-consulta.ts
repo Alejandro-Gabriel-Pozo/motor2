@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { CartaV1 } from "./armar-menu";
 import type { EmpresaCarta } from "./empresa-carta";
-import { posicionCompleta, type PosicionPortal } from "./portal";
+import { posicionCompleta, resolverEstiloPortal, type EstiloPortal, type PosicionPortal } from "./portal";
 import { estiloCartaPorDefecto, resolverEstiloCarta, type EstiloCarta } from "./estilo";
 import { resolverMenuCarta } from "./menu-consulta";
 
@@ -46,6 +46,15 @@ export async function resolverPortalCarta(empresa: EmpresaCarta, db: Db): Promis
     }))
     .sort((a, b) => a.orden - b.orden || a.etiqueta.localeCompare(b.etiqueta, "es"))
     .map(({ slug, etiqueta, subtitulo, posicion }) => ({ slug, etiqueta, subtitulo, posicion }));
+}
+
+/**
+ * La apariencia del portal de la empresa (`PortalCartaEmpresa`, 1:1 con Empresa). Sin fila, o con un Json inservible: los defaults
+ * del catálogo (grilla sin imagen). Filtra por `empresaId` explícito además del RLS, igual que el resto de esta capa.
+ */
+export async function resolverConfigPortal(empresa: EmpresaCarta, db: Db): Promise<EstiloPortal> {
+  const fila = await db.portalCartaEmpresa.findFirst({ where: { empresaId: empresa.id }, select: { valores: true } });
+  return resolverEstiloPortal(fila?.valores);
 }
 
 export interface CartaPublicaResuelta {

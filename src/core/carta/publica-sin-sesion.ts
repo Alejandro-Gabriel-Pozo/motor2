@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa } from "@/core/auth/base";
 import { resolverEmpresaCarta, type EmpresaCarta } from "./empresa-carta";
-import { resolverCartaPublica, resolverPortalCarta } from "./publica-consulta";
+import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "./publica-consulta";
 
 /**
  * Resolución de la carta para los consumidores SIN sesión (páginas `(carta-publica)`): no hay `ContextoUsuario` de donde sacar
@@ -11,4 +11,5 @@ import { resolverCartaPublica, resolverPortalCarta } from "./publica-consulta";
 export const empresaCartaPublica = (slug: string) => resolverEmpresaCarta(slug, prisma);
 /** Con empresa conocida (páginas `(carta-publica)`), bajo el contexto de ESA empresa: RLS sostiene el aislamiento aunque un filtro falle. */
 export const portalCartaPublico = (empresa: EmpresaCarta) => resolverPortalCarta(empresa, dbDeEmpresa(empresa.id));
+export const configPortalPublica = (empresa: EmpresaCarta) => resolverConfigPortal(empresa, dbDeEmpresa(empresa.id));
 export const cartaPublica = (empresa: EmpresaCarta, slug: string) => resolverCartaPublica(empresa, slug, dbDeEmpresa(empresa.id));

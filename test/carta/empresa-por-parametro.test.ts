@@ -2,22 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const EMPRESA = { id: "empresa_la_cuadra", slug: "la-cuadra", nombre: "La Cuadra" };
 
-const { prismaFalso, resolverPortalCarta, resolverCartaPublica, portalCartaPublico, cartaPublica, resolverEmpresaCarta } = vi.hoisted(() => ({
+const { prismaFalso, resolverPortalCarta, resolverCartaPublica, resolverConfigPortal, portalCartaPublico, configPortalPublica, cartaPublica, resolverEmpresaCarta } = vi.hoisted(() => ({
   prismaFalso: { esPrismaFalso: true },
   resolverEmpresaCarta: vi.fn(async (slug: string) => (slug === "la-cuadra" ? { id: "empresa_la_cuadra", slug, nombre: "La Cuadra" } : null)),
   resolverPortalCarta: vi.fn(async () => []),
   resolverCartaPublica: vi.fn(async () => null),
+  resolverConfigPortal: vi.fn(async () => ({})),
   portalCartaPublico: vi.fn(async () => []),
+  configPortalPublica: vi.fn(async () => ({ variablesCss: {}, valores: {} })),
   cartaPublica: vi.fn(async () => null),
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
 vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }) }));
-vi.mock("@/core/carta/publica-consulta", () => ({ resolverPortalCarta, resolverCartaPublica }));
+vi.mock("@/core/carta/publica-consulta", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
 vi.mock("@/core/carta/empresa-carta", () => ({ resolverEmpresaCarta }));
 vi.mock("@/core/carta/publica-sin-sesion", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/core/carta/publica-sin-sesion")>();
-  return { ...real, portalCartaPublico, cartaPublica };
+  return { ...real, portalCartaPublico, configPortalPublica, cartaPublica };
 });
 vi.mock("@/components/carta-publica/portal-vista", () => ({ PortalVista: () => null }));
 vi.mock("@/components/carta-publica/carta-vista", () => ({ CartaVista: () => null }));
@@ -49,9 +51,11 @@ describe("punto público sin sesión", () => {
     const real = await vi.importActual<typeof import("@/core/carta/publica-sin-sesion")>("@/core/carta/publica-sin-sesion");
 
     await real.portalCartaPublico(EMPRESA);
+    await real.configPortalPublica(EMPRESA);
     await real.cartaPublica(EMPRESA, "central");
 
     expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
+    expect(resolverConfigPortal).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
     expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id });
   });
 });
@@ -60,11 +64,13 @@ describe("páginas de la carta pública", () => {
   it("el portal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {
     await PortalPage({ params: Promise.resolve({ empresa: "la-cuadra" }) });
     expect(portalCartaPublico).toHaveBeenCalledWith(EMPRESA);
+    expect(configPortalPublica).toHaveBeenCalledWith(EMPRESA);
   });
 
   it("el portal no consulta nada si la empresa no resuelve", async () => {
     await expect(PortalPage({ params: Promise.resolve({ empresa: "otra" }) })).rejects.toThrow("NEXT_NOT_FOUND");
     expect(portalCartaPublico).not.toHaveBeenCalled();
+    expect(configPortalPublica).not.toHaveBeenCalled();
   });
 
   it("la sucursal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {

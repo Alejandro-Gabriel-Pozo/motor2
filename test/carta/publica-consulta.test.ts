@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
-import { resolverCartaPublica, resolverPortalCarta } from "../../src/core/carta/publica-consulta";
+import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "../../src/core/carta/publica-consulta";
 
 const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal", nombre: "Principal" };
 const OTRA_EMPRESA_ID = "empresa_otra";
@@ -94,6 +94,40 @@ describe("resolverPortalCarta", () => {
     });
     expect((await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id))).map((p) => p.slug)).toEqual(["central"]);
     expect((await resolverPortalCarta(otraEmpresa, dbDeEmpresa(otraEmpresa.id))).map((p) => p.slug)).toEqual(["ajena"]);
+  });
+});
+
+describe("resolverConfigPortal", () => {
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+  });
+
+  it("sin fila, el estilo por defecto: sin imagen ni título (grilla)", async () => {
+    const e = await resolverConfigPortal(empresa, dbDeEmpresa(empresa.id));
+    expect(e.imagenFondo).toBeNull();
+    expect(e.valores.portal_titulo).toBe("");
+    expect(e.proporcion).toBe("1080/1533");
+  });
+
+  it("con fila, usa lo guardado (y VUELVE a validar: un valor inválido cargado a mano cae al default)", async () => {
+    await prisma.portalCartaEmpresa.create({
+      data: { valores: { portal_titulo: "Nuestras sedes", portal_bg_image_url: "https://x.com/mapa.png", portal_bg_overlay: "0.4", portal_card_bg: "rojo; x" } },
+    });
+    const e = await resolverConfigPortal(empresa, dbDeEmpresa(empresa.id));
+    expect(e.valores.portal_titulo).toBe("Nuestras sedes");
+    expect(e.imagenFondo).toBe("https://x.com/mapa.png");
+    expect(e.overlay).toBe(0.4);
+    expect(e.variablesCss["--portal-card-bg"]).toBeUndefined();
+  });
+
+  it("aislamiento entre empresas: cada una ve SU config, y con la base de una no se lee la de la otra ni con el id explícito", async () => {
+    await prisma.portalCartaEmpresa.create({ data: { valores: { portal_titulo: "Principal" } } });
+    await crearSucursalDeOtraEmpresa("Ajena");
+    await prismaAdmin.portalCartaEmpresa.create({ data: { empresaId: OTRA_EMPRESA_ID, valores: { portal_titulo: "Otra" } } });
+
+    expect((await resolverConfigPortal(empresa, dbDeEmpresa(empresa.id))).valores.portal_titulo).toBe("Principal");
+    expect((await resolverConfigPortal(otraEmpresa, dbDeEmpresa(otraEmpresa.id))).valores.portal_titulo).toBe("Otra");
+    expect((await resolverConfigPortal(otraEmpresa, dbDeEmpresa(empresa.id))).valores.portal_titulo).toBe("");
   });
 });
 

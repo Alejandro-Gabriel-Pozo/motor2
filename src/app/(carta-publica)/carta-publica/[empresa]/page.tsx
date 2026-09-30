@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { empresaCartaPublica, portalCartaPublico } from "@/core/carta/publica-sin-sesion";
-import { resolverEstiloPortal } from "@/core/carta/public";
+import { configPortalPublica, empresaCartaPublica, portalCartaPublico } from "@/core/carta/publica-sin-sesion";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 
 // Dinámico a propósito (sin caché): ver la nota de abajo.
@@ -19,13 +18,13 @@ export default async function PortalPage({ params }: { params: Promise<{ empresa
   const empresaCarta = await empresaCartaPublica(empresa);
   if (!empresaCarta) notFound();
 
-  const sucursales = await portalCartaPublico(empresaCarta);
+  const [sucursales, estilo] = await Promise.all([portalCartaPublico(empresaCarta), configPortalPublica(empresaCarta)]);
   const slugEmpresa = empresaCarta.slug;
   return (
     <PortalVista
       sucursales={sucursales}
       empresaNombre={empresaCarta.nombre}
-      estilo={resolverEstiloPortal({})}
+      estilo={estilo}
       hrefDe={(slug) => `/carta-publica/${slugEmpresa}/${slug}`}
       modo="publico"
     />
