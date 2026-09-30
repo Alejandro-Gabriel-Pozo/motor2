@@ -85,7 +85,14 @@ body {
 
   background: var(--carta-bg);
   color: var(--carta-ink);
-  font-family: var(--font-carta-serif, ui-serif, serif), serif;
+  /* Textos chicos (etiquetas, subtítulos, descripciones, tags, contadores, botones): sans, como la carta original. */
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Títulos, nombres de ítem y precios: la familia de `carta_fuente_familia` (`--carta-fuente-familia`, la pone `resolverEstiloCarta`); donde no
+   hay tema (el portal de la empresa) cae a Playfair, la de siempre. */
+.carta-shell .carta-titulo {
+  font-family: var(--carta-fuente-familia, var(--font-carta-serif, ui-serif, serif), serif);
 }
 
 /* Portal de sucursales (`PortalVista`): colores y tamaños llegan como `--portal-*` desde `resolverEstiloPortal` (config de

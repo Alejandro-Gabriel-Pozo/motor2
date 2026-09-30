@@ -39,7 +39,7 @@ function Tarjeta({ s, href, modo, className }: { s: EntradaPortalCarta; href: st
   const contenido = (
     <>
       <span className="min-w-0">
-        <span className="portal-card-nombre block truncate font-serif font-medium">{s.etiqueta}</span>
+        <span className="portal-card-nombre block truncate carta-titulo font-medium">{s.etiqueta}</span>
         {s.subtitulo && <span className="portal-card-notas mt-0.5 block truncate">{s.subtitulo}</span>}
       </span>
       <Flecha />
@@ -84,7 +84,7 @@ function Encabezado({ estilo, empresaNombre, publico }: { estilo: EstiloPortal; 
         <img src={logo} alt={empresaNombre} className="mx-auto mb-3 max-h-16 w-auto" />
       )}
       {etiqueta && <p className="portal-etiqueta text-xs uppercase tracking-widest">{etiqueta}</p>}
-      {titulo && <Titulo className="portal-titulo font-serif text-2xl font-medium">{titulo}</Titulo>}
+      {titulo && <Titulo className="portal-titulo carta-titulo text-2xl font-medium">{titulo}</Titulo>}
     </header>
   );
 }

@@ -52,7 +52,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
       )}
 
       {restauranteNombre && (
-        <h1 className="text-balance font-serif font-medium leading-tight" style={{ fontSize: v.carta_fuente_portada_nombre }}>
+        <h1 className="text-balance carta-titulo font-medium leading-tight" style={{ fontSize: v.carta_fuente_portada_nombre }}>
           {restauranteNombre}
         </h1>
       )}

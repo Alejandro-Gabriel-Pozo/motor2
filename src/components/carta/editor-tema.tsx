@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
-import { fuenteCartaSerif } from "@/components/carta-publica/fuente-carta";
+import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { resolverEstiloCarta } from "@/core/carta/public";
 import { CLAVES_TEMA_V1, parsearConfigPegada, validarValorTema, ZONAS_TEMA, type ConfigPegada, type DefinicionClaveTema } from "@/core/carta/tema";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type FormEvent, type PointerEvent as PointerEventReact } from "react";
-import { fuenteCartaSerif } from "@/components/carta-publica/fuente-carta";
+import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { FormConResultado } from "@/components/form-con-resultado";
 import type { EntradaVistaPreviaPortal } from "@/core/carta/admin-consulta";
@@ -175,7 +175,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
         <h2 id="titulo-vista-previa-portal" className="text-sm font-medium">
           Vista previa
         </h2>
-        <div className={`carta-shell ${fuenteCartaSerif.variable} overflow-hidden rounded border`} data-vista-previa-portal data-arrastrando={arrastrando ? "" : undefined} onPointerDown={alPresionar}>
+        <div className={`carta-shell ${clasesFuentesCarta} overflow-hidden rounded border`} data-vista-previa-portal data-arrastrando={arrastrando ? "" : undefined} onPointerDown={alPresionar}>
           <PortalVista sucursales={sucursales} empresaNombre={empresaNombre} estilo={estilo} hrefDe={(slug) => urlsPorSlug[slug] ?? "#"} modo="vista-previa" />
         </div>
         <p className="text-xs text-neutral-500" data-modo-portal={layout.modo}>

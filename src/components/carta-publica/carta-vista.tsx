@@ -47,7 +47,7 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
             {estilo.valores.carta_texto_indice_etiqueta}
           </p>
         )}
-        <h1 className={`font-serif font-medium${estilo.valores.carta_texto_indice_etiqueta ? "" : " mt-4"}`} style={{ fontSize: estilo.valores.carta_fuente_indice_titulo, color: c.indiceTitulo ?? undefined }}>
+        <h1 className={`carta-titulo font-medium${estilo.valores.carta_texto_indice_etiqueta ? "" : " mt-4"}`} style={{ fontSize: estilo.valores.carta_fuente_indice_titulo, color: c.indiceTitulo ?? undefined }}>
           {estilo.valores.carta_texto_indice_titulo || "Índice"}
         </h1>
         <ol data-carta-indice-lista data-carta-scroll className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
@@ -62,7 +62,7 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
-                  className="flex-1 font-serif font-medium leading-snug"
+                  className="flex-1 carta-titulo font-medium leading-snug"
                   style={{ fontSize: estilo.valores.carta_fuente_indice_item, color: c.indiceTitulos ?? undefined }}
                 >
                   {seccion.titulo ?? seccion.nombre}

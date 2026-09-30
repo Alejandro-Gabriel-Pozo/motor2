@@ -30,7 +30,7 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
             {String(indice + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
           </p>
           <h2
-            className="line-clamp-2 text-[length:var(--banda-titulo-fs)] font-serif font-medium leading-tight tracking-tight sm:text-[length:calc(var(--banda-titulo-fs)*1.5)]"
+            className="line-clamp-2 text-[length:var(--banda-titulo-fs)] carta-titulo font-medium leading-tight tracking-tight sm:text-[length:calc(var(--banda-titulo-fs)*1.5)]"
             style={{ "--banda-titulo-fs": estilo.valores.carta_fuente_banda_titulo, color: c.bandaTitulo ?? undefined } as React.CSSProperties}
           >
             {seccion.titulo ?? seccion.nombre}
@@ -66,7 +66,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaV1; estilo: EstiloCarta }) 
   return (
     <li className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="min-w-0 flex-1 font-serif font-semibold leading-tight" style={{ fontSize: v.carta_fuente_item_nombre, color: colorNombre, overflowWrap: "anywhere" }}>
+        <h3 className="min-w-0 flex-1 carta-titulo font-semibold leading-tight" style={{ fontSize: v.carta_fuente_item_nombre, color: colorNombre, overflowWrap: "anywhere" }}>
           {item.nombre}
           {esp && (
             <span className="ml-1 text-xs" style={{ color: v.color_especial_item_nombre || "var(--carta-primary)" }} aria-label="Especial">
@@ -74,7 +74,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaV1; estilo: EstiloCarta }) 
             </span>
           )}
         </h3>
-        <span className="shrink-0 font-serif font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }}>
+        <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }}>
           {formatearPrecioCarta(item.precio)}
         </span>
       </div>
@@ -105,10 +105,10 @@ function PromoFila({ promo, estilo }: { promo: PromoCartaV1; estilo: EstiloCarta
   return (
     <li className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="min-w-0 flex-1 font-serif font-semibold leading-tight" style={{ fontSize: v.carta_fuente_item_nombre }}>
+        <h3 className="min-w-0 flex-1 carta-titulo font-semibold leading-tight" style={{ fontSize: v.carta_fuente_item_nombre }}>
           {promo.titulo}
         </h3>
-        <span className="shrink-0 font-serif font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: "var(--carta-primary)" }}>
+        <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: "var(--carta-primary)" }}>
           {formatearPrecioCarta(promo.precio)}
         </span>
       </div>
