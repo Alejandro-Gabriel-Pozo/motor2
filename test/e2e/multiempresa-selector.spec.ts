@@ -45,7 +45,8 @@ test("un usuario en las dos empresas ve el selector y al cambiar de empresa ve l
   await expect(page.getByText(proveedorB)).toHaveCount(0);
 
   await selector.selectOption({ label: e.b.nombre });
-  await expect(page).toHaveURL(/\/(inicio)?$/);
+  // Aterriza donde decida «/» para el rol (hoy /reportes para un admin): solo se espera a haber salido de la pantalla anterior.
+  await page.waitForURL((url) => url.pathname !== "/catalogo/proveedores");
 
   await page.goto("/catalogo/proveedores");
   await expect(page.getByLabel("Empresa activa")).toHaveValue(e.b.empresaId);
