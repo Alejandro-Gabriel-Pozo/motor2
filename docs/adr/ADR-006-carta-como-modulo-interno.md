@@ -55,9 +55,12 @@ Sumado a esto, el dueño señaló dos motivos más, independientes del punto de
 ## Decisión
 
 **La carta pública se absorbe como módulo interno de motor2**, accedida por
-subdominio: `carta.<empresa>.<dominio>` (la empresa como base, carta como
-sub-sub-dominio — no `<empresa>.carta.<dominio>` ni un guion en un solo
-nivel, evaluados y descartados por el dueño).
+subdominio: `carta-<empresa>.<dominio>` (UN solo nivel). **Cambiado el
+2026-09-30 por el dueño:** la decisión original era `carta.<empresa>.<dominio>`
+(dos niveles, descartando el guion en un solo nivel), pero con dos niveles un
+wildcard `*.<dominio>` (DNS y certificado TLS) no cubre el host: habría que dar
+de alta el host de cada empresa a mano en Vercel. Con un nivel, un único
+wildcard `*.<dominio>` sirve a toda empresa nueva sin tocar nada.
 
 - Nueva resolución de empresa por `Host`, análoga a como
   `obtenerContextoUsuario()` resuelve la sesión desde cookies
@@ -243,10 +246,10 @@ cada una — no reinventarlas de memoria):**
   módulos, test:e2e 379); DNS real requiere autorización**:
   `reglasRewriteCarta` (`src/core/carta/host.ts`, mismo patrón de host que
   `interpretarHostCarta`) alimenta `rewrites().beforeFiles` de
-  `next.config.ts`: en `carta.<empresa>.<CARTA_DOMINIO_BASE>`, `/` → portal
+  `next.config.ts`: en `carta-<empresa>.<CARTA_DOMINIO_BASE>`, `/` → portal
   y `/<sucursal>` → carta, sin `/carta-publica` en la URL. Sin la variable no
   hay reglas. Se lee AL COMPILAR (va en el env del build). e2e con
-  `carta.e2e.localhost` (`test/e2e/carta-subdominio.spec.ts`, demostrado
+  `carta-e2e.localhost` (`test/e2e/carta-subdominio.spec.ts`, demostrado
   por mutación). Límites conocidos: (1) el host de la carta NO bloquea el
   resto de la app (`/login`, `/carta/...` de dos segmentos siguen
   resolviendo; el acceso lo deciden el layout y cada acción, como siempre);
@@ -256,7 +259,8 @@ cada una — no reinventarlas de memoria):**
   `next.config.ts`, 307) los lleva a la URL limpia (`/` y `/<sucursal>`),
   al costo de un salto por clic; en el host común no redirige. Cubierto por
   e2e y demostrado por mutación. Falta para producción (Fase 7/F): DNS wildcard
-  `*.<dominioBase>` y configurar `CARTA_DOMINIO_BASE` en Vercel.
+  `*.<dominioBase>` (cubre `carta-<empresa>.<dominioBase>` desde el cambio a un
+  solo nivel del 2026-09-30) y configurar `CARTA_DOMINIO_BASE` en Vercel.
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
   retirar el deployment externo.

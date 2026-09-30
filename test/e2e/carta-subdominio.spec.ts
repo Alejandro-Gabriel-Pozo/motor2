@@ -2,13 +2,13 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
 /**
- * Carta pública por subdominio (ADR-006, Fase 6): `carta.<empresa>.<CARTA_DOMINIO_BASE>` reescribe `/` al portal y `/<sucursal>` a la carta
+ * Carta pública por subdominio (ADR-006, Fase 6): `carta-<empresa>.<CARTA_DOMINIO_BASE>` reescribe `/` al portal y `/<sucursal>` a la carta
  * (`reglasRewriteCarta`, next.config.ts). playwright.config.ts fija `CARTA_DOMINIO_BASE=localhost` y la empresa de la base tiene slug `e2e` (fixtures/auth.ts); Chromium resuelve
  * `*.localhost` a loopback, sin DNS ni hosts. El puerto es el del servidor de la suite.
  */
 function origen(baseURL: string | undefined, empresa: string): string {
   const { port } = new URL(baseURL ?? "http://localhost");
-  return `http://carta.${empresa}.localhost${port ? `:${port}` : ""}`;
+  return `http://carta-${empresa}.localhost${port ? `:${port}` : ""}`;
 }
 
 test.describe("carta por subdominio", () => {

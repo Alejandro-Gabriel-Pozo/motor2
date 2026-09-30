@@ -1,6 +1,6 @@
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: interpreta el header `Host` de un pedido a la carta
- * pública — `carta.<empresa>.<dominioBase>` — para resolver de qué empresa es. PURO: no lee `headers()` ni nada de Next acá
+ * pública — `carta-<empresa>.<dominioBase>` (UN solo nivel: un wildcard `*.<dominioBase>` cubre todas las empresas) — para resolver de qué empresa es. PURO: no lee `headers()` ni nada de Next acá
  * (eso lo hace quien llama, en el Server Component o en el rewrite de `next.config.ts` — Fase 6 del plan). Esta misma regla
  * es la que documenta y prueba el patrón que después usa el rewrite declarativo (`has: [{ type: "host", value: … }]`), así
  * que los dos quedan sincronizados por construcción, no por copiar la regex a mano en dos lugares y esperar que no diverjan.
@@ -16,7 +16,7 @@ function escaparRegex(s: string): string {
 }
 
 function patronHostCarta(dominioBase: string, grupo: string): string {
-  return `carta\\.(${grupo}${PATRON_SLUG_EMPRESA})\\.${escaparRegex(dominioBase)}`;
+  return `carta-(${grupo}${PATRON_SLUG_EMPRESA})\\.${escaparRegex(dominioBase)}`;
 }
 
 function regexHostCarta(dominioBase: string): RegExp {
@@ -53,7 +53,7 @@ export function reglasRedirectCarta(dominioBase: string | null | undefined): Reg
 }
 
 /**
- * Fase 6: las reglas de `rewrites().beforeFiles` de `next.config.ts` para servir la carta en `carta.<empresa>.<dominioBase>`. La `/` del
+ * Fase 6: las reglas de `rewrites().beforeFiles` de `next.config.ts` para servir la carta en `carta-<empresa>.<dominioBase>`. La `/` del
  * host es el portal de la empresa y `/<sucursal>` la carta de esa sucursal; ambas se reescriben a `/carta-publica/...` (la URL del
  * navegador no cambia). El patrón del host es EL MISMO de `interpretarHostCarta` (con el slug capturado como `:empresa`). Sin
  * `dominioBase`, sin reglas: la carta solo se sirve por path. Solo se reescriben rutas de un segmento con forma de slug, así
@@ -75,8 +75,8 @@ export interface HostCartaInterpretado {
 }
 
 /**
- * `null` si el host no tiene la forma `carta.<slug>.<dominioBase>` exacta — entre otros, rechaza el dominio pelado (sin
- * `carta.`), `www.<dominioBase>`, un subdominio con más de un nivel (`carta.a.b.<dominioBase>`) y mayúsculas (se normalizan
+ * `null` si el host no tiene la forma `carta-<slug>.<dominioBase>` exacta — entre otros, rechaza el dominio pelado (sin
+ * `carta-`), `www.<dominioBase>`, un subdominio con más de un nivel (`carta-a.b.<dominioBase>`) y mayúsculas (se normalizan
  * antes de comparar, no se rechazan). El puerto (`:3000`, típico en desarrollo) se ignora.
  */
 export function interpretarHostCarta(host: string | null | undefined, dominioBase: string | null | undefined): HostCartaInterpretado | null {
@@ -90,5 +90,5 @@ export function interpretarHostCarta(host: string | null | undefined, dominioBas
 
 /** La inversa: el host público de la carta de una empresa, dado el slug y el dominio base. Para el link "Ver en vivo" del admin (Fase 4). */
 export function armarHostCarta(empresaSlug: string, dominioBase: string): string {
-  return `carta.${empresaSlug}.${dominioBase}`;
+  return `carta-${empresaSlug}.${dominioBase}`;
 }

@@ -39,7 +39,7 @@ const envSchema = z.object({
   CARTA_PORTAL_URL: z.string().min(1).optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
 
-  // Dominio base del subdominio de la carta (`carta.<empresa>.<dominioBase>`, core/carta/host.ts). Sin configurar, la
+  // Dominio base del subdominio de la carta (`carta-<empresa>.<dominioBase>`, core/carta/host.ts). Sin configurar, la
   // carta pública solo se sirve por path directo (`/carta-publica/...`), sin subdominio (Fase 6 del plan).
   CARTA_DOMINIO_BASE: z.string().min(1).optional(),
 });

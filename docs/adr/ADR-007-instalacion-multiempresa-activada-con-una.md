@@ -182,7 +182,7 @@ segunda empresa se activa **después de la Fase 8** (D9).
   política; el rol de ejecución no es superusuario, ni BYPASSRLS, ni dueño.
 - e2e `multiempresa-*.spec.ts` (activan B en `beforeAll`, la suspenden en
   `afterAll`; `workers: 1` lo hace seguro): un usuario de B solo ve B;
-  `carta.b.localhost` solo el portal de B; un slug de A en el host de B da
+  `carta-b.localhost` solo el portal de B; un slug de A en el host de B da
   404; un usuario en las dos empresas ve el selector. La suite actual sigue
   corriendo con una sola empresa.
 

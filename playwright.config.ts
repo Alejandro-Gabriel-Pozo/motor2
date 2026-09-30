@@ -104,7 +104,7 @@ export default defineConfig({
       AUTH_TRUST_HOST: "1",
       // Token de servicio de los endpoints de la carta pública (GET /api/carta/[sucursal] y /api/carta/tenants); lo usan test/e2e/api-carta*.spec.ts.
       CARTA_API_TOKEN: TOKEN_CARTA_E2E,
-      // ADR-006, Fase 6: con esto next.config.ts arma el rewrite de carta.e2e.localhost (se lee al compilar, por eso está en el env del build); lo usa test/e2e/carta-subdominio.spec.ts.
+      // ADR-006, Fase 6: con esto next.config.ts arma el rewrite de carta-e2e.localhost (se lee al compilar, por eso está en el env del build); lo usa test/e2e/carta-subdominio.spec.ts.
       CARTA_DOMINIO_BASE: "localhost",
     },
     url: URL_BASE,

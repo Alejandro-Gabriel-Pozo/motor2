@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
       ...reglasRedirectCarta(process.env.CARTA_DOMINIO_BASE),
     ];
   },
-  // ADR-006, Fase 6: carta.<empresa>.<CARTA_DOMINIO_BASE> sirve la carta pública sin mostrar /carta-publica en la URL. Sin la variable
+  // ADR-006, Fase 6: carta-<empresa>.<CARTA_DOMINIO_BASE> sirve la carta pública sin mostrar /carta-publica en la URL. Sin la variable
   // (leída al compilar) no hay reglas. `revalidatePath` sigue operando sobre el path destino, no sobre el host.
   async rewrites() {
     return { beforeFiles: reglasRewriteCarta(process.env.CARTA_DOMINIO_BASE) };
