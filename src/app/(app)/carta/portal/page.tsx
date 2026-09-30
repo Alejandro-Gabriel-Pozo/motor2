@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { cargarAdminPortal, cargarPortalEmpresaAdmin, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
+import { cargarAdminPortal, cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
 import { CLAVES_PORTAL_V1 } from "@/core/carta/portal";
 import { urlCartaPublica } from "@/core/carta/host";
 import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
@@ -67,6 +67,9 @@ export default async function PortalSucursalesPage() {
         <EditorPortal
           valoresIniciales={apariencia.valores}
           version={apariencia.actualizadoEn?.toISOString() ?? "sin-apariencia"}
+          empresaNombre={ctx.empresaNombre}
+          sucursales={entradasVistaPreviaPortal(sucursales)}
+          urlsPorSlug={Object.fromEntries(sucursales.flatMap((s) => (s.publica ? [[s.publica.slug, urlCartaPublica(process.env.CARTA_DOMINIO_BASE, ctx.empresaSlug, s.publica.slug)]] : [])))}
           accion={async (fd: FormData) => {
             "use server";
             return refrescarSiOk(await guardarPortalEmpresa(valoresDelFormulario(fd)));

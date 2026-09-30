@@ -72,9 +72,11 @@ function Grilla({ sucursales, hrefDe, modo }: { sucursales: readonly EntradaPort
   );
 }
 
-function Encabezado({ estilo, empresaNombre }: { estilo: EstiloPortal; empresaNombre: string }): ReactNode {
+function Encabezado({ estilo, empresaNombre, publico }: { estilo: EstiloPortal; empresaNombre: string; publico: boolean }): ReactNode {
   const { empresa_logo_url: logo, portal_etiqueta: etiqueta, portal_titulo: titulo } = estilo.valores;
   if (!logo && !etiqueta && !titulo) return null;
+  // Incrustado en el admin (vista previa) el título no puede ser un h1: la página ya tiene el suyo y la vista previa cuelga de un h2.
+  const Titulo = publico ? "h1" : "h3";
   return (
     <header className="portal-header px-6 py-6 text-center">
       {logo && (
@@ -82,7 +84,7 @@ function Encabezado({ estilo, empresaNombre }: { estilo: EstiloPortal; empresaNo
         <img src={logo} alt={empresaNombre} className="mx-auto mb-3 max-h-16 w-auto" />
       )}
       {etiqueta && <p className="portal-etiqueta text-xs uppercase tracking-widest">{etiqueta}</p>}
-      {titulo && <h1 className="portal-titulo font-serif text-2xl font-medium">{titulo}</h1>}
+      {titulo && <Titulo className="portal-titulo font-serif text-2xl font-medium">{titulo}</Titulo>}
     </header>
   );
 }
@@ -91,12 +93,14 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
   const layout = decidirLayoutPortal(sucursales, estilo.imagenFondo);
   const derechos = estilo.valores.footer_texto_derechos;
   const hayTitulo = Boolean(estilo.valores.portal_titulo);
+  const publico = modo === "publico";
+  const Cuerpo = publico ? "main" : "div";
 
   return (
-    <div className={`portal ${modo === "publico" ? "min-h-screen" : ""}`} style={estilo.variablesCss as CSSProperties}>
-      <Encabezado estilo={estilo} empresaNombre={empresaNombre} />
-      <main className="mx-auto px-6 pb-10 pt-4" style={{ maxWidth: layout.modo === "mapa" ? 648 : 576 }}>
-        {!hayTitulo && <h1 className="sr-only">Sucursales</h1>}
+    <div className={`portal ${publico ? "min-h-screen" : ""}`} style={estilo.variablesCss as CSSProperties}>
+      <Encabezado estilo={estilo} empresaNombre={empresaNombre} publico={publico} />
+      <Cuerpo className="mx-auto px-6 pb-10 pt-4" style={{ maxWidth: layout.modo === "mapa" ? 648 : 576 }}>
+        {publico && !hayTitulo && <h1 className="sr-only">Sucursales</h1>}
         {sucursales.length === 0 ? (
           <p className="text-center text-sm opacity-60">Todavía no hay cartas publicadas.</p>
         ) : (
@@ -130,7 +134,7 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
             )}
           </>
         )}
-      </main>
+      </Cuerpo>
       {derechos && (
         <footer className="portal-footer px-6 pb-8 text-center text-xs">
           © {new Date().getFullYear()} {derechos}

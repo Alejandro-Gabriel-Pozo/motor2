@@ -2,7 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
-import { esClavePortal } from "./portal";
+import { esClavePortal, posicionCompleta, type PosicionPortal } from "./portal";
 import { esClaveTema } from "./tema";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -489,4 +489,31 @@ export async function cargarPortalEmpresaAdmin(db: Db): Promise<PortalEmpresaAdm
     if (esClavePortal(clave) && typeof v === "string") valores[clave] = v;
   }
   return { valores, actualizadoEn: fila?.actualizadoEn ?? null };
+}
+
+export interface EntradaVistaPreviaPortal {
+  id: string;
+  slug: string;
+  etiqueta: string;
+  subtitulo: string | null;
+  posicion: PosicionPortal | null;
+}
+
+/**
+ * Lo que el portal público mostraría hoy (publicada y con la sucursal activa), en el mismo orden (`orden`, después etiqueta): la
+ * vista previa del admin dibuja con esto. Solo lo guardado: cambiar una posición o publicar una sucursal se ve al guardarla.
+ */
+export function entradasVistaPreviaPortal(sucursales: readonly SucursalPortalAdmin[]): EntradaVistaPreviaPortal[] {
+  return sucursales
+    .flatMap((s) => (s.publica?.publicada && s.activo ? [{ s, p: s.publica }] : []))
+    .map(({ s, p }) => ({
+      id: s.id,
+      slug: p.slug,
+      etiqueta: p.etiqueta ?? s.nombre,
+      subtitulo: p.subtituloPortal,
+      posicion: posicionCompleta(p.posX, p.posY, p.posW, p.posH),
+      orden: p.orden,
+    }))
+    .sort((a, b) => a.orden - b.orden || a.etiqueta.localeCompare(b.etiqueta, "es"))
+    .map(({ id, slug, etiqueta, subtitulo, posicion }) => ({ id, slug, etiqueta, subtitulo, posicion }));
 }

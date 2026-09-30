@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { fuenteCartaSerif } from "@/components/carta-publica/fuente-carta";
+import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { FormConResultado } from "@/components/form-con-resultado";
+import type { EntradaVistaPreviaPortal } from "@/core/carta/admin-consulta";
+import { decidirLayoutPortal, resolverEstiloPortal } from "@/core/carta/public";
 import { CLAVES_PORTAL_V1, validarValorPortal, ZONAS_PORTAL, type DefinicionClavePortal } from "@/core/carta/portal";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoColor } from "./campo-color";
@@ -11,11 +15,25 @@ import { CampoColor } from "./campo-color";
  * `CLAVES_PORTAL_V1` agrupados por zona en `<details>` (solo la primera abierta); el default del catálogo va de placeholder (vacío =
  * default). Como en el editor del tema, el CUERPO se vuelve a montar con `key={version}` (el `actualizadoEn` guardado) porque
  * `FormConResultado` hace `form.reset()` cuando la acción sale bien.
+ *
+ * Al lado, la vista previa en vivo: es el MISMO `PortalVista` del portal público (`modo="vista-previa"`), y un `onInput` en el cuerpo
+ * vuelve a leer el `FormData` para resolver el estilo con `resolverEstiloPortal` (lo inválido cae al default, como en el portal).
  */
-export function EditorPortal({ valoresIniciales, version, accion }: { valoresIniciales: Readonly<Record<string, string>>; version: string; accion: (formData: FormData) => Promise<ResultadoAccion> }) {
+interface Props {
+  valoresIniciales: Readonly<Record<string, string>>;
+  version: string;
+  accion: (formData: FormData) => Promise<ResultadoAccion>;
+  empresaNombre: string;
+  /** Lo que el portal muestra hoy (publicadas y activas), en su orden. */
+  sucursales: readonly EntradaVistaPreviaPortal[];
+  /** URL de la carta de cada sucursal, por slug (otro host: la vista previa abre en pestaña nueva). */
+  urlsPorSlug: Readonly<Record<string, string>>;
+}
+
+export function EditorPortal({ valoresIniciales, version, accion, empresaNombre, sucursales, urlsPorSlug }: Props) {
   return (
     <FormConResultado accion={accion} className="flex flex-col gap-4">
-      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} />
+      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} />
       <div>
         <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
           Guardar apariencia
@@ -32,8 +50,11 @@ function leerValores(form: HTMLFormElement): Record<string, string> {
   return Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
 }
 
-function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<string, string>> }) {
+function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales, urlsPorSlug }: Omit<Props, "version" | "accion">) {
   const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
+
+  const estilo = useMemo(() => resolverEstiloPortal(valores), [valores]);
+  const layout = useMemo(() => decidirLayoutPortal(sucursales, estilo.imagenFondo), [sucursales, estilo.imagenFondo]);
 
   const releer = (e: FormEvent<HTMLDivElement>) => {
     const form = e.currentTarget.closest("form");
@@ -41,7 +62,8 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
   };
 
   return (
-    <div onInput={releer} onChange={releer} className="flex min-w-0 flex-col gap-2">
+    <div onInput={releer} onChange={releer} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26rem]">
+      <div className="flex min-w-0 flex-col gap-2">
       {ZONAS_PORTAL.map((zona, i) => {
         const campos = CLAVES_PORTAL_V1.filter((d) => d.zona === zona);
         const cargados = campos.filter((d) => valores[d.clave]?.trim()).length;
@@ -58,8 +80,31 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
           </details>
         );
       })}
+      </div>
+
+      <section aria-labelledby="titulo-vista-previa-portal" className="flex min-w-0 flex-col gap-2 lg:sticky lg:top-4 lg:self-start">
+        <h2 id="titulo-vista-previa-portal" className="text-sm font-medium">
+          Vista previa
+        </h2>
+        <div className={`carta-shell ${fuenteCartaSerif.variable} overflow-hidden rounded border`} data-vista-previa-portal>
+          <PortalVista sucursales={sucursales} empresaNombre={empresaNombre} estilo={estilo} hrefDe={(slug) => urlsPorSlug[slug] ?? "#"} modo="vista-previa" />
+        </div>
+        <p className="text-xs text-neutral-500" data-modo-portal={layout.modo}>
+          {textoDelModo(layout.modo, layout.enMapa.length, layout.enGrilla.length, Boolean(estilo.imagenFondo), sucursales.length)}
+        </p>
+      </section>
     </div>
   );
+}
+
+function textoDelModo(modo: "mapa" | "grilla", enMapa: number, enGrilla: number, hayImagen: boolean, total: number): string {
+  if (total === 0) return "Ninguna sucursal está publicada todavía: el portal muestra «Todavía no hay cartas publicadas».";
+  if (modo === "mapa") {
+    return `Se ve como mapa: ${enMapa} ${enMapa === 1 ? "tarjeta sobre la imagen" : "tarjetas sobre la imagen"}${enGrilla ? ` y ${enGrilla} en lista debajo (sin posición)` : ""}. Las posiciones son las guardadas.`;
+  }
+  return hayImagen
+    ? "Se ve como lista: la imagen está cargada pero ninguna sucursal tiene posición (x, y y ancho) en «Posición en el mapa del portal», más abajo."
+    : "Se ve como lista: para verlo como mapa cargá la URL de la imagen del mapa y la posición de al menos una sucursal (más abajo).";
 }
 
 const AYUDA: Partial<Record<DefinicionClavePortal["tipo"], string>> = {

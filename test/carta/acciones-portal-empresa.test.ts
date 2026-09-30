@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin, EMPRESA_POR_DEFECTO_ID } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarPortalEmpresa } from "../../src/server/actions/carta/portal-empresa";
-import { cargarPortalEmpresaAdmin } from "../../src/core/carta/admin-consulta";
+import { cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "../../src/core/carta/admin-consulta";
 import { CLAVES_PORTAL_V1, type DefinicionClavePortal } from "../../src/core/carta/portal";
 
 /**
@@ -149,5 +149,41 @@ describe("cargarPortalEmpresaAdmin", () => {
     const r = await cargarPortalEmpresaAdmin(prisma);
     expect(r.valores).toEqual({ portal_titulo: "Hola", portal_card_bg: "rojo;mal" });
     expect(r.actualizadoEn).toBeInstanceOf(Date);
+  });
+});
+
+describe("entradasVistaPreviaPortal", () => {
+  const registro = (o: Partial<NonNullable<SucursalPortalAdmin["publica"]>>): NonNullable<SucursalPortalAdmin["publica"]> => ({
+    slug: "s",
+    etiqueta: null,
+    dominio: null,
+    subtituloPortal: null,
+    posX: null,
+    posY: null,
+    posW: null,
+    posH: null,
+    orden: 0,
+    publicada: true,
+    menuDesdeMotor2: true,
+    sheetId: null,
+    sheetMenuNombre: "Menu",
+    ...o,
+  });
+  const suc = (id: string, nombre: string, publica: SucursalPortalAdmin["publica"], activo = true): SucursalPortalAdmin => ({ id, nombre, activo, publica, temaDesdeMotor2: false });
+
+  it("solo publicadas y activas, en el orden del portal, con la etiqueta o el nombre y la posición completa o null", () => {
+    const r = entradasVistaPreviaPortal([
+      suc("1", "Zeta", registro({ slug: "zeta", orden: 2, posX: 10, posY: 20, posW: 30, posH: 5 })),
+      suc("2", "Alfa", registro({ slug: "alfa", orden: 2, etiqueta: "Alfa Centro", subtituloPortal: "Frente al lago", posX: 10, posY: 20 })),
+      suc("3", "Sin publicar", registro({ slug: "no", publicada: false })),
+      suc("4", "Inactiva", registro({ slug: "inactiva" }), false),
+      suc("5", "Fuera", null),
+      suc("6", "Primera", registro({ slug: "primera", orden: 1 })),
+    ]);
+    expect(r).toEqual([
+      { id: "6", slug: "primera", etiqueta: "Primera", subtitulo: null, posicion: null },
+      { id: "2", slug: "alfa", etiqueta: "Alfa Centro", subtitulo: "Frente al lago", posicion: null },
+      { id: "1", slug: "zeta", etiqueta: "Zeta", subtitulo: null, posicion: { x: 10, y: 20, w: 30, h: 5 } },
+    ]);
   });
 });
