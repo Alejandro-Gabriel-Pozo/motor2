@@ -214,7 +214,11 @@ arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
    sería peor que no cachear (encontrado con un test real: con
    `revalidate=300` un spec veía la respuesta cacheada de otro) — la
    Fase 4 lo resolvió para la página de sucursal (el portal sigue
-   dinámico). test 292/3415, test:e2e 375/67.
+   dinámico). test 292/3415, test:e2e 375/67. **Corrección (2026-09-30):** esta
+   fase entregó el portal solo como grilla y se llegó a decir que el «modo mapa»
+   (imagen de fondo + tarjetas en `SucursalPublica.posX/posY/posW/posH`) era
+   código muerto de la carta anterior. Era falso: es una función real, y sin él
+   el portal nuevo perdía paridad. Se portó en el punto 6.
 5. **Fase 4** (`919500a`): la vista
    previa de `/carta/tema` es `CartaVista` real con `CARTA_EJEMPLO`
    (`NavegacionCarta` ganó `embebida`: alto fijo, sin landmarks propios);
@@ -234,6 +238,25 @@ arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
    ventana, no con el recuadro; la vista previa usa datos de ejemplo fijos (mejora
    posible: la carta real de la sucursal). test 292/3415, arquitectura 535
    módulos, test:e2e 376/67.
+6. **Portal con mapa (2026-09-30, rama `multitenancy-fase-a`, sin push)**:
+   `PortalVista` (`src/components/carta-publica/portal-vista.tsx`) dibuja el
+   portal en dos modos que decide `decidirLayoutPortal`: MAPA (hay imagen de
+   fondo y al menos una sucursal con `posX/posY/posW`; tarjeta centrada en x/y
+   en %, ancho `posW`, alto `posH` o `portal_card_alto_defecto`; las sucursales
+   sin posición van en una grilla DEBAJO del mapa) y GRILLA (cualquier otro
+   caso). La apariencia es **por empresa** y vive en la tabla nueva
+   `PortalCartaEmpresa` (1:1 con `Empresa`, `valores Json`, migración
+   `20260930120000_portal_carta_empresa`, RLS `ENABLE` con la política
+   `aislamiento_empresa` como las otras: pasan de 49 a 50 las tablas con
+   `empresaId`). El catálogo de 22 claves está en `src/core/carta/portal.ts`
+   (`CLAVES_PORTAL_V1`; validación cerrada, cada valor entra al CSS solo como
+   variable `--portal-*` ya validada; incluye proporción del mapa, tamaños de
+   letra de las tarjetas y overlay). Admin en `/carta/portal`: `EditorPortal`
+   (formulario por zonas + vista previa en vivo con el mismo `PortalVista`),
+   Server Action `guardarPortalEmpresa` (permiso `carta`, único escritor de la
+   tabla) y arrastre de tarjetas en la vista previa (`moverSucursalEnMapa`;
+   los números del formulario de cada sucursal siguen siendo la alternativa
+   sin mouse). El portal público sigue dinámico (lee la fila en cada pedido).
 
 **Pendiente, en el orden del plan (ver el plan completo para el detalle de
 cada una — no reinventarlas de memoria):**

@@ -67,6 +67,10 @@ aislamiento.) Nada de la Fase F bloquea la entrega al cliente.
   lenta). Rol, PermisoRol, Unidad, MotivoMerma y DestinoConsumo son **por
   empresa** (D3) porque un admin los edita. `Sucursal.empresaId` es fijo
   (ADR-001: no se muda una sucursal entre empresas).
+  *Nota (2026-09-30):* con `PortalCartaEmpresa` (ADR-006, apariencia del portal de
+  la carta) son 50; la tabla nueva lleva `empresaId` con el mismo default y la
+  misma política RLS. Los conteos históricos de este documento (49) se refieren
+  a la fecha de cada fase.
 - Cada tabla declara `@@unique([empresaId, id])` y las referencias son FK
   compuestas `[empresaId, xId]` (ADR-002): una FK simple no pasa por RLS y
   permitiría que una Operación de A apunte a un Proveedor de B. El alcance

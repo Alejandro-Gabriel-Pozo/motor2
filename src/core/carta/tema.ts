@@ -210,7 +210,8 @@ export const CLAVES_FIJAS_DEL_SISTEMA = { precio_locale: "es-AR", precio_simbolo
 
 /**
  * Las 39 claves de `SiteConfig` que NO son por tenant (A.1/A.2 del plan): la carta las lee de la config raíz (portal, SEO,
- * metadata) o solo las dibuja en el modo single de `/`. Queda como pendiente aparte ("config del portal/raíz").
+ * metadata) o solo las dibuja en el modo single de `/`. Las del portal por empresa ya no son un pendiente: viven en
+ * `CLAVES_PORTAL_V1` (`portal.ts`, tabla `PortalCartaEmpresa`); lo que sigue acá es config raíz/SEO y el modo single.
  */
 export const CLAVES_NO_POR_TENANT = [
   // Solo en MenuHero (modo single de /)
