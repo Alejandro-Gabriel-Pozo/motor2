@@ -509,3 +509,65 @@ test.describe("carta pública: navegación y layout (C1–C4)", () => {
     }
   });
 });
+
+test.describe("carta pública: familia tipográfica (carta_fuente_familia)", () => {
+  const TEXTOS = { restaurante_nombre: "Casa E2E", restaurante_subtitulo: "Desde 1985", hero_etiqueta_superior: "Restaurante" };
+  const familia = (el: import("@playwright/test").Locator) => el.evaluate((n) => getComputedStyle(n).fontFamily);
+
+  // Títulos, nombres y precios llevan la familia elegida; las etiquetas, subtítulos, contadores y botones quedan en la sans (Geist), como la carta original.
+  async function verificar(page: import("@playwright/test").Page, carta: CartaE2E, titulos: RegExp) {
+    for (const vp of [MOBILE, DESKTOP]) {
+      await page.setViewportSize(vp);
+      await page.goto(carta.ruta);
+      const portada = page.locator(".carta-pagina").first();
+      expect(await familia(portada.getByRole("heading", { level: 1 })), `nombre en portada ${vp.width}`).toMatch(titulos);
+      expect(await familia(portada.getByText("Restaurante", { exact: true })), `etiqueta de portada ${vp.width}`).toMatch(/Geist/);
+      expect(await familia(portada.getByText("Desde 1985")), `subtítulo ${vp.width}`).toMatch(/Geist/);
+
+      await page.getByRole("button", { name: "Página siguiente" }).click();
+      const indice = page.locator("[data-carta-indice-lista]");
+      await expect(indice).toBeVisible();
+      expect(await familia(page.getByRole("heading", { name: "Índice", level: 1 })), `título del índice ${vp.width}`).toMatch(titulos);
+      expect(await familia(indice.locator("li").first().locator("span").nth(1)), `sección del índice ${vp.width}`).toMatch(titulos);
+      expect(await familia(indice.locator("li").first().locator("span").first()), `número del índice ${vp.width}`).toMatch(/Geist/);
+      expect(await familia(page.locator("[data-carta-nav]").getByText(/^\d+ \/ \d+$/)), `contador ${vp.width}`).toMatch(/Geist/);
+
+      await page.locator("[data-ir-a]").first().click();
+      const nombre = page.getByText(`E2E Promo 1 ${carta.marca}`);
+      await expect(nombre).toBeVisible();
+      expect(await familia(nombre), `nombre del ítem ${vp.width}`).toMatch(titulos);
+      expect(await familia(nombre.locator("xpath=following-sibling::span").first()), `precio ${vp.width}`).toMatch(titulos);
+      expect(await familia(page.locator("[data-carta-banda] h2").first()), `título de la banda ${vp.width}`).toMatch(titulos);
+      expect(await familia(page.locator("[data-carta-banda] p").first()), `etiqueta de la banda ${vp.width}`).toMatch(/Geist/);
+      expect(await familia(page.getByRole("button", { name: "Índice" })), `botón Índice ${vp.width}`).toMatch(/Geist/);
+      expect(await familia(page.locator("[data-carta-topbar]").getByText("← Menú")), `botón volver ${vp.width}`).toMatch(/Geist/);
+    }
+  }
+
+  test("por defecto: Playfair en títulos, nombres y precios; sans en los textos chicos", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 3, valores: TEXTOS });
+    try {
+      await verificar(page, carta, /Playfair/);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+
+  test("carta_fuente_familia = lora: los títulos cambian y los textos chicos siguen en la sans", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 3, valores: { ...TEXTOS, carta_fuente_familia: "lora" } });
+    try {
+      await verificar(page, carta, /Lora/);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+
+  test("un valor libre (Comic Sans MS) cae a Playfair: no se cuela como font-family", async ({ page, sucursalId }) => {
+    const carta = await crearCarta(sucursalId, { secciones: 3, valores: { ...TEXTOS, carta_fuente_familia: "Comic Sans MS" } });
+    try {
+      await verificar(page, carta, /Playfair/);
+    } finally {
+      await carta.limpiar();
+    }
+  });
+});

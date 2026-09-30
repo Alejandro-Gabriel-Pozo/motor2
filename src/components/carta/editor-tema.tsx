@@ -115,7 +115,7 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
           <h2 id="titulo-vista-previa" className="text-sm font-medium">
             Vista previa
           </h2>
-          <div className={`carta-shell ${fuenteCartaSerif.variable} overflow-hidden rounded border`} data-vista-previa-tema>
+          <div className={`carta-shell ${clasesFuentesCarta} overflow-hidden rounded border`} data-vista-previa-tema>
             <CartaVista carta={CARTA_EJEMPLO} estilo={estilo} embebida />
           </div>
           <p className="text-xs text-neutral-500">
@@ -160,7 +160,20 @@ function ResultadoPegado({ r }: { r: ConfigPegada }) {
   );
 }
 
-const ETIQUETAS_OPCION: Record<string, string> = { left: "izquierda", center: "centro", right: "derecha", top: "arriba", bottom: "abajo", si: "sí", no: "no" };
+const ETIQUETAS_OPCION: Record<string, string> = {
+  left: "izquierda",
+  center: "centro",
+  right: "derecha",
+  top: "arriba",
+  bottom: "abajo",
+  si: "sí",
+  no: "no",
+  playfair: "Playfair Display (serif clásica, la de siempre)",
+  lora: "Lora (serif de lectura)",
+  cormorant: "Cormorant Garamond (serif elegante)",
+  montserrat: "Montserrat (sans geométrica)",
+  geist: "Geist (sans moderna)",
+};
 
 const AYUDA: Partial<Record<DefinicionClaveTema["tipo"], string>> = {
   tamanoFuente: "Número = px, o una medida: 0.9rem, 12px, clamp(…).",

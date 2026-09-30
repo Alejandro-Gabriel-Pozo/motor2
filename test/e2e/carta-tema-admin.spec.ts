@@ -165,3 +165,25 @@ test("la vista previa del tema es la carta real: se recorre de a una página (po
   // Las flechas no envían el formulario del tema (son type="button"): nada se guardó.
   expect(await prisma.temaCartaSucursal.count({ where: { sucursalId } })).toBe(0);
 });
+
+test("la familia tipográfica está en 'Tipografía general' con opciones en castellano y la vista previa la refleja", async ({ paginaAutenticada: page, sucursalId }) => {
+  await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/carta/tema");
+  await page.locator('[data-zona-tema="Tipografía general"] > summary').click();
+  const campo = page.locator('[data-campo-tema="carta_fuente_familia"]');
+  await expect(campo.getByText("Tipografía de títulos, nombres y precios")).toBeVisible();
+  const select = campo.locator("select");
+  await expect(select.locator("option")).toHaveText([
+    "(default de la carta: Playfair Display (serif clásica, la de siempre))",
+    "Playfair Display (serif clásica, la de siempre)",
+    "Lora (serif de lectura)",
+    "Cormorant Garamond (serif elegante)",
+    "Montserrat (sans geométrica)",
+    "Geist (sans moderna)",
+  ]);
+  const titulo = page.locator("[data-vista-previa-tema]").getByRole("heading", { name: "Nombre del restaurante", level: 1 });
+  await expect(titulo).toHaveCSS("font-family", /Playfair/);
+  await select.selectOption("montserrat");
+  await expect(titulo).toHaveCSS("font-family", /Montserrat/);
+});
