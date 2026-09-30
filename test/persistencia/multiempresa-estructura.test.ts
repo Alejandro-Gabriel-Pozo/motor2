@@ -34,9 +34,9 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
   });
 
   describe("catálogo de tablas", () => {
-    it("49 tablas de dominio tienen empresaId NOT NULL con default app_empresa_actual(); las 7 globales y ninguna otra quedan afuera", async () => {
+    it("50 tablas de dominio tienen empresaId NOT NULL con default app_empresa_actual(); las 7 globales y ninguna otra quedan afuera", async () => {
       const conEmpresa = await tablasPorEmpresa();
-      expect(conEmpresa).toHaveLength(49);
+      expect(conEmpresa).toHaveLength(50);
       for (const g of GLOBALES) expect(conEmpresa).not.toContain(g);
       expect(conEmpresa).not.toContain("Empresa");
 
@@ -78,7 +78,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       for (const f of haciaGlobales) expect(f.columnas, f.nombre).not.toContain("empresaId");
 
       const haciaEmpresa = fks.filter((f) => f.destino === "Empresa" && conEmpresa.has(f.origen));
-      expect(haciaEmpresa).toHaveLength(49);
+      expect(haciaEmpresa).toHaveLength(50);
     });
   });
 

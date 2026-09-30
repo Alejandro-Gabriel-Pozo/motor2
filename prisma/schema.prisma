@@ -1893,6 +1893,19 @@ model TemaCartaSucursal {
   @@unique([empresaId, id])
 }
 
+/// Apariencia del PORTAL de sucursales de una empresa (`/carta-publica/<empresa>`): la config que en restaurant-menu-design
+/// vivía en la hoja maestra (portal_*, logo de la empresa, derechos) — las 22 claves de CLAVES_PORTAL_V1
+/// (src/core/carta/portal.ts). 1:1 con Empresa (una fila por empresa). FILA AUSENTE = el portal usa los defaults del catálogo
+/// (grilla sin imagen). Va aparte de TemaCartaSucursal porque el portal es de la empresa, no de una sucursal.
+model PortalCartaEmpresa {
+  id            String   @id @default(cuid())
+  empresaId     String   @unique @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa  @relation(fields: [empresaId], references: [id])
+  /// clave de CLAVES_PORTAL_V1 → valor ya validado. Claves fuera del catálogo o valores inválidos se ignoran al servir.
+  valores       Json     @default("{}")
+  actualizadoEn DateTime @updatedAt
+}
+
 // ===================================================================
 // POS: mapa de mesas del salón (docs/plan-mapa-de-mesas-2026-09-24.md) y toma de pedido (docs/plan-tomar-pedido-2026-09-25.md).
 //
@@ -2144,6 +2157,7 @@ model Empresa {
   promoCartaCupoRel              PromoCartaCupo[]
   sucursalPublicaRel             SucursalPublica[]
   temaCartaSucursalRel           TemaCartaSucursal[]
+  portalCartaRel                 PortalCartaEmpresa?
   mesaRel                        Mesa[]
   cuentaRel                      Cuenta[]
   promoCuentaRel                 PromoCuenta[]
