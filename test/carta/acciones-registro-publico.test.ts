@@ -8,12 +8,10 @@ import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, q
 
 /**
  * Server Actions del registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6): permiso `carta`, slug
- * derivado del nombre y desambiguado, edición manual del slug, validaciones (dominio, sheetId, posición) y "Quitar del portal"
- * borra la fila. `sheetId` es transición (restaurant-menu-design ya no lee ninguna sheet): no lo exige para publicar.
+ * derivado del nombre y desambiguado, edición manual del slug, validaciones (slug, posición, textos, orden) y "Quitar del portal"
+ * borra la fila.
  */
-const SHEET = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abc";
-
-const datos = (p: Partial<DatosSucursalPublica> = {}): DatosSucursalPublica => ({ slug: "central", publicada: false, menuDesdeMotor2: false, ...p });
+const datos = (p: Partial<DatosSucursalPublica> = {}): DatosSucursalPublica => ({ slug: "central", publicada: false, ...p });
 
 describe("Server Actions del registro público", () => {
   let centralId: string;
@@ -34,9 +32,6 @@ describe("Server Actions del registro público", () => {
     expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({
       slug: "central",
       publicada: false,
-      menuDesdeMotor2: false,
-      sheetId: null,
-      sheetMenuNombre: "Menu",
       etiqueta: null,
     });
     // Dos veces no: ya está.
@@ -60,14 +55,13 @@ describe("Server Actions del registro público", () => {
     expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: centralId } })).nombre).toBe("Casa Central");
   });
 
-  it("guardar: edita el slug a mano, dominio normalizado, posición y publica con sheetId; queda en la fila", async () => {
+  it("guardar: edita el slug a mano, posición y publica; queda en la fila", async () => {
     await agregarSucursalAlPortal(centralId);
     const r = await guardarSucursalPublica(
       centralId,
       datos({
         slug: " Varvarco ",
         etiqueta: "Hostería Varvarco",
-        dominio: "https://Carta.Varvarco.com/",
         subtituloPortal: "Frente al río",
         posX: "12,5",
         posY: "40",
@@ -75,9 +69,6 @@ describe("Server Actions del registro público", () => {
         posH: "",
         orden: "2",
         publicada: true,
-        menuDesdeMotor2: true,
-        sheetId: `https://docs.google.com/spreadsheets/d/${SHEET}/edit#gid=0`,
-        sheetMenuNombre: "",
       })
     );
     expect(r).toEqual({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
@@ -85,54 +76,45 @@ describe("Server Actions del registro público", () => {
     expect(fila).toMatchObject({
       slug: "varvarco",
       etiqueta: "Hostería Varvarco",
-      dominio: "carta.varvarco.com",
       subtituloPortal: "Frente al río",
       orden: 2,
       publicada: true,
-      menuDesdeMotor2: true,
-      sheetId: SHEET,
-      sheetMenuNombre: "Menu",
     });
     expect([fila.posX, fila.posY, fila.posW].map(Number)).toEqual([12.5, 40, 8]);
     expect(fila.posH).toBeNull();
   });
 
-  it("guardar rechaza slug o dominio que ya usa otra sucursal, con su nombre", async () => {
+  it("guardar rechaza un slug que ya usa otra sucursal, con su nombre", async () => {
     const norte = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
     await agregarSucursalAlPortal(centralId);
     await agregarSucursalAlPortal(norte);
-    expect(await guardarSucursalPublica(centralId, datos({ dominio: "carta.x.com" }))).toMatchObject({ ok: true });
+    expect(await guardarSucursalPublica(centralId, datos())).toMatchObject({ ok: true });
     expect(await guardarSucursalPublica(norte, datos({ slug: "central" }))).toEqual({ ok: false, mensaje: 'El slug central ya lo usa "Central".' });
-    expect(await guardarSucursalPublica(norte, datos({ slug: "norte", dominio: "CARTA.X.COM" }))).toEqual({ ok: false, mensaje: 'El dominio carta.x.com ya lo usa "Central".' });
-    // Guardar la propia fila con su mismo slug y dominio no es un choque.
-    expect(await guardarSucursalPublica(centralId, datos({ dominio: "carta.x.com", etiqueta: "Otra etiqueta" }))).toMatchObject({ ok: true });
+    // Guardar la propia fila con su mismo slug no es un choque.
+    expect(await guardarSucursalPublica(centralId, datos({ etiqueta: "Otra etiqueta" }))).toMatchObject({ ok: true });
   });
 
-  it("guardar valida slug, dominio, sheetId, posición, textos y orden sin escribir nada", async () => {
+  it("guardar valida slug, posición, textos y orden sin escribir nada", async () => {
     await agregarSucursalAlPortal(centralId);
     const antes = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
     const malos: Partial<DatosSucursalPublica>[] = [
       { slug: "" },
       { slug: "con espacios" },
       { slug: "piñón" },
-      { dominio: "carta.x.com/menu" },
-      { dominio: "localhost" },
-      { sheetId: "corto" },
       { posX: 10, posY: 10 },
       { posX: 150, posY: 10, posW: 5 },
       { posH: 5 },
       { etiqueta: "x".repeat(81) },
       { subtituloPortal: "x".repeat(201) },
       { orden: "1.5" },
-      { sheetMenuNombre: "x".repeat(101) },
     ];
     for (const m of malos) expect((await guardarSucursalPublica(centralId, datos(m))).ok, JSON.stringify(m)).toBe(false);
     expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).toEqual(antes);
   });
 
-  it("publicar sin sheetId → ok (restaurant-menu-design ya no lee ninguna sheet)", async () => {
+  it("publicar → ok", async () => {
     await agregarSucursalAlPortal(centralId);
-    const r = await guardarSucursalPublica(centralId, datos({ publicada: true, menuDesdeMotor2: true }));
+    const r = await guardarSucursalPublica(centralId, datos({ publicada: true }));
     expect(r).toMatchObject({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
     expect((await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).publicada).toBe(true);
   });

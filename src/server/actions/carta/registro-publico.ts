@@ -5,11 +5,8 @@ import { slugTenant, slugTenantUnico } from "@/core/carta/registro-tenants";
 import {
   LARGO_MAXIMO_ETIQUETA_PORTAL,
   LARGO_MAXIMO_SUBTITULO_PORTAL,
-  validarDominioPublico,
-  validarNombreTabSheet,
   validarOrdenCarta,
   validarPosicionPortal,
-  validarSheetId,
   validarSlugTenant,
   validarTextoLibreCarta,
 } from "@/core/carta/validaciones";
@@ -64,7 +61,6 @@ export async function agregarSucursalAlPortal(sucursalId: string): Promise<Resul
 export interface DatosSucursalPublica {
   slug: string;
   etiqueta?: string | null;
-  dominio?: string | null;
   subtituloPortal?: string | null;
   posX?: number | string | null;
   posY?: number | string | null;
@@ -72,15 +68,10 @@ export interface DatosSucursalPublica {
   posH?: number | string | null;
   orden?: number | string | null;
   publicada: boolean;
-  menuDesdeMotor2: boolean;
-  sheetId?: string | null;
-  sheetMenuNombre?: string | null;
 }
 
 /**
- * Guarda el registro público de una sucursal que ya está en el portal. Valida todo con los validadores de M2. `sheetId` queda como transición: la carta ya no lee ninguna sheet (todo tenant
- * activo sale de motor2), así que publicar NO lo exige — se conserva el campo solo por si algún día vuelve a hacer falta un dato
- * de la sheet para algo que motor2 todavía no cubra. Slug o dominio ya usados por otra sucursal → error con su nombre.
+ * Guarda el registro público de una sucursal que ya está en el portal. Valida todo con los validadores de M2. Slug ya usado por otra sucursal → error con su nombre.
  */
 export async function guardarSucursalPublica(sucursalId: string, datos: DatosSucursalPublica): Promise<ResultadoAccion> {
   return conPermiso("carta", async (ctx) => {
@@ -90,26 +81,16 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
     if (!etiqueta.ok) return error(etiqueta.mensaje);
     const subtitulo = validarTextoLibreCarta(datos.subtituloPortal, "El subtítulo", LARGO_MAXIMO_SUBTITULO_PORTAL);
     if (!subtitulo.ok) return error(subtitulo.mensaje);
-    const dominio = validarDominioPublico(datos.dominio);
-    if (!dominio.ok) return error(dominio.mensaje);
     const posicion = validarPosicionPortal({ x: datos.posX, y: datos.posY, w: datos.posW, h: datos.posH });
     if (!posicion.ok) return error(posicion.mensaje);
     const orden = validarOrdenCarta(datos.orden);
     if (!orden.ok) return error(orden.mensaje);
-    const sheetId = validarSheetId(datos.sheetId);
-    if (!sheetId.ok) return error(sheetId.mensaje);
-    const tab = validarNombreTabSheet(datos.sheetMenuNombre);
-    if (!tab.ok) return error(tab.mensaje);
 
     const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { id: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal: agregala primero.");
 
     const conMismoSlug = await ctx.db.sucursalPublica.findFirst({ where: { slug: slug.valor, NOT: { sucursalId } }, select: { sucursal: { select: { nombre: true } } } });
     if (conMismoSlug) return error(`El slug ${slug.valor} ya lo usa "${conMismoSlug.sucursal.nombre}".`);
-    if (dominio.valor) {
-      const conMismoDominio = await ctx.db.sucursalPublica.findFirst({ where: { dominio: dominio.valor, NOT: { sucursalId } }, select: { sucursal: { select: { nombre: true } } } });
-      if (conMismoDominio) return error(`El dominio ${dominio.valor} ya lo usa "${conMismoDominio.sucursal.nombre}".`);
-    }
 
     try {
       await ctx.db.sucursalPublica.update({
@@ -117,7 +98,6 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
         data: {
           slug: slug.valor,
           etiqueta: etiqueta.valor,
-          dominio: dominio.valor,
           subtituloPortal: subtitulo.valor,
           posX: posicion.valor.x,
           posY: posicion.valor.y,
@@ -125,13 +105,10 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
           posH: posicion.valor.h,
           orden: orden.valor,
           publicada: datos.publicada,
-          menuDesdeMotor2: datos.menuDesdeMotor2,
-          sheetId: sheetId.valor,
-          sheetMenuNombre: tab.valor,
         },
       });
     } catch (e) {
-      if (esChoqueDeUnicidad(e)) return error("Otra sucursal tomó ese slug o dominio mientras guardabas. Revisalos y volvé a intentar.");
+      if (esChoqueDeUnicidad(e)) return error("Otra sucursal tomó ese slug mientras guardabas. Revisalo y volvé a intentar.");
       throw e;
     }
     revalidarCartasPublicas();

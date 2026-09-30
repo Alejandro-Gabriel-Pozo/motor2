@@ -29,9 +29,6 @@
  *    solo para la demo, en vez de reflejar el catálogo real de la pizzería.
  *  - Sin imagenUrl en las secciones: no hay una URL de imagen real para "La Cuadra" a mano; queda "—" en la carta (campo
  *    opcional) en vez de linkear una imagen de stock inventada.
- *  - `sheetId` del portal es un placeholder que no resuelve a ninguna sheet real: con `menuDesdeMotor2: true` y el tema
- *    aplicado (`aplicarEnCarta: true`), restaurant-menu-design no necesita leer la sheet para nada de esta sucursal — el
- *    campo solo existe hoy porque `guardarSucursalPublica` lo exige para publicar (docs/plan-registro-tenants-2026-09-24.md).
  */
 import "dotenv/config";
 import { vi, describe, it, expect } from "vitest";
@@ -49,8 +46,6 @@ import type { ResultadoAccion } from "../src/server/actions/tipos";
 
 const EMAIL_ADMIN = "alepogabriel@gmail.com";
 const NOMBRE_SUCURSAL = "La Cuadra";
-/** Placeholder sintáctico (pasa RE_SHEET_ID: 20-128 [A-Za-z0-9_-]) — nunca se lee de verdad, ver docstring arriba. */
-const SHEET_ID_PLACEHOLDER = "demo_la_cuadra_sin_sheet_real";
 
 interface ItemCarta {
   codigo: string;
@@ -162,8 +157,6 @@ describe("seed de carta pública — demo pizzería La Cuadra", () => {
           slug: enPortal.slug,
           etiqueta: "La Cuadra",
           publicada: true,
-          menuDesdeMotor2: true,
-          sheetId: SHEET_ID_PLACEHOLDER,
         })
       );
 

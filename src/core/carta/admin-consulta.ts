@@ -363,7 +363,6 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Pro
 export interface RegistroPublicoAdmin {
   slug: string;
   etiqueta: string | null;
-  dominio: string | null;
   subtituloPortal: string | null;
   posX: number | null;
   posY: number | null;
@@ -371,9 +370,6 @@ export interface RegistroPublicoAdmin {
   posH: number | null;
   orden: number;
   publicada: boolean;
-  menuDesdeMotor2: boolean;
-  sheetId: string | null;
-  sheetMenuNombre: string;
 }
 
 export interface SucursalPortalAdmin {
@@ -400,7 +396,6 @@ export async function cargarAdminPortal(db: Db): Promise<SucursalPortalAdmin[]> 
     publica: s.publica && {
       slug: s.publica.slug,
       etiqueta: s.publica.etiqueta,
-      dominio: s.publica.dominio,
       subtituloPortal: s.publica.subtituloPortal,
       posX: num(s.publica.posX),
       posY: num(s.publica.posY),
@@ -408,9 +403,6 @@ export async function cargarAdminPortal(db: Db): Promise<SucursalPortalAdmin[]> 
       posH: num(s.publica.posH),
       orden: s.publica.orden,
       publicada: s.publica.publicada,
-      menuDesdeMotor2: s.publica.menuDesdeMotor2,
-      sheetId: s.publica.sheetId,
-      sheetMenuNombre: s.publica.sheetMenuNombre,
     },
     temaDesdeMotor2: s.temaCarta?.aplicarEnCarta === true,
   }));

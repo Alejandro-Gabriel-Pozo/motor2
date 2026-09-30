@@ -156,7 +156,6 @@ describe("entradasVistaPreviaPortal", () => {
   const registro = (o: Partial<NonNullable<SucursalPortalAdmin["publica"]>>): NonNullable<SucursalPortalAdmin["publica"]> => ({
     slug: "s",
     etiqueta: null,
-    dominio: null,
     subtituloPortal: null,
     posX: null,
     posY: null,
@@ -164,9 +163,6 @@ describe("entradasVistaPreviaPortal", () => {
     posH: null,
     orden: 0,
     publicada: true,
-    menuDesdeMotor2: true,
-    sheetId: null,
-    sheetMenuNombre: "Menu",
     ...o,
   });
   const suc = (id: string, nombre: string, publica: SucursalPortalAdmin["publica"], activo = true): SucursalPortalAdmin => ({ id, nombre, activo, publica, temaDesdeMotor2: false });

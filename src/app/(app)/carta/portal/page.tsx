@@ -148,7 +148,6 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
                 await guardarSucursalPublica(sucursalId, {
                   slug: campo(fd, "slug"),
                   etiqueta: campo(fd, "etiqueta"),
-                  dominio: campo(fd, "dominio"),
                   subtituloPortal: campo(fd, "subtituloPortal"),
                   posX: campo(fd, "posX"),
                   posY: campo(fd, "posY"),
@@ -156,9 +155,6 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
                   posH: campo(fd, "posH"),
                   orden: campo(fd, "orden"),
                   publicada: fd.get("publicada") === "on",
-                  menuDesdeMotor2: fd.get("menuDesdeMotor2") === "on",
-                  sheetId: campo(fd, "sheetId"),
-                  sheetMenuNombre: campo(fd, "sheetMenuNombre"),
                 })
               );
             }}
@@ -171,10 +167,6 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
             <label className="flex flex-col gap-1 text-sm">
               Etiqueta (opcional, si no se usa el nombre)
               <input name="etiqueta" defaultValue={p.etiqueta ?? ""} placeholder={s.nombre} maxLength={80} className={CLASE_INPUT} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              Dominio propio (opcional)
-              <input name="dominio" defaultValue={p.dominio ?? ""} placeholder="carta.mirestaurante.com" className={CLASE_INPUT} />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               Orden en el portal
@@ -196,21 +188,6 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
             <label className="flex items-center gap-2 text-sm">
               <input name="publicada" type="checkbox" defaultChecked={p.publicada} /> Publicada en el portal
             </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input name="menuDesdeMotor2" type="checkbox" defaultChecked={p.menuDesdeMotor2} /> El menú sale de motor2 (Carta pública)
-            </label>
-
-            <fieldset className="grid grid-cols-1 gap-2 rounded border p-2 sm:col-span-2 sm:grid-cols-2">
-              <legend className="px-1 text-sm">Mientras la carta use Google Sheets</legend>
-              <label className="flex flex-col gap-1 text-sm">
-                Id de la sheet (o su URL; hace falta para publicar)
-                <input name="sheetId" defaultValue={p.sheetId ?? ""} placeholder="1AbC…" className={CLASE_INPUT} />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Tab del menú en la sheet (si el menú no sale de motor2)
-                <input name="sheetMenuNombre" defaultValue={p.sheetMenuNombre} placeholder="Menu" maxLength={100} className={CLASE_INPUT} />
-              </label>
-            </fieldset>
 
             <div className="sm:col-span-2">
               <button type="submit" className={CLASE_BOTON}>

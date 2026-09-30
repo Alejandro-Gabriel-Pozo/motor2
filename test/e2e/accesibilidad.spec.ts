@@ -890,7 +890,7 @@ testAutenticado("carta/portal: sin violaciones de axe, con una sucursal sin agre
   const marca = `${Date.now()}`;
   const [fuera, dentro] = await Promise.all(["Fuera", "Dentro"].map((q) => prisma.sucursal.create({ data: { nombre: `E2E A11y Portal ${q} ${marca}` } })));
   await prisma.sucursalPublica.create({
-    data: { sucursalId: dentro.id, slug: `e2e-a11y-portal-${marca}`, publicada: true, sheetId: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-a11y", posX: 10, posY: 20, posW: 5, subtituloPortal: "Frente al lago" },
+    data: { sucursalId: dentro.id, slug: `e2e-a11y-portal-${marca}`, publicada: true, posX: 10, posY: 20, posW: 5, subtituloPortal: "Frente al lago" },
   });
   try {
     await page.goto("/carta/portal");
