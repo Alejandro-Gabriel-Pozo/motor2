@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { pantallaDeInicio } from "@/core/navegacion/inicio";
 import { signOut } from "@/lib/auth";
@@ -32,6 +33,7 @@ export async function PosShell({ ctx, children }: { ctx: ContextoUsuario; childr
             {inicio !== RUTA_MAPA_DE_MESAS && (
               <Link href={inicio} className="underline hover:text-[var(--ink)]">
                 Administración
+                <IndicadorDeEnlace />
               </Link>
             )}
             <span>

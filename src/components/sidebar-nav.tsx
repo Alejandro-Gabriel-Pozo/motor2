@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { GrupoNav } from "@/core/navegacion/estructura";
+import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 
 function grupoActivo(grupo: GrupoNav, pathname: string): boolean {
   return grupo.items.some((i) => (i.href === "/reportes" ? pathname === "/reportes" : pathname === i.href || pathname.startsWith(`${i.href}/`)));
@@ -56,6 +57,7 @@ export function SidebarNav({ grupos }: { grupos: GrupoNav[] }) {
                       }`}
                     >
                       {item.label}
+                      <IndicadorDeEnlace />
                     </Link>
                   );
                 })}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { esEstadoMesa, filtrarMesas, obtenerMapaDeMesas, type EstadoMesa } from "@/core/pos/mesas";
@@ -99,6 +100,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                   >
                     {f.punto && <span className="size-1.5 flex-none rounded-full" style={{ background: f.punto }} aria-hidden />}
                     {f.label} · {conteoDe(f.estado)}
+                    <IndicadorDeEnlace />
                   </Link>
                 </li>
               );

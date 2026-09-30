@@ -38,6 +38,34 @@ form[aria-busy="true"] [type="submit"] {
   opacity: 0.7;
 }
 
+/* Indicador de navegación (`IndicadorDeEnlace`, `useLinkStatus`): tamaño fijo siempre presente, solo cambia la opacidad (sin salto de maquetación).
+   Un retardo de 100 ms evita el parpadeo en navegaciones instantáneas; con "reducir movimiento" no hay animación. */
+.indicador-enlace {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.4em;
+  vertical-align: -0.05em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  opacity: 0;
+  transition: opacity 0.1s 0.1s;
+}
+.indicador-enlace[data-pendiente="true"] {
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .indicador-enlace[data-pendiente="true"] {
+    animation: indicador-enlace-giro 0.8s linear infinite;
+  }
+}
+@keyframes indicador-enlace-giro {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Salón (módulo POS, route group `(pos)`): tokens de color del mapa de mesas, aplicados por `PosShell` en `.pos-shell` y NUNCA en
    `:root`. Dos razones: (1) `:root` declara `color-scheme: light dark` y en modo oscuro pinta texto casi blanco (#ededed), pero las
    tarjetas del salón son blancas fijas: el número de mesa y los totales quedarían ilegibles; (2) nombres genéricos como `--border` o
