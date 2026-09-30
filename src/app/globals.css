@@ -88,6 +88,58 @@ body {
   font-family: var(--font-carta-serif, ui-serif, serif), serif;
 }
 
+/* Portal de sucursales (`PortalVista`): colores y tamaños llegan como `--portal-*` desde `resolverEstiloPortal` (config de
+   `PortalCartaEmpresa`). Sin valor cargado cae a los tokens `--carta-*` (contraste AA). */
+.carta-shell .portal {
+  background: var(--portal-fondo-color, transparent);
+}
+.carta-shell .portal-header {
+  background: var(--portal-header-bg, transparent);
+  color: var(--portal-header-color, inherit);
+}
+.carta-shell .portal-etiqueta {
+  color: var(--portal-etiqueta-color, var(--carta-ink-soft));
+}
+.carta-shell .portal-titulo {
+  color: var(--portal-titulo-color, inherit);
+}
+.carta-shell .portal-card {
+  background: var(--portal-card-bg, #ffffff);
+  border: 1px solid var(--portal-card-border, var(--carta-border));
+  color: var(--portal-card-color, var(--carta-ink));
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.carta-shell .portal-card:hover,
+.carta-shell .portal-card:focus-visible {
+  border-color: var(--portal-card-border-hover, var(--portal-card-border, var(--carta-border)));
+  color: var(--portal-card-color-hover, var(--portal-card-color, var(--carta-ink)));
+  box-shadow: none;
+}
+.carta-shell .portal-card:focus-visible {
+  outline: 2px solid var(--carta-primary);
+  outline-offset: 2px;
+}
+.carta-shell .portal-card-mapa {
+  padding: 0 2% 0 3%;
+}
+.carta-shell .portal-card-nombre {
+  font-size: var(--portal-card-fuente-label, clamp(0.75rem, 2.2vw, 0.95rem));
+}
+.carta-shell .portal-card-grilla .portal-card-nombre {
+  font-size: 1.125rem;
+}
+.carta-shell .portal-card-notas {
+  font-size: var(--portal-card-fuente-notas, clamp(0.7rem, 1.8vw, 0.75rem));
+  color: var(--portal-card-notas-color, var(--carta-ink-soft));
+}
+.carta-shell .portal-card-flecha {
+  color: var(--portal-card-flecha-color, currentColor);
+}
+.carta-shell .portal-footer {
+  color: var(--carta-ink-soft);
+}
+
 .carta-shell .carta-slider {
   display: flex;
   overflow-x: auto;

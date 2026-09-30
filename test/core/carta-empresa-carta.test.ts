@@ -16,7 +16,7 @@ describe("resolverEmpresaCarta", () => {
   });
 
   it("resuelve una empresa ACTIVE por su slug, con su id", async () => {
-    await expect(resolverEmpresaCarta("principal", prisma)).resolves.toEqual({ id: EMPRESA_POR_DEFECTO_ID, slug: "principal" });
+    await expect(resolverEmpresaCarta("principal", prisma)).resolves.toMatchObject({ id: EMPRESA_POR_DEFECTO_ID, slug: "principal", nombre: expect.any(String) });
   });
 
   it("da null si ninguna empresa tiene ese slug", async () => {
@@ -32,8 +32,8 @@ describe("resolverEmpresaCarta", () => {
 
   it("elige por slug entre varias empresas ACTIVE", async () => {
     await crearEmpresa("la-cuadra", "ACTIVE");
-    await expect(resolverEmpresaCarta("la-cuadra", prisma)).resolves.toEqual({ id: "la-cuadra", slug: "la-cuadra" });
-    await expect(resolverEmpresaCarta("principal", prisma)).resolves.toEqual({ id: EMPRESA_POR_DEFECTO_ID, slug: "principal" });
+    await expect(resolverEmpresaCarta("la-cuadra", prisma)).resolves.toEqual({ id: "la-cuadra", slug: "la-cuadra", nombre: "Empresa la-cuadra" });
+    await expect(resolverEmpresaCarta("principal", prisma)).resolves.toMatchObject({ id: EMPRESA_POR_DEFECTO_ID, slug: "principal", nombre: expect.any(String) });
   });
 
   it("es estrictamente sensible a mayúsculas (el slug de la URL llega ya en minúsculas por convención, no se normaliza acá)", async () => {

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { empresaCartaPublica, portalCartaPublico } from "@/core/carta/publica-sin-sesion";
+import { resolverEstiloPortal } from "@/core/carta/public";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 
 // Dinámico a propósito (sin caché): ver la nota de abajo.
@@ -19,5 +20,14 @@ export default async function PortalPage({ params }: { params: Promise<{ empresa
   if (!empresaCarta) notFound();
 
   const sucursales = await portalCartaPublico(empresaCarta);
-  return <PortalVista sucursales={sucursales} empresaSlug={empresaCarta.slug} />;
+  const slugEmpresa = empresaCarta.slug;
+  return (
+    <PortalVista
+      sucursales={sucursales}
+      empresaNombre={empresaCarta.nombre}
+      estilo={resolverEstiloPortal({})}
+      hrefDe={(slug) => `/carta-publica/${slugEmpresa}/${slug}`}
+      modo="publico"
+    />
+  );
 }

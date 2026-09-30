@@ -3,9 +3,9 @@ import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { resolverCartaPublica, resolverPortalCarta } from "../../src/core/carta/publica-consulta";
 
-const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal" };
+const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal", nombre: "Principal" };
 const OTRA_EMPRESA_ID = "empresa_otra";
-const otraEmpresa = { id: OTRA_EMPRESA_ID, slug: "otra" };
+const otraEmpresa = { id: OTRA_EMPRESA_ID, slug: "otra", nombre: "Otra empresa" };
 
 /** Una segunda empresa (PROVISIONING: la por defecto sigue siendo la única ACTIVE y `app_empresa_actual()` resuelve) con una sucursal propia. */
 async function crearSucursalDeOtraEmpresa(nombre: string): Promise<string> {

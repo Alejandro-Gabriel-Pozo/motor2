@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const EMPRESA = { id: "empresa_la_cuadra", slug: "la-cuadra" };
+const EMPRESA = { id: "empresa_la_cuadra", slug: "la-cuadra", nombre: "La Cuadra" };
 
 const { prismaFalso, resolverPortalCarta, resolverCartaPublica, portalCartaPublico, cartaPublica, resolverEmpresaCarta } = vi.hoisted(() => ({
   prismaFalso: { esPrismaFalso: true },
-  resolverEmpresaCarta: vi.fn(async (slug: string) => (slug === "la-cuadra" ? { id: "empresa_la_cuadra", slug } : null)),
+  resolverEmpresaCarta: vi.fn(async (slug: string) => (slug === "la-cuadra" ? { id: "empresa_la_cuadra", slug, nombre: "La Cuadra" } : null)),
   resolverPortalCarta: vi.fn(async () => []),
   resolverCartaPublica: vi.fn(async () => null),
   portalCartaPublico: vi.fn(async () => []),

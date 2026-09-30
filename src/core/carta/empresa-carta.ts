@@ -9,9 +9,10 @@ import type { Db } from "@/lib/db-tipos";
 export interface EmpresaCarta {
   id: string;
   slug: string;
+  nombre: string;
 }
 
-const SELECCION_EMPRESA = { id: true, slug: true } as const;
+const SELECCION_EMPRESA = { id: true, slug: true, nombre: true } as const;
 
 /** La empresa ACTIVE con ese slug (comparación exacta, sensible a mayúsculas: el slug de la URL llega ya en minúsculas). */
 export async function resolverEmpresaCarta(slug: string, db: Db): Promise<EmpresaCarta | null> {
