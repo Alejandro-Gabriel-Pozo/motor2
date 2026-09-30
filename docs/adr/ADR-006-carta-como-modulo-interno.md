@@ -309,6 +309,21 @@ cada una — no reinventarlas de memoria):**
   `test/arquitectura/sin-boundary-http-carta.test.ts` (y un e2e que exige 404
   en `/api/carta/*`). Se decidió borrar sin esperar la Fase 7: el dueño está en
   prueba, sin QR ni links repartidos que romper.
+- **Limpieza de `SucursalPublica`** [HECHA, 2026-09-30, con autorización del
+  dueño; sin push ni deploy]: con el boundary HTTP borrado, las columnas
+  `dominio`, `menuDesdeMotor2`, `sheetId` y `sheetMenuNombre` (y el índice
+  UNIQUE `SucursalPublica_dominio_key`) eran datos de transición sin lectores:
+  el admin de `/carta/portal` solo las mostraba y guardaba. Se sacaron en tres
+  commits (`c97fa68` código y tests, `5fc2d16` schema + migración
+  `20260930190000_sucursal_publica_sin_columnas_de_sheet`, `03674ed` test de
+  persistencia `sucursal-publica-columnas.test.ts`). La migración es
+  DESTRUCTIVA (los valores cargados se pierden; en las bases conocidas estaban
+  vacíos o en sus defaults) y su `down.sql` recrea columnas e índice sin
+  recuperar datos. Ojo con la reversa: `prisma migrate resolve --rolled-back`
+  solo acepta migraciones en estado fallido; para una ya aplicada hay que correr
+  `down.sql` y borrar la fila de `_prisma_migrations`. Un deploy de esta rama
+  aplica la migración en las bases reales (`prisma migrate deploy` corre en el
+  build de Vercel). Quedan vivas `posX/posY/posW/posH` (mapa del portal).
 - **Fase F** [requiere autorización en todos sus pasos]: depende de que
   `Empresa` se adopte de verdad en `prisma/schema.prisma` (ADR-004,
   "Revisar cuando") — `resolverEmpresaCarta` pasa a consultar la base en

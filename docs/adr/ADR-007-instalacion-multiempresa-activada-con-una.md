@@ -79,9 +79,9 @@ aislamiento.) Nada de la Fase F bloquea la entrega al cliente.
 - Unicidades por empresa: todas las de nombre/código de arriba,
   `SucursalPublica.slug` → `@@unique([empresaId, slug])`, y el default de
   CapacidadSucursal → `(empresaId, accionClave) WHERE sucursalId IS NULL`.
-  Siguen globales: `SucursalPublica.dominio` (un host, una sucursal),
-  `Empresa.slug` y las `claveIdempotencia` (UUID; D10 se resuelve al
-  implementar).
+  Siguen globales: `Empresa.slug` y las `claveIdempotencia` (UUID; D10 se
+  resuelve al implementar). (`SucursalPublica.dominio`, que figuraba acá como
+  global, se eliminó el 2026-09-30: columna muerta, ver ADR-006.)
 - Default de columna: `empresaId @default(dbgenerated("app_empresa_actual()"))`:
   los `create` existentes no pasan `empresaId` y RLS igual verifica el valor.
 
