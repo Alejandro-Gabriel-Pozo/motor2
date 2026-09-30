@@ -140,3 +140,18 @@ export async function accionesQueElUsuarioPuedeVer(
 
   return new Set(membresia.rol.permisos.map((p) => p.accionClave as AccionClave).filter((clave) => habilitadas.has(clave)));
 }
+
+/**
+ * De una lista de sucursales, en cuáles puede VER el usuario esta acción (capacidad de la sucursal + «Ver» del rol que tiene ALLÍ). El gate
+ * de una pantalla mira solo la sucursal activa: una pantalla que junta datos de varias sucursales tiene que filtrarlas con esto, si no
+ * muestra las de una sucursal donde el rol no tiene el permiso.
+ */
+export async function sucursalesDondeElUsuarioPuedeVer(
+  usuarioId: string,
+  sucursalIds: readonly string[],
+  accionClave: AccionClave,
+  db: PrismaClient
+): Promise<Set<string>> {
+  const niveles = await Promise.all(sucursalIds.map((sucursalId) => obtenerMiNivelPermiso(usuarioId, sucursalId, accionClave, db)));
+  return new Set(sucursalIds.filter((_, i) => niveles[i].ver));
+}

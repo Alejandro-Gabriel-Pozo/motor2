@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer, sucursalesDondeElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { compararRendimientosDeSucursales } from "@/server/consultas/reportes/rendimiento-por-sucursal";
 import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursal";
 
@@ -20,7 +20,9 @@ export default async function RendimientoPorSucursalPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
-  const sucursales = ctx.membresias.map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
+  // El gate de arriba es de la sucursal activa: las otras se comparan solo si allí el rol también puede ver el dinero.
+  const conPermiso = await sucursalesDondeElUsuarioPuedeVer(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), "ver_reportes_dinero", ctx.db);
+  const sucursales = ctx.membresias.filter((m) => conPermiso.has(m.sucursalId)).map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
   const todas = sp.todas === "1";
 
   const filas = await compararRendimientosDeSucursales(sucursales, { productoId: sp.productoId, todas }, ctx.db);
@@ -44,14 +46,14 @@ export default async function RendimientoPorSucursalPage({
       <div>
         <h1 className="mb-1 text-xl font-semibold">Rendimiento por sucursal</h1>
         <p className="text-sm text-neutral-500">
-          El rendimiento CALIBRADO de cada línea de receta (bruto: cantidad × (1 + merma %)), lado a lado entre las sucursales a las
-          que pertenecés. La receta central es una sola; lo que varía es la calibración de cada sucursal.
+          El rendimiento CALIBRADO de cada línea de receta (bruto: cantidad × (1 + merma %)), lado a lado entre las sucursales donde
+          tu rol puede ver el dinero. La receta central es una sola; lo que varía es la calibración de cada sucursal.
         </p>
       </div>
 
       {sucursales.length < 2 && (
         <p className="text-sm text-neutral-500">
-          Solo pertenecés a una sucursal ({ctx.sucursalNombre}) — igual se muestra su calibración contra la receta central.
+          Solo podés ver el dinero de una sucursal ({ctx.sucursalNombre}) — igual se muestra su calibración contra la receta central.
         </p>
       )}
 
