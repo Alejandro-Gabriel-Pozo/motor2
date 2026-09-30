@@ -282,7 +282,7 @@ const MAXIMO_COLOR = 100;
 const RE_CONTROL = /[\u0000-\u001f\u007f]/;
 const MAXIMO_ERRORES_JUNTOS = 5;
 
-function validarColor(v: string, definicion: DefinicionClaveTema): Resultado<string> {
+function validarColor(v: string, definicion: TipoValorTema): Resultado<string> {
   if (v.length > MAXIMO_COLOR) return { ok: false, mensaje: `no puede superar los ${MAXIMO_COLOR} caracteres` };
   const lower = v.toLowerCase();
   if (definicion.tipo === "colorHeroInk" && (lower === "claro" || lower === "oscuro")) return { ok: true, valor: lower };
@@ -299,7 +299,11 @@ function validarColor(v: string, definicion: DefinicionClaveTema): Resultado<str
   return { ok: true, valor: limpio };
 }
 
-function validarPorTipo(v: string, d: DefinicionClaveTema): Resultado<string> {
+/**
+ * Valida un valor YA recortado y no vacío contra el tipo de una definición. Es la pieza que comparten el tema de la sucursal
+ * (`CLAVES_TEMA_V1`) y la config del portal (`portal.ts`): el que llama decide qué hace con el vacío y con la clave.
+ */
+export function validarValorDefinicion(v: string, d: TipoValorTema & { etiqueta: string }): Resultado<string> {
   switch (d.tipo) {
     case "color":
     case "colorHeroInk":
@@ -351,7 +355,7 @@ export function validarValorTema(clave: string, valor: unknown): Resultado<strin
   if (typeof valor !== "string") return { ok: false, mensaje: "tiene que ser texto" };
   const v = valor.trim();
   if (!v) return { ok: true, valor: null };
-  return validarPorTipo(v, d);
+  return validarValorDefinicion(v, d);
 }
 
 /**
