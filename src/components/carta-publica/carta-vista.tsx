@@ -35,15 +35,15 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
         <h1 className="font-serif font-medium" style={{ fontSize: estilo.valores.carta_fuente_indice_titulo }}>
           {estilo.valores.carta_texto_indice_titulo || "Índice"}
         </h1>
-        <ol className="mt-4 min-h-0 flex-1 overflow-y-auto" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))" }}>
+        <ol data-carta-indice-lista className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
           {carta.secciones.map((seccion, i) => (
             <li key={seccion.id} className="border-b border-dotted" style={{ borderColor: "var(--carta-border)" }}>
               <button
                 type="button"
                 data-ir-a={seccion.id}
-                className="group flex w-full items-baseline gap-2.5 py-2 text-left transition-opacity hover:opacity-80"
+                className="group flex w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
               >
-                <span className="w-5 shrink-0 font-light" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: "var(--carta-primary)" }}>
+                <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: "var(--carta-primary)" }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
