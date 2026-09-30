@@ -47,7 +47,7 @@ function Tarjeta({ s, href, modo, className }: { s: EntradaPortalCarta; href: st
   );
   if (modo === "vista-previa") {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a href={href} target="_blank" rel="noopener noreferrer" draggable={false} className={className}>
         {contenido}
         <span className="sr-only"> (se abre en una pestaña nueva)</span>
       </a>
@@ -117,6 +117,7 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
                     return (
                       <li
                         key={s.slug}
+                        data-portal-slug={publico ? undefined : s.slug}
                         className="absolute"
                         style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.w}%`, height: `${p.h ?? estilo.altoTarjetaPct}%`, transform: "translate(-50%, -50%)" }}
                       >

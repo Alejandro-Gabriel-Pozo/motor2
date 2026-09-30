@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent, type PointerEvent as PointerEventReact } from "react";
 import { fuenteCartaSerif } from "@/components/carta-publica/fuente-carta";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -18,6 +18,9 @@ import { CampoColor } from "./campo-color";
  *
  * Al lado, la vista previa en vivo: es el MISMO `PortalVista` del portal público (`modo="vista-previa"`), y un `onInput` en el cuerpo
  * vuelve a leer el `FormData` para resolver el estilo con `resolverEstiloPortal` (lo inválido cae al default, como en el portal).
+ *
+ * Las tarjetas del mapa se ARRASTRAN con mouse o lápiz: al soltar se guarda la posición con `mover`. Los números de «Posición en el
+ * mapa del portal» de cada sucursal son la alternativa sin arrastre (teclado, táctil). Un clic sin arrastrar sigue abriendo la carta.
  */
 interface Props {
   valoresIniciales: Readonly<Record<string, string>>;
@@ -28,12 +31,14 @@ interface Props {
   sucursales: readonly EntradaVistaPreviaPortal[];
   /** URL de la carta de cada sucursal, por slug (otro host: la vista previa abre en pestaña nueva). */
   urlsPorSlug: Readonly<Record<string, string>>;
+  /** Guarda la posición (centro, % del mapa) de una sucursal ya ubicada. */
+  mover: (sucursalId: string, x: number, y: number) => Promise<ResultadoAccion>;
 }
 
-export function EditorPortal({ valoresIniciales, version, accion, empresaNombre, sucursales, urlsPorSlug }: Props) {
+export function EditorPortal({ valoresIniciales, version, accion, empresaNombre, sucursales, urlsPorSlug, mover }: Props) {
   return (
     <FormConResultado accion={accion} className="flex flex-col gap-4">
-      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} />
+      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} mover={mover} />
       <div>
         <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
           Guardar apariencia
@@ -50,15 +55,99 @@ function leerValores(form: HTMLFormElement): Record<string, string> {
   return Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
 }
 
-function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales, urlsPorSlug }: Omit<Props, "version" | "accion">) {
-  const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
+const UMBRAL_ARRASTRE_PX = 4;
+const acotar = (n: number) => Math.round(Math.min(100, Math.max(0, n)) * 100) / 100;
 
+interface Arrastre {
+  slug: string;
+  id: string;
+  ancho: number;
+  alto: number;
+  clienteX: number;
+  clienteY: number;
+  x: number;
+  y: number;
+  movio: boolean;
+}
+
+function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, urlsPorSlug, mover }: Omit<Props, "version" | "accion">) {
+  const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
+  // Posiciones arrastradas que todavía no volvieron del servidor; se descartan cuando llegan las guardadas (o si falla el guardado).
+  const [movidas, setMovidas] = useState<Record<string, { x: number; y: number }>>({});
+  const [anteriores, setAnteriores] = useState(guardadas);
+  if (anteriores !== guardadas) {
+    setAnteriores(guardadas);
+    setMovidas({});
+  }
+  const [arrastrando, setArrastrando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const activo = useRef(false);
+
+  const sucursales = useMemo(
+    () => guardadas.map((s) => (s.posicion && movidas[s.slug] ? { ...s, posicion: { ...s.posicion, ...movidas[s.slug] } } : s)),
+    [guardadas, movidas],
+  );
   const estilo = useMemo(() => resolverEstiloPortal(valores), [valores]);
   const layout = useMemo(() => decidirLayoutPortal(sucursales, estilo.imagenFondo), [sucursales, estilo.imagenFondo]);
 
   const releer = (e: FormEvent<HTMLDivElement>) => {
     const form = e.currentTarget.closest("form");
     if (form) setValores(leerValores(form));
+  };
+
+  const alPresionar = (e: PointerEventReact<HTMLDivElement>) => {
+    // Solo mouse y lápiz: con el dedo, tocar una tarjeta mientras se scrollea la página no debe moverla (para eso están los números).
+    if (e.button !== 0 || e.pointerType === "touch" || activo.current) return;
+    if (!(e.target instanceof Element)) return;
+    const li = e.target.closest<HTMLElement>("[data-portal-slug]");
+    const mapa = li?.closest<HTMLElement>(".portal-mapa");
+    const entrada = sucursales.find((s) => s.slug === li?.dataset.portalSlug);
+    if (!mapa || !entrada?.posicion) return;
+    const contenedor = e.currentTarget;
+    const rect = mapa.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const a: Arrastre = { slug: entrada.slug, id: entrada.id, ancho: rect.width, alto: rect.height, clienteX: e.clientX, clienteY: e.clientY, x: entrada.posicion.x, y: entrada.posicion.y, movio: false };
+    activo.current = true;
+
+    const destino = (ev: globalThis.PointerEvent) => ({
+      x: acotar(a.x + ((ev.clientX - a.clienteX) / a.ancho) * 100),
+      y: acotar(a.y + ((ev.clientY - a.clienteY) / a.alto) * 100),
+    });
+    const descartar = () => setMovidas((m) => Object.fromEntries(Object.entries(m).filter(([slug]) => slug !== a.slug)));
+
+    const mientras = (ev: globalThis.PointerEvent) => {
+      if (!a.movio && Math.hypot(ev.clientX - a.clienteX, ev.clientY - a.clienteY) < UMBRAL_ARRASTRE_PX) return;
+      if (!a.movio) {
+        a.movio = true;
+        setArrastrando(true);
+      }
+      const d = destino(ev);
+      setMovidas((m) => ({ ...m, [a.slug]: d }));
+    };
+    const terminar = (ev: globalThis.PointerEvent) => {
+      window.removeEventListener("pointermove", mientras);
+      window.removeEventListener("pointerup", terminar);
+      window.removeEventListener("pointercancel", terminar);
+      activo.current = false;
+      setArrastrando(false);
+      if (!a.movio) return;
+      // El «click» que sigue a soltar sobre el link no tiene que abrir la carta.
+      const sinClic = (c: Event) => {
+        c.preventDefault();
+        c.stopPropagation();
+      };
+      contenedor.addEventListener("click", sinClic, { capture: true, once: true });
+      setTimeout(() => contenedor.removeEventListener("click", sinClic, { capture: true }), 0);
+      if (ev.type === "pointercancel") return descartar();
+      const d = destino(ev);
+      void mover(a.id, d.x, d.y).then((r) => {
+        setAviso(r.mensaje);
+        if (!r.ok) descartar();
+      });
+    };
+    window.addEventListener("pointermove", mientras);
+    window.addEventListener("pointerup", terminar);
+    window.addEventListener("pointercancel", terminar);
   };
 
   return (
@@ -86,11 +175,19 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales, urlsPorSlug
         <h2 id="titulo-vista-previa-portal" className="text-sm font-medium">
           Vista previa
         </h2>
-        <div className={`carta-shell ${fuenteCartaSerif.variable} overflow-hidden rounded border`} data-vista-previa-portal>
+        <div className={`carta-shell ${fuenteCartaSerif.variable} overflow-hidden rounded border`} data-vista-previa-portal data-arrastrando={arrastrando ? "" : undefined} onPointerDown={alPresionar}>
           <PortalVista sucursales={sucursales} empresaNombre={empresaNombre} estilo={estilo} hrefDe={(slug) => urlsPorSlug[slug] ?? "#"} modo="vista-previa" />
         </div>
         <p className="text-xs text-neutral-500" data-modo-portal={layout.modo}>
           {textoDelModo(layout.modo, layout.enMapa.length, layout.enGrilla.length, Boolean(estilo.imagenFondo), sucursales.length)}
+        </p>
+        {layout.modo === "mapa" && (
+          <p className="text-xs text-neutral-500">
+            Arrastrá una tarjeta con el mouse para moverla (se guarda al soltar). Sin mouse, cargá los números en «Posición en el mapa del portal» de cada sucursal.
+          </p>
+        )}
+        <p role="status" className="text-xs" data-aviso-posicion>
+          {aviso}
         </p>
       </section>
     </div>

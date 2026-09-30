@@ -152,3 +152,21 @@ export async function quitarSucursalDelPortal(sucursalId: string): Promise<Resul
     return ok(`"${existente.sucursal.nombre}" quitada del portal (slug ${existente.slug}).`);
   });
 }
+
+/**
+ * Mueve la tarjeta de una sucursal sobre el mapa del portal (arrastrando en la vista previa de /carta/portal): guarda SOLO `posX` y
+ * `posY` (% del mapa, 0 a 100, 2 decimales); el ancho y el alto quedan como estaban. Exige que la sucursal ya tenga posición
+ * completa: arrastrar mueve, no ubica por primera vez (eso se hace con los números de su formulario, que además es la alternativa sin arrastre).
+ */
+export async function moverSucursalEnMapa(sucursalId: string, x: number, y: number): Promise<ResultadoAccion> {
+  return conPermiso("carta", async (ctx) => {
+    const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { id: true, posW: true, posH: true, sucursal: { select: { nombre: true } } } });
+    if (!existente) return error("Esta sucursal no está en el portal.");
+    if (existente.posW === null) return error("Esta sucursal todavía no tiene posición en el mapa: cargala con los números de su formulario.");
+    const posicion = validarPosicionPortal({ x, y, w: Number(existente.posW), h: existente.posH === null ? null : Number(existente.posH) });
+    if (!posicion.ok) return error(posicion.mensaje);
+    await ctx.db.sucursalPublica.update({ where: { id: existente.id }, data: { posX: posicion.valor.x, posY: posicion.valor.y } });
+    revalidarCartasPublicas();
+    return ok(`"${existente.sucursal.nombre}" movida a ${posicion.valor.x}% / ${posicion.valor.y}%.`);
+  });
+}

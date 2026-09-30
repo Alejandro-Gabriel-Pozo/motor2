@@ -120,6 +120,10 @@ body {
   outline: 2px solid var(--carta-primary);
   outline-offset: 2px;
 }
+/* Vista previa del admin (/carta/portal): las tarjetas del mapa se arrastran con el mouse. */
+[data-vista-previa-portal] .portal-mapa [data-portal-slug] { cursor: grab; }
+[data-vista-previa-portal][data-arrastrando] { cursor: grabbing; user-select: none; }
+[data-vista-previa-portal][data-arrastrando] .portal-mapa [data-portal-slug] { cursor: grabbing; }
 .carta-shell .portal-card-mapa {
   padding: 0 2% 0 3%;
 }

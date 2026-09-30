@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
 
 /**
  * Server Actions del registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6): permiso `carta`, slug
@@ -161,5 +161,72 @@ describe("Server Actions del registro público", () => {
       expect(r.mensaje).toMatch(/No tenés permiso/);
     }
     expect(await prisma.sucursalPublica.findMany()).toEqual([antes]);
+  });
+
+  describe("moverSucursalEnMapa (arrastrar en la vista previa)", () => {
+    const ubicar = async () => {
+      await agregarSucursalAlPortal(centralId);
+      await guardarSucursalPublica(centralId, datos({ posX: "10", posY: "20", posW: "30", posH: "8", etiqueta: "Central", orden: "3" }));
+    };
+    const fila = () => prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
+
+    it("cambia SOLO posX y posY (posW, posH y el resto quedan) y redondea a 2 decimales", async () => {
+      await ubicar();
+      const antes = await fila();
+      const r = await moverSucursalEnMapa(centralId, 55.555, 44.4);
+      expect(r.ok).toBe(true);
+      const despues = await fila();
+      expect(Number(despues.posX)).toBe(55.56);
+      expect(Number(despues.posY)).toBe(44.4);
+      expect({ ...despues, posX: null, posY: null, actualizadoEn: null }).toEqual({ ...antes, posX: null, posY: null, actualizadoEn: null });
+    });
+
+    it("sin posición completa (falta el ancho) → error y no escribe", async () => {
+      await agregarSucursalAlPortal(centralId);
+      const r = await moverSucursalEnMapa(centralId, 10, 10);
+      expect(r).toMatchObject({ ok: false });
+      const f = await fila();
+      expect([f.posX, f.posY, f.posW]).toEqual([null, null, null]);
+    });
+
+    it.each([
+      ["x fuera de rango", 101, 10],
+      ["x negativa", -1, 10],
+      ["y fuera de rango", 10, 100.5],
+      ["NaN", Number.NaN, 10],
+      ["Infinity", 10, Number.POSITIVE_INFINITY],
+    ])("valor inválido (%s) → error y no escribe", async (_n, x, y) => {
+      await ubicar();
+      const r = await moverSucursalEnMapa(centralId, x, y);
+      expect(r.ok).toBe(false);
+      const f = await fila();
+      expect([Number(f.posX), Number(f.posY)]).toEqual([10, 20]);
+    });
+
+    it("sucursal que no existe o que no está en el portal → error", async () => {
+      expect(await moverSucursalEnMapa("no-existe", 10, 10)).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
+      expect(await moverSucursalEnMapa(centralId, 10, 10)).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
+    });
+
+    it("no mueve la sucursal de otra empresa (aunque se pase su id)", async () => {
+      await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+      const ajena = await prismaAdmin.sucursal.create({ data: { nombre: "Ajena", empresaId: "norte" } });
+      await prismaAdmin.sucursalPublica.create({ data: { empresaId: "norte", sucursalId: ajena.id, slug: "ajena", posX: 1, posY: 2, posW: 3 } });
+      const r = await moverSucursalEnMapa(ajena.id, 50, 50);
+      expect(r.ok).toBe(false);
+      const intacta = await prismaAdmin.sucursalPublica.findFirstOrThrow({ where: { sucursalId: ajena.id } });
+      expect([Number(intacta.posX), Number(intacta.posY)]).toEqual([1, 2]);
+    });
+
+    it("sin el permiso `carta` no escribe", async () => {
+      await ubicar();
+      const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: centralId, rolId: operadorRolId });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+      const r = await moverSucursalEnMapa(centralId, 50, 50);
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toMatch(/No tenés permiso/);
+      const f = await fila();
+      expect([Number(f.posX), Number(f.posY)]).toEqual([10, 20]);
+    });
   });
 });

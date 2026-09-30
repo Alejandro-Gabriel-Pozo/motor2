@@ -4,7 +4,7 @@ import { cargarAdminPortal, cargarPortalEmpresaAdmin, entradasVistaPreviaPortal,
 import { CLAVES_PORTAL_V1 } from "@/core/carta/portal";
 import { urlCartaPublica } from "@/core/carta/host";
 import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
-import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -73,6 +73,10 @@ export default async function PortalSucursalesPage() {
           accion={async (fd: FormData) => {
             "use server";
             return refrescarSiOk(await guardarPortalEmpresa(valoresDelFormulario(fd)));
+          }}
+          mover={async (id: string, x: number, y: number) => {
+            "use server";
+            return refrescarSiOk(await moverSucursalEnMapa(id, x, y));
           }}
         />
       </section>
