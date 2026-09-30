@@ -62,7 +62,7 @@ function Tarjeta({ s, href, modo, className }: { s: EntradaPortalCarta; href: st
 
 function Grilla({ sucursales, hrefDe, modo }: { sucursales: readonly EntradaPortalCarta[]; hrefDe: Props["hrefDe"]; modo: ModoPortal }) {
   return (
-    <ul className="grid gap-3" role="list">
+    <ul className="grid grid-cols-[minmax(0,1fr)] gap-3" role="list">
       {sucursales.map((s) => (
         <li key={s.slug}>
           <Tarjeta s={s} href={hrefDe(s.slug)} modo={modo} className="portal-card portal-card-grilla flex items-center justify-between gap-3 rounded-xl p-4 transition-transform active:scale-[0.98]" />

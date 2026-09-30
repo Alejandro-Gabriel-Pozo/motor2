@@ -36,6 +36,74 @@ test.describe("portal de sucursales", () => {
   });
 });
 
+const IMAGEN_MAPA = "https://cdn.example.com/e2e-mapa.svg";
+const SVG_MAPA = '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1533"><rect width="100%" height="100%" fill="#5a7d5a"/></svg>';
+
+test.describe("portal con mapa (ADR-006)", () => {
+  test("con imagen y posiciones: las tarjetas van sobre el mapa en su lugar, las sin posición en una grilla debajo; sin imagen, todo es lista", async ({ page, sucursalId }) => {
+    const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    const otra = await prisma.sucursal.create({ data: { nombre: `E2E Mapa Otra ${marca}` } });
+    await page.route(IMAGEN_MAPA, (route) => route.fulfill({ contentType: "image/svg+xml", body: SVG_MAPA }));
+    try {
+      await prisma.sucursalPublica.createMany({
+        data: [
+          { sucursalId, slug: `e2e-mapa-a-${marca}`, publicada: true, etiqueta: `En mapa ${marca}`, subtituloPortal: "Sobre la imagen", posX: 30, posY: 40, posW: 30, posH: 10 },
+          { sucursalId: otra.id, slug: `e2e-mapa-b-${marca}`, publicada: true, etiqueta: `Sin posición ${marca}` },
+        ],
+      });
+      await prisma.portalCartaEmpresa.deleteMany();
+      await prisma.portalCartaEmpresa.create({ data: { valores: { portal_bg_image_url: IMAGEN_MAPA, portal_bg_proporcion: "1080/1533", portal_titulo: `Portal ${marca}`, portal_card_bg: "#112233" } } });
+
+      await page.goto(`/carta-publica/${EMPRESA}`);
+      await expect(page.getByRole("heading", { name: `Portal ${marca}`, level: 1 })).toBeVisible();
+      const mapa = page.locator(".portal-mapa");
+      await expect(mapa).toBeVisible();
+      const enMapa = mapa.getByRole("link", { name: new RegExp(`En mapa ${marca}`) });
+      await expect(enMapa).toBeVisible();
+      await expect(mapa.getByRole("link", { name: new RegExp(`Sin posición ${marca}`) })).toHaveCount(0);
+      const enGrilla = page.locator("main").getByRole("link", { name: new RegExp(`Sin posición ${marca}`) });
+      await expect(enGrilla).toBeVisible();
+
+      // La tarjeta está centrada en (30%, 40%) del mapa y la grilla queda debajo del mapa.
+      const cajaMapa = await mapa.boundingBox();
+      const cajaTarjeta = await enMapa.boundingBox();
+      const cajaGrilla = await enGrilla.boundingBox();
+      if (!cajaMapa || !cajaTarjeta || !cajaGrilla) throw new Error("sin cajas");
+      expect(Math.abs(cajaTarjeta.x + cajaTarjeta.width / 2 - (cajaMapa.x + cajaMapa.width * 0.3))).toBeLessThan(2);
+      expect(Math.abs(cajaTarjeta.y + cajaTarjeta.height / 2 - (cajaMapa.y + cajaMapa.height * 0.4))).toBeLessThan(2);
+      expect(cajaGrilla.y).toBeGreaterThan(cajaMapa.y + cajaMapa.height);
+      await expect(enMapa).toHaveAttribute("href", `/carta-publica/${EMPRESA}/e2e-mapa-a-${marca}`);
+
+      // Sin imagen de fondo: no hay mapa, las dos son una lista.
+      await prisma.portalCartaEmpresa.deleteMany();
+      await page.goto(`/carta-publica/${EMPRESA}`);
+      await expect(page.locator(".portal-mapa")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: new RegExp(`En mapa ${marca}`) })).toBeVisible();
+      await expect(page.getByRole("link", { name: new RegExp(`Sin posición ${marca}`) })).toBeVisible();
+    } finally {
+      await prisma.portalCartaEmpresa.deleteMany();
+      await prisma.sucursalPublica.deleteMany({ where: { sucursalId: { in: [sucursalId, otra.id] } } });
+      await prisma.sucursal.deleteMany({ where: { id: otra.id } });
+    }
+  });
+
+  test("un valor de apariencia inválido guardado a mano cae al default y no rompe el portal", async ({ page, sucursalId }) => {
+    const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    try {
+      await prisma.sucursalPublica.create({ data: { sucursalId, slug: `e2e-mapa-inv-${marca}`, publicada: true, etiqueta: `Inválido ${marca}` } });
+      await prisma.portalCartaEmpresa.deleteMany();
+      await prisma.portalCartaEmpresa.create({ data: { valores: { portal_card_bg: "red;position:fixed", portal_bg_image_url: "javascript:alert(1)", portal_titulo: `Título ${marca}` } } });
+      await page.goto(`/carta-publica/${EMPRESA}`);
+      await expect(page.getByRole("heading", { name: `Título ${marca}`, level: 1 })).toBeVisible();
+      await expect(page.locator(".portal-mapa")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: new RegExp(`Inválido ${marca}`) })).toBeVisible();
+    } finally {
+      await prisma.portalCartaEmpresa.deleteMany();
+      await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    }
+  });
+});
+
 test.describe("carta de una sucursal", () => {
   test("muestra la sección, un PV con precio formateado y la promo; slug inexistente da 404", async ({ page, sucursalId }) => {
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;

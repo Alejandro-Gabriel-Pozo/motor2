@@ -946,6 +946,37 @@ testAutenticado("carta-publica (ADR-006): portal y carta de una sucursal, sin vi
   }
 });
 
+testAutenticado("carta-publica (ADR-006): portal en modo mapa (a 360px, con una tarjeta fuera del mapa) y su editor con la vista previa, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const imagen = "https://cdn.example.com/e2e-a11y-mapa.svg";
+  await page.route(imagen, (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1533"><rect width="100%" height="100%" fill="#dfe8df"/></svg>' }));
+  const otra = await prisma.sucursal.create({ data: { nombre: `E2E A11y Mapa Otra ${marca}` } });
+  await prisma.portalCartaEmpresa.deleteMany();
+  await prisma.portalCartaEmpresa.create({ data: { valores: { portal_bg_image_url: imagen, portal_titulo: `Sucursales ${marca}`, portal_etiqueta: "Nuestras casas", portal_bg_overlay: "0.2" } } });
+  await prisma.sucursalPublica.createMany({
+    data: [
+      { sucursalId, slug: `e2e-a11y-mapa-a-${marca}`, publicada: true, etiqueta: `A11y Mapa ${marca}`, subtituloPortal: "Frente al lago", posX: 30, posY: 30, posW: 40, posH: 8 },
+      { sucursalId: otra.id, slug: `e2e-a11y-mapa-b-${marca}`, publicada: true, etiqueta: `A11y Grilla ${marca}`, subtituloPortal: "Sin posición" },
+    ],
+  });
+  try {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto("/carta-publica/e2e");
+    await expect(page.locator(".portal-mapa")).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/carta/portal");
+    await expect(page.locator("[data-modo-portal]")).toHaveAttribute("data-modo-portal", "mapa");
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.portalCartaEmpresa.deleteMany();
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId: { in: [sucursalId, otra.id] } } });
+    await prisma.sucursal.deleteMany({ where: { id: otra.id } });
+  }
+});
+
 testAutenticado(
   "pos/mesas: el mapa con los tres estados, con el diálogo de «Nueva mesa» abierto y con el sistema en modo oscuro, sin violaciones de axe (confirma los contrastes aprobados)",
   async ({ paginaAutenticada: page, sucursalId }) => {

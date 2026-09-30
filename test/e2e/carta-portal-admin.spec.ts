@@ -64,7 +64,7 @@ test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", as
     const empresa = await resolverEmpresaCarta("e2e", prisma);
     if (!empresa) throw new Error("la empresa e2e no existe");
     const portal = await resolverPortalCarta(empresa, prisma);
-    expect(portal.find((e) => e.slug === slug)).toEqual({ slug, etiqueta: nombreA, subtitulo: "Frente al lago" });
+    expect(portal.find((e) => e.slug === slug)).toEqual({ slug, etiqueta: nombreA, subtitulo: "Frente al lago", posicion: { x: 12.5, y: 40, w: 8, h: null } });
     expect(portal.find((e) => e.slug === `${slug}-2`)).toBeUndefined();
 
     // 4. Quitar B del portal: vuelve a "no está en el portal" y la fila ya no existe.
@@ -75,5 +75,56 @@ test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", as
   } finally {
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId: { in: [a.id, b.id] } } });
     await prisma.sucursal.deleteMany({ where: { id: { in: [a.id, b.id] } } });
+  }
+});
+
+const IMAGEN_MAPA = "https://cdn.example.com/e2e-mapa-admin.svg";
+const SVG_MAPA = '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1533"><rect width="100%" height="100%" fill="#5a7d5a"/></svg>';
+
+test("apariencia del portal: guardar, ver el mapa en la vista previa y arrastrar una tarjeta guarda su posición", async ({ paginaAutenticada: page, sucursalId }) => {
+  const marca = `${Date.now()}`;
+  const slug = `e2e-portal-arrastre-${marca}`;
+  await page.route(IMAGEN_MAPA, (route) => route.fulfill({ contentType: "image/svg+xml", body: SVG_MAPA }));
+  await prisma.portalCartaEmpresa.deleteMany();
+  await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true, etiqueta: `Arrastre ${marca}`, posX: 30, posY: 40, posW: 30, posH: 10 } });
+  try {
+    await page.goto("/carta/portal");
+    const preview = page.locator("[data-vista-previa-portal]");
+    // Sin imagen: la vista previa es una lista.
+    await expect(page.locator("[data-modo-portal]")).toHaveAttribute("data-modo-portal", "grilla");
+
+    // Cargar título e imagen: la vista previa pasa a mapa al instante; guardar deja la fila en la base.
+    await page.getByLabel("Título del portal").fill(`Portal ${marca}`);
+    await page.locator("[data-zona-portal='Fondo y mapa'] summary").click();
+    await page.getByLabel("URL de la imagen del mapa").fill(IMAGEN_MAPA);
+    await expect(page.locator("[data-modo-portal]")).toHaveAttribute("data-modo-portal", "mapa");
+    await page.getByRole("button", { name: "Guardar apariencia" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Apariencia del portal guardada" })).toBeVisible();
+    expect(await prisma.portalCartaEmpresa.findFirstOrThrow()).toMatchObject({ valores: { portal_titulo: `Portal ${marca}`, portal_bg_image_url: IMAGEN_MAPA } });
+
+    // Arrastrar la tarjeta ~40px a la derecha: cambia posX, no cambian posY/posW/posH y no se abre la carta en otra pestaña.
+    const paginasAbiertas: string[] = [];
+    page.context().on("page", (p) => paginasAbiertas.push(p.url()));
+    const tarjeta = preview.locator(`[data-portal-slug="${slug}"] a`);
+    await expect(tarjeta).toBeVisible();
+    const caja = await tarjeta.boundingBox();
+    const cajaMapa = await preview.locator(".portal-mapa").boundingBox();
+    if (!caja || !cajaMapa) throw new Error("sin cajas");
+    const x0 = caja.x + caja.width / 2;
+    const y0 = caja.y + caja.height / 2;
+    await page.mouse.move(x0, y0);
+    await page.mouse.down();
+    await page.mouse.move(x0 + 20, y0, { steps: 4 });
+    await page.mouse.move(x0 + 40, y0, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator("[data-aviso-posicion]")).toContainText("movida a");
+    const esperado = 30 + (40 / cajaMapa.width) * 100;
+    await expect.poll(async () => Number((await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId } })).posX)).toBeCloseTo(esperado, 0);
+    const fila = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId } });
+    expect([Number(fila.posY), Number(fila.posW), Number(fila.posH)]).toEqual([40, 30, 10]);
+    expect(paginasAbiertas).toEqual([]);
+  } finally {
+    await prisma.portalCartaEmpresa.deleteMany();
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
   }
 });
