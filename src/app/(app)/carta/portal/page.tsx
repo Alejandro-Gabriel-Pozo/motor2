@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { cargarAdminPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
+import { urlCartaPublica } from "@/core/carta/host";
 import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
@@ -52,9 +52,9 @@ export default async function PortalSucursalesPage() {
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
-          <Link href={`/carta-publica/${ctx.empresaSlug}`} target="_blank" className="text-blue-600 underline">
+          <a href={urlCartaPublica(process.env.CARTA_DOMINIO_BASE, ctx.empresaSlug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
             Ver el portal de motor2 →
-          </Link>
+          </a>
           {basePortal && (
             <a href={basePortal} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
               Ver el portal en vivo →
@@ -95,9 +95,9 @@ function SucursalEnPortal({ sucursal: s, basePortal, empresaSlug }: { sucursal: 
         {p && seVeEnVivo(s) && (
           <>
             {" · "}
-            <Link href={`/carta-publica/${empresaSlug}/${p.slug}`} target="_blank" className="text-blue-600 underline">
+            <a href={urlCartaPublica(process.env.CARTA_DOMINIO_BASE, empresaSlug, p.slug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
               Ver la carta de motor2 →
-            </Link>
+            </a>
           </>
         )}
         {basePortal && p && seVeEnVivo(s) && (

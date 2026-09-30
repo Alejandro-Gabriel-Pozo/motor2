@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { armarHostCarta, interpretarHostCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "@/core/carta/host";
+import { armarHostCarta, interpretarHostCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta, urlCartaPublica } from "@/core/carta/host";
 
 describe("interpretarHostCarta", () => {
   const BASE = "motor2carta.com";
@@ -139,6 +139,26 @@ describe("reglasRedirectAppACarta", () => {
     const host = "carta-principal.app.zuluhub.com.ar";
     expect(interpretarHostCarta(host, BASE)).not.toBeNull();
     expect(regexMissing().test(host)).toBe(true);
+  });
+});
+
+describe("urlCartaPublica", () => {
+  it("con un dominio base real apunta directo al host de la carta (sin depender del redirect)", () => {
+    expect(urlCartaPublica("app.zuluhub.com.ar", "principal")).toBe("https://carta-principal.app.zuluhub.com.ar/");
+    expect(urlCartaPublica("app.zuluhub.com.ar", "principal", "lacuadra")).toBe("https://carta-principal.app.zuluhub.com.ar/lacuadra");
+    expect(urlCartaPublica(" App.ZuluHub.com.ar ", "principal", "lacuadra")).toBe("https://carta-principal.app.zuluhub.com.ar/lacuadra");
+  });
+
+  it("sin dominio base, o con localhost (desarrollo y e2e), queda el path /carta-publica/...", () => {
+    for (const base of [undefined, null, "", "  ", "localhost", "dev.localhost"]) {
+      expect(urlCartaPublica(base, "e2e")).toBe("/carta-publica/e2e");
+      expect(urlCartaPublica(base, "e2e", "central")).toBe("/carta-publica/e2e/central");
+    }
+  });
+
+  it("la URL directa resuelve a la misma empresa que interpretarHostCarta", () => {
+    const { hostname } = new URL(urlCartaPublica("app.zuluhub.com.ar", "la-cuadra", "x"));
+    expect(interpretarHostCarta(hostname, "app.zuluhub.com.ar")).toEqual({ empresaSlug: "la-cuadra" });
   });
 });
 

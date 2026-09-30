@@ -111,6 +111,17 @@ export function interpretarHostCarta(host: string | null | undefined, dominioBas
   return m ? { empresaSlug: m[1] } : null;
 }
 
+/**
+ * Dirección pública de la carta (o del portal, sin `sucursalSlug`) de una empresa, para los links del admin. Con `dominioBase` de un
+ * dominio real: `https://carta-<empresa>.<dominioBase>/[<sucursal>]`. Sin `dominioBase`, o con `localhost` (desarrollo y e2e, sin DNS ni
+ * https): el path `/carta-publica/<empresa>[/<sucursal>]` en el host actual.
+ */
+export function urlCartaPublica(dominioBase: string | null | undefined, empresaSlug: string, sucursalSlug?: string): string {
+  const base = dominioBase?.trim().toLowerCase();
+  if (!base || base === "localhost" || base.endsWith(".localhost")) return `/carta-publica/${empresaSlug}${sucursalSlug ? `/${sucursalSlug}` : ""}`;
+  return `https://${armarHostCarta(empresaSlug, base)}/${sucursalSlug ?? ""}`;
+}
+
 /** La inversa: el host público de la carta de una empresa, dado el slug y el dominio base. Para el link "Ver en vivo" del admin (Fase 4). */
 export function armarHostCarta(empresaSlug: string, dominioBase: string): string {
   return `carta-${empresaSlug}.${dominioBase}`;
