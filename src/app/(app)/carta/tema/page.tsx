@@ -11,8 +11,7 @@ import { EditorTema } from "@/components/carta/editor-tema";
 
 /**
  * Tema de la carta (docs/plan-tema-carta-2026-09-24.md, M9, D11): los colores, textos, tipografía y layout de la carta pública de
- * la sucursal ACTIVA — lo que restaurant-menu-design lee por GET /api/carta/[sucursal]/tema en lugar de la tab "Config" de la
- * sheet del tenant. Mismo estilo que /carta y /carta/portal: las mutaciones pasan por las Server Actions de
+ * la sucursal ACTIVA — lo que lee la carta pública interna (ADR-006). Mismo estilo que /carta y /carta/portal: las mutaciones pasan por las Server Actions de
  * src/server/actions/carta/tema.ts (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures capturan solo el
  * id de la sucursal (texto): lo que captura un closure "use server" viaja al cliente.
  *

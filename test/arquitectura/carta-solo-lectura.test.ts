@@ -4,18 +4,18 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Regla de arquitectura (docs/plan-carta-catalogo-2026-09-24.md, M5): la carta pública es un espejo de SOLO LECTURA del
- * catálogo. Ni la lógica de la carta (`src/core/carta/**`) ni el endpoint que la sirve (`src/app/api/carta/**`, que lo llama
- * un sitio externo con un token de servicio) pueden escribir en la base. Si alguna vez hiciera falta, la escritura va en una
+ * catálogo. Ni la lógica de la carta (`src/core/carta/**`) ni las páginas que la sirven (`src/app/(carta-publica)/**`; Fase 8 del
+ * ADR-006 borró el endpoint HTTP `src/app/api/carta/**`) pueden escribir en la base. Si alguna vez hiciera falta, la escritura va en una
  * Server Action con `conPermiso` (`src/server/actions/carta/`), nunca en el camino público — y esas acciones, a su vez, solo
  * pueden escribir en las 7 tablas de carta (SeccionCarta, ContenidoCartaProducto, PromoCarta,
  * SucursalPublica, el registro de tenants del portal, TemaCartaSucursal, el tema visual, e ItemAgrupadoCarta y
  * OpcionItemAgrupadoCarta, los ítems agrupados): el catálogo, los precios, la disponibilidad y las sucursales en sí se siguen
  * editando donde siempre.
  *
- * Cómo se controla: ningún archivo de esas dos carpetas puede contener, fuera de un comentario, una llamada de escritura de
+ * Cómo se controla: ningún archivo de esas carpetas puede contener, fuera de un comentario, una llamada de escritura de
  * Prisma sobre un modelo (`x.modelo.create(`, `.createMany(`, `.update(`, `.updateMany(`, `.upsert(`, `.delete(`,
  * `.deleteMany(`, …) ni `$executeRaw`. Se exige la forma `cliente.modelo.op(` para no marcar métodos homónimos que no son de
- * Prisma (p. ej. `createHash("sha256").update(...)` de token-servicio.ts).
+ * Prisma (p. ej. `createHash("sha256").update(...)`).
  *
  * `GeneroCarta` (docs/plan-genero-carta-2026-09-26.md) sumó una 8ª tabla a la whitelist de abajo: carpeta VISUAL del POS, sin
  * relación con `ContenidoCartaProducto.generoCartaId` / `ItemAgrupadoCarta.generoCartaId` en la carta pública (G4: la lee
@@ -26,7 +26,7 @@ import { describe, expect, it } from "vitest";
  * carta (paso 5, `guardarCuposPromoCarta`), nunca del camino público.
  */
 const SRC = join(__dirname, "../../src");
-const CARPETAS = ["core/carta", "app/api/carta", "app/(carta-publica)", "components/carta-publica"];
+const CARPETAS = ["core/carta", "app/(carta-publica)", "components/carta-publica"];
 /** Captura el modelo de una escritura `cliente.modelo.op(`. */
 const ESCRITURA_POR_MODELO = /\w\s*\.\s*(\w+)\s*\.\s*(?:create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(/;
 const ESCRITURA = /\w\s*\.\s*\w+\s*\.\s*(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(|\$executeRaw/;
@@ -54,19 +54,15 @@ function lineasQueEscriben(fuente: string): number[] {
 describe("carta: solo lectura", () => {
   const rutas = CARPETAS.flatMap((c) => archivos(join(SRC, c)));
 
-  it("encuentra los archivos de la carta (lógica y endpoint)", () => {
+  it("encuentra los archivos de la carta (lógica y páginas públicas)", () => {
     const nombres = rutas.map((r) => relative(SRC, r).split(sep).join("/"));
     expect(nombres).toContain("core/carta/menu-consulta.ts");
-    expect(nombres).toContain("app/api/carta/[sucursal]/route.ts");
-    // Registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M4).
-    expect(nombres).toContain("app/api/carta/tenants/route.ts");
-    expect(nombres).toContain("core/carta/registro-consulta.ts");
-    // Tema visual de la carta (docs/plan-tema-carta-2026-09-24.md, M5).
-    expect(nombres).toContain("app/api/carta/[sucursal]/tema/route.ts");
-    expect(nombres).toContain("core/carta/tema-consulta.ts");
+    expect(nombres).toContain("core/carta/publica-consulta.ts");
+    expect(nombres).toContain("core/carta/publica-sin-sesion.ts");
+    expect(nombres).toContain("app/(carta-publica)/carta-publica/[empresa]/page.tsx");
   });
 
-  it("ningún archivo de src/core/carta ni src/app/api/carta escribe en la base", () => {
+  it("ningún archivo de src/core/carta ni de las páginas públicas escribe en la base", () => {
     const problemas = rutas.flatMap((ruta) => lineasQueEscriben(readFileSync(ruta, "utf8")).map((l) => `${relative(SRC, ruta).split(sep).join("/")}:${l}`));
     expect(problemas, `La carta pública es de solo lectura; estas líneas escriben:\n${problemas.join("\n")}`).toEqual([]);
   });

@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
-import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
+import { menuCartaPublicado } from "./fixtures/carta-menu";
 
 /**
  * Sincronizar el precio de un producto agrupado desde Catálogo (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): Fanta,
@@ -8,7 +8,7 @@ import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
  * aparte (no un confirm()) que ofrece aplicar $5500 también a los otros dos; al confirmarlo, la carta muestra $5500 en las tres
  * opciones, sin precios distintos.
  */
-test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y, al confirmar, la carta queda pareja", async ({ paginaAutenticada: page, sucursalId, request }) => {
+test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y, al confirmar, la carta queda pareja", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Sync Cat ${marca}` } });
@@ -44,12 +44,11 @@ test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y
     await bloque.getByRole("button", { name: "Aplicar $5.500 también" }).click();
     await page.waitForURL(new RegExp(`/catalogo/productos/${fanta.id}\\?guardado=cambios$`));
 
-    const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
-    expect(r.status()).toBe(200);
-    const s = (await r.json()).secciones.find((x: { id: string }) => x.id === seccion.id);
+    const s = (await menuCartaPublicado(sucursalId)).secciones.find((x) => x.id === seccion.id);
+    if (!s) throw new Error("la sección no aparece en la carta pública");
     expect(s.items).toHaveLength(1);
     expect(s.items[0].precio).toBe(5500);
-    expect(s.items[0].opciones.map((o: { precio: number }) => o.precio)).toEqual([5500, 5500, 5500]);
+    expect(s.items[0].opciones?.map((o) => o.precio)).toEqual([5500, 5500, 5500]);
   } finally {
     await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: item.id } });
     await prisma.itemAgrupadoCarta.deleteMany({ where: { id: item.id } });

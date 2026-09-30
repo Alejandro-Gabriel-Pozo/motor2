@@ -9,9 +9,8 @@ type Db = PrismaClient | Prisma.TransactionClient;
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: capa de LECTURA de la carta pública nueva
  * (`app/(carta-publica)/`) — separada de `estilo.ts`/`armar-menu.ts` (puros) por el mismo motivo que el resto de `core/carta/`:
- * nunca mezclar Prisma con funciones puras. Reemplaza lo que hacían juntos `GET /api/carta/tenants` (registro) y
- * `GET /api/carta/[sucursal]` + `GET /api/carta/[sucursal]/tema` (carta + tema) para el consumo INTERNO — esos tres
- * endpoints HTTP siguen existiendo mientras `restaurant-menu-design` esté en producción (ver Fase 8 del plan).
+ * nunca mezclar Prisma con funciones puras. Reemplazó a los tres endpoints HTTP
+ * `/api/carta/*` que consumía `restaurant-menu-design` (borrados en la Fase 8).
  */
 
 export interface EntradaPortalCarta {
@@ -21,10 +20,9 @@ export interface EntradaPortalCarta {
 }
 
 /**
- * El portal: solo las sucursales `publicada && sucursal.activo` (a diferencia de `resolverRegistroTenants`, que emite
- * TODAS con `activo: false` — esa lista completa existía para que la carta externa reconciliara contra su sheet, D4/D7 de
- * `docs/plan-registro-tenants-2026-09-24.md`; sin sheet externa que reconciliar, no hace falta emitir lo que no se muestra).
- * Orden: `orden` y después `etiqueta` (`localeCompare("es")`), mismo criterio que `armarRegistroTenants`.
+ * El portal: solo las sucursales `publicada && sucursal.activo` (el registro HTTP anterior emitía TODAS con `activo: false` para que la
+ * carta externa reconciliara contra su sheet, D4/D7 de `docs/plan-registro-tenants-2026-09-24.md`; sin sheet externa que
+ * reconciliar, no hace falta emitir lo que no se muestra). Orden: `orden` y después `etiqueta` (`localeCompare("es")`).
  *
  * Solo las sucursales de `empresa` (ADR-007, A3): el filtro es explícito además de lo que aportará RLS (A6).
  */

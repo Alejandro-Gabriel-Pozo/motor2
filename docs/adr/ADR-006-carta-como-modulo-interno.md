@@ -274,11 +274,18 @@ cada una — no reinventarlas de memoria):**
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
   retirar el deployment externo.
-- **Fase 8** [código HOY, pero solo DESPUÉS de la Fase 7]: borrar el
-  boundary HTTP (`src/app/api/carta/**`, `autorizar-servicio.ts`,
-  `token-servicio.ts`, el contrato `RegistroTenantsV1`) — mientras el repo
-  externo siga en producción, `/api/carta/*` sigue siendo su única fuente,
-  no se toca.
+- **Fase 8** [HECHA]: borrado el boundary
+  HTTP (`src/app/api/carta/**`, `autorizar-servicio.ts`, `token-servicio.ts`,
+  el contrato `RegistroTenantsV1` y sus lectores `registro-consulta.ts` /
+  `tema-consulta.ts`), y las variables `CARTA_API_TOKEN` / `CARTA_PORTAL_URL`
+  (`env.ts`, `.env.example`, `playwright.config.ts`). Las verificaciones
+  e2e que leían `/api/carta/*` pasaron a leer la base o `resolverMenuCarta` /
+  `resolverPortalCarta`; la no-filtración de datos internos en la carta
+  serializada quedó en `test/carta/menu-consulta.test.ts` e
+  `items-agrupados-consulta.test.ts`. Reaparecer lo borrado lo impide
+  `test/arquitectura/sin-boundary-http-carta.test.ts` (y un e2e que exige 404
+  en `/api/carta/*`). Se decidió borrar sin esperar la Fase 7: el dueño está en
+  prueba, sin QR ni links repartidos que romper.
 - **Fase F** [requiere autorización en todos sus pasos]: depende de que
   `Empresa` se adopte de verdad en `prisma/schema.prisma` (ADR-004,
   "Revisar cuando") — `resolverEmpresaCarta` pasa a consultar la base en

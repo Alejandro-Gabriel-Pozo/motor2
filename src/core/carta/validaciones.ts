@@ -128,7 +128,7 @@ export const LARGO_MAXIMO_SLUG_TENANT = 60;
 export const LARGO_MAXIMO_ETIQUETA_PORTAL = 80;
 export const LARGO_MAXIMO_SUBTITULO_PORTAL = 200;
 const LARGO_MAXIMO_TAB_SHEET = 100;
-export const TAB_MENU_POR_DEFECTO = "Menu";
+const TAB_MENU_POR_DEFECTO = "Menu";
 /** Minúsculas, dígitos y guiones sueltos entre medio: es el `/carta/<slug>` público (y el `tenant_id` de la sheet). */
 const RE_SLUG_TENANT = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 /** Id de un Google Spreadsheet (lo que va entre `/d/` y la barra siguiente en su URL). */

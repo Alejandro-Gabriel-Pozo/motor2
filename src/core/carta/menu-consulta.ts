@@ -111,7 +111,7 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
   });
 }
 
-/** La carta pública de una sucursal, tal como la sirve `GET /api/carta/[sucursal]` (sin el diagnóstico interno). */
+/** La carta pública de una sucursal, tal como la consume la página pública (sin el diagnóstico interno). */
 export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<CartaV1 | null> {
   const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora);
   return armado ? armado.carta : null;

@@ -112,6 +112,15 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     expect(items.find((i) => i.productoId === ids.bife)).not.toHaveProperty("opciones");
   });
 
+  it("3b. la carta con un ítem agrupado no filtra nada interno (código, observaciones, precioVenta, diagnóstico)", async () => {
+    await prisma.producto.updateMany({ where: { id: { in: [ids.coca, ids.sprite, ids.fanta] } }, data: { observaciones: "nota interna" } });
+    await crearGaseosa([ids.coca, ids.sprite, ids.fanta]);
+    const texto = JSON.stringify(await resolverMenuCarta(central, prisma));
+    for (const interno of ["AGR_", "codigo", "nota interna", "observaciones", "precioVenta", "diagnostico", "agrupadosConPreciosDistintos"]) {
+      expect(texto, interno).not.toContain(interno);
+    }
+  });
+
   it("4. grupo apagado: no sale, y sus miembros tampoco salen sueltos", async () => {
     await crearGaseosa([ids.coca, ids.sprite, ids.fanta], { activo: false });
     const items = todos(await resolverMenuCarta(central, prisma));

@@ -8,8 +8,8 @@ import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
 
 /**
- * Portal de sucursales (docs/plan-registro-tenants-2026-09-24.md, M7): el registro que restaurant-menu-design lee por
- * GET /api/carta/tenants en lugar de la tab "tenant" de su sheet maestra — slug (/carta/<slug>), etiqueta, dominio, subtítulo,
+ * Portal de sucursales (docs/plan-registro-tenants-2026-09-24.md, M7): el registro que arma el portal de la carta pública
+ * (ADR-006: módulo interno; antes lo leía restaurant-menu-design por HTTP) — slug (/carta/<slug>), etiqueta, dominio, subtítulo,
  * posición en el mapa, orden, si está publicada, de dónde sale el menú y los datos de la sheet mientras dure la transición.
  *
  * Todas las sucursales (el mapa es entre sucursales, no depende de la activa). Sin fila → "Agregar al portal"; con fila → su
@@ -26,12 +26,6 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 const CLASE_INPUT = "rounded border px-2 py-1";
 const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 
-/** Base pública de la carta (CARTA_PORTAL_URL), sin barra final, o null si no está configurada — sin ella no se muestra ningún link "Ver en vivo". */
-function urlBasePortal(): string | null {
-  const base = process.env.CARTA_PORTAL_URL?.trim().replace(/\/+$/, "");
-  return base || null;
-}
-
 export default async function PortalSucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -40,7 +34,6 @@ export default async function PortalSucursalesPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sucursales = await cargarAdminPortal(ctx.db);
-  const basePortal = urlBasePortal();
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,17 +48,12 @@ export default async function PortalSucursalesPage() {
           <a href={urlCartaPublica(process.env.CARTA_DOMINIO_BASE, ctx.empresaSlug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
             Ver el portal de motor2 →
           </a>
-          {basePortal && (
-            <a href={basePortal} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-              Ver el portal en vivo →
-            </a>
-          )}
         </div>
       </div>
 
       <ul className="flex flex-col gap-3">
         {sucursales.map((s) => (
-          <SucursalEnPortal key={s.id} sucursal={s} basePortal={basePortal} empresaSlug={ctx.empresaSlug} />
+          <SucursalEnPortal key={s.id} sucursal={s} empresaSlug={ctx.empresaSlug} />
         ))}
         {!sucursales.length && <li className="text-sm text-neutral-500">No hay sucursales.</li>}
       </ul>
@@ -84,7 +72,7 @@ function seVeEnVivo(s: SucursalPortalAdmin): boolean {
   return Boolean(s.publica?.publicada) && s.activo;
 }
 
-function SucursalEnPortal({ sucursal: s, basePortal, empresaSlug }: { sucursal: SucursalPortalAdmin; basePortal: string | null; empresaSlug: string }) {
+function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPortalAdmin; empresaSlug: string }) {
   const sucursalId = s.id;
   const p = s.publica;
   return (
@@ -97,14 +85,6 @@ function SucursalEnPortal({ sucursal: s, basePortal, empresaSlug }: { sucursal: 
             {" · "}
             <a href={urlCartaPublica(process.env.CARTA_DOMINIO_BASE, empresaSlug, p.slug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
               Ver la carta de motor2 →
-            </a>
-          </>
-        )}
-        {basePortal && p && seVeEnVivo(s) && (
-          <>
-            {" · "}
-            <a href={`${basePortal}/carta/${p.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-              Ver en vivo →
             </a>
           </>
         )}

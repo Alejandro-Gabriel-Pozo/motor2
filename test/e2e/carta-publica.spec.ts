@@ -89,3 +89,13 @@ test.describe("carta de una sucursal", () => {
     }
   });
 });
+
+test.describe("sin boundary HTTP (ADR-006, Fase 8)", () => {
+  // proxy.ts excluye /api del matcher: una ruta borrada da el 404 liso de Next, sin redirigir a /login.
+  for (const ruta of ["/api/carta/tenants", "/api/carta/central", "/api/carta/central/tema"]) {
+    test(`GET ${ruta} da 404`, async ({ request }) => {
+      const r = await request.get(ruta, { maxRedirects: 0 });
+      expect(r.status()).toBe(404);
+    });
+  }
+});

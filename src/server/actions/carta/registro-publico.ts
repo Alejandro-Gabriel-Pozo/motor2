@@ -19,7 +19,7 @@ import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Registro público de las sucursales en el portal/carta (docs/plan-registro-tenants-2026-09-24.md, M6): lo que
- * restaurant-menu-design lee por GET /api/carta/tenants en lugar de la tab "tenant" de su sheet maestra. Solo escriben en
+ * arma el portal de la carta pública interna (ADR-006). Solo escriben en
  * `SucursalPublica` (lo fija test/arquitectura/carta-solo-lectura.test.ts): la sucursal en sí (nombre, activa) se sigue
  * administrando en Administración → Sucursales. Gate: `carta`, la misma acción que el resto del admin de la carta.
  *
@@ -78,8 +78,7 @@ export interface DatosSucursalPublica {
 }
 
 /**
- * Guarda el registro público de una sucursal que ya está en el portal. Valida todo con los validadores de M2 (los mismos con los
- * que el endpoint sanea la salida). `sheetId` queda como transición: restaurant-menu-design ya no lee ninguna sheet (todo tenant
+ * Guarda el registro público de una sucursal que ya está en el portal. Valida todo con los validadores de M2. `sheetId` queda como transición: la carta ya no lee ninguna sheet (todo tenant
  * activo sale de motor2), así que publicar NO lo exige — se conserva el campo solo por si algún día vuelve a hacer falta un dato
  * de la sheet para algo que motor2 todavía no cubra. Slug o dominio ya usados por otra sucursal → error con su nombre.
  */

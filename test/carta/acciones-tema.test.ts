@@ -5,7 +5,6 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { cambiarAplicacionTema, guardarTemaCarta } from "../../src/server/actions/carta/tema";
-import { resolverTemaCarta } from "../../src/core/carta/tema-consulta";
 import { CLAVES_TEMA_V1, type DefinicionClaveTema } from "../../src/core/carta/tema";
 
 /**
@@ -142,15 +141,14 @@ describe("Server Actions del tema de la carta", () => {
     expect((await cambiarAplicacionTema(centralId, true)).ok).toBe(false);
   });
 
-  it("desaplicar conserva los valores (y el endpoint deja de servirlo)", async () => {
+  it("desaplicar conserva los valores (y la carta deja de tomarlos)", async () => {
     await guardarTemaCarta(centralId, { color_marca: "red", restaurante_nombre: "La Parrilla" });
     await cambiarAplicacionTema(centralId, true);
-    expect((await resolverTemaCarta(centralId, prisma))?.valores.color_marca).toBe("red");
+    expect(await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({ aplicarEnCarta: true, valores: { color_marca: "red" } });
     expect(await cambiarAplicacionTema(centralId, false)).toEqual({ ok: true, mensaje: 'Tema de "Central" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).' });
     const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(false);
     expect(fila.valores).toEqual({ color_marca: "red", restaurante_nombre: "La Parrilla" });
-    expect(await resolverTemaCarta(centralId, prisma)).toBeNull();
   });
 
   it("guardar para una sucursal inexistente → error", async () => {

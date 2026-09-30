@@ -1,5 +1,5 @@
 /**
- * Carta pública (docs/plan-carta-catalogo-2026-09-24.md, M2): arma la respuesta de `GET /api/carta/[sucursal]` a partir de
+ * Carta pública (docs/plan-carta-catalogo-2026-09-24.md, M2): arma la carta pública (`CartaV1`) a partir de
  * datos ya leídos. Lógica PURA, sin Prisma — mismo criterio que `disponibilidad-producto.ts` / `-consulta.ts`: la lectura
  * vive en `menu-consulta.ts`, un archivo aparte, para que un "use client" que importe un valor de acá (p. ej.
  * `urlImagenSegura` desde la pantalla de admin) nunca arrastre `@/lib/db` al bundle del cliente.

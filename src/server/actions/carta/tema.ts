@@ -7,8 +7,8 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
- * Tema visual de la carta pública de una sucursal (docs/plan-tema-carta-2026-09-24.md, M8): lo que restaurant-menu-design lee
- * por GET /api/carta/[sucursal]/tema en lugar de la tab "Config" de la sheet del tenant. Solo escriben en `TemaCartaSucursal`
+ * Tema visual de la carta pública de una sucursal (docs/plan-tema-carta-2026-09-24.md, M8): lo que lee la carta pública
+ * interna (ADR-006). Solo escriben en `TemaCartaSucursal`
  * (lo fija test/arquitectura/carta-solo-lectura.test.ts). Gate: `carta`, la misma acción que el resto del admin de la carta (no
  * hace falta una migración de permisos).
  *

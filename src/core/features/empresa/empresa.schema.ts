@@ -28,7 +28,7 @@ export type ComandoCrearEmpresaConAdmin = z.input<typeof crearEmpresaConAdminSch
 
 /**
  * `EstadoEmpresa` — mismo enum planeado para el modelo Prisma (sección 2.1 del plan del panel). Una empresa `SUSPENDED`: su
- * carta pública responde 404 (idéntico a una carta inexistente) y `GET /api/carta/tenants` no la lista (v3, "Respuestas del
+ * carta pública responde 404 (idéntico a una carta inexistente) y su portal no la lista (v3, "Respuestas del
  * dueño"). El circuito de suscripción/alta todavía no existe (aclaración del dueño, 2026-09-28): el alta sigue siendo
  * manual/semi-manual, así que estas transiciones documentan la intención, no un flujo automatizado de facturación.
  */

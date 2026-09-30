@@ -122,7 +122,7 @@ export function urlCartaPublica(dominioBase: string | null | undefined, empresaS
   return `https://${armarHostCarta(empresaSlug, base)}/${sucursalSlug ?? ""}`;
 }
 
-/** La inversa: el host público de la carta de una empresa, dado el slug y el dominio base. Para el link "Ver en vivo" del admin (Fase 4). */
+/** La inversa: el host público de la carta de una empresa, dado el slug y el dominio base. Para los links "Ver la carta de motor2" del admin (Fase 4). */
 export function armarHostCarta(empresaSlug: string, dominioBase: string): string {
   return `carta-${empresaSlug}.${dominioBase}`;
 }

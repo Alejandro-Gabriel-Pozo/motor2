@@ -121,6 +121,15 @@ describe("resolverMenuCarta", () => {
     }
   });
 
+  it("la carta serializada no filtra nada interno (código, observaciones, costos, diagnóstico)", async () => {
+    await prisma.producto.update({ where: { id: ids.bife }, data: { observaciones: "nota interna" } });
+    const carta = (await resolverMenuCarta(central, prisma))!;
+    const texto = JSON.stringify(carta);
+    for (const interno of ["CARTA_", "codigo", "nota interna", "observaciones", "costo", "diagnostico", "visiblesSinSeccion", "precioVenta"]) {
+      expect(texto, interno).not.toContain(interno);
+    }
+  });
+
   it("la disponibilidad de otra sucursal no se filtra: la otra sucursal ve lo suyo", async () => {
     const carta = (await resolverMenuCarta(otra, prisma))!;
     const items = carta.secciones.flatMap((s) => s.items);

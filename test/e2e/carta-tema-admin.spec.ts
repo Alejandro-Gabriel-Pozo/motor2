@@ -1,11 +1,10 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
-import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
 
 /**
  * Tema de la carta (/carta/tema, docs/plan-tema-carta-2026-09-24.md, M9) de punta a punta: "Pegar desde la sheet"
  * clasifica lo pegado y rellena el formulario sin guardar (la vista previa lo refleja), Guardar persiste solo lo válido, Aplicar
- * lo publica en GET /api/carta/[sucursal]/tema y Desaplicar lo saca (404) conservando los valores.
+ * lo deja aplicado en la carta y Desaplicar lo saca conservando los valores.
  */
 const PEGADO = [
   "color_item_nombre\t#aa3300", // color válido
@@ -16,7 +15,7 @@ const PEGADO = [
   "carta_banda_alto_desktop\t90px}body{display:none", // inyección
 ].join("\n");
 
-test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", async ({ paginaAutenticada: page, sucursalId, request }) => {
+test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", async ({ paginaAutenticada: page, sucursalId }) => {
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   await page.setViewportSize({ width: 1280, height: 900 });
   try {
@@ -56,23 +55,22 @@ test("pegar desde la sheet, guardar, aplicar y desaplicar el tema de la carta", 
     await expect(page.locator('[name="color_item_precio"]')).toHaveValue("");
     expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).valores).toEqual({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)" });
 
-    // 4. Aplicar: el endpoint responde 200 con lo guardado.
-    const auth = { Authorization: `Bearer ${TOKEN_CARTA_E2E}` };
-    expect((await request.get(`/api/carta/${sucursalId}/tema`, { headers: auth })).status()).toBe(404);
+    // 4. Aplicar: la fila queda aplicada en la carta, con lo guardado (el efecto en la carta pública lo cubre el test siguiente).
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).aplicarEnCarta).toBe(false);
     await page.getByRole("button", { name: "Aplicar el tema" }).click();
     await expect(page.getByRole("status").filter({ hasText: "aplicado" })).toBeVisible();
     await expect(page.locator("[data-estado-tema]")).toContainText("Tema: tema aplicado");
-    const r = await request.get(`/api/carta/${sucursalId}/tema`, { headers: auth });
-    expect(r.status()).toBe(200);
-    const tema = await r.json();
-    expect(tema.valores).toMatchObject({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)", carta_banda_alto_desktop: null });
+    const aplicado = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } });
+    expect(aplicado.aplicarEnCarta).toBe(true);
+    expect(aplicado.valores).toMatchObject({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)" });
 
-    // 5. Desaplicar: 404, y los valores se conservan.
+    // 5. Desaplicar: deja de aplicarse, y los valores se conservan.
     await page.getByRole("button", { name: "Desaplicar el tema" }).click();
     await expect(page.getByRole("status").filter({ hasText: "desaplicado" })).toBeVisible();
     await expect(page.locator("[data-estado-tema]")).toContainText("Tema: borrador");
-    expect((await request.get(`/api/carta/${sucursalId}/tema`, { headers: auth })).status()).toBe(404);
-    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).valores).toMatchObject({ color_item_nombre: "#aa3300" });
+    const desaplicado = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } });
+    expect(desaplicado.aplicarEnCarta).toBe(false);
+    expect(desaplicado.valores).toMatchObject({ color_item_nombre: "#aa3300" });
   } finally {
     await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   }

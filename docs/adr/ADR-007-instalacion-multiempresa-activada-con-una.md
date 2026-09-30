@@ -86,7 +86,7 @@ Función SQL: `app_empresa_actual() = COALESCE(NULLIF(current_setting(
 'app.empresa_id', true),''), (SELECT CASE WHEN count(*)=1 THEN min(id) END
 FROM "Empresa" WHERE estado='ACTIVE'))`. La migración siembra la empresa por
 defecto ACTIVE (id fijo `empresa_principal`). Con **una** empresa activa, seed,
-crons, scripts, tests y `/api/carta/*` funcionan sin tocar nada. Con **dos o
+crons, scripts y tests funcionan sin tocar nada. Con **dos o
 más** la función devuelve NULL: lo que no fije contexto devuelve 0 filas o
 falla con `NOT NULL` (se equivoca hacia el lado seguro). Sumar la segunda
 empresa = script `crear-empresa` (empresa, roles, unidades, motivos, sucursal,
@@ -146,8 +146,9 @@ Admin: sesión → `UsuarioEmpresa` → empresa activa → sus sucursales;
 esa empresa; la sucursal se busca por `empresaId_slug`;
 `CARTA_EMPRESA_SLUG` desaparece de todas las capas (`env.ts`,
 `playwright.config.ts`, `.env.example`, `empresaCartaActual`) en el MISMO
-commit. `/api/carta/*` heredada no tiene contexto con varias empresas: la
-segunda empresa se activa **después de la Fase 8** (D9).
+commit. `/api/carta/*` heredada no tenía contexto con varias empresas: la
+segunda empresa se activaba **después de la Fase 8** (D9; la Fase 8 borró esas
+rutas, ADR-006).
 
 ## Pasos (un commit cada uno)
 
@@ -333,9 +334,8 @@ cada empresa se carga en su configuración, que es posterior). La demo conserva
      no hace nada (el primer admin de una empresa nueva lo crea `crear-empresa`).
    - Carta pública con empresa por parámetro (`publica-sin-sesion.ts`):
      `portalCartaPublico`/`cartaPublica` usan `dbDeEmpresa(empresa.id)`.
-   - Rutas legadas `/api/carta/*` (D9, sin empresa): siguen con `prisma`, o sea
-     con la empresa por defecto (única ACTIVE); con 2+ ACTIVE devuelven vacío/404
-     (sentido seguro). Los crons tocan solo tablas globales: sin cambios.
+   - Rutas legadas `/api/carta/*` (D9, sin empresa): borradas por la Fase 8 de
+     ADR-006 (ya no hay carta sin empresa por HTTP). Los crons tocan solo tablas globales: sin cambios.
    - `getUsuarioActual`/`lib/auth.ts`: solo tablas globales (`User`, `Account`,
      `Session`); sin cambios.
    `limpiarBaseDeTest` y los fixtures de varias empresas (`crearMembresia`) van

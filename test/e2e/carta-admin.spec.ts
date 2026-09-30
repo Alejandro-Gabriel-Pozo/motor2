@@ -1,14 +1,14 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
-import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
+import { menuCartaPublicado } from "./fixtures/carta-menu";
 
 /**
  * Admin de la carta (/carta, docs/plan-carta-catalogo-2026-09-24.md, M10) de punta a punta: lo que se carga en la
  * pantalla (sección de carta, contenido del PV con su sección elegida DIRECTO —docs/plan-carta-seccion-directa-2026-09-25.md— y
- * una promo) es lo que devuelve el endpoint público GET /api/carta/[sucursal] — con el precio que se cobra, los tags normalizados
+ * una promo) es lo que resuelve la carta pública (`resolverMenuCarta`) — con el precio que se cobra, los tags normalizados
  * y el ★.
  */
-test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async ({ paginaAutenticada: page, sucursalId, request }) => {
+test("cargar la carta desde el admin la publica en la carta pública", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreSeccion = `E2E Carta Sección ${marca}`;
   const nombrePromo = `E2E Carta Promo ${marca}`;
@@ -61,11 +61,9 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await expect(nuevaPromo.getByRole("status")).toHaveText(`Promo "${nombrePromo}" creada en "${nombreSeccion}".`);
 
     // Y la carta pública lo refleja (sin cupos: `CartaV1` nunca los expone, D3 del paso 4 — el contrato público no cambia).
-    const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
-    expect(r.status()).toBe(200);
-    const carta = await r.json();
-    const seccion = carta.secciones.find((s: { nombre: string }) => s.nombre === nombreSeccion);
-    expect(seccion, "la sección cargada desde el admin no aparece en la carta pública").toBeTruthy();
+    const carta = await menuCartaPublicado(sucursalId);
+    const seccion = carta.secciones.find((s) => s.nombre === nombreSeccion);
+    if (!seccion) throw new Error("la sección cargada desde el admin no aparece en la carta pública");
     expect(seccion.titulo).toBe("Del fuego");
     expect(seccion.items).toEqual([
       { productoId: producto.id, nombre: producto.nombre, categoria: categoria.nombre, descripcion: "400 g a las brasas", precio: 12345, tags: ["Regional", "Sin TACC"], especial: true, imagenUrl: null },
@@ -90,10 +88,9 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("el peor caso son 2 unidades y el precio mínimo permitido es $0,02");
     await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("de margen antes de ese piso si subís algún máximo");
 
-    const r2 = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
-    const carta2 = await r2.json();
-    const seccion2 = carta2.secciones.find((s: { nombre: string }) => s.nombre === nombreSeccion);
-    expect(seccion2.promos).toEqual([{ id: expect.any(String), titulo: nombrePromo, descripcion: null, precio: 25000, orden: 0 }]);
+    const carta2 = await menuCartaPublicado(sucursalId);
+    const seccion2 = carta2.secciones.find((s) => s.nombre === nombreSeccion);
+    expect(seccion2?.promos).toEqual([{ id: expect.any(String), titulo: nombrePromo, descripcion: null, precio: 25000, orden: 0 }]);
   } finally {
     const secciones = await prisma.seccionCarta.findMany({ where: { nombre: nombreSeccion }, select: { id: true } });
     const seccionIds = secciones.map((s) => s.id);

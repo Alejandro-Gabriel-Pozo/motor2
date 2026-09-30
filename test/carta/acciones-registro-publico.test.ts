@@ -5,7 +5,6 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
-import { resolverRegistroTenants } from "../../src/core/carta/registro-consulta";
 
 /**
  * Server Actions del registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6): permiso `carta`, slug
@@ -57,11 +56,11 @@ describe("Server Actions del registro público", () => {
   it("renombrar la sucursal después NO cambia el slug guardado", async () => {
     await agregarSucursalAlPortal(centralId);
     await prisma.sucursal.update({ where: { id: centralId }, data: { nombre: "Casa Central" } });
-    const { tenants } = await resolverRegistroTenants(prisma);
-    expect(tenants.map((t) => [t.slug, t.etiqueta])).toEqual([["central", "Casa Central"]]);
+    expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({ slug: "central", etiqueta: null });
+    expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: centralId } })).nombre).toBe("Casa Central");
   });
 
-  it("guardar: edita el slug a mano, dominio normalizado, posición y publica con sheetId; el endpoint lo refleja", async () => {
+  it("guardar: edita el slug a mano, dominio normalizado, posición y publica con sheetId; queda en la fila", async () => {
     await agregarSucursalAlPortal(centralId);
     const r = await guardarSucursalPublica(
       centralId,
@@ -82,23 +81,20 @@ describe("Server Actions del registro público", () => {
       })
     );
     expect(r).toEqual({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
-    const { tenants } = await resolverRegistroTenants(prisma);
-    expect(tenants).toEqual([
-      {
-        slug: "varvarco",
-        etiqueta: "Hostería Varvarco",
-        dominio: "carta.varvarco.com",
-        subtitulo: "Frente al río",
-        posicion: { x: 12.5, y: 40, w: 8, h: null },
-        orden: 2,
-        activo: true,
-        sucursalId: centralId,
-        menuDesdeMotor2: true,
-        temaDesdeMotor2: false,
-        sheetId: SHEET,
-        sheetMenuNombre: "Menu",
-      },
-    ]);
+    const fila = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
+    expect(fila).toMatchObject({
+      slug: "varvarco",
+      etiqueta: "Hostería Varvarco",
+      dominio: "carta.varvarco.com",
+      subtituloPortal: "Frente al río",
+      orden: 2,
+      publicada: true,
+      menuDesdeMotor2: true,
+      sheetId: SHEET,
+      sheetMenuNombre: "Menu",
+    });
+    expect([fila.posX, fila.posY, fila.posW].map(Number)).toEqual([12.5, 40, 8]);
+    expect(fila.posH).toBeNull();
   });
 
   it("guardar rechaza slug o dominio que ya usa otra sucursal, con su nombre", async () => {

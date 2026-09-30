@@ -20,7 +20,7 @@ import { z } from "zod";
  * Opcionales (el proyecto funciona sin ellas, con la feature correspondiente deshabilitada — confirmado en el código real):
  * `ALLOWED_EMAIL_DOMAINS` (`src/core/auth/acceso.ts` — "hoy no hay dominios configurados"), `BOOTSTRAP_ADMIN_EMAILS`
  * (`src/core/auth/bootstrap.ts` — "hoy no hay emails configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
- * `CARTA_API_TOKEN`/`CARTA_PORTAL_URL` (endpoints de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional).
+ * `CARTA_DOMINIO_BASE` (subdominio de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional).
  *
  * Fuera de este schema a propósito: `NODE_ENV`/`NEXT_RUNTIME` (los fija Next.js/Node, nunca el usuario) y
  * `MOTOR2_SIN_DOLAR_AUTOMATICO`/`MOTOR2_E2E_DATABASE_URL` (flags de test/e2e, no configuración de la app en sí).
@@ -35,8 +35,6 @@ const envSchema = z.object({
   ALLOWED_EMAIL_DOMAINS: z.string().min(1).optional(),
   BOOTSTRAP_ADMIN_EMAILS: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(1).optional(),
-  CARTA_API_TOKEN: z.string().min(1).optional(),
-  CARTA_PORTAL_URL: z.string().min(1).optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
 
   // Dominio base del subdominio de la carta (`carta-<empresa>.<dominioBase>`, core/carta/host.ts). Sin configurar, la

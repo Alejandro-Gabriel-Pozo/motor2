@@ -66,7 +66,7 @@ const IMPORTADORES_DE_DB = [
   },
   {
     ruta: "src/core/carta/publica-sin-sesion.ts",
-    motivo: "Resolución PÚBLICA de la carta (portal, tenants, menú, tema): sin sesión no hay contexto que dé la base. Único punto de entrada de las rutas/páginas públicas.",
+    motivo: "Resolución PÚBLICA de la carta (empresa, portal, carta de una sucursal): sin sesión no hay contexto que dé la base. Único punto de entrada de las páginas públicas.",
   },
 ];
 

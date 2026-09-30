@@ -14,8 +14,8 @@ import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 
 /**
- * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que restaurant-menu-design lee de motor2 por
- * GET /api/carta/[sucursal]. Tres bloques: secciones de carta, el contenido de carta de cada PV disponible en esta sucursal (con
+ * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que muestra la carta pública interna
+ * (ADR-006). Tres bloques: secciones de carta, el contenido de carta de cada PV disponible en esta sucursal (con
  * su sección de carta, elegida DIRECTO — docs/plan-carta-seccion-directa-2026-09-25.md —, y el aviso de los que todavía no tienen
  * contenido: sin contenido no salen, decisión D3) y las promos de la sucursal activa. El nombre, el precio y la disponibilidad de
  * cada producto se siguen editando en Catálogo; la Categoría de producto no ubica nada en la carta.

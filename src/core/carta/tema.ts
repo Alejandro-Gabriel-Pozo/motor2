@@ -20,7 +20,7 @@ import { validarImagenUrlCarta, validarTextoLibreCarta, type Resultado } from ".
  *
  * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 67
  * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla), el importador ("Pegar
- * desde la sheet") y el contrato `TemaCartaV1` (GET /api/carta/[sucursal]/tema, que lo arma con `armarTemaCarta`).
+ * desde la sheet") y el contrato `TemaCartaV1` (lo arma `armarTemaCarta` para la carta pública interna).
  *
  * De las 109 claves de `SiteConfig`:
  *  - 67 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=29; D3 del plan).
@@ -259,7 +259,7 @@ export const CLAVES_NO_POR_TENANT = [
 ] as const;
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Contrato v1 (GET /api/carta/[sucursal]/tema)
+// Contrato v1 (tema de la carta pública interna)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 /** Valores cargados (normalizados) por clave del catálogo. Una clave ausente = vacía (default de la carta). */
