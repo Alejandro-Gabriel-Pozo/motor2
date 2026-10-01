@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "@/core/carta/public";
 import { resolverMenuCarta } from "@/core/carta/public-servidor";
 import { tieneStockReal } from "@/core/movimientos/public";
@@ -36,7 +36,7 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promis
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
     }),
-    db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true }, select: { productoId: true, precio: true, habilitado: true } }),
+    preciosLocalesVigentes(sucursalId, db),
     db.generoCarta.findMany({ where: { activo: true }, select: { id: true, nombre: true, orden: true } }),
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null } }, select: { productoId: true, generoCartaId: true } }),
     db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null } }, select: { id: true, generoCartaId: true } }),
@@ -54,7 +54,7 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promis
       },
     }),
   ]);
-  const localPorProducto = new Map(preciosLocales.map((pl) => [pl.productoId, { precio: Number(pl.precio), habilitado: pl.habilitado }]));
+  const localPorProducto = preciosLocales;
   const pedibles: ProductoPedible[] = productos.map((p) => ({
     productoId: p.id,
     codigo: p.codigo,

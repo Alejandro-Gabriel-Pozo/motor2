@@ -8,6 +8,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoConSincronizable } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
+import { revalidarCartasPublicas } from "../carta/revalidar";
 
 /**
  * Port de HOJA_PRECIO_LOCAL/"Precio Local" (Catalogo.js:2043-2077) — hueco
@@ -67,6 +68,7 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
     if (!producto) return error("No se encontró el producto.");
 
     await ctx.transaccion((tx) => guardarPrecioLocal(tx, ctx, producto, precio, habilitado));
+    revalidarCartasPublicas();
 
     const mensaje = `Precio local de "${producto.nombre}" ${habilitado ? `fijado en ${precio}` : "cargado (deshabilitado, se usa el precio global)"}.`;
     if (habilitado) {
@@ -101,6 +103,7 @@ export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, produ
     await ctx.transaccion(async (tx) => {
       for (const p of productos) await guardarPrecioLocal(tx, ctx, p, precio, habilitado);
     });
+    revalidarCartasPublicas();
     return ok(`Precio local de ${productos.map((p) => `"${p.nombre}"`).join(", ")} fijado en ${precio} en "${ctx.sucursalNombre}" («${grupo.nombreItem}»).`);
   });
 }

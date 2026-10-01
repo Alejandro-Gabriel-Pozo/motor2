@@ -15,6 +15,7 @@ export { clasificarGruposNoComestibles } from "./no-comestibles";
 export type { ClasificacionNoComestibles } from "./no-comestibles";
 export type { FiltroSelectorProducto } from "./filtro-selector-producto";
 export { aplicarSecuencia, esPermutacionExacta, insertarEnPosicion, secuenciaMoviendo } from "./pasos-receta";
+export { filtrarPreciosLocalesVigentes } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";
 export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
 export { describirCambioVersionReceta } from "./describir-cambio-receta";

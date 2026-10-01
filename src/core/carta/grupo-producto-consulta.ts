@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "./armar-menu";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -50,11 +51,7 @@ export async function resolverGrupoDeProducto(productoId: string, sucursalId: st
 
   const item = opcion.itemAgrupadoCarta;
   const ids = item.opciones.map((o) => o.producto.id);
-  const locales =
-    ids.length === 0
-      ? []
-      : await db.precioLocalProducto.findMany({ where: { sucursalId, productoId: { in: ids } }, select: { productoId: true, precio: true, habilitado: true } });
-  const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
+  const localPorProducto = await preciosLocalesVigentes(sucursalId, db, ids);
 
   return {
     itemAgrupadoCartaId: item.id,

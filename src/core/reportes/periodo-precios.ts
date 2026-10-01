@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { redondearMoneda } from "@/core/moneda";
 import { redondearCantidad, type Db, type InfoProductoReporte } from "./comun";
 import {
@@ -166,8 +167,13 @@ export interface ComparativaPreciosDelPeriodo {
  * importa más: compararte contra vos mismo (¿ajustaste la carta al ritmo
  * de tus costos?) es una pregunta más accionable que compararte contra un
  * promedio nacional que no sabe qué vendés.
+ *
+ * Mide el precio que ESTA sucursal realmente cobra: un producto con Precio Local vigente (capacidad `precio_local` + fila
+ * habilitada) se mide por los cambios de su precio local; los demás, por los del precio global. Una suba del global no cuenta
+ * para un producto que la sucursal cobra a su precio local.
  */
 export async function calcularComparativaPreciosDelPeriodo(
+  sucursalId: string,
   desde: Date,
   hasta: Date,
   tendenciaPrecios: FilaPrecioInsumo[],
@@ -183,11 +189,33 @@ export async function calcularComparativaPreciosDelPeriodo(
   }
   const variacionInsumosPct = sumaBaseInsumos > 0 ? Math.round((sumaDeltaInsumos / sumaBaseInsumos) * 1000) / 10 : null;
 
-  const cambiosCarta = await db.registroAuditoria.findMany({
-    where: { entidad: "Producto", campo: "precioVenta", creadoEn: { gte: desde, lte: hasta } },
-    orderBy: { creadoEn: "asc" },
-    select: { entidadId: true, valorAnterior: true, valorNuevo: true },
-  });
+  const vigentes = await preciosLocalesVigentes(sucursalId, db);
+  const [cambiosGlobales, cambiosLocales] = await Promise.all([
+    db.registroAuditoria.findMany({
+      where: { entidad: "Producto", campo: "precioVenta", creadoEn: { gte: desde, lte: hasta } },
+      orderBy: { creadoEn: "asc" },
+      select: { entidadId: true, valorAnterior: true, valorNuevo: true },
+    }),
+    // El cambio de un precio local se audita contra el id de la FILA (`PrecioLocalProducto.id`), no contra el del producto.
+    vigentes.size === 0
+      ? Promise.resolve([])
+      : db.registroAuditoria.findMany({
+          where: { entidad: "PrecioLocalProducto", campo: "precio", sucursalId, creadoEn: { gte: desde, lte: hasta } },
+          orderBy: { creadoEn: "asc" },
+          select: { entidadId: true, valorAnterior: true, valorNuevo: true },
+        }),
+  ]);
+  const filasLocales = cambiosLocales.length
+    ? await db.precioLocalProducto.findMany({ where: { id: { in: [...new Set(cambiosLocales.map((c) => c.entidadId))] } }, select: { id: true, productoId: true } })
+    : [];
+  const productoDeFilaLocal = new Map(filasLocales.map((f) => [f.id, f.productoId]));
+  const cambiosCarta = [
+    ...cambiosGlobales.filter((c) => !vigentes.has(c.entidadId)),
+    ...cambiosLocales.flatMap((c) => {
+      const productoId = productoDeFilaLocal.get(c.entidadId);
+      return productoId && vigentes.has(productoId) ? [{ ...c, entidadId: productoId }] : [];
+    }),
+  ];
   // Una sola fila por producto: el primer `valorAnterior` y el último
   // `valorNuevo` del período (vienen ordenados asc) — así 2+ cambios del
   // mismo producto en el período no se cuentan por separado, se ve el

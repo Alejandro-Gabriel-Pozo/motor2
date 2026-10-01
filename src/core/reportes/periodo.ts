@@ -132,7 +132,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos, indiceRecetas, clasificacionNoComestibles);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, indiceRecetas);
-  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(desde, hasta, tendenciaPrecios, ventas.porProducto, db);
+  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db);
   const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas);
 
   const reporte = {

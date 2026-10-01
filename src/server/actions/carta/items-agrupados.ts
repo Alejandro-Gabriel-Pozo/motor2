@@ -1,7 +1,7 @@
 "use server";
 
 import type { Db } from "@/lib/db-tipos";
-import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import { esErrorDeUnicidad, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "@/core/carta/armar-menu";
 import {
   normalizarTagsCarta,
@@ -180,11 +180,7 @@ async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: st
   // D5: mismo precio que las opciones ya cargadas, en la sucursal activa de quien administra (con su precio local, si lo hay).
   if (item.opciones.length > 0) {
     const idsAComparar = [producto.id, ...item.opciones.map((op) => op.producto.id)];
-    const locales = await db.precioLocalProducto.findMany({
-      where: { sucursalId, productoId: { in: idsAComparar } },
-      select: { productoId: true, precio: true, habilitado: true },
-    });
-    const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
+    const localPorProducto = await preciosLocalesVigentes(sucursalId, db, idsAComparar);
     const precioCandidato = precioDeCarta(Number(producto.precioVenta), localPorProducto.get(producto.id));
     const preciosGrupo = item.opciones.map((op) => precioDeCarta(Number(op.producto.precioVenta), localPorProducto.get(op.producto.id)));
     if (preciosGrupo.some((p) => p !== precioCandidato)) {

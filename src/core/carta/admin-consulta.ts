@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
 import { esClavePortal, posicionCompleta, type PosicionPortal } from "./portal";
@@ -297,13 +297,10 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Pro
 
   const idsOpciones = items.flatMap((it) => it.opciones.map((o) => o.producto.id));
   const idsConPrecio = [...new Set([...idsOpciones, ...sinGrupo.map((p) => p.id)])];
-  const [disponibilidad, locales] = await Promise.all([
+  const [disponibilidad, localPorProducto] = await Promise.all([
     disponibilidadDeProductos(sucursalId, idsOpciones, db),
-    idsConPrecio.length === 0
-      ? Promise.resolve([])
-      : db.precioLocalProducto.findMany({ where: { sucursalId, productoId: { in: idsConPrecio } }, select: { productoId: true, precio: true, habilitado: true } }),
+    preciosLocalesVigentes(sucursalId, db, idsConPrecio),
   ]);
-  const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
   const precioAca = (productoId: string, precioVenta: { toString(): string }) => precioDeCarta(Number(precioVenta), localPorProducto.get(productoId));
   const comparar = (a: string, b: string) => a.localeCompare(b, "es");
 

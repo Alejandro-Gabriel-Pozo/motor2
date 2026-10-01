@@ -139,6 +139,53 @@ test.describe("carta de una sucursal", () => {
     }
   });
 
+  test("precio local: con la capacidad precio_local apagada la carta muestra el precio central; al reactivarla (desde el admin), el local", async ({ page, paginaAutenticada, sucursalId }) => {
+    const sucursal = await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId } });
+    const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    const slug = `e2e-preciolocal-${marca}`;
+    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+    const producto = await prisma.producto.create({
+      data: { codigo: `E2E_PLCAP_${marca}`, nombre: `E2E Plato Local ${marca}`, tipo: "PV", precioVenta: 11111, unidadStockId: unidad.id },
+    });
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sección Local ${marca}` } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+    await prisma.contenidoCartaProducto.create({ data: { productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 22222, habilitado: true } });
+    await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
+    await prisma.capacidadSucursal.create({ data: { accionClave: "precio_local", sucursalId, habilitado: false } });
+
+    try {
+      await page.goto(`/carta-publica/${EMPRESA}/${slug}`);
+      await page.getByRole("button", { name: new RegExp(seccion.nombre) }).click();
+      await expect(page.getByText(producto.nombre)).toBeVisible();
+      await expect(page.getByText("$11.111")).toBeVisible();
+      await expect(page.getByText("$22.222")).toHaveCount(0);
+
+      // La carta está cacheada (ISR): reactivar la capacidad desde el admin tiene que invalidarla, no esperar los 5 minutos.
+      await paginaAutenticada.goto("/administracion/capacidades-sucursal");
+      const columnas = await paginaAutenticada.locator("thead th").allTextContents();
+      const indice = columnas.findIndex((t) => t.trim() === sucursal.nombre);
+      expect(indice, "no apareció la columna de la sucursal").toBeGreaterThan(1);
+      const celda = paginaAutenticada.locator("tr", { has: paginaAutenticada.getByRole("cell", { name: "precio_local", exact: true }) }).locator("td").nth(indice);
+      await expect(celda.getByRole("button")).toHaveText("⛔");
+      await celda.getByRole("button").click();
+      await expect(celda.getByRole("button")).toHaveText("✅");
+
+      await page.goto(`/carta-publica/${EMPRESA}/${slug}`);
+      await page.getByRole("button", { name: new RegExp(seccion.nombre) }).click();
+      await expect(page.getByText("$22.222")).toBeVisible();
+      await expect(page.getByText("$11.111")).toHaveCount(0);
+    } finally {
+      await prisma.capacidadSucursal.deleteMany({ where: { accionClave: "precio_local", sucursalId } });
+      await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+      await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+      await prisma.seccionCarta.delete({ where: { id: seccion.id } });
+      await prisma.producto.delete({ where: { id: producto.id } });
+    }
+  });
+
   test("con tema aplicado se ve el color de marca; sin aplicar, el default", async ({ page, sucursalId }) => {
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-tema-${marca}`;

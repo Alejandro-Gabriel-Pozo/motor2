@@ -317,6 +317,48 @@ describe("obtenerReportePorPeriodo", () => {
     expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
   });
 
+  describe("comparativaPrecios con Precio Local: mide el precio que la sucursal realmente cobra", () => {
+    // Una pizza de 1000 global, que esta sucursal cobra a 800 (precio local). En agosto el global sube a 1500 (+50%) y el local a 880 (+10%).
+    async function pizzaConPrecioLocalVendida(capacidadApagada: boolean) {
+      const pv = await sembrarProductoDisponible({ codigo: "PV_LOC", nombre: "Pizza local", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1500 }, sucursalId);
+      const fila = await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: pv.id, precio: 880, habilitado: true } });
+      if (capacidadApagada) await prisma.capacidadSucursal.create({ data: { accionClave: "precio_local", sucursalId, habilitado: false } });
+      await registrarVenta({ fecha: new Date("2026-08-12T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+      await prisma.registroAuditoria.create({
+        data: { entidad: "Producto", entidadId: pv.id, descripcion: "global", campo: "precioVenta", valorAnterior: "1000", valorNuevo: "1500", actorId: adminId, creadoEn: new Date("2026-08-11T12:00:00.000Z") },
+      });
+      await prisma.registroAuditoria.create({
+        data: { entidad: "PrecioLocalProducto", entidadId: fila.id, descripcion: "local", campo: "precio", valorAnterior: "800", valorNuevo: "880", actorId: adminId, sucursalId, creadoEn: new Date("2026-08-11T13:00:00.000Z") },
+      });
+      return pv;
+    }
+
+    it("con el precio local vigente, la suba del precio global NO cuenta: se mide el cambio del precio local", async () => {
+      await pizzaConPrecioLocalVendida(false);
+      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+      expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(10); // (880-800)/800, no (1500-1000)/1000
+      expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
+    });
+
+    it("con la capacidad precio_local apagada, se mide el precio global (el local no se cobra) y el cambio del local no cuenta", async () => {
+      await pizzaConPrecioLocalVendida(true);
+      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+      expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(50); // (1500-1000)/1000
+      expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
+    });
+
+    it("el cambio de precio local de OTRA sucursal no cuenta", async () => {
+      const pv = await pizzaConPrecioLocalVendida(false);
+      const otra = await prisma.sucursal.create({ data: { nombre: "Otra" } });
+      const filaOtra = await prisma.precioLocalProducto.create({ data: { sucursalId: otra.id, productoId: pv.id, precio: 500, habilitado: true } });
+      await prisma.registroAuditoria.create({
+        data: { entidad: "PrecioLocalProducto", entidadId: filaOtra.id, descripcion: "otra", campo: "precio", valorAnterior: "500", valorNuevo: "1000", actorId: adminId, sucursalId: otra.id, creadoEn: new Date("2026-08-11T14:00:00.000Z") },
+      });
+      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+      expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(10);
+    });
+  });
+
   it("comparativaPrecios: sin cambios de precio de venta registrados en el período, variacionCartaPropiaPct es null", async () => {
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
     expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBeNull();

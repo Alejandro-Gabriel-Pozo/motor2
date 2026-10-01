@@ -6,6 +6,7 @@ import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVer } from "../con-sesion";
+import { revalidarCartasPublicas } from "../carta/revalidar";
 
 export async function listarCapacidades() {
   const ctx = await requerirVer("capacidades_sucursal");
@@ -58,6 +59,7 @@ export async function actualizarCapacidad(
 
     // Se llama desde un closure "use server" de la página, sin redirigir. Acá el botón ES el estado (✅/⛔): sin esto seguía mostrando el estado
     // viejo después de cambiarlo, hasta recargar a mano (ver refrescar.ts).
+    if (accionClave === "precio_local") revalidarCartasPublicas(); // la carta pública muestra el precio efectivo: cambia con la capacidad
     refrescarVistaSiHaceFalta();
     return ok(`Capacidad de "${accionClave}" actualizada.`);
   });

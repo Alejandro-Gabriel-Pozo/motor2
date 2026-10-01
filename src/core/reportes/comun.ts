@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -68,10 +68,9 @@ export async function construirMapaProductos(
 ): Promise<Map<string, InfoProductoReporte>> {
   const [productos, preciosLocales, clasificacion] = await Promise.all([
     db.producto.findMany({ include: { categoria: true, insumo: { include: { grupo: true } }, unidadStock: true, proveedorConsignacion: true } }),
-    sucursalId ? db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true } }) : Promise.resolve([]),
+    sucursalId ? preciosLocalesVigentes(sucursalId, db) : Promise.resolve(new Map<string, { precio: number }>()),
     clasificacionCargada ? Promise.resolve(clasificacionCargada) : cargarClasificacionNoComestibles(db),
   ]);
-  const precioLocalPorProducto = new Map(preciosLocales.map((pl) => [pl.productoId, Number(pl.precio)]));
   const disponibilidadPorProducto = sucursalId
     ? await disponibilidadDeProductos(sucursalId, productos.map((p) => p.id), db)
     : null;
@@ -86,7 +85,7 @@ export async function construirMapaProductos(
         tipo: p.tipo,
         disponible: disponibilidadPorProducto ? disponibilidadPorProducto.get(p.id) === true : true,
         seProduce: p.seProduce,
-        precioVenta: precioLocalPorProducto.get(p.id) ?? Number(p.precioVenta),
+        precioVenta: preciosLocales.get(p.id)?.precio ?? Number(p.precioVenta),
         categoriaNombre: p.categoria?.nombre ?? null,
         insumoNombre: p.insumo?.nombre ?? null,
         grupoNombre: p.insumo?.grupo?.nombre ?? null,
