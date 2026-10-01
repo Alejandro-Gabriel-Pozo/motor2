@@ -1,5 +1,5 @@
 import "server-only";
-import type { AccionConteo, EstadoConteo, Prisma } from "@prisma/client";
+import type { AccionConteo, EstadoConteo, Prisma, PrismaClient } from "@prisma/client";
 
 /**
  * Escritura de `ConteoFisico` (Task #41, Fase M, M13e1 — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo contrato que el resto de
@@ -19,6 +19,23 @@ export interface ConteoFisicoAEscribir {
   estado: EstadoConteo;
   detalle: string | null;
   usuarioId: string;
+  claveIdempotencia: string | null;
+  payloadHash: string | null;
+  resultadoMensaje: string | null;
+}
+
+/** `null` si ningún conteo tiene esa clave todavía (I3). */
+export async function cargarConteoFisicoPorClave(
+  db: Prisma.TransactionClient,
+  claveIdempotencia: string
+): Promise<{ payloadHash: string | null; resultadoMensaje: string | null } | null> {
+  return db.conteoFisico.findUnique({ where: { claveIdempotencia }, select: { payloadHash: true, resultadoMensaje: true } });
+}
+
+/** El ganador de una carrera por la misma clave, leído FUERA de la transacción que chocó (I3). */
+export async function cargarMensajeDelConteoGanador(db: Prisma.TransactionClient | PrismaClient, claveIdempotencia: string): Promise<string | null> {
+  const ganador = await db.conteoFisico.findUnique({ where: { claveIdempotencia }, select: { resultadoMensaje: true } });
+  return ganador?.resultadoMensaje ?? null;
 }
 
 export async function escribirConteoFisico(tx: Prisma.TransactionClient, datos: ConteoFisicoAEscribir): Promise<{ id: string }> {

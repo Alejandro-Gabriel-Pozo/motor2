@@ -1278,6 +1278,18 @@ model ConteoFisico {
   /// MovimientoStock.conteoFisicoId.
   movimientos MovimientoStock[]
 
+  /// I3 — idempotencia (mismo mecanismo que `PagoConsignante`): UUID que genera el cliente por fila de la grilla y reenvía tal cual
+  /// en un reintento. Nullable durante el rollout (un conteo sin clave no participa de la deduplicación). Único GLOBAL. Vive en el
+  /// conteo (no en la `Operacion` del ajuste) porque un conteo sin diferencia, o con acción FALTA_MOVIMIENTO/DESCARTAR, no escribe
+  /// ninguna `Operacion`.
+  claveIdempotencia String? @unique
+
+  /// I3 — SHA-256 del comando validado (incluye sucursalId): distingue "mismo intento reenviado" de "clave reutilizada con otros datos".
+  payloadHash String?
+
+  /// I3 — mensaje de éxito ya formateado, escrito en el MISMO `create` (se conoce antes del insert).
+  resultadoMensaje String?
+
   @@unique([empresaId, id])
   @@index([sucursalId, productoId, seccionId])
 }

@@ -1,4 +1,5 @@
 import { texto } from "@/core/texto";
+import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoConteoFisico } from "./conteo-fisico.schema";
 
@@ -7,15 +8,19 @@ import type { ComandoConteoFisico } from "./conteo-fisico.schema";
  * docs/arquitectura-casos-de-uso-2026-09-27.md). Formato del comando, ANTES de abrir la transacción y ANTES de `conPermiso`. Puro: sin
  * Prisma ni permisos.
  *
- * La única validación (sección en blanco) es EXACTAMENTE la que antes corría en línea, primera línea de `registrarConteoConContexto`
+ * Las validaciones son la sección en blanco — EXACTAMENTE la que antes corría en línea, primera línea de `registrarConteoConContexto`
  * (`src/server/actions/movimientos/conteo-fisico.ts`), con el MISMO texto. Todo lo demás que esa función validaba (sección propia de la
  * sucursal, producto, disponibilidad, "tiene stock real", formato/decimales del conteo) depende de datos de base — se queda en el caso
- * de uso, mismo criterio que `guardComandoReclasificarStock` (M13d) con el chequeo "único destino idéntico al origen".
+ * de uso, mismo criterio que `guardComandoReclasificarStock` (M13d) con el chequeo "único destino idéntico al origen" — y el formato
+ * de la clave I3 (UUID), si viene.
  *
  * Devuelve `aceptar(entrada)` SIN transformar nada.
  */
 export function guardComandoConteoFisico(entrada: unknown): ResultadoDato<ComandoConteoFisico> {
-  const { seccionId } = (entrada ?? {}) as { seccionId?: unknown };
+  const { seccionId, claveIdempotencia } = (entrada ?? {}) as { seccionId?: unknown; claveIdempotencia?: unknown };
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección — no se puede dejar en blanco.");
+  if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
+    return rechazar("formato", "Clave de reintento inválida.");
+  }
   return aceptar(entrada as ComandoConteoFisico);
 }
