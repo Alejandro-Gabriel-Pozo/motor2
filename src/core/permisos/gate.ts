@@ -164,6 +164,18 @@ export async function sucursalesDondeElUsuarioPuedeVer(
   return new Set(sucursalIds.filter((_, i) => niveles[i].ver));
 }
 
+/**
+ * Las sucursales del usuario (`ctx.membresias`) donde puede VER la acción, con id y nombre: lo que una pantalla que junta datos de varias
+ * sucursales tiene que recorrer en vez de `ctx.membresias` a secas (test/arquitectura/membresias-filtradas.test.ts lo exige).
+ */
+export async function sucursalesVisiblesPara(
+  ctx: { usuarioId: string; membresias: readonly { sucursalId: string; sucursalNombre: string }[]; db: PrismaClient },
+  accionClave: AccionDeSucursal
+): Promise<{ id: string; nombre: string }[]> {
+  const conPermiso = await sucursalesDondeElUsuarioPuedeVer(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), accionClave, ctx.db);
+  return ctx.membresias.filter((m) => conPermiso.has(m.sucursalId)).map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
+}
+
 interface NivelEnEmpresa {
   ver: boolean;
   editar: boolean;

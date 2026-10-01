@@ -102,4 +102,30 @@ describe("calcularStockConsolidado", () => {
     const filas = await calcularStockConsolidado(sucursalId, prisma);
     expect(filas.find((f) => f.productoNombre === "Empanada")).toBeDefined();
   });
+
+  it("no cruza sucursales: un movimiento y un conteo hechos en otra sucursal no aparecen en el consolidado de esta", async () => {
+    const mp = await sembrarProductoDisponible({ codigo: "MP_X", nombre: "Cruce", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 4 }] });
+
+    const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+    const seccionNorte = await sembrarSeccion(norte.id, "Depósito Norte");
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: norte.id, productoId: mp.id, disponible: true } });
+    const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+    const adminNorte = await crearUsuarioConMembresia({ email: "norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });
+    await mockearUsuarioActual({ id: adminNorte.id, email: adminNorte.email, nombre: null });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionNorte.id, items: [{ productoId: mp.id, cantidad: 100 }] });
+    await registrarConteoFisico({ productoId: mp.id, seccionId: seccionNorte.id, conteoReal: 100, fechaConteo: new Date(), accion: "AJUSTAR" });
+
+    const central = (await calcularStockConsolidado(sucursalId, prisma)).filter((f) => f.productoId === mp.id);
+    expect(central).toHaveLength(1);
+    expect(central[0].seccionId).toBe(seccionId);
+    expect(central[0].teorico).toBe(4);
+    expect(central[0].estado).toBe("SIN_CONTEO");
+
+    const enNorte = (await calcularStockConsolidado(norte.id, prisma)).filter((f) => f.productoId === mp.id);
+    expect(enNorte).toHaveLength(1);
+    expect(enNorte[0].seccionId).toBe(seccionNorte.id);
+    expect(enNorte[0].teorico).toBe(100);
+    expect(enNorte[0].estado).toBe("CONCILIADO");
+  });
 });

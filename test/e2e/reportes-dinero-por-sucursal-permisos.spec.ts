@@ -70,3 +70,59 @@ test("rendimiento por sucursal: no muestra la columna de una sucursal donde el r
     await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
   }
 });
+
+test("consolidado: suma las dos sucursales donde el rol puede ver el dinero y deja afuera la tercera", async ({ browser, baseURL }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const admin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+  const operador = await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } });
+  const usuario = await prisma.user.create({ data: { email: `e2e-dinero-tres-${marca}@local.test`, activoGlobal: true } });
+  const pv = await prisma.producto.create({ data: { codigo: `E2E-TRES-PV-${marca}`, nombre: `E2E Tres Plato ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  // A y B (admin: ven el dinero) y C (operador: no). Ventas del mes de 7.000, 3.000 y 99.000: el total del consolidado tiene que ser A+B = 10.000.
+  const datos = [
+    { nombre: `E2E Tres A ${marca}`, rol: admin, venta: 7000 },
+    { nombre: `E2E Tres B ${marca}`, rol: admin, venta: 3000 },
+    { nombre: `E2E Tres C ${marca}`, rol: operador, venta: 99000 },
+  ];
+  const sucursales: { id: string; nombre: string }[] = [];
+  const operaciones: string[] = [];
+  for (const d of datos) {
+    const sucursal = await prisma.sucursal.create({ data: { nombre: d.nombre } });
+    sucursales.push(sucursal);
+    const seccion = await prisma.seccion.create({ data: { sucursalId: sucursal.id, nombre: "Salón" } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal.id, productoId: pv.id, disponible: true } });
+    await crearMembresias([{ usuarioId: usuario.id, sucursalId: sucursal.id, rolId: d.rol.id, activo: true }]);
+    const venta = await prisma.operacion.create({ data: { sucursalId: sucursal.id, proceso: "VENTA", fecha: new Date(), usuarioId: usuario.id } });
+    operaciones.push(venta.id);
+    await prisma.movimientoStock.create({
+      data: { operacionId: venta.id, productoId: pv.id, seccionId: seccion.id, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: d.venta, precioPorUnidadStock: d.venta, costoUnitarioVenta: 1 },
+    });
+  }
+  const sessionToken = randomUUID();
+  await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
+  const contexto = await browser.newContext();
+  await contexto.addCookies([{ name: "authjs.session-token", value: sessionToken, domain: new URL(baseURL ?? "http://localhost:3000").hostname, path: "/", httpOnly: true, sameSite: "Lax" }]);
+  const page = await contexto.newPage();
+  try {
+    await page.goto("/reportes/consolidado");
+    await expect(page.getByRole("heading", { name: "Resumen consolidado" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: datos[0].nombre })).toBeVisible();
+    await expect(page.getByRole("cell", { name: datos[1].nombre })).toBeVisible();
+    await expect(page.getByRole("cell", { name: datos[2].nombre })).toHaveCount(0);
+    await expect(page.getByText("Ventas del mes (las 2 sucursales)")).toBeVisible();
+    await expect(page.getByText("Ventas del mes (las 2 sucursales)").locator("xpath=following-sibling::p")).toHaveText("$10.000");
+  } finally {
+    await contexto.close();
+    await prisma.session.deleteMany({ where: { userId: usuario.id } });
+    await prisma.movimientoStock.deleteMany({ where: { operacionId: { in: operaciones } } });
+    await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
+    await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+    await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
+    await prisma.user.deleteMany({ where: { id: usuario.id } });
+    const ids = sucursales.map((s) => s.id);
+    await prisma.disponibilidadProducto.deleteMany({ where: { sucursalId: { in: ids } } });
+    await prisma.seccion.deleteMany({ where: { sucursalId: { in: ids } } });
+    await prisma.sucursal.deleteMany({ where: { id: { in: ids } } });
+    await prisma.producto.deleteMany({ where: { id: pv.id } });
+  }
+});

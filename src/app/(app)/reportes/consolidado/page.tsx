@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer, sucursalesDondeElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { requierePermisoVer, sucursalesVisiblesPara } from "@/core/permisos/gate";
 import { obtenerResumenConsolidado } from "@/core/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -12,8 +12,7 @@ export default async function ConsolidadoPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   // El gate de arriba es de la sucursal activa: las otras se suman solo si allí el rol también puede ver el dinero.
-  const conPermiso = await sucursalesDondeElUsuarioPuedeVer(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), "reporte_consolidado", ctx.db);
-  const sucursales = ctx.membresias.filter((m) => conPermiso.has(m.sucursalId)).map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
+  const sucursales = await sucursalesVisiblesPara(ctx, "reporte_consolidado");
 
   if (sucursales.length < 2) {
     return (

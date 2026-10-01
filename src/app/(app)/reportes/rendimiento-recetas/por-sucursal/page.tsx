@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer, sucursalesDondeElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { requierePermisoVer, sucursalesVisiblesPara } from "@/core/permisos/gate";
 import { compararRendimientosDeSucursales } from "@/server/consultas/reportes/rendimiento-por-sucursal";
 import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursal";
 
@@ -21,8 +21,7 @@ export default async function RendimientoPorSucursalPage({
 
   const sp = await searchParams;
   // El gate de arriba es de la sucursal activa: las otras se comparan solo si allí el rol también puede ver el dinero.
-  const conPermiso = await sucursalesDondeElUsuarioPuedeVer(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), "reporte_rendimiento_sucursal", ctx.db);
-  const sucursales = ctx.membresias.filter((m) => conPermiso.has(m.sucursalId)).map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
+  const sucursales = await sucursalesVisiblesPara(ctx, "reporte_rendimiento_sucursal");
   const todas = sp.todas === "1";
 
   const filas = await compararRendimientosDeSucursales(sucursales, { productoId: sp.productoId, todas }, ctx.db);
