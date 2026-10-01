@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { listarRegistrosAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
+import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
+import { listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
 
 const ENTIDADES: CambioAuditable["entidad"][] = [
@@ -31,7 +32,11 @@ export default async function AuditoriaPage({
 
   const sp = await searchParams;
   const entidad = ENTIDADES.includes(sp.entidad as CambioAuditable["entidad"]) ? (sp.entidad as CambioAuditable["entidad"]) : undefined;
-  const { items, nextCursor } = await listarRegistrosAuditoria({ entidad, cursor: sp.cursor }, ctx.db);
+  // El gate de arriba es de la sucursal activa: las filas de las otras se muestran solo si allí el rol también puede ver la auditoría.
+  const sucursalIds = await sucursalesVisiblesDeAuditoria(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), ctx.db);
+  // Las filas sin sucursal (cambios de la empresa entera) no las cubre un permiso por sucursal: las ve solo el gerente de empresa.
+  const incluirFilasDeEmpresa = esGerenteDeEmpresa(ctx.rolEmpresa);
+  const { items, nextCursor } = await listarRegistrosAuditoria({ entidad, cursor: sp.cursor, sucursalIds, incluirFilasDeEmpresa }, ctx.db);
 
   const filas: FilaAuditoria[] = items.map((r) => ({
     id: r.id,

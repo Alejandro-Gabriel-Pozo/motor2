@@ -36,7 +36,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
         entidad: "Producto", entidadId: "p1", campo: "precioVenta", descripcion: "test",
         valorAnterior: 100, valorNuevo: 100, actorId: adminId,
       });
-      const { items } = await listarRegistrosAuditoria(undefined, prisma);
+      const { items } = await listarRegistrosAuditoria({ incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
       expect(items).toHaveLength(0);
     });
 
@@ -45,7 +45,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
         entidad: "Producto", entidadId: "p1", campo: "precioVenta", descripcion: "Producto \"Pan\": precio de venta",
         valorAnterior: null, valorNuevo: 0, actorId: adminId,
       });
-      const { items } = await listarRegistrosAuditoria(undefined, prisma);
+      const { items } = await listarRegistrosAuditoria({ incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
       expect(items).toHaveLength(1);
       expect(items[0]!.valorAnterior).toBeNull();
       expect(items[0]!.valorNuevo).toBe("0");
@@ -56,7 +56,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
       await registrarCambioAuditado(prisma, { entidad: "Producto", entidadId: "p1", campo: "precioVenta", descripcion: "x", valorAnterior: 1, valorNuevo: 2, actorId: adminId });
       await registrarCambioAuditado(prisma, { entidad: "Rol", entidadId: "r1", campo: "activo", descripcion: "y", valorAnterior: true, valorNuevo: false, actorId: adminId });
 
-      const { items } = await listarRegistrosAuditoria({ entidad: "Rol" }, prisma);
+      const { items } = await listarRegistrosAuditoria({ entidad: "Rol", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
       expect(items).toHaveLength(1);
       expect(items[0]!.entidad).toBe("Rol");
     });
@@ -69,7 +69,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
 
     await actualizarProducto(producto.id, { nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 150 });
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "Producto" }, prisma);
+    const { items } = await listarRegistrosAuditoria({ entidad: "Producto", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     const registro = items.find((r) => r.campo === "precioVenta")!;
     expect(registro).toBeDefined();
     expect(registro.valorAnterior).toBe("100");
@@ -84,7 +84,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
 
     await actualizarProducto(producto.id, { nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 200 });
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "Producto" }, prisma);
+    const { items } = await listarRegistrosAuditoria({ entidad: "Producto", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     expect(items).toHaveLength(0);
   });
 
@@ -95,7 +95,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
 
     await setPrecioLocalProducto(producto.id, 60, true);
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "PrecioLocalProducto" }, prisma);
+    const { items } = await listarRegistrosAuditoria({ entidad: "PrecioLocalProducto", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     expect(items.map((r) => r.campo).sort()).toEqual(["habilitado", "precio"]);
     const precio = items.find((r) => r.campo === "precio")!;
     expect(precio.valorAnterior).toBeNull(); // no había fila previa
@@ -110,7 +110,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
     ]);
     expect(r.ok, r.mensaje).toBe(true);
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "PermisoRol" }, prisma);
+    const { items } = await listarRegistrosAuditoria({ entidad: "PermisoRol", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     const editar = items.find((r) => r.campo === "puedeEditar")!;
     expect(editar.valorAnterior).toBe("true"); // admin arranca con proceso_venta habilitado (seed)
     expect(editar.valorNuevo).toBe("false");
@@ -119,7 +119,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
   it("actualizarCapacidad registra el cambio de habilitado", async () => {
     await actualizarCapacidad("proceso_venta", null, false);
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "CapacidadSucursal" }, prisma);
+    const { items } = await listarRegistrosAuditoria({ entidad: "CapacidadSucursal", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     expect(items).toHaveLength(1);
     expect(items[0]!.valorAnterior).toBeNull(); // no había fila previa (default = habilitado)
     expect(items[0]!.valorNuevo).toBe("false");
@@ -131,7 +131,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
 
     await actualizarActivoRol(rol.id, false);
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "Rol" }, prisma);
+    const { items } = await listarRegistrosAuditoria({ entidad: "Rol", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     const registro = items.find((r) => r.entidadId === rol.id)!;
     expect(registro.valorAnterior).toBe("true");
     expect(registro.valorNuevo).toBe("false");

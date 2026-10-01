@@ -47,7 +47,7 @@ describe("anularItemEnviado (server action)", () => {
 
   it("deja la auditoría con actor, motivo y la cantidad vigente antes/después", async () => {
     await anularItemEnviado(mila.id, 2, "Salió frío", 3);
-    const { items } = await listarRegistrosAuditoria({ entidad: "CuentaItem" }, prisma);
+    const { items } = await listarRegistrosAuditoria({ entidad: "CuentaItem", incluirFilasDeEmpresa: true, sucursalIds: [s.sucursalId] }, prisma);
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({
       entidad: "CuentaItem",

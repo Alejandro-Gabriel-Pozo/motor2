@@ -2,9 +2,20 @@
 
 import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
+import { requierePermiso } from "@/core/permisos/gate";
+import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
+
+/**
+ * Techo de privilegio: `gestion_usuarios` no alcanza para dar el rol admin ni para tocar a un admin — si no, un rol con ese
+ * permiso se promueve a sí mismo (o degrada al admin). Lo puede hacer un admin de esa sucursal o quien tiene el rol de empresa
+ * «gerente» (`UsuarioEmpresa.rolEmpresa`), que es la autoridad sobre usuarios de toda la empresa.
+ */
+function puedeTocarAdmins(ctx: { rolEmpresa: string | null }, esAdminEnLaSucursal: boolean): boolean {
+  return esAdminEnLaSucursal || esGerenteDeEmpresa(ctx.rolEmpresa);
+}
 
 async function contarAdminsActivosExcluyendo(db: Db, empresaId: string, idExcluido?: string): Promise<number> {
   return db.usuarioSucursal.count({
@@ -50,6 +61,14 @@ export async function agregarOActualizarUsuario(input: {
     const sucursal = await ctx.db.sucursal.findFirst({ where: { id: input.sucursalId, empresaId: ctx.empresaId }, select: { id: true } });
     if (!sucursal) return error("Sucursal inválida.");
 
+    // `conPermiso` solo validó la sucursal ACTIVA: el alta apunta a la que eligió el formulario (viene del cliente), y ahí el
+    // rol de quien la hace puede no tener `gestion_usuarios` (o no tener ni membresía).
+    if (input.sucursalId !== ctx.sucursalId) {
+      const gate = await requierePermiso(ctx.usuarioId, input.sucursalId, "gestion_usuarios", ctx.db);
+      if (!gate.ok) return error(gate.mensaje);
+    }
+    const esAdminAhi = ctx.membresias.find((m) => m.sucursalId === input.sucursalId)?.rolNombre === "admin";
+
     const usuario = await ctx.db.user.upsert({
       where: { email },
       update: {},
@@ -60,6 +79,10 @@ export async function agregarOActualizarUsuario(input: {
       where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: input.sucursalId } },
       include: { rol: true },
     });
+
+    if (!puedeTocarAdmins(ctx, esAdminAhi) && (rol.nombre === "admin" || existente?.rol.nombre === "admin")) {
+      return error("Solo un admin o el gerente de la empresa puede dar el rol admin o modificar a un admin.");
+    }
 
     // Salvaguarda: si esto le cambia el rol a la única persona admin activa
     // de todo el sistema, no dejarlo aplicar (Core.js:1159-1167 — "nunca
@@ -99,6 +122,9 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
     });
     if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
 
+    if (membresia.rol.nombre === "admin" && !puedeTocarAdmins(ctx, ctx.rolNombre === "admin")) {
+      return error("Solo un admin o el gerente de la empresa puede modificar a un admin.");
+    }
     if (!activo && membresia.rol.nombre === "admin") {
       const quedan = await contarAdminsActivosExcluyendo(ctx.db, ctx.empresaId, membresiaId);
       if (quedan === 0) {
@@ -129,40 +155,41 @@ export async function actualizarNotasMembresia(membresiaId: string, notas: strin
 }
 
 /**
- * Kill-switch de cuenta a nivel sistema (User.activoGlobal) — a diferencia
- * de actualizarActivoMembresia (una fila UsuarioSucursal, una sucursal a
- * la vez), esto corta el acceso en TODAS las sucursales de una sola vez,
- * sin tener que desactivar cada membresía por separado. Ver el gate real
- * en src/core/auth/acceso.ts (login nuevo) y el callback `session` de
- * src/lib/auth.ts (sesión ya abierta, corta en la próxima request).
+ * Kill-switch de la cuenta EN ESTA EMPRESA (`UsuarioEmpresa.activo`) — a diferencia de actualizarActivoMembresia (una fila
+ * UsuarioSucursal, una sucursal a la vez), corta el acceso a TODAS las sucursales de la empresa de una sola vez. La misma
+ * persona puede seguir activa en otra empresa: `User.activoGlobal` (cuenta de toda la plataforma) no se toca desde acá, lo
+ * decide la plataforma. El corte lo hace `obtenerContextoUsuario`, que solo arma contexto con la pertenencia activa.
  *
- * Mismo criterio "nunca sin ningún admin activo" que actualizarActivoMembresia
- * (Core.js:1159-1167), pero a nivel cuenta completa: desactivar a alguien
- * que es admin activo en CUALQUIER sucursal no puede dejar el sistema sin
- * ningún admin activo en ninguna.
+ * Mismo criterio "nunca sin ningún admin activo" que actualizarActivoMembresia (Core.js:1159-1167), a nivel empresa: desactivar
+ * a alguien que es admin activo en CUALQUIER sucursal no puede dejar la empresa sin ningún admin activo.
  */
-export async function actualizarActivoGlobalUsuario(usuarioId: string, activoGlobal: boolean): Promise<ResultadoAccion> {
+export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const usuario = await ctx.db.user.findUnique({ where: { id: usuarioId } });
-    if (!usuario) return error("No se encontró ese usuario.");
+    // `UsuarioEmpresa` y `User` no tienen RLS: sin el `empresaId` de la clave, el id de cualquier empresa se podía apagar.
+    const pertenencia = await ctx.db.usuarioEmpresa.findUnique({
+      where: { usuarioId_empresaId: { usuarioId, empresaId: ctx.empresaId } },
+      include: { usuario: true },
+    });
+    if (!pertenencia) return error("No se encontró ese usuario.");
+    const usuario = pertenencia.usuario;
 
-    if (!activoGlobal) {
-      const esAdminActivo = await ctx.db.usuarioSucursal.findFirst({
-        where: { usuarioId, activo: true, rol: { nombre: "admin", activo: true } },
+    const esAdminActivo = await ctx.db.usuarioSucursal.findFirst({
+      where: { empresaId: ctx.empresaId, usuarioId, activo: true, rol: { nombre: "admin", activo: true } },
+    });
+    if (esAdminActivo && !puedeTocarAdmins(ctx, ctx.rolNombre === "admin")) {
+      return error("Solo un admin o el gerente de la empresa puede modificar a un admin.");
+    }
+
+    if (!activo && esAdminActivo) {
+      const quedan = await ctx.db.usuarioSucursal.count({
+        where: { empresaId: ctx.empresaId, activo: true, rol: { nombre: "admin", activo: true }, usuarioId: { not: usuarioId } },
       });
-      if (esAdminActivo) {
-        const quedan = await ctx.db.usuarioSucursal.count({
-          where: { activo: true, rol: { nombre: "admin", activo: true }, usuarioId: { not: usuarioId } },
-        });
-        if (quedan === 0) {
-          return error(
-            "Esta operación dejaría el sistema sin ningún admin activo — no se puede desactivar. Activá otro admin antes."
-          );
-        }
+      if (quedan === 0) {
+        return error("Esta operación dejaría la empresa sin ningún admin activo — no se puede desactivar. Activá otro admin antes.");
       }
     }
 
-    await ctx.db.user.update({ where: { id: usuarioId }, data: { activoGlobal } });
-    return ok(`Cuenta de "${usuario.email}" ${activoGlobal ? "reactivada" : "desactivada"} a nivel sistema.`);
+    await ctx.db.usuarioEmpresa.update({ where: { id: pertenencia.id }, data: { activo } });
+    return ok(`Cuenta de "${usuario.email}" ${activo ? "reactivada" : "desactivada"} en la empresa.`);
   });
 }
