@@ -1,5 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
+import { whereSeccionHabitualVigente } from "@/core/stock/seccion-habitual";
 
 /**
  * Lecturas de Catálogo › Productos para los Server Components (Task #41, Fase D — piloto de `src/server/consultas/`).
@@ -30,7 +31,7 @@ export async function obtenerFichaProducto(id: string, db: Db) {
  */
 export async function obtenerSeccionHabitualEnSucursal(sucursalId: string, productoId: string, db: Db) {
   return db.seccionHabitualProducto.findFirst({
-    where: { sucursalId, productoId, seccion: { sucursalId, activa: true } },
+    where: { ...whereSeccionHabitualVigente(sucursalId), productoId },
     select: { seccion: { select: { nombre: true } } },
   });
 }

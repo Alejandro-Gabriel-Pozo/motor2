@@ -107,7 +107,11 @@ commit, siempre con OK expreso del dueño.
 ## Sin empezar (necesitan visto bueno del dueño antes de implementar)
 
 2. Add-on de plataforma: catálogo/«plan» de permisos por empresa e interruptor «puede editar/otorgar permisos». Siguiente peldaño
-   de la partición; probablemente necesita schema (autorización expresa).
+   de la partición. **Cableado hecho (2026-10-01, sin commitear, sin schema):** `politicaDeEmpresa` (hoy siempre `permisosEditables: true`) +
+   gate `conEdicionDePermisos` en `guardarPermisos`/`crearRol`/`actualizarActivoRol`, con guardián
+   `test/arquitectura/escrituras-de-permisos-por-politica.test.ts` y test con la política en false
+   (`test/permisos/con-edicion-de-permisos.test.ts`). **Pendiente:** el dato (dónde se guarda la perilla y el plan/catálogo por empresa) —
+   necesita schema, autorización expresa.
 3. Permisos de carta (corrida 1, sin schema) y recetas (corrida 1, sin schema), según
    `motor2-recetas-carta-por-sucursal-decisiones`.
 4. ~~Auditoría de traspasos, compras, clientes, api y cron~~ — HECHO (Lote 1, 2026-10-01). Se verificó contra el código: traspasos y compras
@@ -123,3 +127,8 @@ commit, siempre con OK expreso del dueño.
 8. Dos paneles, Empresa y Sucursal.
 9. Módulo de margen objetivo.
 10. Unificar la semántica de «sin fila» (sin precio local, sin receta propia, sin carta propia).
+    **Tanda 1 hecha (2026-10-01, sin commitear):** `docs/adr/ADR-009-semantica-de-ausencia-por-sucursal.md` (cinco familias, embudo por modelo,
+    inconsistencias R1–R4). Guardianes `test/arquitectura/semantica-sin-fila.test.ts` y `promo-sucursal-en-un-solo-lugar.test.ts`;
+    caracterización en `test/core/semantica-sin-fila.test.ts` y `test/carta/promo-sucursal.test.ts`. R4 resuelta (`elegirMinimo`,
+    `whereSeccionHabitualVigente`). **Pendiente del dueño:** R1 (¿la capacidad `precio_local` apaga también el precio local de la promo y el
+    descuento?) y R2 (qué muestra un reporte sin sucursal: `reportes/comun.ts` asume `disponible: true`). R3 se revisa con la carta propia.

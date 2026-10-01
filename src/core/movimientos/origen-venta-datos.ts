@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { obtenerSeccionPropia } from "@/core/movimientos/stock";
+import { whereSeccionHabitualVigente } from "@/core/stock/seccion-habitual";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 import { crearLibroDeStock, type LibroDeStock, type SeccionCandidata } from "@/core/movimientos/origen-venta";
 
@@ -124,7 +125,7 @@ export async function cargarDatosDeOrigen(
 async function cargarHabituales(tx: Prisma.TransactionClient, sucursalId: string, pvIds: readonly string[]): Promise<Map<string, SeccionCandidata>> {
   if (!pvIds.length) return new Map();
   const filas = await tx.seccionHabitualProducto.findMany({
-    where: { sucursalId, productoId: { in: [...pvIds] }, seccion: { sucursalId, activa: true } },
+    where: { ...whereSeccionHabitualVigente(sucursalId), productoId: { in: [...pvIds] } },
     select: { productoId: true, seccion: { select: { id: true, nombre: true } } },
   });
   return new Map(filas.map((f) => [f.productoId, f.seccion]));

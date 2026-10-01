@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { elegirMinimo } from "./stock-minimo";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -70,8 +71,7 @@ export async function calcularAlertasStock(sucursalId: string, db: Db): Promise<
     const seccion = seccionPorId.get(s.seccionId);
     if (!seccion) continue;
 
-    const claveSeccion = `${s.productoId}||${s.seccionId}`;
-    const stockMinimo = minimoPorSeccion.has(claveSeccion) ? minimoPorSeccion.get(claveSeccion)! : minimoGlobal.get(s.productoId);
+    const stockMinimo = elegirMinimo(minimoPorSeccion.get(`${s.productoId}||${s.seccionId}`), minimoGlobal.get(s.productoId));
     if (stockMinimo == null) continue; // ninguna fila de mínimo cargada: no hay alerta posible
 
     const saldoActual = Number(s._sum.cantidad ?? 0);
