@@ -70,7 +70,7 @@ export async function crearEmpresa(db: PrismaClient, entrada: ComandoCrearEmpres
       await tx.permisoRol.createMany({
         data: ACCIONES.flatMap((accion) =>
           (["admin", "operador"] as const).map((nombreRol) => {
-            const puedeEditar = accion.rolesEditarSemilla.includes(nombreRol);
+            const puedeEditar = (accion.rolesEditarSemilla as readonly string[]).includes(nombreRol);
             // Ver arranca igual a Editar (mismo estado que en el seed).
             return { empresaId, rolId: rolesPorNombre[nombreRol].id, accionClave: accion.clave, puedeEditar, puedeVer: puedeEditar };
           }),

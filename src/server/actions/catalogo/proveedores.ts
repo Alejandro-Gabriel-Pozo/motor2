@@ -2,7 +2,7 @@
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
@@ -32,7 +32,7 @@ export interface DatosProveedor {
  * restringe nada nuevo.
  */
 export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
     const nombre = texto(datos.nombre);
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre");
@@ -65,7 +65,7 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
 }
 
 export async function actualizarActivaProveedor(proveedorId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("proveedores", async (ctx) => {
+  return conPermisoDeEmpresa("proveedores", async (ctx) => {
     await ctx.db.proveedor.update({ where: { id: proveedorId }, data: { activo } });
     // Se llama desde la lista sin redirigir después — sin esto la columna
     // "Activo" no cambiaría en un navegador real hasta recargar a mano
@@ -83,7 +83,7 @@ export async function actualizarActivaProveedor(proveedorId: string, activo: boo
  * renombrarOFusionarInsumo-style, fuera del alcance de este hallazgo.
  */
 export async function actualizarProveedor(proveedorId: string, datos: Omit<DatosProveedor, "nombre">): Promise<ResultadoAccion> {
-  return conPermiso("proveedores", async (ctx) => {
+  return conPermisoDeEmpresa("proveedores", async (ctx) => {
     const proveedor = await ctx.db.proveedor.findUnique({ where: { id: proveedorId } });
     if (!proveedor) return error("No se encontró ese proveedor.");
 

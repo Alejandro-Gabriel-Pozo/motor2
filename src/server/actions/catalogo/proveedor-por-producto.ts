@@ -1,7 +1,7 @@
 "use server";
 
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { requerirVer } from "../con-sesion";
+import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
 
 export interface ProductoDeProveedor {
   productoId: string;
@@ -67,7 +67,7 @@ export interface FilaComparativaPrecios {
  * documentado en el propio código (Catalogo.js:3545-3552).
  */
 export async function obtenerComparativaPreciosPorInsumo(): Promise<FilaComparativaPrecios[]> {
-  const ctx = await requerirVer("comparar_precios");
+  const ctx = await requerirVerDeEmpresa("comparar_precios");
   const filas = await ctx.db.proveedorPorProducto.findMany({
     include: {
       proveedor: true,

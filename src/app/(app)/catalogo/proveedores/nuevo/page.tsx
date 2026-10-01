@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { ProveedorForm } from "../proveedor-form";
 
 /** Alta de un proveedor nuevo. Al guardar, lleva a la ficha del proveedor creado. */
@@ -8,7 +8,7 @@ export default async function NuevoProveedorPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   return (

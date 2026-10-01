@@ -4,12 +4,12 @@ import type { AccionClave } from "@/core/permisos/acciones";
 import { MENSAJE_GUARDADO_EN_CONFLICTO, mismoEstado, normalizarPermiso, PREFIJO_CONFLICTO_DE_EDICION, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVer } from "../con-sesion";
+import { requerirVerDeEmpresa } from "../con-sesion";
 
 export async function listarMatrizPermisos() {
-  const ctx = await requerirVer("gestion_permisos");
+  const ctx = await requerirVerDeEmpresa("gestion_permisos");
   const [acciones, roles, permisos] = await Promise.all([
     ctx.db.accion.findMany({ orderBy: { clave: "asc" } }),
     ctx.db.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
@@ -50,7 +50,7 @@ const estadoValido = (e: EstadoPermiso | undefined): e is EstadoPermiso => !!e &
  *   lo absorbe (se edita unas pocas veces por semana, el costo es irrelevante).
  */
 export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<ResultadoAccion> {
-  return conPermiso("gestion_permisos", async (ctx) => {
+  return conPermisoDeEmpresa("gestion_permisos", async (ctx) => {
     if (!Array.isArray(cambios)) return error("No hay cambios para guardar.");
     if (cambios.length > MAXIMO_CAMBIOS) return error("Son demasiados cambios de una vez.");
     for (const c of cambios) {

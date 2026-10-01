@@ -22,7 +22,7 @@ describe("páginas de edición: exigen el permiso de Editar en el servidor", () 
   for (const { pagina, clave } of PAGINAS_DE_EDICION) {
     it(`${pagina} llama a requierePermiso(..., "${clave}")`, () => {
       const fuente = readFileSync(join(RAIZ, pagina), "utf8").replace(/\r\n/g, "\n");
-      expect(fuente).toMatch(new RegExp(String.raw`requierePermiso\(\s*[^,]+,\s*[^,]+,\s*"${clave}"\s*(?:,\s*[^,)]+)?\)`));
+      expect(fuente).toMatch(new RegExp(String.raw`requierePermiso(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"${clave}"\s*(?:,\s*[^,)]+)?\)`));
     });
   }
 });

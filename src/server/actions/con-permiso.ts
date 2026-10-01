@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermiso } from "@/core/permisos/gate";
+import { requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/core/permisos/gate";
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
-import type { AccionClave } from "@/core/permisos/acciones";
+import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
 import { error, type ResultadoAccion } from "./tipos";
 
 /**
@@ -14,7 +14,26 @@ import { error, type ResultadoAccion } from "./tipos";
  * "Gates de permiso").
  */
 export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
-  accionClave: AccionClave,
+  accionClave: AccionDeSucursal,
+  fn: (ctx: ContextoUsuario) => Promise<T>
+): Promise<T> {
+  return conGate((ctx) => requierePermiso(ctx.usuarioId, ctx.sucursalId, accionClave, ctx.db), fn);
+}
+
+/**
+ * Como `conPermiso` para una acción de CONTEXTO EMPRESA: el permiso vale si alguna de las membresías del usuario en la empresa activa lo tiene,
+ * no solo la de la sucursal en la que está parado (ver `requierePermisoDeEmpresa`). La clave es del tipo estrecho `AccionDeEmpresa`: pasarle
+ * una acción de sucursal no compila.
+ */
+export async function conPermisoDeEmpresa<T extends ResultadoAccion = ResultadoAccion>(
+  accionClave: AccionDeEmpresa,
+  fn: (ctx: ContextoUsuario) => Promise<T>
+): Promise<T> {
+  return conGate((ctx) => requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db), fn);
+}
+
+async function conGate<T extends ResultadoAccion>(
+  gatear: (ctx: ContextoUsuario) => Promise<ResultadoGate>,
   fn: (ctx: ContextoUsuario) => Promise<T>
 ): Promise<T> {
   const ctx = await obtenerContextoUsuario();
@@ -30,7 +49,7 @@ export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
     return error("Demasiadas acciones seguidas — esperá un minuto e intentá de nuevo.") as T;
   }
 
-  const gate = await requierePermiso(ctx.usuarioId, ctx.sucursalId, accionClave, ctx.db);
+  const gate = await gatear(ctx);
   if (!gate.ok) return error(gate.mensaje) as T;
 
   return fn(ctx);

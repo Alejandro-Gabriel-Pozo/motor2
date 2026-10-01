@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { requierePermiso, requierePermisoVer, obtenerMiNivelPermiso } from "../../src/core/permisos/gate";
+import { requierePermiso, requierePermisoDeEmpresa, requierePermisoVer, obtenerMiNivelPermiso } from "../../src/core/permisos/gate";
 
 // Especificación migrada desde Tests.js (~testRequierePermiso*/testSucursalTieneCapacidad*)
 // — mismos casos borde de negocio, contra el schema Postgres nuevo en vez
@@ -71,7 +71,8 @@ describe("gate de permisos", () => {
     await prisma.capacidadSucursal.create({
       data: { accionClave: "capacidades_sucursal", sucursalId, habilitado: false },
     });
-    const resultado = await requierePermiso(admin.id, sucursalId, "capacidades_sucursal", prisma);
+    const { empresaId } = await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId }, select: { empresaId: true } });
+    const resultado = await requierePermisoDeEmpresa(admin.id, empresaId, "capacidades_sucursal", prisma);
     expect(resultado.ok).toBe(true);
   });
 

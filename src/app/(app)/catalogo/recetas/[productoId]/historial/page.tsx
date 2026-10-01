@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { listarVersionesDeReceta } from "@/server/actions/catalogo/recetas";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 
@@ -15,7 +15,7 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;

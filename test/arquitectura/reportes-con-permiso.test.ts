@@ -34,7 +34,7 @@ describe("reportes: toda página lleva una acción de Ver y coincide con el men�
   });
 
   it.each(todas.map((p) => [p.href, p] as const))("%s", (_href, pagina) => {
-    const clave = pagina.fuente.match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
+    const clave = pagina.fuente.match(/requierePermisoVer(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
     expect(clave, `${pagina.href} no llama a requierePermisoVer(..., "<acción>")`).toBeDefined();
     expect(CLAVES.has(clave as string), `${pagina.href} usa la acción "${clave}", que no está en ACCIONES`).toBe(true);
 

@@ -5,9 +5,9 @@ import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/cor
 import type { IngredienteInput, PasoInput, CabeceraRecetaInput } from "@/core/catalogo/public-servidor";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVer } from "../con-sesion";
+import { requerirVerDeEmpresa } from "../con-sesion";
 import { guardarVersionDeRecetaCasoDeUso } from "./casos-de-uso/guardar-version-de-receta";
 
 const INCLUDE_RECETA_COMPLETA = {
@@ -21,7 +21,7 @@ const INCLUDE_RECETA_COMPLETA = {
 
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
-  const ctx = await requerirVer("guardar_receta");
+  const ctx = await requerirVerDeEmpresa("guardar_receta");
   return ctx.db.recetaVersion.findFirst({
     where: { productoId },
     orderBy: { version: "desc" },
@@ -36,7 +36,7 @@ export async function obtenerRecetaVigente(productoId: string) {
  * guardado pero invisible en la UI (que solo mostraba la vigente).
  */
 export async function listarVersionesDeReceta(productoId: string) {
-  const ctx = await requerirVer("guardar_receta");
+  const ctx = await requerirVerDeEmpresa("guardar_receta");
   return ctx.db.recetaVersion.findMany({
     where: { productoId },
     orderBy: { version: "desc" },
@@ -120,7 +120,7 @@ export async function guardarReceta(
   pasos: PasoInput[] = [],
   cabecera: CabeceraRecetaInput = {}
 ): Promise<ResultadoAccion> {
-  return conPermiso("guardar_receta", async (ctx) => {
+  return conPermisoDeEmpresa("guardar_receta", async (ctx) => {
     const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos, cabecera });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor);

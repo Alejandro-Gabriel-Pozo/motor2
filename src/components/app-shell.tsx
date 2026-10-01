@@ -1,7 +1,7 @@
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso } from "@/core/navegacion/estructura";
-import { accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { after } from "next/server";
 import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 import { CotizacionEncabezado } from "./en-dolares";
@@ -22,7 +22,7 @@ import { SelectorSucursal } from "./selector-sucursal";
 export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
   // El menú solo muestra las pantallas que el rol puede ver (la página igual se protege por su cuenta: esto evita enlaces a «no tenés
   // permiso»). Lo mismo vale para los enlaces entre pantallas (`EnlaceInterno`), que reciben este conjunto por contexto.
-  const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDeNavegacion(), ctx.db);
+  const puedeVer = await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, accionesDeNavegacion(), ctx.db);
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
   const cotizacion = await obtenerUltimaCotizacion(ctx.db).catch(() => null);

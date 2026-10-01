@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { crearSucursalConAdmin, actualizarActivoSucursal, renombrarSucursal, listarSucursales } from "@/server/actions/auth/sucursales";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -8,7 +8,7 @@ export default async function SucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_sucursal", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_sucursal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sucursales = await listarSucursales();

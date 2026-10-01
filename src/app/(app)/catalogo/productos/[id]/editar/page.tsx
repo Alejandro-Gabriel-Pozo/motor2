@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermiso, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
@@ -12,7 +12,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   // Además de Ver (que ubica la pantalla en su familia), EDITAR: quien solo ve productos no tiene por qué recibir el formulario completo para descubrir
   // recién al guardar que no puede. La barrera es esta, en el servidor; esconder el enlace en la lista y la ficha es solo cortesía de la interfaz.

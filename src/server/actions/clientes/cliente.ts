@@ -2,7 +2,7 @@
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
@@ -24,7 +24,7 @@ export async function listarClientes(soloActivos = false) {
 
 /** Equivalente de crearCategoriaProducto (mismo dedup case-insensible), con el % de descuento validado (validarPorcentajeDescuento). */
 export async function altaCliente(nombre: string, descuentoPorcentaje: unknown): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("clientes", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("clientes", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del cliente no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del cliente");
@@ -46,7 +46,7 @@ export async function altaCliente(nombre: string, descuentoPorcentaje: unknown):
  * `Cuenta.descuentoPorcentaje` al asignar el cliente): solo aplica a asignaciones futuras.
  */
 export async function actualizarCliente(clienteId: string, nombre: string, descuentoPorcentaje: unknown): Promise<ResultadoAccion> {
-  return conPermiso("clientes", async (ctx) => {
+  return conPermisoDeEmpresa("clientes", async (ctx) => {
     const cliente = await ctx.db.cliente.findUnique({ where: { id: clienteId } });
     if (!cliente) return error("No se encontró ese cliente.");
 
@@ -67,7 +67,7 @@ export async function actualizarCliente(clienteId: string, nombre: string, descu
 }
 
 export async function actualizarActivoCliente(clienteId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("clientes", async (ctx) => {
+  return conPermisoDeEmpresa("clientes", async (ctx) => {
     const cliente = await ctx.db.cliente.findUnique({ where: { id: clienteId } });
     if (!cliente) return error("No se encontró ese cliente.");
     await ctx.db.cliente.update({ where: { id: clienteId }, data: { activo } });

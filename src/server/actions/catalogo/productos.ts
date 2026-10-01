@@ -20,7 +20,7 @@ import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/p
 import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
-import { conPermiso } from "../con-permiso";
+import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
@@ -288,7 +288,7 @@ function datosParaGuardar(datos: DatosProducto) {
  * mismo default que usa el form completo cuando no se toca ese campo.
  */
 export async function darDeAltaProductoRapido(nombre: string, unidadStockId: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre");
@@ -324,7 +324,7 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
  * algunas sucursales sin querer), y se puede arreglar desde `/catalogo/productos`, donde aparece con "0 de N sucursales".
  */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
-  return conPermiso("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa("alta_producto", async (ctx) => {
     const invalido = await validarComun(ctx.db, datos);
     if (invalido) return error(invalido);
 
@@ -526,7 +526,7 @@ export async function agregarPresentacionAlternativa(
   unidadCompraId: string,
   factorConversion: number
 ): Promise<ResultadoAccion> {
-  return conPermiso("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa("alta_producto", async (ctx) => {
     const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.unidadCompraId === unidadCompraId) {
@@ -547,7 +547,7 @@ export async function agregarPresentacionAlternativa(
 }
 
 export async function actualizarActivaPresentacion(presentacionId: string, activa: boolean): Promise<ResultadoAccion> {
-  return conPermiso("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa("alta_producto", async (ctx) => {
     await ctx.db.presentacion.update({ where: { id: presentacionId }, data: { activa } });
     return ok(`Presentación ${activa ? "activada" : "desactivada"}.`);
   });

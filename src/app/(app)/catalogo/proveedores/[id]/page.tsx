@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer, accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
 
@@ -32,7 +32,7 @@ export default async function FichaProveedorPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { id } = await params;
@@ -42,7 +42,7 @@ export default async function FichaProveedorPage({
 
   const [productosQueLeCompran, puedeVerPrecios] = await Promise.all([
     listarProductosQueLeCompran(id, ctx.db),
-    accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, ["comparar_precios"], ctx.db),
+    accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["comparar_precios"], ctx.db),
   ]);
 
   return (

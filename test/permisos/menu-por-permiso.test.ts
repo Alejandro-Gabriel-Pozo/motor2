@@ -3,9 +3,9 @@ import { baseDeTest, limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, p
 import { accionesQueElUsuarioPuedeVer } from "../../src/core/permisos/gate";
 import { GRUPOS_NAV, RUTA_SIN_PANTALLAS, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso } from "../../src/core/navegacion/estructura";
 import { pantallaDeInicio } from "../../src/core/navegacion/inicio";
-import type { AccionClave } from "../../src/core/permisos/acciones";
+import type { AccionClave, AccionDeSucursal } from "../../src/core/permisos/acciones";
 
-const CLAVES_REPORTES: AccionClave[] = ["ver_reportes_dinero", "ver_reportes_control", "ver_reportes_operativos", "ver_reportes_catalogo"];
+const CLAVES_REPORTES: AccionDeSucursal[] = ["ver_reportes_dinero", "ver_reportes_control", "ver_reportes_operativos", "ver_reportes_catalogo"];
 
 describe("accionesQueElUsuarioPuedeVer", () => {
   beforeEach(async () => {

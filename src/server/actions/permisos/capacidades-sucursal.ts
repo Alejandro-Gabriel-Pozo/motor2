@@ -2,14 +2,14 @@
 
 import type { AccionClave } from "@/core/permisos/acciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVer } from "../con-sesion";
+import { requerirVerDeEmpresa } from "../con-sesion";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 
 export async function listarCapacidades() {
-  const ctx = await requerirVer("capacidades_sucursal");
+  const ctx = await requerirVerDeEmpresa("capacidades_sucursal");
   const [acciones, sucursales, capacidades] = await Promise.all([
     ctx.db.accion.findMany({ where: { clave: { not: "capacidades_sucursal" } }, orderBy: { clave: "asc" } }),
     ctx.db.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
@@ -29,7 +29,7 @@ export async function actualizarCapacidad(
   sucursalId: string | null,
   habilitado: boolean
 ): Promise<ResultadoAccion> {
-  return conPermiso("capacidades_sucursal", async (ctx) => {
+  return conPermisoDeEmpresa("capacidades_sucursal", async (ctx) => {
     if (accionClave === "capacidades_sucursal") {
       return error("Esta acción no se puede gobernar a sí misma.");
     }

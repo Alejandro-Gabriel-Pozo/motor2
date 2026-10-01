@@ -2,18 +2,18 @@
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVer } from "../con-sesion";
+import { requerirVerDeEmpresa } from "../con-sesion";
 
 export async function listarRoles() {
-  const ctx = await requerirVer("gestion_permisos");
+  const ctx = await requerirVerDeEmpresa("gestion_permisos");
   return ctx.db.rol.findMany({ orderBy: { nombre: "asc" } });
 }
 
 /** Equivalente de crearRolDesdePanel (Core.js:968-983). */
 export async function crearRol(nombre: string): Promise<ResultadoAccion> {
-  return conPermiso("gestion_permisos", async (ctx) => {
+  return conPermisoDeEmpresa("gestion_permisos", async (ctx) => {
     const n = texto(nombre).toLowerCase();
     if (!n) return error("El nombre del rol no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del rol");
@@ -36,7 +36,7 @@ export async function crearRol(nombre: string): Promise<ResultadoAccion> {
  *     reasignarlas antes.
  */
 export async function actualizarActivoRol(rolId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("gestion_permisos", async (ctx) => {
+  return conPermisoDeEmpresa("gestion_permisos", async (ctx) => {
     const rol = await ctx.db.rol.findUnique({ where: { id: rolId } });
     if (!rol) return error("No se encontró ese rol.");
 

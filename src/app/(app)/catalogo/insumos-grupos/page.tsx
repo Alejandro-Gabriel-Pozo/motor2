@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
   crearInsumo,
   actualizarActivoInsumo,
@@ -18,7 +18,7 @@ export default async function InsumosGruposPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "grupos_familia", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "grupos_familia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [insumos, grupos] = await Promise.all([listarInsumos(), listarGrupos()]);

@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
-import type { AccionClave } from "@/core/permisos/acciones";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
+import { requierePermisoVer, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 
 /**
  * Guarda de las LECTURAS de servidor (server actions que devuelven datos y no pasan por `conPermiso`, que es el
@@ -40,20 +40,28 @@ export async function requerirSesionEnSucursal(sucursalId: string): Promise<Cont
  * Se evalúa en la sucursal activa, igual que la página. Lanza si no hay sesión o no hay permiso: la llamada del cliente se
  * rechaza y `useLeerServidor` refresca la pantalla, que muestra el mensaje de permiso.
  */
-export async function requerirVer(accion: AccionClave): Promise<ContextoUsuario> {
+export async function requerirVer(accion: AccionDeSucursal): Promise<ContextoUsuario> {
   const ctx = await requerirSesion();
   await exigirVer(ctx, ctx.sucursalId, accion);
   return ctx;
 }
 
 /** Como `requerirVer` para las lecturas que reciben la sucursal por parámetro: además exige membresía activa en ella. */
-export async function requerirVerEnSucursal(sucursalId: string, accion: AccionClave): Promise<ContextoUsuario> {
+export async function requerirVerEnSucursal(sucursalId: string, accion: AccionDeSucursal): Promise<ContextoUsuario> {
   const ctx = await requerirSesionEnSucursal(sucursalId);
   await exigirVer(ctx, sucursalId, accion);
   return ctx;
 }
 
-async function exigirVer(ctx: ContextoUsuario, sucursalId: string, accion: AccionClave): Promise<void> {
+/** Como `requerirVer` para una acción de CONTEXTO EMPRESA: alcanza con que alguna membresía del usuario en la empresa activa tenga el «Ver» (ver `requierePermisoVerDeEmpresa`). */
+export async function requerirVerDeEmpresa(accion: AccionDeEmpresa): Promise<ContextoUsuario> {
+  const ctx = await requerirSesion();
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, accion, ctx.db);
+  if (!gate.ok) throw new Error(gate.mensaje);
+  return ctx;
+}
+
+async function exigirVer(ctx: ContextoUsuario, sucursalId: string, accion: AccionDeSucursal): Promise<void> {
   const gate = await requierePermisoVer(ctx.usuarioId, sucursalId, accion, ctx.db);
   if (!gate.ok) throw new Error(gate.mensaje);
 }

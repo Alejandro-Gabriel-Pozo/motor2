@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
   crearMotivoMerma,
   crearDestinoConsumo,
@@ -21,7 +21,7 @@ export default async function MotivosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "motivos_movimiento", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "motivos_movimiento", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [motivos, destinos] = await Promise.all([listarMotivosMermaParaPanel(), listarDestinosConsumoParaPanel()]);

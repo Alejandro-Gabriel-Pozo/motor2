@@ -29,11 +29,11 @@ export interface ResultadoAnalisis {
 
 /** Nombres de guarda reconocidos, por el módulo del que se importan (sufijo del specifier). */
 const GUARDAS_POR_MODULO: Record<string, string[]> = {
-  "con-permiso": ["conPermiso"],
-  "con-sesion": ["requerirSesion", "requerirSesionEnSucursal", "requerirVer", "requerirVerEnSucursal"],
+  "con-permiso": ["conPermiso", "conPermisoDeEmpresa"],
+  "con-sesion": ["requerirSesion", "requerirSesionEnSucursal", "requerirVer", "requerirVerEnSucursal", "requerirVerDeEmpresa"],
   "core/auth/contexto": ["obtenerContextoUsuario"],
   "core/auth/session": ["getUsuarioActual"],
-  "core/permisos/gate": ["requierePermiso", "requierePermisoVer"],
+  "core/permisos/gate": ["requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"],
 };
 
 interface FuncionCandidata {

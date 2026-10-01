@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { FormConResultado } from "@/components/form-con-resultado";
 
@@ -16,7 +16,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { editar } = await searchParams;

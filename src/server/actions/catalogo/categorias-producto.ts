@@ -1,7 +1,7 @@
 "use server";
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
@@ -19,7 +19,7 @@ export async function listarCategoriasProducto() {
  * la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
  */
 export async function crearCategoriaProducto(nombre: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre de la categoría no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre de la categoría");
@@ -34,7 +34,7 @@ export async function crearCategoriaProducto(nombre: string): Promise<ResultadoC
 }
 
 export async function actualizarActivaCategoriaProducto(categoriaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("categorias", async (ctx) => {
+  return conPermisoDeEmpresa("categorias", async (ctx) => {
     await ctx.db.categoriaProducto.update({ where: { id: categoriaId }, data: { activo } });
     // Se llama desde un closure "use server" de la página de Categorías, sin redirigir: sin esto la columna «Activa» no cambia (ver refrescar.ts).
     refrescarVistaSiHaceFalta();

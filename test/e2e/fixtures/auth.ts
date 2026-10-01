@@ -53,7 +53,7 @@ export async function asegurarBaseSeed() {
   for (const accion of ACCIONES) {
     await prisma.accion.upsert({ where: { clave: accion.clave }, update: { descripcion: accion.descripcion }, create: { clave: accion.clave, descripcion: accion.descripcion } });
     for (const nombreRol of ["admin", "operador"] as const) {
-      const puedeEditar = accion.rolesEditarSemilla.includes(nombreRol);
+      const puedeEditar = (accion.rolesEditarSemilla as readonly string[]).includes(nombreRol);
       await prisma.permisoRol.upsert({
         where: { rolId_accionClave: { rolId: rolesPorNombre[nombreRol].id, accionClave: accion.clave } },
         // El admin de las pruebas tiene que poder abrir todo, pase lo que pase con una base que traiga restos de otros tests

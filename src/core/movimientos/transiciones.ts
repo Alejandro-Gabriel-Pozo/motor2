@@ -1,5 +1,5 @@
 import type { Proceso } from "@prisma/client";
-import type { AccionClave } from "@/core/permisos/acciones";
+import type { AccionDeSucursal } from "@/core/permisos/acciones";
 
 /**
  * Port de TRANSICIONES (Movimientos.js:61-348) — fuente única de qué hace
@@ -154,7 +154,7 @@ export function productoValidoParaProceso(
  * ACCION_POR_PROCESO_ (Movimientos.js:510-525). LIQUIDACION_CONSIGNACION
  * deliberadamente no tiene entrada: nunca es una acción de usuario.
  */
-export const ACCION_POR_PROCESO: Partial<Record<Proceso, AccionClave>> = {
+export const ACCION_POR_PROCESO: Partial<Record<Proceso, AccionDeSucursal>> = {
   COMPRA: "proceso_compra",
   PRODUCCION: "proceso_produccion",
   CONSUMO: "proceso_consumo",

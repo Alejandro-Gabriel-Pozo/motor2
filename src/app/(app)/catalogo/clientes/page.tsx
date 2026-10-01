@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { altaCliente, actualizarActivoCliente, actualizarCliente, listarClientes } from "@/server/actions/clientes/cliente";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -15,7 +15,7 @@ export default async function ClientesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "clientes", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "clientes", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const clientes = await listarClientes();

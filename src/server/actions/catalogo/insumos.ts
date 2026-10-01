@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { creariaCiclo, validarFusionInsumos } from "@/core/catalogo/public-servidor";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
@@ -78,7 +78,7 @@ export async function listarGrupos() {
  * Esos dos devuelven el insumo por callback y NO deben re-renderizar la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
  */
 export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del insumo no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del insumo");
@@ -93,7 +93,7 @@ export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
 }
 
 export async function actualizarActivoInsumo(insumoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async (ctx) => {
+  return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     await ctx.db.insumo.update({ where: { id: insumoId }, data: { activo } });
     // Se llama desde un closure "use server" de la página de Insumos, sin redirigir: sin esto la columna «Activo» no cambia (ver refrescar.ts).
     refrescarVistaSiHaceFalta();
@@ -102,7 +102,7 @@ export async function actualizarActivoInsumo(insumoId: string, activo: boolean):
 }
 
 export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string | null): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async (ctx) => {
+  return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     await ctx.db.insumo.update({ where: { id: insumoId }, data: { grupoId } });
     refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok("Grupo del insumo actualizado.");
@@ -144,7 +144,7 @@ export async function renombrarOFusionarInsumo(
   nombreNuevo: string,
   confirmarFusion = false
 ): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async (ctx) => {
+  return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     const nuevo = texto(nombreNuevo);
     if (!nuevo) return error("El nombre nuevo no puede estar vacío.");
     const invalido = validarTextoCatalogo(nuevo, "El nombre del insumo");
@@ -182,7 +182,7 @@ export async function renombrarOFusionarInsumo(
 
 /** Equivalente de crearOActualizarGrupo/actualizarGrupoPadre_ (Catalogo.js:2483-2519), con la misma validación de ciclo. */
 export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string | null): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async (ctx) => {
+  return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del grupo no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del grupo");
@@ -209,7 +209,7 @@ export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string
 }
 
 export async function actualizarActivoGrupo(grupoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("grupos_familia", async (ctx) => {
+  return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     await ctx.db.grupo.update({ where: { id: grupoId }, data: { activo } });
     refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return ok(`Grupo ${activo ? "activado" : "desactivado"}.`);

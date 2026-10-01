@@ -106,13 +106,13 @@ describe("cada lectura pide la MISMA clave que la página dueña de esos datos",
       expect(fuentePagina, `${pagina} no toma la clave de ACCION_POR_PROCESO`).toContain("ACCION_POR_PROCESO[config.proceso]");
       expect(ACCION_POR_PROCESO[viaProceso], `la clave del proceso ${viaProceso}`).toBe(clave);
     } else {
-      expect(fuentePagina, `${pagina} no pide «${clave}»`).toMatch(new RegExp(`requierePermisoVer\\([^)]*"${clave}"`));
+      expect(fuentePagina, `${pagina} no pide «${clave}»`).toMatch(new RegExp(`requierePermisoVer(?:DeEmpresa)?\\([^)]*"${clave}"`));
     }
 
     const fuente = readFileSync(join(acciones, archivo), "utf8").replace(/\r\n/g, "\n");
     const inicio = fuente.indexOf(`export async function ${nombre}(`);
     expect(inicio, `${nombre} no está en ${archivo}`).toBeGreaterThan(-1);
     const cuerpo = fuente.slice(inicio, inicio + 400);
-    expect(cuerpo, `${nombre} no abre con requerirVer…("${clave}")`).toMatch(new RegExp(`requerirVer(EnSucursal)?\\([^)]*"${clave}"`));
+    expect(cuerpo, `${nombre} no abre con requerirVer…("${clave}")`).toMatch(new RegExp(`requerirVer(EnSucursal|DeEmpresa)?\\([^)]*"${clave}"`));
   });
 });

@@ -26,7 +26,7 @@ function accionDeLaPantalla(archivo: string): string | null {
   while (dir.startsWith(RAIZ)) {
     try {
       const fuente = readFileSync(join(dir, "page.tsx"), "utf8");
-      const literal = fuente.match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
+      const literal = fuente.match(/requierePermisoVer(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
       if (literal) return literal;
       if (fuente.includes("ACCION_POR_PROCESO")) return "por-proceso";
     } catch {
@@ -74,7 +74,7 @@ describe("accionDeRuta", () => {
   it("la acción de cada ruta fuera del menú es la que pide su página, y se consulta al armar el conjunto de acciones visibles", () => {
     for (const item of RUTAS_FUERA_DEL_MENU) {
       const fuente = readFileSync(join(RAIZ, ...item.href.split("/").filter(Boolean), "page.tsx"), "utf8");
-      expect(fuente.match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1], item.href).toBe(item.accion);
+      expect(fuente.match(/requierePermisoVer(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1], item.href).toBe(item.accion);
       expect(accionesDeNavegacion()).toContain(item.accion);
     }
   });

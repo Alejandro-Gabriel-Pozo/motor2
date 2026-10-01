@@ -1,10 +1,10 @@
 "use server";
 
 import { texto, validarTextoCatalogo, validarLargoTexto } from "@/core/texto";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion, requerirVer } from "../con-sesion";
+import { requerirSesion, requerirVerDeEmpresa } from "../con-sesion";
 
 /** Igual que LARGO_MAXIMO_TEXTO_CATALOGO (texto.ts) pero para `descripcion`: no usa RE_TEXTO_CATALOGO (su charset prohíbe «» y :, y la nota de negocio de BUGFIX A-3 usa ambos) — solo se acota el largo. Mismo tope que ya fija motivos-semilla.test.ts. */
 const LARGO_MAXIMO_DESCRIPCION = 300;
@@ -28,18 +28,18 @@ export async function listarDestinosConsumoActivos() {
 }
 
 export async function listarMotivosMermaParaPanel() {
-  const ctx = await requerirVer("motivos_movimiento");
+  const ctx = await requerirVerDeEmpresa("motivos_movimiento");
   return ctx.db.motivoMerma.findMany({ orderBy: { nombre: "asc" } });
 }
 
 export async function listarDestinosConsumoParaPanel() {
-  const ctx = await requerirVer("motivos_movimiento");
+  const ctx = await requerirVerDeEmpresa("motivos_movimiento");
   return ctx.db.destinoConsumo.findMany({ orderBy: { nombre: "asc" } });
 }
 
 /** Alta de un Motivo de Merma. Dedup case-insensible: RECHAZA (no reusa) un nombre ya existente — mismo criterio que crearSeccion, a diferencia de crearCategoriaProducto (que sí reusa porque también la llama un quick-create inline; acá nadie más la llama). */
 export async function crearMotivoMerma(nombre: string, descripcion?: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("motivos_movimiento", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del motivo no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del motivo");
@@ -59,7 +59,7 @@ export async function crearMotivoMerma(nombre: string, descripcion?: string): Pr
 
 /** Alta de un Destino de Consumo. Igual que crearMotivoMerma. */
 export async function crearDestinoConsumo(nombre: string, descripcion?: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("motivos_movimiento", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del destino no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del destino");
@@ -79,7 +79,7 @@ export async function crearDestinoConsumo(nombre: string, descripcion?: string):
 
 /** Activa/desactiva un Motivo de Merma. Nunca se borra (FK ON DELETE RESTRICT desde Operacion.motivoId) — solo deja de ofrecerse en cargas nuevas. */
 export async function actualizarActivoMotivoMerma(motivoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa("motivos_movimiento", async (ctx) => {
     const motivo = await ctx.db.motivoMerma.findUnique({ where: { id: motivoId } });
     if (!motivo) return error("No se encontró el motivo.");
 
@@ -91,7 +91,7 @@ export async function actualizarActivoMotivoMerma(motivoId: string, activo: bool
 
 /** Activa/desactiva un Destino de Consumo. Igual que actualizarActivoMotivoMerma. */
 export async function actualizarActivoDestinoConsumo(destinoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa("motivos_movimiento", async (ctx) => {
     const destino = await ctx.db.destinoConsumo.findUnique({ where: { id: destinoId } });
     if (!destino) return error("No se encontró el destino.");
 

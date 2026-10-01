@@ -2,7 +2,7 @@
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirSesion } from "../con-sesion";
@@ -24,7 +24,7 @@ export async function crearSucursalConAdmin(input: {
   nombre: string;
   emailPrimerAdmin: string;
 }): Promise<ResultadoAccion> {
-  return conPermiso("alta_sucursal", async (ctx) => {
+  return conPermisoDeEmpresa("alta_sucursal", async (ctx) => {
     const nombre = texto(input.nombre);
     if (!nombre) return error("El nombre de la sucursal no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
@@ -97,7 +97,7 @@ export async function crearSucursalConAdmin(input: {
  * no había ningún botón para ponerlo en false.
  */
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("alta_sucursal", async (ctx) => {
+  return conPermisoDeEmpresa("alta_sucursal", async (ctx) => {
     const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId } });
     if (!sucursal) return error("No se encontró esa sucursal.");
 
@@ -118,7 +118,7 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
 
 /** Renombrar una sucursal existente — antes solo se podía elegir el nombre una vez, al crearla. */
 export async function renombrarSucursal(sucursalId: string, nombreNuevo: string): Promise<ResultadoAccion> {
-  return conPermiso("alta_sucursal", async (ctx) => {
+  return conPermisoDeEmpresa("alta_sucursal", async (ctx) => {
     const nombre = texto(nombreNuevo);
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
