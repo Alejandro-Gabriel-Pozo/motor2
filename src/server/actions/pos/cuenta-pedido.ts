@@ -4,6 +4,8 @@ import type { Prisma } from "@prisma/client";
 import { redondearMoneda } from "@/core/moneda";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { resolverPrecioVenta, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { aplicarDescuentoDeProducto } from "@/core/carta/public";
+import { descuentosDeProductoEnSucursal } from "@/core/carta/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
@@ -64,8 +66,18 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
         const paso = producto.pasoVenta !== null ? { pasoVenta: Number(producto.pasoVenta), tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce) } : null;
         const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
         if (!cantidad.ok) return error(`«${producto.nombre}»: ${cantidad.mensaje}`);
-        const precioUnitario = redondearMoneda(await resolverPrecioVenta(ctx.sucursalId, producto.id, Number(producto.precioVenta), tx));
-        filasSueltas.push({ cuentaId: abierta.cuenta.id, productoId: producto.id, cantidad: cantidad.cantidad, precioUnitario, numeroEnvio: null, creadoPorId: ctx.usuarioId });
+        const precioDeLista = redondearMoneda(await resolverPrecioVenta(ctx.sucursalId, producto.id, Number(producto.precioVenta), tx));
+        // Producto con descuento (Fase 2): el descuento de ESTA sucursal se aplica acá y el precio de lista queda congelado aparte en `precioCartaUnitario`.
+        const aplicado = aplicarDescuentoDeProducto(precioDeLista, (await descuentosDeProductoEnSucursal(ctx.sucursalId, tx, [producto.id])).get(producto.id) ?? null);
+        filasSueltas.push({
+          cuentaId: abierta.cuenta.id,
+          productoId: producto.id,
+          cantidad: cantidad.cantidad,
+          precioUnitario: aplicado.precio,
+          precioCartaUnitario: aplicado.precioLista,
+          numeroEnvio: null,
+          creadoPorId: ctx.usuarioId,
+        });
       }
 
       const promosValidadas: { titulo: string; promoCartaId: string; precio: number; componentes: (ComponentePromoElegido & { precioCarta: number })[]; filas: FilaPromoProrrateada[] }[] = [];

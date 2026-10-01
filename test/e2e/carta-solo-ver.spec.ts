@@ -22,6 +22,7 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
     carta_secciones: celda,
     carta_generos: celda,
     carta_contenido_producto: celda,
+    carta_producto_descuento: celda,
     carta_promo_definir: celda,
     carta_promo_activar: celda,
     carta_promo_precio_local: celda,
@@ -105,9 +106,10 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
 
     const contenido = main.locator(`[data-contenido-carta="${carta.suelto.nombre}"]`);
     await contenido.locator("summary").click();
-    const datosContenido = contenido.locator("[data-solo-lectura]");
+    const datosContenido = contenido.locator("[data-solo-lectura]").first();
     await expect(datosContenido).toContainText(`Contenido del plato ${carta.marca}`);
     await expect(datosContenido).toContainText("Sin TACC");
+    await expect(contenido.locator("[data-solo-lectura]").filter({ hasText: "Descuento en esta sucursal" })).toContainText("Sin descuento");
     await expect(datosContenido).toContainText(carta.seccion.nombre);
 
     const promo = main.locator(`[data-promo-carta="${carta.promo.titulo}"]`);

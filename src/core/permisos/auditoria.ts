@@ -35,7 +35,9 @@ export interface CambioAuditable {
     // `campo: "importe"`, `valorAnterior: null` (siempre una creación, nunca una edición — append-only, igual que el resto del Kardex).
     | "PagoConsignante"
     // "UsuarioEmpresa": el traspaso de la gerencia de la empresa (`transferirGerencia`) — `entidadId` es el usuario que pasa a ser gerente, `sucursalId` null (es de la empresa).
-    | "UsuarioEmpresa";
+    | "UsuarioEmpresa"
+    // "DescuentoProductoSucursal": el % de descuento de un producto en UNA sucursal — `entidadId` es el id de la fila (al sacarlo, el de la fila borrada), `campo: "porcentaje"`.
+    | "DescuentoProductoSucursal";
   entidadId: string;
   /** Legible de entrada, ej. `Producto "Pan Francés": precio de venta`. */
   descripcion: string;

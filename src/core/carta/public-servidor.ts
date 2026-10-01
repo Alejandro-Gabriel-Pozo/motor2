@@ -11,4 +11,5 @@
  * (`core/pos/selector-carta-consulta.ts`).
  */
 export { resolverMenuCarta } from "./menu-consulta";
+export { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
 export type { EntradaPortalCarta } from "./publica-consulta";

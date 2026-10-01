@@ -131,6 +131,7 @@ model Sucursal {
   pagosConsignante         PagoConsignante[]
   registrosAuditoria       RegistroAuditoria[]
   promosCarta              PromoCartaSucursal[]
+  descuentosProducto       DescuentoProductoSucursal[]
   publica                  SucursalPublica?
   temaCarta                TemaCartaSucursal?
   mesas                    Mesa[]
@@ -363,8 +364,8 @@ model Producto {
 
   presentaciones          Presentacion[]
   proveedorPorProducto    ProveedorPorProducto[]
-  recetaVersiones         RecetaVersion[]            @relation("RecetaVersionProducto")
-  usadoComoIngrediente    RecetaIngrediente[]        @relation("RecetaIngredienteInsumo")
+  recetaVersiones         RecetaVersion[]             @relation("RecetaVersionProducto")
+  usadoComoIngrediente    RecetaIngrediente[]         @relation("RecetaIngredienteInsumo")
   movimientos             MovimientoStock[]
   conteosFisicos          ConteoFisico[]
   preciosLocales          PrecioLocalProducto[]
@@ -374,9 +375,10 @@ model Producto {
   disponibilidades        DisponibilidadProducto[]
   traspasos               TraspasoSucursal[]
   contenidoCarta          ContenidoCartaProducto?
+  descuentosCarta         DescuentoProductoSucursal[]
   opcionItemAgrupadoCarta OpcionItemAgrupadoCarta?
   cuentaItems             CuentaItem[]
-  consumosQueLoSustituyen MovimientoStock[]          @relation("MovimientoSustituyeA")
+  consumosQueLoSustituyen MovimientoStock[]           @relation("MovimientoSustituyeA")
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, id])
@@ -1759,17 +1761,17 @@ model OpcionItemAgrupadoCarta {
 /// Sin backfill: una promo existente sigue informativa hasta que alguien le agrega cupos a propósito. El contrato público
 /// `CartaV1` no cambia (la carta pública nunca tuvo ni tiene cupos).
 model PromoCarta {
-  id             String           @id @default(cuid())
-  empresaId      String           @default(dbgenerated("app_empresa_actual()"))
-  empresa        Empresa          @relation(fields: [empresaId], references: [id])
+  id             String               @id @default(cuid())
+  empresaId      String               @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa              @relation(fields: [empresaId], references: [id])
   seccionCartaId String
-  seccionCarta   SeccionCarta     @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  seccionCarta   SeccionCarta         @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
   titulo         String
   descripcion    String?
-  precio         Decimal          @db.Decimal(14, 2)
-  orden          Int              @default(0)
-  activa         Boolean          @default(true)
-  creadoEn       DateTime         @default(now())
+  precio         Decimal              @db.Decimal(14, 2)
+  orden          Int                  @default(0)
+  activa         Boolean              @default(true)
+  creadoEn       DateTime             @default(now())
   cupos          PromoCartaCupo[]
   instancias     PromoCuenta[]
   sucursales     PromoCartaSucursal[]
@@ -1777,6 +1779,26 @@ model PromoCarta {
   @@unique([empresaId, id])
   @@index([activa])
   @@index([seccionCartaId])
+}
+
+/// "Producto con descuento" (decisión del dueño, 2026-10-01: NO es una promoción — una promo es siempre una composición, `PromoCarta`). Un
+/// producto de venta tiene, en UNA sucursal, un descuento en PORCENTAJE sobre su precio vigente ahí (el local si lo tiene, si no el global):
+/// FILA AUSENTE = sin descuento. El % es de la sucursal (cada una lo fija o lo saca), 0 < porcentaje < 100 con 2 decimales (lo exige la Server
+/// Action); se quita borrando la fila. La carta muestra el precio de lista tachado y el POS cobra el descontado; el precio de lista queda en
+/// `CuentaItem.precioCartaUnitario` para medir el ahorro del cliente.
+model DescuentoProductoSucursal {
+  id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  porcentaje Decimal  @db.Decimal(5, 2)
+
+  @@unique([productoId, sucursalId])
+  @@unique([empresaId, id])
+  @@index([sucursalId])
 }
 
 /// Estado de UNA promo de la empresa en UNA sucursal (2026-10-01): FILA AUSENTE = la sucursal no la ofrece (opt-in, igual que
@@ -2037,9 +2059,12 @@ model CuentaItem {
   /// (`lineasDeVenta`, D4).
   promoCuentaId       String?
   promoCuenta         PromoCuenta? @relation(fields: [empresaId, promoCuentaId], references: [empresaId, id])
-  /// Precio A LA CARTA de UNA unidad de este componente, al momento de agregarlo (antes de prorratear) — null en un suelto.
-  /// Sirve para comparar "lo que se cobró prorrateado" contra "lo que costaría pedirlo suelto" (paso 12, margen de promos) y
-  /// queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
+  /// Precio de LISTA de UNA unidad, congelado al agregarla — con dos significados según la fila:
+  ///  - componente de una promo (`promoCuentaId` puesto): el precio A LA CARTA antes de prorratear; sirve para comparar "lo que se cobró prorrateado"
+  ///    contra "lo que costaría pedirlo suelto" (paso 12, margen de promos);
+  ///  - suelto con descuento de producto (`DescuentoProductoSucursal`): el precio vigente ANTES del descuento (`precioUnitario` ya es el descontado);
+  ///    null en un suelto sin descuento. Mide el ahorro del cliente (reporte «Descuentos de productos»).
+  /// Queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
   precioCartaUnitario Decimal?     @db.Decimal(14, 2)
 
   @@unique([empresaId, id])
@@ -2139,6 +2164,7 @@ model Empresa {
   opcionItemAgrupadoCartaRel     OpcionItemAgrupadoCarta[]
   promoCartaRel                  PromoCarta[]
   promoCartaSucursalRel          PromoCartaSucursal[]
+  descuentoProductoSucursalRel   DescuentoProductoSucursal[]
   promoCartaCupoRel              PromoCartaCupo[]
   sucursalPublicaRel             SucursalPublica[]
   temaCartaSucursalRel           TemaCartaSucursal[]

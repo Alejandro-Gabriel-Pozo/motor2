@@ -5,6 +5,7 @@ import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-co
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
+import { guardarDescuentoProducto } from "@/server/actions/carta/descuento-producto";
 import {
   actualizarActivaPromoCarta,
   actualizarActivaPromoCartaEnSucursal,
@@ -55,13 +56,14 @@ export default async function CartaPage() {
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio] = await Promise.all([
+  const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio, nivelDescuento] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_generos", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_contenido_producto", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_promo_definir", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_activar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_precio_local", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_producto_descuento", ctx.db),
   ]);
   const puedeEditarSecciones = nivelSecciones.editar;
   const puedeEditarGeneros = nivelGeneros.editar;
@@ -69,7 +71,8 @@ export default async function CartaPage() {
   const puedeDefinirPromos = nivelPromoDefinir.editar;
   const puedeActivarPromos = nivelPromoActivar.editar;
   const puedePrecioLocalPromos = nivelPromoPrecio.editar;
-  const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos;
+  const puedeDescuento = nivelDescuento.editar;
+  const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos || puedeDescuento;
 
   const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db);
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
@@ -289,7 +292,7 @@ export default async function CartaPage() {
 
         <ul className="flex flex-col gap-2">
           {datos.productos.map((p) => (
-            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} />
+            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} puedeDescuento={puedeDescuento} />
           ))}
           {!datos.productos.length && <li className="text-sm text-neutral-500">No hay productos de venta disponibles en esta sucursal.</li>}
         </ul>
@@ -640,7 +643,7 @@ function CamposCupos({
   );
 }
 
-function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta; puedeEditar: boolean }) {
+function ContenidoProducto({ producto: p, ubicacion, puedeEditar, puedeDescuento }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta; puedeEditar: boolean; puedeDescuento: boolean }) {
   const productoId = p.id;
   // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
   const estado = p.agrupadoEn
@@ -658,6 +661,7 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: 
           {estado}
           {p.contenido?.especial ? " · ★" : ""}
           {p.generoCarta ? ` · ${p.generoCarta}` : ""}
+          {p.descuento !== null ? ` · −${p.descuento} %` : ""}
         </summary>
         {p.agrupadoEn && (
           <p className="mt-2 text-sm text-neutral-500">
@@ -716,6 +720,31 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: 
             </div>
           </FormConResultado>
         )}
+
+        {/* Producto con descuento (% por sucursal; no es una promo). Un producto agrupado no lo admite: el renglón agrupado muestra un solo precio. */}
+        {!p.agrupadoEn &&
+          (puedeDescuento ? (
+            <FormConResultado
+              accion={async (fd: FormData) => {
+                "use server";
+                const texto = campo(fd, "descuento").trim();
+                return refrescarSiOk(await guardarDescuentoProducto(productoId, texto === "" ? null : texto));
+              }}
+              className="mt-3 flex flex-wrap items-end gap-2"
+            >
+              <label className="flex flex-col gap-1 text-sm">
+                Descuento en esta sucursal, % (vacío = sin descuento)
+                <input name="descuento" type="number" min={0} max={99.99} step="0.01" defaultValue={p.descuento ?? ""} className={CLASE_INPUT} />
+              </label>
+              <button type="submit" className={CLASE_BOTON}>
+                Guardar descuento de «{p.nombre}»
+              </button>
+            </FormConResultado>
+          ) : (
+            <DatosSoloLectura className="mt-3">
+              <Dato etiqueta="Descuento en esta sucursal">{p.descuento !== null ? `${p.descuento} %` : "Sin descuento"}</Dato>
+            </DatosSoloLectura>
+          ))}
       </details>
     </li>
   );

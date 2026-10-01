@@ -145,6 +145,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   productoNombre: i.productoNombre,
                   cantidad: i.cantidad,
                   precioUnitario: i.precioUnitario,
+                  precioListaUnitario: i.precioListaUnitario,
                   promoCuentaId: i.promoCuentaId,
                   promoTitulo: i.promoTitulo,
                 }))}
@@ -210,7 +211,10 @@ function ItemEnviado({ item, puedeAnular }: { item: ItemEnEnvio<ItemDeCuenta>; p
           {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-[var(--ink-soft)]"> (pedido {formatearCantidad(item.cantidad)})</span>}
         </span>
         <span className="flex items-center gap-3">
-          <span className="tabular-nums">{anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}</span>
+          <span className="tabular-nums">
+            {!anuladoEntero && item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(item.restante * item.precioListaUnitario)}</s>}
+            {anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}
+          </span>
           {!anuladoEntero && <AnularItem item={{ id: item.id, productoNombre: item.productoNombre, restante: item.restante }} puede={puedeAnular} />}
         </span>
       </div>

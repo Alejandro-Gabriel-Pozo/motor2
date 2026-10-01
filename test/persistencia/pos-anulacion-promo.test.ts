@@ -78,11 +78,11 @@ describe("persistencia de la anulación de una promo enviada", () => {
 
       const espejoId = await prisma.$transaction((tx) =>
         escribirEspejoDeItem(tx, {
-          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, numeroEnvio: 3 },
+          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, precioCartaUnitario: 2500.75, numeroEnvio: 3 },
           cantidadAnulada: 2,
           motivo: "Se cayó la mesa",
           creadoPorId: s.admin.id,
-          promo: { promoCuentaId: promoId, precioCartaUnitario: 2500.75 },
+          promo: { promoCuentaId: promoId },
         })
       );
 
@@ -109,11 +109,11 @@ describe("persistencia de la anulación de una promo enviada", () => {
       });
       const espejoId = await prisma.$transaction((tx) =>
         escribirEspejoDeItem(tx, {
-          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, numeroEnvio: 1 },
+          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, precioCartaUnitario: null, numeroEnvio: 1 },
           cantidadAnulada: 1,
           motivo: "x",
           creadoPorId: s.admin.id,
-          promo: { promoCuentaId: promoId, precioCartaUnitario: null },
+          promo: { promoCuentaId: promoId },
         })
       );
       expect(await prisma.cuentaItem.findUniqueOrThrow({ where: { id: espejoId } })).toMatchObject({ promoCuentaId: promoId, precioCartaUnitario: null });

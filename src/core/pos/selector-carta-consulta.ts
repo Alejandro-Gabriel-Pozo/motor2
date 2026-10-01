@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
-import { resolverMenuCarta } from "@/core/carta/public-servidor";
+import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
+import { descuentosDeProductoEnSucursal, resolverMenuCarta } from "@/core/carta/public-servidor";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "./selector-carta";
 
@@ -31,13 +31,14 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * ninguna Server Action nueva.
  */
 export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promise<SelectorCartaPos> {
-  const [carta, productos, preciosLocales, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
+  const [carta, productos, preciosLocales, descuentos, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
     resolverMenuCarta(sucursalId, db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
     }),
     preciosLocalesVigentes(sucursalId, db),
+    descuentosDeProductoEnSucursal(sucursalId, db),
     db.generoCarta.findMany({ where: { activo: true }, select: { id: true, nombre: true, orden: true } }),
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null } }, select: { productoId: true, generoCartaId: true } }),
     db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null } }, select: { id: true, generoCartaId: true } }),
@@ -57,15 +58,20 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promis
     }),
   ]);
   const localPorProducto = preciosLocales;
-  const pedibles: ProductoPedible[] = productos.map((p) => ({
-    productoId: p.id,
-    codigo: p.codigo,
-    nombre: p.nombre,
-    precio: precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)),
-    decimales: p.unidadStock.decimales,
-    pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
-    tieneStockReal: tieneStockReal("PV", p.seProduce),
-  }));
+  const pedibles: ProductoPedible[] = productos.map((p) => {
+    // Producto con descuento (Fase 2): el precio del pedible es el DESCONTADO (el que se congela al agregar); el de lista queda aparte para mostrarlo tachado.
+    const aplicado = aplicarDescuentoDeProducto(precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)), descuentos.get(p.id) ?? null);
+    return {
+      productoId: p.id,
+      codigo: p.codigo,
+      nombre: p.nombre,
+      precio: aplicado.precio,
+      ...(aplicado.precioLista !== null ? { precioLista: aplicado.precioLista } : {}),
+      decimales: p.unidadStock.decimales,
+      pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
+      tieneStockReal: tieneStockReal("PV", p.seProduce),
+    };
+  });
   const generos: GenerosSelectorCartaPos = {
     generos: generosActivos,
     generoPorProducto: new Map(contenidosConGenero.map((c) => [c.productoId, c.generoCartaId!])),

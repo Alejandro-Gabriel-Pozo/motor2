@@ -52,6 +52,8 @@ export const ACCIONES = [
   { clave: "carta_secciones", descripcion: "Administrar las secciones de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_generos", descripcion: "Administrar los géneros de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_contenido_producto", descripcion: "Editar el contenido de carta de cada producto de venta", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Producto con descuento (2026-10-01): el % es por sucursal; no es una promoción.
+  { clave: "carta_producto_descuento", descripcion: "Fijar o sacar el descuento en porcentaje de un producto en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_items_agrupados", descripcion: "Administrar los ítems agrupados de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_portal", descripcion: "Administrar el portal de sucursales de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Una promo es de la empresa (decisión del dueño, 2026-10-01): definirla es de empresa; prenderla/apagarla y ponerle precio son de la sucursal.
@@ -143,6 +145,7 @@ export const ACCIONES = [
   { clave: "reporte_valuacion", descripcion: "Ver el reporte «Valuación de inventario»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_boletas", descripcion: "Ver el reporte «Boletas emitidas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_descuentos_clientes", descripcion: "Ver el reporte «Descuentos por cliente»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_descuentos_productos", descripcion: "Ver el reporte «Descuentos de productos»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_margen_promociones", descripcion: "Ver el reporte «Margen de promociones»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_historial_importes", descripcion: "Ver los importes (precios de compra y de venta) dentro del reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_perdidas", descripcion: "Ver el reporte «Pérdidas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },

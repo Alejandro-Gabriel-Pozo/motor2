@@ -27,6 +27,8 @@ export interface EnlaceDeLineaAOperacion {
   productoId: string;
   precioUnitario: number;
   promoCuentaId?: string | null;
+  /** Solo de un suelto con descuento de producto (parte de su clave, ver `claveDeLineaDeVenta`): el precio de lista del ítem. */
+  precioCartaUnitario?: number | null;
   operacionId: string;
 }
 
@@ -38,7 +40,13 @@ export interface EnlaceDeLineaAOperacion {
 export async function enlazarItemsConOperaciones(tx: Prisma.TransactionClient, cuentaId: string, enlaces: readonly EnlaceDeLineaAOperacion[]): Promise<void> {
   for (const e of enlaces) {
     await tx.cuentaItem.updateMany({
-      where: { cuentaId, productoId: e.productoId, precioUnitario: e.precioUnitario, promoCuentaId: e.promoCuentaId ?? null },
+      where: {
+        cuentaId,
+        productoId: e.productoId,
+        precioUnitario: e.precioUnitario,
+        promoCuentaId: e.promoCuentaId ?? null,
+        ...(e.promoCuentaId ? {} : { precioCartaUnitario: e.precioCartaUnitario ?? null }),
+      },
       data: { operacionId: e.operacionId },
     });
   }

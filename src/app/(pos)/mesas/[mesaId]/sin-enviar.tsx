@@ -11,6 +11,8 @@ export interface ItemSinEnviar {
   productoNombre: string;
   cantidad: number;
   precioUnitario: number;
+  /** Producto con descuento: el precio de lista, antes del descuento (se muestra tachado). */
+  precioListaUnitario: number | null;
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): la promo de la que este ítem es un componente — null en un suelto. */
   promoCuentaId: string | null;
   promoTitulo: string | null;
@@ -88,7 +90,10 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                   <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="tabular-nums">{formatearMonto(fila.item.cantidad * fila.item.precioUnitario)}</span>
+                  <span className="tabular-nums">
+                    {fila.item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(fila.item.cantidad * fila.item.precioListaUnitario)}</s>}
+                    {formatearMonto(fila.item.cantidad * fila.item.precioUnitario)}
+                  </span>
                   <button
                     type="button"
                     className={BOTON_CHICO}

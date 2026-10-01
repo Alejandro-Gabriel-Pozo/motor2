@@ -21,7 +21,8 @@ const SENTENCIAS = SQL.replace(/\r\n/g, "\n")
   )
   .filter((s) => s.length > 0);
 
-const NUEVAS = ACCIONES.map((a) => a.clave).filter((c) => c.startsWith("reporte_"));
+// «Descuentos de productos» llegó después, con su propia migración (20261001191000_reporte_descuentos_productos): no es parte de esta partición.
+const NUEVAS = ACCIONES.map((a) => a.clave).filter((c) => c.startsWith("reporte_") && c !== "reporte_descuentos_productos");
 const PADRES = ["ver_reportes_dinero", "ver_reportes_control", "ver_reportes_operativos", "ver_reportes_catalogo", "proceso_control", "insumos_mezclados"];
 
 // Padre → hijas, leído del propio SQL: el test no repite el mapa, comprueba lo que la migración hace con él.

@@ -14,6 +14,8 @@ export interface ItemParaCerrar {
   cantidad: number;
   /** Precio de LISTA congelado al pedir (nunca cambia de semántica con el descuento de cliente, Task #14). */
   precioUnitario: number;
+  /** Producto con descuento: el precio de lista antes de ese descuento (`CuentaItem.precioCartaUnitario`); en un componente de promo, el precio de carta. */
+  precioCartaUnitario: number | null;
   promoCuentaId: string | null;
   /** `null` = borrador sin enviar a cocina. */
   numeroEnvio: number | null;
@@ -48,6 +50,7 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
       productoId: i.productoId,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
+      precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       promoCuentaId: i.promoCuentaId,
       numeroEnvio: i.numeroEnvio,
     })),

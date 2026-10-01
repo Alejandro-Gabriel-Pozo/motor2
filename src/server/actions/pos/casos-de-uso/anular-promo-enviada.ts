@@ -59,11 +59,11 @@ export async function anularPromoEnviadaCasoDeUso(
     const componentes: DatosAnularPromoEnviada["componentes"] = [];
     for (const { item, restante } of aAnular) {
       const espejoId = await escribirEspejoDeItem(tx, {
-        original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, numeroEnvio: item.numeroEnvio },
+        original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, precioCartaUnitario: item.precioCartaUnitario, numeroEnvio: item.numeroEnvio },
         cantidadAnulada: restante,
         motivo: motivoValidado.motivo,
         creadoPorId: actor.usuarioId,
-        promo: { promoCuentaId: promo.id, precioCartaUnitario: item.precioCartaUnitario },
+        promo: { promoCuentaId: promo.id },
       });
       await registrarCambioAuditado(tx, {
         entidad: "CuentaItem",

@@ -112,6 +112,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "reporte_rotacion_mesas" },
       { href: "/reportes/boletas", label: "Boletas emitidas", accion: "reporte_boletas" },
       { href: "/reportes/descuentos-clientes", label: "Descuentos por cliente", accion: "reporte_descuentos_clientes" },
+      { href: "/reportes/descuentos-productos", label: "Descuentos de productos", accion: "reporte_descuentos_productos" },
       { href: "/reportes/margen-promociones", label: "Margen de promociones", accion: "reporte_margen_promociones" },
     ],
   },

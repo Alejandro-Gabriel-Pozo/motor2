@@ -51,6 +51,7 @@ export async function cargarCuentaParaCorregirBoleta(
       productoNombre: i.producto.nombre,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
+      precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
     })),

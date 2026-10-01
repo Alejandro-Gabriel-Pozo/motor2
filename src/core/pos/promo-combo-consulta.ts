@@ -43,7 +43,8 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
   const precioCartaPorProducto = new Map<string, number>();
   const cupos: CupoPromoDefinicion[] = promo.cupos.map((c) => {
     const pedibles = pediblesPorSeccion.get(c.seccionCartaId) ?? [];
-    for (const p of pedibles) precioCartaPorProducto.set(p.productoId, p.precio);
+    // Los componentes de una promo se prorratean sobre el precio de LISTA: el descuento de producto no aplica dentro de una promo.
+    for (const p of pedibles) precioCartaPorProducto.set(p.productoId, p.precioLista ?? p.precio);
     return {
       seccionCartaId: c.seccionCartaId,
       nombreSeccion: c.seccionCarta.nombre,

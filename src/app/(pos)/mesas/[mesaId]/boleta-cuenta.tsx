@@ -45,7 +45,7 @@ export function BoletaCuenta({ documento, mesa, sucursal }: { documento: Documen
       )}
       <ul className="ticket-separador">
         {boleta.lineas.map((l) => (
-          <li key={`${l.producto}|${l.precioUnitario}|${l.promoCuentaId ?? ""}`} className={`ticket-linea${l.indentado ? " ticket-linea-indentada" : ""}`}>
+          <li key={`${l.producto}|${l.precioUnitario}|${l.precioListaUnitario ?? ""}|${l.promoCuentaId ?? ""}`} className={`ticket-linea${l.indentado ? " ticket-linea-indentada" : ""}`}>
             <p className="ticket-item">
               {formatearCantidad(l.cantidad)} × {l.producto}
             </p>

@@ -34,9 +34,9 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
   });
 
   describe("catálogo de tablas", () => {
-    it("50 tablas de dominio tienen empresaId NOT NULL con default app_empresa_actual(); las 7 globales y ninguna otra quedan afuera", async () => {
+    it("51 tablas de dominio tienen empresaId NOT NULL con default app_empresa_actual(); las 7 globales y ninguna otra quedan afuera", async () => {
       const conEmpresa = await tablasPorEmpresa();
-      expect(conEmpresa).toHaveLength(50);
+      expect(conEmpresa).toHaveLength(51);
       for (const g of GLOBALES) expect(conEmpresa).not.toContain(g);
       expect(conEmpresa).not.toContain("Empresa");
 
@@ -56,7 +56,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       expect(sinEmpresa).toEqual([...GLOBALES, ...PLATAFORMA].sort());
     });
 
-    it("toda FK entre dos tablas por empresa es compuesta e incluye empresaId (93); ninguna FK a una tabla global lo incluye", async () => {
+    it("toda FK entre dos tablas por empresa es compuesta e incluye empresaId (95); ninguna FK a una tabla global lo incluye", async () => {
       const conEmpresa = new Set(await tablasPorEmpresa());
       const fks = await prisma.$queryRaw<Array<{ nombre: string; origen: string; destino: string; columnas: string[] }>>`
         SELECT c.conname::text AS nombre,
@@ -68,7 +68,8 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
 
       const entreTablasPorEmpresa = fks.filter((f) => conEmpresa.has(f.origen) && conEmpresa.has(f.destino));
       // 93: la migración 20261001180000_promo_de_empresa quita 3 FK (PromoCarta→Sucursal y las dos de PromocionProducto) y agrega 2 (PromoCartaSucursal).
-      expect(entreTablasPorEmpresa).toHaveLength(93);
+      // 95: la migración 20261001190000_descuento_producto_sucursal agrega 2 (DescuentoProductoSucursal→Producto y →Sucursal; la 3ª es hacia Empresa).
+      expect(entreTablasPorEmpresa).toHaveLength(95);
       for (const f of entreTablasPorEmpresa) {
         expect(f.columnas, f.nombre).toHaveLength(2);
         expect(f.columnas, f.nombre).toContain("empresaId");
@@ -79,7 +80,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       for (const f of haciaGlobales) expect(f.columnas, f.nombre).not.toContain("empresaId");
 
       const haciaEmpresa = fks.filter((f) => f.destino === "Empresa" && conEmpresa.has(f.origen));
-      expect(haciaEmpresa).toHaveLength(50);
+      expect(haciaEmpresa).toHaveLength(51);
     });
   });
 

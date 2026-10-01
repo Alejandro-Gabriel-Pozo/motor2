@@ -37,8 +37,8 @@ describe("persistencia del cierre de cuenta", () => {
         clienteNombre: "Fulano",
         descuentoPorcentaje: 12.5,
         items: expect.arrayContaining([
-          { productoId: s.flan.id, cantidad: 1.5, precioUnitario: 3000.5, promoCuentaId: null, numeroEnvio: 1 },
-          { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000, promoCuentaId: null, numeroEnvio: null },
+          { productoId: s.flan.id, cantidad: 1.5, precioUnitario: 3000.5, precioCartaUnitario: null, promoCuentaId: null, numeroEnvio: 1 },
+          { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000, precioCartaUnitario: null, promoCuentaId: null, numeroEnvio: null },
         ]),
       });
       expect(c!.items).toHaveLength(2);
@@ -155,8 +155,8 @@ describe("persistencia de la boleta corregida", () => {
       mesaNumero: 4,
       cerradaEn,
       items: expect.arrayContaining([
-        { productoId: s.flan.id, productoNombre: "Flan", cantidad: 1.5, precioUnitario: 3000.5, operacionId: venta.id, anuladaEn },
-        { productoId: s.milanesa.id, productoNombre: "Milanesa", cantidad: 1, precioUnitario: 9000, operacionId: null, anuladaEn: null },
+        { productoId: s.flan.id, productoNombre: "Flan", cantidad: 1.5, precioUnitario: 3000.5, precioCartaUnitario: null, operacionId: venta.id, anuladaEn },
+        { productoId: s.milanesa.id, productoNombre: "Milanesa", cantidad: 1, precioUnitario: 9000, precioCartaUnitario: null, operacionId: null, anuladaEn: null },
       ]),
       ejemplares: [
         { id: b.id, sucursalId: s.sucursalId, numero: 9, ejemplar: 2, emitidoEn: anuladaEn },

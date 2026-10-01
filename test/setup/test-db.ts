@@ -51,6 +51,7 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.temaCartaSucursal.deleteMany();
   await prismaAdmin.portalCartaEmpresa.deleteMany();
   await prismaAdmin.sucursalPublica.deleteMany();
+  await prismaAdmin.descuentoProductoSucursal.deleteMany();
   await prismaAdmin.contenidoCartaProducto.deleteMany();
   // GeneroCarta (docs/plan-genero-carta-2026-09-26.md): DESPUÉS de ItemAgrupadoCarta y ContenidoCartaProducto, que lo referencian
   // (ON DELETE SET NULL, por ser `generoCartaId` opcional — el orden no es estrictamente necesario, pero mantiene el mismo

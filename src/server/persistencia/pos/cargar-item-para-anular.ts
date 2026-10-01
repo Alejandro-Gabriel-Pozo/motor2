@@ -15,6 +15,8 @@ export interface ItemParaAnular {
   cantidad: number;
   /** Precio de LISTA congelado al pedir: la fila espejo lo copia tal cual. */
   precioUnitario: number;
+  /** Producto con descuento: el precio de lista del suelto (la fila espejo lo copia tal cual para netear con el original). */
+  precioCartaUnitario: number | null;
   /** `null` = borrador sin enviar a cocina. */
   numeroEnvio: number | null;
   /** No nulo = el ítem ya es una fila espejo. */
@@ -54,6 +56,7 @@ export async function cargarItemParaAnular(tx: Prisma.TransactionClient, args: {
     productoId: item.productoId,
     cantidad: Number(item.cantidad),
     precioUnitario: Number(item.precioUnitario),
+    precioCartaUnitario: item.precioCartaUnitario !== null ? Number(item.precioCartaUnitario) : null,
     numeroEnvio: item.numeroEnvio,
     anulaAItemId: item.anulaAItemId,
     mesaNumero: item.cuenta.mesa.numero,

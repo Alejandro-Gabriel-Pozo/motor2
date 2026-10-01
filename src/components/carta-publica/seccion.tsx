@@ -74,9 +74,22 @@ function ItemFila({ item, estilo }: { item: ItemCartaV1; estilo: EstiloCarta }) 
             </span>
           )}
         </h3>
-        <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }}>
-          {formatearPrecioCarta(item.precio)}
-        </span>
+        {item.precioLista !== undefined ? (
+          <span className="shrink-0 flex flex-col items-end carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }} data-descuento-producto>
+            <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
+            <s aria-hidden="true" className="text-xs font-light opacity-75">
+              {formatearPrecioCarta(item.precioLista)}
+            </s>
+            <span aria-hidden="true">
+              {formatearPrecioCarta(item.precio)}
+              <span className="ml-1 text-xs font-light">{`−${item.descuentoPorcentaje} %`}</span>
+            </span>
+          </span>
+        ) : (
+          <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }}>
+            {formatearPrecioCarta(item.precio)}
+          </span>
+        )}
       </div>
       {item.descripcion && (
         <p className="mt-0.5 font-light leading-snug opacity-75" style={{ fontSize: v.carta_fuente_item_descripcion, color: colorDesc }}>

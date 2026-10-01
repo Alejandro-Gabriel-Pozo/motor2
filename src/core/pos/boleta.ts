@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
-import { lineasDeVenta } from "./cuenta";
+import { precioCobradoConDescuentos } from "@/core/carta/public";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
+import { claveDeLineaDeVenta, lineasDeVenta } from "./cuenta";
 import { nombreDelMesero } from "./mesas";
 import type { NumeroDeBoleta } from "./numeracion-boleta";
 
@@ -24,9 +25,9 @@ export const BOLETAS_RECIENTES_POR_MESA = 3;
 export interface LineaDeBoleta {
   producto: string;
   cantidad: number;
-  /** Precio COBRADO (con el descuento del cliente ya aplicado, si tiene uno — Task #14). */
+  /** Precio COBRADO (con el descuento del producto o del cliente ya aplicado — Task #14; rige solo el mayor de los dos). */
   precioUnitario: number;
-  /** Precio de LISTA de esta línea, SOLO cuando el descuento del cliente hizo que difiera de `precioUnitario`. */
+  /** Precio de LISTA de esta línea, SOLO cuando algún descuento (de producto o de cliente) hizo que difiera de `precioUnitario`. */
   precioListaUnitario?: number;
   subtotal: number;
   /** Task #16 (promo-combo, paso 2.6/3): la `PromoCuenta` de la que forma parte esta línea — la cabecera ("1 × Menú del
@@ -73,6 +74,9 @@ export interface ItemConVenta {
   productoNombre: string;
   cantidad: number;
   precioUnitario: number;
+  /** Producto con descuento: el precio de lista del suelto antes de ese descuento (`CuentaItem.precioCartaUnitario`); null/ausente si no tuvo.
+   *  En un componente de promo se ignora (ahí es el precio de carta para repartir la promo). */
+  precioCartaUnitario?: number | null;
   operacionId: string | null;
   anuladaEn: Date | null;
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): la promo de la que este ítem es un componente — AUSENTE en un
@@ -136,26 +140,28 @@ export interface PromoDeItemBoleta {
  * agrupar nunca mueve un centavo del total.
  */
 export function armarBoleta(
-  items: readonly { productoId: string; productoNombre: string; cantidad: number; precioUnitario: number; promo?: PromoDeItemBoleta }[],
+  items: readonly { productoId: string; productoNombre: string; cantidad: number; precioUnitario: number; precioCartaUnitario?: number | null; promo?: PromoDeItemBoleta }[],
   descuentoPorcentaje: number | null = null
 ): { lineas: LineaDeBoleta[]; total: number } {
-  const claveDe = (i: { productoId: string; precioUnitario: number; promo?: PromoDeItemBoleta }) => `${i.productoId}|${i.precioUnitario}|${i.promo?.promoCuentaId ?? ""}`;
+  const claveDe = (i: { productoId: string; precioUnitario: number; precioCartaUnitario?: number | null; promo?: PromoDeItemBoleta }) =>
+    claveDeLineaDeVenta({ productoId: i.productoId, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId, precioCartaUnitario: i.precioCartaUnitario });
   const nombres = new Map(items.map((i) => [claveDe(i), i.productoNombre]));
   const tituloPorPromo = new Map(items.flatMap((i) => (i.promo ? [[i.promo.promoCuentaId, i.promo.titulo] as const] : [])));
 
-  const netas = lineasDeVenta(items.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId })));
+  const netas = lineasDeVenta(
+    items.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId, precioCartaUnitario: i.precioCartaUnitario }))
+  );
   // `promoCuentaId` de cada neta se guarda APARTE (no en `componentes`, que es exactamente `LineaDeBoleta` sin promo): así, sin
   // ninguna promo, `componentes` sale IDÉNTICO al de antes de esta Task, sin ningún campo de más que limpiar.
   const promoCuentaIdDeLaNeta = netas.map((l) => l.promoCuentaId);
   const componentes: LineaDeBoleta[] = netas.map((l) => {
-    const precioLista = l.precioUnitario;
-    const precioCobrado = precioConDescuento(precioLista, descuentoPorcentaje);
+    const cobro = precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuentoPorcentaje);
     return {
-      producto: nombres.get(`${l.productoId}|${l.precioUnitario}|${l.promoCuentaId ?? ""}`) ?? "",
+      producto: nombres.get(claveDeLineaDeVenta(l)) ?? "",
       cantidad: l.cantidad,
-      precioUnitario: precioCobrado,
-      ...(precioCobrado !== precioLista ? { precioListaUnitario: precioLista } : {}),
-      subtotal: importeDeLinea(l.cantidad, precioCobrado),
+      precioUnitario: cobro.precio,
+      ...(cobro.precioLista !== null ? { precioListaUnitario: cobro.precioLista } : {}),
+      subtotal: importeDeLinea(l.cantidad, cobro.precio),
     };
   });
   // El total es la suma de los subtotales NETOS — el mismo importe por línea que `cerrarCuenta` registra en cada VENTA —, no la
@@ -219,6 +225,7 @@ export async function obtenerBoletasRecientes(sucursalId: string, mesaId: string
       productoNombre: i.producto.nombre,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
+      precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,

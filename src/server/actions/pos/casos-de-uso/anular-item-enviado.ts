@@ -65,7 +65,7 @@ export async function anularItemEnviadoCasoDeUso(
     if (aAnular.cantidad > restante) return fracaso("EXCEDE_RESTANTE", `No se puede anular más de lo que queda de «${producto.nombre}» (${formatearCantidad(restante)}).`);
 
     const espejoId = await escribirEspejoDeItem(tx, {
-      original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, numeroEnvio },
+      original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, precioCartaUnitario: item.precioCartaUnitario, numeroEnvio },
       cantidadAnulada: aAnular.cantidad,
       motivo: motivoValidado.motivo,
       creadoPorId: actor.usuarioId,

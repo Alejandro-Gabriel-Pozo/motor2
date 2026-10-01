@@ -2,7 +2,8 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.guard";
 import type { ComandoCerrarCuenta, ResultadoCerrarCuenta } from "@/core/features/cuentas/cuenta.schema";
-import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
+import { precioCobradoConDescuentos } from "@/core/carta/public";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { conTransaccionSerializable, registrarVentaEnTx } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { lineasDeVenta } from "@/core/pos/cuenta";
@@ -69,13 +70,16 @@ export async function cerrarCuentaCasoDeUso(
     // Cliente con descuento (Task #14, D7): `descuentoPorcentaje` es el SNAPSHOT congelado al asignarlo, nunca el % actual de `Cliente`.
     // `precioConDescuento` hace la aritmética exacta y el piso de 0,01; sin cliente devuelve el precio de lista tal cual.
     const descuento = cuenta.descuentoPorcentaje;
+    // Producto con descuento (Fase 2): si el suelto ya traía un descuento de producto, con el del cliente rige SOLO EL MAYOR (`precioCobradoConDescuentos`).
+    // `precioListaUnitario` del movimiento sigue significando «descuento de CLIENTE»: solo se escribe cuando gana ese (el reporte de descuentos a
+    // clientes lo lee); el descuento de producto vive en `CuentaItem.precioCartaUnitario` y tiene su propio reporte.
     const lineasVenta = lineas.map((l) => {
-      const precioCobrado = precioConDescuento(l.precioUnitario, descuento);
+      const cobro = precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuento);
       return {
         productoId: l.productoId,
         cantidadVendida: l.cantidad,
-        precioUnitario: precioCobrado,
-        precioListaUnitario: precioCobrado !== l.precioUnitario ? l.precioUnitario : undefined,
+        precioUnitario: cobro.precio,
+        precioListaUnitario: cobro.origen === "cliente" ? (cobro.precioLista ?? undefined) : undefined,
         promoCuentaId: l.promoCuentaId,
       };
     });
@@ -105,7 +109,13 @@ export async function cerrarCuentaCasoDeUso(
     await enlazarItemsConOperaciones(
       tx,
       cuenta.id,
-      lineas.map((linea, i) => ({ productoId: linea.productoId, precioUnitario: linea.precioUnitario, promoCuentaId: linea.promoCuentaId, operacionId: venta.operacionIds[i] }))
+      lineas.map((linea, i) => ({
+        productoId: linea.productoId,
+        precioUnitario: linea.precioUnitario,
+        promoCuentaId: linea.promoCuentaId,
+        precioCartaUnitario: linea.precioCartaUnitario,
+        operacionId: venta.operacionIds[i],
+      }))
     );
     await cerrar();
 

@@ -1,6 +1,6 @@
 import type { Db } from "./comun";
 import { armarBoletaImpresaEn, estadoDeBoleta, type EstadoDeBoleta, type ItemConVenta, type LineaDeBoleta } from "@/core/pos/boleta";
-import { lineasDeVenta } from "@/core/pos/cuenta";
+import { claveDeLineaDeVenta, lineasDeVenta } from "@/core/pos/cuenta";
 import { nombreDelMesero } from "@/core/pos/mesas";
 import type { NumeroDeBoleta } from "@/core/pos/numeracion-boleta";
 import { finDelDiaArgentina, hoyEnArgentina, inicioDelDiaArgentina } from "./rango-dia-argentina";
@@ -84,16 +84,18 @@ function lineasConOperacion(items: readonly ItemConVenta[], impresaEn: Date, des
   const vigentes = items.filter((i) => i.anuladaEn === null || i.anuladaEn > impresaEn);
   const operacionPorClave = new Map<string, string | null>();
   for (const i of vigentes) {
-    const clave = `${i.productoId}|${i.precioUnitario}|${i.promo?.promoCuentaId ?? ""}`;
+    const clave = claveDeLineaDeVenta({ productoId: i.productoId, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId, precioCartaUnitario: i.precioCartaUnitario });
     if (!operacionPorClave.has(clave)) operacionPorClave.set(clave, i.operacionId);
   }
-  const netas = lineasDeVenta(vigentes.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId })));
+  const netas = lineasDeVenta(
+    vigentes.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId, precioCartaUnitario: i.precioCartaUnitario }))
+  );
   let cursor = 0;
   return lineas.map((l): LineaBoletaEmitida => {
     const esCabecera = !l.indentado && l.promoCuentaId !== undefined;
     if (esCabecera) return { ...l, operacionId: null };
     const neta = netas[cursor++];
-    return { ...l, operacionId: operacionPorClave.get(`${neta.productoId}|${neta.precioUnitario}|${neta.promoCuentaId ?? ""}`) ?? null };
+    return { ...l, operacionId: operacionPorClave.get(claveDeLineaDeVenta(neta)) ?? null };
   });
 }
 
@@ -133,6 +135,7 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
               producto: { select: { nombre: true } },
               cantidad: true,
               precioUnitario: true,
+              precioCartaUnitario: true,
               operacionId: true,
               operacion: { select: { anuladaEn: true } },
               promoCuenta: { select: { id: true, titulo: true } },
@@ -153,6 +156,7 @@ export async function listarBoletasEmitidas(sucursalId: string, filtro: FiltroBo
       productoNombre: i.producto.nombre,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
+      precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,

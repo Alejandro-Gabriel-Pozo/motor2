@@ -91,6 +91,10 @@ commit, siempre con OK expreso del dueño.
   `carta_promo_activar` / `carta_promo_precio_local`. Se eliminan `PromocionProducto`, `Sucursal.promocionesHabilitadas`, las claves
   `promociones_*` y el reporte `/reportes/promociones`. Pendiente Fase 2: «producto con descuento» (porcentaje) en la carta.
   Al hacer el contract también se borran `carta_promos` y `promociones_config`/`_activar`/`_marcar_combo`.
+- Producto con descuento (Fase 2, 2026-10-01, schema autorizado): tabla `DescuentoProductoSucursal` (% por producto y sucursal), clave
+  `carta_producto_descuento`, reporte `/reportes/descuentos-productos`. Carta y POS lo aplican (precio congelado al agregar; lista en
+  `CuentaItem.precioCartaUnitario`); mostrador no. Con descuento de cliente rige solo el mayor. Nota preexistente sin tocar:
+  `emitir-boleta-corregida` arma la boleta vigente sin descuento y su loader no pasa `promo`.
 - Siguiente en el orden: contract (borrar las `Accion` padre, incluidas `ver_reportes_*`, `carta`, `motivos_movimiento`,
   `proceso_transferencia_sucursal`, `ejecutar_tests` y `sincronizar_proveedores`, y `editar_producto`) en un deploy posterior.
 - Catálogo, clave mixta `editar_producto` (3 claves nuevas, sin schema): `producto_editar`, `producto_asignar_insumo` y

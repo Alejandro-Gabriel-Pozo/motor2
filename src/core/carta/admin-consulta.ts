@@ -5,6 +5,7 @@ import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar
 import { esClavePortal, posicionCompleta, type PosicionPortal } from "./portal";
 import { esClaveTema } from "./tema";
 import { precioDePromo, seleccionDeSucursalDePromo } from "./promo-sucursal";
+import { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -35,6 +36,8 @@ export interface ProductoCartaAdmin {
   /** Nombre de la sección de carta ACTIVA donde está su contenido, o null. */
   seccionCarta: string | null;
   precio: number;
+  /** % de descuento de este producto EN esta sucursal (producto con descuento, 2026-10-01), o null. */
+  descuento: number | null;
   contenido:
     | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null }
     | null;
@@ -170,6 +173,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
     resolverMenuCartaConDiagnostico(sucursalId, db),
   ]);
 
+  const descuentos = await descuentosDeProductoEnSucursal(sucursalId, db, productos.map((p) => p.id));
   const productosAdmin: ProductoCartaAdmin[] = productos.map((p) => {
     const c = p.contenidoCarta;
     return {
@@ -177,6 +181,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
       nombre: p.nombre,
       seccionCarta: c?.seccionCarta?.activa ? c.seccionCarta.nombre : null,
       precio: Number(p.precioVenta),
+      descuento: descuentos.get(p.id) ?? null,
       contenido: c && {
         visibleEnCarta: c.visibleEnCarta,
         seccionCartaId: c.seccionCartaId,

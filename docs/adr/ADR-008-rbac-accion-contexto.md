@@ -104,6 +104,10 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
   `promociones_activar`, `promociones_marcar_combo`, el reporte `/reportes/promociones`, `PromocionProducto` y `Sucursal.promocionesHabilitadas`
   (migración `20261001180000_promo_de_empresa`, con `down.sql`; el banco de pruebas de partición aprendió `desdeMarca` y `retiradasDespues`).
   Un producto suelto con descuento NO es una promo: es «producto con descuento» (porcentaje en la carta, Fase 2, aparte).
+  Fase 2 (2026-10-01, schema autorizado): «producto con descuento». El porcentaje vive por sucursal (`DescuentoProductoSucursal`, migración
+  `20261001190000_descuento_producto_sucursal`) y lo fija `carta_producto_descuento` (contexto sucursal; copia lo que cada rol tenía en
+  `carta_contenido_producto`, que es de empresa: estrechamiento deliberado). Reporte propio `reporte_descuentos_productos` (migración de datos
+  `20261001191000`). Rige en carta y POS, NO en mostrador; con el descuento del cliente se aplica SOLO EL MAYOR (no cascada).
 - Se retiraron `ejecutar_tests` y `sincronizar_proveedores` del catálogo (sin consumidor; sus filas `Accion` quedan hasta el contract). Los catálogos CRUD simples (proveedores, categorías,
   secciones, unidades, clientes) se dejan con Ver/Editar, sin partir. Las claves de admin de usuarios/permisos son fijas para el admin.
 

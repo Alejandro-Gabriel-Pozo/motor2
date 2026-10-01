@@ -3,6 +3,7 @@
 import type { Db } from "@/lib/db-tipos";
 import { esErrorDeUnicidad, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "@/core/carta/armar-menu";
+import { productoTieneDescuentoEnAlgunaSucursal } from "@/core/carta/descuento-producto-consulta";
 import {
   normalizarTagsCarta,
   validarNombreItemAgrupadoCarta,
@@ -170,6 +171,7 @@ async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: st
   });
   if (!producto) return error("No se encontró el producto.");
   if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
+  if (await productoTieneDescuentoEnAlgunaSucursal(producto.id, db)) return error(`«${producto.nombre}» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).`);
 
   const yaAgrupado = await mensajeYaAgrupado(db, producto.id, producto.nombre, item.id);
   if (yaAgrupado) return error(yaAgrupado);
