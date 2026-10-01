@@ -42,6 +42,19 @@ describe("bootstrap del primer admin", () => {
     expect(pertenencia?.rolEmpresa).toBe("gerente");
   });
 
+  it("una empresa tiene un solo gerente: si ya tiene uno, el bootstrap no crea un segundo", async () => {
+    const { sucursal } = await sembrarBase();
+    process.env.BOOTSTRAP_ADMIN_EMAILS = "dueño@negocio.com";
+    const gerente = await prismaAdmin.user.create({ data: { email: "gerente@negocio.com" } });
+    await prismaAdmin.usuarioEmpresa.create({ data: { usuarioId: gerente.id, empresaId: sucursal.empresaId, rolEmpresa: "gerente" } });
+    const usuario = await prismaAdmin.user.create({ data: { email: "dueño@negocio.com" } });
+
+    await intentarBootstrapAdmin(usuario.id, usuario.email);
+
+    expect((await prismaAdmin.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: usuario.id } })).rolEmpresa).toBeNull();
+    expect(await prismaAdmin.usuarioEmpresa.count({ where: { empresaId: sucursal.empresaId, rolEmpresa: "gerente" } })).toBe(1);
+  });
+
   it("el bootstrap no pisa un rol de empresa que el usuario ya tuviera cargado", async () => {
     const { sucursal } = await sembrarBase();
     process.env.BOOTSTRAP_ADMIN_EMAILS = "dueño@negocio.com";

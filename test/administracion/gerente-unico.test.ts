@@ -1,0 +1,232 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+
+import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
+import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { crearMembresia } from "../setup/membresia";
+import { obtenerGerenteDeEmpresa, transferirGerenciaDeEmpresa } from "../../src/core/permisos/gerencia";
+import {
+  actualizarActivoMembresia,
+  actualizarActivoUsuarioEnEmpresa,
+  agregarOActualizarUsuario,
+  transferirGerencia,
+} from "../../src/server/actions/auth/usuarios";
+
+/**
+ * Una empresa tiene UN solo gerente (`UsuarioEmpresa.rolEmpresa = 'gerente'`): nunca queda sin gerente ni con dos, nadie más que él lo
+ * modifica y la gerencia solo cambia de manos con un traspaso. La regla vive en el código; el índice único en la base es una fase posterior.
+ */
+
+const NORTE = "norte";
+
+async function crearEmpresaNorte() {
+  await prismaAdmin.empresa.create({
+    data: { id: NORTE, nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
+  });
+  const sucursal = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: NORTE } });
+  const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: NORTE } });
+  return { sucursal, admin };
+}
+
+const gerentes = (empresaId = EMPRESA_POR_DEFECTO_ID) => prismaAdmin.usuarioEmpresa.findMany({ where: { empresaId, rolEmpresa: "gerente" }, select: { usuarioId: true } });
+const hacerGerente = (usuarioId: string, empresaId = EMPRESA_POR_DEFECTO_ID) =>
+  prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, data: { rolEmpresa: "gerente" } });
+const traspasar = (usuarioDestinoId: string, empresaId = EMPRESA_POR_DEFECTO_ID) =>
+  prismaAdmin.$transaction((tx) => transferirGerenciaDeEmpresa(tx, { empresaId, usuarioDestinoId }));
+
+describe("transferirGerenciaDeEmpresa", () => {
+  let base: Awaited<ReturnType<typeof sembrarBase>>;
+  let gerenteId: string;
+  let adminId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    base = await sembrarBase();
+    gerenteId = (await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    await hacerGerente(gerenteId);
+  });
+
+  it("el gerente actual deja de serlo y el destino lo es: sigue habiendo uno solo", async () => {
+    const r = await traspasar(adminId);
+    expect(r).toMatchObject({ ok: true, gerenteAnteriorId: gerenteId });
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
+    expect((await obtenerGerenteDeEmpresa(prismaAdmin, EMPRESA_POR_DEFECTO_ID))?.usuarioId).toBe(adminId);
+  });
+
+  it("si la empresa no tiene gerente (dato viejo, o la plataforma lo asigna), lo nombra sin gerente anterior", async () => {
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: gerenteId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: null } });
+    const r = await traspasar(adminId);
+    expect(r).toMatchObject({ ok: true, gerenteAnteriorId: null });
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
+  });
+
+  it("no se traspasa a quien ya es el gerente", async () => {
+    const r = await traspasar(gerenteId);
+    expect(r.ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
+  });
+
+  it("el destino tiene que ser admin activo en alguna sucursal (no se salta el escalón)", async () => {
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    expect((await traspasar(operador.id)).ok).toBe(false);
+
+    await prismaAdmin.usuarioSucursal.updateMany({ where: { usuarioId: adminId }, data: { activo: false } });
+    expect((await traspasar(adminId)).ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
+  });
+
+  it("el destino tiene que tener la cuenta activa, en la empresa y en la plataforma", async () => {
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { activo: false } });
+    expect((await traspasar(adminId)).ok).toBe(false);
+
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { activo: true } });
+    await prismaAdmin.user.update({ where: { id: adminId }, data: { activoGlobal: false } });
+    expect((await traspasar(adminId)).ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
+  });
+
+  it("con dos empresas, el traspaso de una no toca al gerente de la otra ni acepta a alguien de la otra", async () => {
+    const norte = await crearEmpresaNorte();
+    const gerenteNorte = await crearUsuarioConMembresia({ email: "gerente-norte@test.com", sucursalId: norte.sucursal.id, rolId: norte.admin.id });
+    const adminNorte = await crearUsuarioConMembresia({ email: "admin-norte@test.com", sucursalId: norte.sucursal.id, rolId: norte.admin.id });
+    await hacerGerente(gerenteNorte.id, NORTE);
+
+    expect((await traspasar(adminNorte.id, EMPRESA_POR_DEFECTO_ID)).ok).toBe(false);
+    expect((await traspasar(adminId)).ok).toBe(true);
+
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
+    expect((await gerentes(NORTE)).map((g) => g.usuarioId)).toEqual([gerenteNorte.id]);
+  });
+
+  it("dos traspasos que parten del mismo gerente no se aplican los dos: el segundo ve que la gerencia cambió", async () => {
+    const otroAdmin = await crearUsuarioConMembresia({ email: "otro-admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    let liberar!: () => void;
+    const puerta = new Promise<void>((r) => (liberar = r));
+
+    // El primero escribe y deja su transacción abierta; el segundo lee al MISMO gerente (el cambio no está confirmado) y queda esperando su baja.
+    const primero = prismaAdmin.$transaction(async (tx) => {
+      const r = await transferirGerenciaDeEmpresa(tx, { empresaId: EMPRESA_POR_DEFECTO_ID, usuarioDestinoId: adminId });
+      await puerta;
+      return r;
+    });
+    await espera(500);
+    const segundo = traspasar(otroAdmin.id);
+    await espera(500);
+    liberar();
+    const [r1, r2] = await Promise.all([primero, segundo]);
+
+    expect(r1.ok).toBe(true);
+    expect(r2.ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
+  });
+});
+
+describe("el gerente está por encima del admin: nadie más lo toca", () => {
+  let base: Awaited<ReturnType<typeof sembrarBase>>;
+  let gerenteId: string;
+  let adminId: string;
+  let otraSucursalId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    base = await sembrarBase();
+    otraSucursalId = (await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } })).id;
+    gerenteId = (await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    await hacerGerente(gerenteId);
+  });
+
+  const actuarComo = async (id: string, email: string) => mockearUsuarioActual({ id, email, nombre: null });
+  const membresiaDe = (usuarioId: string, sucursalId = base.sucursal.id) => prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId, sucursalId } });
+
+  it("un admin que no es gerente no puede desactivar la cuenta del gerente, ni su membresía, ni cambiarle el rol", async () => {
+    await actuarComo(adminId, "admin@test.com");
+
+    const cuenta = await actualizarActivoUsuarioEnEmpresa(gerenteId, false);
+    expect(cuenta.ok).toBe(false);
+    expect(cuenta.mensaje).toMatch(/gerente/);
+    expect((await prisma.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: gerenteId } })).activo).toBe(true);
+
+    const membresia = await actualizarActivoMembresia((await membresiaDe(gerenteId)).id, false);
+    expect(membresia.ok).toBe(false);
+    expect((await membresiaDe(gerenteId)).activo).toBe(true);
+
+    const rol = await agregarOActualizarUsuario({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    expect(rol.ok).toBe(false);
+    expect((await membresiaDe(gerenteId)).rolId).toBe(base.admin.id);
+  });
+
+  it("el gerente no puede desactivar su propia cuenta en la empresa", async () => {
+    await actuarComo(gerenteId, "gerente@test.com");
+    const r = await actualizarActivoUsuarioEnEmpresa(gerenteId, false);
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toMatch(/traspas/);
+    expect((await prisma.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: gerenteId } })).activo).toBe(true);
+  });
+
+  it("el gerente no puede quedarse sin ninguna sucursal activa, pero sí desactivar una si le queda otra", async () => {
+    await actuarComo(gerenteId, "gerente@test.com");
+    const unica = await actualizarActivoMembresia((await membresiaDe(gerenteId)).id, false);
+    expect(unica.ok).toBe(false);
+    expect(unica.mensaje).toMatch(/gerente/);
+    expect((await membresiaDe(gerenteId)).activo).toBe(true);
+
+    await crearMembresia({ usuarioId: gerenteId, sucursalId: otraSucursalId, rolId: base.admin.id, activo: true });
+    const conOtra = await actualizarActivoMembresia((await membresiaDe(gerenteId)).id, false);
+    expect(conOtra.ok, conOtra.mensaje).toBe(true);
+  });
+
+  it("una vez traspasada la gerencia, quien dejó de ser gerente ya es un admin común (se lo puede desactivar)", async () => {
+    await actuarComo(gerenteId, "gerente@test.com");
+    expect((await transferirGerencia(adminId)).ok).toBe(true);
+
+    await actuarComo(adminId, "admin@test.com");
+    const r = await actualizarActivoUsuarioEnEmpresa(gerenteId, false);
+    expect(r.ok, r.mensaje).toBe(true);
+  });
+});
+
+describe("transferirGerencia (la acción)", () => {
+  let base: Awaited<ReturnType<typeof sembrarBase>>;
+  let gerenteId: string;
+  let adminId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    base = await sembrarBase();
+    gerenteId = (await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    await hacerGerente(gerenteId);
+  });
+
+  it("el gerente traspasa la gerencia a un admin y queda en la auditoría de la empresa", async () => {
+    await mockearUsuarioActual({ id: gerenteId, email: "gerente@test.com", nombre: null });
+    const r = await transferirGerencia(adminId);
+    expect(r.ok, r.mensaje).toBe(true);
+
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
+    const registros = await prisma.registroAuditoria.findMany({ where: { entidad: "UsuarioEmpresa" } });
+    expect(registros).toHaveLength(1);
+    expect(registros[0]).toMatchObject({ entidadId: adminId, campo: "rolEmpresa", actorId: gerenteId, sucursalId: null, valorAnterior: gerenteId, valorNuevo: adminId });
+  });
+
+  it("un admin que no es gerente no puede pedir el traspaso, ni a sí mismo", async () => {
+    await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
+    const r = await transferirGerencia(adminId);
+    expect(r.ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "UsuarioEmpresa" } })).toBe(0);
+  });
+
+  it("un destino que no corresponde no cambia nada ni deja rastro en la auditoría", async () => {
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    await mockearUsuarioActual({ id: gerenteId, email: "gerente@test.com", nombre: null });
+    const r = await transferirGerencia(operador.id);
+    expect(r.ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "UsuarioEmpresa" } })).toBe(0);
+  });
+});

@@ -33,7 +33,9 @@ export interface CambioAuditable {
     | "Sucursal"
     // "PagoConsignante" (Task #41, M14): un pago a un proveedor de consignación — `entidadId` es el id del PagoConsignante creado,
     // `campo: "importe"`, `valorAnterior: null` (siempre una creación, nunca una edición — append-only, igual que el resto del Kardex).
-    | "PagoConsignante";
+    | "PagoConsignante"
+    // "UsuarioEmpresa": el traspaso de la gerencia de la empresa (`transferirGerencia`) — `entidadId` es el usuario que pasa a ser gerente, `sucursalId` null (es de la empresa).
+    | "UsuarioEmpresa";
   entidadId: string;
   /** Legible de entrada, ej. `Producto "Pan Francés": precio de venta`. */
   descripcion: string;

@@ -43,8 +43,12 @@ commit, siempre con OK expreso del dueño.
   gate ignora la fila de un rol por debajo del piso (permiso, menú y lecturas), y la matriz marca esas celdas con 🚫 y muestra el «Piso». Un rol
   personalizado es de nivel operario; solo «admin» es de nivel administrador; las de piso gerente las tiene solo el gerente de la empresa
   (`esGerenteDeEmpresa`, sin matriz ni capacidad de la Central; hoy no existe ninguna, se prueba con un mock). Las filas viejas por encima del
-  piso quedan en la base pero el gate las ignora (no se limpian). Falta: un solo gerente por empresa en código + `transferirGerencia` +
-  migración de datos (paso 2) y el ADR-008 (paso 3).
+  piso quedan en la base pero el gate las ignora (no se limpian).
+- Jerarquía, paso 2 (sin schema): un solo gerente por empresa en código (`core/permisos/gerencia.ts`, `conGerenteDeEmpresa`; nadie más que el
+  gerente lo toca, no puede desactivar su cuenta ni su última sucursal; el bootstrap no crea un segundo), acción `transferirGerencia` con
+  auditoría y migración de datos `20261001120000_gerente_unico_por_empresa` (un gerente por empresa: el más antiguo, o el admin activo más
+  antiguo). Falta: la UI del traspaso de gerencia, el índice único en la base (schema, requiere autorización expresa; hoy la asignación
+  concurrente en una empresa SIN gerente no está protegida) y el ADR-008 (paso 3).
 - Fase de contract (borrar las `Accion` padre, incluidas `ver_reportes_*`) en un deploy posterior.
 - Siguiente en el orden: operaciones/POS/carta/catálogo, después administración.
 

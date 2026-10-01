@@ -4,7 +4,9 @@ import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
-import { conPermiso } from "../con-permiso";
+import { conGerenteDeEmpresa, conPermiso } from "../con-permiso";
+import { esUsuarioGerenteDeEmpresa, transferirGerenciaDeEmpresa } from "@/core/permisos/gerencia";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 
@@ -15,6 +17,14 @@ import { requerirVerEnSucursal } from "../con-sesion";
  */
 function puedeTocarAdmins(ctx: { rolEmpresa: string | null }, esAdminEnLaSucursal: boolean): boolean {
   return esAdminEnLaSucursal || esGerenteDeEmpresa(ctx.rolEmpresa);
+}
+
+const MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE = "Solo el gerente de la empresa puede modificar al gerente.";
+
+/** El gerente está por encima del admin: nadie más que él lo modifica (rol, sucursales ni cuenta). La plataforma lo cambia con su propia herramienta. */
+async function noPuedeTocarAlGerente(ctx: { db: Db; empresaId: string; usuarioId: string }, usuarioObjetivoId: string): Promise<boolean> {
+  if (ctx.usuarioId === usuarioObjetivoId) return false;
+  return esUsuarioGerenteDeEmpresa(ctx.db, ctx.empresaId, usuarioObjetivoId);
 }
 
 async function contarAdminsActivosExcluyendo(db: Db, empresaId: string, idExcluido?: string): Promise<number> {
@@ -83,6 +93,7 @@ export async function agregarOActualizarUsuario(input: {
     if (!puedeTocarAdmins(ctx, esAdminAhi) && (rol.nombre === "admin" || existente?.rol.nombre === "admin")) {
       return error("Solo un admin o el gerente de la empresa puede dar el rol admin o modificar a un admin.");
     }
+    if (await noPuedeTocarAlGerente(ctx, usuario.id)) return error(MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE);
 
     // Salvaguarda: si esto le cambia el rol a la única persona admin activa
     // de todo el sistema, no dejarlo aplicar (Core.js:1159-1167 — "nunca
@@ -124,6 +135,12 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
 
     if (membresia.rol.nombre === "admin" && !puedeTocarAdmins(ctx, ctx.rolNombre === "admin")) {
       return error("Solo un admin o el gerente de la empresa puede modificar a un admin.");
+    }
+    if (await noPuedeTocarAlGerente(ctx, membresia.usuarioId)) return error(MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE);
+    // La empresa nunca queda sin gerente: sin ninguna sucursal activa no tendría contexto (core/auth/contexto.ts) y la gerencia quedaría huérfana.
+    if (!activo && membresia.activo && (await esUsuarioGerenteDeEmpresa(ctx.db, ctx.empresaId, membresia.usuarioId))) {
+      const otras = await ctx.db.usuarioSucursal.count({ where: { empresaId: ctx.empresaId, usuarioId: membresia.usuarioId, activo: true, id: { not: membresiaId } } });
+      if (otras === 0) return error("El gerente no puede quedarse sin ninguna sucursal activa: traspasá la gerencia antes de desactivarlo.");
     }
     if (!activo && membresia.rol.nombre === "admin") {
       const quedan = await contarAdminsActivosExcluyendo(ctx.db, ctx.empresaId, membresiaId);
@@ -179,6 +196,13 @@ export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo
     if (esAdminActivo && !puedeTocarAdmins(ctx, ctx.rolNombre === "admin")) {
       return error("Solo un admin o el gerente de la empresa puede modificar a un admin.");
     }
+    if (!activo && esGerenteDeEmpresa(pertenencia.rolEmpresa)) {
+      return error(
+        ctx.usuarioId === usuarioId
+          ? "El gerente no puede desactivar su propia cuenta: traspasá la gerencia antes."
+          : MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE,
+      );
+    }
 
     if (!activo && esAdminActivo) {
       const quedan = await ctx.db.usuarioSucursal.count({
@@ -191,5 +215,32 @@ export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo
 
     await ctx.db.usuarioEmpresa.update({ where: { id: pertenencia.id }, data: { activo } });
     return ok(`Cuenta de "${usuario.email}" ${activo ? "reactivada" : "desactivada"} en la empresa.`);
+  });
+}
+
+/**
+ * Traspasa la gerencia de la empresa a otro usuario (el gerente actual deja de serlo). Solo la pide el gerente actual: es una acción
+ * de la jerarquía y no de la matriz de permisos (la autoridad de empresa no se delega). La baja del actual y el alta del nuevo van en
+ * una sola transacción, y queda en la auditoría de la empresa.
+ */
+export async function transferirGerencia(usuarioDestinoId: string): Promise<ResultadoAccion> {
+  return conGerenteDeEmpresa(async (ctx) => {
+    const resultado = await ctx.transaccion(async (tx) => {
+      const r = await transferirGerenciaDeEmpresa(tx, { empresaId: ctx.empresaId, usuarioDestinoId });
+      if (r.ok) {
+        await registrarCambioAuditado(tx, {
+          entidad: "UsuarioEmpresa",
+          entidadId: usuarioDestinoId,
+          descripcion: "Gerente de la empresa",
+          campo: "rolEmpresa",
+          valorAnterior: ctx.usuarioId,
+          valorNuevo: usuarioDestinoId,
+          actorId: ctx.usuarioId,
+          sucursalId: null,
+        });
+      }
+      return r;
+    });
+    return resultado.ok ? ok(resultado.mensaje) : error(resultado.mensaje);
   });
 }

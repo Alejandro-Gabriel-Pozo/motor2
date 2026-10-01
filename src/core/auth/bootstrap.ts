@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { obtenerGerenteDeEmpresa } from "@/core/permisos/gerencia";
+import { ROL_EMPRESA_GERENTE } from "@/core/permisos/rol-empresa";
 import { dbDeEmpresa } from "./base";
 
 export function obtenerEmailsBootstrap(): string[] {
@@ -53,11 +55,12 @@ export async function intentarBootstrapAdmin(usuarioId: string, email: string): 
   if (!rolAdmin) return;
 
   // Las dos pertenencias (empresa y sucursal) van juntas: sin la de empresa el usuario no tendría contexto (contexto.ts).
-  // Quien crea la empresa (su primer admin) es su gerente; el `update` no pisa un rol que ya tuviera cargado.
+  // Quien crea la empresa (su primer admin) es su gerente — salvo que ya tenga uno: una empresa tiene un solo gerente. El `update` no pisa un rol que ya tuviera cargado.
+  const rolEmpresa = (await obtenerGerenteDeEmpresa(db, empresaId)) ? null : ROL_EMPRESA_GERENTE;
   await db.usuarioEmpresa.upsert({
     where: { usuarioId_empresaId: { usuarioId, empresaId } },
     update: { activo: true },
-    create: { usuarioId, empresaId, rolEmpresa: "gerente" },
+    create: { usuarioId, empresaId, rolEmpresa },
   });
   await db.usuarioSucursal.upsert({
     where: { usuarioId_sucursalId: { usuarioId, sucursalId: sucursal.id } },

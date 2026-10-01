@@ -2,6 +2,7 @@ import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contex
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/core/permisos/gate";
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
+import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
 import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
 import { error, type ResultadoAccion } from "./tipos";
 
@@ -30,6 +31,17 @@ export async function conPermisoDeEmpresa<T extends ResultadoAccion = ResultadoA
   fn: (ctx: ContextoUsuario) => Promise<T>
 ): Promise<T> {
   return conGate((ctx) => requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db), fn);
+}
+
+/**
+ * Como `conPermisoDeEmpresa` para lo que SOLO hace el gerente de la empresa y no se delega por matriz (`UsuarioEmpresa.rolEmpresa`):
+ * traspasar la gerencia. Las acciones de piso gerente del catálogo usan `conPermisoDeEmpresa`, que ya aplica el mismo criterio.
+ */
+export async function conGerenteDeEmpresa<T extends ResultadoAccion = ResultadoAccion>(fn: (ctx: ContextoUsuario) => Promise<T>): Promise<T> {
+  return conGate(
+    async (ctx) => (esGerenteDeEmpresa(ctx.rolEmpresa) ? { ok: true } : { ok: false, mensaje: "Solo el gerente de la empresa puede hacer esto." }),
+    fn,
+  );
 }
 
 async function conGate<T extends ResultadoAccion>(
