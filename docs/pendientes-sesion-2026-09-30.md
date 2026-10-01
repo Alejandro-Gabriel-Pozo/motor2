@@ -110,7 +110,13 @@ commit, siempre con OK expreso del dueño.
    de la partición; probablemente necesita schema (autorización expresa).
 3. Permisos de carta (corrida 1, sin schema) y recetas (corrida 1, sin schema), según
    `motor2-recetas-carta-por-sucursal-decisiones`.
-4. Auditoría de traspasos, compras, clientes, api y cron (hoy no dejan rastro en `RegistroAuditoria`).
+4. ~~Auditoría de traspasos, compras, clientes, api y cron~~ — HECHO (Lote 1, 2026-10-01). Se verificó contra el código: traspasos y compras
+   ya dejan rastro propio (`TraspasoSucursal`, `Operacion` con su actor); el hueco real eran Clientes (alta/edición/activar) y la asignación
+   de cliente a una cuenta, que ahora auditan, más el filtro "Cuenta" y la lista única `ENTIDADES_AUDITABLES`. Guardián:
+   `test/arquitectura/escrituras-auditadas.test.ts`. El cron queda fuera de alcance (no hay actor humano).
+   Indicador de stock en tránsito (Lote 1): `/stock/consolidado` muestra, solo si hay algo, lo que ya salió del Kardex del origen y todavía no
+   figura en ninguna sucursal (traspaso ENVIADA: por recibir / enviado por aceptar; RECHAZADA_DESTINO: pendiente de reingreso). Cálculo en
+   `src/core/stock/en-transito.ts`; tests `test/stock/en-transito.test.ts` y fila axe en `test/e2e/accesibilidad.spec.ts`.
 5. Iconos lucide en el menú, con medición de bundle antes de decidir.
 6. `/inicio` real (hoy no es una pantalla propia).
 7. Plan de cambio de sucursal / salida del salón (navegación decidida, sin implementar).
