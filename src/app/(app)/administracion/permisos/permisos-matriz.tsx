@@ -261,7 +261,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
         </table>
       </div>
       <p className="text-xs text-neutral-500">
-        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos» y «gestion_usuarios» siempre conservan Editar para el admin (🔒). Las acciones con «Piso» (administrador) no se le pueden dar a un rol de nivel operario (🚫).
+        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el admin (🔒). Las acciones con «Piso» (administrador) no se le pueden dar a un rol de nivel operario (🚫).
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
       </p>
     </div>

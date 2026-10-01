@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
-import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
 import { listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
 
@@ -35,8 +34,9 @@ export default async function AuditoriaPage({
   const entidad = ENTIDADES.includes(sp.entidad as CambioAuditable["entidad"]) ? (sp.entidad as CambioAuditable["entidad"]) : undefined;
   // El gate de arriba es de la sucursal activa: las filas de las otras se muestran solo si allí el rol también puede ver la auditoría.
   const sucursalIds = await sucursalesVisiblesDeAuditoria(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), ctx.db);
-  // Las filas sin sucursal (cambios de la empresa entera) no las cubre un permiso por sucursal: las ve solo el gerente de empresa.
-  const incluirFilasDeEmpresa = esGerenteDeEmpresa(ctx.rolEmpresa);
+  // Las filas sin sucursal (cambios de la empresa entera) no las cubre un permiso por sucursal: las ve solo quien tiene `ver_auditoria_empresa`
+  // (acción de piso gerente: el gerente de la empresa, sin pasar por la matriz).
+  const { ver: incluirFilasDeEmpresa } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "ver_auditoria_empresa", ctx.db);
   const { items, nextCursor } = await listarRegistrosAuditoria({ entidad, cursor: sp.cursor, sucursalIds, incluirFilasDeEmpresa }, ctx.db);
 
   const filas: FilaAuditoria[] = items.map((r) => ({

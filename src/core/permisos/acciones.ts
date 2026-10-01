@@ -75,13 +75,16 @@ export const ACCIONES = [
   // el parche de Apps Script para resincronizar Productos ↔ Hoja listado
   // (dos hojas, sin FKs). Acá Producto es una sola tabla — no hay nada que
   // reconstruir.
-  // 'sincronizar_proveedores' queda reservada sin server action propia:
-  // ver plan, porción Catálogo — solo tendría sentido para importar un
-  // histórico externo con nombres de proveedor sueltos, no para esta porción.
-  { clave: "sincronizar_proveedores", descripcion: "Sincronizar Proveedores desde el historial", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "ejecutar_tests", descripcion: "Ejecutar la suite de tests", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "gestion_usuarios", descripcion: "Gestionar usuarios y roles", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "gestion_permisos", descripcion: "Gestionar qué rol puede hacer cada acción", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // 'sincronizar_proveedores' y 'ejecutar_tests' se retiraron del catálogo (2026-10-01): nunca tuvieron una acción que las usara (la primera era
+  // para importar un histórico externo; la segunda, la suite de tests de Apps Script) y una clave sin acción es una promesa falsa en la matriz.
+  // Administración: una clave por acción. `gestion_usuarios` queda para agregar gente a la sucursal y cambiarle el rol (el resto de lo que
+  // hacía se partió); `gestion_permisos`, para la matriz de permisos (la gestión de roles pasó a `gestion_roles`).
+  { clave: "gestion_usuarios", descripcion: "Agregar usuarios a la sucursal y cambiarles el rol", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "activar_usuario_sucursal", descripcion: "Activar o desactivar a un usuario en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "notas_usuario_sucursal", descripcion: "Editar las notas de un usuario en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "apagar_cuenta_empresa", descripcion: "Apagar o reactivar la cuenta de un usuario en toda la empresa", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "gestion_permisos", descripcion: "Gestionar la matriz de permisos de los roles", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "gestion_roles", descripcion: "Crear, activar y desactivar roles", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "proceso_compra", descripcion: "Registrar una Compra", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_produccion", descripcion: "Registrar una Producción", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_consumo", descripcion: "Registrar un Consumo", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
@@ -115,8 +118,13 @@ export const ACCIONES = [
   // sistema, exclusiva de admin, que crea la sucursal y asigna su primer
   // admin en la misma transacción (nunca queda una sucursal sin admin).
   { clave: "alta_sucursal", descripcion: "Dar de alta una sucursal nueva y asignar su primer admin", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "activar_sucursal", descripcion: "Activar o desactivar una sucursal", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "renombrar_sucursal", descripcion: "Renombrar una sucursal", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "pagar_consignante", descripcion: "Registrar un pago a un proveedor de consignación", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "ver_auditoria", descripcion: "Ver el registro de auditoría administrativa (precios y permisos)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "ver_auditoria", descripcion: "Ver el registro de auditoría administrativa de la sucursal (precios y permisos)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Primera acción de piso gerente: la tiene solo el gerente de la empresa, sin pasar por la matriz (reemplaza el `esGerenteDeEmpresa` suelto de la
+  // pantalla de Auditoría). No tiene padre: no existía como clave, así que la migración solo la da de alta y nadie la hereda.
+  { clave: "ver_auditoria_empresa", descripcion: "Ver las filas de auditoría de la empresa (las que no son de una sucursal)", contexto: "empresa", nivelMinimo: "gerente", rolesEditarSemilla: [] },
   // Reportes: UNA clave por reporte (decisión del dueño, 2026-09-30; reemplaza la agrupación `ver_reportes_*` del 2026-09-19). Son claves de
   // «Ver»: no hay nada que editar. Los reportes de dinero y de control tienen piso de administrador (un operario nunca los recibe); los
   // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación,
@@ -238,9 +246,15 @@ export function rolAlcanzaLaAccion(rolNombre: string, clave: AccionClave): boole
  * mismo criterio que Core.js:1507-1511 (actualizarPermisoDesdePanel):
  * si se le pudiera sacar 'admin' a 'gestion_permisos'/'gestion_usuarios',
  * un admin podría desconfigurar esto y dejar a todo el mundo sin forma de
- * volver a entrar a corregirlo.
+ * volver a entrar a corregirlo. Las claves en que se partieron (roles, activar
+ * o anotar usuarios, apagar cuentas) siguen igual: perder cualquiera de ellas
+ * deja a la empresa sin quien pueda ordenar su propia gente.
  */
 export const ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE: readonly AccionClave[] = [
   "gestion_permisos",
+  "gestion_roles",
   "gestion_usuarios",
+  "activar_usuario_sucursal",
+  "notas_usuario_sucursal",
+  "apagar_cuenta_empresa",
 ];

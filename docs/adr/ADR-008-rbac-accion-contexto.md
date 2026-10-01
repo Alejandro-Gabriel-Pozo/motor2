@@ -80,7 +80,7 @@ El gerente es `UsuarioEmpresa.rolEmpresa = "gerente"` y hay uno por empresa. Se 
   Una cuenta compartida entre empresas se apaga solo en la que lo decide.
 - **Techo del admin**: dar, tocar o desactivar a un admin lo hace un admin de esa sucursal o el gerente; `gestion_usuarios` sola no alcanza.
 - **Auditoría**: las filas sin sucursal (cambios de empresa) no las ve cualquiera; el alcance de cada vista lo decide el contexto de la
-  acción que la gobierna. A futuro `ver_auditoria_empresa` (clave RBAC) reemplaza el chequeo de gerente en la página de auditoría.
+  acción que la gobierna. `ver_auditoria_empresa` (empresa, piso gerente, sin matriz) reemplazó el chequeo de gerente de la página de auditoría.
 
 ### 5. Partición de claves (una clave por acción)
 
@@ -92,8 +92,11 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 - Orden: infraestructura → reportes → operaciones/POS/carta/catálogo → administración → contract.
 - Hecho: infraestructura; reportes (26 claves `reporte_*` reemplazan a las 4 `ver_reportes_*`; migración
   `20261001100000_particion_permisos_reportes`); piso `nivelMinimo`; un gerente por empresa; operaciones/POS/catálogo grupo A (19 claves,
-  `20261001130000_particion_permisos_stock_pos_catalogo`; el banco de pruebas de migraciones de partición es reutilizable).
-- Se retiran `ejecutar_tests` y `sincronizar_proveedores` (sin consumidor). Los catálogos CRUD simples (proveedores, categorías,
+  `20261001130000_particion_permisos_stock_pos_catalogo`; el banco de pruebas de migraciones de partición es reutilizable); grupos B
+  (`motivos_*`, `traspaso_*`) y C (`carta_*`); administración (`gestion_roles`, `activar_usuario_sucursal`, `notas_usuario_sucursal`,
+  `apagar_cuenta_empresa`, `activar_sucursal`, `renombrar_sucursal`, `ver_auditoria_empresa`; migración
+  `20261001160000_particion_permisos_administracion`). Las nuevas de administración son todas fijas para el admin (piso administrador).
+- Se retiraron `ejecutar_tests` y `sincronizar_proveedores` del catálogo (sin consumidor; sus filas `Accion` quedan hasta el contract). Los catálogos CRUD simples (proveedores, categorías,
   secciones, unidades, clientes) se dejan con Ver/Editar, sin partir. Las claves de admin de usuarios/permisos son fijas para el admin.
 
 ## Alternativas descartadas
@@ -123,5 +126,4 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 - **Superadmin de plataforma**: no existe como concepto en el código; hoy es una función del core que su herramienta puede llamar.
 - **Add-on «la empresa edita/otorga permisos»** y catálogo/plan de permisos por empresa: probablemente necesitan schema.
 - **Suscripción** (primera acción de piso gerente): no existe; solo está preparado el piso.
-- **Partición pendiente**: operaciones/POS/carta/catálogo (`traspaso_*`, `pos_*`, `carta_generos`, `motivos_*`, `*_alta`),
-  administración (`activar_usuario_sucursal`, `notas_usuario_sucursal`, `apagar_cuenta_empresa`, `ver_auditoria_empresa`) y el contract.
+- **Partición pendiente**: solo el contract (borrar las `Accion` padre en un deploy posterior) y la clave mixta `editar_producto`.

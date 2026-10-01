@@ -9,5 +9,5 @@ probarMigracionDeParticion({
   directorio: "20261001140000_particion_permisos_motivos_traspasos",
   titulo: "partición de las claves de motivos de merma/destinos de consumo y traspasos",
   sentenciasEsperadas: 3,
-  contextoDePadresRetirados: { motivos_movimiento: "empresa", proceso_transferencia_sucursal: "sucursal" },
+  contextoDePadres: { motivos_movimiento: "empresa", proceso_transferencia_sucursal: "sucursal" },
 });

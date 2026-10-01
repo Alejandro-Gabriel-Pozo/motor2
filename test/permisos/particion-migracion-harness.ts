@@ -16,10 +16,13 @@ export function probarMigracionDeParticion(opciones: {
   titulo: string;
   sentenciasEsperadas: number;
   /**
-   * Padres que ya no están en `ACCIONES` (se retiraron del código en la misma partición): su contexto, que el catálogo ya no puede dar.
-   * `"mixto"`: el padre hacía cosas de los dos contextos (por eso se parte); sus hijas declaran cada una el suyo y no se compara.
+   * Contexto de los padres cuando no es el del catálogo: los que ya no están en `ACCIONES` (se retiraron del código en la misma partición) y
+   * los que siguen pero hacían cosas de los dos contextos. `"mixto"`: el padre hacía cosas de los dos contextos (por eso se parte); sus hijas
+   * declaran cada una el suyo y no se compara. Si el padre está en el catálogo y acá, manda lo declarado acá.
    */
-  contextoDePadresRetirados?: Record<string, "empresa" | "sucursal" | "mixto">;
+  contextoDePadres?: Record<string, "empresa" | "sucursal" | "mixto">;
+  /** Acciones que la migración crea SIN copiar nada de un padre (no las hacía nadie antes): quedan sin asignar para todo rol. */
+  accionesSinPadre?: string[];
 }) {
   const SQL = readFileSync(join(__dirname, "../../prisma/migrations", opciones.directorio, "migration.sql"), "utf8");
   const SENTENCIAS = SQL.replace(/\r\n/g, "\n")
@@ -34,6 +37,7 @@ export function probarMigracionDeParticion(opciones: {
     .filter((s) => s.length > 0);
 
   const NUEVAS = [...SENTENCIAS[0].matchAll(/^ {2}\('([a-z_]+)', /gm)].map((m) => m[1]);
+  const SIN_PADRE = opciones.accionesSinPadre ?? [];
   const HIJAS_DE: Record<string, string[]> = {};
   for (const m of SQL.matchAll(/^ {2}\('([a-z_]+)', '([a-z_]+)'\),?$/gm)) {
     const hijas = (HIJAS_DE[m[1]] ??= []);
@@ -64,7 +68,8 @@ export function probarMigracionDeParticion(opciones: {
       adminCentral = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
       operadorCentral = (await prismaAdmin.rol.create({ data: { nombre: "operador", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
       adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: NORTE } })).id;
-      await prismaAdmin.accion.createMany({ data: PADRES.map((clave) => ({ clave, descripcion: clave })) });
+      const conDescripcionReescrita = [...SQL.matchAll(/UPDATE "Accion" SET "descripcion" = '[^\n]*' WHERE "clave" = '([a-z_]+)'/g)].map((m) => m[1]);
+      await prismaAdmin.accion.createMany({ data: [...new Set([...PADRES, ...conDescripcionReescrita])].map((clave) => ({ clave, descripcion: clave })) });
     });
 
     const permiso = (empresaId: string, rolId: string, accionClave: string, puedeVer: boolean, puedeEditar: boolean) =>
@@ -74,17 +79,18 @@ export function probarMigracionDeParticion(opciones: {
       expect(SENTENCIAS.length).toBe(opciones.sentenciasEsperadas);
     });
 
-    it("el mapa cubre exactamente las acciones nuevas, cada una con UN padre, y todas existen en el catálogo del código", () => {
+    it("el mapa cubre exactamente las acciones nuevas con padre, cada una con UN padre, y todas existen en el catálogo del código", () => {
       const hijas = Object.values(HIJAS_DE).flat();
       expect(hijas.length).toBeGreaterThan(0);
-      expect([...hijas].sort()).toEqual([...NUEVAS].sort());
+      expect([...hijas].sort()).toEqual(NUEVAS.filter((n) => !SIN_PADRE.includes(n)).sort());
       expect(new Set(hijas).size).toBe(hijas.length);
-      for (const hija of hijas) expect(CATALOGO.has(hija), `${hija} tiene que estar en ACCIONES`).toBe(true);
+      for (const nueva of NUEVAS) expect(CATALOGO.has(nueva), `${nueva} tiene que estar en ACCIONES`).toBe(true);
+      for (const sola of SIN_PADRE) expect(NUEVAS, `${sola} se declara sin padre pero la migración no la crea`).toContain(sola);
     });
 
     it("cada hija tiene el mismo contexto que su padre (la copia de filas no mezcla alcances)", () => {
       for (const [padre, hijas] of Object.entries(HIJAS_DE)) {
-        const contextoPadre = CATALOGO.get(padre)?.contexto ?? opciones.contextoDePadresRetirados?.[padre];
+        const contextoPadre = opciones.contextoDePadres?.[padre] ?? CATALOGO.get(padre)?.contexto;
         expect(contextoPadre, `${padre} está en el catálogo o declarado como retirado`).toBeDefined();
         if (contextoPadre === "mixto") {
           for (const hija of hijas) expect(["empresa", "sucursal"], `${hija} ← ${padre}`).toContain(CATALOGO.get(hija)?.contexto);

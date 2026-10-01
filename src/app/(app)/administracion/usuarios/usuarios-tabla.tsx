@@ -25,11 +25,13 @@ export function UsuariosTabla({
   roles,
   sucursales,
   sucursalActualId,
+  puedeActivar,
 }: {
   membresiasIniciales: Membresia[];
   roles: Rol[];
   sucursales: Sucursal[];
   sucursalActualId: string;
+  puedeActivar: boolean;
 }) {
   const router = useRouter();
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -76,12 +78,14 @@ export function UsuariosTabla({
               <td>{m.rol.nombre}</td>
               <td>{m.activo ? "Sí" : "No"}</td>
               <td>
-                <BotonActivarDesactivar
-                  activo={m.activo}
-                  ocupado={pending && pendingId === m.id}
-                  aviso={`¿Desactivar a ${m.usuario.email}? Pierde el acceso a esta sucursal.`}
-                  onCambiar={() => toggleActivo(m)}
-                />
+                {puedeActivar && (
+                  <BotonActivarDesactivar
+                    activo={m.activo}
+                    ocupado={pending && pendingId === m.id}
+                    aviso={`¿Desactivar a ${m.usuario.email}? Pierde el acceso a esta sucursal.`}
+                    onCambiar={() => toggleActivo(m)}
+                  />
+                )}
               </td>
             </tr>
           ))}

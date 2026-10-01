@@ -78,7 +78,16 @@ commit, siempre con OK expreso del dueño.
 - Falta de operaciones: nada del bloque (A+B+C hechos). Dudas a revisar: `carta_portal`, `promociones_activar` y
   `pos_limite_mesas_abiertas` pueden actuar a nivel empresa o de toda la sucursal.
 - Fase de contract (borrar las `Accion` padre, incluidas `ver_reportes_*`) en un deploy posterior.
-- Siguiente en el orden: administración.
+- Administración (7 claves nuevas, sin schema): `gestion_usuarios` → `activar_usuario_sucursal`, `notas_usuario_sucursal` (sucursal) y
+  `apagar_cuenta_empresa` (empresa; techo de admin vía membresías); `gestion_permisos` → `gestion_roles` (empresa); `alta_sucursal` →
+  `activar_sucursal`, `renombrar_sucursal` (empresa); `ver_auditoria_empresa` (empresa, PRIMERA acción de piso gerente real, sin padre: la
+  tiene solo el gerente de la empresa). Todas fijas para el admin salvo la de auditoría. Migración
+  `20261001160000_particion_permisos_administracion` (con `down.sql`; el banco de pruebas aprendió `contextoDePadres` «mixto» y
+  `accionesSinPadre`). Se retiran del catálogo `sincronizar_proveedores` y `ejecutar_tests`. Las pantallas de usuarios y sucursales ocultan
+  cada botón según su clave. Los guardianes de guardas reconocen `obtenerMiNivelPermisoDeEmpresa`; `gate-piso-gerente.test.ts` pasó del
+  mock a la clave real.
+- Siguiente en el orden: contract (borrar las `Accion` padre, incluidas `ver_reportes_*`, `carta`, `motivos_movimiento`,
+  `proceso_transferencia_sucursal`, `ejecutar_tests` y `sincronizar_proveedores`) en un deploy posterior; queda la clave mixta `editar_producto`.
 
 ## Sin empezar (necesitan visto bueno del dueño antes de implementar)
 

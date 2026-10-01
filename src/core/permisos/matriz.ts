@@ -3,8 +3,9 @@ import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelDeRol, nive
 /**
  * Reglas de la matriz de permisos (rol × acción), compartidas por la pantalla y por el guardado en el servidor para que no puedan divergir:
  * - «Ver ⊇ Editar»: quien puede editar, puede ver (Core.js:1534). Se hace cumplir al ESCRIBIR, no al leer.
- * - Salvaguarda (Core.js:1529-1531): «gestion_permisos» y «gestion_usuarios» siempre conservan Editar para el rol «admin»; si no, un admin podría
- *   desconfigurar esto y dejar a todo el mundo sin forma de volver a corregirlo.
+ * - Salvaguarda (Core.js:1529-1531): «gestion_permisos», «gestion_usuarios» y las claves de administración de gente en que se partieron
+ *   (`ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE`) siempre conservan Editar para el rol «admin»; si no, un admin podría desconfigurar esto y dejar a
+ *   todo el mundo sin forma de volver a corregirlo.
  */
 export interface EstadoPermiso {
   puedeVer: boolean;

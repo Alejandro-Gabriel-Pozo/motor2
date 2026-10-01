@@ -22,6 +22,7 @@ const GUARDAS_DE_CLAVE: Readonly<Record<string, { indice: number; forma: "clave"
   requierePermisoDeEmpresa: { indice: 2, forma: "clave" },
   requierePermisoVerDeEmpresa: { indice: 2, forma: "clave" },
   obtenerMiNivelPermiso: { indice: 2, forma: "clave" },
+  obtenerMiNivelPermisoDeEmpresa: { indice: 2, forma: "clave" },
   sucursalesDondeElUsuarioPuedeVer: { indice: 2, forma: "clave" },
   accionesQueElUsuarioPuedeVer: { indice: 2, forma: "lista" },
   accionesDelMenuQueElUsuarioPuedeVer: { indice: 3, forma: "lista" },

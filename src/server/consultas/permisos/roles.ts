@@ -8,7 +8,7 @@ import type { Db } from "@/lib/db-tipos";
  * consulta Prisma que reemplaza.
  *
  * Por qué NO se reusa la Server Action `listarRoles` (`src/server/actions/permisos/roles.ts`), aunque lea la misma tabla:
- *  - exige `gestion_permisos`, y la página de Usuarios se abre con `gestion_usuarios`: un usuario con este permiso y sin
+ *  - exige `gestion_roles`, y la página de Usuarios se abre con `gestion_usuarios`: un usuario con este permiso y sin
  *    aquel vería la página caerse al llamarla (la matriz de permisos es editable, los dos no van necesariamente juntos);
  *  - trae TODOS los roles (sin filtrar por `activo`) para el panel de Permisos, que es donde se activan/desactivan; acá solo
  *    se ofrecen para asignar los roles activos.

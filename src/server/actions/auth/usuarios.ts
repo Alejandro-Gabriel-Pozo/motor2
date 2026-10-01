@@ -4,15 +4,15 @@ import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
-import { conGerenteDeEmpresa, conPermiso } from "../con-permiso";
+import { conGerenteDeEmpresa, conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { esUsuarioGerenteDeEmpresa, transferirGerenciaDeEmpresa } from "@/core/permisos/gerencia";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 
 /**
- * Techo de privilegio: `gestion_usuarios` no alcanza para dar el rol admin ni para tocar a un admin — si no, un rol con ese
- * permiso se promueve a sí mismo (o degrada al admin). Lo puede hacer un admin de esa sucursal o quien tiene el rol de empresa
+ * Techo de privilegio: `gestion_usuarios`, `activar_usuario_sucursal` y `apagar_cuenta_empresa` no alcanzan para dar el rol admin ni para
+ * tocar a un admin — si no, un rol con ese permiso se promueve a sí mismo (o degrada al admin). Lo puede hacer un admin de esa sucursal o quien tiene el rol de empresa
  * «gerente» (`UsuarioEmpresa.rolEmpresa`), que es la autoridad sobre usuarios de toda la empresa.
  */
 function puedeTocarAdmins(ctx: { rolEmpresa: string | null }, esAdminEnLaSucursal: boolean): boolean {
@@ -126,7 +126,7 @@ export async function agregarOActualizarUsuario(input: {
 
 /** Equivalente de actualizarActivoUsuario (Core.js:1181-1211). */
 export async function actualizarActivoMembresia(membresiaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("gestion_usuarios", async (ctx) => {
+  return conPermiso("activar_usuario_sucursal", async (ctx) => {
     const membresia = await ctx.db.usuarioSucursal.findUnique({
       where: { id: membresiaId },
       include: { rol: true },
@@ -162,7 +162,7 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
  * desde la UI — hallazgo de la auditoría de motor2.
  */
 export async function actualizarNotasMembresia(membresiaId: string, notas: string): Promise<ResultadoAccion> {
-  return conPermiso("gestion_usuarios", async (ctx) => {
+  return conPermiso("notas_usuario_sucursal", async (ctx) => {
     const membresia = await ctx.db.usuarioSucursal.findUnique({ where: { id: membresiaId } });
     if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
 
@@ -179,9 +179,12 @@ export async function actualizarNotasMembresia(membresiaId: string, notas: strin
  *
  * Mismo criterio "nunca sin ningún admin activo" que actualizarActivoMembresia (Core.js:1159-1167), a nivel empresa: desactivar
  * a alguien que es admin activo en CUALQUIER sucursal no puede dejar la empresa sin ningún admin activo.
+ *
+ * Es una acción de contexto empresa (`apagar_cuenta_empresa`): no depende de en qué sucursal esté parado quien la pide. Por eso el techo
+ * «admin» se mide por ser admin en CUALQUIER sucursal de la empresa (o gerente), no por el rol de la sucursal activa.
  */
 export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("gestion_usuarios", async (ctx) => {
+  return conPermisoDeEmpresa("apagar_cuenta_empresa", async (ctx) => {
     // `UsuarioEmpresa` y `User` no tienen RLS: sin el `empresaId` de la clave, el id de cualquier empresa se podía apagar.
     const pertenencia = await ctx.db.usuarioEmpresa.findUnique({
       where: { usuarioId_empresaId: { usuarioId, empresaId: ctx.empresaId } },
@@ -193,7 +196,7 @@ export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo
     const esAdminActivo = await ctx.db.usuarioSucursal.findFirst({
       where: { empresaId: ctx.empresaId, usuarioId, activo: true, rol: { nombre: "admin", activo: true } },
     });
-    if (esAdminActivo && !puedeTocarAdmins(ctx, ctx.rolNombre === "admin")) {
+    if (esAdminActivo && !puedeTocarAdmins(ctx, ctx.membresias.some((m) => m.rolNombre === "admin"))) {
       return error("Solo un admin o el gerente de la empresa puede modificar a un admin.");
     }
     if (!activo && esGerenteDeEmpresa(pertenencia.rolEmpresa)) {

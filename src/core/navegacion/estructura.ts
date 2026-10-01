@@ -28,7 +28,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
     label: "Administración",
     items: [
       { href: "/administracion/usuarios", label: "Usuarios", accion: "gestion_usuarios" },
-      { href: "/administracion/roles", label: "Roles", accion: "gestion_permisos" },
+      { href: "/administracion/roles", label: "Roles", accion: "gestion_roles" },
       { href: "/administracion/permisos", label: "Permisos", accion: "gestion_permisos" },
       { href: "/administracion/capacidades-sucursal", label: "Capacidades por sucursal", accion: "capacidades_sucursal" },
       { href: "/administracion/sucursales", label: "Sucursales", accion: "alta_sucursal" },

@@ -88,8 +88,8 @@ export interface FiltroAuditoria {
   sucursalIds: readonly string[];
   /**
    * Obligatorio a propósito: si se muestran también las filas SIN sucursal (cambios de la empresa entera: roles, receta central).
-   * Esas no pertenecen a ninguna sucursal, así que `ver_auditoria` (que es por sucursal) no las cubre: las ve quien tiene autoridad
-   * de empresa (`esGerenteDeEmpresa`).
+   * Esas no pertenecen a ninguna sucursal, así que `ver_auditoria` (que es por sucursal) no las cubre: las ve quien tiene
+   * `ver_auditoria_empresa` (acción de piso gerente: el gerente de la empresa).
    */
   incluirFilasDeEmpresa: boolean;
 }

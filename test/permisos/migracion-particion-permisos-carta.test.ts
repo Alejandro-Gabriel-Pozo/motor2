@@ -9,5 +9,5 @@ probarMigracionDeParticion({
   directorio: "20261001150000_particion_permisos_carta",
   titulo: "partición de la clave de la carta pública",
   sentenciasEsperadas: 3,
-  contextoDePadresRetirados: { carta: "mixto" },
+  contextoDePadres: { carta: "mixto" },
 });

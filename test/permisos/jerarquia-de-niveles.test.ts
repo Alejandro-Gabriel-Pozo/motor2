@@ -54,7 +54,7 @@ describe("el catálogo y los niveles (puro)", () => {
   });
 
   it("una acción de piso gerente es de contexto empresa (no hay «gerente» por sucursal) y no la alcanza ningún rol", () => {
-    // Hoy el catálogo no tiene ninguna de piso gerente: la guarda vale para la primera que se agregue.
+    // Hoy la única de piso gerente es `ver_auditoria_empresa`; la guarda vale también para las que se agreguen.
     for (const a of ACCIONES.filter((x) => (x.nivelMinimo as NivelDeAccion) === "gerente")) {
       expect(a.contexto, a.clave).toBe("empresa");
       expect(esCeldaFueraDeNivel("admin", a.clave as AccionClave), a.clave).toBe(true);

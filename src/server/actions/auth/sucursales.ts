@@ -97,7 +97,7 @@ export async function crearSucursalConAdmin(input: {
  * no había ningún botón para ponerlo en false.
  */
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("alta_sucursal", async (ctx) => {
+  return conPermisoDeEmpresa("activar_sucursal", async (ctx) => {
     const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId } });
     if (!sucursal) return error("No se encontró esa sucursal.");
 
@@ -118,7 +118,7 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
 
 /** Renombrar una sucursal existente — antes solo se podía elegir el nombre una vez, al crearla. */
 export async function renombrarSucursal(sucursalId: string, nombreNuevo: string): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("alta_sucursal", async (ctx) => {
+  return conPermisoDeEmpresa("renombrar_sucursal", async (ctx) => {
     const nombre = texto(nombreNuevo);
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");

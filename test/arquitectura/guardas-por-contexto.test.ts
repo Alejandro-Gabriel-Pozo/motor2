@@ -9,7 +9,7 @@ import { inventariarDirectorio, inventariarFuente } from "./guardas/inventario";
  * compilar; este guardián mira el código ya escrito, así que también agarra un `as` que lo esquive. El menú y la pantalla de inicio juntan
  * las dos y usan `accionesDelMenuQueElUsuarioPuedeVer`, que reparte cada clave por su contexto: es la única que acepta de los dos.
  */
-const GUARDAS_DE_EMPRESA = new Set(["conPermisoDeEmpresa", "requerirVerDeEmpresa", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"]);
+const GUARDAS_DE_EMPRESA = new Set(["conPermisoDeEmpresa", "requerirVerDeEmpresa", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa", "obtenerMiNivelPermisoDeEmpresa"]);
 const GUARDAS_MIXTAS = new Set(["accionesDelMenuQueElUsuarioPuedeVer"]);
 
 const SRC = join(__dirname, "../../src");
