@@ -82,6 +82,7 @@ export async function limpiarBaseDeTest() {
   // con el resto de la carta. Cuenta/Mesa van DESPUÉS de todo esto (PromoCuenta la referencia RESTRICT).
   await prismaAdmin.promoCuenta.deleteMany();
   await prismaAdmin.promoCartaCupo.deleteMany();
+  await prismaAdmin.promoCartaSucursal.deleteMany();
   await prismaAdmin.promoCarta.deleteMany();
   await prismaAdmin.seccionCarta.deleteMany();
   await prismaAdmin.cuenta.deleteMany();
@@ -101,7 +102,6 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.seccionHabitualProducto.deleteMany();
   await prismaAdmin.frecuenciaConteoProducto.deleteMany();
   await prismaAdmin.disponibilidadProducto.deleteMany();
-  await prismaAdmin.promocionProducto.deleteMany();
   await prismaAdmin.traspasoSucursal.deleteMany();
   await prismaAdmin.seccion.deleteMany();
 

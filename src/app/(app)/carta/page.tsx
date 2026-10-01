@@ -5,7 +5,13 @@ import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-co
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
-import { actualizarActivaPromoCarta, guardarCuposPromoCarta, guardarPromoCarta } from "@/server/actions/carta/promos";
+import {
+  actualizarActivaPromoCarta,
+  actualizarActivaPromoCartaEnSucursal,
+  guardarCuposPromoCarta,
+  guardarPrecioLocalPromoCarta,
+  guardarPromoCarta,
+} from "@/server/actions/carta/promos";
 import { precioMinimoPromo } from "@/core/pos/promo-combo";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
@@ -17,11 +23,11 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que muestra la carta pública interna
  * (ADR-006). Tres bloques: secciones de carta, el contenido de carta de cada PV disponible en esta sucursal (con
  * su sección de carta, elegida DIRECTO — docs/plan-carta-seccion-directa-2026-09-25.md —, y el aviso de los que todavía no tienen
- * contenido: sin contenido no salen, decisión D3) y las promos de la sucursal activa. El nombre, el precio y la disponibilidad de
+ * contenido: sin contenido no salen, decisión D3) y las promos (de la empresa, prendidas o no en la sucursal activa). El nombre, el precio y la disponibilidad de
  * cada producto se siguen editando en Catálogo; la Categoría de producto no ubica nada en la carta.
  *
  * Todas las mutaciones pasan por las Server Actions de src/server/actions/carta (una clave por bloque: carta_secciones, carta_generos,
- * carta_contenido_producto y carta_promos); el refresco lo piden los
+ * carta_contenido_producto y, para las promos, carta_promo_definir / carta_promo_activar / carta_promo_precio_local); el refresco lo piden los
  * closures de acá (ver refrescar.ts). Los closures capturan solo ids (texto): lo que captura un closure "use server" viaja al
  * cliente.
  *
@@ -49,17 +55,21 @@ export default async function CartaPage() {
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromos] = await Promise.all([
+  const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_generos", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_contenido_producto", ctx.db),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promos", ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_promo_definir", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_activar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_precio_local", ctx.db),
   ]);
   const puedeEditarSecciones = nivelSecciones.editar;
   const puedeEditarGeneros = nivelGeneros.editar;
   const puedeEditarContenido = nivelContenido.editar;
-  const puedeEditarPromos = nivelPromos.editar;
-  const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeEditarPromos;
+  const puedeDefinirPromos = nivelPromoDefinir.editar;
+  const puedeActivarPromos = nivelPromoActivar.editar;
+  const puedePrecioLocalPromos = nivelPromoPrecio.editar;
+  const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos;
 
   const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db);
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
@@ -285,21 +295,26 @@ export default async function CartaPage() {
         </ul>
       </section>
 
-      {/* 4. Promos de la sucursal */}
+      {/* 4. Promos (de la empresa; cada sucursal las prende y, si quiere, les pone su precio) */}
       <section aria-labelledby="titulo-promos" className="flex flex-col gap-3">
         <h2 id="titulo-promos" className="text-lg font-medium">
-          Promos de esta sucursal
+          Promos
         </h2>
-        <p className="text-sm text-neutral-500">Informativas: título, descripción y precio dentro de una sección de carta. No descuentan stock.</p>
+        <p className="text-sm text-neutral-500">
+          Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio.
+        </p>
         <ul className="flex flex-col gap-2">
           {datos.promos.map((pr) => {
             const id = pr.id;
             const activa = pr.activa;
+            const prendidaAca = pr.prendidaAca;
             return (
               <li key={pr.id} className="rounded border p-3" data-promo-carta={pr.titulo}>
                 <details>
                   <summary className="cursor-pointer text-sm">
-                    <span className="font-medium">{pr.titulo}</span> · ${pr.precio.toLocaleString("es-AR")} · {pr.seccionCarta} · {pr.activa ? "activa" : "apagada"} ·{" "}
+                    <span className="font-medium">{pr.titulo}</span> · ${pr.precioAca.toLocaleString("es-AR")}
+                    {pr.precioLocal !== null ? " (precio de esta sucursal)" : ""} · {pr.seccionCarta} ·{" "}
+                    {!pr.activa ? "apagada en toda la empresa" : pr.prendidaAca ? "prendida acá" : "apagada acá"} ·{" "}
                     {pr.cupos.length ? (
                       <>
                         Armable — {pr.cupos.length} cupo{pr.cupos.length === 1 ? "" : "s"}
@@ -308,7 +323,7 @@ export default async function CartaPage() {
                       "Informativa (sin cupos)"
                     )}
                   </summary>
-                  {puedeEditarPromos ? (
+                  {puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -332,14 +347,38 @@ export default async function CartaPage() {
                       <Dato etiqueta="Descripción" ancho>
                         {pr.descripcion}
                       </Dato>
-                      <Dato etiqueta="Precio">${pr.precio.toLocaleString("es-AR")}</Dato>
+                      <Dato etiqueta="Precio de la empresa">${pr.precio.toLocaleString("es-AR")}</Dato>
                       <Dato etiqueta="Orden">{pr.orden}</Dato>
+                    </DatosSoloLectura>
+                  )}
+
+                  {/* Precio propio de esta sucursal (opcional): vacío = usa el de la empresa. */}
+                  {puedePrecioLocalPromos ? (
+                    <FormConResultado
+                      accion={async (fd: FormData) => {
+                        "use server";
+                        const texto = campo(fd, "precioLocal").trim();
+                        return refrescarSiOk(await guardarPrecioLocalPromoCarta(id, texto === "" ? null : texto));
+                      }}
+                      className="mt-3 flex flex-wrap items-end gap-2"
+                    >
+                      <label className="flex flex-col gap-1 text-sm">
+                        Precio en esta sucursal (vacío = el de la empresa)
+                        <input name="precioLocal" type="number" min={0} step="0.01" defaultValue={pr.precioLocal ?? ""} className={CLASE_INPUT} />
+                      </label>
+                      <button type="submit" className={CLASE_BOTON}>
+                        Guardar precio de esta sucursal
+                      </button>
+                    </FormConResultado>
+                  ) : (
+                    <DatosSoloLectura className="mt-3">
+                      <Dato etiqueta="Precio en esta sucursal">{pr.precioLocal !== null ? `$${pr.precioLocal.toLocaleString("es-AR")}` : "El de la empresa"}</Dato>
                     </DatosSoloLectura>
                   )}
 
                   {/* Cupos (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): con uno o más, la promo pasa a ser ARMABLE en el POS. */}
                   <h3 className="mt-3 text-sm font-medium">Cupos</h3>
-                  {puedeEditarPromos ? (
+                  {puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -387,7 +426,20 @@ export default async function CartaPage() {
                     <p className="mt-1 text-sm text-neutral-500">Sin cupos: esta promo es solo informativa, el POS la ignora.</p>
                   )}
                 </details>
-                {puedeEditarPromos && (
+                {puedeActivarPromos && (
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return refrescarSiOk(await actualizarActivaPromoCartaEnSucursal(id, !prendidaAca));
+                    }}
+                    className="mt-2"
+                  >
+                    <button type="submit" className="text-sm underline">
+                      {pr.prendidaAca ? `Apagar «${pr.titulo}» en esta sucursal` : `Prender «${pr.titulo}» en esta sucursal`}
+                    </button>
+                  </FormConResultado>
+                )}
+                {puedeDefinirPromos && (
                   <FormConResultado
                     accion={async () => {
                       "use server";
@@ -396,17 +448,17 @@ export default async function CartaPage() {
                     className="mt-2"
                   >
                     <button type="submit" className="text-sm underline">
-                      {pr.activa ? `Apagar «${pr.titulo}»` : `Prender «${pr.titulo}»`}
+                      {pr.activa ? `Apagar «${pr.titulo}» en toda la empresa` : `Prender «${pr.titulo}» en toda la empresa`}
                     </button>
                   </FormConResultado>
                 )}
               </li>
             );
           })}
-          {!datos.promos.length && <li className="text-sm text-neutral-500">Esta sucursal no tiene promos en la carta.</li>}
+          {!datos.promos.length && <li className="text-sm text-neutral-500">La empresa no tiene promos cargadas.</li>}
         </ul>
 
-        {!puedeEditarPromos ? null : seccionesActivas.length > 0 ? (
+        {!puedeDefinirPromos ? null : seccionesActivas.length > 0 ? (
           <FormConResultado
             accion={async (fd: FormData) => {
               "use server";
@@ -416,7 +468,7 @@ export default async function CartaPage() {
             }}
             className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
           >
-            <h3 className="text-sm font-medium sm:col-span-2">Nueva promo</h3>
+            <h3 className="text-sm font-medium sm:col-span-2">Nueva promo (queda prendida en esta sucursal)</h3>
             <CamposPromo secciones={seccionesActivas} />
             <div className="sm:col-span-2">
               <button type="submit" className={CLASE_BOTON}>

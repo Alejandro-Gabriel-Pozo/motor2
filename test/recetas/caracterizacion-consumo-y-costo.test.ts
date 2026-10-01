@@ -10,8 +10,6 @@ import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../../src/core/reportes/rendimiento-recetas";
 import { generarReporteDiferenciasAjustes } from "../../src/core/reportes/diferencias-ajustes";
 import { reconstruirCostosDeVenta, claveCostoHistorico } from "../../src/core/reportes/costo-historico";
-import { obtenerReportePromociones } from "../../src/core/reportes/promociones";
-import { actualizarPromocionesHabilitado, marcarProductoComoPromocion } from "../../src/server/actions/reportes/promociones";
 
 /**
  * Test de caracterización (plan docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 1) — capturado EXACTO del
@@ -214,22 +212,5 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     expect(costos.get(claveCostoHistorico(milanesa.id, "2026-03-10"))).toBe(18.748124999999998);
     expect(costos.get(claveCostoHistorico(bifeCaballo.id, "2026-03-10"))).toBe(5);
     expect(costos.get(claveCostoHistorico(pizza.id, "2026-03-10"))).toBe(1.6666249999999998);
-  });
-
-  it("(g) obtenerReportePromociones: 'valor a la carta' de un combo, con el precioVenta individual de su insumo (Carne A, $80/kg)", async () => {
-    await actualizarPromocionesHabilitado(true);
-    const combo = await sembrarProductoDisponible({ codigo: "PV_COMBO_CAR", nombre: "Combo Carne", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
-    await prisma.recetaVersion.create({ data: { productoId: combo.id, version: 1, ingredientes: { create: [{ insumoProductoId: carneA.id, cantidad: 0.5, mermaPorcentaje: 0, unidadId: unidadKgId }] } } });
-    await marcarProductoComoPromocion(combo.id, true);
-    await registrarVenta({ fecha, seccionId, ventas: [{ productoId: combo.id, cantidadVendida: 1 }] });
-
-    const rep = await obtenerReportePromociones(sucursalId, new Date("2026-03-01"), new Date("2026-03-31"), prisma);
-    expect(rep.habilitado).toBe(true);
-    if (!rep.habilitado) return;
-    const filaCombo = rep.promociones.find((p) => p.producto === "Combo Carne");
-    expect(filaCombo).toBeDefined();
-    // 0.5 kg de Carne A al precio de venta individual de Carne A suelta ($80/kg) = $40.
-    expect(filaCombo!.valorALaCartaUnitario).toBe(40);
-    expect(filaCombo!.incompleto).toBe(false);
   });
 });

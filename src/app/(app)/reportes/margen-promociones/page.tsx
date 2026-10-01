@@ -3,7 +3,6 @@ import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerReporteMargenPromociones } from "@/core/reportes/margen-promociones";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { SelectorRango } from "@/components/selector-rango";
-import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaMargenPromociones } from "./tabla-margen-promociones";
 
 /**
@@ -11,9 +10,6 @@ import { TablaMargenPromociones } from "./tabla-margen-promociones";
  * entró prorrateado (D3) contra lo que hubiera entrado vendiendo cada componente suelto a precio de carta, y el Margen Real
  * de las dos formas (`src/core/reportes/margen-promociones.ts`). Su propia clave
  * (`reporte_margen_promociones`) y mismo selector de rango que Período/Descuentos por cliente.
- *
- * Cruza con `/reportes/promociones` (el reporte de promos de PRECIO de siempre, sin componentes): esa es otra cosa —
- * "PromoCarta" armable (Task #16) vs. una promoción de precio de un producto — el link de acá lo aclara para no confundirlas.
  *
  * Sin ninguna venta de una promo armable en el rango: tabla vacía, sin ningún error.
  */
@@ -35,10 +31,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
         <p className="text-sm text-neutral-500">
           Cuánto entró de verdad por cada promo ARMABLE (Catálogo › Carta, cupos) contra lo que hubiera entrado vendiendo cada
           componente suelto a precio de carta — y si el precio de la promo deja un margen sano. Una promo sin ninguna venta en
-          el rango no aparece.{" "}
-          <EnlaceInterno href="/reportes/promociones" className="underline">
-            Ver también «Promociones» (rebajas de precio de un producto, sin componentes) →
-          </EnlaceInterno>
+          el rango no aparece.
         </p>
       </div>
 

@@ -42,59 +42,6 @@ testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables p
 });
 
 testAutenticado(
-  "reportes/promociones: sin violaciones de accesibilidad, incluido el color de \"· parcial\" del Margen Real",
-  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
-    const marca = Date.now();
-    const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
-    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
-    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-MP-${marca}`, nombre: `E2E Harina A11y ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
-    const combo = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PV-${marca}`, nombre: `E2E Combo A11y ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 100 } });
-    // buscarProductoParaPromocion filtra whereDisponibleEn(sucursalId) (P11) — sin esto no aparece como candidato y el formulario no dibuja ningún checkbox.
-    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: combo.id, disponible: true } });
-    await prisma.recetaVersion.create({ data: { productoId: combo.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidad.id }] } } });
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { promocionesHabilitadas: true } });
-    await prisma.promocionProducto.create({ data: { sucursalId, productoId: combo.id, activa: true } });
-
-    // Venta 1: ANTES de que exista cualquier compra del insumo — no se puede costear (queda afuera del Real).
-    const op1 = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date("2026-08-01T12:00:00Z"), usuarioId: admin.id } });
-    await prisma.movimientoStock.create({
-      data: { operacionId: op1.id, productoId: combo.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 100, precioPorUnidadStock: 100, costoUnitarioVenta: null },
-    });
-    // Compra del insumo, y una segunda venta DESPUÉS — esa sí se reconstruye. El producto queda con cobertura PARCIAL.
-    const opCompra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-03T12:00:00Z"), usuarioId: admin.id } });
-    await prisma.movimientoStock.create({
-      data: { operacionId: opCompra.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 5 },
-    });
-    const op2 = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date("2026-08-04T12:00:00Z"), usuarioId: admin.id } });
-    await prisma.movimientoStock.create({
-      data: { operacionId: op2.id, productoId: combo.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 100, precioPorUnidadStock: 100, costoUnitarioVenta: null },
-    });
-
-    await page.goto(`/reportes/promociones?desde=2026-08-01&hasta=2026-08-10`);
-    await expect(page.getByRole("heading", { name: "Promociones y Combos" })).toBeVisible();
-    // `.first()`: la base de e2e se reinicia al empezar cada corrida (global-setup), pero dentro de una misma corrida
-    // otro spec puede haber dejado un "· parcial" en la tabla — no afecta lo que se audita.
-    await expect(page.getByText("· parcial").first()).toBeVisible(); // confirma que el caso que se quiere auditar realmente se renderizó
-
-    // Chequeo ACOTADO al elemento nuevo, no un scan de toda la pantalla: el formulario de "marcar como
-    // Promoción/Combo" de esta misma página tiene un checkbox sin label (promocion-form.tsx) — hallazgo real,
-    // pero ajeno a este cambio (ver docs/pendientes-responsable-2026-09-20.md). Lo que este test quiere
-    // confirmar es puntual: que el amber-700 elegido para "· parcial" pasa AA por sí mismo.
-    const soloElNodoNuevo = await new AxeBuilder({ page })
-      .include(".text-amber-700")
-      .withTags(["wcag2aa"])
-      .analyze();
-    expect(soloElNodoNuevo.violations).toEqual([]);
-
-    // El checkbox de «marcar como Promoción/Combo» (promocion-form.tsx) tenía que llevar un nombre: sin él un lector de pantalla anuncia solo «casilla».
-    const casillas = page.locator('input[type="checkbox"]');
-    await expect(casillas.first(), "el formulario de marcar como promoción tiene que dibujar al menos una casilla").toBeVisible();
-    const soloLasCasillas = await new AxeBuilder({ page }).include('input[type="checkbox"]').analyze();
-    expect(soloLasCasillas.violations, "casillas de promoción").toEqual([]);
-  }
-);
-
-testAutenticado(
   "administracion/permisos: la matriz, en solo lectura y en edición con el resumen de cambios abierto, sin violaciones de axe",
   async ({ paginaAutenticada: page }) => {
     await page.goto("/administracion/permisos");
@@ -827,7 +774,7 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el av
   );
   await prisma.disponibilidadProducto.createMany({ data: [conContenido, sinContenido].map((p) => ({ sucursalId, productoId: p.id, disponible: true })) });
   await prisma.contenidoCartaProducto.create({ data: { productoId: conContenido.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
-  const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
+  const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
   try {
     await page.goto("/carta");
     await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
@@ -839,6 +786,7 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el av
     await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
+    await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });
     await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
@@ -937,7 +885,7 @@ testAutenticado("carta-publica (ADR-006): portal y carta de una sucursal, sin vi
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const slug = `e2e-a11y-carta-${marca}`;
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección ${marca}` } });
-  await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
+  await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
   await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
   try {
     await page.goto("/carta-publica/e2e");
@@ -947,6 +895,7 @@ testAutenticado("carta-publica (ADR-006): portal y carta de una sucursal, sin vi
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { seccionCartaId: seccion.id } } });
     await prisma.promoCarta.deleteMany({ where: { seccionCartaId: seccion.id } });
     await prisma.seccionCarta.delete({ where: { id: seccion.id } });
   }

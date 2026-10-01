@@ -115,7 +115,7 @@ test.describe("carta de una sucursal", () => {
     const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sección ${marca}` } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
     await prisma.contenidoCartaProducto.create({ data: { productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
-    const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E Promo ${marca}`, precio: 5000 } });
+    const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E Promo ${marca}`, precio: 5000 } });
     await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
 
     try {
@@ -131,6 +131,7 @@ test.describe("carta de una sucursal", () => {
       await expect(page.getByText("$5.000")).toBeVisible();
     } finally {
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+      await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });
       await prisma.promoCarta.delete({ where: { id: promo.id } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });

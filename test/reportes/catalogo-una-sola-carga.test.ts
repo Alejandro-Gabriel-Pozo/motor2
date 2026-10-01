@@ -7,7 +7,6 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteVentasPorCategoria, obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
-import { obtenerReportePromociones } from "../../src/core/reportes/promociones";
 import type { Db } from "../../src/core/reportes/comun";
 
 /**
@@ -96,7 +95,7 @@ describe("obtenerReportePorPeriodo — una sola carga del catálogo", () => {
     expect(llamadasGrupo, "grupo.findMany (clasificación No comestibles) — ratio Compras/Ventas + impacto de recetas volvían a leerlo cada uno por su cuenta").toBe(1);
   });
 
-  // Promociones y Categorías se apoyan en `obtenerReportePorPeriodo` y necesitan el MISMO catálogo: antes lo leían de nuevo (2 consultas por
+  // Categorías se apoya en `obtenerReportePorPeriodo` y necesitan el MISMO catálogo: antes lo leían de nuevo (2 consultas por
   // reporte); ahora lo toman del propio reporte (`obtenerReportePorPeriodoConCatalogo`).
   const contando = () => {
     const cuenta = { llamadas: 0 };
@@ -112,16 +111,6 @@ describe("obtenerReportePorPeriodo — una sola carga del catálogo", () => {
     }) as unknown as Db;
     return { cuenta, db };
   };
-
-  it("Promociones hace UNA consulta de productos, no dos", async () => {
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { promocionesHabilitadas: true } });
-    const { cuenta, db } = contando();
-
-    const rep = await obtenerReportePromociones(sucursalId, d("2026-08-02"), d("2026-08-10"), db);
-
-    expect(rep.habilitado, "la pantalla no llegó a calcular (el guardián del fixture)").toBe(true);
-    expect(cuenta.llamadas).toBe(1);
-  });
 
   it("Categorías hace UNA consulta de productos, no dos", async () => {
     const { cuenta, db } = contando();

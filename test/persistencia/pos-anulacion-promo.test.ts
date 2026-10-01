@@ -19,7 +19,7 @@ describe("persistencia de la anulación de una promo enviada", () => {
     s = await sembrarSalon();
     cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús M12d" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 12000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 12000 } });
     promoId = (await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 12000, titulo: "Menú del día", creadoPorId: s.admin.id } })).id;
   });
 

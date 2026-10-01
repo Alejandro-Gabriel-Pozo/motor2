@@ -31,7 +31,7 @@ describe("cargarPromoCartaParaAgregar", () => {
     // Flan (de sembrarSalon) visible en Postres.
     await prisma.contenidoCartaProducto.create({ data: { productoId: s.flan.id, visibleEnCarta: true, seccionCartaId: seccionPostresId } });
 
-    const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionEntradasId, titulo: "Menú del día", precio: 2000 } });
+    const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionEntradasId, titulo: "Menú del día", precio: 2000 } });
     promoCartaId = promo.id;
     await prisma.promoCartaCupo.createMany({
       data: [
@@ -48,7 +48,7 @@ describe("cargarPromoCartaParaAgregar", () => {
     await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { activa: false } });
     expect(await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma)).toBeNull();
     await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { activa: true } });
-    const sinCupos = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionEntradasId, titulo: "Informativa", precio: 100 } });
+    const sinCupos = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionEntradasId, titulo: "Informativa", precio: 100 } });
     expect(await cargarPromoCartaParaAgregar(s.sucursalId, sinCupos.id, prisma)).toBeNull();
   });
 

@@ -86,6 +86,11 @@ commit, siempre con OK expreso del dueño.
   `accionesSinPadre`). Se retiran del catálogo `sincronizar_proveedores` y `ejecutar_tests`. Las pantallas de usuarios y sucursales ocultan
   cada botón según su clave. Los guardianes de guardas reconocen `obtenerMiNivelPermisoDeEmpresa`; `gate-piso-gerente.test.ts` pasó del
   mock a la clave real.
+- Promociones, un solo concepto (2026-10-01, con schema autorizado): migración `20261001180000_promo_de_empresa`. La promo se define una vez
+  por empresa (precio único, override opcional por sucursal) y cada sucursal la prende/apaga; `carta_promos` → `carta_promo_definir` /
+  `carta_promo_activar` / `carta_promo_precio_local`. Se eliminan `PromocionProducto`, `Sucursal.promocionesHabilitadas`, las claves
+  `promociones_*` y el reporte `/reportes/promociones`. Pendiente Fase 2: «producto con descuento» (porcentaje) en la carta.
+  Al hacer el contract también se borran `carta_promos` y `promociones_config`/`_activar`/`_marcar_combo`.
 - Siguiente en el orden: contract (borrar las `Accion` padre, incluidas `ver_reportes_*`, `carta`, `motivos_movimiento`,
   `proceso_transferencia_sucursal`, `ejecutar_tests` y `sincronizar_proveedores`, y `editar_producto`) en un deploy posterior.
 - Catálogo, clave mixta `editar_producto` (3 claves nuevas, sin schema): `producto_editar`, `producto_asignar_insumo` y

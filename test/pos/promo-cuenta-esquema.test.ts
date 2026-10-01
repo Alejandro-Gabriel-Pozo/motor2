@@ -24,7 +24,7 @@ describe("POS: esquema de PromoCuenta (Task #16, migración M2)", () => {
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
     cuentaId = (await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: usuarioId } })).id;
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Menús" } });
-    promoCartaId = (await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: "Menú del día", precio: 2000 } })).id;
+    promoCartaId = (await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: "Menú del día", precio: 2000 } })).id;
   });
 
   const crearPromoCuenta = () => prisma.promoCuenta.create({ data: { cuentaId, promoCartaId, precio: 2000, titulo: "Menú del día", creadoPorId: usuarioId } });

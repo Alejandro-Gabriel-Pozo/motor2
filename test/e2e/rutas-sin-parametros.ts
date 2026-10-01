@@ -42,7 +42,6 @@ export const RUTAS_SIN_PARAMETROS = [
   "/reportes/margen-promociones",
   "/reportes/perdidas",
   "/reportes/periodo",
-  "/reportes/promociones",
   "/reportes/rendimiento-recetas",
   "/reportes/rendimiento-recetas/por-sucursal",
   "/reportes/salud",

@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { precioDeCarta } from "@/core/carta/public";
+import { precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { resolverMenuCarta } from "@/core/carta/public-servidor";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "./selector-carta";
@@ -21,7 +21,8 @@ type Db = PrismaClient | Prisma.TransactionClient;
  *  - Los géneros: los ACTIVOS (uno apagado no forma carpeta: lo que tenía ese género sale suelto, sin error), con el género de
  *    cada `ContenidoCartaProducto` y de cada `ItemAgrupadoCarta` — SOLO interno del POS (G4): la carta pública (`resolverMenuCarta`
  *    / `CartaV1`) no lee `generoCartaId` en absoluto.
- *  - Las promos ARMABLES (Task #16, docs/plan-promo-combo-2026-09-26.md): las `PromoCarta` activas de la sucursal que tengan
+ *  - Las promos ARMABLES (Task #16, docs/plan-promo-combo-2026-09-26.md): las `PromoCarta` ofrecidas en la sucursal (activas en la empresa
+ *    Y prendidas en esta sucursal, con su precio local si lo tienen) que tengan
  *    al menos un cupo (una promo informativa, sin cupos, se ignora acá — sigue siendo solo visual en la carta pública), con
  *    sus cupos tal cual (`PromoCartaCupo`); `armarSelectorCartaPos` resuelve los elegibles de cada cupo con los MISMOS
  *    pedibles que ya ubicó en la sección de ese cupo (D5) — esta consulta no busca elegibles por su cuenta.
@@ -41,12 +42,13 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promis
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null } }, select: { productoId: true, generoCartaId: true } }),
     db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null } }, select: { id: true, generoCartaId: true } }),
     db.promoCarta.findMany({
-      where: { sucursalId, activa: true, cupos: { some: {} } },
+      where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: {} } },
       select: {
         id: true,
         seccionCartaId: true,
         titulo: true,
         precio: true,
+        sucursales: seleccionDeSucursalDePromo(sucursalId),
         cupos: {
           orderBy: { orden: "asc" },
           select: { seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
@@ -73,7 +75,7 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promis
     promoCartaId: p.id,
     seccionCartaId: p.seccionCartaId,
     titulo: p.titulo,
-    precio: Number(p.precio),
+    precio: precioDePromo(p.precio, p.sucursales[0]),
     cupos: p.cupos.map((c) => ({
       seccionCartaId: c.seccionCartaId,
       nombreSeccion: c.seccionCarta.nombre,

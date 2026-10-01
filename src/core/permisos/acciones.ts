@@ -54,7 +54,10 @@ export const ACCIONES = [
   { clave: "carta_contenido_producto", descripcion: "Editar el contenido de carta de cada producto de venta", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_items_agrupados", descripcion: "Administrar los ítems agrupados de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_portal", descripcion: "Administrar el portal de sucursales de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_promos", descripcion: "Administrar las promos de la carta de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Una promo es de la empresa (decisión del dueño, 2026-10-01): definirla es de empresa; prenderla/apagarla y ponerle precio son de la sucursal.
+  { clave: "carta_promo_definir", descripcion: "Crear y editar las promos de la carta (de la empresa): datos, cupos y apagado general", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_promo_activar", descripcion: "Prender o apagar una promo de la empresa en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_promo_precio_local", descripcion: "Fijar el precio de una promo solo en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_tema", descripcion: "Administrar el tema visual de la carta de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "stock_minimo", descripcion: "Fijar Stock Mínimo (global o por sección)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, porción Stock):
@@ -67,7 +70,6 @@ export const ACCIONES = [
   // admin-only en 'stock_minimo').
   { clave: "ver_stock", descripcion: "Ver Stock consolidado, por familia y alertas", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "precio_local", descripcion: "Fijar Precio Local por sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "promociones_config", descripcion: "Ver la pantalla de Promociones", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "comparar_precios", descripcion: "Comparar precios por proveedor", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "notificar_alertas", descripcion: "Notificar alertas de stock por mail", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "insumos_mezclados", descripcion: "Revisar insumos con unidad mezclada", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
@@ -127,8 +129,8 @@ export const ACCIONES = [
   { clave: "ver_auditoria_empresa", descripcion: "Ver las filas de auditoría de la empresa (las que no son de una sucursal)", contexto: "empresa", nivelMinimo: "gerente", rolesEditarSemilla: [] },
   // Reportes: UNA clave por reporte (decisión del dueño, 2026-09-30; reemplaza la agrupación `ver_reportes_*` del 2026-09-19). Son claves de
   // «Ver»: no hay nada que editar. Los reportes de dinero y de control tienen piso de administrador (un operario nunca los recibe); los
-  // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación,
-  // promociones) siguen con la clave de su acción: ver la pantalla y operarla es lo mismo ahí.
+  // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación)
+  // siguen con la clave de su acción: ver la pantalla y operarla es lo mismo ahí.
   { clave: "reporte_resumen", descripcion: "Ver el reporte «Resumen operativo»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_consolidado", descripcion: "Ver el reporte «Consolidado (mis sucursales)»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_periodo", descripcion: "Ver el reporte «Período»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
@@ -187,8 +189,6 @@ export const ACCIONES = [
   { clave: "conteo_resolver_pendiente", descripcion: "Resolver un conteo físico pendiente de revisión", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "stock_reclasificar", descripcion: "Reclasificar stock: repartir el saldo de un producto entre otras secciones y lotes", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "conteo_frecuencia", descripcion: "Fijar cada cuántos días se cuenta cada producto (Frecuencia de conteo)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "promociones_activar", descripcion: "Activar o desactivar las Promociones de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "promociones_marcar_combo", descripcion: "Marcar un producto como Combo", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "producto_ver_catalogo", descripcion: "Ver el catálogo de productos y la ficha de cada uno", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "producto_presentaciones", descripcion: "Agregar y activar o desactivar presentaciones alternativas de un producto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "insumo_alta", descripcion: "Dar de alta un insumo", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },

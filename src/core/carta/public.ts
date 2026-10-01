@@ -10,6 +10,7 @@
  */
 export type { CartaV1, ItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
 export { precioDeCarta } from "./armar-menu";
+export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 export type { Resultado } from "./validaciones";
 export { formatearPrecioCarta } from "./precio-carta";
 export type { EstiloCarta } from "./estilo";

@@ -21,7 +21,7 @@ async function sembrar(sucursalId: string, seccionId: string) {
 
   const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: `E2E Menús Margen ${marca}` } });
   const titulo = `E2E Combo Margen ${marca}`;
-  const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccionCarta.id, titulo, precio: 12000 } });
+  const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccionCarta.id, titulo, precio: 12000 } });
 
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 941 } });
   const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id, cerradaEn: new Date("2024-05-06T12:00:00Z"), cerradaPorId: admin.id } });
@@ -50,6 +50,7 @@ async function sembrar(sucursalId: string, seccionId: string) {
       await prisma.promoCuenta.deleteMany({ where: { id: promoCuenta.id } });
       await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
       await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+      await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });
       await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
       await prisma.seccionCarta.deleteMany({ where: { id: seccionCarta.id } });
       await prisma.producto.deleteMany({ where: { id: { in: [pizza.id, flan.id] } } });
@@ -74,10 +75,6 @@ test("muestra la promo con su ingreso a lista, lo cobrado y el ahorro del client
     await expect(fila).toContainText("$15.000");
     await expect(fila).toContainText("$12.000");
     await expect(fila).toContainText("$3.000 (20%)");
-
-    // Cruza con el otro reporte de "promociones" (rebajas de precio, sin componentes) — la aclaración evita confundirlos.
-    await page.getByRole("link", { name: /Ver también «Promociones»/ }).click();
-    await expect(page.getByRole("heading", { name: "Promociones y Combos" })).toBeVisible();
   } finally {
     await limpiar();
   }

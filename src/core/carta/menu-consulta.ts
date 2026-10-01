@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { armarMenuCarta, type CartaV1, type MenuArmado } from "./armar-menu";
+import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -16,7 +17,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  *  - con el precio local habilitado de la sucursal si lo hay (la regla la aplica `precioDeCarta`);
  *  - ubicados DIRECTO en las secciones de carta ACTIVAS, cada uno por su `seccionCartaId` (docs/plan-carta-seccion-directa-2026-09-25.md;
  *    la Categoría de producto solo viaja como texto informativo);
- *  - más las promos activas de ESTA sucursal;
+ *  - más las promos ofrecidas en ESTA sucursal (activas en la empresa y prendidas acá), con su precio local si lo tienen;
  *  - más los ítems AGRUPADOS activos (docs/plan-agrupacion-items-carta-2026-09-24.md, M3), cada uno con sus opciones PV
  *    disponibles acá. Un producto que es opción de un ítem agrupado NO entra como suelto (D3), esté prendido o apagado su
  *    grupo: apagar "Gaseosa 500cc" no hace aparecer tres gaseosas sueltas.
@@ -50,8 +51,8 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
       },
     }),
     db.promoCarta.findMany({
-      where: { sucursalId, activa: true },
-      select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true },
+      where: wherePromoOfrecidaEn(sucursalId),
+      select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
     }),
     db.itemAgrupadoCarta.findMany({
       where: { activo: true },
@@ -94,7 +95,7 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
         : []
     ),
     preciosLocales: [...preciosLocales].map(([productoId, pl]) => ({ productoId, precio: pl.precio, habilitado: pl.habilitado })),
-    promos: promos.map((pr) => ({ ...pr, precio: Number(pr.precio) })),
+    promos: promos.map(({ sucursales, ...pr }) => ({ ...pr, precio: precioDePromo(pr.precio, sucursales[0]) })),
     agrupados: agrupados.map((ag) => ({
       id: ag.id,
       nombre: ag.nombre,

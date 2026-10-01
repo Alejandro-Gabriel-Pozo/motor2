@@ -163,7 +163,7 @@ describe("cargarSelectorCartaPos", () => {
     });
 
     it("una promo activa con cupos aparece PRIMERO en su sección, con los elegibles YA resueltos (D5)", async () => {
-      const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Combo Milanesa", precio: 12000 } });
+      const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: platosId, titulo: "Combo Milanesa", precio: 12000 } });
       await prisma.promoCartaCupo.createMany({
         data: [
           { promoCartaId: promo.id, seccionCartaId: platosId, cantidadMinima: 1, cantidadMaxima: 1, orden: 0 },
@@ -192,14 +192,14 @@ describe("cargarSelectorCartaPos", () => {
     });
 
     it("una promo SIN cupos (informativa) no se ofrece acá: solo el admin de carta la muestra", async () => {
-      await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Solo informativa", precio: 1 } });
+      await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: platosId, titulo: "Solo informativa", precio: 1 } });
       const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
       const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
       expect(platos.entradas.every((e) => e.tipo !== "promo")).toBe(true);
     });
 
     it("una promo APAGADA no se ofrece", async () => {
-      const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Apagada", precio: 1, activa: false } });
+      const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: platosId, titulo: "Apagada", precio: 1, activa: false } });
       await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, seccionCartaId: platosId, cantidadMinima: 1, cantidadMaxima: 1 } });
       const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
       const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
@@ -208,7 +208,7 @@ describe("cargarSelectorCartaPos", () => {
 
     it("una promo de OTRA sucursal no se mezcla", async () => {
       const seccionNorte = await prisma.seccionCarta.create({ data: { nombre: "Platos Norte" } });
-      const promoNorte = await prisma.promoCarta.create({ data: { sucursalId: norte, seccionCartaId: seccionNorte.id, titulo: "Solo Norte", precio: 1 } });
+      const promoNorte = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: norte } }, seccionCartaId: seccionNorte.id, titulo: "Solo Norte", precio: 1 } });
       await prisma.promoCartaCupo.create({ data: { promoCartaId: promoNorte.id, seccionCartaId: seccionNorte.id, cantidadMinima: 1, cantidadMaxima: 1 } });
       const central = await cargarSelectorCartaPos(s.sucursalId, prisma);
       expect(central.seccionesCarta.flatMap((sc) => sc.entradas).some((e) => e.tipo === "promo")).toBe(false);

@@ -109,11 +109,6 @@ model Sucursal {
   activo    Boolean  @default(true)
   creadoEn  DateTime @default(now())
 
-  /// Feature opcional apagada por defecto (Catalogo.js:2183, clave de Config
-  /// "PromocionesHabilitado") — no todos los clientes arman combos; ver
-  /// PromocionProducto abajo (porción Reportes).
-  promocionesHabilitadas Boolean @default(false)
-
   /// Cupo de mesas ABIERTAS a la vez en esta sucursal (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md). `null` (default) =
   /// sin límite. Se cuenta como "abierta" toda `Cuenta` con `cerradaEn IS NULL` de una mesa de esta sucursal — no la cantidad de `Mesa`
   /// dadas de alta. Se edita con el mismo permiso que da de alta mesas (`pos_mesas`, Editar — src/server/actions/pos/mesas.ts). Bajarlo
@@ -131,12 +126,11 @@ model Sucursal {
   seccionesHabituales      SeccionHabitualProducto[]
   frecuenciasConteo        FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
-  promociones              PromocionProducto[]
   traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
   traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
   pagosConsignante         PagoConsignante[]
   registrosAuditoria       RegistroAuditoria[]
-  promosCarta              PromoCarta[]
+  promosCarta              PromoCartaSucursal[]
   publica                  SucursalPublica?
   temaCarta                TemaCartaSucursal?
   mesas                    Mesa[]
@@ -378,7 +372,6 @@ model Producto {
   seccionesHabituales     SeccionHabitualProducto[]
   frecuenciasConteo       FrecuenciaConteoProducto[]
   disponibilidades        DisponibilidadProducto[]
-  promociones             PromocionProducto[]
   traspasos               TraspasoSucursal[]
   contenidoCarta          ContenidoCartaProducto?
   opcionItemAgrupadoCarta OpcionItemAgrupadoCarta?
@@ -1441,26 +1434,6 @@ model SeccionHabitualProducto {
 // sistema no puede derivar de ningún otro dato.
 // ===================================================================
 
-/// Reemplaza HOJA_PROMOCIONES/"Promociones" (Catalogo.js:2182-2251) — qué
-/// PV cuenta como Promoción/Combo para obtenerReportePromociones_
-/// (src/core/reportes/promociones.ts). Fila ausente = no marcado (mismo
-/// criterio que "no aparece en el mapa" de Apps Script); no se borra al
-/// desmarcar, se pone `activa=false` (mismo patrón que el resto del
-/// catálogo).
-model PromocionProducto {
-  id         String   @id @default(cuid())
-  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
-  empresa    Empresa  @relation(fields: [empresaId], references: [id])
-  sucursalId String
-  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
-  productoId String
-  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
-  activa     Boolean  @default(true)
-
-  @@unique([sucursalId, productoId])
-  @@unique([empresaId, id])
-}
-
 // ===================================================================
 // TRASPASOS ENTRE SUCURSALES (Sucursales.js) — última porción funcional.
 //
@@ -1769,9 +1742,11 @@ model OpcionItemAgrupadoCarta {
   @@index([itemAgrupadoCartaId])
 }
 
-/// Promo de una sucursal dentro de una sección de carta (título, descripción, precio). No referencia a `Producto` ni mueve
-/// stock directamente. Distinta de `PromocionProducto` (REPORTES), que marca qué PV cuenta como promoción para el reporte de
-/// promociones.
+/// Promo de la EMPRESA dentro de una sección de carta (título, descripción, precio): se define UNA vez y cada sucursal la
+/// activa o la apaga con su fila de `PromoCartaSucursal` (decisión del dueño, 2026-10-01: una promo es siempre una composición;
+/// un producto suelto con descuento no es una promo). `activa` es el apagado para TODA la empresa (nunca se borra, se apaga).
+/// Una promo se ofrece en una sucursal solo si `PromoCarta.activa` Y su `PromoCartaSucursal` de esa sucursal está activa.
+/// No referencia a `Producto` ni mueve stock directamente.
 ///
 /// SIN ningún `PromoCartaCupo` (el caso de siempre, y el único hasta Task #16): sigue siendo puramente INFORMATIVA — el POS la
 /// ignora (`selector-carta.ts`: "las promos de la carta se ignoran") y la composición real de "qué lleva" quedaba fuera del
@@ -1787,8 +1762,6 @@ model PromoCarta {
   id             String           @id @default(cuid())
   empresaId      String           @default(dbgenerated("app_empresa_actual()"))
   empresa        Empresa          @relation(fields: [empresaId], references: [id])
-  sucursalId     String
-  sucursal       Sucursal         @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   seccionCartaId String
   seccionCarta   SeccionCarta     @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
   titulo         String
@@ -1799,10 +1772,31 @@ model PromoCarta {
   creadoEn       DateTime         @default(now())
   cupos          PromoCartaCupo[]
   instancias     PromoCuenta[]
+  sucursales     PromoCartaSucursal[]
 
   @@unique([empresaId, id])
-  @@index([sucursalId, activa])
+  @@index([activa])
   @@index([seccionCartaId])
+}
+
+/// Estado de UNA promo de la empresa en UNA sucursal (2026-10-01): FILA AUSENTE = la sucursal no la ofrece (opt-in, igual que
+/// `DisponibilidadProducto`/`ContenidoCartaProducto`). `activa` la prende o la apaga en esa sucursal; apagada no va en la carta ni
+/// en el POS. `precioLocal` (opcional) reemplaza a `PromoCarta.precio` solo en esa sucursal — mismo patrón que
+/// `PrecioLocalProducto`; `null` = precio de la empresa. Nunca se borra: se apaga.
+model PromoCartaSucursal {
+  id           String     @id @default(cuid())
+  empresaId    String     @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa    @relation(fields: [empresaId], references: [id])
+  promoCartaId String
+  promoCarta   PromoCarta @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
+  sucursalId   String
+  sucursal     Sucursal   @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  activa       Boolean    @default(true)
+  precioLocal  Decimal?   @db.Decimal(14, 2)
+
+  @@unique([promoCartaId, sucursalId])
+  @@unique([empresaId, id])
+  @@index([sucursalId, activa])
 }
 
 /// UN cupo de una promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): "elegí entre `cantidadMinima` y
@@ -2137,7 +2131,6 @@ model Empresa {
   frecuenciaConteoProductoRel    FrecuenciaConteoProducto[]
   stockMinimoProductoRel         StockMinimoProducto[]
   seccionHabitualProductoRel     SeccionHabitualProducto[]
-  promocionProductoRel           PromocionProducto[]
   traspasoSucursalRel            TraspasoSucursal[]
   seccionCartaRel                SeccionCarta[]
   contenidoCartaProductoRel      ContenidoCartaProducto[]
@@ -2145,6 +2138,7 @@ model Empresa {
   generoCartaRel                 GeneroCarta[]
   opcionItemAgrupadoCartaRel     OpcionItemAgrupadoCarta[]
   promoCartaRel                  PromoCarta[]
+  promoCartaSucursalRel          PromoCartaSucursal[]
   promoCartaCupoRel              PromoCartaCupo[]
   sucursalPublicaRel             SucursalPublica[]
   temaCartaSucursalRel           TemaCartaSucursal[]

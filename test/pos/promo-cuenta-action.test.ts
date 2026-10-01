@@ -33,7 +33,7 @@ describe("promos armables en la cuenta (server actions)", () => {
     await prisma.contenidoCartaProducto.create({ data: { productoId: s.flan.id, visibleEnCarta: true, seccionCartaId: seccionPostresId } });
 
     // Milanesa $9000 de carta, Flan $3000 → 3:1. Promo "Menú del día" a $10000: prorrateo exacto 7500/2500 (D3).
-    const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionPlatosId, titulo: "Menú del día", precio: 10000 } });
+    const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionPlatosId, titulo: "Menú del día", precio: 10000 } });
     promoCartaId = promo.id;
     await prisma.promoCartaCupo.createMany({
       data: [

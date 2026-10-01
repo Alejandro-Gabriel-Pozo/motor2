@@ -14,6 +14,8 @@ import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prismaAdmin } from "../setup
 export function probarMigracionDeParticion(opciones: {
   directorio: string;
   titulo: string;
+  /** Cuando la migración mezcla cambios de schema con los datos de permisos: texto desde el cual empieza la parte de datos. */
+  desdeMarca?: string;
   sentenciasEsperadas: number;
   /**
    * Contexto de los padres cuando no es el del catálogo: los que ya no están en `ACCIONES` (se retiraron del código en la misma partición) y
@@ -21,10 +23,14 @@ export function probarMigracionDeParticion(opciones: {
    * declaran cada una el suyo y no se compara. Si el padre está en el catálogo y acá, manda lo declarado acá.
    */
   contextoDePadres?: Record<string, "empresa" | "sucursal" | "mixto">;
+  /** Claves (creadas o padres reescritos por esta migración) que una migración POSTERIOR retiró: ya no están en el catálogo del código (se comprueba que no estén). */
+  retiradasDespues?: string[];
   /** Acciones que la migración crea SIN copiar nada de un padre (no las hacía nadie antes): quedan sin asignar para todo rol. */
   accionesSinPadre?: string[];
 }) {
-  const SQL = readFileSync(join(__dirname, "../../prisma/migrations", opciones.directorio, "migration.sql"), "utf8");
+  const SQL_COMPLETO = readFileSync(join(__dirname, "../../prisma/migrations", opciones.directorio, "migration.sql"), "utf8");
+  const SQL = opciones.desdeMarca ? SQL_COMPLETO.slice(SQL_COMPLETO.indexOf(opciones.desdeMarca)) : SQL_COMPLETO;
+  if (opciones.desdeMarca && !SQL_COMPLETO.includes(opciones.desdeMarca)) throw new Error("la marca " + opciones.desdeMarca + " no está en la migración");
   const SENTENCIAS = SQL.replace(/\r\n/g, "\n")
     .split(";\n")
     .map((s) =>
@@ -38,6 +44,7 @@ export function probarMigracionDeParticion(opciones: {
 
   const NUEVAS = [...SENTENCIAS[0].matchAll(/^ {2}\('([a-z_]+)', /gm)].map((m) => m[1]);
   const SIN_PADRE = opciones.accionesSinPadre ?? [];
+  const RETIRADAS = opciones.retiradasDespues ?? [];
   const HIJAS_DE: Record<string, string[]> = {};
   for (const m of SQL.matchAll(/^ {2}\('([a-z_]+)', '([a-z_]+)'\),?$/gm)) {
     const hijas = (HIJAS_DE[m[1]] ??= []);
@@ -84,7 +91,11 @@ export function probarMigracionDeParticion(opciones: {
       expect(hijas.length).toBeGreaterThan(0);
       expect([...hijas].sort()).toEqual(NUEVAS.filter((n) => !SIN_PADRE.includes(n)).sort());
       expect(new Set(hijas).size).toBe(hijas.length);
-      for (const nueva of NUEVAS) expect(CATALOGO.has(nueva), `${nueva} tiene que estar en ACCIONES`).toBe(true);
+      for (const retirada of RETIRADAS) expect(CATALOGO.has(retirada), `${retirada} se declara retirada pero sigue en ACCIONES`).toBe(false);
+      for (const nueva of NUEVAS) {
+        if (RETIRADAS.includes(nueva)) expect(CATALOGO.has(nueva), `${nueva} se declara retirada pero sigue en ACCIONES`).toBe(false);
+        else expect(CATALOGO.has(nueva), `${nueva} tiene que estar en ACCIONES`).toBe(true);
+      }
       for (const sola of SIN_PADRE) expect(NUEVAS, `${sola} se declara sin padre pero la migración no la crea`).toContain(sola);
     });
 
@@ -93,9 +104,9 @@ export function probarMigracionDeParticion(opciones: {
         const contextoPadre = opciones.contextoDePadres?.[padre] ?? CATALOGO.get(padre)?.contexto;
         expect(contextoPadre, `${padre} está en el catálogo o declarado como retirado`).toBeDefined();
         if (contextoPadre === "mixto") {
-          for (const hija of hijas) expect(["empresa", "sucursal"], `${hija} ← ${padre}`).toContain(CATALOGO.get(hija)?.contexto);
+          for (const hija of hijas.filter((h) => !RETIRADAS.includes(h))) expect(["empresa", "sucursal"], `${hija} ← ${padre}`).toContain(CATALOGO.get(hija)?.contexto);
         } else {
-          for (const hija of hijas) expect(CATALOGO.get(hija)?.contexto, `${hija} ← ${padre}`).toBe(contextoPadre);
+          for (const hija of hijas.filter((h) => !RETIRADAS.includes(h))) expect(CATALOGO.get(hija)?.contexto, `${hija} ← ${padre}`).toBe(contextoPadre);
         }
       }
     });
@@ -104,11 +115,11 @@ export function probarMigracionDeParticion(opciones: {
       await correrMigracion();
       const creadas = await prismaAdmin.accion.findMany({ where: { clave: { in: NUEVAS } } });
       expect(creadas.length).toBe(NUEVAS.length);
-      for (const a of creadas) expect(a.descripcion, a.clave).toBe(CATALOGO.get(a.clave)?.descripcion);
+      for (const a of creadas.filter((c) => !RETIRADAS.includes(c.clave))) expect(a.descripcion, a.clave).toBe(CATALOGO.get(a.clave)?.descripcion);
     });
 
     it("las descripciones que reescribe de los padres coinciden con el catálogo del código", async () => {
-      const cambios = [...SQL.matchAll(/UPDATE "Accion" SET "descripcion" = '([^\n]*)' WHERE "clave" = '([a-z_]+)'/g)];
+      const cambios = [...SQL.matchAll(/UPDATE "Accion" SET "descripcion" = '([^\n]*)' WHERE "clave" = '([a-z_]+)'/g)].filter((m) => !RETIRADAS.includes(m[2]));
       for (const m of cambios) expect(CATALOGO.get(m[2])?.descripcion, m[2]).toBe(m[1].replace(/''/g, "'"));
       await correrMigracion();
       for (const m of cambios) expect((await prismaAdmin.accion.findUniqueOrThrow({ where: { clave: m[2] } })).descripcion, m[2]).toBe(CATALOGO.get(m[2])?.descripcion);

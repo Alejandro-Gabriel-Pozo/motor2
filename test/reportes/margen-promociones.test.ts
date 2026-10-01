@@ -28,7 +28,7 @@ describe("obtenerReporteMargenPromociones", () => {
     seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús" } });
   });
 
-  const crearPromoCarta = (titulo: string, activa = true) => prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo, precio: 1, activa } });
+  const crearPromoCarta = (titulo: string, activa = true) => prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo, precio: 1, activa } });
 
   /** Una cuenta con UNA promo ya armada y enviada (numeroEnvio 1), lista para cerrar — componentes ya prorrateados, sembrados
    *  directo (sin pasar por `agregarItems`: el prorrateo en sí ya lo cubre test/pos/promo-combo.test.ts). */

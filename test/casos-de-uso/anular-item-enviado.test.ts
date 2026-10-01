@@ -112,7 +112,7 @@ describe("anularItemEnviadoCasoDeUso", () => {
 
   it("COMPONENTE_DE_PROMO: un componente no se anula suelto (Task #16, D4)", async () => {
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús M12c" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
     const promo = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 10000, titulo: "Menú del día", creadoPorId: s.admin.id } });
     const componente = await prisma.cuentaItem.create({
       data: { cuentaId: cuenta.id, productoId: s.flan.id, cantidad: 1, precioUnitario: 2500, numeroEnvio: 1, promoCuentaId: promo.id, creadoPorId: s.admin.id },

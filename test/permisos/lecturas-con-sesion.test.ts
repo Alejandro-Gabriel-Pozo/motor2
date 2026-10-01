@@ -27,7 +27,6 @@ import { listarSeccionesActivas, listarSeccionesParaPanel } from "../../src/serv
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
-import { buscarProductoParaPromocion, obtenerPromocionesHabilitadas } from "../../src/server/actions/reportes/promociones";
 import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/lecturas-reclasificacion";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
 import { listarSucursalesParaEnviar, listarSucursalesParaSolicitar, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
@@ -68,8 +67,6 @@ const LECTURAS: Array<[string, () => Promise<unknown>]> = [
   ["listarCapacidades", () => listarCapacidades()],
   ["listarMatrizPermisos", () => listarMatrizPermisos()],
   ["listarRoles", () => listarRoles()],
-  ["buscarProductoParaPromocion", () => buscarProductoParaPromocion("x", "y")],
-  ["obtenerPromocionesHabilitadas", () => obtenerPromocionesHabilitadas("x")],
   ["listarStockMinimo", () => listarStockMinimo("x")],
   ["obtenerSaldoDisponibleParaReclasificar", () => obtenerSaldoDisponibleParaReclasificar("x", "y", null)],
   ["listarSucursalesParaSolicitar", () => listarSucursalesParaSolicitar("x")],
@@ -85,8 +82,6 @@ const LECTURAS_POR_SUCURSAL: Array<[string, (sucursalId: string) => Promise<unkn
   ["obtenerPrecioLocalProducto", (id) => obtenerPrecioLocalProducto(id, "y")],
   ["listarSeccionesActivas", (id) => listarSeccionesActivas(id)],
   ["listarSeccionesParaPanel", (id) => listarSeccionesParaPanel(id)],
-  ["buscarProductoParaPromocion", (id) => buscarProductoParaPromocion(id, "y")],
-  ["obtenerPromocionesHabilitadas", (id) => obtenerPromocionesHabilitadas(id)],
   ["listarStockMinimo", (id) => listarStockMinimo(id)],
   ["listarSucursalesParaSolicitar", (id) => listarSucursalesParaSolicitar(id)],
   ["listarSucursalesParaEnviar", (id) => listarSucursalesParaEnviar(id)],

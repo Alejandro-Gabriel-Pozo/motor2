@@ -52,7 +52,7 @@ describe("anularVentaCasoDeUso", () => {
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
     const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: adminId } });
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 1000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 1000 } });
     return prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 1000, titulo: "Menú del día", creadoPorId: adminId } });
   }
 

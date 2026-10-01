@@ -10,4 +10,5 @@ probarMigracionDeParticion({
   titulo: "partición de la clave de la carta pública",
   sentenciasEsperadas: 3,
   contextoDePadres: { carta: "mixto" },
+  retiradasDespues: ["carta_promos"],
 });

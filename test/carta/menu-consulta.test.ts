@@ -89,14 +89,16 @@ describe("resolverMenuCarta", () => {
       ],
     });
 
-    await prisma.promoCarta.createMany({
-      data: [
-        { sucursalId: central, seccionCartaId: promos.id, titulo: "1 pizza + coca 1,5L", precio: 25000, orden: 1 },
-        { sucursalId: central, seccionCartaId: promos.id, titulo: "Promo vieja", precio: 1, activa: false },
-        { sucursalId: otra, seccionCartaId: promos.id, titulo: "Promo de la otra", precio: 1 },
-        { sucursalId: central, seccionCartaId: apagada.id, titulo: "Promo en sección apagada", precio: 1 },
-      ],
-    });
+    // Una promo es de la empresa: cada fila de PromoCartaSucursal dice si esa sucursal la ofrece (y a qué precio).
+    const promo = (data: { seccionCartaId: string; titulo: string; precio: number; orden?: number; activa?: boolean }, sucursales: { sucursalId: string; activa?: boolean; precioLocal?: number }[]) =>
+      prisma.promoCarta.create({ data: { ...data, sucursales: { create: sucursales } } });
+    await promo({ seccionCartaId: promos.id, titulo: "1 pizza + coca 1,5L", precio: 25000, orden: 1 }, [{ sucursalId: central }]);
+    await promo({ seccionCartaId: promos.id, titulo: "Promo vieja", precio: 1, activa: false }, [{ sucursalId: central }]);
+    await promo({ seccionCartaId: promos.id, titulo: "Promo de la otra", precio: 1 }, [{ sucursalId: otra }]);
+    await promo({ seccionCartaId: apagada.id, titulo: "Promo en sección apagada", precio: 1 }, [{ sucursalId: central }]);
+    await promo({ seccionCartaId: promos.id, titulo: "Apagada solo en central", precio: 1 }, [{ sucursalId: central, activa: false }, { sucursalId: otra }]);
+    await promo({ seccionCartaId: promos.id, titulo: "Compartida con precio local", precio: 10, orden: 2 }, [{ sucursalId: central, precioLocal: 15 }, { sucursalId: otra }]);
+    await promo({ seccionCartaId: promos.id, titulo: "Sin fila en central", precio: 1 }, [{ sucursalId: otra }]);
   });
 
   it("sucursal inexistente o inactiva → null", async () => {
@@ -134,7 +136,7 @@ describe("resolverMenuCarta", () => {
     const carta = (await resolverMenuCarta(otra, prisma))!;
     const items = carta.secciones.flatMap((s) => s.items);
     expect(items.map((i) => i.nombre)).toEqual(["Bife de la otra"]);
-    expect(carta.secciones.flatMap((s) => s.promos).map((p) => p.titulo)).toEqual(["Promo de la otra"]);
+    expect(carta.secciones.flatMap((s) => s.promos).map((p) => p.titulo).sort()).toEqual(["Apagada solo en central", "Compartida con precio local", "Promo de la otra", "Sin fila en central"]);
   });
 
   it("precio: el local habilitado pisa al de venta; el deshabilitado no; siempre numérico", async () => {
@@ -162,10 +164,13 @@ describe("resolverMenuCarta", () => {
     });
   });
 
-  it("promos: solo las activas de esta sucursal y en secciones activas, con precio numérico", async () => {
+  it("promos: solo las activas en la empresa Y prendidas en esta sucursal, en secciones activas, con el precio local si lo hay", async () => {
     const carta = (await resolverMenuCarta(central, prisma))!;
     const promos = carta.secciones.flatMap((s) => s.promos);
-    expect(promos).toEqual([{ id: expect.any(String), titulo: "1 pizza + coca 1,5L", descripcion: null, precio: 25000, orden: 1 }]);
+    expect(promos).toEqual([
+      { id: expect.any(String), titulo: "1 pizza + coca 1,5L", descripcion: null, precio: 25000, orden: 1 },
+      { id: expect.any(String), titulo: "Compartida con precio local", descripcion: null, precio: 15, orden: 2 },
+    ]);
   });
 
   it("diagnóstico: los PV visibles sin sección de carta, o con la suya apagada (no se exponen en la carta)", async () => {

@@ -9,14 +9,16 @@ import {
   LARGO_MAXIMO_DESCRIPCION_CARTA,
   LARGO_MAXIMO_TITULO_CARTA,
 } from "@/core/carta/validaciones";
-import { conPermiso } from "../con-permiso";
+import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
- * Promos de la carta de la sucursal activa (docs/plan-carta-catalogo-2026-09-24.md, M9, D5): título, descripción y precio
- * dentro de una sección de carta. Solo escriben en `PromoCarta`/`PromoCartaCupo`, siempre de la sucursal ACTIVA de quien
- * llama: una promo de otra sucursal no se puede editar pasando su id. Nunca se borran: se apagan. Gate: `carta_promos` (sucursal).
+ * Promos de la carta (docs/plan-carta-catalogo-2026-09-24.md, M9, D5): título, descripción y precio dentro de una sección de
+ * carta. Desde 2026-10-01 una promo es de la EMPRESA (se define una vez) y cada sucursal la prende, la apaga y, si quiere, le
+ * pone su precio (`PromoCartaSucursal`). Una clave por acción: definir/cupos/apagado general = `carta_promo_definir` (empresa);
+ * prender o apagar en la sucursal activa = `carta_promo_activar`; precio local = `carta_promo_precio_local` (sucursal: las dos
+ * escriben solo la fila de la sucursal ACTIVA de quien llama). Nunca se borran: se apagan.
  *
  * SIN ningún cupo (`guardarCuposPromoCarta` nunca la tocó, o se le guardó una lista vacía): sigue siendo puramente
  * INFORMATIVA, no referencia productos ni mueve stock — el POS la ignora (`selector-carta.ts`). CON uno o más cupos
@@ -34,7 +36,7 @@ export interface DatosPromoCarta {
 }
 
 export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<ResultadoAccion> {
-  return conPermiso("carta_promos", async (ctx) => {
+  return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
     const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
     if (!titulo.ok) return error(titulo.mensaje);
     if (!titulo.valor) return error("La promo necesita un título.");
@@ -51,25 +53,84 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
     const data = { seccionCartaId: seccion.id, titulo: titulo.valor, descripcion: descripcion.valor, precio: precio.valor, orden: orden.valor };
     if (datos.id) {
       const existente = await ctx.db.promoCarta.findUnique({ where: { id: datos.id } });
-      if (!existente || existente.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
+      if (!existente) return error("No se encontró la promo.");
       await ctx.db.promoCarta.update({ where: { id: datos.id }, data });
       revalidarCartasPublicas();
       return ok(`Promo "${titulo.valor}" guardada.`);
     }
-    await ctx.db.promoCarta.create({ data: { ...data, sucursalId: ctx.sucursalId } });
+    // La sucursal desde la que se crea la ofrece desde el primer momento; las demás la prenden cuando quieran (opt-in, sin fila = no la ofrecen).
+    await ctx.db.promoCarta.create({ data: { ...data, sucursales: { create: { sucursalId: ctx.sucursalId } } } });
     revalidarCartasPublicas();
-    return ok(`Promo "${titulo.valor}" creada en "${seccion.nombre}".`);
+    return ok(`Promo "${titulo.valor}" creada en "${seccion.nombre}" y prendida en esta sucursal.`);
   });
 }
 
+/** Apagado GENERAL de la promo (todas las sucursales): una promo apagada en la empresa no se ofrece en ninguna, tenga lo que tenga cada sucursal. */
 export async function actualizarActivaPromoCarta(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta_promos", async (ctx) => {
+  return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
     const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
-    if (!existente || existente.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
+    if (!existente) return error("No se encontró la promo.");
     await ctx.db.promoCarta.update({ where: { id: promoCartaId }, data: { activa } });
     revalidarCartasPublicas();
-    return ok(`Promo "${existente.titulo}" ${activa ? "activada" : "desactivada"}.`);
+    return ok(`Promo "${existente.titulo}" ${activa ? "activada" : "desactivada"} en toda la empresa.`);
   });
+}
+
+/** Prende o apaga la promo EN LA SUCURSAL ACTIVA (apagada no va en la carta ni en el POS de esta sucursal; las demás no se tocan). */
+export async function actualizarActivaPromoCartaEnSucursal(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
+  return conPermiso("carta_promo_activar", async (ctx) => {
+    const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
+    if (!existente) return error("No se encontró la promo.");
+    await ctx.db.promoCartaSucursal.upsert({
+      where: { promoCartaId_sucursalId: { promoCartaId, sucursalId: ctx.sucursalId } },
+      create: { promoCartaId, sucursalId: ctx.sucursalId, activa },
+      update: { activa },
+    });
+    revalidarCartasPublicas();
+    return ok(`Promo "${existente.titulo}" ${activa ? "prendida" : "apagada"} en esta sucursal.`);
+  });
+}
+
+/**
+ * Precio de la promo SOLO en la sucursal activa (`null`/vacío = vuelve al precio de la empresa). Mismo piso de $0,01 por unidad en el peor
+ * caso que el precio de la empresa (`precioMinimoPromo`). Si la sucursal todavía no la ofrece, la fila se crea apagada: el precio queda
+ * guardado pero no la prende (prender es otra acción, con su propia clave).
+ */
+export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioLocal: number | string | null): Promise<ResultadoAccion> {
+  return conPermiso("carta_promo_precio_local", async (ctx) => {
+    const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId }, include: { cupos: { select: { cantidadMaxima: true } } } });
+    if (!promo) return error("No se encontró la promo.");
+
+    let valor: number | null = null;
+    if (precioLocal !== null && String(precioLocal).trim() !== "") {
+      const precio = validarPrecioCarta(precioLocal);
+      if (!precio.ok) return error(precio.mensaje);
+      valor = precio.valor;
+      const piso = pisoDePrecioDePromo(promo.cupos);
+      if (piso !== null && valor < piso.minimo) return error(mensajePisoDePromo(promo.titulo, valor, piso));
+    }
+    await ctx.db.promoCartaSucursal.upsert({
+      where: { promoCartaId_sucursalId: { promoCartaId, sucursalId: ctx.sucursalId } },
+      create: { promoCartaId, sucursalId: ctx.sucursalId, activa: false, precioLocal: valor },
+      update: { precioLocal: valor },
+    });
+    revalidarCartasPublicas();
+    return ok(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`);
+  });
+}
+
+/** El piso de precio de una promo con estos cupos (peor caso: todos en su máximo), o null si no tiene cupos (informativa: sin piso). */
+function pisoDePrecioDePromo(cupos: readonly { cantidadMaxima: number }[]): { minimo: number; unidades: number } | null {
+  if (!cupos.length) return null;
+  const unidades = cupos.reduce((suma, c) => suma + c.cantidadMaxima, 0);
+  return { minimo: precioMinimoPromo([{ cantidad: unidades }]), unidades };
+}
+
+function mensajePisoDePromo(titulo: string, precio: number, piso: { minimo: number; unidades: number }): string {
+  return (
+    `El precio de "${titulo}" ($${precio}) no alcanza el piso de $0,01 por unidad en el peor caso ` +
+    `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos $${piso.minimo}). Subí el precio o bajá los máximos.`
+  );
 }
 
 /** Un cupo tal como lo manda el formulario del admin (paso 5, docs/plan-promo-combo-2026-09-26.md). */
@@ -83,7 +144,7 @@ export interface DatosCupoPromoCarta {
 /**
  * Reemplaza TODOS los cupos de una promo, todo o nada (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): la lista que llega
  * es la lista final — un cupo que no está en `cupos` se borra. Una lista VACÍA vuelve la promo a informativa (sin backfill: no
- * hay forma de "recuperar" cupos borrados salvo cargarlos de nuevo). Gate: `carta_promos`, sucursal ACTIVA de quien llama.
+ * hay forma de "recuperar" cupos borrados salvo cargarlos de nuevo). Gate: `carta_promo_definir` (empresa: los cupos son de la promo, valen para todas las sucursales).
  *
  * Validación:
  * - cada cupo elige una `SeccionCarta` que existe, sin repetir sección entre cupos de la MISMA promo (`@@unique` de
@@ -95,9 +156,9 @@ export interface DatosCupoPromoCarta {
  *   instancia queda más chica que el peor caso, D1).
  */
 export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readonly DatosCupoPromoCarta[]): Promise<ResultadoAccion> {
-  return conPermiso("carta_promos", async (ctx) => {
-    const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
-    if (!promo || promo.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
+  return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
+    const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
+    if (!promo) return error("No se encontró la promo.");
 
     const seccionIds = new Set<string>();
     const cuposValidados: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number; orden: number }[] = [];
@@ -122,13 +183,10 @@ export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readon
 
       // D3: peor caso = todos los cupos en su máximo — el precio tiene que alcanzar el piso de $0,01 por unidad ahí también,
       // no solo en la elección mínima.
-      const unidadesEnElPeorCaso = cuposValidados.reduce((suma, c) => suma + c.cantidadMaxima, 0);
-      const minimoPrecio = precioMinimoPromo([{ cantidad: unidadesEnElPeorCaso }]);
-      if (Number(promo.precio) < minimoPrecio) {
-        return error(
-          `El precio de "${promo.titulo}" ($${Number(promo.precio)}) no alcanza el piso de $0,01 por unidad en el peor caso ` +
-            `(${unidadesEnElPeorCaso} unidades si se elige el máximo de cada cupo: hace falta al menos $${minimoPrecio}). Subí el precio o bajá los máximos.`
-        );
+      // Vale para el precio de la empresa y para el precio local de CUALQUIER sucursal que lo tenga.
+      const piso = pisoDePrecioDePromo(cuposValidados)!;
+      for (const precio of [Number(promo.precio), ...promo.sucursales.flatMap((s) => (s.precioLocal !== null ? [Number(s.precioLocal)] : []))]) {
+        if (precio < piso.minimo) return error(mensajePisoDePromo(promo.titulo, precio, piso));
       }
     }
 

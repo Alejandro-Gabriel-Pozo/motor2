@@ -39,11 +39,6 @@ test("consolidado: con dos o más sucursales, arma la tabla y suma los totales",
   await contexto.close();
 });
 
-test("promociones: la pantalla carga sin error", async ({ paginaAutenticada: page }) => {
-  await page.goto("/reportes/promociones");
-  await expect(page.getByRole("heading", { name: "Promociones y Combos" })).toBeVisible();
-});
-
 test("categorías: la pantalla carga sin error y muestra el total facturado", async ({ paginaAutenticada: page }) => {
   await page.goto("/reportes/categorias");
   await expect(page.getByRole("heading", { name: "Ventas por categoría" })).toBeVisible();

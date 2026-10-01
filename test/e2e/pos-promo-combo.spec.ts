@@ -48,7 +48,7 @@ async function sembrarPromoCombo(sucursalId: string) {
     ],
   });
   const titulo = `E2E Combo ${marca}`;
-  const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: entradas.id, titulo, precio: 4000 } });
+  const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: entradas.id, titulo, precio: 4000 } });
   await prisma.promoCartaCupo.createMany({
     data: [
       { promoCartaId: promo.id, seccionCartaId: entradas.id, cantidadMinima: 1, cantidadMaxima: 1, orden: 0 },
@@ -81,6 +81,7 @@ async function sembrarPromoCombo(sucursalId: string) {
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.promoCartaCupo.deleteMany({ where: { promoCartaId: promo.id } });
+      await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });
       await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.seccionCarta.deleteMany({ where: { id: { in: [entradas.id, bebidas.id] } } });

@@ -4,6 +4,7 @@ import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
 import { esClavePortal, posicionCompleta, type PosicionPortal } from "./portal";
 import { esClaveTema } from "./tema";
+import { precioDePromo, seleccionDeSucursalDePromo } from "./promo-sucursal";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -68,9 +69,17 @@ export interface PromoCartaAdmin {
   seccionCarta: string;
   titulo: string;
   descripcion: string | null;
+  /** Precio de la EMPRESA (el mismo para todas las sucursales salvo que alguna tenga el suyo). */
   precio: number;
   orden: number;
+  /** Apagado/prendido GENERAL (de la empresa): apagada, ninguna sucursal la ofrece. */
   activa: boolean;
+  /** Prendida en la sucursal activa (sin fila = no la ofrece: opt-in). */
+  prendidaAca: boolean;
+  /** Precio propio de la sucursal activa, o null si usa el de la empresa. */
+  precioLocal: number | null;
+  /** Lo que se cobra EN ESTA sucursal (precio local o, si no hay, el de la empresa). */
+  precioAca: number;
   /** Vacío = puramente informativa (el POS la ignora). Uno o más = ARMABLE (D1). */
   cupos: CupoPromoCartaAdmin[];
 }
@@ -151,8 +160,8 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
       orderBy: { nombre: "asc" },
     }),
     db.promoCarta.findMany({
-      where: { sucursalId },
       include: {
+        sucursales: seleccionDeSucursalDePromo(sucursalId),
         seccionCarta: { select: { nombre: true } },
         cupos: { select: { id: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, orden: true, seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } },
       },
@@ -197,6 +206,9 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
       precio: Number(pr.precio),
       orden: pr.orden,
       activa: pr.activa,
+      prendidaAca: pr.sucursales[0]?.activa ?? false,
+      precioLocal: pr.sucursales[0]?.precioLocal != null ? Number(pr.sucursales[0].precioLocal) : null,
+      precioAca: precioDePromo(pr.precio, pr.sucursales[0]),
       cupos: pr.cupos.map((c) => ({ id: c.id, seccionCartaId: c.seccionCartaId, seccionCarta: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
     })),
   };

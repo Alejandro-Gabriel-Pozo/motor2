@@ -18,7 +18,6 @@ import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel } from "../
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
-import { buscarProductoParaPromocion, obtenerPromocionesHabilitadas } from "../../src/server/actions/reportes/promociones";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
 import { listarSeccionesHabituales } from "../../src/server/actions/stock/seccion-habitual";
 import { listarSucursalesParaSolicitar, listarSucursalesParaEnviar, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
@@ -53,8 +52,6 @@ const LECTURAS: Fila[] = [
   { nombre: "listarMotivosMermaParaPanel", clave: "motivos_merma", pagina: "movimientos/motivos-merma/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarMotivosMermaParaPanel() },
   { nombre: "listarDestinosConsumoParaPanel", clave: "motivos_destino_consumo", pagina: "movimientos/destinos-consumo/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarDestinosConsumoParaPanel() },
   { nombre: "obtenerHistorialConteosFisicos", clave: "reporte_conteos", pagina: "reportes/conteos/page.tsx", archivo: "movimientos/lecturas-conteo-fisico.ts", llamar: (s) => obtenerHistorialConteosFisicos(s) },
-  { nombre: "obtenerPromocionesHabilitadas", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => obtenerPromocionesHabilitadas(s) },
-  { nombre: "buscarProductoParaPromocion", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => buscarProductoParaPromocion(s, "") },
   { nombre: "listarStockMinimo", clave: "stock_minimo", pagina: "stock/minimo/page.tsx", archivo: "stock/stock-minimo.ts", llamar: (s) => listarStockMinimo(s) },
   { nombre: "listarSeccionesHabituales", clave: "stock_seccion_habitual", pagina: "stock/seccion-habitual/page.tsx", archivo: "stock/seccion-habitual.ts", llamar: (s) => listarSeccionesHabituales(s) },
   { nombre: "obtenerBandejaTransferencias", clave: "traspaso_ver_bandeja", pagina: "traspasos/page.tsx", archivo: "traspasos/lecturas.ts", llamar: (s) => obtenerBandejaTransferencias(s) },

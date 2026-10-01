@@ -28,7 +28,7 @@ describe("accionesQueElUsuarioPuedeVer", () => {
   it("conserva lo que un operador ya tenía por otra acción (Conteos físicos tiene su propia clave, reporte_conteos, que heredó de proceso_control)", async () => {
     const base = await sembrarBase();
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, ["reporte_conteos", "pagar_consignante", "promociones_config"], prisma);
+    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, ["reporte_conteos", "pagar_consignante", "carta_promo_activar"], prisma);
     expect([...visibles]).toEqual(["reporte_conteos"]);
   });
 

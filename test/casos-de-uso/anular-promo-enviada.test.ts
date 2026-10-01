@@ -25,7 +25,7 @@ describe("anularPromoEnviadaCasoDeUso", () => {
   /** Una promo «Menú del día» con dos componentes (Milanesa ×1 y Flan ×2), con los envíos dados (`null` = borrador). */
   async function sembrarPromo(envios: [number | null, number | null]) {
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús M12d" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 12000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 12000 } });
     const promo = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 12000, titulo: "Menú del día", creadoPorId: s.admin.id } });
     promoId = promo.id;
     mila = await prisma.cuentaItem.create({

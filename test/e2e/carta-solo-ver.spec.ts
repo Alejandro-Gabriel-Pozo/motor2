@@ -7,7 +7,7 @@ import { crearMembresia } from "../setup/membresia";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
- * Ver ≠ editar en las pantallas de la carta (/carta y /carta/agrupados): con «Ver» pero sin «Editar» de las claves de la carta (carta_secciones, carta_generos, carta_contenido_producto, carta_promos, carta_items_agrupados) se
+ * Ver ≠ editar en las pantallas de la carta (/carta y /carta/agrupados): con «Ver» pero sin «Editar» de las claves de la carta (carta_secciones, carta_generos, carta_contenido_producto, carta_promo_definir / carta_promo_activar / carta_promo_precio_local, carta_items_agrupados) se
  * ven los mismos datos como texto, sin un solo campo ni botón (docs/grounding-lista-ver-editar-2026-09-18.md §7.4: catálogo chico,
  * queda inline; la separación se resuelve con el nivel de permiso). Con la semilla de fábrica no hay un rol que vea la carta y no la
  * edite, así que cada caso fabrica el suyo (usuario y sesión propios), mismo patrón que catalogo-productos-permiso-editar.spec.ts. las claves de la carta son
@@ -22,7 +22,9 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
     carta_secciones: celda,
     carta_generos: celda,
     carta_contenido_producto: celda,
-    carta_promos: celda,
+    carta_promo_definir: celda,
+    carta_promo_activar: celda,
+    carta_promo_precio_local: celda,
     carta_items_agrupados: celda,
   });
   const rol = { id: admin.rolId };
@@ -58,7 +60,7 @@ async function crearCarta(sucursalId: string) {
   await prisma.contenidoCartaProducto.create({
     data: { productoId: suelto.id, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: `Contenido del plato ${marca}`, tags: ["Sin TACC"], especial: true, orden: 2 },
   });
-  const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccion.id, titulo: `E2E Solo ver Promo ${marca}`, descripcion: `Descripción de promo ${marca}`, precio: 9900 } });
+  const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E Solo ver Promo ${marca}`, descripcion: `Descripción de promo ${marca}`, precio: 9900 } });
   const item = await prisma.itemAgrupadoCarta.create({
     data: { nombre: `E2E Solo ver Ítem ${marca}`, seccionCartaId: seccion.id, descripcion: `Descripción del ítem ${marca}`, tags: ["Bien fría"], orden: 4 },
   });
@@ -73,6 +75,7 @@ async function crearCarta(sucursalId: string) {
     limpiar: async () => {
       await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: item.id } });
       await prisma.itemAgrupadoCarta.deleteMany({ where: { id: item.id } });
+      await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });
       await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: [suelto.id, agrupado.id] } } });
       await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
@@ -109,7 +112,7 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
 
     const promo = main.locator(`[data-promo-carta="${carta.promo.titulo}"]`);
     await promo.locator("summary").click();
-    await expect(promo.locator("[data-solo-lectura]")).toContainText(`Descripción de promo ${carta.marca}`);
+    await expect(promo.locator("[data-solo-lectura]").filter({ hasText: `Descripción de promo ${carta.marca}` })).toBeVisible();
 
     // …y no hay nada para editar: ni campos ni botones, ni las altas.
     await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);

@@ -25,7 +25,7 @@ async function crearCarta(sucursalId: string, opciones: { secciones?: number; va
   const secciones: string[] = [];
   for (let i = 1; i <= (opciones.secciones ?? 4); i++) {
     const s = await prisma.seccionCarta.create({ data: { nombre: `E2E Sec ${i} ${marca}` } });
-    await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: s.id, titulo: `E2E Promo ${i} ${marca}`, precio: 1000 * i } });
+    await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: s.id, titulo: `E2E Promo ${i} ${marca}`, precio: 1000 * i } });
     secciones.push(s.id);
   }
   await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
@@ -38,6 +38,7 @@ async function crearCarta(sucursalId: string, opciones: { secciones?: number; va
     limpiar: async () => {
       await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+      await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { seccionCartaId: { in: secciones } } } });
       await prisma.promoCarta.deleteMany({ where: { seccionCartaId: { in: secciones } } });
       await prisma.seccionCarta.deleteMany({ where: { id: { in: secciones } } });
     },

@@ -67,13 +67,14 @@ describe("carta: solo lectura", () => {
     expect(problemas, `La carta pública es de solo lectura; estas líneas escriben:\n${problemas.join("\n")}`).toEqual([]);
   });
 
-  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 10 tablas de carta", () => {
+  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 11 tablas de carta", () => {
     // `sucursalPublica`: el registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6).
     // `temaCartaSucursal`: el tema visual de la carta (docs/plan-tema-carta-2026-09-24.md, M8).
     // `itemAgrupadoCarta` y `opcionItemAgrupadoCarta`: los ítems agrupados (docs/plan-agrupacion-items-carta-2026-09-24.md, M5).
     // Ya no está la puente categoría → sección: cada contenido e ítem agrupado elige su sección directo (docs/plan-carta-seccion-directa-2026-09-25.md, M1).
     // `generoCarta`: carpetas VISUALES del POS (docs/plan-genero-carta-2026-09-26.md), global, sin efecto en la carta pública.
     // `promoCartaCupo`: cupos de una promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1) — admin de la carta, no público.
+    // `promoCartaSucursal`: qué promos de la empresa están prendidas en cada sucursal y su precio local (migración 20261001180000_promo_de_empresa).
     // `portalCartaEmpresa`: la apariencia del portal de la empresa (ADR-006), una fila por empresa.
     const TABLAS_DE_CARTA = new Set([
       "seccionCarta",
@@ -85,6 +86,7 @@ describe("carta: solo lectura", () => {
       "opcionItemAgrupadoCarta",
       "generoCarta",
       "promoCartaCupo",
+      "promoCartaSucursal",
       "portalCartaEmpresa",
     ]);
     const acciones = archivos(join(SRC, "server/actions/carta"));

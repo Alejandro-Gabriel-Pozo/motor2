@@ -98,7 +98,7 @@ describe("obtenerBoletasRecientes — estado derivado (vigente / desactualizada 
    *  de la promo vigente). */
   it("promo con dos componentes: anular UNO anula el otro también (D4) — la boleta pasa directo a «anulada», nunca a medias", async () => {
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús boleta-estado" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, []);
     const promoCuenta = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 10000, titulo: "Menú del día", creadoPorId: s.admin.id } });
     await prisma.cuentaItem.createMany({

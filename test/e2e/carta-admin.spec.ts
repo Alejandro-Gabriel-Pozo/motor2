@@ -58,7 +58,7 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     await nuevaPromo.getByLabel("Sección de carta").selectOption({ label: nombreSeccion });
     await nuevaPromo.getByLabel("Precio").fill("25000");
     await nuevaPromo.getByRole("button", { name: "Crear promo" }).click();
-    await expect(nuevaPromo.getByRole("status")).toHaveText(`Promo "${nombrePromo}" creada en "${nombreSeccion}".`);
+    await expect(nuevaPromo.getByRole("status")).toHaveText(`Promo "${nombrePromo}" creada en "${nombreSeccion}" y prendida en esta sucursal.`);
 
     // Y la carta pública lo refleja (sin cupos: `CartaV1` nunca los expone, D3 del paso 4 — el contrato público no cambia).
     const carta = await menuCartaPublicado(sucursalId);
@@ -95,6 +95,7 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     const secciones = await prisma.seccionCarta.findMany({ where: { nombre: nombreSeccion }, select: { id: true } });
     const seccionIds = secciones.map((s) => s.id);
     await prisma.promoCartaCupo.deleteMany({ where: { promoCarta: { seccionCartaId: { in: seccionIds } } } });
+    await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { seccionCartaId: { in: seccionIds } } } });
     await prisma.promoCarta.deleteMany({ where: { seccionCartaId: { in: seccionIds } } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: { in: seccionIds } } });

@@ -56,7 +56,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       expect(sinEmpresa).toEqual([...GLOBALES, ...PLATAFORMA].sort());
     });
 
-    it("toda FK entre dos tablas por empresa es compuesta e incluye empresaId (94); ninguna FK a una tabla global lo incluye", async () => {
+    it("toda FK entre dos tablas por empresa es compuesta e incluye empresaId (93); ninguna FK a una tabla global lo incluye", async () => {
       const conEmpresa = new Set(await tablasPorEmpresa());
       const fks = await prisma.$queryRaw<Array<{ nombre: string; origen: string; destino: string; columnas: string[] }>>`
         SELECT c.conname::text AS nombre,
@@ -67,7 +67,8 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
          WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace`;
 
       const entreTablasPorEmpresa = fks.filter((f) => conEmpresa.has(f.origen) && conEmpresa.has(f.destino));
-      expect(entreTablasPorEmpresa).toHaveLength(94);
+      // 93: la migración 20261001180000_promo_de_empresa quita 3 FK (PromoCarta→Sucursal y las dos de PromocionProducto) y agrega 2 (PromoCartaSucursal).
+      expect(entreTablasPorEmpresa).toHaveLength(93);
       for (const f of entreTablasPorEmpresa) {
         expect(f.columnas, f.nombre).toHaveLength(2);
         expect(f.columnas, f.nombre).toContain("empresaId");

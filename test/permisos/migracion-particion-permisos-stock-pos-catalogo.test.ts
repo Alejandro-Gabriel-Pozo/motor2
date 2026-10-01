@@ -8,5 +8,6 @@ probarMigracionDeParticion({
   directorio: "20261001130000_particion_permisos_stock_pos_catalogo",
   titulo: "partición de las claves de stock, conteo, promociones, POS y catálogo",
   sentenciasEsperadas: 7,
-  contextoDePadres: { editar_producto: "mixto" },
+  contextoDePadres: { editar_producto: "mixto", promociones_config: "sucursal" },
+  retiradasDespues: ["promociones_config", "promociones_activar", "promociones_marcar_combo"],
 });

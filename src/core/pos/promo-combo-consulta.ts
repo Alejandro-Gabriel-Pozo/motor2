@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { cargarSelectorCartaPos } from "./selector-carta-consulta";
 import { pediblesDeEntrada } from "./selector-carta";
 import type { CupoPromoDefinicion } from "./promo-combo";
@@ -20,7 +21,7 @@ export interface PromoCartaParaAgregar {
 }
 
 /**
- * Carga una `PromoCarta` ACTIVA y ARMABLE (con uno o más cupos) de la sucursal, con los MISMOS elegibles que el selector del
+ * Carga una `PromoCarta` OFRECIDA en la sucursal (activa en la empresa y prendida acá) y ARMABLE (con uno o más cupos), con su precio vigente acá, con los MISMOS elegibles que el selector del
  * POS ofrece en cada sección de sus cupos (D5) — la fuente ÚNICA, para que `agregarItems` (paso 8a) valide la elección del
  * mozo con la misma información que ve en pantalla, nunca una lista propia que pueda desincronizarse (test de paridad contra
  * el selector, `test/pos/promo-combo-consulta.test.ts`). `null` si la promo no existe en esta sucursal, está apagada, o
@@ -30,8 +31,8 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
   const promo =
     typeof promoCartaId === "string"
       ? await db.promoCarta.findFirst({
-          where: { id: promoCartaId, sucursalId, activa: true },
-          include: { cupos: { include: { seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } } },
+          where: { id: promoCartaId, ...wherePromoOfrecidaEn(sucursalId) },
+          include: { sucursales: seleccionDeSucursalDePromo(sucursalId), cupos: { include: { seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } } },
         })
       : null;
   if (!promo || !promo.cupos.length) return null;
@@ -51,5 +52,5 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
       elegibles: new Set(pedibles.map((p) => p.productoId)),
     };
   });
-  return { id: promo.id, titulo: promo.titulo, precio: Number(promo.precio), cupos, precioCartaPorProducto };
+  return { id: promo.id, titulo: promo.titulo, precio: precioDePromo(promo.precio, promo.sucursales[0]), cupos, precioCartaPorProducto };
 }

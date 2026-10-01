@@ -204,7 +204,7 @@ describe("listarBoletasEmitidas", () => {
    *  la cabecera de la promo no tiene una única Operacion (queda null), cada componente sigue con la suya. */
   it("una promo de dos componentes: la cabecera agrupa el total, cada componente trae SU propia operacionId", async () => {
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús boletas-emitidas" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, []);
     const promoCuenta = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 10000, titulo: "Menú del día", creadoPorId: s.admin.id } });
     await prisma.cuentaItem.createMany({

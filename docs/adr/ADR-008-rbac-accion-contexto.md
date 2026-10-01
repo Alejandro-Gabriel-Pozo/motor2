@@ -2,8 +2,8 @@
 
 > Redactado el 2026-10-01. Recoge las decisiones del dueño del 2026-09-30 (tras auditar tres fugas de alcance de permisos) y lo ya
 > implementado en `f0f6bfa`, `def9ea4`, `d991688` y `2ad044d`. Complementa ADR-007 (instalación multiempresa): ahí se decidió que una
-> empresa es un dato; acá se decide cómo se reparte el poder dentro de ella. No cambia el schema: todo lo decidido vive en código y en
-> migraciones de datos.
+> empresa es un dato; acá se decide cómo se reparte el poder dentro de ella. El schema NO cambia por lo decidido acá (vive en código y en
+> migraciones de datos); la única excepción es la partición de las promos (§5), que sí lo toca — ver `20261001180000_promo_de_empresa`.
 
 ## Contexto
 
@@ -98,6 +98,12 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
   `20261001160000_particion_permisos_administracion`); catálogo: la última clave mixta, `editar_producto`, pasa a `producto_editar`,
   `producto_asignar_insumo` y `producto_sincronizar_precio_carta` (las tres de empresa; migración `20261001170000_particion_permisos_producto`).
   Las nuevas de administración son todas fijas para el admin (piso administrador).
+  Promos (2026-10-01, schema autorizado por el dueño): «promociones, un solo concepto». Una promo es SOLO la promo compuesta de la carta
+  (`PromoCarta`), definida una vez por empresa y prendida por sucursal (`PromoCartaSucursal`, con precio local opcional). `carta_promos` se
+  parte en `carta_promo_definir` (empresa), `carta_promo_activar` y `carta_promo_precio_local` (sucursal); desaparecen `promociones_config`,
+  `promociones_activar`, `promociones_marcar_combo`, el reporte `/reportes/promociones`, `PromocionProducto` y `Sucursal.promocionesHabilitadas`
+  (migración `20261001180000_promo_de_empresa`, con `down.sql`; el banco de pruebas de partición aprendió `desdeMarca` y `retiradasDespues`).
+  Un producto suelto con descuento NO es una promo: es «producto con descuento» (porcentaje en la carta, Fase 2, aparte).
 - Se retiraron `ejecutar_tests` y `sincronizar_proveedores` del catálogo (sin consumidor; sus filas `Accion` quedan hasta el contract). Los catálogos CRUD simples (proveedores, categorías,
   secciones, unidades, clientes) se dejan con Ver/Editar, sin partir. Las claves de admin de usuarios/permisos son fijas para el admin.
 
