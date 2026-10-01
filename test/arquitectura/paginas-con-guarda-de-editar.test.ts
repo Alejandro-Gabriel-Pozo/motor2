@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src/app/(app)");
 
 const PAGINAS_DE_EDICION = [
-  { pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "editar_producto" },
+  { pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "producto_editar" },
   { pagina: "catalogo/productos/nuevo/page.tsx", clave: "alta_producto" },
 ];
 

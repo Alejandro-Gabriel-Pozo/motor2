@@ -95,7 +95,9 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
   `20261001130000_particion_permisos_stock_pos_catalogo`; el banco de pruebas de migraciones de partición es reutilizable); grupos B
   (`motivos_*`, `traspaso_*`) y C (`carta_*`); administración (`gestion_roles`, `activar_usuario_sucursal`, `notas_usuario_sucursal`,
   `apagar_cuenta_empresa`, `activar_sucursal`, `renombrar_sucursal`, `ver_auditoria_empresa`; migración
-  `20261001160000_particion_permisos_administracion`). Las nuevas de administración son todas fijas para el admin (piso administrador).
+  `20261001160000_particion_permisos_administracion`); catálogo: la última clave mixta, `editar_producto`, pasa a `producto_editar`,
+  `producto_asignar_insumo` y `producto_sincronizar_precio_carta` (las tres de empresa; migración `20261001170000_particion_permisos_producto`).
+  Las nuevas de administración son todas fijas para el admin (piso administrador).
 - Se retiraron `ejecutar_tests` y `sincronizar_proveedores` del catálogo (sin consumidor; sus filas `Accion` quedan hasta el contract). Los catálogos CRUD simples (proveedores, categorías,
   secciones, unidades, clientes) se dejan con Ver/Editar, sin partir. Las claves de admin de usuarios/permisos son fijas para el admin.
 
@@ -126,4 +128,6 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 - **Superadmin de plataforma**: no existe como concepto en el código; hoy es una función del core que su herramienta puede llamar.
 - **Add-on «la empresa edita/otorga permisos»** y catálogo/plan de permisos por empresa: probablemente necesitan schema.
 - **Suscripción** (primera acción de piso gerente): no existe; solo está preparado el piso.
-- **Partición pendiente**: solo el contract (borrar las `Accion` padre en un deploy posterior) y la clave mixta `editar_producto`.
+- **Partición pendiente**: solo el contract (borrar las `Accion` padre en un deploy posterior). Ya no queda ninguna clave mixta.
+- **Contexto empresa de las claves de producto**: vale si CUALQUIER membresía activa de la empresa la tiene (más laxo que la sucursal activa),
+  igual que `alta_producto`. Un producto es dato de empresa, así que es lo coherente; la edición por campo (p. ej. el precio) no se partió.

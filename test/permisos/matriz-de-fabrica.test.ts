@@ -8,14 +8,6 @@ import { MATRIZ_ESPERADA } from "./matriz-esperada";
  * en el catálogo obliga a cambiarla también acá: el cambio queda en el diff de dos archivos y alguien lo mira.
  */
 
-/**
- * Acciones cuyo contexto declarado es PROVISORIO: hacen cosas de los dos contextos y hay que partirlas antes de fijarles uno de verdad
- * (plan de partición de claves, 2026-09-30). Mientras tanto quedan en el contexto de lo que hacen hoy. Cada una dice qué parte la reemplaza.
- */
-const MIXTAS_PENDIENTES: Readonly<Record<string, string>> = {
-  editar_producto: "`actualizarProducto`/`asignarInsumo` son de empresa y `actualizarDisponibilidadProducto` es de sucursal: se parte en el paso de catálogo.",
-};
-
 describe("matriz de fábrica: el catálogo coincide con lo esperado", () => {
   it("tiene exactamente las mismas claves", () => {
     const enCatalogo = ACCIONES.map((a) => a.clave).sort();
@@ -51,17 +43,5 @@ describe("matriz de fábrica: ninguna acción arranca en manos de un nivel infer
       const adminEdita = (a.rolesEditarSemilla as readonly string[]).includes("admin");
       expect(adminEdita, a.clave).toBe((a.nivelMinimo as NivelDeAccion) !== "gerente");
     }
-  });
-});
-
-describe("matriz de fábrica: contextos provisorios", () => {
-  it("toda mixta pendiente existe en el catálogo y sigue con un contexto declarado", () => {
-    const claves = new Set<string>(ACCIONES.map((a) => a.clave));
-    const inexistentes = Object.keys(MIXTAS_PENDIENTES).filter((k) => !claves.has(k));
-    expect(inexistentes, "Estas ya no existen en ACCIONES: sacalas de MIXTAS_PENDIENTES").toEqual([]);
-  });
-
-  it("las mixtas pendientes son la que queda (si se parte una, sale de la lista)", () => {
-    expect(Object.keys(MIXTAS_PENDIENTES).sort()).toEqual(["editar_producto"]);
   });
 });

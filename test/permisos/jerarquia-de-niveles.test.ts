@@ -28,7 +28,7 @@ import { crearMembresia } from "../setup/membresia";
  */
 const DE_ADMIN_SUCURSAL = "secciones"; // piso administrador, contexto sucursal
 const DE_ADMIN_EMPRESA = "unidades"; // piso administrador, contexto empresa
-const DE_OPERARIO_SUCURSAL = "editar_producto"; // piso operario, contexto sucursal
+const DE_OPERARIO_SUCURSAL = "producto_disponibilidad"; // piso operario, contexto sucursal
 const DE_OPERARIO_EMPRESA = "alta_producto"; // piso operario, contexto empresa
 
 describe("el catálogo y los niveles (puro)", () => {

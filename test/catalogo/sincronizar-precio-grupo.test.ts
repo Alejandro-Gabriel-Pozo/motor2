@@ -132,8 +132,8 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(r).toEqual({ ok: true, mensaje: 'Producto "Tónica 500cc" actualizado.' });
     });
 
-    it("permiso: sin `editar_producto` no sincroniza nada", async () => {
-      await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "editar_producto" }, data: { puedeEditar: false, puedeVer: false } });
+    it("permiso: sin `producto_sincronizar_precio_carta` no sincroniza nada", async () => {
+      await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "producto_sincronizar_precio_carta" }, data: { puedeEditar: false, puedeVer: false } });
       const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: operadorRolId });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
       const r = await sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500);

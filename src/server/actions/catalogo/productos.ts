@@ -111,7 +111,7 @@ export async function obtenerInsumoDeProducto(productoId: string): Promise<Insum
  * activo del mismo Insumo con otra unidad de stock.
  */
 export async function asignarInsumoAProducto(productoId: string, insumoId: string): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async (ctx) => {
+  return conPermisoDeEmpresa("producto_asignar_insumo", async (ctx) => {
     const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "MP") return error("Solo una materia prima (MP) puede tener Insumo asignado.");
@@ -356,7 +356,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
  */
 export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoConSincronizable> {
-  return conPermiso<ResultadoConSincronizable>("editar_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConSincronizable>("producto_editar", async (ctx) => {
     const existente = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
@@ -417,7 +417,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
  * que editar el precio de cada uno a mano. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
  */
 export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async (ctx) => {
+  return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
     if (!esNumeroFinito(precio)) return error("El precio de venta no es un número válido.");
     if (!(precio >= 0)) return error("El precio de venta no puede ser negativo.");
     const ids = [...new Set(productoIds)];

@@ -87,7 +87,13 @@ commit, siempre con OK expreso del dueño.
   cada botón según su clave. Los guardianes de guardas reconocen `obtenerMiNivelPermisoDeEmpresa`; `gate-piso-gerente.test.ts` pasó del
   mock a la clave real.
 - Siguiente en el orden: contract (borrar las `Accion` padre, incluidas `ver_reportes_*`, `carta`, `motivos_movimiento`,
-  `proceso_transferencia_sucursal`, `ejecutar_tests` y `sincronizar_proveedores`) en un deploy posterior; queda la clave mixta `editar_producto`.
+  `proceso_transferencia_sucursal`, `ejecutar_tests` y `sincronizar_proveedores`, y `editar_producto`) en un deploy posterior.
+- Catálogo, clave mixta `editar_producto` (3 claves nuevas, sin schema): `producto_editar`, `producto_asignar_insumo` y
+  `producto_sincronizar_precio_carta`, las tres de contexto empresa (editan datos de toda la empresa; la disponibilidad por sucursal ya tenía
+  `producto_disponibilidad`). Migración `20261001170000_particion_permisos_producto` (con `down.sql`, mismo banco de pruebas, padre «mixto»).
+  `editar_producto` se retira del catálogo (la fila `Accion` queda hasta el contract). Ya no queda ninguna clave mixta: se sacó
+  `MIXTAS_PENDIENTES` de `matriz-de-fabrica.test.ts`. Efecto a tener presente: con contexto empresa, la clave vale si CUALQUIER membresía activa
+  del usuario en la empresa la tiene (antes, solo la de la sucursal activa).
 
 ## Sin empezar (necesitan visto bueno del dueño antes de implementar)
 

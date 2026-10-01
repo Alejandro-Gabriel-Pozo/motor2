@@ -33,7 +33,7 @@ export interface AccionSemilla {
 // `satisfies` (no una anotación `: readonly AccionSemilla[]`): la anotación anula el `as const` y `AccionClave` degenera en `string`.
 export const ACCIONES = [
   { clave: "alta_producto", descripcion: "Dar de alta un producto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "editar_producto", descripcion: "Editar un producto existente", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
+  { clave: "producto_editar", descripcion: "Editar un producto existente", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "guardar_receta", descripcion: "Crear/editar una receta (Editor de Recetas)", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "grupos_familia", descripcion: "Administrar los Grupos de insumos, asignar cada insumo a su Grupo y activar o desactivar insumos", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "secciones", descripcion: "Administrar el catálogo de Secciones", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
@@ -194,6 +194,8 @@ export const ACCIONES = [
   { clave: "insumo_alta", descripcion: "Dar de alta un insumo", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "categoria_alta", descripcion: "Dar de alta una categoría de producto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proveedor_alta", descripcion: "Dar de alta un proveedor", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
+  { clave: "producto_asignar_insumo", descripcion: "Asignar un insumo a una materia prima ya existente (asistente de hermanar)", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
+  { clave: "producto_sincronizar_precio_carta", descripcion: "Aplicar el mismo precio de venta a los productos de un ítem agrupado de la carta", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "producto_disponibilidad", descripcion: "Marcar un producto como disponible o no disponible", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "pos_alta_mesa", descripcion: "Dar de alta mesas en el salón (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "pos_limite_mesas_abiertas", descripcion: "Fijar el límite de mesas abiertas a la vez (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },

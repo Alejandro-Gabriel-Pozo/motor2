@@ -15,7 +15,9 @@ export interface FilaEsperada {
 
 export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   alta_producto: { contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
-  editar_producto: { contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },
+  producto_editar: { contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
+  producto_asignar_insumo: { contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
+  producto_sincronizar_precio_carta: { contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
   guardar_receta: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   grupos_familia: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   secciones: { contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
