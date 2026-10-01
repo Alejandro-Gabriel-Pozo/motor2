@@ -1,18 +1,20 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import type { MembresiaUsuario } from "@/core/auth/contexto";
 import { cambiarSucursalActiva } from "@/server/actions/auth/sucursal-activa";
 
 export function SelectorSucursal({ membresias, actual }: { membresias: MembresiaUsuario[]; actual: string }) {
   const [pending, startTransition] = useTransition();
+  const pantallaActual = usePathname();
 
   return (
     <select
       aria-label="Sucursal activa"
       value={actual}
       disabled={pending}
-      onChange={(e) => startTransition(() => cambiarSucursalActiva(e.target.value))}
+      onChange={(e) => startTransition(() => cambiarSucursalActiva(e.target.value, pantallaActual))}
       className="rounded border px-2 py-1 text-sm disabled:opacity-50"
     >
       {membresias.map((m) => (

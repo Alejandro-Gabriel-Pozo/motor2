@@ -149,10 +149,17 @@ export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
  * enlace: la consulta (`?…`) y el ancla (`#…`) se ignoran. Es lo que permite mostrar un enlace solo a quien puede abrir su destino.
  */
 export function accionDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV): AccionClave | null {
+  return itemDeRuta(href, grupos)?.accion ?? null;
+}
+
+/** El ítem (con acción) del que cuelga la ruta: el de la ruta más larga que es prefijo de la de `href`. Ver `accionDeRuta`. */
+export function itemDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV): (ItemNav & { accion: AccionClave }) | null {
   const ruta = href.split(/[?#]/)[0].replace(/\/+$/, "");
-  const candidatos = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU].filter((i) => i.accion && (ruta === i.href || ruta.startsWith(`${i.href}/`)));
+  const candidatos = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU].filter(
+    (i): i is ItemNav & { accion: AccionClave } => !!i.accion && (ruta === i.href || ruta.startsWith(`${i.href}/`))
+  );
   candidatos.sort((a, b) => b.href.length - a.href.length);
-  return candidatos[0]?.accion ?? null;
+  return candidatos[0] ?? null;
 }
 
 /** Las rutas de todos los ítems del menú completo, sin filtrar por permiso (no son datos sensibles: son las rutas de la aplicación). */

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import { IconoDeModulo } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
@@ -31,7 +31,7 @@ export default async function InicioPage() {
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {tarjetas.map((t) => (
           <li key={t.id}>
-            <Link
+            <EnlaceInterno
               href={t.href}
               className="flex h-full items-start gap-3 rounded border border-neutral-200 p-4 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
             >
@@ -43,7 +43,7 @@ export default async function InicioPage() {
                 </span>
                 <span className="block text-sm text-neutral-500 dark:text-neutral-400">{t.descripcion}</span>
               </span>
-            </Link>
+            </EnlaceInterno>
           </li>
         ))}
       </ul>

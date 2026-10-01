@@ -2,11 +2,13 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu } from "@/core/navegacion/estructura";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { Suspense } from "react";
 import { after } from "next/server";
 import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
 import { SidebarColapsable } from "./sidebar-colapsable";
+import { RecordarPantallaDeGestion } from "./recordar-pantalla-de-gestion";
 import { SelectorEmpresa } from "./selector-empresa";
 import { SelectorSucursal } from "./selector-sucursal";
 
@@ -31,6 +33,9 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
 
   return (
     <div className="flex flex-1">
+      <Suspense fallback={null}>
+        <RecordarPantallaDeGestion sucursalId={ctx.sucursalId} />
+      </Suspense>
       <SidebarColapsable grupos={grupos} hrefsDelMenu={hrefsDelMenu()} />
       {/* min-w-0: un ítem flex tiene `min-width: auto` (el ancho mínimo de su contenido) y, sin esto, una tabla ancha, aunque esté dentro de su propio
           `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la

@@ -51,6 +51,8 @@ const GUARDAS_CON_CLAVE_DINAMICA: Readonly<Record<string, string>> = {
   "server/actions/movimientos/movimientos.ts|accionClave": "La acción se resuelve del proceso con `ACCION_POR_PROCESO`; sus valores se inventarían como mapa.",
   "components/app-shell.tsx|accionesDeNavegacion()": "Las acciones del menú: cada ítem declara la suya y `menu-con-permiso.test.ts` comprueba que el menú use la misma clave que la página.",
   "core/navegacion/inicio.ts|accionesDelMenu()": "Las acciones del menú (mismo origen que el de `app-shell`).",
+  "core/navegacion/inicio.ts|accionesDeNavegacion()": "Las acciones del menú más las de las rutas fuera del menú (mismo origen que `app-shell`): sirve para el enlace «Administración» del salón.",
+  "server/actions/auth/sucursal-activa.ts|accionesDeNavegacion()": "Qué pantallas del menú ve el rol en la sucursal NUEVA al cambiar de sucursal (mismo origen que `app-shell`); la pantalla destino la vuelve a guardar su página.",
 };
 
 function clavesDelCodigo() {
