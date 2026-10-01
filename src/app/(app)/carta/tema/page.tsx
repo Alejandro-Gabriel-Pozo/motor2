@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { cargarTemaAdmin, type TemaAdmin } from "@/core/carta/admin-consulta";
@@ -12,7 +12,7 @@ import { EditorTema } from "@/components/carta/editor-tema";
 /**
  * Tema de la carta (docs/plan-tema-carta-2026-09-24.md, M9, D11): los colores, textos, tipografía y layout de la carta pública de
  * la sucursal ACTIVA — lo que lee la carta pública interna (ADR-006). Mismo estilo que /carta y /carta/portal: las mutaciones pasan por las Server Actions de
- * src/server/actions/carta/tema.ts (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures capturan solo el
+ * src/server/actions/carta/tema.ts (conPermiso("carta_tema")) y el refresco lo piden los closures de acá. Los closures capturan solo el
  * id de la sucursal (texto): lo que captura un closure "use server" viaja al cliente.
  *
  * Guardar y Aplicar/Desaplicar son formularios separados (D4): un tema guardado sin aplicar es un borrador.
@@ -35,7 +35,7 @@ export default async function TemaCartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_tema", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const datos = await cargarTemaAdmin(ctx.sucursalId, ctx.db);
@@ -57,9 +57,9 @@ export default async function TemaCartaPage() {
         {!datos.publica && (
           <p className="text-sm text-neutral-500">
             Se puede preparar igual; no tiene efecto hasta agregar la sucursal en el{" "}
-            <Link href="/carta/portal" className="underline">
+            <EnlaceInterno href="/carta/portal" className="underline">
               Portal de sucursales
-            </Link>
+            </EnlaceInterno>
             .
           </p>
         )}

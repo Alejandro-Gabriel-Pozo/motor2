@@ -14,7 +14,6 @@ import { MATRIZ_ESPERADA } from "./matriz-esperada";
  */
 const MIXTAS_PENDIENTES: Readonly<Record<string, string>> = {
   gestion_usuarios: "Se parte en `activar_usuario_sucursal` / `notas_usuario_sucursal` (sucursal) y `apagar_cuenta_empresa` (empresa): paso de administración.",
-  carta: "Se parte en `carta_*`: secciones, contenido, agrupados, géneros y portal son de empresa; promos y tema, de sucursal: paso de operaciones.",
   editar_producto: "`actualizarProducto`/`asignarInsumo` son de empresa y `actualizarDisponibilidadProducto` es de sucursal: se parte en el paso de catálogo.",
 };
 
@@ -63,7 +62,7 @@ describe("matriz de fábrica: contextos provisorios", () => {
     expect(inexistentes, "Estas ya no existen en ACCIONES: sacalas de MIXTAS_PENDIENTES").toEqual([]);
   });
 
-  it("las mixtas pendientes son las tres detectadas (si se parte una, sale de la lista)", () => {
-    expect(Object.keys(MIXTAS_PENDIENTES).sort()).toEqual(["carta", "editar_producto", "gestion_usuarios"]);
+  it("las mixtas pendientes son las dos que quedan (si se parte una, sale de la lista)", () => {
+    expect(Object.keys(MIXTAS_PENDIENTES).sort()).toEqual(["editar_producto", "gestion_usuarios"]);
   });
 });

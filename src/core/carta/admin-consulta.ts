@@ -10,7 +10,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
 /**
  * Lectura de las pantallas de admin de la carta (/carta, docs/plan-carta-catalogo-2026-09-24.md, M10, y
  * /carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7, y /carta/tema, docs/plan-tema-carta-2026-09-24.md,
- * M9). Solo lectura (la fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer(..., "carta")`. No es una
+ * M9). Solo lectura (la fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer*(..., "carta_ver")`. No es una
  * Server Action a propósito: así no queda expuesta como endpoint.
  */
 export interface SeccionCartaAdmin {

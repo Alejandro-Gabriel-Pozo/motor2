@@ -67,10 +67,9 @@ describe("migración de datos del permiso carta", () => {
     expect((await prisma.accion.findUniqueOrThrow({ where: { clave: "carta" } })).descripcion).toBe("ya existía");
   });
 
-  it("coincide con lo que declara la fuente única de acciones (la descripción y el rol semilla)", () => {
-    const accion = ACCIONES.find((a) => a.clave === "carta");
-    expect(accion, "carta tiene que estar en ACCIONES").toBeDefined();
-    expect(accion!.rolesEditarSemilla).toEqual(["admin"]);
-    expect(SQL).toContain(`'${accion!.descripcion}'`);
+  it("la clave quedó retirada del catálogo del código: la partición la reemplazó por una clave por bloque, y la migración original sigue sembrándola", () => {
+    expect(ACCIONES.find((a) => (a.clave as string) === "carta")).toBeUndefined();
+    expect(ACCIONES.find((a) => a.clave === "carta_ver")?.rolesEditarSemilla).toEqual(["admin"]);
+    expect(SQL).toContain("'carta'");
   });
 });

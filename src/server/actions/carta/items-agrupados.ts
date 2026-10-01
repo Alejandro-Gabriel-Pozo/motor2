@@ -11,7 +11,7 @@ import {
   LARGO_MAXIMO_DESCRIPCION_CARTA,
 } from "@/core/carta/validaciones";
 import { validarGeneroCartaOpcional } from "./generos-compartido";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { revalidarCartasPublicas } from "./revalidar";
 
@@ -19,7 +19,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  * Ítems AGRUPADOS de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): un renglón visible ("Gaseosa 500 CC") que
  * agrupa varios PV reales (Coca-Cola, Sprite, Fanta 500cc). Globales (Catálogo Central, D9). Solo escriben en `ItemAgrupadoCarta`
  * y `OpcionItemAgrupadoCarta`: el producto (nombre, precio, categoría, disponibilidad) y su `ContenidoCartaProducto` no se tocan.
- * Nunca se borra un ítem agrupado: se apaga. Quitar una opción borra solo la fila de referencia. Gate: `carta`.
+ * Nunca se borra un ítem agrupado: se apaga. Quitar una opción borra solo la fila de referencia. Gate: `carta_items_agrupados` (empresa: los ítems agrupados son globales).
  *
  * UBICACIÓN (docs/plan-carta-seccion-directa-2026-09-25.md): el ítem agrupado elige su sección de carta DIRECTO, sin Categoría
  * de producto de por medio, y no tiene imagen propia (la carta solo dibuja la de la sección).
@@ -58,7 +58,7 @@ export interface DatosItemAgrupadoCarta {
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
 export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("carta", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("carta_items_agrupados", async (ctx) => {
     const nombre = validarNombreItemAgrupadoCarta(datos.nombre);
     if (!nombre.ok) return error(nombre.mensaje);
     const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
@@ -123,7 +123,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
 
 /** Nunca se borra un ítem agrupado: se apaga (deja de salir en la carta, y sus opciones tampoco salen sueltas, D3). */
 export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
     const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: itemAgrupadoCartaId } });
     if (!existente) return error("No se encontró el ítem agrupado.");
     await ctx.db.itemAgrupadoCarta.update({ where: { id: itemAgrupadoCartaId }, data: { activo } });
@@ -146,7 +146,7 @@ async function mensajeYaAgrupado(db: Db, productoId: string, productoNombre: str
  * La categoría del producto no importa: la opción sale (y sus ventas se cuentan) en la sección del ítem agrupado.
  */
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
-  return conPermiso("carta", (ctx) => agregarOpcion(ctx.db, ctx.sucursalId, itemAgrupadoCartaId, productoId, orden));
+  return conPermisoDeEmpresa("carta_items_agrupados", (ctx) => agregarOpcion(ctx.db, ctx.sucursalId, itemAgrupadoCartaId, productoId, orden));
 }
 
 /**
@@ -205,7 +205,7 @@ async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: st
 }
 
 export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, orden: number | string | null): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
     const o = validarOrdenCarta(orden);
     if (!o.ok) return error(o.mensaje);
     const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({ where: { id: opcionId }, select: { producto: { select: { nombre: true } } } });
@@ -218,7 +218,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
 
 /** Saca un producto de su ítem agrupado: se borra solo la referencia. El producto y su ContenidoCartaProducto no se tocan (D3). */
 export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
     const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({
       where: { id: opcionId },
       select: { producto: { select: { nombre: true } }, itemAgrupadoCarta: { select: { nombre: true } } },

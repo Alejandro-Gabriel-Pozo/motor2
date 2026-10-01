@@ -10,7 +10,7 @@ import {
   validarSlugTenant,
   validarTextoLibreCarta,
 } from "@/core/carta/validaciones";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { revalidarCartasPublicas } from "./revalidar";
 
@@ -18,7 +18,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  * Registro público de las sucursales en el portal/carta (docs/plan-registro-tenants-2026-09-24.md, M6): lo que
  * arma el portal de la carta pública interna (ADR-006). Solo escriben en
  * `SucursalPublica` (lo fija test/arquitectura/carta-solo-lectura.test.ts): la sucursal en sí (nombre, activa) se sigue
- * administrando en Administración → Sucursales. Gate: `carta`, la misma acción que el resto del admin de la carta.
+ * administrando en Administración → Sucursales. Gate: `carta_portal` (empresa: se administra el portal de todas las sucursales).
  *
  * Las tres reciben el `Sucursal.id` (la fila es 1:1 con la sucursal). No dependen de la sucursal activa de quien llama: el mapa
  * del portal es entre sucursales.
@@ -35,7 +35,7 @@ function esChoqueDeUnicidad(e: unknown): boolean {
  * nombre (`slugTenant`) y desambiguado contra los que ya existen (`-2`, `-3`…). Si hace falta otra dirección, el slug se edita después a mano. Ante una carrera con otra alta que tomó el mismo slug (P2002), reintenta.
  */
 export async function agregarSucursalAlPortal(sucursalId: string): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_portal", async (ctx) => {
     const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true } });
     if (!sucursal) return error("No se encontró la sucursal.");
 
@@ -73,7 +73,7 @@ export interface DatosSucursalPublica {
  * Guarda el registro público de una sucursal que ya está en el portal. Valida todo con los validadores de M2. Slug ya usado por otra sucursal → error con su nombre.
  */
 export async function guardarSucursalPublica(sucursalId: string, datos: DatosSucursalPublica): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_portal", async (ctx) => {
     const slug = validarSlugTenant(datos.slug);
     if (!slug.ok) return error(slug.mensaje);
     const etiqueta = validarTextoLibreCarta(datos.etiqueta, "La etiqueta", LARGO_MAXIMO_ETIQUETA_PORTAL);
@@ -119,7 +119,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
  * Saca la sucursal del registro de motor2: borra su fila. Es la vuelta atrás del alta: la sucursal desaparece del portal.
  */
 export async function quitarSucursalDelPortal(sucursalId: string): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_portal", async (ctx) => {
     const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { slug: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal.");
     await ctx.db.sucursalPublica.deleteMany({ where: { sucursalId } });
@@ -134,7 +134,7 @@ export async function quitarSucursalDelPortal(sucursalId: string): Promise<Resul
  * completa: arrastrar mueve, no ubica por primera vez (eso se hace con los números de su formulario, que además es la alternativa sin arrastre).
  */
 export async function moverSucursalEnMapa(sucursalId: string, x: number, y: number): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_portal", async (ctx) => {
     const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { id: true, posW: true, posH: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal.");
     if (existente.posW === null) return error("Esta sucursal todavía no tiene posición en el mapa: cargala con los números de su formulario.");

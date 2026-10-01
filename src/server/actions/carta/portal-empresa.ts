@@ -2,12 +2,12 @@
 
 import type { Prisma } from "@prisma/client";
 import { validarValoresPortal } from "@/core/carta/portal";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 
 /**
  * Apariencia del portal de sucursales de la empresa (ADR-006): colores, textos, imagen del mapa y tamaños de las tarjetas.
- * Escribe SOLO en `PortalCartaEmpresa` (lo fija test/arquitectura/carta-solo-lectura.test.ts). Gate: `carta`, como el resto del
+ * Escribe SOLO en `PortalCartaEmpresa` (lo fija test/arquitectura/carta-solo-lectura.test.ts). Gate: `carta_portal` (empresa), como el resto del
  * admin de la carta. El portal público lee la fila en cada pedido (no usa caché), así que no hace falta revalidar nada.
  */
 
@@ -17,7 +17,7 @@ import { error, ok, type ResultadoAccion } from "../tipos";
  * fila por empresa (`empresaId` único): `upsert`, así guardar dos veces es idempotente.
  */
 export async function guardarPortalEmpresa(valores: Readonly<Record<string, unknown>>): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_portal", async (ctx) => {
     const validados = validarValoresPortal(valores);
     if (!validados.ok) return error(validados.mensaje);
 

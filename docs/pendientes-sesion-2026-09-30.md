@@ -67,10 +67,18 @@ commit, siempre con OK expreso del dueño.
   `traspaso_cancelar_solicitud`, `traspaso_rechazar_solicitud`, `traspaso_aceptar`, `traspaso_rechazar_envio`, `traspaso_confirmar_reingreso`.
   Migración `20261001140000_particion_permisos_motivos_traspasos` (con `down.sql`, mismo banco de pruebas). Estos dos padres SÍ se retiran
   del catálogo (la fila `Accion` queda hasta el contract). La bandeja deshabilita cada botón según su clave. Gate de 7 comandos limpio (A+B juntos): 324 archivos / 3851 tests; e2e 408.
-- Falta de operaciones: grupo C (`carta` → 8 `carta_*`). Dudas a revisar en C: `carta_portal`,
-  `promociones_activar` y `pos_limite_mesas_abiertas` pueden actuar a nivel empresa o de toda la sucursal.
+- Grupo C (8 claves nuevas, sin schema): `carta` → `carta_ver` (entrar a /carta, sucursal), `carta_secciones`, `carta_generos`,
+  `carta_contenido_producto`, `carta_items_agrupados`, `carta_portal` (empresa: son datos globales o del portal de toda la empresa) y
+  `carta_promos`, `carta_tema` (sucursal). Migración `20261001150000_particion_permisos_carta` (con `down.sql`, mismo banco de pruebas,
+  padre «mixto»). `/carta` pide `carta_ver` para entrar y decide por bloque (secciones, géneros, contenido, promos) qué se puede editar;
+  cada pantalla de la carta pide solo su clave. `carta` se retira del catálogo (la fila `Accion` queda hasta el contract). Hueco previo
+  cerrado en el mismo commit: `guardarTemaCarta`/`cambiarAplicacionTema` recibían un `sucursalId` arbitrario (`carta_tema` en una
+  sucursal tocaba el tema de otra); ahora exigen `sucursalId === ctx.sucursalId` y responden «No se encontró la sucursal.» (test nuevo).
+  Gate de 7 comandos limpio con el grupo C: 325 archivos / 3869 tests; e2e 408.
+- Falta de operaciones: nada del bloque (A+B+C hechos). Dudas a revisar: `carta_portal`, `promociones_activar` y
+  `pos_limite_mesas_abiertas` pueden actuar a nivel empresa o de toda la sucursal.
 - Fase de contract (borrar las `Accion` padre, incluidas `ver_reportes_*`) en un deploy posterior.
-- Siguiente en el orden: grupo C, después administración.
+- Siguiente en el orden: administración.
 
 ## Sin empezar (necesitan visto bueno del dueño antes de implementar)
 

@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { cargarAdminPortal, cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
 import { CLAVES_PORTAL_V1 } from "@/core/carta/portal";
 import { urlCartaPublica } from "@/core/carta/host";
@@ -17,7 +17,7 @@ import { EditorPortal } from "@/components/carta/editor-portal";
  *
  * Todas las sucursales (el mapa es entre sucursales, no depende de la activa). Sin fila → "Agregar al portal"; con fila → su
  * formulario. Mismo estilo que /carta: las mutaciones pasan por las Server Actions de
- * src/server/actions/carta/registro-publico.ts (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures
+ * src/server/actions/carta/registro-publico.ts (conPermisoDeEmpresa("carta_portal")) y el refresco lo piden los closures de acá. Los closures
  * capturan solo el id de la sucursal (texto): lo que captura un closure "use server" viaja al cliente.
  */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -35,7 +35,7 @@ export default async function PortalSucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [sucursales, apariencia] = await Promise.all([cargarAdminPortal(ctx.db), cargarPortalEmpresaAdmin(ctx.db)]);

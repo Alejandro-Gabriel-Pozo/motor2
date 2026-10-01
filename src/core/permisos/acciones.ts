@@ -47,7 +47,15 @@ export const ACCIONES = [
   // Nueva (docs/plan-carta-catalogo-2026-09-24.md, M8): administrar lo que la carta pública (restaurant-menu-design) lee de acá —
   // las secciones de carta, qué categoría cae en cada una, el contenido de cara al cliente de cada PV y las promos de la sucursal.
   // Solo admin: es lo que ve el público.
-  { clave: "carta", descripcion: "Administrar la carta pública: secciones de carta, contenido de cada producto de venta y promos de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Carta pública: una clave por bloque de administración (decisión del dueño, 2026-09-30); `carta` (una sola para todo) se retiró.
+  { clave: "carta_ver", descripcion: "Entrar a la pantalla Carta y ver sus secciones, géneros, contenido y promos", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_secciones", descripcion: "Administrar las secciones de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_generos", descripcion: "Administrar los géneros de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_contenido_producto", descripcion: "Editar el contenido de carta de cada producto de venta", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_items_agrupados", descripcion: "Administrar los ítems agrupados de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_portal", descripcion: "Administrar el portal de sucursales de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_promos", descripcion: "Administrar las promos de la carta de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_tema", descripcion: "Administrar el tema visual de la carta de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "stock_minimo", descripcion: "Fijar Stock Mínimo (global o por sección)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, porción Stock):
   // calcularStockConsolidado_/calcularStockPorFamilia_/calcularAlertasStock_

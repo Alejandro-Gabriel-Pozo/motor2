@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
 import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
@@ -20,12 +20,13 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
  * contenido: sin contenido no salen, decisión D3) y las promos de la sucursal activa. El nombre, el precio y la disponibilidad de
  * cada producto se siguen editando en Catálogo; la Categoría de producto no ubica nada en la carta.
  *
- * Todas las mutaciones pasan por las Server Actions de src/server/actions/carta (conPermiso("carta")); el refresco lo piden los
+ * Todas las mutaciones pasan por las Server Actions de src/server/actions/carta (una clave por bloque: carta_secciones, carta_generos,
+ * carta_contenido_producto y carta_promos); el refresco lo piden los
  * closures de acá (ver refrescar.ts). Los closures capturan solo ids (texto): lo que captura un closure "use server" viaja al
  * cliente.
  *
- * Ver ≠ editar (docs/grounding-lista-ver-editar-2026-09-18.md, §7.4: catálogo chico, queda inline): entrar pide «Ver» de "carta";
- * los formularios, las altas y los botones de apagar/prender se dibujan solo con «Editar». Sin «Editar», cada bloque muestra los
+ * Ver ≠ editar (docs/grounding-lista-ver-editar-2026-09-18.md, §7.4: catálogo chico, queda inline): entrar pide «Ver» de "carta_ver";
+ * los formularios, las altas y los botones de apagar/prender de cada bloque se dibujan solo con «Editar» de la clave de ESE bloque. Sin «Editar», el bloque muestra los
  * mismos datos como texto (DatosSoloLectura). Es cortesía de la interfaz, no barrera: la acción sigue exigiendo el permiso.
  */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -46,9 +47,19 @@ export default async function CartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
+  const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromos] = await Promise.all([
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_generos", ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_contenido_producto", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promos", ctx.db),
+  ]);
+  const puedeEditarSecciones = nivelSecciones.editar;
+  const puedeEditarGeneros = nivelGeneros.editar;
+  const puedeEditarContenido = nivelContenido.editar;
+  const puedeEditarPromos = nivelPromos.editar;
+  const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeEditarPromos;
 
   const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db);
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
@@ -66,7 +77,7 @@ export default async function CartaPage() {
           Lo que la carta pública de la sucursal muestra: secciones, contenido de cada producto de venta y promos. El nombre, el precio y la disponibilidad
           se editan en Catálogo.
         </p>
-        {!puedeEditarCarta && <AvisoSoloLectura />}
+        {!puedeEditarAlgo && <AvisoSoloLectura />}
       </div>
 
       {/* 1. Secciones de carta */}
@@ -85,7 +96,7 @@ export default async function CartaPage() {
                     <span className="font-medium">{s.nombre}</span>
                     {s.titulo ? ` — «${s.titulo}»` : ""} · orden {s.orden} · {s.cantidadItems} ítem(s) · {s.activa ? "activa" : "apagada"}
                   </summary>
-                  {puedeEditarCarta ? (
+                  {puedeEditarSecciones ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -114,7 +125,7 @@ export default async function CartaPage() {
                     </DatosSoloLectura>
                   )}
                 </details>
-                {puedeEditarCarta && (
+                {puedeEditarSecciones && (
                   <FormConResultado
                     accion={async () => {
                       "use server";
@@ -133,7 +144,7 @@ export default async function CartaPage() {
           {!datos.secciones.length && <li className="text-sm text-neutral-500">Todavía no hay secciones de carta.</li>}
         </ul>
 
-        {puedeEditarCarta && (
+        {puedeEditarSecciones && (
           <FormConResultado
             accion={async (fd: FormData) => {
               "use server";
@@ -175,7 +186,7 @@ export default async function CartaPage() {
                   <summary className="cursor-pointer text-sm">
                     <span className="font-medium">{g.nombre}</span> · orden {g.orden} · {g.activo ? "activo" : "apagado"}
                   </summary>
-                  {puedeEditarCarta ? (
+                  {puedeEditarGeneros ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -197,7 +208,7 @@ export default async function CartaPage() {
                     </DatosSoloLectura>
                   )}
                 </details>
-                {puedeEditarCarta && (
+                {puedeEditarGeneros && (
                   <FormConResultado
                     accion={async () => {
                       "use server";
@@ -216,7 +227,7 @@ export default async function CartaPage() {
           {!datos.generos.length && <li className="text-sm text-neutral-500">Todavía no hay géneros.</li>}
         </ul>
 
-        {puedeEditarCarta && (
+        {puedeEditarGeneros && (
           <FormConResultado
             accion={async (fd: FormData) => {
               "use server";
@@ -268,7 +279,7 @@ export default async function CartaPage() {
 
         <ul className="flex flex-col gap-2">
           {datos.productos.map((p) => (
-            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarCarta} />
+            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} />
           ))}
           {!datos.productos.length && <li className="text-sm text-neutral-500">No hay productos de venta disponibles en esta sucursal.</li>}
         </ul>
@@ -297,7 +308,7 @@ export default async function CartaPage() {
                       "Informativa (sin cupos)"
                     )}
                   </summary>
-                  {puedeEditarCarta ? (
+                  {puedeEditarPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -328,7 +339,7 @@ export default async function CartaPage() {
 
                   {/* Cupos (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): con uno o más, la promo pasa a ser ARMABLE en el POS. */}
                   <h3 className="mt-3 text-sm font-medium">Cupos</h3>
-                  {puedeEditarCarta ? (
+                  {puedeEditarPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -376,7 +387,7 @@ export default async function CartaPage() {
                     <p className="mt-1 text-sm text-neutral-500">Sin cupos: esta promo es solo informativa, el POS la ignora.</p>
                   )}
                 </details>
-                {puedeEditarCarta && (
+                {puedeEditarPromos && (
                   <FormConResultado
                     accion={async () => {
                       "use server";
@@ -395,7 +406,7 @@ export default async function CartaPage() {
           {!datos.promos.length && <li className="text-sm text-neutral-500">Esta sucursal no tiene promos en la carta.</li>}
         </ul>
 
-        {!puedeEditarCarta ? null : seccionesActivas.length > 0 ? (
+        {!puedeEditarPromos ? null : seccionesActivas.length > 0 ? (
           <FormConResultado
             accion={async (fd: FormData) => {
               "use server";
@@ -599,9 +610,9 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar }: { producto: 
         {p.agrupadoEn && (
           <p className="mt-2 text-sm text-neutral-500">
             Sale en la carta dentro de «{p.agrupadoEn}» (
-            <Link href="/carta/agrupados" className="underline">
+            <EnlaceInterno href="/carta/agrupados" className="underline">
               Ítems agrupados de la carta
-            </Link>
+            </EnlaceInterno>
             ): mientras esté agrupado, el contenido de acá no se usa.
           </p>
         )}

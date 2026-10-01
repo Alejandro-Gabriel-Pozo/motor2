@@ -2,7 +2,7 @@
 
 import { normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta, LARGO_MAXIMO_DESCRIPCION_CARTA } from "@/core/carta/validaciones";
 import { validarGeneroCartaOpcional } from "./generos-compartido";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { revalidarCartasPublicas } from "./revalidar";
 
@@ -11,7 +11,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  * sección de carta, su descripción, tags, ★ especial y orden. La sección se elige DIRECTO, sin Categoría de producto de por medio,
  * y no hay imagen por producto: la carta solo dibuja la de la sección (docs/plan-carta-seccion-directa-2026-09-25.md). Solo escribe
  * en `ContenidoCartaProducto`; el producto (nombre, precio, categoría, disponibilidad) se sigue editando donde siempre. Sin fila =
- * no se muestra (D3): guardar el contenido de un PV es lo que lo hace aparecer. Gate: `carta`.
+ * no se muestra (D3): guardar el contenido de un PV es lo que lo hace aparecer. Gate: `carta_contenido_producto` (empresa: el contenido de carta del producto es global).
  */
 
 const MENSAJE_FALTA_SECCION = "Elegí la sección de carta donde se muestra (sin sección no puede salir en la carta).";
@@ -30,7 +30,7 @@ export interface DatosContenidoCarta {
 }
 
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_contenido_producto", async (ctx) => {
     const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { empresaId: true, nombre: true, tipo: true } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
@@ -73,7 +73,7 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
  * el contenido ya tenga sección de carta (DA2): si no, hay que elegirla con `guardarContenidoCartaProducto`.
  */
 export async function actualizarVisibleEnCarta(productoId: string, visibleEnCarta: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermisoDeEmpresa("carta_contenido_producto", async (ctx) => {
     const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { empresaId: true, nombre: true, tipo: true, contenidoCarta: { select: { seccionCartaId: true } } } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");

@@ -7,16 +7,24 @@ import { crearMembresia } from "../setup/membresia";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
- * Ver ≠ editar en las pantallas de la carta (/carta y /carta/agrupados): con «Ver» pero sin «Editar» de "carta" se
+ * Ver ≠ editar en las pantallas de la carta (/carta y /carta/agrupados): con «Ver» pero sin «Editar» de las claves de la carta (carta_secciones, carta_generos, carta_contenido_producto, carta_promos, carta_items_agrupados) se
  * ven los mismos datos como texto, sin un solo campo ni botón (docs/grounding-lista-ver-editar-2026-09-18.md §7.4: catálogo chico,
  * queda inline; la separación se resuelve con el nivel de permiso). Con la semilla de fábrica no hay un rol que vea la carta y no la
- * edite, así que cada caso fabrica el suyo (usuario y sesión propios), mismo patrón que catalogo-productos-permiso-editar.spec.ts. «carta» es una
- * acción de piso administrador: solo la alcanza el rol «admin», así que el caso se arma sobre ese rol con la celda de la carta como pide el caso
+ * edite, así que cada caso fabrica el suyo (usuario y sesión propios), mismo patrón que catalogo-productos-permiso-editar.spec.ts. las claves de la carta son
+ * acciones de piso administrador: solo la alcanza el rol «admin», así que el caso se arma sobre ese rol con la celda de la carta como pide el caso
  * (ajustarCeldasDelAdmin la deja como estaba al limpiar).
  */
 async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, puedeEditar: boolean) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const admin = await ajustarCeldasDelAdmin({ carta: { puedeVer: true, puedeEditar } });
+  const celda = { puedeVer: true, puedeEditar };
+  const admin = await ajustarCeldasDelAdmin({
+    carta_ver: celda,
+    carta_secciones: celda,
+    carta_generos: celda,
+    carta_contenido_producto: celda,
+    carta_promos: celda,
+    carta_items_agrupados: celda,
+  });
   const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-carta-${marca}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });

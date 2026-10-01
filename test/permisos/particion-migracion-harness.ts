@@ -15,8 +15,11 @@ export function probarMigracionDeParticion(opciones: {
   directorio: string;
   titulo: string;
   sentenciasEsperadas: number;
-  /** Padres que ya no están en `ACCIONES` (se retiraron del código en la misma partición): su contexto, que el catálogo ya no puede dar. */
-  contextoDePadresRetirados?: Record<string, "empresa" | "sucursal">;
+  /**
+   * Padres que ya no están en `ACCIONES` (se retiraron del código en la misma partición): su contexto, que el catálogo ya no puede dar.
+   * `"mixto"`: el padre hacía cosas de los dos contextos (por eso se parte); sus hijas declaran cada una el suyo y no se compara.
+   */
+  contextoDePadresRetirados?: Record<string, "empresa" | "sucursal" | "mixto">;
 }) {
   const SQL = readFileSync(join(__dirname, "../../prisma/migrations", opciones.directorio, "migration.sql"), "utf8");
   const SENTENCIAS = SQL.replace(/\r\n/g, "\n")
@@ -83,7 +86,11 @@ export function probarMigracionDeParticion(opciones: {
       for (const [padre, hijas] of Object.entries(HIJAS_DE)) {
         const contextoPadre = CATALOGO.get(padre)?.contexto ?? opciones.contextoDePadresRetirados?.[padre];
         expect(contextoPadre, `${padre} está en el catálogo o declarado como retirado`).toBeDefined();
-        for (const hija of hijas) expect(CATALOGO.get(hija)?.contexto, `${hija} ← ${padre}`).toBe(contextoPadre);
+        if (contextoPadre === "mixto") {
+          for (const hija of hijas) expect(["empresa", "sucursal"], `${hija} ← ${padre}`).toContain(CATALOGO.get(hija)?.contexto);
+        } else {
+          for (const hija of hijas) expect(CATALOGO.get(hija)?.contexto, `${hija} ← ${padre}`).toBe(contextoPadre);
+        }
       }
     });
 

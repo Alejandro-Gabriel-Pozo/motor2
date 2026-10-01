@@ -155,7 +155,17 @@ describe("Server Actions del tema de la carta", () => {
     expect(await guardarTemaCarta("no-existe", { color_marca: "red" })).toEqual({ ok: false, mensaje: "No se encontró la sucursal." });
   });
 
-  it("sin el permiso `carta` (el operador arranca sin él) ninguna acción escribe", async () => {
+  it("con `carta_tema` en esta sucursal no se puede guardar ni aplicar el tema de otra (contexto sucursal)", async () => {
+    const otraId = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+    await prisma.temaCartaSucursal.create({ data: { sucursalId: otraId, valores: { color_marca: "red" } } });
+    const antes = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: otraId } });
+
+    const intentos = [await guardarTemaCarta(otraId, { color_marca: "blue" }), await cambiarAplicacionTema(otraId, true), await cambiarAplicacionTema(otraId, false)];
+    for (const r of intentos) expect(r).toEqual({ ok: false, mensaje: "No se encontró la sucursal." });
+    expect(await prisma.temaCartaSucursal.findMany()).toEqual([antes]);
+  });
+
+  it("sin el permiso `carta_tema` (el operador arranca sin él) ninguna acción escribe", async () => {
     await guardarTemaCarta(centralId, { color_marca: "red" });
     const antes = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: centralId, rolId: operadorRolId });

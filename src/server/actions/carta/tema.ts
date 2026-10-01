@@ -9,10 +9,10 @@ import { revalidarCartasPublicas } from "./revalidar";
 /**
  * Tema visual de la carta pública de una sucursal (docs/plan-tema-carta-2026-09-24.md, M8): lo que lee la carta pública
  * interna (ADR-006). Solo escriben en `TemaCartaSucursal`
- * (lo fija test/arquitectura/carta-solo-lectura.test.ts). Gate: `carta`, la misma acción que el resto del admin de la carta (no
- * hace falta una migración de permisos).
+ * (lo fija test/arquitectura/carta-solo-lectura.test.ts). Gate: `carta_tema` (sucursal).
  *
- * Reciben el `Sucursal.id` (la fila es 1:1 con la sucursal; la pantalla trabaja sobre la sucursal activa). Guardar y aplicar son
+ * Reciben el `Sucursal.id` (la fila es 1:1 con la sucursal) y solo operan sobre la sucursal activa: `carta_tema` es de contexto
+ * sucursal, así que otra sucursal responde igual que una inexistente. Guardar y aplicar son
  * acciones separadas (D4): un tema guardado sin aplicar es un borrador y la carta usa el estilo por defecto.
  */
 
@@ -23,7 +23,8 @@ import { revalidarCartasPublicas } from "./revalidar";
  * (queda en borrador); al editar, un tema ya aplicado sigue aplicado.
  */
 export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Record<string, unknown>>): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermiso("carta_tema", async (ctx) => {
+    if (sucursalId !== ctx.sucursalId) return error("No se encontró la sucursal.");
     const validados = validarValoresTema(valores);
     if (!validados.ok) return error(validados.mensaje);
 
@@ -50,7 +51,8 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
  * carta la conozca. Desaplicar es la vuelta atrás: la carta vuelve al estilo por defecto y los valores se conservan.
  */
 export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermiso("carta_tema", async (ctx) => {
+    if (sucursalId !== ctx.sucursalId) return error("No se encontró la sucursal.");
     const fila = await ctx.db.temaCartaSucursal.findFirst({
       where: { sucursalId },
       select: { id: true, valores: true, sucursal: { select: { nombre: true, publica: { select: { publicada: true } } } } },

@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin } from "@/core/carta/admin-consulta";
 import {
   actualizarActivoItemAgrupadoCarta,
@@ -23,11 +22,11 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
  * Central); lo que se ve acá de cada opción (disponible o no, y su precio) es de la sucursal ACTIVA.
  *
  * Mismo estilo que /carta: las mutaciones pasan por las Server Actions de src/server/actions/carta/items-agrupados.ts
- * (conPermiso("carta")) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
+ * (conPermisoDeEmpresa("carta_items_agrupados")) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
  * closure "use server" viaja al cliente. Si agregar una opción se rechaza por precio (D5), el error de la acción se muestra tal
  * cual en el resultado del formulario.
  *
- * Ver ≠ editar, igual que /carta: sin «Editar» de "carta" no se dibujan formularios, altas ni botones (agregar, quitar,
+ * Ver ≠ editar, igual que /carta: sin «Editar» de "carta_items_agrupados" no se dibujan formularios, altas ni botones (agregar, quitar,
  * reordenar, apagar/prender); cada ítem muestra sus datos y sus opciones como texto.
  */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -50,9 +49,9 @@ export default async function ItemsAgrupadosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_items_agrupados", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta", ctx.db);
+  const { editar: puedeEditarCarta } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_items_agrupados", ctx.db);
 
   const datos = await cargarAdminItemsAgrupados(ctx.sucursalId, ctx.db);
   const ubicacion: UbicacionEnCarta = {
@@ -69,9 +68,9 @@ export default async function ItemsAgrupadosPage() {
           Un ítem agrupado es un solo renglón de la carta («Gaseosa 500 CC») que agrupa varios productos de venta reales («Coca-Cola 500cc», «Sprite
           500cc»…), con su propia descripción, tags y ★. Se ubica directo en su sección de carta, igual que un producto suelto. Un producto agrupado sale solo
           dentro de su ítem, nunca suelto. Lo que se ve de cada opción (si está disponible y su precio) es de esta sucursal, {ctx.sucursalNombre}. Volver a{" "}
-          <Link href="/carta" className="underline">
+          <EnlaceInterno href="/carta" className="underline">
             Carta pública
-          </Link>
+          </EnlaceInterno>
           .
         </p>
         <p className="mt-2 text-sm text-neutral-500">
@@ -121,9 +120,9 @@ export default async function ItemsAgrupadosPage() {
       ) : (
         <p className="text-sm text-neutral-500">
           Para crear un ítem agrupado hace falta al menos una sección de carta (
-          <Link href="/carta" className="underline">
+          <EnlaceInterno href="/carta" className="underline">
             Carta pública
-          </Link>
+          </EnlaceInterno>
           ).
         </p>
       )}

@@ -16,7 +16,7 @@ import { revalidarCartasPublicas } from "./revalidar";
 /**
  * Promos de la carta de la sucursal activa (docs/plan-carta-catalogo-2026-09-24.md, M9, D5): título, descripción y precio
  * dentro de una sección de carta. Solo escriben en `PromoCarta`/`PromoCartaCupo`, siempre de la sucursal ACTIVA de quien
- * llama: una promo de otra sucursal no se puede editar pasando su id. Nunca se borran: se apagan. Gate: `carta`.
+ * llama: una promo de otra sucursal no se puede editar pasando su id. Nunca se borran: se apagan. Gate: `carta_promos` (sucursal).
  *
  * SIN ningún cupo (`guardarCuposPromoCarta` nunca la tocó, o se le guardó una lista vacía): sigue siendo puramente
  * INFORMATIVA, no referencia productos ni mueve stock — el POS la ignora (`selector-carta.ts`). CON uno o más cupos
@@ -34,7 +34,7 @@ export interface DatosPromoCarta {
 }
 
 export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermiso("carta_promos", async (ctx) => {
     const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
     if (!titulo.ok) return error(titulo.mensaje);
     if (!titulo.valor) return error("La promo necesita un título.");
@@ -63,7 +63,7 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
 }
 
 export async function actualizarActivaPromoCarta(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermiso("carta_promos", async (ctx) => {
     const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
     if (!existente || existente.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
     await ctx.db.promoCarta.update({ where: { id: promoCartaId }, data: { activa } });
@@ -83,7 +83,7 @@ export interface DatosCupoPromoCarta {
 /**
  * Reemplaza TODOS los cupos de una promo, todo o nada (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): la lista que llega
  * es la lista final — un cupo que no está en `cupos` se borra. Una lista VACÍA vuelve la promo a informativa (sin backfill: no
- * hay forma de "recuperar" cupos borrados salvo cargarlos de nuevo). Gate: `carta`, sucursal ACTIVA de quien llama.
+ * hay forma de "recuperar" cupos borrados salvo cargarlos de nuevo). Gate: `carta_promos`, sucursal ACTIVA de quien llama.
  *
  * Validación:
  * - cada cupo elige una `SeccionCarta` que existe, sin repetir sección entre cupos de la MISMA promo (`@@unique` de
@@ -95,7 +95,7 @@ export interface DatosCupoPromoCarta {
  *   instancia queda más chica que el peor caso, D1).
  */
 export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readonly DatosCupoPromoCarta[]): Promise<ResultadoAccion> {
-  return conPermiso("carta", async (ctx) => {
+  return conPermiso("carta_promos", async (ctx) => {
     const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
     if (!promo || promo.sucursalId !== ctx.sucursalId) return error("No se encontró la promo en esta sucursal.");
 
