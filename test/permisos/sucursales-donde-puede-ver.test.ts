@@ -5,7 +5,7 @@ import { sucursalesDondeElUsuarioPuedeVer } from "../../src/core/permisos/gate";
 /**
  * El gate de una pantalla mira solo la sucursal ACTIVA. Las pantallas que juntan dinero de varias sucursales (/reportes/consolidado y
  * /reportes/rendimiento-recetas/por-sucursal) filtran las suyas con este helper: el rol del usuario en OTRA sucursal puede no tener
- * `ver_reportes_dinero`, o la Central puede no haberlo habilitado allí.
+ * `reporte_consolidado`, o la Central puede no haberlo habilitado allí.
  */
 describe("sucursalesDondeElUsuarioPuedeVer", () => {
   beforeEach(async () => {
@@ -18,7 +18,7 @@ describe("sucursalesDondeElUsuarioPuedeVer", () => {
     const usuario = await crearUsuarioConMembresia({ email: "mixto@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: norte.id, rolId: base.operador.id } });
 
-    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "ver_reportes_dinero", prisma);
+    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "reporte_consolidado", prisma);
     expect([...visibles]).toEqual([base.sucursal.id]);
   });
 
@@ -28,11 +28,11 @@ describe("sucursalesDondeElUsuarioPuedeVer", () => {
     const usuario = await crearUsuarioConMembresia({ email: "mixto@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: norte.id, rolId: base.operador.id } });
     await prisma.permisoRol.update({
-      where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "ver_reportes_dinero" } },
+      where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "reporte_consolidado" } },
       data: { puedeVer: true },
     });
 
-    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "ver_reportes_dinero", prisma);
+    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "reporte_consolidado", prisma);
     expect([...visibles].sort()).toEqual([base.sucursal.id, norte.id].sort());
   });
 
@@ -41,9 +41,9 @@ describe("sucursalesDondeElUsuarioPuedeVer", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const usuario = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: norte.id, rolId: base.admin.id } });
-    await prisma.capacidadSucursal.create({ data: { accionClave: "ver_reportes_dinero", sucursalId: norte.id, habilitado: false } });
+    await prisma.capacidadSucursal.create({ data: { accionClave: "reporte_consolidado", sucursalId: norte.id, habilitado: false } });
 
-    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "ver_reportes_dinero", prisma);
+    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "reporte_consolidado", prisma);
     expect([...visibles]).toEqual([base.sucursal.id]);
   });
 
@@ -52,7 +52,7 @@ describe("sucursalesDondeElUsuarioPuedeVer", () => {
     const ajena = await prisma.sucursal.create({ data: { nombre: "Ajena" } });
     const usuario = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
 
-    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, ajena.id], "ver_reportes_dinero", prisma);
+    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, ajena.id], "reporte_consolidado", prisma);
     expect([...visibles]).toEqual([base.sucursal.id]);
   });
 });

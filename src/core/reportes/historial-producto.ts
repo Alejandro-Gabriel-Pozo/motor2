@@ -244,7 +244,7 @@ export interface IngredienteRecetaVigente {
  *
  * NO reusa `obtenerRecetaVigente` de `server/actions/catalogo/recetas.ts`:
  * esa función exige el permiso `guardar_receta`, que le negaría esta
- * pantalla a un usuario con solo `ver_reportes_operativos`.
+ * pantalla a un usuario con solo `reporte_historial`.
  *
  * `sucursalId` (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, R3): con ella, `cantidad` sale EFECTIVA (con la
  * calibración de esa sucursal si la hay); sin ella, queda en el valor central.

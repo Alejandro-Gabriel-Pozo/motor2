@@ -3,25 +3,27 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresia } from "../setup/membresia";
+import { ACCIONES } from "../../src/core/permisos/acciones";
 
 /**
  * Permisos por reporte. Antes 18 de las 19 páginas de /reportes no tenían ningún permiso: cualquier usuario con sesión veía
- * costos, márgenes y valuación. Ahora cada reporte se protege con una acción de «Ver» (agrupadas por sensibilidad), el rol
- * «operador» arranca sin las nuevas, y el menú solo muestra lo que el rol puede ver.
+ * costos, márgenes y valuación. Ahora cada reporte se protege con su PROPIA acción de «Ver» (`reporte_*`, una por reporte), el rol
+ * «operador» arranca sin ellas (salvo Conteos físicos), y el menú solo muestra lo que el rol puede ver.
  */
 
 /** Una página con la sesión de un usuario nuevo con rol «operador» en la sucursal dada (la fixture solo trae al admin). */
 async function paginaComoOperador(browser: import("@playwright/test").Browser, baseURL: string | undefined, sucursalId: string): Promise<Page> {
   // La base de pruebas puede traer restos de otros tests: se deja el rol activo y con el permiso que tiene de fábrica
-  // (Conteos físicos va con proceso_control, que el operador ve) para que el test no dependa de lo que corrió antes.
+  // (Conteos físicos: reporte_conteos, que el operador ve) para que el test no dependa de lo que corrió antes.
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
   const operador = await prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador" } });
   await prisma.permisoRol.upsert({
-    where: { rolId_accionClave: { rolId: operador.id, accionClave: "proceso_control" } },
-    update: { puedeVer: true, puedeEditar: true },
-    create: { rolId: operador.id, accionClave: "proceso_control", puedeVer: true, puedeEditar: true },
+    where: { rolId_accionClave: { rolId: operador.id, accionClave: "reporte_conteos" } },
+    update: { puedeVer: true, puedeEditar: false },
+    create: { rolId: operador.id, accionClave: "reporte_conteos", puedeVer: true, puedeEditar: false },
   });
-  for (const accionClave of ["ver_reportes_dinero", "ver_reportes_control", "ver_reportes_operativos", "ver_reportes_catalogo", "pagar_consignante"] as const) {
+  const reportesCerrados = [...ACCIONES.map((a) => a.clave).filter((c) => c.startsWith("reporte_") && c !== "reporte_conteos"), "pagar_consignante"];
+  for (const accionClave of reportesCerrados) {
     await prisma.permisoRol.updateMany({ where: { rolId: operador.id, accionClave }, data: { puedeVer: false, puedeEditar: false } });
   }
   const usuario = await prisma.user.create({ data: { email: `e2e-operador-${Date.now()}@local.test`, activoGlobal: true } });
@@ -47,7 +49,7 @@ test("el admin ve todos los reportes en el menú y puede abrirlos", async ({ pag
 test("un operador no ve los reportes nuevos: ni en el menú ni abriendo la dirección a mano", async ({ browser, baseURL, sucursalId }) => {
   const page = await paginaComoOperador(browser, baseURL, sucursalId);
 
-  // Entra a un reporte que sí puede ver (Conteos físicos va con proceso_control): el menú despliega el grupo Reportes solo
+  // Entra a un reporte que sí puede ver (Conteos físicos, reporte_conteos): el menú despliega el grupo Reportes solo
   // cuando se está dentro de uno de ellos.
   await page.goto("/reportes/conteos");
   await expect(page.locator('a[href="/reportes/conteos"]')).toHaveCount(1);

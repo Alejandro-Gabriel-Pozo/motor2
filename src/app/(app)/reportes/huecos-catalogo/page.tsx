@@ -6,7 +6,7 @@ export default async function HuecosCatalogoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "insumos_mezclados", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "reporte_huecos_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const rep = await generarReporteHuecosCatalogo(ctx.sucursalId, ctx.db);

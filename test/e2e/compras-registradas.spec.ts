@@ -57,7 +57,7 @@ test("el listado está en el menú de Reportes y un usuario sin «Ver» de diner
 
   const { randomUUID } = await import("node:crypto");
   const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-dinero-${Date.now()}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "ver_reportes_operativos", puedeVer: true, puedeEditar: false } });
+  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "reporte_vencimientos", puedeVer: true, puedeEditar: false } });
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-dinero-${Date.now()}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();

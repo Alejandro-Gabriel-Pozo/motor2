@@ -126,7 +126,7 @@ test("quien puede ver los reportes de dinero pero no tiene «anular_compra» ve 
   const c = await sembrarCompra(sucursalId, seccionId);
   const marca = Date.now();
   const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-anular-${marca}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "ver_reportes_dinero", puedeVer: true, puedeEditar: false } });
+  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "reporte_compras", puedeVer: true, puedeEditar: false } });
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-anular-${marca}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();

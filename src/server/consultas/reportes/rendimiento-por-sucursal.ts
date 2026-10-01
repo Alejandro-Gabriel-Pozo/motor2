@@ -9,7 +9,7 @@ import {
 /**
  * Lecturas de Reportes › Rendimiento por sucursal para los Server Components (Task #41, Fase D7). Mismo contrato que
  * `src/server/consultas/catalogo/productos.ts` (piloto D1): `server-only`, sin `"use server"`, sin guarda de permiso adentro
- * (la página hace `requierePermisoVer(..., "ver_reportes_dinero")` antes), último parámetro `db: Db`.
+ * (la página hace `requierePermisoVer(..., "reporte_rendimiento_sucursal")` antes), último parámetro `db: Db`.
  *
  * Envoltorio fino a propósito: la consulta y el armado viven en `compararRendimientosPorSucursal` (`core/reportes`), que
  * recibe `db` OBLIGATORIO porque no importa el valor `@/lib/db`. Esta capa existe para que la página no importe `@/lib/db`

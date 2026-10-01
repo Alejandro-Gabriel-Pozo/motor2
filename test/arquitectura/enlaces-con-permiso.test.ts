@@ -39,10 +39,10 @@ function accionDeLaPantalla(archivo: string): string | null {
 
 describe("accionDeRuta", () => {
   it("resuelve por el ítem del menú de la ruta más larga, ignorando la consulta y el ancla", () => {
-    expect(accionDeRuta("/reportes/historial?productoId=abc")).toBe("ver_reportes_operativos");
-    expect(accionDeRuta("/reportes/trazabilidad?idOperacion=x#fila")).toBe("ver_reportes_operativos");
-    expect(accionDeRuta("/reportes")).toBe("ver_reportes_dinero");
-    expect(accionDeRuta("/reportes/rendimiento-recetas?productoId=1")).toBe("ver_reportes_dinero");
+    expect(accionDeRuta("/reportes/historial?productoId=abc")).toBe("reporte_historial");
+    expect(accionDeRuta("/reportes/trazabilidad?idOperacion=x#fila")).toBe("reporte_trazabilidad");
+    expect(accionDeRuta("/reportes")).toBe("reporte_resumen");
+    expect(accionDeRuta("/reportes/rendimiento-recetas?productoId=1")).toBe("reporte_rendimiento_recetas");
   });
 
   it("las rutas hijas de un ítem del menú usan la acción del ítem", () => {

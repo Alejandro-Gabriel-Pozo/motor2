@@ -1,18 +1,18 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer, sucursalesDondeElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { obtenerResumenConsolidado } from "@/core/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
+import { EnlaceInterno } from "@/components/enlace-interno";
 
 export default async function ConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_consolidado", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   // El gate de arriba es de la sucursal activa: las otras se suman solo si allí el rol también puede ver el dinero.
-  const conPermiso = await sucursalesDondeElUsuarioPuedeVer(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), "ver_reportes_dinero", ctx.db);
+  const conPermiso = await sucursalesDondeElUsuarioPuedeVer(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), "reporte_consolidado", ctx.db);
   const sucursales = ctx.membresias.filter((m) => conPermiso.has(m.sucursalId)).map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre }));
 
   if (sucursales.length < 2) {
@@ -21,9 +21,9 @@ export default async function ConsolidadoPage() {
         <h1 className="mb-1 text-xl font-semibold">Resumen consolidado</h1>
         <p className="text-sm text-neutral-500">
           Solo podés ver el dinero de una sucursal ({ctx.sucursalNombre}) — no hay nada que consolidar todavía. Mirá{" "}
-          <Link href="/reportes" className="underline">
+          <EnlaceInterno href="/reportes" className="underline">
             Resumen
-          </Link>{" "}
+          </EnlaceInterno>{" "}
           en vez de este.
         </p>
       </div>

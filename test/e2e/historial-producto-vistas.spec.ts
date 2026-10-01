@@ -141,20 +141,20 @@ test("la columna 'Origen' navega a la trazabilidad de la operación", async ({ p
   }
 });
 
-/** Un operador con ver_reportes_operativos (entra a la pantalla) pero SIN ver_reportes_dinero (no ve precio). A diferencia del
- * helper de reportes-permisos.spec.ts, acá ver_reportes_operativos se deja en `true` a propósito. */
+/** Un operador con reporte_historial (entra a la pantalla) pero SIN reporte_historial_importes (no ve precio). A diferencia del
+ * helper de reportes-permisos.spec.ts, acá reporte_historial se deja en `true` a propósito. */
 async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undefined, sucursalId: string): Promise<Page> {
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
   const operador = await prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador" } });
   await prisma.permisoRol.upsert({
-    where: { rolId_accionClave: { rolId: operador.id, accionClave: "ver_reportes_operativos" } },
+    where: { rolId_accionClave: { rolId: operador.id, accionClave: "reporte_historial" } },
     update: { puedeVer: true },
-    create: { rolId: operador.id, accionClave: "ver_reportes_operativos", puedeVer: true, puedeEditar: false },
+    create: { rolId: operador.id, accionClave: "reporte_historial", puedeVer: true, puedeEditar: false },
   });
   await prisma.permisoRol.upsert({
-    where: { rolId_accionClave: { rolId: operador.id, accionClave: "ver_reportes_dinero" } },
+    where: { rolId_accionClave: { rolId: operador.id, accionClave: "reporte_historial_importes" } },
     update: { puedeVer: false },
-    create: { rolId: operador.id, accionClave: "ver_reportes_dinero", puedeVer: false, puedeEditar: false },
+    create: { rolId: operador.id, accionClave: "reporte_historial_importes", puedeVer: false, puedeEditar: false },
   });
   const usuario = await prisma.user.create({ data: { email: `e2e-operador-historial-${Date.now()}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true });
@@ -167,7 +167,7 @@ async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undef
   return context.newPage();
 }
 
-test("un rol con ver_reportes_operativos pero SIN ver_reportes_dinero entra a la pantalla y ve 'Cómo se compró' sin precio ni variación", async ({ browser, baseURL, sucursalId, seccionId }) => {
+test("un rol con reporte_historial pero SIN reporte_historial_importes entra a la pantalla y ve 'Cómo se compró' sin precio ni variación", async ({ browser, baseURL, sucursalId, seccionId }) => {
   const marca = Date.now();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });

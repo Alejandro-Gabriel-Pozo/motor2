@@ -36,7 +36,7 @@ export interface FiltroHistorialConteos {
 }
 
 export async function obtenerHistorialConteosFisicos(sucursalId: string, filtro: FiltroHistorialConteos = {}) {
-  const ctx = await requerirVerEnSucursal(sucursalId, "proceso_control");
+  const ctx = await requerirVerEnSucursal(sucursalId, "reporte_conteos");
   const { seccionId, productoId, desde, hasta, cursor } = filtro;
   const items = await ctx.db.conteoFisico.findMany({
     where: {

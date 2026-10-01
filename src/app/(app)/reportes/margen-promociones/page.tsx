@@ -9,8 +9,8 @@ import { TablaMargenPromociones } from "./tabla-margen-promociones";
 /**
  * Margen de promociones armables (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 12): por cada promo de carta, cuánto
  * entró prorrateado (D3) contra lo que hubiera entrado vendiendo cada componente suelto a precio de carta, y el Margen Real
- * de las dos formas (`src/core/reportes/margen-promociones.ts`). Mismo permiso que el resto de los reportes de dinero
- * (`ver_reportes_dinero`) y mismo selector de rango que Período/Descuentos por cliente.
+ * de las dos formas (`src/core/reportes/margen-promociones.ts`). Su propia clave
+ * (`reporte_margen_promociones`) y mismo selector de rango que Período/Descuentos por cliente.
  *
  * Cruza con `/reportes/promociones` (el reporte de promos de PRECIO de siempre, sin componentes): esa es otra cosa —
  * "PromoCarta" armable (Task #16) vs. una promoción de precio de un producto — el link de acá lo aclara para no confundirlas.
@@ -21,7 +21,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_margen_promociones", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;

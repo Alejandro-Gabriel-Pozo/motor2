@@ -24,7 +24,7 @@ export default async function ComprasRegistradasPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [{ editar: puedeAnular }, { editar: puedeCorregir }] = await Promise.all([

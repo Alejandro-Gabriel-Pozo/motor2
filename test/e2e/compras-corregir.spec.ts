@@ -143,7 +143,7 @@ test("una compra anulada no ofrece corregir, y quien no tiene Â«corregir_compraÂ
   const s = await sembrar(sucursalId, seccionId);
   const marca = Date.now();
   const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-corregir-${marca}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "ver_reportes_dinero", puedeVer: true, puedeEditar: false } });
+  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "reporte_compras", puedeVer: true, puedeEditar: false } });
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-corregir-${marca}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();

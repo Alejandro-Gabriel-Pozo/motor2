@@ -99,14 +99,36 @@ export const ACCIONES = [
   { clave: "alta_sucursal", descripcion: "Dar de alta una sucursal nueva y asignar su primer admin", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "pagar_consignante", descripcion: "Registrar un pago a un proveedor de consignación", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "ver_auditoria", descripcion: "Ver el registro de auditoría administrativa (precios y permisos)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  // Reportes, agrupados por sensibilidad (decisión del usuario, 2026-09-19: ~5 claves y no una por reporte, y el rol
-  // «operador» arranca SIN asignar). Antes, 18 de las 19 páginas de /reportes no tenían ningún permiso. Los reportes que ya
-  // tienen una acción propia se protegen con esa (`promociones_config`, `pagar_consignante`, `proceso_control`,
-  // `insumos_mezclados`); estas cuatro cubren el resto. Son claves de «Ver»: no hay nada que editar.
-  { clave: "ver_reportes_dinero", descripcion: "Ver los reportes de dinero: resumen, consolidado, período, por categoría, costos y márgenes, valuación y rendimiento de recetas", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "ver_reportes_control", descripcion: "Ver los reportes de control: pérdidas y consumo interno, devoluciones y diferencias de ajuste", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "ver_reportes_operativos", descripcion: "Ver los reportes operativos: vencimientos, salud por producto, historial de un producto, trazabilidad y rotación de mesas", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "ver_reportes_catalogo", descripcion: "Ver los reportes de calidad del catálogo: insumos sin receta y ventas sin receta", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Reportes: UNA clave por reporte (decisión del dueño, 2026-09-30; reemplaza la agrupación `ver_reportes_*` del 2026-09-19). Son claves de
+  // «Ver»: no hay nada que editar. Los reportes de dinero y de control tienen piso de administrador (un operario nunca los recibe); los
+  // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación,
+  // promociones) siguen con la clave de su acción: ver la pantalla y operarla es lo mismo ahí.
+  { clave: "reporte_resumen", descripcion: "Ver el reporte «Resumen operativo»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_consolidado", descripcion: "Ver el reporte «Consolidado (mis sucursales)»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_periodo", descripcion: "Ver el reporte «Período»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_categorias", descripcion: "Ver el reporte «Por categoría»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_ventas_por_seccion", descripcion: "Ver el reporte «Por sección de carta»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_costos", descripcion: "Ver el reporte «Costos y márgenes»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_compras", descripcion: "Ver el reporte «Compras registradas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rendimiento_recetas", descripcion: "Ver el reporte «Rendimiento real de recetas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rendimiento_sucursal", descripcion: "Ver el reporte «Rendimiento por sucursal»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_valuacion", descripcion: "Ver el reporte «Valuación de inventario»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_boletas", descripcion: "Ver el reporte «Boletas emitidas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_descuentos_clientes", descripcion: "Ver el reporte «Descuentos por cliente»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_margen_promociones", descripcion: "Ver el reporte «Margen de promociones»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_historial_importes", descripcion: "Ver los importes (precios de compra y de venta) dentro del reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_perdidas", descripcion: "Ver el reporte «Pérdidas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_devoluciones", descripcion: "Ver el reporte «Devoluciones»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_diferencias", descripcion: "Ver el reporte «Diferencias de ajuste»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_vencimientos", descripcion: "Ver el reporte «Vencimientos»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_salud", descripcion: "Ver el reporte «Salud por producto»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_historial", descripcion: "Ver el reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_trazabilidad", descripcion: "Ver el reporte «Trazabilidad por ID»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rotacion_mesas", descripcion: "Ver el reporte «Rotación de mesas»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_sin_receta", descripcion: "Ver el reporte «Ventas sin receta»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_insumos_sin_receta", descripcion: "Ver el reporte «Insumos sin receta»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_conteos", descripcion: "Ver el reporte «Conteos físicos»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
+  { clave: "reporte_huecos_catalogo", descripcion: "Ver el reporte «Huecos de catálogo»", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): Ver = abrir el mapa de mesas; Editar = dar de alta mesas. Ninguna acción existente
   // servía (reusar `proceso_venta` daría de más). El operador de fábrica queda sin asignar, igual que `anular_compra`; el rol «mozo» NO se
   // crea en código: se crea desde /administracion/roles y se le da esta acción desde la matriz de permisos.
@@ -142,6 +164,14 @@ export type AccionDeEmpresa = Extract<(typeof ACCIONES)[number], { contexto: "em
 export type AccionDeSucursal = Extract<(typeof ACCIONES)[number], { contexto: "sucursal" }>["clave"];
 
 const POR_CLAVE: ReadonlyMap<string, AccionSemilla> = new Map(ACCIONES.map((a) => [a.clave, a]));
+
+/**
+ * ¿La clave está en el catálogo vigente? La base puede tener filas `Accion` de claves retiradas (las `ver_reportes_*` y demás padres
+ * quedan hasta la fase de contracción de la partición): no se muestran en la matriz ni se pueden editar.
+ */
+export function claveEnCatalogo(clave: string): clave is AccionClave {
+  return POR_CLAVE.has(clave);
+}
 
 export function contextoDeAccion(clave: AccionClave): ContextoDeAccion {
   return POR_CLAVE.get(clave)!.contexto;

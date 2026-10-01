@@ -10,14 +10,13 @@ const UNO = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
 /**
  * Reporte de rotación de mesas (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md): comensales/cuenta promedio,
  * duración de mesa, y rotación por franja horaria (hora LOCAL de Argentina, ver el docstring de `generarReporteRotacionMesas`) y
- * por tamaño de grupo. Mismo permiso que el resto de los reportes operativos (`ver_reportes_operativos`, sin migración de
- * permisos) y mismo selector de rango que Período/Categorías (`SelectorRango`, rango en UTC — solo la franja horaria difiere).
+ * por tamaño de grupo. Su propia clave (`reporte_rotacion_mesas`) y mismo selector de rango que Período/Categorías (`SelectorRango`, rango en UTC — solo la franja horaria difiere).
  */
 export default async function RotacionMesasPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_operativos", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rotacion_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;

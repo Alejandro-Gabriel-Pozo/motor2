@@ -156,7 +156,7 @@ test("desde la pantalla de la mesa: «Ver todas las boletas de esta mesa» lleva
   }
 });
 
-test("un rol sin \"ver_reportes_dinero\" no ve el link en el menú, no puede abrir la pantalla, y no ve el link desde la mesa", async ({
+test("un rol sin \"reporte_boletas\" no ve el link en el menú, no puede abrir la pantalla, y no ve el link desde la mesa", async ({
   browser,
   baseURL,
   paginaAutenticada: page,
@@ -167,7 +167,7 @@ test("un rol sin \"ver_reportes_dinero\" no ve el link en el menú, no puede abr
   const producto = await sembrarProducto(sucursalId, marca);
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 946 } });
   await sembrarEjemplar(sucursalId, mesa.id, admin.id, producto.id, { numero: 100300 });
-  const sinDinero = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", ver_reportes_operativos: "ver" });
+  const sinDinero = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", reporte_vencimientos: "ver" });
   try {
     await page.goto("/reportes/boletas");
     await expect(page.getByRole("navigation").locator('a[href="/reportes/boletas"]')).toHaveCount(1);

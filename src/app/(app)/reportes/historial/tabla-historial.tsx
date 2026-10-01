@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { EventoHistorialProducto } from "@/core/reportes/historial-producto";
+import { EnlaceInterno } from "@/components/enlace-interno";
 
 /** Mismo texto/estilo que la marca "Anulada" de /reportes/compras (page.tsx) — una compra o venta anulada no ocurrió, esto lo deja a la vista en vez de verse como un "movimiento fantasma". */
 function MarcaAnulada() {
@@ -58,10 +58,10 @@ function columnas(mostrarSaldo: boolean): ColumnaReporte<EventoHistorialProducto
     etiqueta: "Origen",
     render: (ev) =>
       ev.tipo === "movimiento" && ev.idOperacion ? (
-        // Mismo patrón que tabla-trazabilidad.tsx:15 — /reportes/historial y /reportes/trazabilidad comparten la acción ver_reportes_operativos, así que un <Link> a secas es válido acá (test/arquitectura/enlaces-con-permiso.test.ts).
-        <Link href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(ev.idOperacion)}`} className="underline">
+        // /reportes/trazabilidad tiene su propia clave (reporte_trazabilidad): EnlaceInterno deja el texto sin enlace si el rol no la tiene (test/arquitectura/enlaces-con-permiso.test.ts).
+        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(ev.idOperacion)}`} className="underline">
           Ver operación
-        </Link>
+        </EnlaceInterno>
       ) : null,
   });
   return base;

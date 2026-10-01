@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerResumenOperativo } from "@/core/reportes/resumen-operativo";
@@ -8,12 +7,13 @@ import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
 import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { EnlaceInterno } from "@/components/enlace-interno";
 
 export default async function ReportesResumenPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_resumen", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
@@ -57,9 +57,9 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
           {r.financiero.hayCostoIncompleto && (
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-600">
               Costo incompleto en algún producto —{" "}
-              <Link href="/reportes/costos" className="underline">
+              <EnlaceInterno href="/reportes/costos" className="underline">
                 ver Costos y márgenes
-              </Link>
+              </EnlaceInterno>
             </p>
           )}
           <details className="mt-3 text-xs">

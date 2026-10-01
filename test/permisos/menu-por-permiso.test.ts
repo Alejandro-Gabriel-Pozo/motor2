@@ -5,51 +5,51 @@ import { GRUPOS_NAV, RUTA_SIN_PANTALLAS, accionesDelMenu, elegirPantallaDeInicio
 import { pantallaDeInicio } from "../../src/core/navegacion/inicio";
 import type { AccionClave, AccionDeSucursal } from "../../src/core/permisos/acciones";
 
-const CLAVES_REPORTES: AccionDeSucursal[] = ["ver_reportes_dinero", "ver_reportes_control", "ver_reportes_operativos", "ver_reportes_catalogo"];
+const CLAVES_REPORTES: AccionDeSucursal[] = ["reporte_resumen", "reporte_perdidas", "reporte_vencimientos", "reporte_sin_receta"];
 
 describe("accionesQueElUsuarioPuedeVer", () => {
   beforeEach(async () => {
     await limpiarBaseDeTest();
   });
 
-  it("un admin ve las cuatro claves de reportes", async () => {
+  it("un admin ve las claves de reportes (una por reporte)", async () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     const visibles = await accionesQueElUsuarioPuedeVer(admin.id, base.sucursal.id, CLAVES_REPORTES, prisma);
     expect([...visibles].sort()).toEqual([...CLAVES_REPORTES].sort());
   });
 
-  it("un operador arranca sin ninguna de las claves nuevas de reportes (decisión del usuario: quedan sin asignar)", async () => {
+  it("un operador arranca sin ninguna de esas claves de reportes (quedan sin asignar); solo tiene Conteos físicos", async () => {
     const base = await sembrarBase();
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     expect((await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, CLAVES_REPORTES, prisma)).size).toBe(0);
   });
 
-  it("conserva lo que un operador ya tenía por otra acción (Conteos físicos va con proceso_control)", async () => {
+  it("conserva lo que un operador ya tenía por otra acción (Conteos físicos tiene su propia clave, reporte_conteos, que heredó de proceso_control)", async () => {
     const base = await sembrarBase();
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, ["proceso_control", "pagar_consignante", "promociones_config"], prisma);
-    expect([...visibles]).toEqual(["proceso_control"]);
+    const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, ["reporte_conteos", "pagar_consignante", "promociones_config"], prisma);
+    expect([...visibles]).toEqual(["reporte_conteos"]);
   });
 
   it("dar «Ver» a un rol desde la matriz lo hace visible, sin dar «Editar»", async () => {
     const base = await sembrarBase();
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     await prisma.permisoRol.update({
-      where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "ver_reportes_operativos" } },
+      where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "reporte_vencimientos" } },
       data: { puedeVer: true },
     });
     const visibles = await accionesQueElUsuarioPuedeVer(operador.id, base.sucursal.id, CLAVES_REPORTES, prisma);
-    expect([...visibles]).toEqual(["ver_reportes_operativos"]);
+    expect([...visibles]).toEqual(["reporte_vencimientos"]);
   });
 
   it("una capacidad deshabilitada para la sucursal la oculta aunque el rol la tenga", async () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    await prisma.capacidadSucursal.create({ data: { accionClave: "ver_reportes_dinero", sucursalId: base.sucursal.id, habilitado: false } });
+    await prisma.capacidadSucursal.create({ data: { accionClave: "reporte_resumen", sucursalId: base.sucursal.id, habilitado: false } });
     const visibles = await accionesQueElUsuarioPuedeVer(admin.id, base.sucursal.id, CLAVES_REPORTES, prisma);
-    expect(visibles.has("ver_reportes_dinero")).toBe(false);
-    expect(visibles.has("ver_reportes_control")).toBe(true);
+    expect(visibles.has("reporte_resumen")).toBe(false);
+    expect(visibles.has("reporte_perdidas")).toBe(true);
   });
 
   it("una membresía desactivada no ve nada", async () => {
@@ -61,15 +61,9 @@ describe("accionesQueElUsuarioPuedeVer", () => {
 
 describe("filtrarMenuPorPermiso", () => {
   it("oculta los reportes que no se pueden ver, conserva los ítems sin acción y no deja grupos vacíos", () => {
-    const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["ver_reportes_operativos"]));
+    const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["reporte_trazabilidad", "reporte_vencimientos"]));
     const reportes = grupos.find((g) => g.id === "reportes");
-    expect(reportes?.items.map((i) => i.href).sort()).toEqual([
-      "/reportes/historial",
-      "/reportes/rotacion-mesas",
-      "/reportes/salud",
-      "/reportes/trazabilidad",
-      "/reportes/vencimientos",
-    ]);
+    expect(reportes?.items.map((i) => i.href).sort()).toEqual(["/reportes/trazabilidad", "/reportes/vencimientos"]);
     // Todo el menú lleva `accion`: los grupos sin ningún ítem visible desaparecen, no solo Reportes.
     expect(grupos.map((g) => g.id)).toEqual(["reportes"]);
 
@@ -80,7 +74,8 @@ describe("filtrarMenuPorPermiso", () => {
   it("accionesDelMenu trae cada acción una sola vez", () => {
     const acciones = accionesDelMenu();
     expect(new Set(acciones).size).toBe(acciones.length);
-    expect(acciones).toContain("ver_reportes_dinero");
+    expect(acciones).toContain("reporte_resumen");
+    expect(acciones).toContain("reporte_conteos");
     expect(acciones).toContain("proceso_control");
     expect(acciones).toContain("gestion_usuarios");
   });
@@ -88,7 +83,7 @@ describe("filtrarMenuPorPermiso", () => {
 
 describe("a dónde se manda al entrar", () => {
   it("a /reportes si puede verlo (como siempre), aunque haya otros ítems antes en el menú", () => {
-    const menu = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["alta_producto", "ver_reportes_dinero"]));
+    const menu = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["alta_producto", "reporte_resumen"]));
     expect(elegirPantallaDeInicio(menu)).toBe("/reportes");
   });
 

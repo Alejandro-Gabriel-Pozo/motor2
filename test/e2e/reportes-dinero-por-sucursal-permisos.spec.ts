@@ -6,7 +6,7 @@ import { crearMembresias } from "../setup/membresia";
 
 /**
  * Las pantallas que juntan dinero de varias sucursales (/reportes/consolidado y /reportes/rendimiento-recetas/por-sucursal) comprobaban el
- * permiso `ver_reportes_dinero` solo en la sucursal ACTIVA y después mostraban TODAS las de `ctx.membresias`: un usuario admin en Central y
+ * permiso (`reporte_consolidado` / `reporte_rendimiento_sucursal`) solo en la sucursal ACTIVA y después mostraban TODAS las de `ctx.membresias`: un usuario admin en Central y
  * operador (sin ese permiso) en otra veía igual el dinero de la otra. Ahora suman solo las sucursales donde su rol allí puede verlo.
  */
 async function abrirConDosSucursales(browser: Browser, baseURL: string | undefined, marca: number) {

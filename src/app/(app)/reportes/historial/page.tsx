@@ -30,13 +30,13 @@ export default async function HistorialProductoPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_operativos", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_historial", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   // Cableado ANTES de las vistas "Cómo se compró"/"Cómo se vendió" (pasos 8-9) a propósito: así ningún commit intermedio
-  // llega a mostrarle precio a un rol que tiene ver_reportes_operativos pero no ver_reportes_dinero — mismo patrón que ya
+  // llega a mostrarle precio a un rol que tiene reporte_historial pero no reporte_historial_importes — mismo patrón que ya
   // usa /reportes/compras (que gatea la pantalla entera; acá se condicionan solo las columnas de dinero, ver grounding §7).
-  const { ver: mostrarDinero } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db);
+  const { ver: mostrarDinero } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_historial_importes", ctx.db);
 
   const sp = await searchParams;
   const secciones = await listarSeccionesActivas(ctx.sucursalId);

@@ -1,6 +1,6 @@
 "use server";
 
-import type { AccionClave } from "@/core/permisos/acciones";
+import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
 import { MENSAJE_GUARDADO_EN_CONFLICTO, mismoEstado, normalizarPermiso, PREFIJO_CONFLICTO_DE_EDICION, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
@@ -15,7 +15,7 @@ export async function listarMatrizPermisos() {
     ctx.db.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     ctx.db.permisoRol.findMany(),
   ]);
-  return { acciones, roles, permisos };
+  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave)), roles, permisos };
 }
 
 export interface CambioPermisoInput {
@@ -77,7 +77,7 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
     for (const c of cambios) {
       const rol = rolPorId.get(c.rolId);
       if (!rol) return error("No se encontró uno de los roles (¿está desactivado?). No se guardó nada.");
-      if (!accionesConocidas.has(c.accionClave)) return error(`No se encontró la acción "${c.accionClave}". No se guardó nada.`);
+      if (!claveEnCatalogo(c.accionClave) || !accionesConocidas.has(c.accionClave)) return error(`No se encontró la acción "${c.accionClave}". No se guardó nada.`);
       const nuevo = normalizarPermiso(rol.nombre, c.accionClave, c.nuevo);
       if (mismoEstado(nuevo, c.anterior)) continue;
       efectivos.push({ rolId: rol.id, rolNombre: rol.nombre, accionClave: c.accionClave as AccionClave, anterior: c.anterior, nuevo });

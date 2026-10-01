@@ -1,6 +1,6 @@
 "use server";
 
-import type { AccionClave } from "@/core/permisos/acciones";
+import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
@@ -15,7 +15,7 @@ export async function listarCapacidades() {
     ctx.db.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     ctx.db.capacidadSucursal.findMany(),
   ]);
-  return { acciones, sucursales, capacidades };
+  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave)), sucursales, capacidades };
 }
 
 /**

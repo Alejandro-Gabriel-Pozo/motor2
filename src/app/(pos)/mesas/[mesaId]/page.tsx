@@ -64,7 +64,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta", ctx.db),
     // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Boletas emitidas» se
     // condiciona a mano, del lado del servidor (Task #17).
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_boletas", ctx.db),
     listarSeccionesActivas(ctx.sucursalId),
     obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id, ctx.db),
   ]);

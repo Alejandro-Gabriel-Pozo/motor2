@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaCompraHistorial, ResumenCompras } from "@/core/reportes/historial-vistas";
+import { EnlaceInterno } from "@/components/enlace-interno";
 
 function armarProsa(r: ResumenCompras, unidad: string, mostrarDinero: boolean): string {
   if (r.cantidadCompras === 0) return "Sin compras en el rango elegido.";
@@ -41,9 +41,9 @@ function columnas(mostrarDinero: boolean): ColumnaReporte<FilaCompraHistorial>[]
     etiqueta: "Origen",
     render: (f) =>
       f.idOperacion ? (
-        <Link href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(f.idOperacion)}`} className="underline">
+        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(f.idOperacion)}`} className="underline">
           Ver operación
-        </Link>
+        </EnlaceInterno>
       ) : null,
   });
   return base;
