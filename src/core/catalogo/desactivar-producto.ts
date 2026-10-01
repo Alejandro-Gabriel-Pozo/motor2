@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { whereDisponibleEn } from "./disponibilidad-producto-consulta";
+import { versionVigentePorProducto } from "./recetas-vigentes";
 
 export interface DependenciasDeProducto {
   /** Platos cuya receta VIGENTE usa el producto y que están disponibles EN ESTA SUCURSAL, por nombre. */
@@ -26,10 +27,7 @@ export async function dependenciasParaDesactivar(productoId: string, sucursalId:
     select: { recetaVersion: { select: { productoId: true, version: true, producto: { select: { nombre: true } } } } },
   });
   const platos = [...new Set(usos.map((u) => u.recetaVersion.productoId))];
-  const vigentes = platos.length
-    ? await db.recetaVersion.groupBy({ by: ["productoId"], where: { productoId: { in: platos } }, _max: { version: true } })
-    : [];
-  const versionVigente = new Map(vigentes.map((v) => [v.productoId, v._max.version]));
+  const versionVigente = await versionVigentePorProducto(db, platos);
   const recetasVigentes = new Map<string, string>();
   for (const { recetaVersion } of usos) {
     if (recetaVersion.version === versionVigente.get(recetaVersion.productoId)) recetasVigentes.set(recetaVersion.productoId, recetaVersion.producto.nombre);

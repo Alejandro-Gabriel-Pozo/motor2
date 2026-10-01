@@ -1,7 +1,7 @@
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
 import type { CostoMP, Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { incluirRecetaVigente, rendimientoEfectivo, whereConReceta } from "@/core/catalogo/public";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import {
@@ -372,18 +372,12 @@ interface Pool {
 async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
   const [productosConReceta, clasificacion] = await Promise.all([
     db.producto.findMany({
-      where: { ...whereDisponibleEn(sucursalId), recetaVersiones: { some: {} } },
-      include: {
-        recetaVersiones: {
-          orderBy: { version: "desc" },
-          take: 1,
-          include: {
-            ingredientes: {
-              include: { insumoProducto: { include: { insumo: true } }, unidad: true, rendimientosLocales: { where: { sucursalId } } },
-            },
-          },
+      where: { ...whereDisponibleEn(sucursalId), ...whereConReceta() },
+      include: incluirRecetaVigente({
+        ingredientes: {
+          include: { insumoProducto: { include: { insumo: true } }, unidad: true, rendimientosLocales: { where: { sucursalId } } },
         },
-      },
+      }),
     }),
     cargarClasificacionNoComestibles(db),
   ]);

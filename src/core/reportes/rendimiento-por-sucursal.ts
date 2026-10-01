@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { cargarRecetasVigentes, rendimientoEfectivo } from "@/core/catalogo/public";
 import { calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, desvioEsNotable } from "./rendimiento-recetas-vistas";
 
 /**
@@ -45,16 +45,15 @@ export interface FiltroComparacionRendimiento {
   todas?: boolean;
 }
 
-/** Una sola consulta (`recetaVersion.findMany`, con el `include` anidado de `rendimientosLocales`) — sin `@/lib/db`: `db` no tiene default, lo pasa quien llama (siempre `prisma` real en la página). */
+/** Una sola consulta (`cargarRecetasVigentes`, con el `include` anidado de `rendimientosLocales`) — sin `@/lib/db`: `db` no tiene default, lo pasa quien llama (siempre `prisma` real en la página). */
 export async function compararRendimientosPorSucursal(
   sucursales: readonly { id: string; nombre: string }[],
   filtro: FiltroComparacionRendimiento,
   db: Db
 ): Promise<FilaComparacionRendimiento[]> {
   const sucursalIds = sucursales.map((s) => s.id);
-  const versiones = await db.recetaVersion.findMany({
+  const vigentePorProducto = await cargarRecetasVigentes(db, {
     where: filtro.productoId ? { productoId: filtro.productoId } : undefined,
-    orderBy: { version: "asc" },
     include: {
       producto: { select: { nombre: true } },
       ingredientes: {
@@ -66,10 +65,6 @@ export async function compararRendimientosPorSucursal(
       },
     },
   });
-
-  // Vigente = la de mayor `version` por producto — `versiones` viene ascendente, así que la última escritura del Map gana.
-  const vigentePorProducto = new Map<string, (typeof versiones)[number]>();
-  for (const v of versiones) vigentePorProducto.set(v.productoId, v);
 
   const filas: FilaComparacionRendimiento[] = [];
   for (const v of vigentePorProducto.values()) {

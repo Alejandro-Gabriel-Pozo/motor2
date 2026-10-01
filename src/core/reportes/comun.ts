@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
+import { cargarRecetasVigentes, clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
 import { disponibilidadDeProductos, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
@@ -126,9 +126,9 @@ export interface IndiceRecetas {
 /**
  * Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente =
  * MAX(version) por producto, derivado — un solo `findMany` ordenado
- * ascendente y un Map que se pisa solo se queda con la última versión de
- * cada producto (misma técnica que obtenerRecetaVigente pero en bloque,
- * para no hacer 1 query por producto).
+ * ascendente y `cargarRecetasVigentes` (core/catalogo/recetas-vigentes.ts) se
+ * queda con la última versión de cada producto, en bloque, para no hacer
+ * 1 query por producto.
  *
  * `sucursalId` (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, D2/R1): con ella, `cantidad`/`mermaPorcentaje`
  * salen EFECTIVOS (con el override de esa sucursal si lo hay); sin ella, quedan en el valor CENTRAL — para quien solo
@@ -137,8 +137,7 @@ export interface IndiceRecetas {
  * ver test/reportes/catalogo-una-sola-carga.test.ts).
  */
 export async function construirIndiceRecetas(db: Db, sucursalId?: string): Promise<IndiceRecetas> {
-  const versiones = await db.recetaVersion.findMany({
-    orderBy: { version: "asc" },
+  const vigentes = await cargarRecetasVigentes(db, {
     include: {
       ingredientes: {
         include: {
@@ -153,7 +152,7 @@ export async function construirIndiceRecetas(db: Db, sucursalId?: string): Promi
   });
 
   const recetaPorProducto = new Map<string, IngredienteRecetaReporte[]>();
-  for (const v of versiones) {
+  for (const v of vigentes.values()) {
     recetaPorProducto.set(
       v.productoId,
       v.ingredientes.map((it) => {

@@ -1,7 +1,7 @@
 "use server";
 
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
+import { cargarHistorialDeVersiones, cargarRecetaVigente, esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
 import type { IngredienteInput, PasoInput, CabeceraRecetaInput } from "@/core/catalogo/public-servidor";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -22,11 +22,7 @@ const INCLUDE_RECETA_COMPLETA = {
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
   const ctx = await requerirVerDeEmpresa("guardar_receta");
-  return ctx.db.recetaVersion.findFirst({
-    where: { productoId },
-    orderBy: { version: "desc" },
-    include: INCLUDE_RECETA_COMPLETA,
-  });
+  return cargarRecetaVigente(ctx.db, productoId, { include: INCLUDE_RECETA_COMPLETA });
 }
 
 /**
@@ -37,11 +33,7 @@ export async function obtenerRecetaVigente(productoId: string) {
  */
 export async function listarVersionesDeReceta(productoId: string) {
   const ctx = await requerirVerDeEmpresa("guardar_receta");
-  return ctx.db.recetaVersion.findMany({
-    where: { productoId },
-    orderBy: { version: "desc" },
-    include: INCLUDE_RECETA_COMPLETA,
-  });
+  return cargarHistorialDeVersiones(ctx.db, productoId, INCLUDE_RECETA_COMPLETA);
 }
 
 type RecetaVigente = Awaited<ReturnType<typeof obtenerRecetaVigente>>;

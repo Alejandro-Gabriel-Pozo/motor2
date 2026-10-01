@@ -19,5 +19,6 @@ export { filtrarPreciosLocalesVigentes } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";
 export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
 export { describirCambioVersionReceta } from "./describir-cambio-receta";
+export { cargarHistorialDeVersiones, cargarRecetasVigentes, cargarRecetaVigente, incluirRecetaVigente, whereConReceta } from "./recetas-vigentes";
 export { describirCalibracion, describirDescarteArrastre, describirVueltaAlCentral, normalizarOrigen } from "./origen-cambio-receta";
 export type { OrigenCalibracionInput } from "./origen-cambio-receta";

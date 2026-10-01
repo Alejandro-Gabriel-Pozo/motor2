@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { cargarRecetaVigente } from "@/core/catalogo/public";
 import type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "@/core/catalogo/public-servidor";
 import { texto } from "@/core/texto";
 
@@ -47,11 +48,7 @@ export type UltimaVersionDeReceta = Prisma.RecetaVersionGetPayload<{ include: ty
  * cuenta las transacciones por intento para saber que hubo reintentos).
  */
 export async function cargarUltimaVersionDeReceta(db: Prisma.TransactionClient, productoId: string): Promise<UltimaVersionDeReceta | null> {
-  return db.recetaVersion.findFirst({
-    where: { productoId },
-    orderBy: { version: "desc" },
-    include: INCLUDE_ULTIMA_VERSION,
-  });
+  return cargarRecetaVigente(db, productoId, { include: INCLUDE_ULTIMA_VERSION });
 }
 
 /** La versión recién creada, con lo que necesita el arrastre de calibraciones y la auditoría. */
