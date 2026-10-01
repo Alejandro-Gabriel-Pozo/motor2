@@ -30,7 +30,7 @@ export function describirAviso(aviso: AvisoStockNegativo): string {
   return `"${aviso.nombre}" en «${aviso.seccionNombre}» (tenía ${formatearCantidad(aviso.actual)}, se consumió ${formatearCantidad(aviso.requerido)}, quedó en ${formatearCantidad(aviso.resultante)})`;
 }
 
-export type CuentaAbierta = { id: string; mesa: { id: string; numero: number } };
+export type CuentaAbierta = { id: string; clienteId: string | null; descuentoPorcentaje: Prisma.Decimal | null; mesa: { id: string; numero: number } };
 
 /** La cuenta pedida, si es de una mesa de esta sucursal y sigue abierta; si no, el mensaje de error listo para devolver. */
 export async function cuentaAbiertaDeSucursal(tx: Prisma.TransactionClient, cuentaId: string, sucursalId: string): Promise<{ ok: true; cuenta: CuentaAbierta } | { ok: false; mensaje: string }> {

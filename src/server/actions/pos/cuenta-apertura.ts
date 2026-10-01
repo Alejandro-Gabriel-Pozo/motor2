@@ -1,6 +1,7 @@
 "use server";
 
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
 import { conPermiso } from "../con-permiso";
@@ -96,8 +97,24 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
+      // Quién puso (o sacó) un cliente con descuento queda en la auditoría: la `Operacion` de la venta solo guarda a quien cerró la cuenta.
+      const anterior = abierta.cuenta.clienteId ? await tx.cliente.findUnique({ where: { id: abierta.cuenta.clienteId }, select: { nombre: true } }) : null;
+      const auditar = async (nuevo: { nombre: string; porcentaje: number } | null) => {
+        const base = { entidad: "Cuenta", entidadId: abierta.cuenta.id, actorId: ctx.usuarioId, sucursalId: ctx.sucursalId } as const;
+        const mesa = abierta.cuenta.mesa.numero;
+        await registrarCambioAuditado(tx, { ...base, campo: "cliente", descripcion: `Mesa ${mesa}: cliente de la cuenta`, valorAnterior: anterior?.nombre ?? null, valorNuevo: nuevo?.nombre ?? null });
+        await registrarCambioAuditado(tx, {
+          ...base,
+          campo: "descuentoPorcentaje",
+          descripcion: `Mesa ${mesa}: % de descuento de la cuenta`,
+          valorAnterior: abierta.cuenta.descuentoPorcentaje === null ? null : Number(abierta.cuenta.descuentoPorcentaje),
+          valorNuevo: nuevo?.porcentaje ?? null,
+        });
+      };
+
       if (clienteId === null) {
         await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: null, descuentoPorcentaje: null } });
+        await auditar(null);
         return ok(`Se quitó el cliente de la mesa ${abierta.cuenta.mesa.numero}.`);
       }
 
@@ -106,6 +123,7 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
       if (!cliente.activo) return error(`«${cliente.nombre}» está desactivado: no se puede asignar a una cuenta.`);
 
       await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: cliente.id, descuentoPorcentaje: cliente.descuentoPorcentaje } });
+      await auditar({ nombre: cliente.nombre, porcentaje: Number(cliente.descuentoPorcentaje) });
       return ok(`«${cliente.nombre}» asignado a la mesa ${abierta.cuenta.mesa.numero}, con ${cliente.descuentoPorcentaje}% de descuento.`);
     });
   });

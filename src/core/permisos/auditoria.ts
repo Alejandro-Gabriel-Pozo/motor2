@@ -4,6 +4,42 @@ import { sucursalesDondeElUsuarioPuedeVer } from "./gate";
 type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
+ * Única lista de entidades auditables: el tipo `CambioAuditable["entidad"]` se deriva de acá y la pantalla de auditoría arma su filtro con
+ * la misma lista, así que una entidad nueva aparece en el filtro sin tocar la página (antes "Cuenta" y "DisponibilidadProducto" se
+ * escribían pero no se podían filtrar).
+ */
+export const ENTIDADES_AUDITABLES = [
+  // "RecetaVersion" (paso 2): cada versión nueva de la receta central (`guardarReceta`) — SIEMPRE `sucursalId: null`
+  // (Catálogo Central, no un dato por sucursal). "RendimientoLocalIngrediente" (paso 6): al revés, SIEMPRE lleva
+  // `sucursalId` — es la calibración de UNA sucursal puntual (`entidadId` es la clave estable
+  // `${sucursalId}:${productoId}:${insumoProductoId}`, no el id de la fila, que cambia con el arrastre entre versiones).
+  "Producto",
+  "PrecioLocalProducto",
+  "DisponibilidadProducto",
+  "PermisoRol",
+  "CapacidadSucursal",
+  "Rol",
+  "Operacion",
+  "CuentaItem",
+  // "Cuenta": cambios sobre la cuenta de una mesa (boleta corregida, cliente asignado) — `entidadId` es el id de la Cuenta.
+  "Cuenta",
+  "RecetaVersion",
+  "RendimientoLocalIngrediente",
+  // "Sucursal" (docs/plan-comensales-y-limite-mesas-2026-09-26.md): el límite de mesas abiertas (`maxMesasAbiertas`) se edita desde
+  // el mapa de mesas con el mismo permiso que da de alta mesas (`pos_mesas`) — `entidadId` es el id de la Sucursal.
+  "Sucursal",
+  // "PagoConsignante" (Task #41, M14): un pago a un proveedor de consignación — `entidadId` es el id del PagoConsignante creado,
+  // `campo: "importe"`, `valorAnterior: null` (siempre una creación, nunca una edición — append-only, igual que el resto del Kardex).
+  "PagoConsignante",
+  // "UsuarioEmpresa": el traspaso de la gerencia de la empresa (`transferirGerencia`) — `entidadId` es el usuario que pasa a ser gerente, `sucursalId` null (es de la empresa).
+  "UsuarioEmpresa",
+  // "DescuentoProductoSucursal": el % de descuento de un producto en UNA sucursal — `entidadId` es el id de la fila (al sacarlo, el de la fila borrada), `campo: "porcentaje"`.
+  "DescuentoProductoSucursal",
+  // "Cliente": alta, edición (nombre y % de descuento) y activar/desactivar — catálogo central, `sucursalId` null. `entidadId` es el id del Cliente.
+  "Cliente",
+] as const;
+
+/**
  * Auditoría administrativa (A3, Pivote 6 — docs/auditoria-motor2-pivotes-
  * 2026-09-16.md "Pivote 6", docs/auditoria-motor2-fase6-seguridad-
  * 2026-09-18.md): catálogo/precios/permisos no dejaban ningún rastro de
@@ -12,32 +48,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * un solo lugar, nunca una copia divergente en cada Server Action).
  */
 export interface CambioAuditable {
-  // "RecetaVersion" (paso 2): cada versión nueva de la receta central (`guardarReceta`) — SIEMPRE `sucursalId: null`
-  // (Catálogo Central, no un dato por sucursal). "RendimientoLocalIngrediente" (paso 6): al revés, SIEMPRE lleva
-  // `sucursalId` — es la calibración de UNA sucursal puntual (`entidadId` es la clave estable
-  // `${sucursalId}:${productoId}:${insumoProductoId}`, no el id de la fila, que cambia con el arrastre entre versiones).
-  entidad:
-    | "Producto"
-    | "PrecioLocalProducto"
-    | "DisponibilidadProducto"
-    | "PermisoRol"
-    | "CapacidadSucursal"
-    | "Rol"
-    | "Operacion"
-    | "CuentaItem"
-    | "Cuenta"
-    | "RecetaVersion"
-    | "RendimientoLocalIngrediente"
-    // "Sucursal" (docs/plan-comensales-y-limite-mesas-2026-09-26.md): el límite de mesas abiertas (`maxMesasAbiertas`) se edita desde
-    // el mapa de mesas con el mismo permiso que da de alta mesas (`pos_mesas`) — `entidadId` es el id de la Sucursal.
-    | "Sucursal"
-    // "PagoConsignante" (Task #41, M14): un pago a un proveedor de consignación — `entidadId` es el id del PagoConsignante creado,
-    // `campo: "importe"`, `valorAnterior: null` (siempre una creación, nunca una edición — append-only, igual que el resto del Kardex).
-    | "PagoConsignante"
-    // "UsuarioEmpresa": el traspaso de la gerencia de la empresa (`transferirGerencia`) — `entidadId` es el usuario que pasa a ser gerente, `sucursalId` null (es de la empresa).
-    | "UsuarioEmpresa"
-    // "DescuentoProductoSucursal": el % de descuento de un producto en UNA sucursal — `entidadId` es el id de la fila (al sacarlo, el de la fila borrada), `campo: "porcentaje"`.
-    | "DescuentoProductoSucursal";
+  entidad: (typeof ENTIDADES_AUDITABLES)[number];
   entidadId: string;
   /** Legible de entrada, ej. `Producto "Pan Francés": precio de venta`. */
   descripcion: string;
@@ -110,7 +121,7 @@ export async function listarRegistrosAuditoria(filtro: FiltroAuditoria, db: Db) 
       OR: [...(filtro.incluirFilasDeEmpresa ? [{ sucursalId: null }] : []), { sucursalId: { in: [...filtro.sucursalIds] } }],
     },
     include: { actor: { select: { email: true, name: true } }, sucursal: { select: { nombre: true } } },
-    // `id` desempata: `creadoEn` se repite (filas de una misma transacción) y, con cursor, un orden no total salta filas.
+  // `id` desempata: `creadoEn` se repite (filas de una misma transacción) y, con cursor, un orden no total salta filas.
     orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
     take: TAMANO_PAGINA_AUDITORIA + 1,
     ...(filtro.cursor ? { cursor: { id: filtro.cursor }, skip: 1 } : {}),
