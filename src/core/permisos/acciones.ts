@@ -14,9 +14,10 @@ export type ContextoDeAccion = "empresa" | "sucursal";
 
 /**
  * Nivel de quien puede llegar a tener la acción (RBAC con jerarquía, decisión del dueño 2026-09-30): operario < administrador < gerente.
- * Es un PISO (DECLARADO, todavía NO se hace cumplir: `guardarPermisos` y el gate no lo leen; lo comprueba solo `matriz-de-fabrica.test.ts`
- * contra la matriz de fábrica): la idea es que ningún rol por debajo lo alcance por más que se le marque en la matriz. Los roles personalizados (mozo, cajero…) son nivel
- * operario; el rol «admin» es nivel administrador; «gerente» no es un rol de sucursal sino `UsuarioEmpresa.rolEmpresa` (uno por empresa).
+ * Es un PISO y SE HACE CUMPLIR en dos puntos: `guardarPermisos` rechaza darle a un rol por debajo del piso el Ver/Editar de la acción, y el gate
+ * (`gate.ts`) ignora la fila aunque exista (una migración o un dato viejo no la convierten en acceso). Los roles personalizados (mozo, cajero…)
+ * y «operador» son nivel operario; el rol «admin» es nivel administrador; «gerente» no es un rol de sucursal sino `UsuarioEmpresa.rolEmpresa`
+ * (uno por empresa): una acción de piso gerente la tiene SOLO quien es gerente, sin pasar por la matriz, y por eso es de contexto empresa.
  */
 export type NivelDeAccion = "operario" | "administrador" | "gerente";
 
@@ -179,6 +180,21 @@ export function contextoDeAccion(clave: AccionClave): ContextoDeAccion {
 
 export function nivelMinimoDeAccion(clave: AccionClave): NivelDeAccion {
   return POR_CLAVE.get(clave)!.nivelMinimo;
+}
+
+const ORDEN_DE_NIVEL: Record<NivelDeAccion, number> = { operario: 0, administrador: 1, gerente: 2 };
+
+/**
+ * El nivel de un ROL de sucursal, por su nombre (igual que `esCeldaFija`): «admin» es administrador y todo lo demás —«operador» y los roles
+ * personalizados— es operario. Ningún rol es gerente: eso es `UsuarioEmpresa.rolEmpresa`.
+ */
+export function nivelDeRol(rolNombre: string): NivelDeAccion {
+  return rolNombre === "admin" ? "administrador" : "operario";
+}
+
+/** ¿El rol llega al piso de la acción? Si no, ninguna fila de `PermisoRol` le da acceso: el piso manda sobre la matriz. */
+export function rolAlcanzaLaAccion(rolNombre: string, clave: AccionClave): boolean {
+  return ORDEN_DE_NIVEL[nivelDeRol(rolNombre)] >= ORDEN_DE_NIVEL[nivelMinimoDeAccion(clave)];
 }
 
 /**

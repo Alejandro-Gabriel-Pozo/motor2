@@ -87,13 +87,13 @@ describe("gate de permisos", () => {
 
   it("requierePermisoVer respeta puedeVer independientemente de puedeEditar", async () => {
     const operador = await crearUsuarioConMembresia({ email: "operador3@test.com", sucursalId, rolId: rolOperadorId });
-    // 'proceso_ajuste': operador no puede editar, pero se le habilita Ver.
+    // 'reporte_salud' (piso operario): operador no puede editar, pero se le habilita Ver.
     await prisma.permisoRol.update({
-      where: { rolId_accionClave: { rolId: rolOperadorId, accionClave: "proceso_ajuste" } },
+      where: { rolId_accionClave: { rolId: rolOperadorId, accionClave: "reporte_salud" } },
       data: { puedeVer: true, puedeEditar: false },
     });
-    const ver = await requierePermisoVer(operador.id, sucursalId, "proceso_ajuste", prisma);
-    const editar = await requierePermiso(operador.id, sucursalId, "proceso_ajuste", prisma);
+    const ver = await requierePermisoVer(operador.id, sucursalId, "reporte_salud", prisma);
+    const editar = await requierePermiso(operador.id, sucursalId, "reporte_salud", prisma);
     expect(ver.ok).toBe(true);
     expect(editar.ok).toBe(false);
   });

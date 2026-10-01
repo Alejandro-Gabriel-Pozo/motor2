@@ -160,9 +160,9 @@ describe("agregarOActualizarUsuario: alcance de sucursal y de rol", () => {
     expect((await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: admin.id } })).rolId).toBe(base.admin.id);
   });
 
-  it("quien no es admin sí puede dar roles que no son admin", async () => {
-    const { base, gerente } = await escenario();
-    const actor = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: gerente.id });
+  it("un admin sí puede dar roles que no son admin", async () => {
+    const { base } = await escenario();
+    const actor = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await mockearUsuarioActual({ id: actor.id, email: actor.email, nombre: null });
 
     const resultado = await agregarOActualizarUsuario({ email: "nuevo@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
@@ -178,9 +178,10 @@ describe("agregarOActualizarUsuario: alcance de sucursal y de rol", () => {
     expect(resultado.ok, resultado.mensaje).toBe(true);
   });
 
-  it("el gerente de la empresa (rolEmpresa) puede dar el rol admin aunque su rol en la sucursal no sea admin", async () => {
-    const { base, gerente } = await escenario();
-    const actor = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: gerente.id });
+  // Gestionar usuarios es una acción de piso administrador: el rol de sucursal de quien la usa tiene que ser admin (un rol personalizado no la puede tener).
+  it("el gerente de la empresa (rolEmpresa, con rol admin en la sucursal) puede dar el rol admin", async () => {
+    const { base } = await escenario();
+    const actor = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await prismaAdmin.usuarioEmpresa.update({
       where: { usuarioId_empresaId: { usuarioId: actor.id, empresaId: base.sucursal.empresaId } },
       data: { rolEmpresa: "gerente" },
@@ -226,8 +227,9 @@ describe("desactivar a un admin: mismo techo de privilegio", () => {
     expect((await pertenencia(admin.id, base.sucursal.empresaId)).activo).toBe(true);
   });
 
-  it("el gerente de la empresa sí puede apagar la cuenta de un admin si queda otro admin activo", async () => {
+  it("el gerente de la empresa (con rol admin en la sucursal) sí puede apagar la cuenta de un admin si queda otro admin activo", async () => {
     const { base, admin, actor } = await escenario();
+    await prismaAdmin.usuarioSucursal.updateMany({ where: { usuarioId: actor.id }, data: { rolId: base.admin.id } });
     await prismaAdmin.usuarioEmpresa.update({
       where: { usuarioId_empresaId: { usuarioId: actor.id, empresaId: base.sucursal.empresaId } },
       data: { rolEmpresa: "gerente" },

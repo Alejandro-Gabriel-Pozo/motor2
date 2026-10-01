@@ -39,8 +39,12 @@ commit, siempre con OK expreso del dueño.
   `ver_reportes_*`; migración de datos `20261001100000_particion_permisos_reportes` (con `empresaId` explícito, idempotente, probada con 2
   empresas); guardián «una clave por pantalla» con demo de mutación. Consignación y Promociones no se parten (son gestión). No se creó
   `pos_ver_importes` (el POS usa `reporte_boletas`).
-- Pendiente de la jerarquía: `nivelMinimo` está declarado en el catálogo pero NO se hace cumplir (ni `guardarPermisos`, ni el gate, ni la
-  matriz lo leen). Hoy un rol personalizado con el padre antiguo queda con las hijas de piso administrador copiadas tal cual.
+- Jerarquía, paso 1 (piso `nivelMinimo` HECHO CUMPLIR): `guardarPermisos` rechaza dar una acción por encima del nivel del rol (todo o nada), el
+  gate ignora la fila de un rol por debajo del piso (permiso, menú y lecturas), y la matriz marca esas celdas con 🚫 y muestra el «Piso». Un rol
+  personalizado es de nivel operario; solo «admin» es de nivel administrador; las de piso gerente las tiene solo el gerente de la empresa
+  (`esGerenteDeEmpresa`, sin matriz ni capacidad de la Central; hoy no existe ninguna, se prueba con un mock). Las filas viejas por encima del
+  piso quedan en la base pero el gate las ignora (no se limpian). Falta: un solo gerente por empresa en código + `transferirGerencia` +
+  migración de datos (paso 2) y el ADR-008 (paso 3).
 - Fase de contract (borrar las `Accion` padre, incluidas `ver_reportes_*`) en un deploy posterior.
 - Siguiente en el orden: operaciones/POS/carta/catálogo, después administración.
 

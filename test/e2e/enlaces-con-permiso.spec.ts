@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresia } from "../setup/membresia";
+import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
  * Los enlaces de una pantalla a otra con permisos distintos no se muestran a quien no puede abrir el destino (terminarían en
@@ -9,8 +10,9 @@ import { crearMembresia } from "../setup/membresia";
  * (`comparar_precios`, distinta de `proveedores`).
  */
 test("Proveedores muestra el enlace a la comparativa solo a quien puede verla", async ({ browser, baseURL, sucursalId }) => {
-  const rol = await prisma.rol.create({ data: { nombre: `e2e-enlaces-${Date.now()}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "proveedores", puedeVer: true, puedeEditar: false } });
+  // «proveedores» y «comparar_precios» son de piso administrador: el caso se arma sobre el rol «admin» (se restaura al final).
+  const admin = await ajustarCeldasDelAdmin({ proveedores: { puedeVer: true, puedeEditar: false }, comparar_precios: null });
+  const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-enlaces-${Date.now()}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
@@ -22,23 +24,29 @@ test("Proveedores muestra el enlace a la comparativa solo a quien puede verla", 
   ]);
   const page = await contexto.newPage();
   const enlace = page.locator('a[href="/catalogo/proveedores/comparativa"]');
+  try {
+    // Sin «Ver» de la comparativa: el texto se ve, sin enlace (y con la explicación al pasar el mouse).
+    await page.goto("/catalogo/proveedores");
+    await expect(page.getByRole("heading", { name: "Proveedores" })).toBeVisible();
+    await expect(page.getByText("Comparativa de precios →")).toBeVisible();
+    await expect(enlace).toHaveCount(0);
+    await expect(page.locator('[data-sin-permiso]', { hasText: "Comparativa de precios" })).toHaveAttribute("title", /no tiene permiso/);
 
-  // Sin «Ver» de la comparativa: el texto se ve, sin enlace (y con la explicación al pasar el mouse).
-  await page.goto("/catalogo/proveedores");
-  await expect(page.getByRole("heading", { name: "Proveedores" })).toBeVisible();
-  await expect(page.getByText("Comparativa de precios →")).toBeVisible();
-  await expect(enlace).toHaveCount(0);
-  await expect(page.locator('[data-sin-permiso]', { hasText: "Comparativa de precios" })).toHaveAttribute("title", /no tiene permiso/);
-
-  // Con «Ver» de la comparativa: aparece el enlace y lleva a la pantalla.
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "comparar_precios", puedeVer: true, puedeEditar: false } });
-  await page.goto("/catalogo/proveedores");
-  await expect(enlace).toHaveCount(1);
-  await enlace.click();
-  await page.waitForURL(/\/catalogo\/proveedores\/comparativa$/);
-  await expect(page.getByText(/No tenés permiso para ver esta sección/)).toHaveCount(0);
-
-  await contexto.close();
+    // Con «Ver» de la comparativa: aparece el enlace y lleva a la pantalla.
+    await admin.cambiar({ comparar_precios: { puedeVer: true, puedeEditar: false } });
+    await page.goto("/catalogo/proveedores");
+    await expect(enlace).toHaveCount(1);
+    await enlace.click();
+    await page.waitForURL(/\/catalogo\/proveedores\/comparativa$/);
+    await expect(page.getByText(/No tenés permiso para ver esta sección/)).toHaveCount(0);
+  } finally {
+    await contexto.close();
+    await admin.restaurar();
+    await prisma.session.deleteMany({ where: { userId: usuario.id } });
+    await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+    await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
+    await prisma.user.deleteMany({ where: { id: usuario.id } });
+  }
 });
 
 test("el admin ve el enlace a la comparativa", async ({ paginaAutenticada: page }) => {

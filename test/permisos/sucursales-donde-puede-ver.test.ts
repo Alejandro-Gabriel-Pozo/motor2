@@ -28,11 +28,11 @@ describe("sucursalesDondeElUsuarioPuedeVer", () => {
     const usuario = await crearUsuarioConMembresia({ email: "mixto@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: norte.id, rolId: base.operador.id } });
     await prisma.permisoRol.update({
-      where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "reporte_consolidado" } },
+      where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "reporte_salud" } },
       data: { puedeVer: true },
     });
 
-    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "reporte_consolidado", prisma);
+    const visibles = await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], "reporte_salud", prisma);
     expect([...visibles].sort()).toEqual([base.sucursal.id, norte.id].sort());
   });
 

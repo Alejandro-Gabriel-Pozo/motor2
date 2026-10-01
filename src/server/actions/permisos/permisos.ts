@@ -1,7 +1,16 @@
 "use server";
 
 import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
-import { MENSAJE_GUARDADO_EN_CONFLICTO, mismoEstado, normalizarPermiso, PREFIJO_CONFLICTO_DE_EDICION, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
+import {
+  esCeldaFueraDeNivel,
+  MENSAJE_GUARDADO_EN_CONFLICTO,
+  mismoEstado,
+  nivelesDeLaCelda,
+  normalizarPermiso,
+  PREFIJO_CONFLICTO_DE_EDICION,
+  SIN_PERMISO,
+  type EstadoPermiso,
+} from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conPermisoDeEmpresa } from "../con-permiso";
@@ -78,6 +87,12 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
       const rol = rolPorId.get(c.rolId);
       if (!rol) return error("No se encontró uno de los roles (¿está desactivado?). No se guardó nada.");
       if (!claveEnCatalogo(c.accionClave) || !accionesConocidas.has(c.accionClave)) return error(`No se encontró la acción "${c.accionClave}". No se guardó nada.`);
+      // El piso de la acción manda: a un rol por debajo no se le puede dar (sacarle una fila que ya tenía sí). Anti-escalada: un admin no puede
+      // armar un rol operario con una acción de administrador, ni nadie un rol con una de gerente.
+      if ((c.nuevo.puedeVer || c.nuevo.puedeEditar) && esCeldaFueraDeNivel(rol.nombre, c.accionClave)) {
+        const n = nivelesDeLaCelda(rol.nombre, c.accionClave)!;
+        return error(`El rol «${rol.nombre}» (nivel ${n.delRol}) no puede tener "${c.accionClave}": es una acción de nivel ${n.piso}. No se guardó nada.`);
+      }
       const nuevo = normalizarPermiso(rol.nombre, c.accionClave, c.nuevo);
       if (mismoEstado(nuevo, c.anterior)) continue;
       efectivos.push({ rolId: rol.id, rolNombre: rol.nombre, accionClave: c.accionClave as AccionClave, anterior: c.anterior, nuevo });

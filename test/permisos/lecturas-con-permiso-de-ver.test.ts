@@ -6,7 +6,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import type { AccionClave } from "../../src/core/permisos/acciones";
+import { nivelMinimoDeAccion, type AccionClave } from "../../src/core/permisos/acciones";
 import { ACCION_POR_PROCESO } from "../../src/core/movimientos/transiciones";
 import { listarUsuariosDeSucursal } from "../../src/server/actions/auth/usuarios";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
@@ -68,14 +68,28 @@ const LECTURAS: Fila[] = [
 describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no las puede invocar", () => {
   let sucursalId: string;
   let rolSinPermisosId: string;
+  let rolAdminId: string;
+  let usuarioId: string;
+
+  /** La lectura de una acción de piso administrador solo la alcanza un rol de ese nivel (el «admin»): se le saca la fila al rol y se la deja en «Solo ver». */
+  async function darSoloVer(clave: AccionClave) {
+    if (nivelMinimoDeAccion(clave) === "operario") {
+      await prisma.permisoRol.create({ data: { rolId: rolSinPermisosId, accionClave: clave, puedeVer: true, puedeEditar: false } });
+      return;
+    }
+    await prisma.usuarioSucursal.updateMany({ where: { usuarioId }, data: { rolId: rolAdminId } });
+    await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: rolAdminId, accionClave: clave } }, data: { puedeVer: true, puedeEditar: false } });
+  }
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
     const base = await sembrarBase();
     sucursalId = base.sucursal.id;
+    rolAdminId = base.admin.id;
     // Un rol que existe y está activo pero no tiene ningún permiso.
     rolSinPermisosId = (await prisma.rol.create({ data: { nombre: "sin-permisos" } })).id;
     const usuario = await crearUsuarioConMembresia({ email: "lector@test.com", sucursalId, rolId: rolSinPermisosId });
+    usuarioId = usuario.id;
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
   });
 
@@ -84,13 +98,21 @@ describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no l
   });
 
   it.each(LECTURAS)("$nombre con «Ver» de $clave (sin poder Editar) responde", async ({ llamar, clave }) => {
-    await prisma.permisoRol.create({ data: { rolId: rolSinPermisosId, accionClave: clave, puedeVer: true, puedeEditar: false } });
+    await darSoloVer(clave);
     await expect(llamar(sucursalId)).resolves.not.toThrow();
   });
 
+  it.each(LECTURAS.filter((l) => nivelMinimoDeAccion(l.clave) !== "operario"))(
+    "$nombre: un rol de nivel operario con la fila de $clave (acción de administrador) NO la puede leer: el piso manda",
+    async ({ llamar, clave }) => {
+      await prisma.permisoRol.create({ data: { rolId: rolSinPermisosId, accionClave: clave, puedeVer: true, puedeEditar: false } });
+      await expect(llamar(sucursalId)).rejects.toThrow(/No tenés permiso/);
+    },
+  );
+
   it("el permiso de una acción no habilita las lecturas de otra", async () => {
-    await prisma.permisoRol.create({ data: { rolId: rolSinPermisosId, accionClave: "stock_minimo", puedeVer: true, puedeEditar: false } });
-    await expect(listarStockMinimo(sucursalId)).resolves.toBeDefined();
+    await darSoloVer("reporte_conteos");
+    await expect(obtenerHistorialConteosFisicos(sucursalId)).resolves.toBeDefined();
     await expect(listarMatrizPermisos()).rejects.toThrow(/No tenés permiso/);
     await expect(listarPreciosLocales(sucursalId)).rejects.toThrow(/No tenés permiso/);
   });

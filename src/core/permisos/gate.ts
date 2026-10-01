@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { capacidadesDeSucursal, sucursalTieneCapacidad } from "./capacidades-sucursal";
-import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
+import { contextoDeAccion, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
+import { esGerenteDeEmpresa } from "./rol-empresa";
 
 export type ResultadoGate = { ok: true } | { ok: false; mensaje: string };
 
@@ -16,6 +17,9 @@ function denegado(mensaje: string): ResultadoGate {
  * (membresía primero, recién con `rolId` en mano el permiso), porque
  * Prisma sí puede resolver esa dependencia server-side con un `include`
  * filtrado en vez de esperar el resultado del primer query en JS.
+ *
+ * El PISO de la acción (`nivelMinimo`) manda sobre la fila: si el rol no llega al piso, `permiso` es null aunque la fila exista (un dato
+ * viejo o una migración no pueden convertirse en acceso). Una acción de piso gerente no la alcanza ningún rol, por eso es de contexto empresa.
  */
 async function obtenerMembresiaConPermiso(
   usuarioId: string,
@@ -28,7 +32,7 @@ async function obtenerMembresiaConPermiso(
     include: { rol: { include: { permisos: { where: { accionClave } } } } },
   });
   if (!membresia || !membresia.activo || !membresia.rol.activo) return null;
-  return { membresia, permiso: membresia.rol.permisos[0] ?? null };
+  return { membresia, permiso: rolAlcanzaLaAccion(membresia.rol.nombre, accionClave) ? (membresia.rol.permisos[0] ?? null) : null };
 }
 
 /**
@@ -138,7 +142,11 @@ export async function accionesQueElUsuarioPuedeVer(
   ]);
   if (!membresia || !membresia.activo || !membresia.rol.activo) return new Set();
 
-  return new Set(membresia.rol.permisos.map((p) => p.accionClave as AccionDeSucursal).filter((clave) => habilitadas.has(clave)));
+  return new Set(
+    membresia.rol.permisos
+      .map((p) => p.accionClave as AccionDeSucursal)
+      .filter((clave) => habilitadas.has(clave) && rolAlcanzaLaAccion(membresia.rol.nombre, clave))
+  );
 }
 
 /**
@@ -167,6 +175,9 @@ interface NivelEnEmpresa {
  * Qué puede hacer el usuario con cada acción de CONTEXTO EMPRESA: una acción de empresa no depende de la sucursal en la que está parado, así que
  * vale si CUALQUIERA de sus membresías activas en esa empresa (sucursal activa, rol activo) tiene la clave Y la Central no la deshabilitó en esa
  * sucursal. Lo contrario (mirar solo la sucursal activa) le niega a un usuario con dos sucursales una acción de empresa según cuál tenga abierta.
+ *
+ * El PISO de la acción manda sobre la fila: un rol por debajo no la alcanza aunque `PermisoRol` la tenga. Una acción de piso gerente la tiene
+ * SOLO quien es gerente de la empresa (`UsuarioEmpresa.rolEmpresa`), sin matriz ni capacidad de sucursal: la autoridad de empresa no se delega.
  */
 async function nivelesEnLaEmpresa(
   usuarioId: string,
@@ -180,13 +191,24 @@ async function nivelesEnLaEmpresa(
     include: { rol: { include: { permisos: { where: { accionClave: { in: unicas } } } } } },
   });
   const habilitadas = await Promise.all(membresias.map((m) => capacidadesDeSucursal(m.sucursalId, unicas, db)));
+  const hayDeGerente = unicas.some((c) => nivelMinimoDeAccion(c) === "gerente");
+  const esGerente =
+    hayDeGerente && membresias.length > 0
+      ? esGerenteDeEmpresa((await db.usuarioEmpresa.findFirst({ where: { usuarioId, empresaId, activo: true }, select: { rolEmpresa: true } }))?.rolEmpresa ?? null)
+      : false;
 
   const niveles = new Map<AccionDeEmpresa, NivelEnEmpresa>();
   for (const clave of unicas) {
     const nivel: NivelEnEmpresa = { ver: false, editar: false, bloqueadaPorLaCentral: false };
+    if (nivelMinimoDeAccion(clave) === "gerente") {
+      nivel.ver = esGerente;
+      nivel.editar = esGerente;
+      niveles.set(clave, nivel);
+      continue;
+    }
     membresias.forEach((m, i) => {
       const permiso = m.rol.permisos.find((p) => p.accionClave === clave);
-      if (!permiso?.puedeVer) return;
+      if (!permiso?.puedeVer || !rolAlcanzaLaAccion(m.rol.nombre, clave)) return;
       if (!habilitadas[i].has(clave)) {
         nivel.bloqueadaPorLaCentral = true;
         return;

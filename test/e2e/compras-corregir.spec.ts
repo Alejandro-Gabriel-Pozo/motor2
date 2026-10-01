@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresia } from "../setup/membresia";
+import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
  * Corregir la cabecera de una compra (proveedor, N.º de factura y detalle) desde «Compras registradas» (K1b). Se siembran las compras directo en la base, con
@@ -142,8 +143,9 @@ test("si otra persona corrigió la compra mientras se editaba, no se pisa: se av
 test("una compra anulada no ofrece corregir, y quien no tiene «corregir_compra» no ve el botón", async ({ paginaAutenticada: page, browser, baseURL, sucursalId, seccionId }) => {
   const s = await sembrar(sucursalId, seccionId);
   const marca = Date.now();
-  const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-corregir-${marca}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "reporte_compras", puedeVer: true, puedeEditar: false } });
+  // «corregir_compra» es de piso administrador: «quien no la tiene» se arma sobre el rol «admin», quitándole la celda recién después de la fase del admin.
+  const admin = await ajustarCeldasDelAdmin({});
+  const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-corregir-${marca}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
@@ -165,6 +167,7 @@ test("una compra anulada no ofrece corregir, y quien no tiene «corregir_compra�
     await expect(tAnulada.getByRole("button", { name: /Corregir proveedor y factura/ })).toHaveCount(0);
 
     // Quien ve los reportes de dinero pero no tiene «corregir_compra»: ve la compra, sin el botón.
+    await admin.cambiar({ corregir_compra: null });
     const otra = await contexto.newPage();
     await otra.goto(`/reportes/compras?proveedorId=${s.molino.id}`);
     const tOtra = otra.locator(`[data-compra="${vigente.id}"]`);
@@ -179,7 +182,6 @@ test("una compra anulada no ofrece corregir, y quien no tiene «corregir_compra�
     await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
     await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
     await prisma.user.deleteMany({ where: { id: usuario.id } });
-    await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
-    await prisma.rol.deleteMany({ where: { id: rol.id } });
+    await admin.restaurar();
   }
 });

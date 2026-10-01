@@ -1,4 +1,4 @@
-import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE } from "./acciones";
+import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelDeRol, nivelMinimoDeAccion, rolAlcanzaLaAccion, type NivelDeAccion } from "./acciones";
 
 /**
  * Reglas de la matriz de permisos (rol × acción), compartidas por la pantalla y por el guardado en el servidor para que no puedan divergir:
@@ -17,6 +17,19 @@ export const SIN_PERMISO: EstadoPermiso = { puedeVer: false, puedeEditar: false 
 /** El Editar de esta celda no se puede quitar (rol «admin» sobre una acción de gestión de accesos). */
 export function esCeldaFija(rolNombre: string, accionClave: string): boolean {
   return rolNombre === "admin" && (ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE as readonly string[]).includes(accionClave);
+}
+
+/**
+ * ¿La acción está POR ENCIMA del nivel del rol (su piso es más alto)? Esa celda no se puede dar: el servidor rechaza el guardado y el gate ignora
+ * la fila. Una clave fuera del catálogo no se evalúa acá (la rechaza el guardado por otro motivo).
+ */
+export function esCeldaFueraDeNivel(rolNombre: string, accionClave: string): boolean {
+  return claveEnCatalogo(accionClave) && !rolAlcanzaLaAccion(rolNombre, accionClave);
+}
+
+/** Piso y nivel del rol, para los mensajes: «una acción de nivel administrador, y el rol es de nivel operario». */
+export function nivelesDeLaCelda(rolNombre: string, accionClave: string): { piso: NivelDeAccion; delRol: NivelDeAccion } | null {
+  return claveEnCatalogo(accionClave) ? { piso: nivelMinimoDeAccion(accionClave), delRol: nivelDeRol(rolNombre) } : null;
 }
 
 /** El estado que realmente se guarda: aplica «Ver ⊇ Editar» y la salvaguarda del admin. */

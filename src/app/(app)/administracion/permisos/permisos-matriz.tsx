@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { guardarPermisos } from "@/server/actions/permisos/permisos";
+import { nivelMinimoDeAccion, claveEnCatalogo } from "@/core/permisos/acciones";
 import {
   esCeldaFija,
+  esCeldaFueraDeNivel,
   MENSAJE_GUARDADO_EN_CONFLICTO,
   mismoEstado,
   normalizarPermiso,
@@ -215,16 +217,21 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                 <td className="py-2 pr-4">
                   <div className="font-medium">{a.clave}</div>
                   <div className="text-xs text-neutral-500">{a.descripcion}</div>
+                  {claveEnCatalogo(a.clave) && nivelMinimoDeAccion(a.clave) !== "operario" && (
+                    <div className="text-xs text-neutral-500">Piso: {nivelMinimoDeAccion(a.clave)}</div>
+                  )}
                 </td>
                 {roles.map((r) => {
                   const actual = estadoActual(r.id, a.clave);
                   const anterior = base.get(clave(r.id, a.clave)) ?? SIN_PERMISO;
                   const cambiada = editando && !mismoEstado(anterior, actual);
                   const fija = esCeldaFija(r.nombre, a.clave);
+                  const fueraDeNivel = esCeldaFueraDeNivel(r.nombre, a.clave);
                   const marca = (encendido: boolean) => (encendido ? "✅" : "⬜");
                   const celda = (cual: "ver" | "editar", encendido: boolean, difiere: boolean) => {
                     const etiqueta = `${r.nombre}: ${a.clave}, ${cual === "ver" ? "ver" : "editar"}`;
                     const fondo = difiere ? "rounded bg-amber-200 px-1 dark:bg-amber-800" : "px-1";
+                    if (fueraDeNivel) return <span title="Esta acción es de un nivel más alto que el de este rol: no se le puede dar" aria-label={`${etiqueta}: no aplica`}>🚫</span>;
                     if (!editando) return <span aria-label={`${etiqueta}: ${encendido ? "sí" : "no"}`}>{marca(encendido)}</span>;
                     if (fija) return <span title="El admin siempre conserva este permiso" aria-label={`${etiqueta}: fijo`}>🔒</span>;
                     return (
@@ -254,7 +261,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
         </table>
       </div>
       <p className="text-xs text-neutral-500">
-        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos» y «gestion_usuarios» siempre conservan Editar para el admin (🔒).
+        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos» y «gestion_usuarios» siempre conservan Editar para el admin (🔒). Las acciones con «Piso» (administrador) no se le pueden dar a un rol de nivel operario (🚫).
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
       </p>
     </div>

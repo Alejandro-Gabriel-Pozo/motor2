@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresia } from "../setup/membresia";
+import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
  * Anular una compra desde «Compras registradas» (K1c). Se siembran las compras directo en la base, con un proveedor y un producto propios de cada prueba (marca
@@ -125,8 +126,9 @@ test("si lo comprado ya se consumió, la anulación se rechaza con un mensaje vi
 test("quien puede ver los reportes de dinero pero no tiene «anular_compra» ve la compra sin el botón de anular", async ({ browser, baseURL, sucursalId, seccionId }) => {
   const c = await sembrarCompra(sucursalId, seccionId);
   const marca = Date.now();
-  const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-anular-${marca}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "reporte_compras", puedeVer: true, puedeEditar: false } });
+  // «anular_compra» es de piso administrador: «quien no la tiene» se arma sobre el rol «admin», quitándole esa celda (se restaura al final).
+  const admin = await ajustarCeldasDelAdmin({ anular_compra: null });
+  const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-anular-${marca}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
@@ -148,7 +150,6 @@ test("quien puede ver los reportes de dinero pero no tiene «anular_compra» ve 
     await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
     await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
     await prisma.user.deleteMany({ where: { id: usuario.id } });
-    await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
-    await prisma.rol.deleteMany({ where: { id: rol.id } });
+    await admin.restaurar();
   }
 });
