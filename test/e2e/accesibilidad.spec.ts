@@ -1315,3 +1315,40 @@ testAutenticado(
     }
   }
 );
+
+testAutenticado(
+  "stock/consolidado: el aviso de stock en tránsito entre sucursales (por recibir / enviado / pendiente de reingresar), sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const marca = Date.now();
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    const otra = await prisma.sucursal.create({ data: { nombre: `E2E A11y Transito ${marca}` } });
+    const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-TR-${marca}`, nombre: `E2E A11y Tránsito ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: mp.id, disponible: true } });
+    const base = { productoId: mp.id, creadoPorId: admin.id, iniciadoPor: "ORIGEN" as const };
+    await prisma.traspasoSucursal.createMany({
+      data: [
+        { ...base, origenSucursalId: otra.id, destinoSucursalId: sucursalId, cantidad: 3, estado: "ENVIADA" },
+        { ...base, origenSucursalId: sucursalId, destinoSucursalId: otra.id, cantidad: 2, estado: "ENVIADA" },
+        { ...base, origenSucursalId: sucursalId, destinoSucursalId: otra.id, cantidad: 1, estado: "RECHAZADA_DESTINO" },
+      ],
+    });
+
+    try {
+      await page.goto("/stock/consolidado");
+      await conTitulo(page, "Stock consolidado");
+      const aviso = page.getByRole("region", { name: "Stock en tránsito entre sucursales" });
+      await expect(aviso).toBeVisible();
+      const fila = aviso.getByRole("row", { name: new RegExp(mp.codigo) });
+      await expect(fila.getByRole("cell").nth(1)).toHaveText("3 kg");
+      await expect(fila.getByRole("cell").nth(2)).toHaveText("2 kg");
+      await expect(fila.getByRole("cell").nth(3)).toHaveText("1 kg");
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    } finally {
+      await prisma.traspasoSucursal.deleteMany({ where: { productoId: mp.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: mp.id } });
+      await prisma.producto.deleteMany({ where: { id: mp.id } });
+      await prisma.sucursal.delete({ where: { id: otra.id } });
+    }
+  }
+);
