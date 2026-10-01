@@ -125,8 +125,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
   },
   {
     // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): la pantalla vive en el route group `(pos)`, con su propio shell y sin
-    // este menú. El ítem va AL FINAL a propósito: quien tiene /reportes sigue entrando por ahí, y a quien solo tiene salón (el rol
-    // «mozo» armado desde la matriz) la pantalla de inicio lo manda directo a /mesas.
+    // este menú. A quien solo tiene salón (el rol «mozo» armado desde la matriz) la
+    // pantalla de inicio lo manda directo a /mesas (`elegirPantallaDeInicio`); el resto lo ve como una tarjeta más de `/inicio`.
     id: "pos",
     label: "Salón",
     items: [{ href: "/mesas", label: "Mapa de mesas", accion: "pos_mesas" }],
@@ -192,15 +192,16 @@ export function filtrarMenuPorPermiso(grupos: GrupoNav[], puedeVer: ReadonlySet<
     .filter((g) => g.items.length > 0);
 }
 
-/** Pantalla que se abre al entrar cuando el usuario no tiene ninguna habilitada en el menú (ver `elegirPantallaDeInicio`). */
-export const RUTA_SIN_PANTALLAS = "/inicio";
+/** La pantalla de inicio: el panel con una tarjeta por módulo que el usuario puede abrir (ver `elegirPantallaDeInicio`). */
+export const RUTA_INICIO = "/inicio";
 
 /**
- * A dónde mandar a alguien al entrar (o al cambiar de sucursal): `/reportes` si puede verlo (lo de siempre), y si no la primera
- * pantalla del menú que sí puede abrir. Antes se mandaba siempre a `/reportes`, que ahora exige un permiso: quien no lo tiene
- * habría aterrizado en un mensaje de «no tenés permiso». `menuVisible` es el menú ya filtrado (`filtrarMenuPorPermiso`).
+ * A dónde mandar a alguien al entrar (o al cambiar de sucursal): al panel `/inicio`, salvo quien solo tiene el salón (el rol «mozo»
+ * armado desde la matriz), que va directo al mapa de mesas porque para esa persona no hay nada más que elegir. Quien tiene un solo
+ * módulo que no es el salón también pasa por `/inicio` (con una sola tarjeta). `menuVisible` es el menú ya filtrado
+ * (`filtrarMenuPorPermiso`).
  */
 export function elegirPantallaDeInicio(menuVisible: GrupoNav[]): string {
-  const items = menuVisible.flatMap((g) => g.items);
-  return items.find((i) => i.href === "/reportes")?.href ?? items[0]?.href ?? RUTA_SIN_PANTALLAS;
+  if (menuVisible.length === 1 && menuVisible[0].id === "pos") return menuVisible[0].items[0].href;
+  return RUTA_INICIO;
 }

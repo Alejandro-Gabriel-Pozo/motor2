@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { GrupoNav } from "@/core/navegacion/estructura";
+import { RUTA_INICIO, type GrupoNav } from "@/core/navegacion/estructura";
 import { SidebarNav } from "./sidebar-nav";
 
 const CLAVE_STORAGE = "motor2:sidebar-colapsado";
@@ -55,7 +56,11 @@ export function SidebarColapsable({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]
           colapsado ? "w-0" : "w-56 border-r"
         }`}
       >
-        <div className="flex w-56 items-center border-b border-neutral-200 px-4 py-3 font-semibold dark:border-neutral-800">Motor2</div>
+        <div className="flex w-56 items-center border-b border-neutral-200 px-4 py-3 font-semibold dark:border-neutral-800">
+          <Link href={RUTA_INICIO} className="hover:underline">
+            Motor2
+          </Link>
+        </div>
         <div className="w-56">
           <SidebarNav grupos={grupos} hrefsDelMenu={hrefsDelMenu} />
         </div>

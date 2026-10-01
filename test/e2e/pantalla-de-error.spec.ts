@@ -18,6 +18,6 @@ test("si falla el armado de una pantalla, se ve el error propio dentro del menú
   await expect(page.getByRole("heading", { name: "Algo falló al abrir esta pantalla" })).toBeVisible();
 
   await page.getByRole("link", { name: "Ir al inicio" }).click();
-  await page.waitForURL(/\/reportes$/);
+  await page.waitForURL(/\/inicio$/);
   await expect(page.getByRole("heading", { name: "Algo falló al abrir esta pantalla" })).toHaveCount(0);
 });

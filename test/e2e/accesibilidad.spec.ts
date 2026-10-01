@@ -20,6 +20,15 @@ base("login: sin violaciones de accesibilidad detectables por axe", async ({ pag
   expect(resultados.violations).toEqual([]);
 });
 
+testAutenticado("inicio: el panel con las tarjetas de módulos (iconos decorativos + texto) no tiene violaciones de axe, en modo claro y oscuro", async ({ paginaAutenticada: page }) => {
+  await page.goto("/inicio");
+  await expect(page.getByRole("heading", { level: 1, name: /^Hola — estás en / })).toBeVisible();
+  await expect(page.locator("main ul li a")).toHaveCount(8);
+  expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect((await new AxeBuilder({ page }).include("main").analyze()).violations, "modo oscuro emulado (contenido de la pantalla)").toEqual([]);
+});
+
 testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables por axe, contraste incluido", async ({ paginaAutenticada: page }) => {
   // Un producto de venta con receta cuyo insumo NO tiene ninguna compra: su costo queda incompleto y la tabla lo marca en ámbar (text-amber-700 / dark:
   // text-amber-600). Sin este dato la pantalla no dibuja ningún texto ámbar y el chequeo de contraste no auditaría nada.

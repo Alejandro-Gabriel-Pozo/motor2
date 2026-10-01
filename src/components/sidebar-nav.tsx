@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { hrefActivoDelMenu, type GrupoNav } from "@/core/navegacion/estructura";
+import { IconoDeModulo } from "@/components/iconos";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 
 function grupoActivo(grupo: GrupoNav, hrefActivo: string | null): boolean {
@@ -41,7 +42,10 @@ export function SidebarNav({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; hrefs
               onClick={() => setExpandido((prev) => ({ ...prev, [grupo.id]: !abierto }))}
               className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
-              {grupo.label}
+              <span className="flex items-center gap-2">
+                <IconoDeModulo id={grupo.id} />
+                {grupo.label}
+              </span>
               <span className="text-xs text-neutral-500 dark:text-neutral-400">{abierto ? "▾" : "▸"}</span>
             </button>
             {abierto && (

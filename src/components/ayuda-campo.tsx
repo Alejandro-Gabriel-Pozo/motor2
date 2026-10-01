@@ -1,3 +1,5 @@
+import { IconoAyuda } from "@/components/iconos";
+
 /**
  * Ayuda de campo persistente — no depende de que el campo esté vacío (a
  * diferencia de un placeholder, que desaparece apenas se tipea). Mismo
@@ -20,12 +22,8 @@ export function AyudaCampo({ children }: { children: React.ReactNode }) {
  */
 export function AyudaIcono({ texto }: { texto: string }) {
   return (
-    <span
-      tabIndex={0}
-      title={texto}
-      className="ml-1 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-neutral-400 text-[10px] leading-none text-neutral-500"
-    >
-      ?
+    <span tabIndex={0} role="img" title={texto} className="ml-1 inline-flex h-4 w-4 cursor-help items-center justify-center text-neutral-500">
+      <IconoAyuda />
     </span>
   );
 }

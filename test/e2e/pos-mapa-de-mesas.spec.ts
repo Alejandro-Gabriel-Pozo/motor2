@@ -119,7 +119,7 @@ test("las acciones de cada tarjeta llevan a la pantalla de la mesa; «Opciones d
     // Sin el menú lateral de la administración (ni su botón de ocultar, ni sus enlaces); sí el enlace de vuelta para el admin.
     await expect(page.getByRole("button", { name: /menú/ })).toHaveCount(0);
     await expect(page.locator('a[href="/administracion/usuarios"]')).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Administración" })).toHaveAttribute("href", "/reportes");
+    await expect(page.getByRole("link", { name: "Administración" })).toHaveAttribute("href", "/inicio");
   } finally {
     await limpiar();
   }

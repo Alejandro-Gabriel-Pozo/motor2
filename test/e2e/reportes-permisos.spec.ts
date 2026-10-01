@@ -67,14 +67,14 @@ test("un operador no ve los reportes nuevos: ni en el menú ni abriendo la direc
   await page.context().close();
 });
 
-test("al entrar, un admin va a /reportes y un operador a una pantalla que sí puede abrir (no a un mensaje de «no tenés permiso»)", async ({ paginaAutenticada: pagina, browser, baseURL, sucursalId }) => {
+test("al entrar, el admin y el operador llegan al panel /inicio (con sus módulos), no a un mensaje de «no tenés permiso»", async ({ paginaAutenticada: pagina, browser, baseURL, sucursalId }) => {
   await pagina.goto("/");
-  await pagina.waitForURL(/\/reportes$/);
+  await pagina.waitForURL(/\/inicio$/);
 
   const operador = await paginaComoOperador(browser, baseURL, sucursalId);
   await operador.goto("/");
-  await operador.waitForLoadState("networkidle");
-  expect(new URL(operador.url()).pathname).not.toBe("/reportes");
+  await operador.waitForURL(/\/inicio$/);
+  await expect(operador.getByRole("heading", { level: 1, name: /^Hola — estás en / })).toBeVisible();
   await expect(operador.getByText(/No tenés permiso para ver esta sección/)).toHaveCount(0);
   await operador.context().close();
 });

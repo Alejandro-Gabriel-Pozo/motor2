@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { baseDeTest, limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { accionesQueElUsuarioPuedeVer } from "../../src/core/permisos/gate";
-import { GRUPOS_NAV, RUTA_SIN_PANTALLAS, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso } from "../../src/core/navegacion/estructura";
-import { pantallaDeInicio } from "../../src/core/navegacion/inicio";
-import type { AccionClave, AccionDeSucursal } from "../../src/core/permisos/acciones";
+import { GRUPOS_NAV, RUTA_INICIO, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso } from "../../src/core/navegacion/estructura";
+import { pantallaDeInicio, tarjetasDelUsuario } from "../../src/core/navegacion/inicio";
+import { ACCIONES, type AccionClave, type AccionDeSucursal } from "../../src/core/permisos/acciones";
 
 const CLAVES_REPORTES: AccionDeSucursal[] = ["reporte_resumen", "reporte_perdidas", "reporte_vencimientos", "reporte_sin_receta"];
 
@@ -82,22 +82,27 @@ describe("filtrarMenuPorPermiso", () => {
 });
 
 describe("a dónde se manda al entrar", () => {
-  it("a /reportes si puede verlo (como siempre), aunque haya otros ítems antes en el menú", () => {
+  it("al panel /inicio, tenga o no los reportes (ya no se entra por /reportes)", () => {
     const menu = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["alta_producto", "reporte_resumen"]));
-    expect(elegirPantallaDeInicio(menu)).toBe("/reportes");
+    expect(elegirPantallaDeInicio(menu)).toBe(RUTA_INICIO);
   });
 
-  it("si no, a la primera pantalla del menú que puede abrir", () => {
+  it("un rol con un solo módulo que no es el salón también pasa por /inicio (con una sola tarjeta)", () => {
     const menu = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["ver_stock", "proceso_venta"]));
-    expect(elegirPantallaDeInicio(menu)).toBe("/movimientos/venta");
+    expect(elegirPantallaDeInicio(menu)).toBe(RUTA_INICIO);
+    expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["ver_stock"])))).toBe(RUTA_INICIO);
+  });
+
+  it("el salón más cualquier otro módulo va a /inicio: solo quien únicamente tiene salón entra directo al mapa", () => {
+    expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["pos_mesas", "ver_stock"])))).toBe(RUTA_INICIO);
   });
 
   it("con solo pos_mesas (un rol «mozo» armado desde la matriz), directo al mapa de mesas", () => {
     expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["pos_mesas"])))).toBe("/mesas");
   });
 
-  it("y si no tiene ninguna, a la pantalla que lo explica (no a un mensaje de «no tenés permiso» de una página)", () => {
-    expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>()))).toBe(RUTA_SIN_PANTALLAS);
+  it("y si no tiene ninguna, también a /inicio, que lo explica (no a un mensaje de «no tenés permiso» de una página)", () => {
+    expect(elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>()))).toBe(RUTA_INICIO);
   });
 });
 
@@ -106,20 +111,17 @@ describe("pantallaDeInicio (con la base)", () => {
     await limpiarBaseDeTest();
   });
 
-  it("un admin va a /reportes; un operador, a una pantalla que sí puede abrir", async () => {
+  it("un admin y un operador entran por /inicio", async () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
 
-    expect(await pantallaDeInicio(ctxDe(admin))).toBe("/reportes");
-
-    const destino = await pantallaDeInicio(ctxDe(operador));
-    expect(destino).not.toBe("/reportes");
-    expect(destino).not.toBe(RUTA_SIN_PANTALLAS); // el operador de fábrica tiene varias pantallas
+    expect(await pantallaDeInicio(ctxDe(admin))).toBe(RUTA_INICIO);
+    expect(await pantallaDeInicio(ctxDe(operador))).toBe(RUTA_INICIO);
   });
 
-  it("un rol con solo pos_mesas va a /mesas; admin y operador de fábrica siguen entrando por donde entraban", async () => {
+  it("un rol con solo pos_mesas va a /mesas; admin y operador de fábrica entran por /inicio", async () => {
     const base = await sembrarBase();
     const mozo = await prisma.rol.create({ data: { nombre: "mozo" } });
     await prisma.permisoRol.create({ data: { rolId: mozo.id, accionClave: "pos_mesas", puedeVer: true, puedeEditar: true } });
@@ -129,16 +131,54 @@ describe("pantallaDeInicio (con la base)", () => {
     const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
 
     expect(await pantallaDeInicio(ctxDe(usuario))).toBe("/mesas");
-    expect(await pantallaDeInicio(ctxDe(admin))).toBe("/reportes");
-    // El operador de fábrica no tiene pos_mesas (queda sin asignar): su pantalla de inicio no cambia.
-    expect(await pantallaDeInicio(ctxDe(operador))).not.toBe("/mesas");
+    expect(await pantallaDeInicio(ctxDe(admin))).toBe(RUTA_INICIO);
+    // El operador de fábrica no tiene pos_mesas (queda sin asignar): no entra al salón.
+    expect(await pantallaDeInicio(ctxDe(operador))).toBe(RUTA_INICIO);
   });
 
-  it("un rol sin ningún permiso va a la pantalla que lo explica", async () => {
+  it("un rol sin ningún permiso va a /inicio, que lo explica", async () => {
     const base = await sembrarBase();
     const vacio = await prisma.rol.create({ data: { nombre: "sin-permisos" } });
     const usuario = await crearUsuarioConMembresia({ email: "vacio@test.com", sucursalId: base.sucursal.id, rolId: vacio.id });
     const destino = await pantallaDeInicio({ usuarioId: usuario.id, email: usuario.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
-    expect(destino).toBe(RUTA_SIN_PANTALLAS);
+    expect(destino).toBe(RUTA_INICIO);
+  });
+});
+
+describe("tarjetasDelUsuario (con la matriz real y la base)", () => {
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+  });
+
+  async function tarjetasDe(rolId: string, email: string, base: Awaited<ReturnType<typeof sembrarBase>>) {
+    const u = await crearUsuarioConMembresia({ email, sucursalId: base.sucursal.id, rolId });
+    return tarjetasDelUsuario({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
+  }
+
+  it("un admin ve los 8 módulos (el salón incluido) y cada tarjeta lleva a la primera pantalla que puede abrir de su módulo", async () => {
+    const base = await sembrarBase();
+    const tarjetas = await tarjetasDe(base.admin.id, "admin@test.com", base);
+    expect(tarjetas.map((t) => t.id)).toEqual(GRUPOS_NAV.map((g) => g.id));
+    expect(tarjetas.find((t) => t.id === "pos")?.href).toBe("/mesas");
+    for (const t of tarjetas) expect(t.href).toBe(GRUPOS_NAV.find((g) => g.id === t.id)!.items[0].href);
+  });
+
+  it("un operador de fábrica ve exactamente los módulos de sus permisos, y no el salón", async () => {
+    const base = await sembrarBase();
+    const tarjetas = await tarjetasDe(base.operador.id, "operador@test.com", base);
+    const permisosDelOperador = new Set(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("operador")).map((a) => a.clave));
+    const esperados = filtrarMenuPorPermiso(GRUPOS_NAV, permisosDelOperador).map((g) => g.id);
+    expect(esperados.length).toBeGreaterThan(0);
+    expect(tarjetas.map((t) => t.id)).toEqual(esperados);
+    expect(tarjetas.map((t) => t.id)).not.toContain("pos");
+  });
+
+  it("un mozo (solo pos_mesas) tiene una sola tarjeta, el salón; un rol vacío, ninguna", async () => {
+    const base = await sembrarBase();
+    const mozo = await prisma.rol.create({ data: { nombre: "mozo" } });
+    await prisma.permisoRol.create({ data: { rolId: mozo.id, accionClave: "pos_mesas", puedeVer: true, puedeEditar: true } });
+    const vacio = await prisma.rol.create({ data: { nombre: "sin-permisos" } });
+    expect((await tarjetasDe(mozo.id, "mozo@test.com", base)).map((t) => t.id)).toEqual(["pos"]);
+    expect(await tarjetasDe(vacio.id, "vacio@test.com", base)).toEqual([]);
   });
 });
