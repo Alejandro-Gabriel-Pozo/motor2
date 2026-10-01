@@ -93,7 +93,7 @@ export async function crearSucursalConAdmin(input: {
 /**
  * Antes no existía ninguna forma de desactivar una sucursal (solo alta) —
  * hallazgo de la auditoría de motor2, con impacto real: Sucursal.activo ya
- * se usa como filtro (ej. listarSucursalesDisponibles en traspasos) pero
+ * se usa como filtro (ej. el listado de sucursales destino en traspasos) pero
  * no había ningún botón para ponerlo en false.
  */
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {

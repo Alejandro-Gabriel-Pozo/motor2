@@ -175,8 +175,8 @@ test("permisos: con Ver sin Editar se ve el mapa con «Nueva mesa» deshabilitad
   }
 });
 
-test("un rol con solo pos_mesas (el «mozo», creado desde la matriz) entra directo al mapa y no ve el enlace a la administración", async ({ browser, baseURL, sucursalId }) => {
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "editar" });
+test("un rol con solo pos_mesas y pos_alta_mesa (el «mozo», creado desde la matriz) entra directo al mapa y no ve el enlace a la administración", async ({ browser, baseURL, sucursalId }) => {
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "editar", pos_alta_mesa: "editar" });
   try {
     await mozo.page.goto("/");
     await mozo.page.waitForURL(/\/mesas$/);

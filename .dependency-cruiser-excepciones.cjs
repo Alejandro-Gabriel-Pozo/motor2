@@ -144,7 +144,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/traspasos/traspasos.ts",
     motivo:
-      "M11a + M11b + M11c: sus ocho escrituras → traspasos/casos-de-uso/ (aprobar-y-enviar, cancelar-solicitud, rechazar-solicitud, aceptar, rechazar-envio, confirmar-reingreso, crear-solicitud, crear-envio-directo; transacción, I3 de aceptar/reingreso, persistencia y guard de transición viven en el caso de uso). Sus lecturas (obtenerBandejaTransferencias, listarSucursalesDisponibles) se mudaron tal cual a traspasos/lecturas.ts, fuera de esta lista.",
+      "M11a + M11b + M11c: sus ocho escrituras → traspasos/casos-de-uso/ (aprobar-y-enviar, cancelar-solicitud, rechazar-solicitud, aceptar, rechazar-envio, confirmar-reingreso, crear-solicitud, crear-envio-directo; transacción, I3 de aceptar/reingreso, persistencia y guard de transición viven en el caso de uso). Sus lecturas (obtenerBandejaTransferencias, listarSucursalesParaSolicitar, listarSucursalesParaEnviar) se mudaron tal cual a traspasos/lecturas.ts, fuera de esta lista.",
   },
   {
     ruta: "src/server/actions/movimientos/movimientos.ts",

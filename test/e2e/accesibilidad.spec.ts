@@ -157,12 +157,18 @@ testAutenticado("catalogo/insumos-grupos: sin violaciones de axe", async ({ pagi
   }
 });
 
-testAutenticado("movimientos/motivos: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+testAutenticado("movimientos/motivos-merma: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   // Sin fixture: la migración expand del catálogo (plan "motivos de Consumo/Merma como catálogo administrable", P3) ya
   // sembró 6 Motivo de Merma + 5 Destino de Consumo en cualquier base migrada — las dos tablas nunca están vacías acá.
-  await page.goto("/movimientos/motivos");
+  await page.goto("/movimientos/motivos-merma");
   await conTitulo(page, /Motivos de Merma/);
   await expect(page.getByText("Vencido")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+testAutenticado("movimientos/destinos-consumo: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  await page.goto("/movimientos/destinos-consumo");
+  await conTitulo(page, /Destinos de Consumo/);
   await expect(page.getByText("Personal")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

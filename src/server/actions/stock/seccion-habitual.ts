@@ -14,7 +14,7 @@ import { requerirVerEnSucursal } from "../con-sesion";
 
 /** Las filas de esta sucursal — solo las que apuntan a una sección ACTIVA de esta sucursal (una desactivada ya no manda, ver el cierre). */
 export async function listarSeccionesHabituales(sucursalId: string) {
-  const ctx = await requerirVerEnSucursal(sucursalId, "stock_minimo");
+  const ctx = await requerirVerEnSucursal(sucursalId, "stock_seccion_habitual");
   return ctx.db.seccionHabitualProducto.findMany({
     where: { sucursalId, seccion: { sucursalId, activa: true } },
     include: { producto: true, seccion: true },
@@ -24,7 +24,7 @@ export async function listarSeccionesHabituales(sucursalId: string) {
 
 /** Alta o reemplazo (una por sucursal × producto). Solo un PV, y solo una sección activa de esta sucursal. */
 export async function setSeccionHabitual(productoId: string, seccionId: string): Promise<ResultadoAccion> {
-  return conPermiso("stock_minimo", async (ctx) => {
+  return conPermiso("stock_seccion_habitual", async (ctx) => {
     const formato = guardSeccionHabitual({ productoId, seccionId });
     if (!formato.ok) return error(formato.mensaje);
 
@@ -47,7 +47,7 @@ export async function setSeccionHabitual(productoId: string, seccionId: string):
 
 /** Quita la preferencia: el producto vuelve a salir de donde haya stock (por vencimiento). */
 export async function eliminarSeccionHabitual(id: string): Promise<ResultadoAccion> {
-  return conPermiso("stock_minimo", async (ctx) => {
+  return conPermiso("stock_seccion_habitual", async (ctx) => {
     const fila = typeof id === "string" ? await ctx.db.seccionHabitualProducto.findUnique({ where: { id }, include: { producto: { select: { nombre: true } } } }) : null;
     if (!fila || fila.sucursalId !== ctx.sucursalId) return error("No se encontró esa sección habitual.");
     await ctx.db.seccionHabitualProducto.delete({ where: { id: fila.id } });

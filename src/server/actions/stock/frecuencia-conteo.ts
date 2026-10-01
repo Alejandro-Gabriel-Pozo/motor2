@@ -14,7 +14,7 @@ import { requerirVerEnSucursal } from "../con-sesion";
  * `/stock/reclasificar`.
  */
 export async function listarFrecuenciasConteo(sucursalId: string) {
-  const ctx = await requerirVerEnSucursal(sucursalId, "proceso_control");
+  const ctx = await requerirVerEnSucursal(sucursalId, "conteo_frecuencia");
   return ctx.db.frecuenciaConteoProducto.findMany({
     where: { sucursalId },
     include: { producto: true },
@@ -24,7 +24,7 @@ export async function listarFrecuenciasConteo(sucursalId: string) {
 
 /** `frecuenciaDias === 0` desactiva la agenda de este producto (se conserva la fila, mismo criterio "0 es un valor real" de setStockMinimoProducto — no se borra, se pisa). */
 export async function setFrecuenciaConteo(productoId: string, frecuenciaDias: number): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
+  return conPermiso("conteo_frecuencia", async (ctx) => {
     if (!Number.isInteger(frecuenciaDias) || frecuenciaDias < 0) return error("La frecuencia tiene que ser un número entero de días, 0 o más.");
     if (!esNumeroFinito(frecuenciaDias)) return error("La frecuencia no es un número válido.");
 
@@ -41,7 +41,7 @@ export async function setFrecuenciaConteo(productoId: string, frecuenciaDias: nu
 }
 
 export async function eliminarFrecuenciaConteo(id: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
+  return conPermiso("conteo_frecuencia", async (ctx) => {
     const fila = await ctx.db.frecuenciaConteoProducto.findUnique({ where: { id } });
     if (!fila || fila.sucursalId !== ctx.sucursalId) return error("No se encontró esa fila de Frecuencia de conteo.");
     await ctx.db.frecuenciaConteoProducto.delete({ where: { id } });

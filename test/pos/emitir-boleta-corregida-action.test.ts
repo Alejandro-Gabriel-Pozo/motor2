@@ -160,21 +160,21 @@ describe("emitirBoletaCorregida (server action)", () => {
     expect(await prisma.ejemplarBoleta.count()).toBe(1);
   });
 
-  it("sin pos_cerrar_cuenta Editar no se puede: ni el mozo ni uno que solo lo VE; un cajero con solo ese permiso sí", async () => {
+  it("sin pos_emitir_boleta_corregida Editar no se puede: ni el mozo ni uno que solo lo VE; un cajero con solo ese permiso sí", async () => {
     const { cuenta, ventaFlan } = await cerrarTresLineas();
     await anularVenta(ventaFlan);
     const mozo = await crearMozo(s.sucursalId);
-    const soloVe = await crearUsuarioConRol(s.sucursalId, "cajero-solo-ve", [{ clave: "pos_cerrar_cuenta", ver: true, editar: false }]);
+    const soloVe = await crearUsuarioConRol(s.sucursalId, "cajero-solo-ve", [{ clave: "pos_emitir_boleta_corregida", ver: true, editar: false }]);
     for (const usuario of [mozo, soloVe]) {
       await entrarComo(usuario);
       const r = await emitirBoletaCorregida(cuenta.id, "Motivo");
       expect(r.ok).toBe(false);
       expect(r.mensaje).toMatch(/No tenés permiso/);
-      expect(r.mensaje).toContain('"pos_cerrar_cuenta"');
+      expect(r.mensaje).toContain('"pos_emitir_boleta_corregida"');
     }
     expect(await ejemplaresDe(cuenta.id)).toHaveLength(1);
 
-    const cajero = await crearUsuarioConRol(s.sucursalId, "cajero", [{ clave: "pos_cerrar_cuenta", ver: true, editar: true }]);
+    const cajero = await crearUsuarioConRol(s.sucursalId, "cajero", [{ clave: "pos_emitir_boleta_corregida", ver: true, editar: true }]);
     await entrarComo(cajero);
     expect((await emitirBoletaCorregida(cuenta.id, "No quiso el flan")).ok).toBe(true);
     expect((await ejemplaresDe(cuenta.id))[1].emitidoPorId).toBe(cajero.id);

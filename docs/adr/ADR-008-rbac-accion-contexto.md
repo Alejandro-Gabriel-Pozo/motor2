@@ -91,7 +91,8 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 - **Contract**: borrar las claves madre (`Accion`) en un deploy POSTERIOR, cuando ningún código las lea.
 - Orden: infraestructura → reportes → operaciones/POS/carta/catálogo → administración → contract.
 - Hecho: infraestructura; reportes (26 claves `reporte_*` reemplazan a las 4 `ver_reportes_*`; migración
-  `20261001100000_particion_permisos_reportes`); piso `nivelMinimo`; un gerente por empresa.
+  `20261001100000_particion_permisos_reportes`); piso `nivelMinimo`; un gerente por empresa; operaciones/POS/catálogo grupo A (19 claves,
+  `20261001130000_particion_permisos_stock_pos_catalogo`; el banco de pruebas de migraciones de partición es reutilizable).
 - Se retiran `ejecutar_tests` y `sincronizar_proveedores` (sin consumidor). Los catálogos CRUD simples (proveedores, categorías,
   secciones, unidades, clientes) se dejan con Ver/Editar, sin partir. Las claves de admin de usuarios/permisos son fijas para el admin.
 

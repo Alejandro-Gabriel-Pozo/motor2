@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarStockParaConteo } from "@/core/movimientos/public-servidor";
@@ -23,6 +23,8 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  // Cortesía de la interfaz, no barrera: la acción exige `conteo_resolver_pendiente` (clave propia, antes compartía `proceso_control`).
+  const { editar: puedeResolverPendiente } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "conteo_resolver_pendiente", ctx.db);
 
   const sp = await searchParams;
   const [secciones, { items: historial }] = await Promise.all([
@@ -102,7 +104,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
                 <td className="px-2">{Number(c.diferencia) > 0 ? "+" : ""}{Number(c.diferencia)}</td>
                 <td className={`px-2 ${ESTADO_COLOR[c.estado]}`}>{c.estado}</td>
                 <td className="px-2 py-2">
-                  {c.estado === "PENDIENTE" && <AccionesConteoPendiente conteoId={c.id} />}
+                  {c.estado === "PENDIENTE" && puedeResolverPendiente && <AccionesConteoPendiente conteoId={c.id} />}
                   {c.estado === "RESUELTO" && <BotonCancelarConteo conteoId={c.id} />}
                 </td>
               </tr>

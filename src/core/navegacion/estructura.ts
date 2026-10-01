@@ -39,7 +39,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "catalogo",
     label: "Catálogo",
     items: [
-      { href: "/catalogo/productos", label: "Productos", accion: "alta_producto" },
+      { href: "/catalogo/productos", label: "Productos", accion: "producto_ver_catalogo" },
       { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores" },
       { href: "/catalogo/clientes", label: "Clientes con descuento", accion: "clientes" },
       { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta" },
@@ -75,9 +75,9 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/stock/por-familia", label: "Por familia", accion: "ver_stock" },
       { href: "/stock/alertas", label: "Alertas", accion: "ver_stock" },
       { href: "/stock/minimo", label: "Stock mínimo", accion: "stock_minimo" },
-      { href: "/stock/seccion-habitual", label: "Sección habitual", accion: "stock_minimo" },
-      { href: "/stock/reclasificar", label: "Reclasificar", accion: "proceso_control" },
-      { href: "/stock/conteo-frecuencia", label: "Frecuencia de conteo", accion: "proceso_control" },
+      { href: "/stock/seccion-habitual", label: "Sección habitual", accion: "stock_seccion_habitual" },
+      { href: "/stock/reclasificar", label: "Reclasificar", accion: "stock_reclasificar" },
+      { href: "/stock/conteo-frecuencia", label: "Frecuencia de conteo", accion: "conteo_frecuencia" },
     ],
   },
   {
@@ -120,9 +120,9 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "traspasos",
     label: "Traspasos",
     items: [
-      { href: "/traspasos", label: "Bandeja", accion: "proceso_transferencia_sucursal" },
-      { href: "/traspasos/solicitar", label: "Solicitar (a otra sucursal)", accion: "proceso_transferencia_sucursal" },
-      { href: "/traspasos/enviar", label: "Enviar directo", accion: "proceso_transferencia_sucursal" },
+      { href: "/traspasos", label: "Bandeja", accion: "traspaso_ver_bandeja" },
+      { href: "/traspasos/solicitar", label: "Solicitar (a otra sucursal)", accion: "traspaso_solicitar" },
+      { href: "/traspasos/enviar", label: "Enviar directo", accion: "traspaso_enviar_directo" },
     ],
   },
   {
@@ -140,7 +140,10 @@ export const GRUPOS_NAV: GrupoNav[] = [
  * protege (la misma que pide su página; un test lo comprueba). Las rutas hijas de un ítem del menú (`/catalogo/recetas/[id]`,
  * `/catalogo/recetas/[id]/historial`, `/movimientos/compra?…`) no van acá: `accionDeRuta` las resuelve por el ítem del que cuelgan.
  */
-export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [{ href: "/catalogo/proveedores/comparativa", label: "Comparativa de precios", accion: "comparar_precios" }];
+export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
+  { href: "/catalogo/proveedores/comparativa", label: "Comparativa de precios", accion: "comparar_precios" },
+  { href: "/catalogo/productos/nuevo", label: "Nuevo producto", accion: "alta_producto" },
+];
 
 /**
  * La acción de «Ver» que protege la pantalla a la que apunta un enlace interno, o `null` si no se conoce (la raíz, una ruta

@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerReportePromociones } from "@/core/reportes/promociones";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { obtenerPromocionesHabilitadas, buscarProductoParaPromocion } from "@/server/actions/reportes/promociones";
@@ -14,6 +14,10 @@ export default async function PromocionesPage({ searchParams }: { searchParams: 
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "promociones_config", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  const [{ editar: puedeActivar }, { editar: puedeMarcar }] = await Promise.all([
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "promociones_activar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "promociones_marcar_combo", ctx.db),
+  ]);
 
   const sp = await searchParams;
   const rango = resolverRangoDeReporte(sp);
@@ -43,7 +47,7 @@ export default async function PromocionesPage({ searchParams }: { searchParams: 
         </p>
       </div>
 
-      <PromocionForm habilitado={habilitado} candidatos={candidatos} />
+      <PromocionForm habilitado={habilitado} candidatos={candidatos} puedeActivar={puedeActivar} puedeMarcar={puedeMarcar} />
 
       {rep?.habilitado && (
         <div className="flex flex-col gap-2">

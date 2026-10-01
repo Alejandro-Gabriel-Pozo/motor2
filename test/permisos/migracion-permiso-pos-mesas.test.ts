@@ -71,6 +71,7 @@ describe("migración de datos del permiso pos_mesas", () => {
     const accion = ACCIONES.find((a) => a.clave === "pos_mesas");
     expect(accion, "pos_mesas tiene que estar en ACCIONES").toBeDefined();
     expect(accion!.rolesEditarSemilla).toEqual(["admin"]);
-    expect(SQL).toContain(`'${accion!.descripcion}'`);
+    // La descripción vigente la reescribe una migración posterior (partición de claves); acá solo importa que esta siembre la clave.
+    expect(SQL).toContain(`'${accion!.clave}'`);
   });
 });

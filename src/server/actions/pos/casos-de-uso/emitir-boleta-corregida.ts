@@ -17,7 +17,7 @@ import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ej
  * MISMOS textos; la Server Action quedó como adaptador fino. El criterio de negocio (docs/plan-numeracion-boleta-2026-09-25.md, Fase 2)
  * está documentado en la Server Action.
  *
- * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("pos_cerrar_cuenta")`)
+ * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("pos_emitir_boleta_corregida")`)
  * ni el formato del `cuentaId` (`guardComandoEmitirBoletaCorregida`). Sin I3: nunca la tuvo — una segunda emisión ve el B vigente y se
  * rechaza.
  *

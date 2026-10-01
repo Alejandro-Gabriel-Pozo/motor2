@@ -22,7 +22,7 @@ const NUMERO_MESA_MAXIMO = 9999;
  * No llama a `refrescarVistaSiHaceFalta`: su único llamador (`NuevaMesa`, un componente de cliente) ya hace `router.refresh()`.
  */
 export async function crearMesa(numero: number): Promise<ResultadoAccion> {
-  return conPermiso("pos_mesas", async (ctx) => {
+  return conPermiso("pos_alta_mesa", async (ctx) => {
     if (!Number.isInteger(numero) || !esNumeroFinito(numero) || numero < 1 || numero > NUMERO_MESA_MAXIMO) {
       return error(`El número de mesa tiene que ser un entero entre 1 y ${NUMERO_MESA_MAXIMO}.`);
     }
@@ -46,7 +46,7 @@ export async function crearMesa(numero: number): Promise<ResultadoAccion> {
  * permiso.
  */
 export async function actualizarMaxMesasAbiertas(limite: number | null): Promise<ResultadoAccion> {
-  return conPermiso("pos_mesas", async (ctx) => {
+  return conPermiso("pos_limite_mesas_abiertas", async (ctx) => {
     const val = validarMaxMesasAbiertas(limite);
     if (!val.ok) return error(val.mensaje);
 

@@ -78,7 +78,7 @@ export async function listarGrupos() {
  * Esos dos devuelven el insumo por callback y NO deben re-renderizar la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
  */
 export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
-  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("insumo_alta", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del insumo no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del insumo");
@@ -144,7 +144,7 @@ export async function renombrarOFusionarInsumo(
   nombreNuevo: string,
   confirmarFusion = false
 ): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
+  return conPermisoDeEmpresa("insumo_renombrar_fusionar", async (ctx) => {
     const nuevo = texto(nombreNuevo);
     if (!nuevo) return error("El nombre nuevo no puede estar vacío.");
     const invalido = validarTextoCatalogo(nuevo, "El nombre del insumo");

@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerBandejaTransferencias } from "@/server/actions/traspasos/lecturas";
 import { Bandeja, type FilaBandeja } from "./bandeja";
@@ -18,13 +18,19 @@ export default async function TraspasosPage({ searchParams }: { searchParams: Pr
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_transferencia_sucursal", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "traspaso_ver_bandeja", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { cursor } = await searchParams;
-  const [bandeja, secciones] = await Promise.all([
+  const [bandeja, secciones, aprobar, rechazarSolicitud, aceptar, rechazarEnvio, confirmarReingreso, cancelarSolicitud] = await Promise.all([
     obtenerBandejaTransferencias(ctx.sucursalId, cursor),
     listarSeccionesActivas(ctx.sucursalId),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "traspaso_aprobar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "traspaso_rechazar_solicitud", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "traspaso_aceptar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "traspaso_rechazar_envio", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "traspaso_confirmar_reingreso", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "traspaso_cancelar_solicitud", ctx.db),
   ]);
 
   const aFila = (t: Awaited<ReturnType<typeof obtenerBandejaTransferencias>>["historial"][number]): FilaBandeja => {
@@ -67,6 +73,14 @@ export default async function TraspasosPage({ searchParams }: { searchParams: Pr
         historial={bandeja.historial.map(aFila)}
         nextCursorHistorial={bandeja.nextCursorHistorial}
         secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+        permisos={{
+          aprobar: aprobar.editar,
+          rechazarSolicitud: rechazarSolicitud.editar,
+          aceptar: aceptar.editar,
+          rechazarEnvio: rechazarEnvio.editar,
+          confirmarReingreso: confirmarReingreso.editar,
+          cancelarSolicitud: cancelarSolicitud.editar,
+        }}
       />
     </div>
   );

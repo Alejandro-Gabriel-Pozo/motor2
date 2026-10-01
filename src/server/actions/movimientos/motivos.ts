@@ -15,7 +15,7 @@ const LARGO_MAXIMO_DESCRIPCION = 300;
  * GLOBALES (no por sucursal, mismo criterio que Insumo/Grupo/CategoriaProducto). Lecturas *Activos públicas (solo
  * exigen sesión, sin `requerirVer`) para poblar el <select> del panel de Merma/Consumo — mismo criterio que
  * `listarSeccionesActivas`/`listarProveedores`/`listarUnidadesActivas` (secciones.ts). Lecturas *ParaPanel gateadas
- * con 'motivos_movimiento' — para la pantalla de administración (P6), que también necesita ver los desactivados.
+ * con la clave de SU catálogo ('motivos_merma' / 'motivos_destino_consumo', una por catálogo) — para la pantalla de administración (P6), que también necesita ver los desactivados.
  */
 export async function listarMotivosMermaActivos() {
   const ctx = await requerirSesion();
@@ -28,18 +28,18 @@ export async function listarDestinosConsumoActivos() {
 }
 
 export async function listarMotivosMermaParaPanel() {
-  const ctx = await requerirVerDeEmpresa("motivos_movimiento");
+  const ctx = await requerirVerDeEmpresa("motivos_merma");
   return ctx.db.motivoMerma.findMany({ orderBy: { nombre: "asc" } });
 }
 
 export async function listarDestinosConsumoParaPanel() {
-  const ctx = await requerirVerDeEmpresa("motivos_movimiento");
+  const ctx = await requerirVerDeEmpresa("motivos_destino_consumo");
   return ctx.db.destinoConsumo.findMany({ orderBy: { nombre: "asc" } });
 }
 
 /** Alta de un Motivo de Merma. Dedup case-insensible: RECHAZA (no reusa) un nombre ya existente — mismo criterio que crearSeccion, a diferencia de crearCategoriaProducto (que sí reusa porque también la llama un quick-create inline; acá nadie más la llama). */
 export async function crearMotivoMerma(nombre: string, descripcion?: string): Promise<ResultadoConId> {
-  return conPermisoDeEmpresa<ResultadoConId>("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("motivos_merma", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del motivo no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del motivo");
@@ -59,7 +59,7 @@ export async function crearMotivoMerma(nombre: string, descripcion?: string): Pr
 
 /** Alta de un Destino de Consumo. Igual que crearMotivoMerma. */
 export async function crearDestinoConsumo(nombre: string, descripcion?: string): Promise<ResultadoConId> {
-  return conPermisoDeEmpresa<ResultadoConId>("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("motivos_destino_consumo", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre del destino no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del destino");
@@ -79,7 +79,7 @@ export async function crearDestinoConsumo(nombre: string, descripcion?: string):
 
 /** Activa/desactiva un Motivo de Merma. Nunca se borra (FK ON DELETE RESTRICT desde Operacion.motivoId) — solo deja de ofrecerse en cargas nuevas. */
 export async function actualizarActivoMotivoMerma(motivoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa("motivos_merma", async (ctx) => {
     const motivo = await ctx.db.motivoMerma.findUnique({ where: { id: motivoId } });
     if (!motivo) return error("No se encontró el motivo.");
 
@@ -91,7 +91,7 @@ export async function actualizarActivoMotivoMerma(motivoId: string, activo: bool
 
 /** Activa/desactiva un Destino de Consumo. Igual que actualizarActivoMotivoMerma. */
 export async function actualizarActivoDestinoConsumo(destinoId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("motivos_movimiento", async (ctx) => {
+  return conPermisoDeEmpresa("motivos_destino_consumo", async (ctx) => {
     const destino = await ctx.db.destinoConsumo.findUnique({ where: { id: destinoId } });
     if (!destino) return error("No se encontró el destino.");
 

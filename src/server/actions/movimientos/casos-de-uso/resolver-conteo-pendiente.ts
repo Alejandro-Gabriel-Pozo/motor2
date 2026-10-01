@@ -16,7 +16,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * ajusta contra el saldo de HOY (no el del día del conteo, porque entre medio pudo haber más movimientos).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint, mismo criterio que `registrar-conteo-fisico.ts` (M13e1). No chequea
- * permisos (eso ya lo hizo `conPermiso("proceso_control")` en el adaptador) ni ningún formato de entrada (sin `.guard.ts` propio, ver
+ * permisos (eso ya lo hizo `conPermiso("conteo_resolver_pendiente")` en el adaptador) ni ningún formato de entrada (sin `.guard.ts` propio, ver
  * `resolver-conteo.schema.ts`).
  *
  * Orden, igual que antes:

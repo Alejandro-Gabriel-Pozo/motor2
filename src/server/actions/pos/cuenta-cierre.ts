@@ -71,7 +71,7 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
  * escritura en server/persistencia/pos/) → `{ ok, mensaje, numero, ejemplar }`.
  */
 export async function emitirBoletaCorregida(cuentaId: string, motivo: string): Promise<ResultadoBoletaCorregida> {
-  return conPermiso("pos_cerrar_cuenta", async (ctx) => {
+  return conPermiso("pos_emitir_boleta_corregida", async (ctx) => {
     const comando = guardComandoEmitirBoletaCorregida({ cuentaId, motivo });
     if (!comando.ok) return error(comando.mensaje);
     const r = await emitirBoletaCorregidaCasoDeUso(ctx, comando.valor);

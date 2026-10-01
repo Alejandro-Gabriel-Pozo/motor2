@@ -53,8 +53,9 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const estado = esEstadoMesa(estadoPedido) ? estadoPedido : null;
   const q = (primero(params.q) ?? "").trim();
 
-  const [nivel, mapa, sucursal] = await Promise.all([
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db),
+  const [altaMesa, limiteMesas, mapa, sucursal] = await Promise.all([
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_alta_mesa", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_limite_mesas_abiertas", ctx.db),
     obtenerMapaDeMesas(ctx.sucursalId, ctx.db),
     obtenerLimiteMesasAbiertas(ctx.sucursalId, ctx.db),
   ]);
@@ -71,10 +72,10 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
             {ctx.sucursalNombre} · actualizado a las {HORA.format(new Date())}
           </p>
           <p className="mt-1">
-            <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={nivel.editar} />
+            <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={limiteMesas.editar} />
           </p>
         </div>
-        <NuevaMesa siguienteNumero={mapa.siguienteNumero} puedeCrear={nivel.editar} />
+        <NuevaMesa siguienteNumero={mapa.siguienteNumero} puedeCrear={altaMesa.editar} />
       </header>
 
       <section aria-label="Resumen de mesas" className="mb-6 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
@@ -134,7 +135,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
         <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-10 text-center">
           <p className="font-semibold">Todavía no hay mesas en esta sucursal.</p>
           <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
-            {nivel.editar ? "Cargá la primera con «Nueva mesa»." : "Pedile a un admin que las cargue."}
+            {altaMesa.editar ? "Cargá la primera con «Nueva mesa»." : "Pedile a un admin que las cargue."}
           </p>
         </div>
       ) : visibles.length === 0 ? (

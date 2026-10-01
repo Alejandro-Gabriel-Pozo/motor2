@@ -15,7 +15,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * en el MISMO orden y con los MISMOS textos; la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → id/nombre).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo
- * `conPermiso("proceso_transferencia_sucursal")`) ni valida formato (eso lo hizo `guardComandoCrearSolicitudTraspaso`). Sin idempotencia
+ * `conPermiso("traspaso_solicitar")`) ni valida formato (eso lo hizo `guardComandoCrearSolicitudTraspaso`). Sin idempotencia
  * I3 (nunca la tuvo): no toca stock — queda SOLICITADA, pendiente de que Origen decida — y un duplicado por doble clic se cancela desde
  * la Bandeja (`cancelarSolicitudTransferencia`) sin ningún efecto sobre el Kardex.
  *

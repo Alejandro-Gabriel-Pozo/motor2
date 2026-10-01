@@ -34,11 +34,12 @@ export default async function FichaProductoPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `editar_producto` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto", ctx.db);
+  const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
 
   const { id } = await params;
   const { guardado } = await searchParams;
@@ -160,7 +161,7 @@ export default async function FichaProductoPage({
                   <td>{d.disponible ? "Sí" : "No"}</td>
                   <td className="py-2">
                     {/* Solo la sucursal ACTIVA tiene botón — actualizarDisponibilidadProducto evalúa el gate contra ctx.sucursalId, nunca contra un id que viaje del cliente. */}
-                    {puedeEditarProducto && d.sucursalId === ctx.sucursalId && (
+                    {puedeCambiarDisponibilidad && d.sucursalId === ctx.sucursalId && (
                       <ActivarDesactivarFila
                         activo={d.disponible}
                         aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."

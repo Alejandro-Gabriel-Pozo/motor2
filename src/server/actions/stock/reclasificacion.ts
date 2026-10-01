@@ -27,7 +27,7 @@ export type DatosReclasificacion = ComandoReclasificarStockSchema;
  * el panel de Conteo Físico.
  *
  * Desde la Task #41 (Fase M, M13d — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
- * (`conPermiso("proceso_control")`) → formato del comando (`guardComandoReclasificarStock`,
+ * (`conPermiso("stock_reclasificar")`) → formato del comando (`guardComandoReclasificarStock`,
  * core/features/movimientos/reclasificacion.guard.ts: producto, sección de origen, destinos vacío, clave I3, sección de cada destino en
  * blanco) → caso de uso (`casos-de-uso/reclasificar-stock.ts`: secciones propias, "único destino idéntico al origen", transacción,
  * idempotencia, persistencia) → `aResultadoAccion`.
@@ -36,7 +36,7 @@ export type DatosReclasificacion = ComandoReclasificarStockSchema;
  * este archivo no tiene ninguna otra función y entró en `ACCIONES_CON_CASO_DE_USO` (.dependency-cruiser-excepciones.cjs).
  */
 export async function reclasificarStock(datos: DatosReclasificacion): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
+  return conPermiso("stock_reclasificar", async (ctx) => {
     const comando = guardComandoReclasificarStock(datos);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await reclasificarStockCasoDeUso(ctx, comando.valor));

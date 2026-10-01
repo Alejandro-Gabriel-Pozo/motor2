@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
-import { abrirComoRol } from "./fixtures/rol-pos";
+import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 
 /**
@@ -239,7 +239,7 @@ test("permisos: el mozo toma el pedido pero no anula ni cierra; solo Ver de pos_
       items: { create: [{ productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }, { productoId: cat.milanesa.id, cantidad: 1, precioUnitario: 9000 }] },
     },
   });
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, PERMISOS_MOZO);
   const soloVe = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver" });
   const sinPermiso = await abrirComoRol(browser, baseURL, sucursalId, {});
   try {
@@ -385,7 +385,7 @@ test("una pestaña vieja no reimprime un envío ya hecho: «Esos ítems ya estab
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 970 } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.flan.id, cantidad: 1, precioUnitario: 3000, creadoPorId: admin.id }] } } });
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, PERMISOS_MOZO);
   const b = mozo.page;
   try {
     await interceptarImpresion(a);
@@ -539,7 +539,7 @@ test("guardas de la reimpresión de la boleta: sin pos_cerrar_cuenta queda desha
   await sembrarCuentaCerrada(sucursalId, mesa.id, admin.id, cat.milanesa.id, vigenteEn);
   await sembrarCuentaCerrada(sucursalId, mesa.id, admin.id, cat.milanesa.id, anuladaEn, true);
   const reimprimir = (p: Page, fecha: Date) => p.getByRole("button", { name: `Reimprimir la boleta de la cuenta cerrada a las ${HORA_AR.format(fecha)}` });
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, PERMISOS_MOZO);
   try {
     await page.goto(`/mesas/${mesa.id}`);
     await expect(page.locator("[data-cuenta-cerrada]")).toHaveCount(2);

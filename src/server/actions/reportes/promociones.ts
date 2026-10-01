@@ -16,7 +16,7 @@ export async function obtenerPromocionesHabilitadas(sucursalId: string): Promise
 
 /** Port de actualizarPromocionesHabilitado (Catalogo.js:2216-2238) — prende/apaga la feature completa para esta sucursal. */
 export async function actualizarPromocionesHabilitado(activar: boolean): Promise<ResultadoAccion> {
-  return conPermiso("promociones_config", async (ctx) => {
+  return conPermiso("promociones_activar", async (ctx) => {
     await ctx.db.sucursal.update({ where: { id: ctx.sucursalId }, data: { promocionesHabilitadas: activar } });
     return ok(`Promociones y Combos ${activar ? "activado" : "desactivado"}.`);
   });
@@ -24,7 +24,7 @@ export async function actualizarPromocionesHabilitado(activar: boolean): Promise
 
 /** Port de marcarProductoComoPromocion (Catalogo.js:2253-2278). */
 export async function marcarProductoComoPromocion(productoId: string, activa: boolean): Promise<ResultadoAccion> {
-  return conPermiso("promociones_config", async (ctx) => {
+  return conPermiso("promociones_marcar_combo", async (ctx) => {
     const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("Elegí un producto.");
 

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarSucursales } from "@/server/actions/auth/sucursales";
 import { ProductoForm } from "../producto-form";
 import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
@@ -21,9 +21,9 @@ export default async function NuevoProductoPage() {
 
   return (
     <div className="max-w-xl">
-      <Link href="/catalogo/productos" className="mb-3 inline-block text-sm underline">
+      <EnlaceInterno href="/catalogo/productos" className="mb-3 inline-block text-sm underline">
         ← Productos
-      </Link>
+      </EnlaceInterno>
       <h1 className="mb-4 text-xl font-semibold">Nuevo producto</h1>
       <ProductoForm
         unidades={unidades}

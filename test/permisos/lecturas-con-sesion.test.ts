@@ -30,7 +30,7 @@ import { listarRoles } from "../../src/server/actions/permisos/roles";
 import { buscarProductoParaPromocion, obtenerPromocionesHabilitadas } from "../../src/server/actions/reportes/promociones";
 import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/lecturas-reclasificacion";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
-import { listarSucursalesDisponibles, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
+import { listarSucursalesParaEnviar, listarSucursalesParaSolicitar, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
 
 /**
  * Las lecturas de servidor (server actions que devuelven datos) se pueden invocar directo, sin pasar por la página que
@@ -72,7 +72,8 @@ const LECTURAS: Array<[string, () => Promise<unknown>]> = [
   ["obtenerPromocionesHabilitadas", () => obtenerPromocionesHabilitadas("x")],
   ["listarStockMinimo", () => listarStockMinimo("x")],
   ["obtenerSaldoDisponibleParaReclasificar", () => obtenerSaldoDisponibleParaReclasificar("x", "y", null)],
-  ["listarSucursalesDisponibles", () => listarSucursalesDisponibles("x")],
+  ["listarSucursalesParaSolicitar", () => listarSucursalesParaSolicitar("x")],
+  ["listarSucursalesParaEnviar", () => listarSucursalesParaEnviar("x")],
   ["obtenerBandejaTransferencias", () => obtenerBandejaTransferencias("x")],
 ];
 
@@ -87,7 +88,8 @@ const LECTURAS_POR_SUCURSAL: Array<[string, (sucursalId: string) => Promise<unkn
   ["buscarProductoParaPromocion", (id) => buscarProductoParaPromocion(id, "y")],
   ["obtenerPromocionesHabilitadas", (id) => obtenerPromocionesHabilitadas(id)],
   ["listarStockMinimo", (id) => listarStockMinimo(id)],
-  ["listarSucursalesDisponibles", (id) => listarSucursalesDisponibles(id)],
+  ["listarSucursalesParaSolicitar", (id) => listarSucursalesParaSolicitar(id)],
+  ["listarSucursalesParaEnviar", (id) => listarSucursalesParaEnviar(id)],
   ["obtenerBandejaTransferencias", (id) => obtenerBandejaTransferencias(id)],
 ];
 
@@ -124,6 +126,7 @@ describe("lecturas de servidor: exigen sesión y, si reciben la sucursal, membre
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
 
     await expect(listarSeccionesActivas(base.sucursal.id)).resolves.toEqual([]);
-    await expect(listarSucursalesDisponibles(base.sucursal.id)).resolves.toEqual([]);
+    await expect(listarSucursalesParaSolicitar(base.sucursal.id)).resolves.toEqual([]);
+    await expect(listarSucursalesParaEnviar(base.sucursal.id)).resolves.toEqual([]);
   });
 });

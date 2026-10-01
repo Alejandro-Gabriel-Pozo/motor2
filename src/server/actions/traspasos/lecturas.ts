@@ -54,7 +54,7 @@ function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInp
  * hallazgo de la diligencia de motor2: "bandeja de traspasos sin límite").
  */
 export async function obtenerBandejaTransferencias(sucursalId: string, cursorHistorial?: string) {
-  const ctx = await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
+  const ctx = await requerirVerEnSucursal(sucursalId, "traspaso_ver_bandeja");
   const [enCurso, historialMasUno] = await Promise.all([
     ctx.db.traspasoSucursal.findMany({
       where: { OR: condicionesEnCurso(sucursalId) },
@@ -95,8 +95,19 @@ export async function obtenerBandejaTransferencias(sucursalId: string, cursorHis
   };
 }
 
-/** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. */
-export async function listarSucursalesDisponibles(sucursalId: string) {
-  const ctx = await requerirVerEnSucursal(sucursalId, "proceso_transferencia_sucursal");
-  return ctx.db.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
+/** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. Cada pantalla pide Ver con la clave de SU acción. */
+function otrasSucursalesActivas(db: Awaited<ReturnType<typeof requerirVerEnSucursal>>["db"], sucursalId: string) {
+  return db.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
+}
+
+/** Las sucursales a las que se les puede pedir stock (pantalla «Solicitar»). */
+export async function listarSucursalesParaSolicitar(sucursalId: string) {
+  const ctx = await requerirVerEnSucursal(sucursalId, "traspaso_solicitar");
+  return otrasSucursalesActivas(ctx.db, sucursalId);
+}
+
+/** Las sucursales a las que se les puede enviar stock directo (pantalla «Enviar directo»). */
+export async function listarSucursalesParaEnviar(sucursalId: string) {
+  const ctx = await requerirVerEnSucursal(sucursalId, "traspaso_enviar_directo");
+  return otrasSucursalesActivas(ctx.db, sucursalId);
 }

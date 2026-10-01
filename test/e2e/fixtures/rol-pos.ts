@@ -7,9 +7,18 @@ import { crearMembresia } from "../../setup/membresia";
 /** Nivel de un permiso del rol: "ver" = solo Ver; "editar" = Ver y Editar. Una clave ausente queda «sin asignar» (sin fila). */
 export type NivelPermiso = "ver" | "editar";
 
+/** Las claves del «mozo»: ver el mapa y recorrer el circuito de la mesa (abrir, cargar, enviar a cocina, liberar); sin anular ni cobrar. */
+export const PERMISOS_MOZO: Partial<Record<AccionClave, NivelPermiso>> = {
+  pos_mesas: "ver",
+  pos_tomar_pedido: "editar",
+  pos_abrir_cuenta: "editar",
+  pos_enviar_a_cocina: "editar",
+  pos_liberar_mesa: "editar",
+};
+
 /**
  * Una página con la sesión de un usuario NUEVO con un rol propio, armado con las claves dadas (así se arma el «mozo» desde la matriz
- * de permisos: `{ pos_mesas: "ver", pos_tomar_pedido: "editar" }`). Sesión real de Auth.js (fila `Session` + cookie), igual que
+ * de permisos: `PERMISOS_MOZO`). Sesión real de Auth.js (fila `Session` + cookie), igual que
  * fixtures/auth.ts. `limpiar()` borra lo creado; si el usuario abrió cuentas o cargó ítems, quien llama las borra ANTES (las cuentas
  * referencian al usuario).
  */

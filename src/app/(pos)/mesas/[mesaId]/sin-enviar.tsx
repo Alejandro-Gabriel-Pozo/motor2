@@ -50,10 +50,11 @@ function agruparFilas(items: ItemSinEnviar[]): FilaSinEnviar[] {
  * Al salir bien pide imprimir la comanda del envío que el SERVIDOR dice que creó ESTA llamada (`numeroEnvio` con `envioNuevo`). Si no
  * creó ninguno (pestaña vieja: otro ya los había enviado), no imprime: esa comanda ya salió desde donde se envió.
  */
-export function SinEnviar({ cuentaId, items, puede }: { cuentaId: string; items: ItemSinEnviar[]; puede: boolean }) {
+export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: string; items: ItemSinEnviar[]; puede: boolean; puedeEnviar: boolean }) {
   const { ejecutar, pending, error } = useAccionMesa();
   const { pedir } = useImpresion();
   const sinPermiso = puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos.";
+  const sinPermisoEnviar = puedeEnviar ? undefined : "Tu rol puede ver la mesa pero no enviar pedidos a cocina.";
   const filas = agruparFilas(items);
 
   const enviar = () =>
@@ -71,7 +72,7 @@ export function SinEnviar({ cuentaId, items, puede }: { cuentaId: string; items:
           Sin enviar · {items.length}
         </h2>
         {items.length > 0 && (
-          <button type="button" className={BOTON_PRIMARIO} disabled={!puede || pending} title={sinPermiso} onClick={enviar}>
+          <button type="button" className={BOTON_PRIMARIO} disabled={!puedeEnviar || pending} title={sinPermisoEnviar} onClick={enviar}>
             {pending ? "Enviando…" : "Enviar a cocina"}
           </button>
         )}

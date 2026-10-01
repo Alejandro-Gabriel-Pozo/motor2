@@ -9,13 +9,15 @@ import { crearMembresia } from "../setup/membresia";
  * vea productos y no los edite (admin y operador tienen los dos), así que cada caso fabrica el suyo: rol propio, usuario propio, sesión propia.
  * Nada depende del rol `operador` compartido (otros specs lo mutan).
  */
-/** `editarProducto`: Ver+Editar de `editar_producto`. `altaEditar`: Editar (además de Ver) de `alta_producto`, el permiso del alta. Por defecto solo Ver de `alta_producto`. */
-async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, permisos: { editarProducto?: boolean; altaEditar?: boolean }) {
-  const { editarProducto: puedeEditarProducto = false, altaEditar = false } = permisos;
+/** `editarProducto`: Ver+Editar de `editar_producto`. `disponibilidad`: Ver+Editar de `producto_disponibilidad` (el «Desactivar»; clave propia, ya no comparte `editar_producto`). `altaEditar`: Editar (además de Ver) de `alta_producto`, el permiso del alta. Por defecto solo Ver de `alta_producto`. */
+async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, permisos: { editarProducto?: boolean; altaEditar?: boolean; disponibilidad?: boolean }) {
+  const { editarProducto: puedeEditarProducto = false, altaEditar = false, disponibilidad = false } = permisos;
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const rol = await prisma.rol.create({ data: { nombre: `e2e-productos-${puedeEditarProducto ? "edita" : "solo-ve"}-${marca}` } });
+  const rol = await prisma.rol.create({ data: { nombre: `e2e-productos-${puedeEditarProducto ? "edita" : "solo-ve"}-${disponibilidad ? "disp-" : ""}${marca}` } });
   await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "alta_producto", puedeVer: true, puedeEditar: altaEditar } });
+  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_ver_catalogo", puedeVer: true, puedeEditar: false } });
   if (puedeEditarProducto) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "editar_producto", puedeVer: true, puedeEditar: true } });
+  if (disponibilidad) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_disponibilidad", puedeVer: true, puedeEditar: true } });
   const usuario = await prisma.user.create({ data: { email: `e2e-productos-${marca}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
@@ -94,10 +96,10 @@ test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni 
   }
 });
 
-test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y lleva al formulario", async ({ browser, baseURL, sucursalId }) => {
+test("un rol CON editar_producto y producto_disponibilidad ve «Editar» y «Desactivar» en la lista y en la ficha, y lleva al formulario", async ({ browser, baseURL, sucursalId }) => {
   // Contraespejo: impide «arreglarlo» escondiendo el enlace para todos.
   const producto = await crearProducto(Date.now(), sucursalId);
-  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true, disponibilidad: true });
   const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
@@ -111,6 +113,29 @@ test("un rol CON editar_producto ve «Editar» en la lista y en la ficha, y llev
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   } finally {
     await limpiar();
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+test("«Editar» y «Desactivar» son permisos separados: cada uno muestra solo su control", async ({ browser, baseURL, sucursalId }) => {
+  const producto = await crearProducto(Date.now(), sucursalId);
+  const enlaceEditar = (page: import("@playwright/test").Page) => page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
+  const soloEditar = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
+  const soloDisponibilidad = await abrirComoRol(browser, baseURL, sucursalId, { disponibilidad: true });
+  try {
+    await soloEditar.page.goto(`/catalogo/productos/${producto.id}`);
+    await expect(soloEditar.page.getByRole("heading", { name: producto.nombre })).toBeVisible();
+    await expect(enlaceEditar(soloEditar.page)).toHaveCount(1);
+    await expect(soloEditar.page.getByRole("button", { name: /^(Des)?[Aa]ctivar$/ }), "sin producto_disponibilidad no hay «Desactivar»").toHaveCount(0);
+
+    await soloDisponibilidad.page.goto(`/catalogo/productos/${producto.id}`);
+    await expect(soloDisponibilidad.page.getByRole("heading", { name: producto.nombre })).toBeVisible();
+    await expect(enlaceEditar(soloDisponibilidad.page), "sin editar_producto no hay «Editar»").toHaveCount(0);
+    await expect(soloDisponibilidad.page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
+  } finally {
+    await soloEditar.limpiar();
+    await soloDisponibilidad.limpiar();
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }

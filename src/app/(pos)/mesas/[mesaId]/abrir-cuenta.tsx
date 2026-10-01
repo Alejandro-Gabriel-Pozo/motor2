@@ -56,7 +56,7 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <button type="button" className={BOTON_PRIMARIO} disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."} onClick={abrirDialogo}>
+      <button type="button" className={BOTON_PRIMARIO} disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no abrir cuentas."} onClick={abrirDialogo}>
         Abrir cuenta
       </button>
       {error && !abierto && (

@@ -32,7 +32,7 @@ export interface DatosProveedor {
  * restringe nada nuevo.
  */
 export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoConId> {
-  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("proveedor_alta", async (ctx) => {
     const nombre = texto(datos.nombre);
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre");

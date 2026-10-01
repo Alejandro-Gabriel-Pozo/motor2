@@ -16,7 +16,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * (permiso → guard → este caso de uso → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo
- * `conPermiso("proceso_transferencia_sucursal")`) ni valida formato (eso lo hizo `guardComandoAprobarYEnviarTraspaso`). Sin idempotencia
+ * `conPermiso("traspaso_aprobar")`) ni valida formato (eso lo hizo `guardComandoAprobarYEnviarTraspaso`). Sin idempotencia
  * I3: la aprobación nunca la tuvo (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §11.5) — un doble clic lo arbitra el
  * aislamiento SERIALIZABLE, y el segundo intento responde «ya está en estado ENVIADA».
  *

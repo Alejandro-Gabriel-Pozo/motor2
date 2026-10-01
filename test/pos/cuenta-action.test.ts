@@ -316,6 +316,7 @@ describe("tomar pedido (server actions)", () => {
       const soloVe = await crearUsuarioConRol(s.sucursalId, "solo-ve", [
         { clave: "pos_mesas", ver: true, editar: false },
         { clave: "pos_tomar_pedido", ver: true, editar: false },
+        { clave: "pos_abrir_cuenta", ver: true, editar: false },
       ]);
       await entrarComo(soloVe);
       const r = await abrirCuenta(s.mesa.id, 2);
@@ -324,14 +325,14 @@ describe("tomar pedido (server actions)", () => {
       expect(await prisma.cuenta.count()).toBe(0);
     });
 
-    it("si la Central deshabilitó pos_tomar_pedido para la sucursal, ni el admin puede", async () => {
-      await prisma.capacidadSucursal.create({ data: { accionClave: "pos_tomar_pedido", sucursalId: s.sucursalId, habilitado: false } });
+    it("si la Central deshabilitó pos_abrir_cuenta para la sucursal, ni el admin puede", async () => {
+      await prisma.capacidadSucursal.create({ data: { accionClave: "pos_abrir_cuenta", sucursalId: s.sucursalId, habilitado: false } });
       const r = await abrirCuenta(s.mesa.id, 2);
       expect(r.ok).toBe(false);
-      expect(r.mensaje).toMatch(/no habilitó "pos_tomar_pedido"/);
+      expect(r.mensaje).toMatch(/no habilitó "pos_abrir_cuenta"/);
     });
 
-    it("un «mozo» armado desde la matriz (pos_mesas Ver + pos_tomar_pedido Editar) hace todo el circuito", async () => {
+    it("un «mozo» armado desde la matriz (pos_mesas Ver + las claves del circuito de la mesa Editar) hace todo el circuito", async () => {
       const mozo = await crearMozo(s.sucursalId);
       await entrarComo(mozo);
       expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);

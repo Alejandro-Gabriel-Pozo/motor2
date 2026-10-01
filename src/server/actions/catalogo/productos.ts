@@ -461,7 +461,7 @@ function enumerar(items: string[], tope = 4): string {
  * `dependenciasParaDesactivar`.
  */
 export async function actualizarDisponibilidadProducto(productoId: string, disponible: boolean): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async (ctx) => {
+  return conPermiso("producto_disponibilidad", async (ctx) => {
     const existente = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     if (!disponible) {
@@ -526,7 +526,7 @@ export async function agregarPresentacionAlternativa(
   unidadCompraId: string,
   factorConversion: number
 ): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
     const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.unidadCompraId === unidadCompraId) {
@@ -547,7 +547,7 @@ export async function agregarPresentacionAlternativa(
 }
 
 export async function actualizarActivaPresentacion(presentacionId: string, activa: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
     await ctx.db.presentacion.update({ where: { id: presentacionId }, data: { activa } });
     return ok(`Presentación ${activa ? "activada" : "desactivada"}.`);
   });

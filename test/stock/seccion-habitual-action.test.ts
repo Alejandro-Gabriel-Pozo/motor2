@@ -8,7 +8,7 @@ import { eliminarSeccionHabitual, listarSeccionesHabituales, setSeccionHabitual 
 
 /**
  * Pantalla «Sección habitual» (src/server/actions/stock/seccion-habitual.ts, docs/plan-seccion-habitual-stock-2026-09-25.md C2): alta,
- * reemplazo y baja de la sección habitual de un PV en la sucursal activa, con el permiso `stock_minimo`.
+ * reemplazo y baja de la sección habitual de un PV en la sucursal activa, con el permiso propio `stock_seccion_habitual`.
  */
 describe("Sección habitual (server actions)", () => {
   let sucursalId: string;
@@ -75,7 +75,7 @@ describe("Sección habitual (server actions)", () => {
     expect(await prisma.seccionHabitualProducto.count()).toBe(1);
   });
 
-  it("sin permiso de stock_minimo: no escribe, no quita y no lista", async () => {
+  it("sin permiso de stock_seccion_habitual: no escribe, no quita y no lista", async () => {
     await setSeccionHabitual(pizzaId, cocinaId);
     const fila = await prisma.seccionHabitualProducto.findFirstOrThrow();
     const rol = await prisma.rol.create({ data: { nombre: "sin-stock" } });
@@ -84,7 +84,7 @@ describe("Sección habitual (server actions)", () => {
 
     const r = await setSeccionHabitual(pizzaId, barraId);
     expect(r.ok).toBe(false);
-    expect(r.mensaje).toContain('"stock_minimo"');
+    expect(r.mensaje).toContain('"stock_seccion_habitual"');
     expect((await eliminarSeccionHabitual(fila.id)).ok).toBe(false);
     await expect(listarSeccionesHabituales(sucursalId)).rejects.toThrow();
     expect(await prisma.seccionHabitualProducto.findFirstOrThrow()).toMatchObject({ seccionId: cocinaId });

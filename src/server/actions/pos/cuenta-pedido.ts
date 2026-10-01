@@ -167,7 +167,7 @@ export async function quitarItemSinEnviar(cuentaItemId: string): Promise<Resulta
  * envío que creó esta llamada; en el caso idempotente informa el envío en el que ya habían salido, con `envioNuevo: false`.
  */
 export async function enviarACocina(cuentaId: string, itemIds: string[]): Promise<ResultadoEnvioACocina> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
+  return conPermiso("pos_enviar_a_cocina", async (ctx) => {
     if (!Array.isArray(itemIds) || itemIds.length === 0 || itemIds.some((id) => typeof id !== "string")) return error("No hay ítems para enviar.");
     if (itemIds.length > MAXIMO_ITEMS_POR_ENVIO) return error(`No se pueden enviar más de ${MAXIMO_ITEMS_POR_ENVIO} ítems de una vez.`);
 

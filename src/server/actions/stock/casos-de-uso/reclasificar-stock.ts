@@ -24,14 +24,14 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * `reclasificarStock` (src/server/actions/stock/reclasificacion.ts), en el MISMO orden y con los MISMOS textos; la Server Action quedó
  * como adaptador fino (permiso → guard de comando → este caso de uso → `aResultadoAccion`).
  *
- * Caso de uso PROPIO, no el motor genérico de M13a-c: entrada (un producto, un origen, N destinos), permiso (`proceso_control`, mismo
- * que Conteo Físico — no pasa por `ACCION_POR_PROCESO` ni tiene su propia `Accion`), validación (la regla "la suma de destinos es
+ * Caso de uso PROPIO, no el motor genérico de M13a-c: entrada (un producto, un origen, N destinos), permiso (`stock_reclasificar`, propio
+ * y no pasa por `ACCION_POR_PROCESO`), validación (la regla "la suma de destinos es
  * exactamente el saldo disponible", sin equivalente en `registrarMovimiento`) y escritura (un origen + N destinos en una sola
  * Operación) son todos distintos de los 9 procesos de `ProcesoGenerico`; RECLASIFICACION está excluida de ese tipo a propósito
  * (`core/features/movimientos/movimiento.schema.ts`). Sí REUTILIZA de M13b las dos escrituras de persistencia
  * (`escribirOperacionDeStock`/`escribirLineasDeMovimientoStock`) y de I3 `registrarResultadoIdempotente`.
  *
- * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("proceso_control")`)
+ * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("stock_reclasificar")`)
  * ni el formato del comando (`guardComandoReclasificarStock`, core/features/movimientos/reclasificacion.guard.ts: producto, sección de
  * origen, destinos vacío, clave I3, sección de cada destino en blanco): recibe `comando` ya pasado por esa.
  *

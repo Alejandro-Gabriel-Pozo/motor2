@@ -35,7 +35,7 @@ export function EmitirBoletaCorregida({ boleta, hora, puede }: { boleta: BoletaD
           ? "Esta cuenta se cerró antes de la numeración de boletas: no tiene boleta que corregir."
           : puede
             ? null
-            : "Emitir la boleta corregida requiere el permiso de cerrar cuentas, que tu rol no tiene.";
+            : "Emitir la boleta corregida requiere un permiso propio, que tu rol no tiene.";
 
   const abrir = () => {
     setMotivo("");

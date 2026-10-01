@@ -9,13 +9,13 @@ import { BotonQuitarSeccionHabitual } from "./boton-quitar";
 /**
  * Sección habitual de cada producto de venta en esta sucursal (docs/plan-seccion-habitual-stock-2026-09-25.md, C2): de qué sección de
  * stock sale PRIMERO lo que consume al cerrar una cuenta del salón. Mismo molde que `/stock/minimo` (tabla + formulario de alta/edición,
- * mismo permiso `stock_minimo`). Un producto sin fila no tiene preferencia: sale de la sección con stock que vence antes.
+ * permiso propio `stock_seccion_habitual`). Un producto sin fila no tiene preferencia: sale de la sección con stock que vence antes.
  */
 export default async function SeccionHabitualPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_minimo", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_seccion_habitual", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { editar } = await searchParams;

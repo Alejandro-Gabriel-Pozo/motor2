@@ -22,7 +22,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * los MISMOS textos; la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo
- * `conPermiso("proceso_transferencia_sucursal")`) ni valida formato (eso lo hizo `guardComandoAceptarTraspaso`, clave I3 incluida).
+ * `conPermiso("traspaso_aceptar")`) ni valida formato (eso lo hizo `guardComandoAceptarTraspaso`, clave I3 incluida).
  *
  * Pasos, en el orden de siempre:
  *  1. (fuera de la transacción, como antes) la sección de destino tiene que ser de ESTA sucursal;

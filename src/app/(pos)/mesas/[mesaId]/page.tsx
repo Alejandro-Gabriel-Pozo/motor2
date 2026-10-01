@@ -57,11 +57,15 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     );
   }
 
-  const [tomarPedido, asignarCliente, anularItem, cerrarCuenta, verReportesDinero, secciones, boletas] = await Promise.all([
+  const [tomarPedido, abrirCuenta, enviarACocina, liberarMesa, asignarCliente, anularItem, cerrarCuenta, emitirCorregida, verReportesDinero, secciones, boletas] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_abrir_cuenta", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_enviar_a_cocina", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_liberar_mesa", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_asignar_cliente", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_emitir_boleta_corregida", ctx.db),
     // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Boletas emitidas» se
     // condiciona a mano, del lado del servidor (Task #17).
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_boletas", ctx.db),
@@ -97,7 +101,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
             </p>
             {cuenta && (
               <div className="mt-1 flex flex-col gap-1">
-                <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={tomarPedido.editar} />
+                <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={abrirCuenta.editar} />
                 <ClienteCuenta
                   cuentaId={cuenta.id}
                   clienteId={cuenta.clienteId}
@@ -123,7 +127,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
               <p className="mb-4 font-semibold">La mesa está libre.</p>
-              <AbrirCuenta mesaId={mesa.id} puede={tomarPedido.editar} />
+              <AbrirCuenta mesaId={mesa.id} puede={abrirCuenta.editar} />
             </div>
           ) : (
             <div className="flex flex-col gap-5">
@@ -145,6 +149,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   promoTitulo: i.promoTitulo,
                 }))}
                 puede={tomarPedido.editar}
+                puedeEnviar={enviarACocina.editar}
               />
 
               {cuenta.envios.map((envio) => (
@@ -176,11 +181,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   haySecciones={secciones.length > 0}
                   puede={cerrarCuenta.editar}
                 />
-                {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={tomarPedido.editar} />}
+                {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={liberarMesa.editar} />}
               </div>
             </div>
           )}
-          <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} />
+          <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} />
           {verReportesDinero.ver && (
             <p className="mt-3 text-[13px]">
               <Link href={`/reportes/boletas?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">

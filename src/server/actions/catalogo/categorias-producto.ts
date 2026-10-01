@@ -19,7 +19,7 @@ export async function listarCategoriasProducto() {
  * la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
  */
 export async function crearCategoriaProducto(nombre: string): Promise<ResultadoConId> {
-  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
+  return conPermisoDeEmpresa<ResultadoConId>("categoria_alta", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre de la categoría no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre de la categoría");

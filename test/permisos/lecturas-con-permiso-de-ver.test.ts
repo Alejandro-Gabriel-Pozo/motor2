@@ -21,7 +21,7 @@ import { listarRoles } from "../../src/server/actions/permisos/roles";
 import { buscarProductoParaPromocion, obtenerPromocionesHabilitadas } from "../../src/server/actions/reportes/promociones";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
 import { listarSeccionesHabituales } from "../../src/server/actions/stock/seccion-habitual";
-import { listarSucursalesDisponibles, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
+import { listarSucursalesParaSolicitar, listarSucursalesParaEnviar, obtenerBandejaTransferencias } from "../../src/server/actions/traspasos/lecturas";
 
 /**
  * Las lecturas que devuelven los datos PROPIOS de una pantalla piden, además de la sesión, el permiso de «Ver» de esa pantalla
@@ -50,15 +50,16 @@ const LECTURAS: Fila[] = [
   { nombre: "listarPreciosLocales", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "movimientos/precio-local.ts", llamar: (s) => listarPreciosLocales(s) },
   { nombre: "obtenerPrecioLocalProducto", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "movimientos/precio-local.ts", llamar: (s) => obtenerPrecioLocalProducto(s, "x") },
   { nombre: "listarSeccionesParaPanel", clave: "secciones", pagina: "movimientos/secciones/page.tsx", archivo: "movimientos/secciones.ts", llamar: (s) => listarSeccionesParaPanel(s) },
-  { nombre: "listarMotivosMermaParaPanel", clave: "motivos_movimiento", pagina: "movimientos/motivos/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarMotivosMermaParaPanel() },
-  { nombre: "listarDestinosConsumoParaPanel", clave: "motivos_movimiento", pagina: "movimientos/motivos/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarDestinosConsumoParaPanel() },
+  { nombre: "listarMotivosMermaParaPanel", clave: "motivos_merma", pagina: "movimientos/motivos-merma/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarMotivosMermaParaPanel() },
+  { nombre: "listarDestinosConsumoParaPanel", clave: "motivos_destino_consumo", pagina: "movimientos/destinos-consumo/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarDestinosConsumoParaPanel() },
   { nombre: "obtenerHistorialConteosFisicos", clave: "reporte_conteos", pagina: "reportes/conteos/page.tsx", archivo: "movimientos/lecturas-conteo-fisico.ts", llamar: (s) => obtenerHistorialConteosFisicos(s) },
   { nombre: "obtenerPromocionesHabilitadas", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => obtenerPromocionesHabilitadas(s) },
   { nombre: "buscarProductoParaPromocion", clave: "promociones_config", pagina: "reportes/promociones/page.tsx", archivo: "reportes/promociones.ts", llamar: (s) => buscarProductoParaPromocion(s, "") },
   { nombre: "listarStockMinimo", clave: "stock_minimo", pagina: "stock/minimo/page.tsx", archivo: "stock/stock-minimo.ts", llamar: (s) => listarStockMinimo(s) },
-  { nombre: "listarSeccionesHabituales", clave: "stock_minimo", pagina: "stock/seccion-habitual/page.tsx", archivo: "stock/seccion-habitual.ts", llamar: (s) => listarSeccionesHabituales(s) },
-  { nombre: "obtenerBandejaTransferencias", clave: "proceso_transferencia_sucursal", pagina: "traspasos/page.tsx", archivo: "traspasos/lecturas.ts", llamar: (s) => obtenerBandejaTransferencias(s) },
-  { nombre: "listarSucursalesDisponibles", clave: "proceso_transferencia_sucursal", pagina: "traspasos/enviar/page.tsx", archivo: "traspasos/lecturas.ts", llamar: (s) => listarSucursalesDisponibles(s) },
+  { nombre: "listarSeccionesHabituales", clave: "stock_seccion_habitual", pagina: "stock/seccion-habitual/page.tsx", archivo: "stock/seccion-habitual.ts", llamar: (s) => listarSeccionesHabituales(s) },
+  { nombre: "obtenerBandejaTransferencias", clave: "traspaso_ver_bandeja", pagina: "traspasos/page.tsx", archivo: "traspasos/lecturas.ts", llamar: (s) => obtenerBandejaTransferencias(s) },
+  { nombre: "listarSucursalesParaSolicitar", clave: "traspaso_solicitar", pagina: "traspasos/solicitar/page.tsx", archivo: "traspasos/lecturas.ts", llamar: (s) => listarSucursalesParaSolicitar(s) },
+  { nombre: "listarSucursalesParaEnviar", clave: "traspaso_enviar_directo", pagina: "traspasos/enviar/page.tsx", archivo: "traspasos/lecturas.ts", llamar: (s) => listarSucursalesParaEnviar(s) },
   { nombre: "obtenerComparativaPreciosPorInsumo", clave: "comparar_precios", pagina: "catalogo/proveedores/comparativa/page.tsx", archivo: "catalogo/proveedor-por-producto.ts", llamar: () => obtenerComparativaPreciosPorInsumo() },
   { nombre: "listarProductosDeProveedor", clave: "proceso_compra", pagina: "movimientos/[proceso]/page.tsx", archivo: "catalogo/proveedor-por-producto.ts", viaProceso: "COMPRA", llamar: () => listarProductosDeProveedor("x") },
   { nombre: "obtenerRecetaVigente", clave: "guardar_receta", pagina: "catalogo/recetas/[productoId]/page.tsx", archivo: "catalogo/recetas.ts", llamar: () => obtenerRecetaVigente("x") },

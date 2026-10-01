@@ -20,7 +20,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "conteo_frecuencia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { editar, sugerido, sugeridoNombre } = await searchParams;

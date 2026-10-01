@@ -51,8 +51,26 @@ commit, siempre con OK expreso del dueño.
   concurrente en una empresa SIN gerente no está protegida).
 - Jerarquía, paso 3: `docs/adr/ADR-008-rbac-accion-contexto.md` (decisiones, alternativas descartadas y riesgos abiertos). Con esto el
   paso de jerarquía queda cerrado.
+- Operaciones/POS/catálogo, grupo A (19 claves nuevas, sin schema): `stock_seccion_habitual`, `conteo_frecuencia`, `stock_reclasificar`,
+  `conteo_resolver_pendiente`, `promociones_activar`, `promociones_marcar_combo`, `producto_ver_catalogo`, `producto_presentaciones`,
+  `producto_disponibilidad`, `insumo_alta`, `insumo_renombrar_fusionar`, `categoria_alta`, `proveedor_alta`, `pos_alta_mesa`,
+  `pos_limite_mesas_abiertas`, `pos_abrir_cuenta`, `pos_enviar_a_cocina`, `pos_liberar_mesa`, `pos_emitir_boleta_corregida`. Migración de datos
+  `20261001130000_particion_permisos_stock_pos_catalogo` (con `down.sql`; probada con 2 empresas por el banco
+  `test/permisos/particion-migracion-harness.ts`, que reusan los grupos siguientes). Los padres NO se borran (expand): `stock_minimo`,
+  `pos_cerrar_cuenta`, `grupos_familia`, `proceso_control`, `promociones_config`, `alta_producto`, `editar_producto`, `pos_mesas` y
+  `pos_tomar_pedido` conservan solo lo que quedó con ellos y 4 cambian de descripción. Gate de 7 comandos limpio en la misma corrida de tests
+  (323 archivos / 3826 tests; e2e 407, tras ajustar un spec que usaba el rol viejo y sumar el caso «Editar y Desactivar son permisos separados»). El «mozo» pasa a necesitar también
+  `pos_abrir_cuenta`, `pos_enviar_a_cocina` y `pos_liberar_mesa` (fixtures de test actualizados; una matriz ya armada a mano se copió sola).
+- Grupo B (11 claves nuevas, sin schema; mismo commit que el grupo A por decisión del dueño): `motivos_movimiento` → `motivos_merma` y
+  `motivos_destino_consumo` (empresa, con la pantalla partida en `/movimientos/motivos-merma` y `/movimientos/destinos-consumo`);
+  `proceso_transferencia_sucursal` → `traspaso_ver_bandeja`, `traspaso_solicitar`, `traspaso_enviar_directo`, `traspaso_aprobar`,
+  `traspaso_cancelar_solicitud`, `traspaso_rechazar_solicitud`, `traspaso_aceptar`, `traspaso_rechazar_envio`, `traspaso_confirmar_reingreso`.
+  Migración `20261001140000_particion_permisos_motivos_traspasos` (con `down.sql`, mismo banco de pruebas). Estos dos padres SÍ se retiran
+  del catálogo (la fila `Accion` queda hasta el contract). La bandeja deshabilita cada botón según su clave. Gate de 7 comandos limpio (A+B juntos): 324 archivos / 3851 tests; e2e 408.
+- Falta de operaciones: grupo C (`carta` → 8 `carta_*`). Dudas a revisar en C: `carta_portal`,
+  `promociones_activar` y `pos_limite_mesas_abiertas` pueden actuar a nivel empresa o de toda la sucursal.
 - Fase de contract (borrar las `Accion` padre, incluidas `ver_reportes_*`) en un deploy posterior.
-- Siguiente en el orden: operaciones/POS/carta/catálogo, después administración.
+- Siguiente en el orden: grupo C, después administración.
 
 ## Sin empezar (necesitan visto bueno del dueño antes de implementar)
 

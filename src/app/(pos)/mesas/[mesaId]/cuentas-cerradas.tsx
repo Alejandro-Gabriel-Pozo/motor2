@@ -18,7 +18,7 @@ import { EmitirBoletaCorregida } from "./emitir-boleta-corregida";
  * «desactualizada» (se anuló una línea después de imprimirla) no se reimprime y habilita «Emitir boleta corregida»; «anulada», todo
  * deshabilitado.
  */
-export function CuentasCerradas({ boletas, puede }: { boletas: BoletaDeCuenta[]; puede: boolean }) {
+export function CuentasCerradas({ boletas, puede, puedeCorregir }: { boletas: BoletaDeCuenta[]; puede: boolean; puedeCorregir: boolean }) {
   const { reimprimirBoleta } = useImpresion();
   if (!boletas.length) return null;
 
@@ -45,7 +45,7 @@ export function CuentasCerradas({ boletas, puede }: { boletas: BoletaDeCuenta[];
               </span>
               <span className="flex items-center gap-3">
                 {b.estado === "anulada" && <span className="text-[12.5px] font-semibold text-[var(--mesa-ocupada)]">Venta anulada</span>}
-                <EmitirBoletaCorregida boleta={b} hora={hora} puede={puede} />
+                <EmitirBoletaCorregida boleta={b} hora={hora} puede={puedeCorregir} />
                 <button
                   type="button"
                   className={BOTON_CHICO}

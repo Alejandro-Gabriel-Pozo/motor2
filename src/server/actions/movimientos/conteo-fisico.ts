@@ -94,11 +94,11 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
  * "toda mutación pasa por conPermiso" (plan de migración, convenciones).
  *
  * Desde la Task #41 (Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
- * (`conPermiso("proceso_control")`) → caso de uso (`casos-de-uso/resolver-conteo-pendiente.ts`: carga del conteo, sección/estado,
+ * (`conPermiso("conteo_resolver_pendiente")`) → caso de uso (`casos-de-uso/resolver-conteo-pendiente.ts`: carga del conteo, sección/estado,
  * ramas "resuelto"/"ajustar", persistencia) → `aResultadoAccion`. Sin guard de comando (ver `resolver-conteo.schema.ts`).
  */
 export async function resolverConteoPendiente(conteoId: string, comoResolver: ComoResolverConteo): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
+  return conPermiso("conteo_resolver_pendiente", async (ctx) => {
     return aResultadoAccion(await resolverConteoPendienteCasoDeUso(ctx, conteoId, comoResolver));
   });
 }

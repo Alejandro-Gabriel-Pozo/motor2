@@ -16,7 +16,7 @@ export function LiberarMesa({ cuentaId, puede }: { cuentaId: string; puede: bool
         type="button"
         className={BOTON_SECUNDARIO}
         disabled={!puede || pending}
-        title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."}
+        title={puede ? undefined : "Tu rol puede ver la mesa pero no liberarla."}
         onClick={() => ejecutar(() => liberarMesa(cuentaId))}
       >
         {pending ? "Liberando…" : "Liberar mesa"}

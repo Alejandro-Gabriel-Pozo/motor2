@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
-import { abrirComoRol } from "./fixtures/rol-pos";
+import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA en la pantalla de la mesa (docs/plan-selector-carta-pos-2026-09-25.md): la barra de
@@ -236,7 +236,7 @@ test("un PV sin carta está en «Fuera de carta» y se puede agregar", async ({ 
 test("el mozo (sin permiso de carta) elige por sección de carta y agrega", async ({ browser, baseURL, sucursalId }) => {
   const cat = await sembrarCarta(sucursalId);
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 985 } });
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, PERMISOS_MOZO);
   try {
     const m = mozo.page;
     await m.goto(`/mesas/${mesa.id}`);

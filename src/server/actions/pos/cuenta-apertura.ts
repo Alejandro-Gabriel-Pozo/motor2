@@ -29,7 +29,7 @@ import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
  * `conTransaccionSerializable`), nunca las dos pasan.
  */
 export async function abrirCuenta(mesaId: string, comensales: number): Promise<ResultadoAccion> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
+  return conPermiso("pos_abrir_cuenta", async (ctx) => {
     const mesa = typeof mesaId === "string" ? await ctx.db.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
     if (!mesa) return error("No se encontró esa mesa en esta sucursal.");
     try {
@@ -63,7 +63,7 @@ export async function abrirCuenta(mesaId: string, comensales: number): Promise<R
  * precio de cada ítem.
  */
 export async function corregirComensales(cuentaId: string, comensales: number): Promise<ResultadoAccion> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
+  return conPermiso("pos_abrir_cuenta", async (ctx) => {
     return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
@@ -117,7 +117,7 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
  * ausencia) registrada.
  */
 export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
+  return conPermiso("pos_liberar_mesa", async (ctx) => {
     return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
