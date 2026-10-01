@@ -136,7 +136,11 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 - **Gerente cuyo rol de sucursal no es `admin`**: no alcanza las acciones de piso administrador (el piso sale del rol de la sucursal). Hoy
   el gerente es siempre un admin activo al asumir, pero nada impide después cambiarle el rol en una sucursal. Decisión de diseño abierta.
 - **Superadmin de plataforma**: no existe como concepto en el código; hoy es una función del core que su herramienta puede llamar.
-- **Add-on «la empresa edita/otorga permisos»** y catálogo/plan de permisos por empresa: probablemente necesitan schema.
+- **Add-on «la empresa edita/otorga permisos»** y catálogo/plan de permisos por empresa: el CABLEADO ya está (2026-10-01, sin schema): `politicaDeEmpresa`
+  (`core/permisos/politica-de-empresa.ts`, hoy siempre `permisosEditables: true`) y el gate `conEdicionDePermisos` (`server/actions/con-permiso.ts`) que
+  usan `guardarPermisos`, `crearRol` y `actualizarActivoRol`; el guardián `escrituras-de-permisos-por-politica.test.ts` exige que toda escritura de
+  `PermisoRol`/`Rol` de `src/` pase por él (excepción: el alta de empresa). Falta el DATO (dónde se guarda la perilla y el plan/catálogo de permisos
+  por empresa), que sí necesita schema y autorización expresa; cuando exista, solo cambia el cuerpo de `politicaDeEmpresa`.
 - **Suscripción** (primera acción de piso gerente): no existe; solo está preparado el piso.
 - **Partición pendiente**: solo el contract (borrar las `Accion` padre en un deploy posterior). Ya no queda ninguna clave mixta.
 - **Contexto empresa de las claves de producto**: vale si CUALQUIER membresía activa de la empresa la tiene (más laxo que la sucursal activa),

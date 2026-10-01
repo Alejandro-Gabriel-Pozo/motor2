@@ -14,6 +14,7 @@ import ts from "typescript";
 const GUARDAS_DE_CLAVE: Readonly<Record<string, { indice: number; forma: "clave" | "lista" }>> = {
   conPermiso: { indice: 0, forma: "clave" },
   conPermisoDeEmpresa: { indice: 0, forma: "clave" },
+  conEdicionDePermisos: { indice: 0, forma: "clave" },
   requerirVer: { indice: 0, forma: "clave" },
   requerirVerDeEmpresa: { indice: 0, forma: "clave" },
   requerirVerEnSucursal: { indice: 1, forma: "clave" },

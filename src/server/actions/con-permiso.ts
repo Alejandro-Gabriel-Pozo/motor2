@@ -2,6 +2,7 @@ import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contex
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/core/permisos/gate";
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
+import { MENSAJE_PERMISOS_DE_PLATAFORMA, politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
 import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
 import { error, type ResultadoAccion } from "./tipos";
@@ -31,6 +32,24 @@ export async function conPermisoDeEmpresa<T extends ResultadoAccion = ResultadoA
   fn: (ctx: ContextoUsuario) => Promise<T>
 ): Promise<T> {
   return conGate((ctx) => requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db), fn);
+}
+
+/**
+ * Como `conPermisoDeEmpresa` para lo que EDITA los permisos de la empresa (la matriz de `PermisoRol` y el alta/activación de roles): además de
+ * la clave, exige que la PLATAFORMA le deje a la empresa editar permisos (`politicaDeEmpresa`, el add-on de ADR-008). Primero se gatea la clave
+ * (quien no tiene el permiso no se entera de la política) y después la política. Toda escritura de `PermisoRol`/`Rol` de `src/` pasa por
+ * acá (guardián `escrituras-de-permisos-por-politica.test.ts`).
+ */
+export async function conEdicionDePermisos<T extends ResultadoAccion = ResultadoAccion>(
+  accionClave: AccionDeEmpresa,
+  fn: (ctx: ContextoUsuario) => Promise<T>
+): Promise<T> {
+  return conGate(async (ctx) => {
+    const gate = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db);
+    if (!gate.ok) return gate;
+    const politica = await politicaDeEmpresa(ctx.empresaId, ctx.db);
+    return politica.permisosEditables ? { ok: true } : { ok: false, mensaje: MENSAJE_PERMISOS_DE_PLATAFORMA };
+  }, fn);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conPermisoDeEmpresa } from "../con-permiso";
+import { conEdicionDePermisos } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerDeEmpresa } from "../con-sesion";
 
@@ -13,7 +13,7 @@ export async function listarRoles() {
 
 /** Equivalente de crearRolDesdePanel (Core.js:968-983). */
 export async function crearRol(nombre: string): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("gestion_roles", async (ctx) => {
+  return conEdicionDePermisos("gestion_roles", async (ctx) => {
     const n = texto(nombre).toLowerCase();
     if (!n) return error("El nombre del rol no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre del rol");
@@ -36,7 +36,7 @@ export async function crearRol(nombre: string): Promise<ResultadoAccion> {
  *     reasignarlas antes.
  */
 export async function actualizarActivoRol(rolId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("gestion_roles", async (ctx) => {
+  return conEdicionDePermisos("gestion_roles", async (ctx) => {
     const rol = await ctx.db.rol.findUnique({ where: { id: rolId } });
     if (!rol) return error("No se encontró ese rol.");
 

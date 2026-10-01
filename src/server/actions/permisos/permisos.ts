@@ -13,7 +13,7 @@ import {
 } from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import { conPermisoDeEmpresa } from "../con-permiso";
+import { conEdicionDePermisos } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerDeEmpresa } from "../con-sesion";
 
@@ -59,7 +59,7 @@ const estadoValido = (e: EstadoPermiso | undefined): e is EstadoPermiso => !!e &
  *   lo absorbe (se edita unas pocas veces por semana, el costo es irrelevante).
  */
 export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("gestion_permisos", async (ctx) => {
+  return conEdicionDePermisos("gestion_permisos", async (ctx) => {
     if (!Array.isArray(cambios)) return error("No hay cambios para guardar.");
     if (cambios.length > MAXIMO_CAMBIOS) return error("Son demasiados cambios de una vez.");
     for (const c of cambios) {
