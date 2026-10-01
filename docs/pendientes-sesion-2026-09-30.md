@@ -48,7 +48,9 @@ commit, siempre con OK expreso del dueño.
   gerente lo toca, no puede desactivar su cuenta ni su última sucursal; el bootstrap no crea un segundo), acción `transferirGerencia` con
   auditoría y migración de datos `20261001120000_gerente_unico_por_empresa` (un gerente por empresa: el más antiguo, o el admin activo más
   antiguo). Falta: la UI del traspaso de gerencia, el índice único en la base (schema, requiere autorización expresa; hoy la asignación
-  concurrente en una empresa SIN gerente no está protegida) y el ADR-008 (paso 3).
+  concurrente en una empresa SIN gerente no está protegida).
+- Jerarquía, paso 3: `docs/adr/ADR-008-rbac-accion-contexto.md` (decisiones, alternativas descartadas y riesgos abiertos). Con esto el
+  paso de jerarquía queda cerrado.
 - Fase de contract (borrar las `Accion` padre, incluidas `ver_reportes_*`) en un deploy posterior.
 - Siguiente en el orden: operaciones/POS/carta/catálogo, después administración.
 
