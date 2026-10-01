@@ -62,10 +62,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
   },
   {
     id: "movimientos",
-    // NAV_MOVIMIENTOS trae 2 links cruzados a Stock/Reportes al final —
-    // sobran acá, cada uno ya es su propio grupo del sidebar.
     label: "Movimientos",
-    items: NAV_MOVIMIENTOS.filter((i) => i.href !== "/stock/consolidado" && i.href !== "/reportes"),
+    items: NAV_MOVIMIENTOS,
   },
   {
     id: "stock",
@@ -155,6 +153,26 @@ export function accionDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV): Acc
   const candidatos = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU].filter((i) => i.accion && (ruta === i.href || ruta.startsWith(`${i.href}/`)));
   candidatos.sort((a, b) => b.href.length - a.href.length);
   return candidatos[0]?.accion ?? null;
+}
+
+/** Las rutas de todos los ítems del menú completo, sin filtrar por permiso (no son datos sensibles: son las rutas de la aplicación). */
+export function hrefsDelMenu(grupos: GrupoNav[] = GRUPOS_NAV): string[] {
+  return grupos.flatMap((g) => g.items.map((i) => i.href));
+}
+
+/**
+ * El ítem del menú que corresponde a la pantalla abierta: UNO solo, el de la ruta más larga que es prefijo de `pathname` (así
+ * `/carta/tema` es «Tema de la carta» y no también «Carta pública», y una pantalla hija como `/catalogo/recetas/[id]/historial`
+ * resalta «Recetas»). Se busca entre los ítems del menú COMPLETO y recién después se mira si el usuario lo ve: si gana uno que no ve,
+ * no se resalta ninguno (en vez de resaltar un ítem más corto que no es esta pantalla). La consulta (`?…`) y el ancla (`#…`) se ignoran.
+ */
+export function hrefActivoDelMenu(pathname: string, hrefsDelMenuCompleto: readonly string[], hrefsVisibles: ReadonlySet<string>): string | null {
+  const ruta = pathname.split(/[?#]/)[0].replace(/\/+$/, "");
+  let mejor: string | null = null;
+  for (const href of hrefsDelMenuCompleto) {
+    if ((ruta === href || ruta.startsWith(`${href}/`)) && (mejor === null || href.length > mejor.length)) mejor = href;
+  }
+  return mejor !== null && hrefsVisibles.has(mejor) ? mejor : null;
 }
 
 /** Las acciones del menú más las de las pantallas fuera del menú: todo lo que hay que consultar para decidir qué enlaces mostrar. */

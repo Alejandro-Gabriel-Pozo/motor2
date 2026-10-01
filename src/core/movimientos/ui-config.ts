@@ -94,8 +94,6 @@ export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClav
   { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local" },
   { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma" },
   { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo" },
-  { href: "/stock/consolidado", label: "Stock →" },
-  { href: "/reportes", label: "Reportes →" },
 ];
 
 // Verificación en tiempo de import: todo slug de PROCESOS_UI tiene que

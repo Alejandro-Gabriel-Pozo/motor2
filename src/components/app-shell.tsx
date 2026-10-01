@@ -1,6 +1,6 @@
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
-import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso } from "@/core/navegacion/estructura";
+import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu } from "@/core/navegacion/estructura";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { after } from "next/server";
 import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
@@ -31,7 +31,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
 
   return (
     <div className="flex flex-1">
-      <SidebarColapsable grupos={grupos} />
+      <SidebarColapsable grupos={grupos} hrefsDelMenu={hrefsDelMenu()} />
       {/* min-w-0: un ítem flex tiene `min-width: auto` (el ancho mínimo de su contenido) y, sin esto, una tabla ancha, aunque esté dentro de su propio
           `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}

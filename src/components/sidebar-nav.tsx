@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import type { GrupoNav } from "@/core/navegacion/estructura";
+import { hrefActivoDelMenu, type GrupoNav } from "@/core/navegacion/estructura";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 
-function grupoActivo(grupo: GrupoNav, pathname: string): boolean {
-  return grupo.items.some((i) => (i.href === "/reportes" ? pathname === "/reportes" : pathname === i.href || pathname.startsWith(`${i.href}/`)));
+function grupoActivo(grupo: GrupoNav, hrefActivo: string | null): boolean {
+  return hrefActivo !== null && grupo.items.some((i) => i.href === hrefActivo);
 }
 
-export function SidebarNav({ grupos }: { grupos: GrupoNav[] }) {
+/** `hrefsDelMenu`: las rutas del menú COMPLETO (no solo las visibles), para que la pantalla de un ítem que el usuario no ve no resalte uno más corto. */
+export function SidebarNav({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; hrefsDelMenu: readonly string[] }) {
   const pathname = usePathname();
+  const hrefActivo = hrefActivoDelMenu(pathname, hrefsDelMenu, new Set(grupos.flatMap((g) => g.items.map((i) => i.href))));
   const [expandido, setExpandido] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(grupos.map((g) => [g.id, grupoActivo(g, pathname)]))
+    Object.fromEntries(grupos.map((g) => [g.id, grupoActivo(g, hrefActivo)]))
   );
 
   // Al navegar a un grupo distinto, ese grupo se abre solo — sin tocar el
@@ -24,7 +26,7 @@ export function SidebarNav({ grupos }: { grupos: GrupoNav[] }) {
   const [pathnamePrevio, setPathnamePrevio] = useState(pathname);
   if (pathname !== pathnamePrevio) {
     setPathnamePrevio(pathname);
-    const activo = grupos.find((g) => grupoActivo(g, pathname));
+    const activo = grupos.find((g) => grupoActivo(g, hrefActivo));
     if (activo) setExpandido((prev) => (prev[activo.id] ? prev : { ...prev, [activo.id]: true }));
   }
 
@@ -45,11 +47,12 @@ export function SidebarNav({ grupos }: { grupos: GrupoNav[] }) {
             {abierto && (
               <div className="ml-2 flex flex-col gap-0.5 border-l border-neutral-200 pl-2 dark:border-neutral-800">
                 {grupo.items.map((item) => {
-                  const activo = item.href === "/reportes" ? pathname === "/reportes" : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const activo = item.href === hrefActivo;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
+                      aria-current={activo ? "page" : undefined}
                       className={`rounded px-2 py-1 ${
                         activo
                           ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
