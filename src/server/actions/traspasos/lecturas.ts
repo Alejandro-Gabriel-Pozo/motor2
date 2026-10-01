@@ -27,13 +27,14 @@ const TAMANO_PAGINA_HISTORIAL = 30;
  * Todo lo que sigue "en curso" — quien las cumple nunca es historial. Las
  * primeras 3 son "hay algo para ACCIONAR" de este lado (paraAprobar/
  * paraAceptar/paraReingreso); las últimas 2 son lo que ESTA sucursal
- * INICIÓ (iniciadoPor) y sigue esperando que decida la otra — antes
- * faltaban del todo, así que una solicitud/envío propio en curso se
- * mezclaba con el historial ya resuelto (hallazgo de la auditoría de
- * motor2). `iniciadoPor` es necesario en la condición de ENVIADA: un PULL
- * que Origen ya aprobó también queda ENVIADA con origenSucursalId=yo,
- * pero ahí lo inició Destino (paraAceptar del otro lado) — yo ya hice lo
- * mío, no estoy "esperando" en el mismo sentido que un PUSH propio.
+ * mandó y sigue esperando que decida la otra: mi solicitud PULL sin
+ * respuesta, y todo lo que YA SALIÓ de mi stock como Origen y el Destino
+ * todavía no aceptó (ENVIADA). Esto último vale con cualquier
+ * `iniciadoPor`: un PULL que aprobé también queda ENVIADA con
+ * origenSucursalId=yo, el stock ya salió de mi Kardex y no está en ningún
+ * lado hasta que el Destino acepte — mismo estado que un PUSH propio, así
+ * que no debe esconderse en el historial (el indicador de stock en tránsito
+ * de /stock/consolidado lo cuenta igual).
  */
 function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInput[] {
   return [
@@ -41,7 +42,7 @@ function condicionesEnCurso(sucursalId: string): Prisma.TraspasoSucursalWhereInp
     { destinoSucursalId: sucursalId, estado: "ENVIADA" },
     { origenSucursalId: sucursalId, estado: "RECHAZADA_DESTINO" },
     { destinoSucursalId: sucursalId, estado: "SOLICITADA", iniciadoPor: "DESTINO" }, // mi propia solicitud PULL, esperando que Origen decida
-    { origenSucursalId: sucursalId, estado: "ENVIADA", iniciadoPor: "ORIGEN" }, // mi propio envío PUSH, esperando que Destino decida
+    { origenSucursalId: sucursalId, estado: "ENVIADA" }, // lo que salió de mi stock (PUSH propio o PULL que aprobé), esperando que Destino acepte
   ];
 }
 
@@ -79,7 +80,7 @@ export async function obtenerBandejaTransferencias(sucursalId: string, cursorHis
   const esperando = enCurso.filter(
     (t) =>
       (t.destinoSucursalId === sucursalId && t.estado === "SOLICITADA" && t.iniciadoPor === "DESTINO") ||
-      (t.origenSucursalId === sucursalId && t.estado === "ENVIADA" && t.iniciadoPor === "ORIGEN")
+      (t.origenSucursalId === sucursalId && t.estado === "ENVIADA")
   );
 
   const hayMasHistorial = historialMasUno.length > TAMANO_PAGINA_HISTORIAL;

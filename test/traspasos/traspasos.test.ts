@@ -305,11 +305,17 @@ describe("Traspasos entre sucursales", () => {
     await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaATrasAprobar = await obtenerBandejaTransferencias(sucursalAId);
     expect(bandejaATrasAprobar.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
-    expect(bandejaATrasAprobar.historial.map((t) => t.id)).toContain(sol.id);
-    // A ya aprobó y ya no tiene nada más que hacer — un PULL que A aprobó
-    // NO es un envío propio de A (lo inició B), así que sigue siendo
-    // historial para A, no "esperando" (a diferencia de un PUSH directo).
-    expect(bandejaATrasAprobar.esperando.map((t) => t.id)).not.toContain(sol.id);
+    // A ya aprobó y envió: el stock salió de su Kardex y B todavía no lo aceptó, igual que un PUSH propio — queda "esperando" (no historial)
+    // hasta que B decida, aunque la haya iniciado B.
+    expect(bandejaATrasAprobar.historial.map((t) => t.id)).not.toContain(sol.id);
+    expect(bandejaATrasAprobar.esperando.map((t) => t.id)).toContain(sol.id);
+
+    await comoB();
+    expect((await aceptarTransferencia(sol.id, seccionBId)).ok).toBe(true);
+    await comoA();
+    const bandejaATrasAceptar = await obtenerBandejaTransferencias(sucursalAId);
+    expect(bandejaATrasAceptar.esperando.map((t) => t.id)).not.toContain(sol.id);
+    expect(bandejaATrasAceptar.historial.map((t) => t.id)).toContain(sol.id);
   });
 
   it("un PUSH directo propio queda 'esperando' (no historial) para quien lo envió, hasta que la otra sucursal decida", async () => {

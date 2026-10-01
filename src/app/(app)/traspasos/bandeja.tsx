@@ -352,7 +352,7 @@ export function Bandeja({
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium">Esperando respuesta (lo iniciaste vos)</h2>
+        <h2 className="mb-2 text-sm font-medium">Esperando respuesta (pediste o enviaste vos)</h2>
         <div className="flex flex-col gap-2">
           {esperando.map((f) => (
             <FilaEsperando key={f.id} fila={f} permisos={permisos} />
