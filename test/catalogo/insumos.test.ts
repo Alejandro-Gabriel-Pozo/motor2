@@ -50,6 +50,15 @@ describe("renombrarOFusionarInsumo", () => {
     expect(await prisma.insumo.count()).toBe(2);
   });
 
+  it("solo el booleano true confirma la fusión: un valor truthy que llega del navegador (\"false\", 1) no fusiona nada", async () => {
+    await prisma.insumo.create({ data: { nombre: "Harina premium" } });
+    for (const falsaConfirmacion of ["false", 1, {}]) {
+      const resultado = await renombrarOFusionarInsumo(insumoAId, "Harina premium", falsaConfirmacion as unknown as boolean);
+      expect(resultado.ok).toBe(false);
+    }
+    expect(await prisma.insumo.count()).toBe(2);
+  });
+
   it("con confirmarFusion=true, mueve los productos del insumo viejo y lo borra", async () => {
     const insumoB = await prisma.insumo.create({ data: { nombre: "Harina premium" } });
     await darDeAltaProducto({ nombre: "Harina A", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, insumoId: insumoAId });

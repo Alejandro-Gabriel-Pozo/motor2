@@ -161,7 +161,8 @@ export async function renombrarOFusionarInsumo(
       const chocaUnidad = await validarFusionInsumos(insumoId, existente.id, ctx.db);
       if (chocaUnidad) return error(chocaUnidad);
 
-      if (!confirmarFusion) {
+      // `=== true`, no truthy: el argumento llega del navegador, y un "false" o un 1 no es una confirmación.
+      if (confirmarFusion !== true) {
         return error(`Ya existe el insumo "${existente.nombre}" — hace falta confirmar la fusión antes de aplicarla.`);
       }
 
