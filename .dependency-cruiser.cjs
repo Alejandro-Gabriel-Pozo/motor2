@@ -18,6 +18,17 @@ const EXCEPCIONES = require("./.dependency-cruiser-excepciones.cjs");
 /** Los casos de uso de mutaciones (Task #41, Fase M): `src/server/actions/<dominio>/casos-de-uso/<verbo>.ts`. */
 const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 
+/**
+ * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
+ * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`) y el catálogo de claves de permiso
+ * (`core/permisos/acciones.ts`, `capacidades-sucursal.ts`: solo tipos y constantes). Lista CERRADA: un archivo nuevo de `core/auth`,
+ * `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`.
+ */
+const ALCANCE_CARTA_PUBLICA = [
+  "^src/core/auth/(base|rol-de-ejecucion)\\.ts$",
+  "^src/core/permisos/(acciones|capacidades-sucursal)\\.ts$",
+];
+
 /** Ruta literal (con `/`) → expresión regular anclada que matchea ESE archivo y nada más. */
 function rutaExacta(ruta) {
   return `^${ruta.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
@@ -197,6 +208,22 @@ module.exports = {
       severity: "error",
       from: { path: "^src/(app/\\(carta-publica\\)/|components/carta-publica/)" },
       to: { path: "^src/(core/auth/|server/actions/|core/permisos/)" },
+    },
+    {
+      name: "carta-publica-alcance",
+      comment:
+        "La carta pública no alcanza —ni siquiera transitivamente— sesión, permisos, Server Actions ni lib/auth.ts, salvo lo de ALCANCE_CARTA_PUBLICA (lista cerrada, arriba). `carta-publica-aislada` solo mira imports directos: un helper intermedio los esquivaría.",
+      severity: "error",
+      from: { path: "^src/(app/\\(carta-publica\\)/|components/carta-publica/|core/carta/publica-sin-sesion\\.ts$)" },
+      to: { path: "^src/(core/auth/|core/permisos/|server/|lib/auth\\.ts$)", pathNot: ALCANCE_CARTA_PUBLICA, reachable: true },
+    },
+    {
+      name: "publica-sin-sesion-solo-desde-carta-publica",
+      comment:
+        "core/carta/publica-sin-sesion.ts elige el cliente de base SIN sesión (la empresa sale de la URL): solo lo importan las páginas de app/(carta-publica)/. Importarlo desde la app con sesión o un caso de uso saltearía el contexto de usuario.",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/(app/\\(carta-publica\\)/|core/carta/publica-sin-sesion\\.ts$)" },
+      to: { path: "^src/core/carta/publica-sin-sesion\\.ts$" },
     },
     {
       name: "carta-admin-sin-rutas-de-catalogo",
