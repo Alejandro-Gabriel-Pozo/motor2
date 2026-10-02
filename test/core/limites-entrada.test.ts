@@ -20,7 +20,12 @@ import { guardComandoRegistrarMovimiento } from "../../src/core/features/movimie
 import { guardComandoReclasificarStock } from "../../src/core/features/movimientos/reclasificacion.guard";
 import { guardComandoConteoFisico } from "../../src/core/features/movimientos/conteo-fisico.guard";
 import { guardComandoRegistrarPagoConsignante } from "../../src/core/features/reportes/pago-consignante.guard";
-import { guardComandoCrearEnvioDirectoTraspaso, guardComandoCrearSolicitudTraspaso } from "../../src/core/features/traspasos/traspaso-comandos.guard";
+import {
+  guardComandoCrearEnvioDirectoTraspaso,
+  guardComandoCrearSolicitudTraspaso,
+  guardComandoRechazarEnvioTraspaso,
+  guardComandoRechazarSolicitudTraspaso,
+} from "../../src/core/features/traspasos/traspaso-comandos.guard";
 import { validarCabecera, validarIngredientes, validarPasos, type IngredienteInput } from "../../src/core/catalogo/receta-validacion";
 import { crearEmpresaSchema } from "../../src/core/features/empresa/empresa.schema";
 
@@ -72,6 +77,19 @@ describe("guards: topes de texto y de listas", () => {
     expect(mucho).toMatchObject({ ok: false, codigo: "rango" });
     expect(guardComandoRegistrarMovimiento({ ...movimientoBase, detalleLibre: largo(LARGO_MAXIMO_DETALLE) }).ok).toBe(true);
     expect(guardComandoRegistrarMovimiento({ ...movimientoBase, detalleLibre: largo(LARGO_MAXIMO_DETALLE + 1) })).toMatchObject({ ok: false, codigo: "largo" });
+  });
+
+  it("registrar movimiento: la referencia del proveedor de cada línea tiene tope de largo", () => {
+    const con = (referenciaProveedor: unknown) => guardComandoRegistrarMovimiento({ ...movimientoBase, items: [{ ...item, referenciaProveedor }] });
+    expect(con(largo(LARGO_MAXIMO_DETALLE)).ok).toBe(true);
+    expect(con(largo(LARGO_MAXIMO_DETALLE + 1))).toMatchObject({ ok: false, codigo: "largo" });
+  });
+
+  it("traspasos: el motivo de un rechazo (solicitud o envío) tiene tope de largo", () => {
+    for (const guard of [guardComandoRechazarSolicitudTraspaso, guardComandoRechazarEnvioTraspaso]) {
+      expect(guard({ id: "t-1", motivo: largo(LARGO_MAXIMO_DETALLE) }).ok).toBe(true);
+      expect(guard({ id: "t-1", motivo: largo(LARGO_MAXIMO_DETALLE + 1) })).toMatchObject({ ok: false, codigo: "largo" });
+    }
   });
 
   it("reclasificación: tope de destinos y de detalle", () => {

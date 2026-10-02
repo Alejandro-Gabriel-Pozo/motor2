@@ -41,6 +41,10 @@ export function guardComandoRegistrarMovimiento(entrada: unknown): ResultadoDato
   if (excedeLineas) return rechazar("rango", excedeLineas);
   const detalleValido = validarTextoLibre(detalleLibre, "El detalle", LARGO_MAXIMO_DETALLE);
   if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
+  for (const item of items) {
+    const referencia = validarTextoLibre((item as { referenciaProveedor?: unknown } | null)?.referenciaProveedor, "La referencia del proveedor", LARGO_MAXIMO_DETALLE);
+    if (!referencia.ok) return rechazar(referencia.codigo, referencia.mensaje);
+  }
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección.");
   const fechaValida = validarFechaOperacion(fecha);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);

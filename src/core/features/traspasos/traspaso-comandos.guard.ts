@@ -57,12 +57,14 @@ export function guardComandoCancelarSolicitudTraspaso(entrada: unknown): Resulta
   return aceptar({ traspasoId: traspasoId.valor });
 }
 
-/** Guard del comando «rechazar una solicitud»: el id, y el motivo normalizado como antes (`texto(motivo) || null`). */
+/** Guard del comando «rechazar una solicitud»: el id, y el motivo recortado (vacío → null, con tope de largo). */
 export function guardComandoRechazarSolicitudTraspaso(entrada: unknown): ResultadoDato<ComandoRechazarSolicitudTraspaso> {
   const { id, motivo } = (entrada ?? {}) as { id?: unknown; motivo?: unknown };
   const traspasoId = idDeTraspaso(id);
   if (!traspasoId.ok) return traspasoId;
-  return aceptar({ traspasoId: traspasoId.valor, motivo: texto(motivo) || null });
+  const motivoValido = validarTextoLibre(motivo, "El motivo", LARGO_MAXIMO_DETALLE);
+  if (!motivoValido.ok) return rechazar(motivoValido.codigo, motivoValido.mensaje);
+  return aceptar({ traspasoId: traspasoId.valor, motivo: motivoValido.valor });
 }
 
 /*
@@ -99,12 +101,14 @@ export function guardComandoAceptarTraspaso(entrada: unknown): ResultadoDato<Com
   return aceptar({ traspasoId: traspasoId.valor, seccionDestinoId, claveIdempotencia: clave.valor });
 }
 
-/** Guard del comando «rechazar un envío»: el id, y el motivo normalizado como antes (`texto(motivo) || null`). */
+/** Guard del comando «rechazar un envío»: el id, y el motivo recortado (vacío → null, con tope de largo). */
 export function guardComandoRechazarEnvioTraspaso(entrada: unknown): ResultadoDato<ComandoRechazarEnvioTraspaso> {
   const { id, motivo } = (entrada ?? {}) as { id?: unknown; motivo?: unknown };
   const traspasoId = idDeTraspaso(id);
   if (!traspasoId.ok) return traspasoId;
-  return aceptar({ traspasoId: traspasoId.valor, motivo: texto(motivo) || null });
+  const motivoValido = validarTextoLibre(motivo, "El motivo", LARGO_MAXIMO_DETALLE);
+  if (!motivoValido.ok) return rechazar(motivoValido.codigo, motivoValido.mensaje);
+  return aceptar({ traspasoId: traspasoId.valor, motivo: motivoValido.valor });
 }
 
 /** Guard del comando «confirmar el reingreso»: el id y la clave I3. */
