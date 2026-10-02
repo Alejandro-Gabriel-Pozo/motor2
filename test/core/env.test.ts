@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { describe, expect, it } from "vitest";
 import { parseEnv, validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
 
@@ -47,19 +46,15 @@ describe("parseEnv", () => {
     expect(() => parseEnv(ENV_VALIDO)).not.toThrow(); // ENV_VALIDO ya no tiene ninguna opcional
   });
 
-  it("hallazgo real (2026-09-28): el .env LOCAL de este repo tiene AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET vacíos — parseEnv los rechaza, correctamente", () => {
-    // No es un bug del schema: son requeridas de verdad (sin ellas, un login real con Google fallaría en producción). Lo que
-    // pasa es que este .env LOCAL nunca las necesitó: toda la suite de tests mockea la sesión (getUsuarioActual), sin pasar
-    // nunca por el login real de Google. Documentado acá para no repetir la sorpresa de "por qué esto no arranca" el día que
-    // esta validación se conecte al arranque real.
-    expect(process.env.AUTH_GOOGLE_ID).toBe("");
-    expect(process.env.AUTH_GOOGLE_SECRET).toBe("");
-    expect(() => parseEnv(process.env)).toThrow();
+  it("hallazgo real (2026-09-28): con AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET vacíos (como los dejaba un .env local sin login real) parseEnv rechaza, aunque lo demás esté completo", () => {
+    // No es un bug del schema: son requeridas de verdad (sin ellas, un login real con Google fallaría en producción). Un .env local las
+    // dejaba vacías porque toda la suite mockea la sesión (getUsuarioActual) y nunca pasa por el login de Google. La fuente es EXPLÍCITA:
+    // este test no lee process.env ni el .env de quien lo corre (en CI esas variables vienen con valores de relleno).
+    const googleVacio = { ...ENV_VALIDO, AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "" };
+    expect(() => parseEnv(googleVacio)).toThrow();
 
-    // DATABASE_URL/DIRECT_URL/AUTH_SECRET sí están completas en el .env local — solo Google falta.
-    expect(process.env.DATABASE_URL).toBeTruthy();
-    expect(process.env.DIRECT_URL).toBeTruthy();
-    expect(process.env.AUTH_SECRET).toBeTruthy();
+    // Solo Google falta: con valores, la misma fuente es válida — el rechazo es por esos dos campos y no por otra cosa.
+    expect(() => parseEnv({ ...googleVacio, AUTH_GOOGLE_ID: "id-de-prueba", AUTH_GOOGLE_SECRET: "secreto-de-prueba" })).not.toThrow();
   });
 });
 

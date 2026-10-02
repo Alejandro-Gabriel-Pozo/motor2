@@ -414,9 +414,15 @@ test.describe("carta pública: navegación y layout (C1–C4)", () => {
         expect(estilo.color).toBe("rgb(18, 52, 86)");
         expect([estilo.nombre, estilo.vueltas]).toEqual(["carta-nudge", "3"]);
         expect(await anterior.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+        // El deslizamiento es suave y `current` sale del scroll: hay que esperar a que la página DESTINO esté quieta antes del próximo clic. Sin esa
+        // espera, un clic con el scroll a medias (runner lento) parte de la página vieja, vuelve a ir al índice y el empujoncito nunca se apaga.
+        const enPagina = (n: number) =>
+          expect.poll(() => page.locator("[data-carta-slider]").evaluate((el, destino) => Math.abs(el.scrollLeft / el.clientWidth - destino) < 0.01, n), { message: `esperando la página ${n}` }).toBe(true);
         await siguiente.click(); // índice: sigue el empujoncito
+        await enPagina(1);
         await expect.poll(() => siguiente.evaluate((el) => getComputedStyle(el).animationName)).toBe("carta-nudge");
         await siguiente.click(); // primera sección: ya no
+        await enPagina(2);
         await expect.poll(() => siguiente.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
       }
       await page.emulateMedia({ reducedMotion: "reduce" });

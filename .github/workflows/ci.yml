@@ -36,6 +36,11 @@ jobs:
     name: Estático (tipos, lint, arquitectura, código muerto)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # knip carga `playwright.config.ts` para descubrir los specs, y esa config valida (sin conectarse) la forma de estas URLs: sin ellas no se
+    # lee la config y knip da por muertos global-setup/global-teardown. Acá no hay base; son los mismos valores de relleno del job e2e.
+    env:
+      MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,6 +48,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      # `prisma/fase-a/smoke-test.ts` importa el cliente aislado de la Fase A (node_modules/.prisma/fase-a-client), que solo existe si se genera; sin él knip
+      # lo marca como import sin resolver. No necesita base ni variables: solo lee el schema.
+      - name: Cliente de Prisma de la Fase A (para que knip resuelva su smoke test)
+        run: npx prisma generate --config prisma/fase-a/prisma.config.ts
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm run arquitectura
