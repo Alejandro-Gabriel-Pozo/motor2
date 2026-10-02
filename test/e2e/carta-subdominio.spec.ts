@@ -2,13 +2,13 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 
 /**
- * Carta pública por subdominio (ADR-006, Fase 6): `carta-<empresa>.<CARTA_DOMINIO_BASE>` reescribe `/` al portal y `/<sucursal>` a la carta
- * (`reglasRewriteCarta`, next.config.ts). playwright.config.ts fija `CARTA_DOMINIO_BASE=localhost` y la empresa de la base tiene slug `e2e` (fixtures/auth.ts); Chromium resuelve
- * `*.localhost` a loopback, sin DNS ni hosts. El puerto es el del servidor de la suite.
+ * Carta pública por subdominio (ADR-006, Fase 6): `<empresa>.<CARTA_DOMINIO_BASE>` reescribe `/` al portal y `/<sucursal>` a la carta
+ * (`reglasRewriteCarta`, next.config.ts). playwright.config.ts fija `CARTA_DOMINIO_BASE=carta.localhost` y la empresa de la base tiene slug `e2e` (fixtures/auth.ts); Chromium resuelve
+ * `*.localhost` (también `e2e.carta.localhost`) a loopback, sin DNS ni hosts. El puerto es el del servidor de la suite.
  */
 function origen(baseURL: string | undefined, empresa: string): string {
   const { port } = new URL(baseURL ?? "http://localhost");
-  return `http://carta-${empresa}.localhost${port ? `:${port}` : ""}`;
+  return `http://${empresa}.carta.localhost${port ? `:${port}` : ""}`;
 }
 
 test.describe("carta por subdominio", () => {
@@ -73,15 +73,67 @@ test.describe("carta por subdominio", () => {
 
     const portal = await pedir("/carta-publica/e2e");
     expect(portal.status()).toBe(307);
-    expect(portal.headers()["location"]).toBe("https://carta-e2e.localhost/");
+    expect(portal.headers()["location"]).toBe("https://e2e.carta.localhost/");
 
     const carta = await pedir("/carta-publica/e2e/central");
     expect(carta.status()).toBe(307);
-    expect(carta.headers()["location"]).toBe("https://carta-e2e.localhost/central");
+    expect(carta.headers()["location"]).toBe("https://e2e.carta.localhost/central");
 
     // `localhost` pelado (desarrollo) sigue sirviendo por path, sin redirigir.
     const local = await request.get(`${baseURL}/carta-publica/e2e/central`, { maxRedirects: 0 });
     expect(local.status()).not.toBe(307);
+  });
+
+  test("en el host de la carta todo lo que no es la carta da 404: login, auth, cron, la aplicación y el dominio base pelado (informe de seguridad S-04/S-05)", async ({ request, baseURL }) => {
+    const { port } = new URL(baseURL ?? "http://localhost");
+    const sufijo = port ? `:${port}` : "";
+    const pedir = (host: string, path: string) => request.get(`${baseURL}${path}`, { headers: { host: `${host}${sufijo}` }, maxRedirects: 0 });
+
+    for (const path of ["/login", "/api/auth/session", "/api/auth/signin", "/api/cron/sincronizar-dolar", "/api/cron/sincronizar-ipc", "/mesas/x", "/carta/tema", "/carta/portal", "/dashboard"]) {
+      const r = await pedir("e2e.carta.localhost", path);
+      expect(r.status(), path).toBe(404);
+      expect(await r.text(), path).not.toMatch(/csrfToken|providers|Iniciar sesión|<form/i);
+    }
+    // El dominio base pelado y los subdominios de dos niveles no son una carta.
+    for (const host of ["carta.localhost", "a.b.carta.localhost"]) {
+      expect((await pedir(host, "/")).status(), host).toBe(404);
+      expect((await pedir(host, "/login")).status(), host).toBe(404);
+    }
+    // El host de la app sigue sirviendo su login.
+    expect((await request.get(`${baseURL}/login`, { maxRedirects: 0 })).status()).toBe(200);
+  });
+
+  test("las cartas salen con CSP estricta y noindex; la app con CSP con nonce y sin 'unsafe-inline' en scripts (S-04)", async ({ request, baseURL, sucursalId }) => {
+    const { port } = new URL(baseURL ?? "http://localhost");
+    const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    const slug = `e2e-hdr-${marca}`;
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
+    try {
+      const carta = await request.get(`${baseURL}/carta-publica/e2e/${slug}`);
+      expect(carta.status()).toBe(200);
+      const cspCarta = carta.headers()["content-security-policy"];
+      expect(cspCarta).toContain("frame-ancestors 'none'");
+      expect(cspCarta).not.toContain("nonce-");
+      expect(carta.headers()["x-robots-tag"]).toContain("noindex");
+      expect(carta.headers()["x-frame-options"]).toBe("DENY");
+      expect(carta.headers()["x-content-type-options"]).toBe("nosniff");
+
+      const cartaSub = await request.get(`${baseURL}/${slug}`, { headers: { host: `e2e.carta.localhost${port ? `:${port}` : ""}` } });
+      expect(cartaSub.status()).toBe(200);
+      expect(cartaSub.headers()["content-security-policy"]).toBe(cspCarta);
+
+      const login = await request.get(`${baseURL}/login`);
+      const cspApp = login.headers()["content-security-policy"];
+      expect(cspApp).toMatch(/script-src[^;]*'nonce-[^']+'/);
+      expect(cspApp).not.toMatch(/script-src[^;]*'unsafe-(inline|eval)'/);
+      expect(cspApp).toContain("frame-ancestors 'none'");
+      expect(login.headers()["x-frame-options"]).toBe("DENY");
+      expect(login.headers()["referrer-policy"]).toBeTruthy();
+      expect(login.headers()["permissions-policy"]).toBeTruthy();
+    } finally {
+      await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    }
   });
 
   test("una empresa que no resuelve da 404, y el host sin subdominio no reescribe /<sucursal>", async ({ page, sucursalId, baseURL }) => {

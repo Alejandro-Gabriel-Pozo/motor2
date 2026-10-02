@@ -294,6 +294,18 @@ cada una — no reinventarlas de memoria):**
   para desarrollo y e2e). Sin la variable, la carta se sirve por path como
   antes (instalación de una empresa sin subdominio propio). Demostrado por
   mutación (sin la regla, el spec recibe 200 en vez de 307).
+  **Lote S-2 de seguridad (2026-10-02, informe 2026-10-01) — cambia lo anterior:**
+  la carta pasa a `<empresa>.carta.zuluhub.com.ar` (`CARTA_DOMINIO_BASE=carta.zuluhub.com.ar`,
+  wildcard `*.carta.zuluhub.com.ar`; sin el prefijo `carta-`). El formato viejo
+  (`carta-<empresa>.<base>` y el staging `*.app.zuluhub.com.ar`) se descarta sin
+  redirección: bajo la base nueva `carta-x` sería el slug de una empresa `carta-x` (404).
+  El límite (1) de arriba queda resuelto: en cualquier host de la zona de cartas
+  (`src/proxy.ts`) solo se sirve la raíz y `/<sucursal>`; login, `/api/*`, cron, la app,
+  el dominio base pelado y los subdominios de dos niveles dan 404 (un segmento suelto
+  como `/login` se reescribe a la carta y da 404 ahí). La cookie de sesión en producción
+  es `__Host-authjs.session-token`, que el navegador no comparte con subdominios. La carta
+  lleva CSP estática (sin nonce, para seguir siendo ISR) con `frame-ancestors 'none'` y
+  `X-Robots-Tag: noindex, nofollow`; la app, CSP con nonce por pedido (`core/seguridad/cabeceras.ts`).
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
   retirar el deployment externo.

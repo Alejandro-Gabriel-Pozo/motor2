@@ -73,6 +73,25 @@ export function leerHistorial(json: unknown, desdeISO: string): CotizacionDia[] 
   return dias.sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+/** Variación máxima aceptada contra la última cotización guardada (informe de seguridad 2026-10-01, S-19: una API de terceros comprometida o con un error no puede fijar un dólar absurdo). */
+const VARIACION_MAXIMA_DOLAR = 0.2;
+/** Pasada esta antigüedad de la última cotización guardada ya no se compara (una devaluación real acumula más que eso en un hueco largo). */
+const DIAS_VIGENCIA_COMPARACION = 7;
+/** Dos fuentes independientes que coinciden dentro de este margen confirman un salto grande (una devaluación legítima). */
+const TOLERANCIA_ENTRE_FUENTES = 0.05;
+
+/**
+ * ¿La cotización nueva es creíble frente a la última guardada? Dentro de ±20% (o sin una última reciente, o sin dato previo): sí. Más
+ * allá, solo si otra fuente independiente (`confirmacion`) da un valor dentro del 5% del nuevo; si no, no se guarda y se avisa.
+ */
+export function cotizacionPlausible(nueva: number, ultima: { fecha: Date; venta: number } | null, ahora: Date, confirmacion: number | null = null): boolean {
+  if (!ultima) return true;
+  const dias = (ahora.getTime() - ultima.fecha.getTime()) / 86_400_000;
+  if (dias > DIAS_VIGENCIA_COMPARACION) return true;
+  if (Math.abs(nueva / ultima.venta - 1) <= VARIACION_MAXIMA_DOLAR) return true;
+  return confirmacion !== null && Math.abs(nueva / confirmacion - 1) <= TOLERANCIA_ENTRE_FUENTES;
+}
+
 async function pedir(url: string): Promise<unknown> {
   const resp = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!resp.ok) throw new Error(`${new URL(url).host} respondió ${resp.status}`);
@@ -132,6 +151,23 @@ export async function sincronizarDolar(db: Db, ahora: Date = new Date()): Promis
       if (!hoy) errores.push("BCRA no trajo una cotización válida");
     } catch (e) {
       errores.push(`BCRA: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  if (hoy) {
+    const fila = await db.cotizacionDolar.findFirst({ where: { fecha: { lt: new Date(hoy.fecha) } }, orderBy: [{ fecha: "desc" }, { fuente: "desc" }] });
+    const previa = fila ? { fecha: fila.fecha, venta: Number(fila.venta) } : null;
+    if (!cotizacionPlausible(hoy.venta, previa, ahora)) {
+      let confirmacion: number | null = null;
+      try {
+        const otra = hoy.fuente === "BNA" ? leerBcra(await pedir(URL_BCRA)) : leerDolarApi(await pedir(URL_HOY));
+        confirmacion = otra?.venta ?? null;
+      } catch {
+        // sin segunda fuente no hay confirmación: el salto se descarta
+      }
+      if (!cotizacionPlausible(hoy.venta, previa, ahora, confirmacion)) {
+        errores.push(`cotización descartada: ${hoy.venta} se aparta más de ${VARIACION_MAXIMA_DOLAR * 100}% de la última guardada (${previa?.venta}) y no la confirma otra fuente`);
+        hoy = null;
+      }
     }
   }
   if (hoy) await guardarDia(db, hoy);

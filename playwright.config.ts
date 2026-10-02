@@ -101,8 +101,8 @@ export default defineConfig({
       // (@auth/core/lib/utils/env.js: trustHost ??= !!(AUTH_URL ?? AUTH_TRUST_HOST ?? VERCEL ?? NODE_ENV !== "production")). Sin esto cada auth() devuelve
       // UntrustedHost y se cae toda la suite autenticada. En `dev` no cambia nada. El nombre de la cookie de sesión tampoco cambia (http → sin prefijo __Secure-).
       AUTH_TRUST_HOST: "1",
-      // ADR-006, Fase 6: con esto next.config.ts arma el rewrite de carta-e2e.localhost (se lee al compilar, por eso está en el env del build); lo usa test/e2e/carta-subdominio.spec.ts.
-      CARTA_DOMINIO_BASE: "localhost",
+      // ADR-006, Fase 6: con esto next.config.ts arma el rewrite de e2e.carta.localhost (se lee al compilar, por eso está en el env del build); lo usa test/e2e/carta-subdominio.spec.ts.
+      CARTA_DOMINIO_BASE: "carta.localhost",
     },
     url: URL_BASE,
     reuseExistingServer: false,

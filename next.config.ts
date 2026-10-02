@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
+import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
+import { sirvePorHttps } from "./src/core/auth/cookie-sesion";
+import { cabecerasCarta, cabecerasComunes } from "./src/core/seguridad/cabeceras";
+
+const dominioBaseCarta = process.env.CARTA_DOMINIO_BASE?.trim().toLowerCase();
 
 const nextConfig: NextConfig = {
   // Silencia el warning de Turbopack: hay otro package-lock.json en la raíz
@@ -8,6 +12,18 @@ const nextConfig: NextConfig = {
   // no tiene nada que ver con este proyecto Next.js.
   turbopack: {
     root: __dirname,
+  },
+  // Cabeceras de seguridad (informe 2026-10-01, S-04). La CSP de la APP lleva nonce por pedido y la pone `src/proxy.ts`; acá van las
+  // comunes a todo y la CSP estática de la carta (sin nonce, para que siga siendo ISR), por path directo y por su host. Si dos reglas
+  // fijan la misma cabecera, gana la última: las de la carta van después.
+  async headers() {
+    const https = sirvePorHttps(process.env);
+    const carta = cabecerasCarta({ https });
+    return [
+      { source: "/:path*", headers: cabecerasComunes() },
+      { source: "/carta-publica/:path*", headers: carta },
+      ...(dominioBaseCarta ? [{ source: "/:path*", has: [{ type: "host" as const, value: patronHostZonaCarta(dominioBaseCarta) }], headers: carta }] : []),
+    ];
   },
   // ADR-006: /catalogo/carta pasó a /carta (carta como módulo propio, ya
   // no anidada bajo catálogo). No permanente a propósito: si el destino
@@ -22,7 +38,7 @@ const nextConfig: NextConfig = {
       ...reglasRedirectAppACarta(process.env.CARTA_DOMINIO_BASE),
     ];
   },
-  // ADR-006, Fase 6: carta-<empresa>.<CARTA_DOMINIO_BASE> sirve la carta pública sin mostrar /carta-publica en la URL. Sin la variable
+  // ADR-006, Fase 6: <empresa>.<CARTA_DOMINIO_BASE> sirve la carta pública sin mostrar /carta-publica en la URL. Sin la variable
   // (leída al compilar) no hay reglas. `revalidatePath` sigue operando sobre el path destino, no sobre el host.
   async rewrites() {
     return { beforeFiles: reglasRewriteCarta(process.env.CARTA_DOMINIO_BASE) };

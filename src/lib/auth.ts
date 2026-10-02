@@ -6,6 +6,7 @@ import { intentarBootstrapAdmin } from "@/core/auth/bootstrap";
 import { cookies } from "next/headers";
 import { inicioDeSesionPermitido, NOMBRES_COOKIE_DE_SESION } from "@/core/auth/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
+import { nombreCookieSesion, sirvePorHttps } from "@/core/auth/cookie-sesion";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -27,6 +28,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // que motivó reemplazar el modelo de auth entero).
   // Vence a las 12 horas sin actividad (ver duracion-sesion.ts); por defecto Auth.js la dejaba 30 días.
   session: { strategy: "database", maxAge: DURACION_SESION_S, updateAge: ACTUALIZAR_CADA_S },
+  // En producción con https la cookie de sesión es `__Host-` (ver core/auth/cookie-sesion.ts): sin Domain, Path=/ y Secure forzados.
+  cookies: {
+    sessionToken: {
+      name: nombreCookieSesion(process.env),
+      options: { httpOnly: true, sameSite: "lax", path: "/", secure: sirvePorHttps(process.env) },
+    },
+  },
   callbacks: {
     // Gate de acceso: rechaza el login ANTES de que el adapter cree
     // User/Account, para que una cuenta de Google fuera de la empresa (y

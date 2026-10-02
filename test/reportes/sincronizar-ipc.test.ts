@@ -95,3 +95,56 @@ describe("cron del IPC — aviso cuando la serie queda vencida", () => {
     expect(reportarErrorUnaVez).not.toHaveBeenCalled();
   });
 });
+
+describe("sincronizarIPC — respuestas de un tercero con forma rara (informe de seguridad S-19)", () => {
+  beforeEach(limpiarBaseDeTest);
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("pide la serie con un tope de tiempo (una API colgada no deja el cron colgado)", async () => {
+    const inits: (RequestInit | undefined)[] = [];
+    vi.stubGlobal("fetch", async (...args: [string, RequestInit?]) => {
+      inits.push(args[1]);
+      return { ok: true, status: 200, json: async () => ({ data: [] }) };
+    });
+    await sincronizarIPC(prisma);
+    expect(inits[0]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("una respuesta sin serie lanza (el cron responde error) y no guarda nada", async () => {
+    vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: async () => ({ data: "x" }) }));
+    await expect(sincronizarIPC(prisma)).rejects.toThrow(/sin serie/);
+    vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: async () => null }));
+    await expect(sincronizarIPC(prisma)).rejects.toThrow(/sin serie/);
+    expect(await prisma.indicePrecio.count()).toBe(0);
+  });
+
+  it("saltea las filas con fecha inválida o valor negativo, cero, NaN o no numérico; guarda las válidas", async () => {
+    vi.stubGlobal("fetch", async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [["2026-01-01", 100], ["basura", 101], ["2026-02-01", -5], ["2026-03-01", 0], ["2026-04-01", "120"], ["2026-05-01", null], null, ["2026-06-01", 130]] }),
+    }));
+    const r = await sincronizarIPC(prisma);
+    expect(r.mesesNuevos).toBe(2);
+    expect(await prisma.indicePrecio.count()).toBe(2);
+  });
+});
+
+describe("cron del IPC — autorización", () => {
+  beforeEach(limpiarBaseDeTest);
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.CRON_SECRET;
+  });
+
+  it("sin el secreto exacto responde 401 y no consulta la API", async () => {
+    process.env.CRON_SECRET = "secreto-de-prueba";
+    const pedido = vi.fn();
+    vi.stubGlobal("fetch", pedido);
+    for (const authorization of [undefined, "Bearer otro", "secreto-de-prueba", "Bearer secreto-de-pruebaX"]) {
+      const resp = await GET(new Request("http://localhost/api/cron/sincronizar-ipc", { headers: authorization ? { authorization } : {} }));
+      expect(resp.status, String(authorization)).toBe(401);
+    }
+    expect(pedido).not.toHaveBeenCalled();
+  });
+});

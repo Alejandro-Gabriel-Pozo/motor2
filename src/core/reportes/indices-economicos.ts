@@ -170,17 +170,22 @@ export interface ResultadoSincronizacionIPC {
  * decisión explícita, no un sobrescribe silencioso de este job.
  */
 export async function sincronizarIPC(db: Db): Promise<ResultadoSincronizacionIPC> {
-  const resp = await fetch(URL_API_SERIES, { cache: "no-store" });
+  const resp = await fetch(URL_API_SERIES, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!resp.ok) throw new Error(`API de series de tiempo (datos.gob.ar) respondió ${resp.status}`);
   const json = (await resp.json()) as { data: [string, number][] };
+  if (!Array.isArray(json?.data)) throw new Error("API de series de tiempo (datos.gob.ar): respuesta sin serie");
 
   const existentes = await db.indicePrecio.findMany({ select: { mes: true } });
   const mesesExistentes = new Set(existentes.map((f) => claveMes(f.mes)));
 
   let mesesNuevos = 0;
   let ultimoMesDisponible: string | null = null;
-  for (const [fechaStr, valor] of json.data) {
+  for (const fila of json.data) {
+    const [fechaStr, valor]: unknown[] = Array.isArray(fila) ? fila : [];
+    if (typeof fechaStr !== "string" || typeof valor !== "number" || !Number.isFinite(valor) || valor <= 0) continue;
     const mes = new Date(fechaStr); // "YYYY-MM-01" — Date() lo interpreta como medianoche UTC, mismo criterio que el resto del proyecto.
+    // Un dato de un tercero con forma rara se saltea, no se guarda (informe de seguridad S-19). No hay tope de variación: la inflación mensual llegó a 25,5% (dic-2023).
+    if (Number.isNaN(mes.getTime())) continue;
     const clave = claveMes(mes);
     if (!ultimoMesDisponible || clave > ultimoMesDisponible) ultimoMesDisponible = clave;
     if (mesesExistentes.has(clave)) continue;

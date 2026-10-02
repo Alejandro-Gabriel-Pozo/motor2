@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { cartaPublica, empresaCartaPublica } from "@/core/carta/publica-sin-sesion";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 
@@ -12,11 +13,12 @@ export function generateStaticParams() {
   return [];
 }
 
-async function resolver(empresa: string, sucursal: string) {
+// `cache` de React: generateMetadata y la página resuelven lo mismo en el mismo pedido; se consulta la base una sola vez.
+const resolver = cache(async (empresa: string, sucursal: string) => {
   const empresaCarta = await empresaCartaPublica(empresa);
   if (!empresaCarta) return null;
   return cartaPublica(empresaCarta, sucursal);
-}
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ empresa: string; sucursal: string }> }): Promise<Metadata> {
   const { empresa, sucursal } = await params;

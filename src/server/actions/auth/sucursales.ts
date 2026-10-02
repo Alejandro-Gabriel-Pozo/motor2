@@ -7,6 +7,7 @@ import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { gerentesQueQuedaranSinSucursalActiva, tuvoRolAdminEnLaEmpresa } from "@/core/permisos/gerencia";
 import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
+import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
@@ -149,6 +150,7 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
         valorAnterior: sucursal.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: null,
       });
     });
+    revalidarCartasPublicas(); // la carta pública de una sucursal desactivada tiene que dejar de verse al instante, no a los 5 minutos
     // A propósito SIN `refrescarVistaSiHaceFalta()`: su único llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente, y
     // otras pantallas que reusen ese componente heredan lo mismo (ver la regla en refrescar.ts).
     return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
@@ -176,6 +178,7 @@ export async function renombrarSucursal(sucursalId: string, nombreNuevo: string)
         valorAnterior: sucursal.nombre, valorNuevo: nombre, actorId: ctx.usuarioId, sucursalId: null,
       });
     });
+    revalidarCartasPublicas();
     refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
     return ok(`Sucursal renombrada a "${nombre}".`);
   });
