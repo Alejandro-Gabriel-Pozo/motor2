@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { interceptarImpresion } from "./fixtures/impresion";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Promos ARMABLES en la pantalla de la mesa (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11): tocar la promo destacada
@@ -72,7 +73,7 @@ async function sembrarPromoCombo(sucursalId: string) {
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, anulaAItemId: { not: null } } });
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       const cuentaIds = (await prisma.cuenta.findMany({ where: { mesaId: { in: mesaIds } }, select: { id: true } })).map((c) => c.id);
-      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: [...operacionIds, ...cuentaIds] } } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: { in: [...operacionIds, ...cuentaIds] } } });
       await prisma.movimientoStock.deleteMany({ where: { OR: [{ operacionId: { in: operacionIds } }, { productoId: { in: productoIds } }] } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       await prisma.promoCuenta.deleteMany({ where: { id: { in: promoCuentaIds } } });

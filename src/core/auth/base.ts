@@ -37,6 +37,23 @@ export function dbDeEmpresa(empresaId: string): PrismaClient {
   return conEmpresa as unknown as PrismaClient;
 }
 
+/**
+ * Cliente cuyas operaciones corren con `app.usuario_id` = `usuarioId`: lo único que habilita la política `lectura_propia_usuario` de `UsuarioEmpresa`
+ * (leer las pertenencias PROPIAS en cualquier empresa). Es para las lecturas que ocurren antes de tener empresa (login, resolución del contexto); todo
+ * lo demás va con `dbDeEmpresa`. Mismo mecanismo que `dbDeEmpresa`: valor local a la transacción.
+ */
+export function dbDeUsuario(usuarioId: string): PrismaClient {
+  const conUsuario = prisma.$extends({
+    query: {
+      async $allOperations({ args, query }) {
+        const [, resultado] = await prisma.$transaction([prisma.$executeRaw`SELECT set_config('app.usuario_id', ${usuarioId}, true)`, query(args)]);
+        return resultado;
+      },
+    },
+  });
+  return conUsuario as unknown as PrismaClient;
+}
+
 /** Transacción interactiva con `app.empresa_id` fijado (local a ella) ANTES de cualquier consulta de `fn`; el `tx` que recibe ya está bajo esa empresa. */
 export function transaccionDeEmpresa<T>(empresaId: string, fn: (tx: Prisma.TransactionClient) => Promise<T>, opciones?: OpcionesTransaccion): Promise<T> {
   return prisma.$transaction(async (tx) => {

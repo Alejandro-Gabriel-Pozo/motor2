@@ -3,6 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Tomar pedido en el salón (docs/plan-tomar-pedido-2026-09-25.md): la pantalla de la mesa (/mesas/<id>) con el circuito completo —
@@ -44,7 +45,7 @@ async function sembrarCatalogo(sucursalId: string) {
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, anulaAItemId: { not: null } } });
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       const cuentaIds = (await prisma.cuenta.findMany({ where: { mesaId: { in: mesaIds } }, select: { id: true } })).map((c) => c.id);
-      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: [...operacionIds, ...cuentaIds] } } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: { in: [...operacionIds, ...cuentaIds] } } });
       await prisma.movimientoStock.deleteMany({ where: { OR: [{ operacionId: { in: operacionIds } }, { productoId: { in: productoIds } }] } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       // Los ejemplares de la boleta referencian la cuenta (RESTRICT) y las correcciones a su ejemplar A (RESTRICT): correcciones → resto → cuentas.

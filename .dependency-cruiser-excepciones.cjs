@@ -49,10 +49,6 @@ const IMPORTADORES_DE_DB = [
     motivo: "`baseDelContexto()`: el único lugar donde un pedido elige su cliente de base (hoy `prisma` + `$transaction`).",
   },
   {
-    ruta: "src/core/auth/contexto.ts",
-    motivo: "`obtenerContextoUsuario` resuelve las membresías y el rol del usuario ANTES de que exista un contexto (es quien lo construye).",
-  },
-  {
     ruta: "src/core/auth/acceso.ts",
     motivo: "Resolución de acceso del usuario de sesión (login/jerarquía de roles): corre antes del contexto; `db` es parámetro con default solo aquí.",
   },

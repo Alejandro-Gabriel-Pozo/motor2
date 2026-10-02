@@ -5,6 +5,7 @@ import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { crearMembresias, crearMembresia } from "../setup/membresia";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
@@ -391,7 +392,7 @@ testAutenticado(
       const reversiones = await prisma.operacion.findMany({ where: { OR: [{ detalleLibre: { contains: intacta.id } }, { detalleLibre: { contains: consumida.id } }] }, select: { id: true } });
       await prisma.movimientoStock.deleteMany({ where: { productoId: { in: productos } } });
       await prisma.operacion.deleteMany({ where: { id: { in: [...operaciones, ...reversiones.map((r) => r.id)] } } });
-      await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: [intacta.id, consumida.id] } } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: [intacta.id, consumida.id] } } });
       await prisma.producto.deleteMany({ where: { id: { in: productos } } });
       await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
     }
@@ -438,7 +439,7 @@ testAutenticado(
       await expect(tarjeta.getByRole("status").filter({ hasText: "Compra corregida" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "compra corregida").toEqual([]);
     } finally {
-      await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: operaciones } } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: operaciones } } });
       await prisma.movimientoStock.deleteMany({ where: { productoId: producto.id } });
       await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
       await prisma.producto.deleteMany({ where: { id: producto.id } });
@@ -500,7 +501,7 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "fila calibrada").toEqual([]);
     } finally {
       await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngrediente: { insumoProductoId: mp.id } } });
-      await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
       await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id, mp2.id, pv2.id] } } });
       await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id, venta2.id] } } });
       await prisma.recetaVersion.deleteMany({ where: { productoId: { in: [pv.id, pv2.id] } } });
@@ -1094,7 +1095,7 @@ testAutenticado(
     } finally {
       // Mismo orden que `limpiar` de pos-tomar-pedido.spec.ts: ítems → operaciones (y lo que cuelga de ellas) → cuentas → mesa → producto.
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: mesa.id } } });
-      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: operacionIds } } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: { in: operacionIds } } });
       await prisma.movimientoStock.deleteMany({ where: { operacionId: { in: operacionIds } } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });

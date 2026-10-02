@@ -214,7 +214,7 @@ export async function actualizarNotasMembresia(membresiaId: string, notas: strin
  */
 export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("apagar_cuenta_empresa", async (ctx) => {
-    // `UsuarioEmpresa` y `User` no tienen RLS: sin el `empresaId` de la clave, el id de cualquier empresa se podía apagar.
+    // `User` no tiene RLS (y `UsuarioEmpresa` tiene RLS recién desde la migración rls_usuario_empresa): el `empresaId` de la clave sigue siendo obligatorio.
     const pertenencia = await ctx.db.usuarioEmpresa.findUnique({
       where: { usuarioId_empresaId: { usuarioId, empresaId: ctx.empresaId } },
       include: { usuario: true },

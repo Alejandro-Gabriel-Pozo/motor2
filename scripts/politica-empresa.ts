@@ -7,11 +7,11 @@
  *        [--permisos-editables si|no] [--dos-paneles si|no]
  *
  * `--plan` fija las dos perillas de una vez (`lite`: sin edición de permisos y menú único; `completo`: todo activo); las perillas sueltas se
- * aplican después y lo pisan. DATABASE_URL debe ser el rol `motor2_app`, igual que en `crear-empresa`.
+ * aplican después y lo pisan. Conexión: PLATAFORMA_DATABASE_URL o, si no está, DATABASE_URL, igual que en `crear-empresa`.
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";
-import { prisma } from "../src/lib/db";
+import { prismaPlataforma as prisma } from "./cliente-plataforma";
 import { cambiarPoliticaDeEmpresa, PoliticaDeEmpresaError } from "../src/core/features/empresa/cambiar-politica-empresa";
 import { PLANES, type NombreDePlan } from "../src/core/permisos/politica-de-empresa";
 

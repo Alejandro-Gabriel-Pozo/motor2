@@ -3,6 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresia } from "../setup/membresia";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Corregir la cabecera de una compra (proveedor, N.º de factura y detalle) desde «Compras registradas» (K1b). Se siembran las compras directo en la base, con
@@ -35,7 +36,7 @@ async function sembrar(sucursalId: string, seccionId: string) {
     return op;
   }
   const limpiar = async () => {
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: operaciones } } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: operaciones } } });
     await prisma.movimientoStock.deleteMany({ where: { productoId: producto.id } });
     await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });

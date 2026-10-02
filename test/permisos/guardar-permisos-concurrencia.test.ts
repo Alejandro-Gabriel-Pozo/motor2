@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
 import { ACCIONES, rolAlcanzaLaAccion } from "../../src/core/permisos/acciones";
@@ -40,7 +40,7 @@ describe("guardarPermisos — concurrencia real", () => {
   /** Deja las celdas en SIN_PERMISO y borra la auditoría, para que cada iteración parta del mismo estado. */
   const reiniciar = async (claves: string[]) => {
     await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: { in: claves } }, data: { puedeVer: false, puedeEditar: false } });
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "PermisoRol" } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "PermisoRol" } });
   };
   const cambio = (accionClave: string, nuevo: { puedeVer: boolean; puedeEditar: boolean }) => ({ rolId: operadorRolId, accionClave, anterior: SIN_PERMISO, nuevo });
 

@@ -15,7 +15,7 @@ import {
 
 /**
  * Una empresa tiene UN solo gerente (`UsuarioEmpresa.rolEmpresa = 'gerente'`): nunca queda sin gerente ni con dos, nadie más que él lo
- * modifica y la gerencia solo cambia de manos con un traspaso. La regla vive en el código; el índice único en la base es una fase posterior.
+ * modifica y la gerencia solo cambia de manos con un traspaso. La regla vive en el código y, desde S-13, también la hace cumplir la base (índice único parcial; ver test/persistencia/gerente-unico-indice.test.ts).
  */
 
 const NORTE = "norte";

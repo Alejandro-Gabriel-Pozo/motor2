@@ -3,6 +3,7 @@ import type { Browser } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresias } from "../setup/membresia";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Circuito completo del alta con el tilde "Activo en todas las sucursales" (§4, P5) y su efecto real en el catálogo de
@@ -47,7 +48,7 @@ async function abrirEnDosSucursales(browser: Browser, baseURL: string | undefine
       await pageB.context().close();
       const productos = await prisma.producto.findMany({ where: { nombre: { startsWith: "E2E Disp " } }, select: { id: true } });
       const productoIds = productos.map((p) => p.id);
-      await prisma.registroAuditoria.deleteMany({ where: { actorId: usuario.id } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { actorId: usuario.id } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
       await prisma.session.deleteMany({ where: { userId: usuario.id } });

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { dbDeEmpresa } from "./base";
+import { dbDeEmpresa, dbDeUsuario } from "./base";
 import { obtenerEmailsBootstrap } from "./bootstrap";
 
 function obtenerDominiosPermitidos(): string[] {
@@ -86,12 +86,12 @@ export async function inicioDeSesionPermitido(entrada: {
 }
 
 /**
- * Este chequeo corre ANTES de tener una empresa (login), así que no hay contexto de donde sacar `db`. `User` y `UsuarioEmpresa` no
- * tienen RLS (se leen con `prisma`); `UsuarioSucursal` sí, y se consulta por cada empresa del usuario bajo su propio contexto. Solo cuentan
+ * Este chequeo corre ANTES de tener una empresa (login), así que no hay contexto de donde sacar `db`. `User` no tiene RLS (se
+ * lee con `prisma`); `UsuarioEmpresa` sí y se lee con `dbDeUsuario` (sus pertenencias propias); `UsuarioSucursal` también, y se consulta por cada empresa del usuario bajo su propio contexto. Solo cuentan
  * las empresas donde su `UsuarioEmpresa` está activa: es la misma condición con la que `obtenerContextoUsuario` le da contexto.
  */
 async function tieneSucursalActiva(usuarioId: string): Promise<boolean> {
-  const pertenencias = await prisma.usuarioEmpresa.findMany({ where: { usuarioId, activo: true }, select: { empresaId: true } });
+  const pertenencias = await dbDeUsuario(usuarioId).usuarioEmpresa.findMany({ where: { usuarioId, activo: true }, select: { empresaId: true } });
   const conSucursal = await Promise.all(
     pertenencias.map(async ({ empresaId }) => Boolean(await dbDeEmpresa(empresaId).usuarioSucursal.findFirst({ where: { usuarioId, activo: true }, select: { id: true } })))
   );

@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Comportamiento nuevo de §3 (docs/plan-rendimiento-recetas-2026-09-22.md, paso P10) que
@@ -143,7 +144,7 @@ test("con merma, calibrar «Usar este valor» congela el estimado NETO y la merm
     expect(Number(override.mermaPorcentaje)).toBe(25);
   } finally {
     await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId } });
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
     await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
     await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });

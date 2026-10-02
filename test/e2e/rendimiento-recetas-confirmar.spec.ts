@@ -1,6 +1,7 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresia } from "../setup/membresia";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * "Usar este valor" (Rendimiento real de recetas) nunca aplica directo: pide confirmación en la misma fila, con el porqué a
@@ -104,7 +105,7 @@ test("pide confirmación con comprado/vendido, calibra SOLO la sucursal activa (
     expect(overrideVuelto.cantidad).toBeNull();
     expect(await prisma.registroAuditoria.count({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}`, valorNuevo: null } })).toBeGreaterThanOrEqual(2);
   } finally {
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: { in: [`${sucursalId}:${pv.id}:${mp.id}`] } } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: { in: [`${sucursalId}:${pv.id}:${mp.id}`] } } });
     await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId } });
     await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: admin.id, sucursalId: sucursalB.id } });
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });

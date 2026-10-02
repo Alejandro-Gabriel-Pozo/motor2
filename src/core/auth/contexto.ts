@@ -1,8 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/db";
-import { baseDeEmpresa, dbDeEmpresa, verificarRolDeEjecucionDelProceso, type BaseDelContexto } from "./base";
+import { baseDeEmpresa, dbDeEmpresa, dbDeUsuario, verificarRolDeEjecucionDelProceso, type BaseDelContexto } from "./base";
 import { getUsuarioActual } from "./session";
 
 export const COOKIE_SUCURSAL_ACTIVA = "sucursalActivaId";
@@ -72,14 +71,14 @@ export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | 
 
   await verificarRolDeEjecucionDelProceso();
 
-  const pertenencias = await prisma.usuarioEmpresa.findMany({
+  const pertenencias = await dbDeUsuario(usuario.id).usuarioEmpresa.findMany({
     where: { usuarioId: usuario.id, activo: true, empresa: { estado: "ACTIVE" } },
     include: { empresa: true },
     orderBy: { creadoEn: "asc" },
   });
   if (!pertenencias.length) return null;
 
-  // `UsuarioEmpresa` y `Empresa` no tienen RLS (la lectura de arriba va con `prisma`, sin empresa). `UsuarioSucursal` SÍ: se lee una vez
+  // `Empresa` no tiene RLS; `UsuarioEmpresa` sí, y la lectura de arriba va con `dbDeUsuario` (sus pertenencias propias, aún sin empresa). `UsuarioSucursal` también tiene RLS: se lee una vez
   // por empresa del usuario, cada una bajo su propio contexto (`dbDeEmpresa`), no en una consulta cruzada.
   const membresiasTodas = (
     await Promise.all(

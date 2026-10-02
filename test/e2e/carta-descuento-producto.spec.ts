@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { menuCartaPublicado } from "./fixtures/carta-menu";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Producto con descuento (Fase 2 de promociones, un solo concepto) de punta a punta: el % que se carga en el admin de la carta (/carta, dentro del
@@ -52,7 +53,7 @@ test("cargar y sacar el descuento de un producto desde /carta se refleja en la c
     expect(despues).not.toHaveProperty("precioLista");
   } finally {
     await prisma.descuentoProductoSucursal.deleteMany({ where: { productoId: producto.id } });
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "DescuentoProductoSucursal", descripcion: `Descuento de "${producto.nombre}"` } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "DescuentoProductoSucursal", descripcion: `Descuento de "${producto.nombre}"` } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });

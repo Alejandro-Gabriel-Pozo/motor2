@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 /**
  * Regla de arquitectura (add-on de plataforma, ADR-008/ADR-010): la política de una empresa (`Empresa.permisosEditables`,
  * `Empresa.dosPaneles`) la cambia SOLO la plataforma, nunca la propia empresa. El rol de base `motor2_app` necesita UPDATE sobre `Empresa`
- * (el alta de una empresa y su activación lo usan), así que la base no puede impedirlo: lo impide el código, con dos candados que se
+ * (el alta de una empresa y su activación lo usan), así que, mientras no se aplique la separación de roles opcional (S-13,
+ * scripts/operaciones/crear-rol-motor2-plataforma.sql), la base no puede impedirlo: lo impide el código, con dos candados que se
  * complementan —este guardián y la regla `politica-solo-desde-plataforma` de dependency-cruiser (`npm run arquitectura`), que además
  * prohíbe importar `cambiar-politica-empresa.ts` desde cualquier otro archivo de `src/`.
  *

@@ -5,13 +5,14 @@
  * Uso: npm run crear-empresa -- --nombre "Pizzería Norte" --slug norte --email gerente@norte.com \
  *        --zona-horaria America/Argentina/Buenos_Aires --moneda ARS [--sucursal Central]
  *
- * DATABASE_URL debe ser el rol `motor2_app` (con otro rol que salta el RLS se niega si quedan 2+ empresas activas).
+ * Usa PLATAFORMA_DATABASE_URL (rol `motor2_plataforma`, ver scripts/operaciones/crear-rol-motor2-plataforma.sql) o, si no está, DATABASE_URL (rol
+ * `motor2_app`). Con un rol que salta el RLS se niega si quedan 2+ empresas activas.
  * No es idempotente: si el slug o el nombre ya existen, falla sin tocar nada.
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";
 import { ZodError } from "zod";
-import { prisma } from "../src/lib/db";
+import { prismaPlataforma as prisma } from "./cliente-plataforma";
 import { crearEmpresa, EmpresaYaExisteError } from "../src/core/features/empresa/crear-empresa";
 
 async function main() {

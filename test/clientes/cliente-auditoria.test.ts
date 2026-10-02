@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { entrarComo, sembrarSalon } from "../pos/salon-fixture";
 import { altaCliente, actualizarCliente, actualizarActivoCliente } from "../../src/server/actions/clientes/cliente";
 import { abrirCuenta, asignarClienteACuenta } from "../../src/server/actions/pos/cuenta-apertura";
@@ -42,7 +42,7 @@ describe("auditoría de clientes", () => {
 
   it("editar deja SOLO lo que cambió, y no deja nada si no cambió nada", async () => {
     const id = await crear("Fulano", 15);
-    await prisma.registroAuditoria.deleteMany({ where: { entidadId: id } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: id } });
 
     expect((await actualizarCliente(id, "Fulano", 15)).ok).toBe(true);
     expect(await filasDe(id)).toHaveLength(0);
@@ -57,7 +57,7 @@ describe("auditoría de clientes", () => {
 
   it("desactivar y reactivar dejan una fila cada uno", async () => {
     const id = await crear("Fulano", 10);
-    await prisma.registroAuditoria.deleteMany({ where: { entidadId: id } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: id } });
     expect((await actualizarActivoCliente(id, false)).ok).toBe(true);
     expect((await actualizarActivoCliente(id, true)).ok).toBe(true);
     expect((await filasDe(id)).map((f) => [f.campo, f.valorAnterior, f.valorNuevo]).sort()).toEqual([

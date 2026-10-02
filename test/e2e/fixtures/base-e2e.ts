@@ -135,9 +135,10 @@ export interface ResultadoReset {
  * Segunda barrera, independiente de la de la URL: se pregunta a la conexión
  * REAL cómo se llama la base (`current_database()`), por si la URL dice una
  * cosa y un pooler/proxy termina en otra. `TRUNCATE ... CASCADE` es
- * independiente del orden de las claves foráneas. Kardex y auditoría no son
- * inmutables a nivel de motor (no hay triggers) y Vitest ya los borra, así
- * que vaciarlos acá no rompe ningún invariante de la base.
+ * independiente del orden de las claves foráneas. `RegistroAuditoria` sí es
+ * append-only a nivel de motor (trigger + REVOKE al rol de ejecución, migración
+ * auditoria_inmutable), pero el trigger exime al dueño: este reset corre con
+ * `DIRECT_URL` (dueño) y puede vaciarla, igual que `limpiarBaseDeTest`.
  */
 export async function resetearBaseE2E(prisma: PrismaClient): Promise<ResultadoReset> {
   const [{ db }] = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database() AS db`;

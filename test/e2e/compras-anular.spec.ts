@@ -3,6 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "../../src/lib/db";
 import { crearMembresia } from "../setup/membresia";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Anular una compra desde «Compras registradas» (K1c). Se siembran las compras directo en la base, con un proveedor y un producto propios de cada prueba (marca
@@ -32,7 +33,7 @@ async function sembrarCompra(sucursalId: string, seccionId: string, opciones: { 
     const ids = (await prisma.movimientoStock.findMany({ where: { productoId: producto.id }, select: { operacionId: true } })).map((m) => m.operacionId);
     await prisma.movimientoStock.deleteMany({ where: { productoId: producto.id } });
     await prisma.operacion.deleteMany({ where: { id: { in: [...new Set([...ids, ...reversiones.map((r) => r.id)])] } } });
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: operacion.id } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: operacion.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
     // Con FK compuesta la operación ya no queda con proveedor NULL al borrarlo (RESTRICT): también las compras sin movimientos (p. ej. la recarga).
     await prisma.operacion.deleteMany({ where: { proveedorId: proveedor.id } });

@@ -1,12 +1,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 
 /**
  * Migración de datos 20261001120000_gerente_unico_por_empresa: cada empresa queda con UN gerente. Si tenía varios, el más antiguo; si no tenía
  * ninguno, su admin activo más antiguo. Acá hay DOS empresas para comprobar que cada una se resuelve por separado.
+ *
+ * Estos tests siembran a propósito empresas con VARIOS gerentes (el dato que la migración repara): el índice único parcial que creó después S-13
+ * (`UsuarioEmpresa_empresaId_gerente_key`) lo impediría, así que se lo suelta mientras corren y se lo recrea al terminar.
  */
+const INDICE_GERENTE_UNICO = `CREATE UNIQUE INDEX IF NOT EXISTS "UsuarioEmpresa_empresaId_gerente_key" ON "UsuarioEmpresa"("empresaId") WHERE "rolEmpresa" = 'gerente'`;
+
 const SQL = readFileSync(join(__dirname, "../../prisma/migrations/20261001120000_gerente_unico_por_empresa/migration.sql"), "utf8");
 const SENTENCIAS = SQL.replace(/\r\n/g, "\n")
   .split(";\n")
@@ -32,8 +37,15 @@ describe("migración de datos: un gerente por empresa", () => {
   const rolAdmin: Record<string, string> = {};
   const rolOperador: Record<string, string> = {};
 
+  let habiaIndice = false;
+
+  beforeAll(async () => {
+    habiaIndice = (await prismaAdmin.$queryRaw<unknown[]>`SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'UsuarioEmpresa_empresaId_gerente_key'`).length > 0;
+  });
+
   beforeEach(async () => {
     await limpiarBaseDeTest();
+    await prismaAdmin.$executeRawUnsafe('DROP INDEX IF EXISTS "UsuarioEmpresa_empresaId_gerente_key"');
     await prismaAdmin.empresa.create({
       data: { id: NORTE, nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
     });
@@ -42,6 +54,11 @@ describe("migración de datos: un gerente por empresa", () => {
       rolAdmin[empresaId] = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId } })).id;
       rolOperador[empresaId] = (await prismaAdmin.rol.create({ data: { nombre: "operador", empresaId } })).id;
     }
+  });
+
+  afterAll(async () => {
+    await limpiarBaseDeTest();
+    if (habiaIndice) await prismaAdmin.$executeRawUnsafe(INDICE_GERENTE_UNICO);
   });
 
   /** Una persona con su pertenencia a la empresa y su membresía de sucursal, creadas el día indicado. */
