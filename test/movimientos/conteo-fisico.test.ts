@@ -245,6 +245,18 @@ describe("Conteo Físico", () => {
     expect(porFecha.items[0].productoId).toBe(otroMp.id);
   });
 
+  it("obtenerHistorialConteosFisicos rechaza un filtro mal formado en vez de mandarlo al where (objeto en un id, Invalid Date, cursor vacío)", async () => {
+    const mal = [
+      { productoId: { not: "" } },
+      { seccionId: 5 },
+      { cursor: "" },
+      { desde: new Date("basura") },
+      { hasta: "2026-01-01" },
+    ] as unknown as Parameters<typeof obtenerHistorialConteosFisicos>[1][];
+    for (const filtro of mal) await expect(obtenerHistorialConteosFisicos(sucursalId, filtro)).rejects.toThrow();
+    await expect(obtenerHistorialConteosFisicos(sucursalId, null as never)).rejects.toThrow();
+  });
+
   it("Fase 6 (auditoría de seguridad/contratos): rechaza un seccionId de OTRA sucursal aunque el usuario tenga permiso en la suya", async () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const seccionAjena = await sembrarSeccion(otraSucursal.id);

@@ -1,6 +1,7 @@
 "use server";
 
 import { requerirVerEnSucursal } from "../con-sesion";
+import { guardFiltroHistorialConteos } from "@/core/features/movimientos/historial-conteos.guard";
 
 const TAMANO_PAGINA_CONTEOS = 50;
 
@@ -37,6 +38,8 @@ export interface FiltroHistorialConteos {
 
 export async function obtenerHistorialConteosFisicos(sucursalId: string, filtro: FiltroHistorialConteos = {}) {
   const ctx = await requerirVerEnSucursal(sucursalId, "reporte_conteos");
+  const valido = guardFiltroHistorialConteos(filtro);
+  if (!valido.ok) throw new Error(valido.mensaje);
   const { seccionId, productoId, desde, hasta, cursor } = filtro;
   const items = await ctx.db.conteoFisico.findMany({
     where: {

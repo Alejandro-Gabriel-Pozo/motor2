@@ -8,6 +8,13 @@ import { TablaHistorialConteos, type FilaConteo } from "./tabla-conteos";
 import { FiltrosConteos } from "./filtros-conteos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
+/** Una fecha de la URL que no se puede leer se ignora (sin filtro), no rompe la pantalla con una excepción de Prisma. */
+function fechaDeUrl(valor: string | undefined): Date | undefined {
+  if (!valor) return undefined;
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? undefined : fecha;
+}
+
 export default async function ConteosPage({
   searchParams,
 }: {
@@ -27,8 +34,8 @@ export default async function ConteosPage({
   const { items: conteos, nextCursor } = await obtenerHistorialConteosFisicos(ctx.sucursalId, {
     seccionId: sp.seccionId || undefined,
     productoId: sp.productoId || undefined,
-    desde: sp.desde ? new Date(sp.desde) : undefined,
-    hasta: sp.hasta ? new Date(sp.hasta) : undefined,
+    desde: fechaDeUrl(sp.desde),
+    hasta: fechaDeUrl(sp.hasta),
     cursor: sp.cursor,
   });
 
