@@ -68,6 +68,56 @@ describe("calcularCostosYMargenes", () => {
     expect(fila.margen).toBeCloseTo(100 - 11);
   });
 
+  describe("food cost objetivo (40 % sobre el precio, sin packaging)", () => {
+    async function platoConCosto(precioVenta: number | undefined) {
+      const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta }, sucursalId);
+      await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 4000 }] }); // costo del plato: $4000
+      return pv.id;
+    }
+
+    it("justo en el 40 % queda OK; con el precio un peso más bajo pasa a «Food cost alto»", async () => {
+      const pvId = await platoConCosto(10000);
+      let fila = (await calcularCostosYMargenes(sucursalId, prisma)).find((f) => f.productoId === pvId)!;
+      expect(fila.foodCostPct).toBe(40);
+      expect(fila.estado).toBe("OK");
+
+      await prisma.producto.update({ where: { id: pvId }, data: { precioVenta: 9999 } });
+      fila = (await calcularCostosYMargenes(sucursalId, prisma)).find((f) => f.productoId === pvId)!;
+      expect(fila.estado).toBe("FOOD_COST_ALTO");
+    });
+
+    it("el precio sugerido es el que deja el food cost en el objetivo", async () => {
+      const pvId = await platoConCosto(8000);
+      const fila = (await calcularCostosYMargenes(sucursalId, prisma)).find((f) => f.productoId === pvId)!;
+      expect(fila.estado).toBe("FOOD_COST_ALTO");
+      expect(fila.precioSugerido).toBe(10000);
+    });
+
+    it("se calcula aunque el producto no tenga precio de venta (para ayudar a ponerlo)", async () => {
+      const pvId = await platoConCosto(undefined);
+      const fila = (await calcularCostosYMargenes(sucursalId, prisma)).find((f) => f.productoId === pvId)!;
+      expect(fila.estado).toBe("SIN_PRECIO_VENTA");
+      expect(fila.precioSugerido).toBe(10000);
+    });
+
+    it("sin receta o con costo incompleto no hay precio sugerido", async () => {
+      const mp1 = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const mp2 = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Levadura", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
+      const incompleto = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+      const sinReceta = await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+      await prisma.recetaVersion.create({
+        data: { productoId: incompleto.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp1.id, cantidad: 1, unidadId: unidadKgId }, { insumoProductoId: mp2.id, cantidad: 1, unidadId: unidadKgId }] } },
+      });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp1.id, cantidad: 10, precioTotal: 100 }] }); // mp2 sin compra
+
+      const filas = await calcularCostosYMargenes(sucursalId, prisma);
+      expect(filas.find((f) => f.productoId === incompleto.id)!.precioSugerido).toBeNull();
+      expect(filas.find((f) => f.productoId === sinReceta.id)!.precioSugerido).toBeNull();
+    });
+  });
+
   it("lee el Kardex LOCAL de la sucursal para el costo, no otra sucursal", async () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra" } });
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito 2");

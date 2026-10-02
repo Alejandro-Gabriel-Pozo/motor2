@@ -143,6 +143,7 @@ describe("No comestibles en los reportes", () => {
     expect(fila.costoNoComestible).toBe(10);
     expect(fila.foodCostPct).toBe(10); // (20 − 10) ÷ 100
     expect(fila.margen).toBe(80); // el margen sí descuenta el packaging
+    expect(fila.precioSugerido).toBe(25); // el precio sugerido sale de la comida sola: $10 ÷ 40 %, sin el packaging
   });
 
   it("un plato con mucho packaging no se marca «Food cost alto» por el packaging", async () => {

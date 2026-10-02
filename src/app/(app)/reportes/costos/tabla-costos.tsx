@@ -4,6 +4,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaCostoProducto, FilaImpactoInsumo } from "@/core/reportes/costos";
 import { resolverAccionFaltante } from "@/core/reportes/accion-faltante";
+import { FOOD_COST_OBJETIVO_PCT } from "@/core/reportes/margen-objetivo";
 
 const LABEL_ESTADO: Record<string, string> = {
   MARGEN_NEGATIVO: "Margen negativo",
@@ -18,7 +19,8 @@ const AYUDA_MARGEN = "Margen $ = Precio venta − Costo. Margen % = Margen $ / P
 const AYUDA_FOOD_COST =
   "Food cost % = (Costo de comida y bebida) / Precio venta × 100 — qué porción del precio de venta se va en insumos. NO incluye el packaging ni la limpieza de la receta (los insumos del grupo «No comestibles»): esos cuentan en el Costo y en el Margen, pero no en el food cost.";
 const AYUDA_ESTADO =
-  "Margen negativo: el costo supera el precio de venta. Food cost alto: el costo de comida y bebida (sin el packaging ni la limpieza del grupo «No comestibles») supera el 40% del precio de venta (umbral fijo, no configurable). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular.";
+  `Margen negativo: el costo supera el precio de venta. Food cost alto: el costo de comida y bebida (sin el packaging ni la limpieza del grupo «No comestibles») supera el ${FOOD_COST_OBJETIVO_PCT}% del precio de venta (objetivo fijo por ahora, no configurable). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular.`;
+const AYUDA_PRECIO_SUGERIDO = `Precio de venta con el que el food cost (comida y bebida, sin el packaging ni la limpieza) quedaría justo en ${FOOD_COST_OBJETIVO_PCT}%: costo de comida y bebida / ${FOOD_COST_OBJETIVO_PCT}% × 100. Es el precio neto (sin IVA), igual que el precio de venta de la tabla. Se muestra «—» si falta algún costo de la receta o el producto no tiene receta.`;
 
 const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   {
@@ -48,6 +50,14 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
     alinear: "derecha",
     valor: (p) => p.foodCostPct,
     render: (p) => (p.foodCostPct === null ? "—" : `${p.foodCostPct}%`),
+  },
+  {
+    clave: "precioSugerido",
+    etiqueta: `Precio para food cost ${FOOD_COST_OBJETIVO_PCT}%`,
+    ayuda: AYUDA_PRECIO_SUGERIDO,
+    alinear: "derecha",
+    valor: (p) => p.precioSugerido,
+    render: (p) => (p.precioSugerido === null ? "—" : `$${p.precioSugerido.toLocaleString("es-AR")}`),
   },
   {
     clave: "estado",
