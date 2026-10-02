@@ -1,18 +1,8 @@
 import type { Event } from "@sentry/nextjs";
 
-const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
-const BEARER = /\bBearer\s+[\w.~+/=-]{8,}/gi;
-const JWT = /\beyJ[\w-]+\.[\w-]+\.[\w-]+/g;
-const TOKEN_LARGO = /\b[A-Za-z0-9_-]{32,}\b/g;
+import { esErrorDePrisma, limpiarTexto, resumenErrorDePrisma } from "./mensaje-seguro";
+
 const CABECERAS_SENSIBLES = /^(authorization|cookie|set-cookie|proxy-authorization)$|token|secret|api-key/i;
-
-function limpiarTexto(texto: string): string {
-  return texto.replace(EMAIL, "[email]").replace(BEARER, "Bearer [token]").replace(JWT, "[token]").replace(TOKEN_LARGO, "[token]");
-}
-
-function esErrorDePrisma(tipo: string | undefined, valor: string | undefined): boolean {
-  return /^Prisma.*Error$/.test(tipo ?? "") || /\bprisma\.\w+\.\w+\(/.test(valor ?? "");
-}
 
 /**
  * `beforeSend`/`beforeSendTransaction` de Sentry (S-16): el evento sale sin datos personales ni de negocio. Los errores de Prisma traen en el mensaje
@@ -22,8 +12,7 @@ function esErrorDePrisma(tipo: string | undefined, valor: string | undefined): b
 export function limpiarEventoSentry<E extends Event>(evento: E): E {
   for (const excepcion of evento.exception?.values ?? []) {
     if (esErrorDePrisma(excepcion.type, excepcion.value)) {
-      const codigo = /\bP\d{4}\b/.exec(excepcion.value ?? "")?.[0];
-      excepcion.value = `Error de base de datos${codigo ? ` ${codigo}` : ""} (mensaje omitido)`;
+      excepcion.value = resumenErrorDePrisma(excepcion.value);
     } else if (excepcion.value) {
       excepcion.value = limpiarTexto(excepcion.value);
     }

@@ -44,7 +44,8 @@ export async function listarUsuariosDeSucursal(sucursalId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "gestion_usuarios");
   return ctx.db.usuarioSucursal.findMany({
     where: { sucursalId },
-    include: { usuario: true, rol: true },
+    // Solo lo que dibuja la tabla: la fila completa de User (id de cuenta, foto, verificación, estado global) viajaba al navegador.
+    select: { id: true, activo: true, usuario: { select: { email: true } }, rol: { select: { nombre: true } } },
     orderBy: { creadoEn: "asc" },
   });
 }

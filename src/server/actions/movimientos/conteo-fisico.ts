@@ -1,6 +1,7 @@
 "use server";
 
 import { aResultadoAccion } from "@/core/resultado-caso";
+import { mensajeSeguro } from "@/lib/mensaje-seguro";
 import { guardComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.guard";
 import type { ComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";
 import type { ComoResolverConteo } from "@/core/features/movimientos/resolver-conteo.schema";
@@ -70,7 +71,7 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
       } catch (e) {
         // Un error inesperado de una fila (base de datos, etc.) no tira abajo la llamada entera: las filas anteriores ya están
         // escritas y hay que devolver el parcial.
-        console.error("registrarConteosFisicos: falló un conteo", e);
+        console.error(`registrarConteosFisicos: falló un conteo: ${mensajeSeguro(e)}`);
         resultados.push(error("No se pudo registrar este conteo (error inesperado). Probá de nuevo."));
       }
     }

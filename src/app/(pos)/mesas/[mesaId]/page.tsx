@@ -6,7 +6,7 @@ import { armarComandas } from "@/core/pos/comanda";
 import { obtenerBoletasRecientes } from "@/core/pos/boleta";
 import { cargarSelectorCartaPos } from "@/core/pos/selector-carta-consulta";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
-import { listarClientes } from "@/server/actions/clientes/cliente";
+import { listarClientesParaCuenta } from "@/server/actions/clientes/cliente";
 import { AvisoMesaProvider } from "./aviso-mesa";
 import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
 import { CuentasCerradas } from "./cuentas-cerradas";
@@ -80,7 +80,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
   // a un Client Component (`ClienteCuenta`).
-  const clientesActivos = cuenta && asignarCliente.editar ? (await listarClientes(true)).map((c) => ({ id: c.id, nombre: c.nombre, descuentoPorcentaje: Number(c.descuentoPorcentaje) })) : [];
+  const clientesActivos = cuenta && asignarCliente.editar ? await listarClientesParaCuenta() : [];
   const titulo = nombreDeMesa(mesa.numero);
   const comandas = cuenta ? armarComandas(cuenta.envios, cuenta.mesero) : [];
 

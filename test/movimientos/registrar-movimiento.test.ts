@@ -262,6 +262,20 @@ describe("registrarMovimiento", () => {
     expect(segunda.ok).toBe(false);
   });
 
+  it("Compra rechaza un proveedor inexistente o desactivado, sin crear la Operacion (S-24)", async () => {
+    const mp = await crearMP("Aceite");
+    const inactivo = await prisma.proveedor.create({ data: { codigo: "PRV_OFF", nombre: "Cerrado SA", activo: false } });
+
+    for (const proveedorId of ["no-existe", inactivo.id]) {
+      const resultado = await registrarMovimiento({
+        proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId, nroFactura: "B-001",
+        items: [{ productoId: mp.id, cantidad: 5 }],
+      });
+      expect(resultado, `proveedorId=${proveedorId}`).toEqual({ ok: false, mensaje: "El proveedor elegido ya no está disponible." });
+    }
+    expect(await prisma.operacion.count()).toBe(0);
+  });
+
   it("Compra rechaza un número de factura de más de 60 caracteres, y no crea la Operacion", async () => {
     const mp = await crearMP("Harina");
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_LARGO", nombre: "Molino SA" } });

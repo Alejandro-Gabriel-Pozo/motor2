@@ -9,6 +9,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { nivelMinimoDeAccion, type AccionClave } from "../../src/core/permisos/acciones";
 import { ACCION_POR_PROCESO } from "../../src/core/movimientos/transiciones";
 import { listarUsuariosDeSucursal } from "../../src/server/actions/auth/usuarios";
+import { listarClientes } from "../../src/server/actions/clientes/cliente";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
@@ -43,6 +44,7 @@ type Fila = {
 
 const LECTURAS: Fila[] = [
   { nombre: "listarUsuariosDeSucursal", clave: "gestion_usuarios", pagina: "administracion/usuarios/page.tsx", archivo: "auth/usuarios.ts", llamar: (s) => listarUsuariosDeSucursal(s) },
+  { nombre: "listarClientes", clave: "clientes", pagina: "catalogo/clientes/page.tsx", archivo: "clientes/cliente.ts", llamar: () => listarClientes() },
   { nombre: "listarMatrizPermisos", clave: "gestion_permisos", pagina: "administracion/permisos/page.tsx", archivo: "permisos/permisos.ts", llamar: () => listarMatrizPermisos() },
   { nombre: "listarRoles", clave: "gestion_roles", pagina: "administracion/roles/page.tsx", archivo: "permisos/roles.ts", llamar: () => listarRoles() },
   { nombre: "listarCapacidades", clave: "capacidades_sucursal", pagina: "administracion/capacidades-sucursal/page.tsx", archivo: "permisos/capacidades-sucursal.ts", llamar: () => listarCapacidades() },

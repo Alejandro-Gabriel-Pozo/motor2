@@ -6,7 +6,7 @@ import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
 
 /**
  * Cliente con % de descuento fijo (Task #14, docs/plan-clientes-descuento-2026-09-26.md). Catálogo CENTRAL, sin `sucursalId` — mismo
@@ -32,12 +32,17 @@ async function auditarCliente(tx: Tx, actorId: string, clienteId: string, nombre
   });
 }
 
-export async function listarClientes(soloActivos = false) {
-  const ctx = await requerirSesion();
-  return ctx.db.cliente.findMany({
-    where: soloActivos ? { activo: true } : undefined,
-    orderBy: { nombre: "asc" },
-  });
+/** Lista completa del catálogo (pantalla «Clientes»): pide el «Ver» de `clientes`, no alcanza con estar logueado. */
+export async function listarClientes() {
+  const ctx = await requerirVerDeEmpresa("clientes");
+  return ctx.db.cliente.findMany({ orderBy: { nombre: "asc" } });
+}
+
+/** Lo mínimo que necesita el selector de cliente del salón: solo activos, solo id/nombre/% — nunca la fila completa. Pide el «Ver» de `pos_asignar_cliente`. */
+export async function listarClientesParaCuenta(): Promise<{ id: string; nombre: string; descuentoPorcentaje: number }[]> {
+  const ctx = await requerirVer("pos_asignar_cliente");
+  const clientes = await ctx.db.cliente.findMany({ where: { activo: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, descuentoPorcentaje: true } });
+  return clientes.map((c) => ({ id: c.id, nombre: c.nombre, descuentoPorcentaje: Number(c.descuentoPorcentaje) }));
 }
 
 /** Equivalente de crearCategoriaProducto (mismo dedup case-insensible), con el % de descuento validado (validarPorcentajeDescuento). */

@@ -1,5 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
+import { mensajeSeguro } from "@/lib/mensaje-seguro";
 import { texto } from "@/core/texto";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
@@ -20,7 +21,7 @@ import {
 } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
-import { cargarDestinoConsumo, cargarMotivoMerma, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { upsertProveedorPorProducto } from "../../catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
@@ -90,7 +91,7 @@ async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha
       // e instanceof Error ? e.message : String(e) (backlog post-cierre de Task #41, 2026-09-28,
       // docs/pendientes-sesion-2026-09-27.md §5): el cast (e as Error).message revienta con TypeError si algo
       // no-Error (ej. null/undefined) se lanza acá adentro — mismo criterio que core/reportes/cotizacion-dolar.ts.
-      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${e instanceof Error ? e.message : String(e)}`);
+      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${mensajeSeguro(e)}`);
     }
   }
 }
@@ -109,7 +110,7 @@ async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha
  * Orden, igual que antes:
  *  1. sección propia (origen y, si Transferencia, destino) — Fase 6 (auditoría de seguridad/contratos): `conPermiso` ya validó el
  *     permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó el cliente sea realmente de esa sucursal;
- *  2. motivo/destino (catálogos GLOBALES, solo activos) — cliente global `prisma`, fuera de la transacción;
+ *  2. motivo/destino (catálogos GLOBALES, solo activos) y proveedor (de la empresa, solo activo) — cliente global `prisma`, fuera de la transacción;
  *  3. `guardNroFacturaCompra` — DESPUÉS de sección/motivo/destino a propósito (mismo orden que antes: cambiarlo cambiaría qué mensaje
  *     sale primero cuando hay más de un dato inválido a la vez);
  *  4. camino rápido de factura duplicada (`existeCompraVigenteConFactura`, cliente global) — el árbitro real es el índice único
@@ -152,6 +153,11 @@ export async function registrarMovimientoCasoDeUso(
   if (datos.destinoId) {
     const destino = await cargarDestinoConsumo(actor.db, datos.destinoId);
     if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
+  }
+  // Mismo criterio que motivo/destino: un id que no existe, es de otra empresa o está desactivado no puede quedar guardado en la operación (antes, un id inexistente reventaba con un error de clave foránea).
+  if (datos.proveedorId) {
+    const proveedor = await cargarProveedor(actor.db, datos.proveedorId);
+    if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
   }
 
   // El N.º de factura solo se carga en Compra y Devolución a proveedor (los procesos con proveedor): mismo validador que la corrección.

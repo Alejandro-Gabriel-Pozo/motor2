@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { altaCliente, actualizarCliente, actualizarActivoCliente, listarClientes } from "../../src/server/actions/clientes/cliente";
+import { altaCliente, actualizarCliente, actualizarActivoCliente, listarClientes, listarClientesParaCuenta } from "../../src/server/actions/clientes/cliente";
 
 /**
  * CRUD de Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md): catálogo central, admin-only (permiso
@@ -112,15 +112,34 @@ describe("Cliente (CRUD)", () => {
     });
   });
 
-  describe("listarClientes", () => {
-    it("ordena por nombre; soloActivos filtra los desactivados", async () => {
+  describe("listarClientes / listarClientesParaCuenta", () => {
+    it("listarClientes ordena por nombre e incluye a los desactivados", async () => {
       const b = await altaCliente("Beta", 10);
       const a = await altaCliente("Alfa", 20);
       if (!a.ok || !b.ok) throw new Error("esperaba ok");
       await actualizarActivoCliente(b.id, false);
 
       expect((await listarClientes()).map((c) => c.nombre)).toEqual(["Alfa", "Beta"]);
-      expect((await listarClientes(true)).map((c) => c.nombre)).toEqual(["Alfa"]);
+    });
+
+    it("listarClientesParaCuenta devuelve solo los activos y solo id/nombre/% (number), nunca la fila completa (S-25)", async () => {
+      const b = await altaCliente("Beta", 10);
+      const a = await altaCliente("Alfa", 20);
+      if (!a.ok || !b.ok) throw new Error("esperaba ok");
+      await actualizarActivoCliente(b.id, false);
+
+      expect(await listarClientesParaCuenta()).toEqual([{ id: a.id, nombre: "Alfa", descuentoPorcentaje: 20 }]);
+    });
+
+    it("listarClientes exige el «Ver» de 'clientes' (un operador de fábrica no lo tiene); la lectura mínima del salón pide 'pos_asignar_cliente'", async () => {
+      const operador = await crearUsuarioConMembresia({ email: "mozo@test.com", sucursalId, rolId: rolOperadorId });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+
+      await expect(listarClientes()).rejects.toThrow(/No tenés permiso/);
+      await expect(listarClientesParaCuenta()).rejects.toThrow(/No tenés permiso/);
+
+      await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: rolOperadorId, accionClave: "pos_asignar_cliente" } }, data: { puedeVer: true, puedeEditar: true } });
+      await expect(listarClientesParaCuenta()).resolves.toEqual([]);
     });
   });
 
