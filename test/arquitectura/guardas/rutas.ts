@@ -187,7 +187,7 @@ export function analizarPagina(nombreArchivo: string, fuente: string): Resultado
     }
     if (!llamada) continue;
     const esperada = ts.isAwaitExpression(llamada);
-    const interna = esperada ? llamada.expression : llamada;
+    const interna: ts.Expression = ts.isAwaitExpression(llamada) ? llamada.expression : llamada;
     if (!ts.isCallExpression(interna)) continue;
     const callee = nombreDelCallee(interna);
     if (!callee || !guardas.has(callee)) continue;
@@ -258,7 +258,7 @@ function esRechazoSinSecreto(stmt: ts.Statement, validar: Set<string>): boolean 
   let cond = stmt.expression;
   while (ts.isParenthesizedExpression(cond)) cond = cond.expression;
   if (!ts.isPrefixUnaryExpression(cond) || cond.operator !== ts.SyntaxKind.ExclamationToken) return false;
-  let operando = cond.operand;
+  let operando: ts.Expression = cond.operand;
   while (ts.isParenthesizedExpression(operando)) operando = operando.expression;
   if (!ts.isCallExpression(operando)) return false;
   const callee = nombreDelCallee(operando);
