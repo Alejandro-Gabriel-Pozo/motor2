@@ -1,10 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "../../src/core/carta/descuento-producto";
+import { aplicarDescuentoDeProducto, descuentosVigentes, precioCobradoConDescuentos } from "../../src/core/carta/descuento-producto";
 
 /**
  * Producto con descuento (Fase 2): el cálculo puro. Una sola definición para la carta, el selector, el alta a la cuenta, el cierre, la boleta y el
  * reporte — por eso se fija acá con los redondeos y el piso, no en cada pantalla.
  */
+describe("descuentosVigentes (R1: sin la capacidad precio_local no rige ningún descuento)", () => {
+  const configurados = new Map([["a", 15], ["b", 5]]);
+
+  it("con la capacidad prendida rigen todos los configurados", () => {
+    expect([...descuentosVigentes(configurados, true)]).toEqual([["a", 15], ["b", 5]]);
+  });
+
+  it("con la capacidad apagada no rige ninguno", () => {
+    expect(descuentosVigentes(configurados, false).size).toBe(0);
+  });
+
+  it("no muta ni comparte el mapa configurado", () => {
+    const vigentes = descuentosVigentes(configurados, true);
+    vigentes.delete("a");
+    expect(configurados.get("a")).toBe(15);
+  });
+});
+
 describe("aplicarDescuentoDeProducto", () => {
   it("sin porcentaje (null, undefined o 0): precio de lista, sin descuento", () => {
     for (const p of [null, undefined, 0]) {

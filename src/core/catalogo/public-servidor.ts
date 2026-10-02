@@ -11,12 +11,13 @@
  */
 export {
   disponibilidadDeProductos,
+  disponibilidadEnAlgunaSucursal,
   disponibilidadPorSucursalDeProducto,
   productoDisponibleEn,
   whereDisponibleEn,
   whereDisponibleEnAlguna,
 } from "./disponibilidad-producto-consulta";
-export { preciosLocalesVigentes } from "./precio-local-consulta";
+export { precioLocalActivoEn, preciosLocalesVigentes } from "./precio-local-consulta";
 export { creariaCiclo, textoCadenaDeGrupos } from "./grupo";
 export { validarFusionInsumos, validarUnidadInsumo } from "./producto";
 export { dependenciasParaDesactivar } from "./desactivar-producto";

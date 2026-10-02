@@ -38,6 +38,15 @@ export function precioCobradoConDescuentos(precioUnitario: number, precioLista: 
   return conClienteSobreLista < precioUnitario ? { precio: conClienteSobreLista, precioLista, origen: "cliente" } : { precio: precioUnitario, precioLista, origen: "producto" };
 }
 
+/**
+ * Los descuentos de producto que RIGEN en la sucursal: los configurados, solo si la sucursal tiene prendida la capacidad `precio_local` (decisión
+ * del dueño, 2026-10-01, R1: con el precio propio de la sucursal apagado, tampoco rige su descuento). Los configurados no se borran: vuelven a
+ * regir al reactivarla. Pura.
+ */
+export function descuentosVigentes(configurados: ReadonlyMap<string, number>, precioLocalActivo: boolean): Map<string, number> {
+  return precioLocalActivo ? new Map(configurados) : new Map();
+}
+
 export function aplicarDescuentoDeProducto(precioVigente: number, porcentaje: number | null | undefined): PrecioConDescuentoDeProducto {
   if (!porcentaje || porcentaje <= 0) return { precio: precioVigente, precioLista: null, porcentaje: null };
   const precio = precioConDescuento(precioVigente, porcentaje);

@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal, resolverMenuCarta } from "@/core/carta/public-servidor";
 import { tieneStockReal } from "@/core/movimientos/public";
@@ -31,7 +31,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * ninguna Server Action nueva.
  */
 export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promise<SelectorCartaPos> {
-  const [carta, productos, preciosLocales, descuentos, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
+  const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
     resolverMenuCarta(sucursalId, db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
@@ -39,6 +39,7 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promis
     }),
     preciosLocalesVigentes(sucursalId, db),
     descuentosDeProductoEnSucursal(sucursalId, db),
+    precioLocalActivoEn(sucursalId, db),
     db.generoCarta.findMany({ where: { activo: true }, select: { id: true, nombre: true, orden: true } }),
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null } }, select: { productoId: true, generoCartaId: true } }),
     db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null } }, select: { id: true, generoCartaId: true } }),
@@ -81,7 +82,7 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promis
     promoCartaId: p.id,
     seccionCartaId: p.seccionCartaId,
     titulo: p.titulo,
-    precio: precioDePromo(p.precio, p.sucursales[0]),
+    precio: precioDePromo(p.precio, p.sucursales[0], precioLocalActivo),
     cupos: p.cupos.map((c) => ({
       seccionCartaId: c.seccionCartaId,
       nombreSeccion: c.seccionCarta.nombre,

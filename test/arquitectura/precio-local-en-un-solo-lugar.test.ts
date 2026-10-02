@@ -12,7 +12,11 @@ import { describe, expect, it } from "vitest";
  * filas, con capacidad apagada o no) y el reporte de la comparativa de precios (`core/reportes/periodo-precios.ts`, que solo
  * traduce el id de una fila auditada a su producto, sin leer ningún precio).
  *
- * Cómo se controla: ningún otro archivo de `src/` puede llamar `precioLocalProducto.find*` fuera de un comentario.
+ * Lo mismo vale para la capacidad: "¿rige el precio propio de la sucursal?" (R1, 2026-10-01: también gobierna el precio local de las promos y los
+ * descuentos de producto) se pregunta con `precioLocalActivoEn`, el único lugar que consulta la capacidad `precio_local` para decidir un precio.
+ *
+ * Cómo se controla: ningún otro archivo de `src/` puede llamar `precioLocalProducto.find*` ni `sucursalTieneCapacidad(…, "precio_local", …)`
+ * fuera de un comentario.
  */
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVOS_PERMITIDOS = [
@@ -46,6 +50,21 @@ function lineasQueLeenPrecioLocalDirecto(fuente: string): number[] {
   return malas;
 }
 
+const LECTURA_DE_CAPACIDAD = /sucursalTieneCapacidad\s*\([^)]*["']precio_local["']/;
+
+/** Las líneas (1-based) que consultan la capacidad `precio_local` con `sucursalTieneCapacidad` fuera de un comentario. */
+function lineasQueLeenCapacidadPrecioLocal(fuente: string): number[] {
+  const malas: number[] = [];
+  fuente
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .forEach((linea, i) => {
+      if (esComentario(linea)) return;
+      if (LECTURA_DE_CAPACIDAD.test(linea)) malas.push(i + 1);
+    });
+  return malas;
+}
+
 describe("precio local: un solo lugar decide cuál rige (capacidad + fila habilitada)", () => {
   const rutas = archivos(RAIZ);
 
@@ -67,6 +86,21 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
     ).toEqual([]);
   });
 
+  it("solo `precioLocalActivoEn` (core/catalogo/precio-local-consulta.ts) consulta la capacidad `precio_local` para decidir un precio", () => {
+    const problemas: string[] = [];
+    for (const ruta of rutas) {
+      const nombre = relative(RAIZ, ruta).split(sep).join("/");
+      if (nombre === "core/catalogo/precio-local-consulta.ts") continue;
+      for (const linea of lineasQueLeenCapacidadPrecioLocal(readFileSync(ruta, "utf8"))) problemas.push(`${nombre}:${linea}`);
+    }
+    expect(
+      problemas,
+      `Estas líneas preguntan por la capacidad precio_local a mano; usá precioLocalActivoEn (core/catalogo/public-servidor) para que el precio local de la promo y el descuento no discrepen:\n${problemas.join("\n")}`
+    ).toEqual([]);
+    const fuente = readFileSync(join(RAIZ, "core/catalogo/precio-local-consulta.ts"), "utf8");
+    expect(lineasQueLeenCapacidadPrecioLocal(fuente).length, "precio-local-consulta.ts ya no consulta la capacidad: ¿se movió?").toBeGreaterThan(0);
+  });
+
   it("los archivos permitidos existen (la lista no quedó desactualizada)", () => {
     const existentes = new Set(rutas.map((r) => relative(RAIZ, r).split(sep).join("/")));
     for (const permitido of ARCHIVOS_PERMITIDOS) expect(existentes.has(permitido), permitido).toBe(true);
@@ -86,6 +120,16 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
     it("no marca un comentario que menciona la lectura", () => {
       const fuente = "// antes: db.precioLocalProducto.findMany — ahora pasa por preciosLocalesVigentes.";
       expect(lineasQueLeenPrecioLocalDirecto(fuente)).toEqual([]);
+    });
+
+    it("marca la consulta directa de la capacidad precio_local (comillas dobles o simples) y no la de otra capacidad ni un comentario", () => {
+      const fuente = [
+        'const activa = await sucursalTieneCapacidad(sucursalId, "precio_local", db);',
+        "const activa = await sucursalTieneCapacidad(sucursalId, 'precio_local', tx);",
+        'const otra = await sucursalTieneCapacidad(sucursalId, "proceso_venta", db);',
+        '// antes: sucursalTieneCapacidad(sucursalId, "precio_local", db)',
+      ].join("\n");
+      expect(lineasQueLeenCapacidadPrecioLocal(fuente)).toEqual([1, 2]);
     });
 
     it("no marca el uso legítimo del embudo ni las escrituras", () => {

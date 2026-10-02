@@ -1,11 +1,11 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { disponibilidadDeProductos, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos, precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
 import { esClavePortal, posicionCompleta, type PosicionPortal } from "./portal";
 import { esClaveTema } from "./tema";
 import { precioDePromo, seleccionDeSucursalDePromo } from "./promo-sucursal";
-import { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
+import { descuentosConfiguradosEnSucursal } from "./descuento-producto-consulta";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -36,7 +36,7 @@ export interface ProductoCartaAdmin {
   /** Nombre de la sección de carta ACTIVA donde está su contenido, o null. */
   seccionCarta: string | null;
   precio: number;
-  /** % de descuento de este producto EN esta sucursal (producto con descuento, 2026-10-01), o null. */
+  /** % de descuento CONFIGURADO de este producto EN esta sucursal (producto con descuento, 2026-10-01), o null. Rige solo con `precioLocalActivo` (R1). */
   descuento: number | null;
   contenido:
     | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null }
@@ -101,6 +101,11 @@ export interface DatosAdminCarta {
   /** Visibles y disponibles que igual no salen porque no tienen sección de carta, o la suya está apagada. */
   visiblesSinSeccion: ProductoSinSeccion[];
   promos: PromoCartaAdmin[];
+  /**
+   * La capacidad `precio_local` de la sucursal (R1, 2026-10-01): apagada, NO rigen el precio local de las promos ni los descuentos de producto
+   * configurados (siguen guardados; el admin los ve y los edita igual). Los precios `precioAca` ya la consideran.
+   */
+  precioLocalActivo: boolean;
 }
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
@@ -136,7 +141,7 @@ async function generosOrdenados(db: Db): Promise<GeneroCartaAdmin[]> {
 }
 
 export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<DatosAdminCarta> {
-  const [secciones, generos, productos, promos, armado] = await Promise.all([
+  const [secciones, generos, productos, promos, armado, precioLocalActivo] = await Promise.all([
     seccionesConCantidad(db),
     generosOrdenados(db),
     db.producto.findMany({
@@ -171,9 +176,10 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
       orderBy: [{ activa: "desc" }, { orden: "asc" }, { titulo: "asc" }],
     }),
     resolverMenuCartaConDiagnostico(sucursalId, db),
+    precioLocalActivoEn(sucursalId, db),
   ]);
 
-  const descuentos = await descuentosDeProductoEnSucursal(sucursalId, db, productos.map((p) => p.id));
+  const descuentos = await descuentosConfiguradosEnSucursal(sucursalId, db, productos.map((p) => p.id));
   const productosAdmin: ProductoCartaAdmin[] = productos.map((p) => {
     const c = p.contenidoCarta;
     return {
@@ -213,9 +219,10 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
       activa: pr.activa,
       prendidaAca: pr.sucursales[0]?.activa ?? false,
       precioLocal: pr.sucursales[0]?.precioLocal != null ? Number(pr.sucursales[0].precioLocal) : null,
-      precioAca: precioDePromo(pr.precio, pr.sucursales[0]),
+      precioAca: precioDePromo(pr.precio, pr.sucursales[0], precioLocalActivo),
       cupos: pr.cupos.map((c) => ({ id: c.id, seccionCartaId: c.seccionCartaId, seccionCarta: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
     })),
+    precioLocalActivo,
   };
 }
 

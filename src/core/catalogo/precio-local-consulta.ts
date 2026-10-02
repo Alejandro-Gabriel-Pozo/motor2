@@ -5,6 +5,15 @@ import { filtrarPreciosLocalesVigentes, type PrecioLocalVigente } from "./precio
 type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
+ * ¿La sucursal tiene prendida la capacidad `precio_local`? Es el interruptor único de TODO precio propio de la sucursal (decisión del dueño,
+ * 2026-10-01, R1): apagarla hace que rijan el precio central, el precio de la promo de la empresa y SIN el descuento de producto. Es el único
+ * lugar que lee esa capacidad para decidir un precio; fijado por `test/arquitectura/precio-local-en-un-solo-lugar.test.ts`.
+ */
+export async function precioLocalActivoEn(sucursalId: string, db: Db): Promise<boolean> {
+  return sucursalTieneCapacidad(sucursalId, "precio_local", db);
+}
+
+/**
  * El ÚNICO lugar que lee `PrecioLocalProducto` para decidir un precio: devuelve los Precios Locales VIGENTES de la sucursal
  * (capacidad `precio_local` + fila habilitada, ver `filtrarPreciosLocalesVigentes`), en 2 consultas para todo el lote. Todo
  * id que no esté en el mapa se cobra y se muestra al precio central. Sin `productoIds`, trae los de toda la sucursal.
@@ -13,7 +22,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
 export async function preciosLocalesVigentes(sucursalId: string, db: Db, productoIds?: readonly string[]): Promise<Map<string, PrecioLocalVigente>> {
   if (productoIds && productoIds.length === 0) return new Map();
   const [capacidadActiva, filas] = await Promise.all([
-    sucursalTieneCapacidad(sucursalId, "precio_local", db),
+    precioLocalActivoEn(sucursalId, db),
     db.precioLocalProducto.findMany({
       where: { sucursalId, habilitado: true, ...(productoIds ? { productoId: { in: [...productoIds] } } : {}) },
       select: { productoId: true, precio: true, habilitado: true },

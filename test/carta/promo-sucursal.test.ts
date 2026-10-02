@@ -52,8 +52,15 @@ describe("promo por sucursal: sin fila = no se ofrece; precioLocal null = precio
       where: { id: creada.id },
       select: { precio: true, sucursales: seleccionDeSucursalDePromo(sucursalB) },
     });
-    expect(precioDePromo(conFilas.precio, conFilas.sucursales[0])).toBe(22000);
-    expect(precioDePromo(enB.precio, enB.sucursales[0])).toBe(25000);
-    expect(precioDePromo(conFilas.precio, undefined)).toBe(25000);
+    expect(precioDePromo(conFilas.precio, conFilas.sucursales[0], true)).toBe(22000);
+    expect(precioDePromo(enB.precio, enB.sucursales[0], true)).toBe(25000);
+    expect(precioDePromo(conFilas.precio, undefined, true)).toBe(25000);
+  });
+
+  it("R1: con la capacidad precio_local apagada, el precioLocal de la fila no rige: se cobra el de la empresa (la fila no se borra)", async () => {
+    const creada = await promo("Con local en A", [{ sucursalId: sucursalA, precioLocal: 22000 }]);
+    const enA = await prisma.promoCarta.findUniqueOrThrow({ where: { id: creada.id }, select: { precio: true, sucursales: seleccionDeSucursalDePromo(sucursalA) } });
+    expect(precioDePromo(enA.precio, enA.sucursales[0], false)).toBe(25000);
+    expect(precioDePromo(enA.precio, enA.sucursales[0], true)).toBe(22000);
   });
 });

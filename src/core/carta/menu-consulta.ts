@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { armarMenuCarta, type CartaV1, type MenuArmado } from "./armar-menu";
 import { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
 import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
@@ -74,9 +74,10 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
   ]);
 
   const idsConPrecio = [...new Set([...productos.map((p) => p.id), ...agrupados.flatMap((ag) => ag.opciones.map((o) => o.producto.id))])];
-  const [preciosLocales, descuentos] = await Promise.all([
+  const [preciosLocales, descuentos, precioLocalActivo] = await Promise.all([
     preciosLocalesVigentes(sucursalId, db, idsConPrecio),
     descuentosDeProductoEnSucursal(sucursalId, db, productos.map((p) => p.id)),
+    precioLocalActivoEn(sucursalId, db),
   ]);
 
   return armarMenuCarta({
@@ -100,7 +101,7 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
     ),
     preciosLocales: [...preciosLocales].map(([productoId, pl]) => ({ productoId, precio: pl.precio, habilitado: pl.habilitado })),
     descuentos: [...descuentos].map(([productoId, porcentaje]) => ({ productoId, porcentaje })),
-    promos: promos.map(({ sucursales, ...pr }) => ({ ...pr, precio: precioDePromo(pr.precio, sucursales[0]) })),
+    promos: promos.map(({ sucursales, ...pr }) => ({ ...pr, precio: precioDePromo(pr.precio, sucursales[0], precioLocalActivo) })),
     agrupados: agrupados.map((ag) => ({
       id: ag.id,
       nombre: ag.nombre,

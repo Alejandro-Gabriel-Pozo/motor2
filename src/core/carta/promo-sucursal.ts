@@ -15,8 +15,16 @@ export function seleccionDeSucursalDePromo(sucursalId: string) {
   return { where: { sucursalId }, select: { activa: true, precioLocal: true } } as const;
 }
 
-/** El precio de la promo EN la sucursal: el local si lo tiene, si no el de la empresa (mismo patrón que `precioDeCarta`). */
-export function precioDePromo(precioEmpresa: { toString(): string } | number, filaDeSucursal: { precioLocal: { toString(): string } | number | null } | undefined): number {
-  const local = filaDeSucursal?.precioLocal;
+/**
+ * El precio de la promo EN la sucursal: el local si lo tiene Y la sucursal tiene prendida la capacidad `precio_local`; si no, el de la empresa
+ * (mismo patrón que `precioDeCarta`). Apagar `precio_local` NO borra el precio local de la promo: queda guardado y vuelve a regir al reactivarla
+ * (decisión del dueño, 2026-10-01, R1). `precioLocalActivo` sale de `precioLocalActivoEn`.
+ */
+export function precioDePromo(
+  precioEmpresa: { toString(): string } | number,
+  filaDeSucursal: { precioLocal: { toString(): string } | number | null } | undefined,
+  precioLocalActivo: boolean
+): number {
+  const local = precioLocalActivo ? filaDeSucursal?.precioLocal : null;
   return Number(local ?? precioEmpresa);
 }

@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
+import { precioLocalActivoEn } from "@/core/catalogo/public-servidor";
 import { cargarSelectorCartaPos } from "./selector-carta-consulta";
 import { pediblesDeEntrada } from "./selector-carta";
 import type { CupoPromoDefinicion } from "./promo-combo";
@@ -37,7 +38,7 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
       : null;
   if (!promo || !promo.cupos.length) return null;
 
-  const selector = await cargarSelectorCartaPos(sucursalId, db);
+  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db), precioLocalActivoEn(sucursalId, db)]);
   const pediblesPorSeccion = new Map(selector.seccionesCarta.map((s) => [s.seccionCartaId, s.entradas.flatMap(pediblesDeEntrada)]));
 
   const precioCartaPorProducto = new Map<string, number>();
@@ -53,5 +54,5 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
       elegibles: new Set(pedibles.map((p) => p.productoId)),
     };
   });
-  return { id: promo.id, titulo: promo.titulo, precio: precioDePromo(promo.precio, promo.sucursales[0]), cupos, precioCartaPorProducto };
+  return { id: promo.id, titulo: promo.titulo, precio: precioDePromo(promo.precio, promo.sucursales[0], precioLocalActivo), cupos, precioCartaPorProducto };
 }

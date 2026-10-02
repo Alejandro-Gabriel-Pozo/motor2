@@ -292,7 +292,7 @@ export default async function CartaPage() {
 
         <ul className="flex flex-col gap-2">
           {datos.productos.map((p) => (
-            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} puedeDescuento={puedeDescuento} />
+            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} puedeDescuento={puedeDescuento} precioLocalActivo={datos.precioLocalActivo} />
           ))}
           {!datos.productos.length && <li className="text-sm text-neutral-500">No hay productos de venta disponibles en esta sucursal.</li>}
         </ul>
@@ -316,7 +316,7 @@ export default async function CartaPage() {
                 <details>
                   <summary className="cursor-pointer text-sm">
                     <span className="font-medium">{pr.titulo}</span> · ${pr.precioAca.toLocaleString("es-AR")}
-                    {pr.precioLocal !== null ? " (precio de esta sucursal)" : ""} · {pr.seccionCarta} ·{" "}
+                    {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""} · {pr.seccionCarta} ·{" "}
                     {!pr.activa ? "apagada en toda la empresa" : pr.prendidaAca ? "prendida acá" : "apagada acá"} ·{" "}
                     {pr.cupos.length ? (
                       <>
@@ -375,7 +375,9 @@ export default async function CartaPage() {
                     </FormConResultado>
                   ) : (
                     <DatosSoloLectura className="mt-3">
-                      <Dato etiqueta="Precio en esta sucursal">{pr.precioLocal !== null ? `$${pr.precioLocal.toLocaleString("es-AR")}` : "El de la empresa"}</Dato>
+                      <Dato etiqueta="Precio en esta sucursal">
+                        {pr.precioLocal !== null ? `$${pr.precioLocal.toLocaleString("es-AR")}${datos.precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : "El de la empresa"}
+                      </Dato>
                     </DatosSoloLectura>
                   )}
 
@@ -643,7 +645,19 @@ function CamposCupos({
   );
 }
 
-function ContenidoProducto({ producto: p, ubicacion, puedeEditar, puedeDescuento }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta; puedeEditar: boolean; puedeDescuento: boolean }) {
+function ContenidoProducto({
+  producto: p,
+  ubicacion,
+  puedeEditar,
+  puedeDescuento,
+  precioLocalActivo,
+}: {
+  producto: ProductoCartaAdmin;
+  ubicacion: UbicacionEnCarta;
+  puedeEditar: boolean;
+  puedeDescuento: boolean;
+  precioLocalActivo: boolean;
+}) {
   const productoId = p.id;
   // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
   const estado = p.agrupadoEn
@@ -661,7 +675,7 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar, puedeDescuento
           {estado}
           {p.contenido?.especial ? " · ★" : ""}
           {p.generoCarta ? ` · ${p.generoCarta}` : ""}
-          {p.descuento !== null ? ` · −${p.descuento} %` : ""}
+          {p.descuento !== null ? ` · −${p.descuento} %${precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : ""}
         </summary>
         {p.agrupadoEn && (
           <p className="mt-2 text-sm text-neutral-500">
@@ -739,10 +753,11 @@ function ContenidoProducto({ producto: p, ubicacion, puedeEditar, puedeDescuento
               <button type="submit" className={CLASE_BOTON}>
                 Guardar descuento de «{p.nombre}»
               </button>
+              {!precioLocalActivo && p.descuento !== null && <p className="w-full text-sm text-neutral-500">No rige: el precio local está apagado en esta sucursal (se cobra el precio de lista).</p>}
             </FormConResultado>
           ) : (
             <DatosSoloLectura className="mt-3">
-              <Dato etiqueta="Descuento en esta sucursal">{p.descuento !== null ? `${p.descuento} %` : "Sin descuento"}</Dato>
+              <Dato etiqueta="Descuento en esta sucursal">{p.descuento !== null ? `${p.descuento} %${precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : "Sin descuento"}</Dato>
             </DatosSoloLectura>
           ))}
       </details>

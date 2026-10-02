@@ -44,9 +44,9 @@ describe("familia override: sin fila = vale el valor de la empresa", () => {
   });
 
   it("precio de promo: sin fila o con precioLocal null => precio de la empresa", () => {
-    expect(precioDePromo(25000, undefined)).toBe(25000);
-    expect(precioDePromo(25000, { precioLocal: null })).toBe(25000);
-    expect(precioDePromo(25000, { precioLocal: 22000 })).toBe(22000);
+    expect(precioDePromo(25000, undefined, true)).toBe(25000);
+    expect(precioDePromo(25000, { precioLocal: null }, true)).toBe(25000);
+    expect(precioDePromo(25000, { precioLocal: 22000 }, true)).toBe(22000);
   });
 });
 

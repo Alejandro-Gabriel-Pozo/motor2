@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { cargarRecetasVigentes, clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { disponibilidadDeProductos, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos, disponibilidadEnAlgunaSucursal, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -11,8 +11,9 @@ export interface InfoProductoReporte {
   tipo: "MP" | "PV";
   /**
    * Disponible EN LA SUCURSAL de `sucursalId` (docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — ya no es el
-   * `Producto.activo` global. Sin `sucursalId` (reportes 100% de Catálogo Central que no lo leen, ver docstring de
-   * `construirMapaProductos`), queda en `true` como placeholder inerte: ningún llamador actual lo consulta en ese caso.
+   * `Producto.activo` global. Sin `sucursalId` (reportes 100% de Catálogo Central, ver docstring de `construirMapaProductos`) es
+   * "disponible en ALGUNA sucursal" (decisión del dueño, 2026-10-01; el mismo criterio que `whereDisponibleEnAlguna`): un producto
+   * sin ninguna fila disponible sale `false`, ya no un `true` fijo.
    */
   disponible: boolean;
   seProduce: boolean;
@@ -57,8 +58,8 @@ export async function cargarClasificacionNoComestibles(db: Db): Promise<Clasific
  * `sucursalId` es opcional: los reportes que son 100% de Catálogo Central
  * (huecos de catálogo, insumos sin receta) no necesitan resolver ningún
  * precio local — pasarlo de largo evita una query que no aporta nada ahí.
- * Sin él, `InfoProductoReporte.disponible` tampoco se resuelve de verdad
- * (queda en `true` fijo) — ver su docstring.
+ * Sin él, `InfoProductoReporte.disponible` es "disponible en alguna
+ * sucursal" (una consulta chica, no por sucursal) — ver su docstring.
  */
 export async function construirMapaProductos(
   sucursalId: string | undefined,
@@ -71,9 +72,10 @@ export async function construirMapaProductos(
     sucursalId ? preciosLocalesVigentes(sucursalId, db) : Promise.resolve(new Map<string, { precio: number }>()),
     clasificacionCargada ? Promise.resolve(clasificacionCargada) : cargarClasificacionNoComestibles(db),
   ]);
+  const idsProductos = productos.map((p) => p.id);
   const disponibilidadPorProducto = sucursalId
-    ? await disponibilidadDeProductos(sucursalId, productos.map((p) => p.id), db)
-    : null;
+    ? await disponibilidadDeProductos(sucursalId, idsProductos, db)
+    : await disponibilidadEnAlgunaSucursal(idsProductos, db);
 
   return new Map(
     productos.map((p) => [
@@ -83,7 +85,7 @@ export async function construirMapaProductos(
         codigo: p.codigo,
         nombre: p.nombre,
         tipo: p.tipo,
-        disponible: disponibilidadPorProducto ? disponibilidadPorProducto.get(p.id) === true : true,
+        disponible: disponibilidadPorProducto.get(p.id) === true,
         seProduce: p.seProduce,
         precioVenta: preciosLocales.get(p.id)?.precio ?? Number(p.precioVenta),
         categoriaNombre: p.categoria?.nombre ?? null,
