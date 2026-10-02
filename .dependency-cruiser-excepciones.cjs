@@ -50,7 +50,7 @@ const IMPORTADORES_DE_DB = [
   },
   {
     ruta: "src/core/auth/acceso.ts",
-    motivo: "Resolución de acceso del usuario de sesión (login/jerarquía de roles): corre antes del contexto; `db` es parámetro con default solo aquí.",
+    motivo: "Resolución de acceso del usuario de sesión (login/jerarquía de roles): corre antes del contexto, así que lee `user`/`session` con el `prisma` global (la sesión abierta de otra cuenta) y el resto con `dbDeEmpresa`/`dbDeUsuario`.",
   },
   {
     ruta: "src/core/auth/bootstrap.ts",
@@ -64,6 +64,21 @@ const IMPORTADORES_DE_DB = [
     ruta: "src/core/carta/publica-sin-sesion.ts",
     motivo: "Resolución PÚBLICA de la carta (empresa, portal, carta de una sucursal): sin sesión no hay contexto que dé la base. Único punto de entrada de las páginas públicas.",
   },
+];
+
+/**
+ * `base-solo-desde-lista`: el ÚNICO grupo de archivos de `src/` que puede importar `src/core/auth/base.ts` (las funciones que fijan la empresa/el usuario
+ * de la base: `dbDeEmpresa`, `dbDeUsuario`, `baseDeEmpresa`, `baseDelContexto`). Es la frontera que `db-solo-desde-auth-y-carta-publica` deja abierta: sin ella,
+ * cualquier archivo podría pedir una base «de otra empresa» sin pasar por el contexto del usuario. Una importación nueva obliga a decidir y a explicar por qué.
+ */
+const IMPORTADORES_DE_BASE = [
+  { ruta: "src/core/auth/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
+  { ruta: "src/core/auth/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
+  { ruta: "src/core/auth/bootstrap.ts", motivo: "Alta del primer admin al primer login: corre antes de que el usuario tenga contexto." },
+  { ruta: "src/core/carta/publica-sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
+  { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },
+  { ruta: "src/app/api/cron/sincronizar-dolar/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
+  { ruta: "src/app/api/cron/sincronizar-ipc/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
 ];
 
 /**
@@ -168,6 +183,7 @@ module.exports = {
   "core-sin-react-next": CORE_CON_REACT_NEXT,
   "ui-sin-prisma": PENDIENTES_DE_MIGRAR,
   "db-solo-desde-auth-y-carta-publica": IMPORTADORES_DE_DB,
+  "base-solo-desde-lista": IMPORTADORES_DE_BASE,
   "sin-ciclos": CICLOS_CONOCIDOS,
   PENDIENTES_DE_MIGRAR,
   ACCIONES_CON_CASO_DE_USO,

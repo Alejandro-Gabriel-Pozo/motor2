@@ -37,6 +37,7 @@ interface Excepciones {
   "core-sin-react-next": ExcepcionDeArchivo[];
   "ui-sin-prisma": ExcepcionDeArchivo[];
   "db-solo-desde-auth-y-carta-publica": ExcepcionDeArchivo[];
+  "base-solo-desde-lista": ExcepcionDeArchivo[];
   "sin-ciclos": ExcepcionDeCiclo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
   ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
@@ -56,6 +57,7 @@ const CONFIG = requerir(join(RAIZ, ".dependency-cruiser.cjs")) as Config;
 const RE_UI = /^src\/(app|components)\//;
 const RE_CORE = /^src\/core\//;
 const RE_DB = /^src\/lib\/db\.ts$/;
+const RE_BASE = /^src\/core\/auth\/base\.ts$/;
 const RE_REACT_NEXT = /^node_modules\/(@types\/)?(react|react-dom|next)\//;
 
 let modulos: IModule[] = [];
@@ -114,7 +116,7 @@ describe("dependency-cruiser: la config no se afloja por la puerta de atrás", (
 });
 
 describe(".dependency-cruiser-excepciones.cjs: toda excepción tiene motivo y apunta a algo que existe", () => {
-  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["ui-sin-prisma"], ...EXCEPCIONES["db-solo-desde-auth-y-carta-publica"]];
+  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["ui-sin-prisma"], ...EXCEPCIONES["db-solo-desde-auth-y-carta-publica"], ...EXCEPCIONES["base-solo-desde-lista"]];
 
   it("toda excepción lleva un motivo no vacío", () => {
     const sinMotivo = [
@@ -166,6 +168,17 @@ describe("db-solo-desde-auth-y-carta-publica: los importadores de @/lib/db, en l
     const faltan = diferencia(reales, listados);
     expect(sobran, `Estos ya no importan @/lib/db: sacalos de db-solo-desde-auth-y-carta-publica en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
     expect(faltan, `Estos archivos importan @/lib/db sin estar en la lista (reciban la base del contexto: ctx.db / db: Db):\n${faltan.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("base-solo-desde-lista: los importadores de core/auth/base.ts, en las dos direcciones", () => {
+  it("el conjunto de archivos de src/ que importan core/auth/base.ts es exactamente el de la lista", () => {
+    const reales = modulosCon(/^src\//, (d) => RE_BASE.test(d.resolved));
+    const listados = EXCEPCIONES["base-solo-desde-lista"].map((e) => e.ruta).sort();
+    const sobran = diferencia(listados, reales);
+    const faltan = diferencia(reales, listados);
+    expect(sobran, `Estos ya no importan core/auth/base.ts: sacalos de base-solo-desde-lista en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
+    expect(faltan, `Estos archivos importan core/auth/base.ts sin estar en la lista (reciban la base del contexto: ctx.db / db: Db):\n${faltan.join("\n")}`).toEqual([]);
   });
 });
 
