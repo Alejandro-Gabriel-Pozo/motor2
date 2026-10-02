@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
@@ -17,6 +18,7 @@ function comoQueMostrar(valor: string | undefined): QueMostrar {
 }
 
 const ETIQUETA_RANGO_HISTORIAL: Record<RangoHistorial, string> = {
+  "10d": "los últimos 10 días",
   "90d": "los últimos 90 días",
   todo: "todo el historial",
   personalizado: "el rango elegido",
@@ -42,8 +44,16 @@ export default async function HistorialProductoPage({
   const secciones = await listarSeccionesActivas(ctx.sucursalId);
   const queMostrar = comoQueMostrar(sp.queMostrar);
   // Un solo rango para TODA la pantalla (decisión 10 de §4): los números de arriba y el Kardex de abajo siempre parten de
-  // la MISMA consulta, así que siempre cierran entre sí. Default "90d"; "todo" es la alternativa explícita.
+  // la MISMA consulta, así que siempre cierran entre sí. Default "10d"; «Ver más» pasa a "90d" y después a "todo".
   const { rango, desde, hasta } = resolverRangoHistorial(sp);
+
+  // «Ver más»: 10 días → 90 días → todo. En un rango personalizado no hay a dónde ampliar (el usuario ya eligió las fechas).
+  const rangoMasAmplio = rango === "10d" ? "90d" : rango === "90d" ? "todo" : null;
+  const parametrosVerMas = new URLSearchParams();
+  if (sp.productoId) parametrosVerMas.set("productoId", sp.productoId);
+  if (sp.seccionId) parametrosVerMas.set("seccionId", sp.seccionId);
+  if (queMostrar !== "todo") parametrosVerMas.set("queMostrar", queMostrar);
+  if (rangoMasAmplio) parametrosVerMas.set("rango", rangoMasAmplio);
 
   const historial = sp.productoId ? await obtenerHistorialProducto(ctx.sucursalId, sp.productoId, sp.seccionId || undefined, desde, hasta, ctx.db) : null;
 
@@ -78,7 +88,12 @@ export default async function HistorialProductoPage({
           <p className="mb-2 text-xs text-neutral-500">
             Mostrando {ETIQUETA_RANGO_HISTORIAL[rango]}: {eventos.length} evento(s) visible(s), de {historial.totalMovimientos} movimiento(s) y{" "}
             {historial.totalConteos} conteo(s) en total
-            {historial.tieneStockPropio && " (el saldo corriente arranca del primer movimiento real, no del rango elegido)"}.
+            {historial.tieneStockPropio && " (el saldo corriente arranca del primer movimiento real, no del rango elegido)"}.{" "}
+            {rangoMasAmplio && (
+              <Link href={`/reportes/historial?${parametrosVerMas.toString()}`} className="underline">
+                Ver más ({rangoMasAmplio === "90d" ? "últimos 90 días" : "todo el historial"})
+              </Link>
+            )}
           </p>
           {historial.tieneStockPropio ? (
             <div className="mb-4">

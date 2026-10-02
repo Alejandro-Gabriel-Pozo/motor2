@@ -190,3 +190,39 @@ test("un rol con reporte_historial pero SIN reporte_historial_importes entra a l
     await prisma.producto.deleteMany({ where: { id: mp.id } });
   }
 });
+
+test("rango por defecto de 10 días: «Ver más» amplía a 90 días y después a todo el historial", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-VERMAS-${marca}`, nombre: `E2E Ver Mas ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+
+  const operaciones: string[] = [];
+  async function comprar(hace: number) {
+    const op = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: dia(hace), usuarioId: admin.id } });
+    operaciones.push(op.id);
+    await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 5, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 10 } });
+  }
+  await comprar(2); // dentro de los 10 días
+  await comprar(30); // solo con «Ver más» (90 días)
+  await comprar(200); // solo con todo el historial
+
+  try {
+    await page.goto(`/reportes/historial?productoId=${mp.id}`);
+    await expect(page.getByText(/Mostrando los últimos 10 días/)).toBeVisible();
+    await expect(page.getByText("Se compró 1 vez")).toBeVisible();
+
+    await page.getByRole("link", { name: /Ver más/ }).click();
+    await expect(page.getByText(/Mostrando los últimos 90 días/)).toBeVisible();
+    await expect(page.getByText("Se compró 2 veces")).toBeVisible();
+
+    await page.getByRole("link", { name: /Ver más/ }).click();
+    await expect(page.getByText(/Mostrando todo el historial/)).toBeVisible();
+    await expect(page.getByText("Se compró 3 veces")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Ver más/ })).toHaveCount(0);
+  } finally {
+    await prisma.movimientoStock.deleteMany({ where: { productoId: mp.id } });
+    await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
+    await prisma.producto.deleteMany({ where: { id: mp.id } });
+  }
+});

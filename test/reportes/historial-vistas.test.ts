@@ -162,11 +162,22 @@ describe("resumirCompras", () => {
 describe("resolverRangoHistorial", () => {
   const ahora = new Date("2026-06-15T12:00:00Z");
 
-  it("sin nada en searchParams: últimos 90 días (89 atrás + hoy), sin hasta (abierto a hoy)", () => {
+  it("sin nada en searchParams: últimos 10 días (9 atrás + hoy), sin hasta (abierto a hoy)", () => {
     const r = resolverRangoHistorial({}, ahora);
+    expect(r.rango).toBe("10d");
+    expect(r.desde?.toISOString().slice(0, 10)).toBe("2026-06-06"); // 9 días antes del 15/06
+    expect(r.hasta).toBeUndefined();
+  });
+
+  it("rango=90d (el primer «Ver más»): 89 atrás + hoy, sin hasta", () => {
+    const r = resolverRangoHistorial({ rango: "90d" }, ahora);
     expect(r.rango).toBe("90d");
     expect(r.desde?.toISOString().slice(0, 10)).toBe("2026-03-18"); // 89 días antes del 15/06
     expect(r.hasta).toBeUndefined();
+  });
+
+  it("un rango desconocido cae al default de 10 días", () => {
+    expect(resolverRangoHistorial({ rango: "cualquiera" }, ahora).rango).toBe("10d");
   });
 
   it("rango=todo: sin desde ni hasta (comportamiento de siempre, el historial completo)", () => {
@@ -180,7 +191,7 @@ describe("resolverRangoHistorial", () => {
     expect(r.hasta).toBeUndefined();
   });
 
-  it("rango=personalizado sin desde/hasta (primer submit tras elegir la opción, antes de tocar los inputs): sigue siendo 'personalizado', no cae a 90d", () => {
+  it("rango=personalizado sin desde/hasta (primer submit tras elegir la opción, antes de tocar los inputs): sigue siendo 'personalizado', no cae al default", () => {
     expect(resolverRangoHistorial({ rango: "personalizado" }, ahora)).toEqual({ rango: "personalizado", desde: undefined, hasta: undefined });
   });
 
@@ -235,15 +246,17 @@ describe("agruparVentasPorDia", () => {
 
 describe("quitarDineroDeEventos", () => {
   const conDinero = [
-    { tipo: "movimiento" as const, proceso: "COMPRA", fecha: new Date("2026-09-01T00:00:00Z"), cantidadConSigno: 5, saldoCorriente: 5, precioTotal: 500, precioPorUnidadStock: 100, proveedorNombre: "P" },
+    { tipo: "movimiento" as const, proceso: "COMPRA", fecha: new Date("2026-09-01T00:00:00Z"), cantidadConSigno: 5, saldoCorriente: 5, precioTotal: 500, precioPorUnidadStock: 100, proveedorNombre: "P", nroFactura: "A-0001" },
     { tipo: "conteo" as const, fecha: new Date("2026-09-02T00:00:00Z"), conteoReal: 4 },
   ];
 
-  it("saca precioTotal y precioPorUnidadStock de cada evento y conserva el resto", () => {
+  it("saca precioTotal, precioPorUnidadStock, proveedor y N.º de factura de cada evento y conserva el resto", () => {
     const sin = quitarDineroDeEventos(conDinero);
-    expect(sin[0]).toEqual({ tipo: "movimiento", proceso: "COMPRA", fecha: new Date("2026-09-01T00:00:00Z"), cantidadConSigno: 5, saldoCorriente: 5, proveedorNombre: "P" });
+    expect(sin[0]).toEqual({ tipo: "movimiento", proceso: "COMPRA", fecha: new Date("2026-09-01T00:00:00Z"), cantidadConSigno: 5, saldoCorriente: 5 });
     expect("precioTotal" in sin[0]!).toBe(false);
     expect("precioPorUnidadStock" in sin[0]!).toBe(false);
+    expect("proveedorNombre" in sin[0]!).toBe(false);
+    expect("nroFactura" in sin[0]!).toBe(false);
     expect(sin[1]).toEqual(conDinero[1]);
   });
 

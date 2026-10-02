@@ -20,11 +20,16 @@ function armarProsa(r: ResumenCompras, unidad: string, mostrarDinero: boolean): 
 function columnas(mostrarDinero: boolean): ColumnaReporte<FilaCompraHistorial>[] {
   const base: ColumnaReporte<FilaCompraHistorial>[] = [
     { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (f) => f.fecha.toISOString().slice(0, 10), render: (f) => f.fecha.toISOString().slice(0, 10) },
-    { clave: "proveedor", etiqueta: "Proveedor", valor: (f) => f.proveedor, render: (f) => f.proveedor ?? <span className="text-neutral-500 dark:text-neutral-400">Sin proveedor</span> },
-    { clave: "factura", etiqueta: "N.º de factura", valor: (f) => f.nroFactura, render: (f) => f.nroFactura ?? "—" },
     { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (f) => f.cantidad, render: (f) => f.cantidad },
   ];
   if (mostrarDinero) {
+    // Proveedor y N.º de factura son datos comerciales: van con la misma clave que el dinero (el servidor ya los saca de los eventos).
+    base.splice(
+      1,
+      0,
+      { clave: "proveedor", etiqueta: "Proveedor", valor: (f) => f.proveedor, render: (f) => f.proveedor ?? <span className="text-neutral-500 dark:text-neutral-400">Sin proveedor</span> },
+      { clave: "factura", etiqueta: "N.º de factura", valor: (f) => f.nroFactura, render: (f) => f.nroFactura ?? "—" }
+    );
     base.push(
       { clave: "precio", etiqueta: "Precio por unidad de stock", alinear: "derecha", valor: (f) => f.precioPorUnidadStock, render: (f) => (f.precioPorUnidadStock !== null ? `$${f.precioPorUnidadStock.toLocaleString("es-AR")}` : "—") },
       {

@@ -32,6 +32,16 @@ for (const m of SQL.matchAll(/\('([a-z_]+)', '(reporte_[a-z_]+)'\)/g)) {
   if (!hijas.includes(m[2])) hijas.push(m[2]); // el mapa aparece en dos sentencias
 }
 
+function quitarComentarios(sql: string) {
+  return sql
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((linea) => !linea.trim().startsWith("--"))
+    .join("\n")
+    .trim()
+    .replace(/;$/, "");
+}
+
 async function correrMigracion() {
   for (const sentencia of SENTENCIAS) await prismaAdmin.$executeRawUnsafe(sentencia);
 }
@@ -75,8 +85,12 @@ describe("migración de datos: partición de las claves de permisos de los repor
     await correrMigracion();
     const creadas = await prismaAdmin.accion.findMany({ where: { clave: { in: NUEVAS } } });
     expect(creadas.length).toBe(NUEVAS.length);
+    // La descripción de «reporte_historial_importes» la reescribió después 20261002100000_descripcion_historial_importes: se corre esa también.
+    const posterior = readFileSync(join(__dirname, "../../prisma/migrations/20261002100000_descripcion_historial_importes/migration.sql"), "utf8");
+    await prismaAdmin.$executeRawUnsafe(quitarComentarios(posterior));
+    const actualizadas = await prismaAdmin.accion.findMany({ where: { clave: { in: NUEVAS } } });
     const delCodigo = new Map(ACCIONES.map((a) => [a.clave as string, a.descripcion]));
-    for (const a of creadas) expect(a.descripcion, a.clave).toBe(delCodigo.get(a.clave));
+    for (const a of actualizadas) expect(a.descripcion, a.clave).toBe(delCodigo.get(a.clave));
   });
 
   it("cada empresa conserva lo suyo: cada rol hereda, en cada reporte, lo que tenía en el padre; nada cruza de empresa", async () => {
