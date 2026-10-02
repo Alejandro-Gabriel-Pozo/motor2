@@ -4,9 +4,9 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { intentarBootstrapAdmin } from "@/core/auth/bootstrap";
 import { cookies } from "next/headers";
-import { inicioDeSesionPermitido, NOMBRES_COOKIE_DE_SESION } from "@/core/auth/acceso";
+import { inicioDeSesionPermitido } from "@/core/auth/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
-import { nombreCookieSesion, sirvePorHttps } from "@/core/auth/cookie-sesion";
+import { nombreCookieSesion, sirvePorHttps, tokenDeSesionAbierta } from "@/core/auth/cookie-sesion";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -44,8 +44,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!user.email || !profile?.email || profile.email_verified !== true) return false;
       const hd = typeof profile.hd === "string" ? profile.hd : undefined;
       const cookieStore = await cookies();
-      const tokenDeSesionAbierta = NOMBRES_COOKIE_DE_SESION.map((n) => cookieStore.get(n)?.value).find(Boolean);
-      return inicioDeSesionPermitido({ emailUsuario: user.email, emailPerfil: profile.email, hd, tokenDeSesionAbierta });
+      const tokenAbierto = tokenDeSesionAbierta((n) => cookieStore.get(n)?.value);
+      return inicioDeSesionPermitido({ emailUsuario: user.email, emailPerfil: profile.email, hd, tokenDeSesionAbierta: tokenAbierto });
     },
     // Kill-switch en vivo: con estrategia 'database', esto corre en CADA
     // request con sesión (auth() lo llama), no solo al loguearse — así que

@@ -29,3 +29,11 @@ export function nombreCookieSesion(env: EntornoCookie): string {
 
 /** Todos los nombres con los que puede llegar la cookie de sesión (el proxy solo pregunta si hay alguna). */
 export const NOMBRES_COOKIE_SESION = [COOKIE_SESION_HTTP, COOKIE_SESION_SECURE_ANTERIOR, COOKIE_SESION_HOST] as const;
+
+/**
+ * El token de la sesión abierta, sea cual sea el nombre con el que llegó la cookie (http, `__Secure-` anterior o `__Host-` de producción).
+ * Es la ÚNICA lista de nombres: un chequeo que mire solo algunos no ve la sesión en producción (la vinculación de una cuenta de Google ajena a una sesión abierta quedaría sin freno).
+ */
+export function tokenDeSesionAbierta(leer: (nombre: string) => string | undefined): string | undefined {
+  return NOMBRES_COOKIE_SESION.map((n) => leer(n)).find(Boolean);
+}

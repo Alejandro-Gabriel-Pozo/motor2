@@ -51,9 +51,6 @@ export async function emailPuedeIniciarSesion(email: string, hd: string | undefi
   return usuarioExistente ? tieneSucursalActiva(usuarioExistente.id) : false;
 }
 
-/** Nombres con los que Auth.js guarda el token de sesión (con `__Secure-` cuando el sitio va por https). */
-export const NOMBRES_COOKIE_DE_SESION = ["__Secure-authjs.session-token", "authjs.session-token"] as const;
-
 function normalizar(email: string): string {
   return email.trim().toLowerCase();
 }

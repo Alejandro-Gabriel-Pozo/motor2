@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COOKIE_SESION_HOST, COOKIE_SESION_HTTP, NOMBRES_COOKIE_SESION, nombreCookieSesion, sirvePorHttps } from "@/core/auth/cookie-sesion";
+import { COOKIE_SESION_HOST, COOKIE_SESION_HTTP, NOMBRES_COOKIE_SESION, nombreCookieSesion, sirvePorHttps, tokenDeSesionAbierta } from "@/core/auth/cookie-sesion";
 
 describe("cookie de sesión __Host-", () => {
   it("en producción sobre Vercel (https) la cookie es __Host-authjs.session-token", () => {
@@ -25,5 +25,14 @@ describe("cookie de sesión __Host-", () => {
 
   it("el proxy reconoce los tres nombres posibles (sin sesión = ninguno presente)", () => {
     expect([...NOMBRES_COOKIE_SESION]).toEqual(expect.arrayContaining(["authjs.session-token", "__Secure-authjs.session-token", "__Host-authjs.session-token"]));
+  });
+
+  it("el token de la sesión abierta se encuentra con el nombre que la cookie tiene en CADA entorno (el chequeo de cuenta ajena no queda ciego en producción)", () => {
+    const entornos = [{ NODE_ENV: "development" }, { NODE_ENV: "production", VERCEL: "1" }, { NODE_ENV: "production", AUTH_URL: "https://app.zuluhub.com.ar" }];
+    for (const env of entornos) {
+      const cookies = { [nombreCookieSesion(env)]: "token-abierto" } as Record<string, string>;
+      expect(tokenDeSesionAbierta((n) => cookies[n]), JSON.stringify(env)).toBe("token-abierto");
+    }
+    expect(tokenDeSesionAbierta(() => undefined)).toBeUndefined();
   });
 });
