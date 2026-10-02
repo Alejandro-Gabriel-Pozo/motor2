@@ -53,7 +53,7 @@ export async function crearPagoConsignante(tx: Prisma.TransactionClient, datos: 
       proveedorId: datos.proveedorId,
       importe: datos.importe,
       fecha: datos.fecha,
-      notas: datos.notas || undefined,
+      ...(datos.notas && { notas: datos.notas }),
       usuarioId: datos.usuarioId,
       claveIdempotencia: datos.claveIdempotencia,
       payloadHash: datos.payloadHash,

@@ -47,7 +47,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
   async function asiento(productoId: string, proceso: "COMPRA" | "TRANSFERENCIA_SALIDA_SUCURSAL", cantidad: number, traspasoSucursalId?: string) {
     const op = await prisma.operacion.create({ data: { sucursalId: sucursalAId, proceso, fecha: new Date(), usuarioId: adminAId } });
     await prisma.movimientoStock.create({
-      data: { operacionId: op.id, productoId, seccionId: seccionAId, proceso, cantidad, detalle: proceso, precioTotal: 0, precioPorUnidadStock: 0, traspasoSucursalId },
+      data: { operacionId: op.id, productoId, seccionId: seccionAId, proceso, cantidad, detalle: proceso, precioTotal: 0, precioPorUnidadStock: 0, ...(traspasoSucursalId !== undefined && { traspasoSucursalId }) },
     });
   }
 

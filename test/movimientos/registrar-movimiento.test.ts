@@ -49,8 +49,8 @@ describe("registrarMovimiento", () => {
         unidadStockId: unidadKgId,
         insumoId: extra?.insumoId ?? insumoId,
         esConsignacion: extra?.esConsignacion ?? false,
-        proveedorConsignacionId: extra?.proveedorConsignacionId,
-        precioConsignacion: extra?.precioConsignacion,
+        ...(extra?.proveedorConsignacionId !== undefined && { proveedorConsignacionId: extra.proveedorConsignacionId }),
+        ...(extra?.precioConsignacion !== undefined && { precioConsignacion: extra.precioConsignacion }),
       },
       sucursalId
     );

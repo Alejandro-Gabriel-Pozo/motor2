@@ -27,7 +27,7 @@ describe("anularVentaCasoDeUso", () => {
   async function operacion(opciones: { proceso?: "VENTA" | "MERMA"; nroFactura?: string | null; promoCuentaId?: string; lineas?: Linea[] } = {}) {
     const proceso = opciones.proceso ?? "VENTA";
     const op = await prisma.operacion.create({
-      data: { sucursalId, proceso, fecha: new Date("2026-08-06T12:00:00Z"), usuarioId: adminId, nroFactura: opciones.nroFactura ?? null, promoCuentaId: opciones.promoCuentaId },
+      data: { sucursalId, proceso, fecha: new Date("2026-08-06T12:00:00Z"), usuarioId: adminId, nroFactura: opciones.nroFactura ?? null, ...(opciones.promoCuentaId !== undefined && { promoCuentaId: opciones.promoCuentaId }) },
     });
     const lineas = opciones.lineas ?? [{ cantidad: -2, precioTotal: 200, precioPorUnidadStock: 100, detalle: "Venta de Harina" }];
     for (const l of lineas) {

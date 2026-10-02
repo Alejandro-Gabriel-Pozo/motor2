@@ -32,7 +32,7 @@ export async function cargarRecetasVigentes<I extends Prisma.RecetaVersionInclud
   db: Db,
   args: { where?: Prisma.RecetaVersionWhereInput; include: I }
 ): Promise<Map<string, ConIncluyente<I>>> {
-  const versiones = (await db.recetaVersion.findMany({ where: args.where, orderBy: { version: "asc" }, include: args.include })) as unknown as ConIncluyente<I>[];
+  const versiones = (await db.recetaVersion.findMany({ where: args.where ?? {}, orderBy: { version: "asc" }, include: args.include })) as unknown as ConIncluyente<I>[];
   return quedarseConLaVigente(versiones);
 }
 

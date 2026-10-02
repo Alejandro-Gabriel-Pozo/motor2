@@ -42,7 +42,7 @@ export async function listarOpcionesDeSustituto(
   return db.insumo.findMany({
     where: {
       activo: true,
-      id: { not: ing.insumoIdExcluido ?? undefined },
+      ...(ing.insumoIdExcluido !== null && { id: { not: ing.insumoIdExcluido } }),
       productos: { some: { tipo: "MP", unidadStockId: ing.unidadId, ...whereDisponibleEnAlguna() } },
     },
     orderBy: { nombre: "asc" },

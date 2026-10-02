@@ -128,8 +128,8 @@ export async function agregarOActualizarUsuario(input: {
       });
       const membresia = await tx.usuarioSucursal.upsert({
         where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: input.sucursalId } },
-        update: { rolId: rol.id, notas: input.notas, activo: true },
-        create: { usuarioId: usuario.id, sucursalId: input.sucursalId, empresaId: ctx.empresaId, rolId: rol.id, notas: input.notas },
+        update: { rolId: rol.id, ...(input.notas !== undefined && { notas: input.notas }), activo: true },
+        create: { usuarioId: usuario.id, sucursalId: input.sucursalId, empresaId: ctx.empresaId, rolId: rol.id, ...(input.notas !== undefined && { notas: input.notas }) },
       });
       await registrarCambioAuditado(tx, {
         entidad: "UsuarioEmpresa", entidadId: usuario.id, campo: "activo", descripcion: `Cuenta de "${email}" en la empresa`,

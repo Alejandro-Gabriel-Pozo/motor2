@@ -19,7 +19,7 @@ import { refrescarVistaSiHaceFalta } from "../refrescar";
 export async function listarProveedores(soloActivos = false) {
   const ctx = await requerirSesion();
   return ctx.db.proveedor.findMany({
-    where: soloActivos ? { activo: true } : undefined,
+    where: soloActivos ? { activo: true } : {},
     orderBy: { nombre: "asc" },
   });
 }

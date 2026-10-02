@@ -276,7 +276,8 @@ function datosParaGuardar(datos: DatosProducto) {
     esConsignacion: datos.esConsignacion ?? false,
     proveedorConsignacionId: datos.proveedorConsignacionId || null,
     precioConsignacion: datos.precioConsignacion ?? 0,
-    observaciones: datos.observaciones,
+    // Sin el campo, Prisma no lo toca (strictUndefinedChecks no admite `undefined`).
+    ...(datos.observaciones !== undefined && { observaciones: datos.observaciones }),
   };
 }
 

@@ -71,7 +71,7 @@ describe("calcularCostosYMargenes", () => {
   describe("food cost objetivo (40 % sobre el precio, sin packaging)", () => {
     async function platoConCosto(precioVenta: number | undefined) {
       const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, ...(precioVenta !== undefined && { precioVenta }) }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 4000 }] }); // costo del plato: $4000
       return pv.id;
