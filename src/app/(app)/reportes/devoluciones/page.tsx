@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { diasAtrasDeUrl } from "@/core/reportes/dias-atras";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteDevoluciones } from "@/core/reportes/devoluciones";
 import { TablaDevolucionesClientes, TablaDevolucionesProveedor } from "./tabla-devoluciones";
@@ -11,7 +12,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = await searchParams;
-  const dias = Number(sp.dias) > 0 ? Number(sp.dias) : 30;
+  const dias = diasAtrasDeUrl(sp.dias, 30);
   const rep = await generarReporteDevoluciones(ctx.sucursalId, dias, ctx.db);
 
   return (
