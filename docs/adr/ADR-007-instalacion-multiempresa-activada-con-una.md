@@ -437,8 +437,12 @@ Preview de Vercel podría migrar producción si apunta a esa base (mitigado: ver
 - **S-11 — rol de ejecución.** Modo estricto opt-in (`MOTOR2_ROL_ESTRICTO=1`): se niega con un rol que salta el RLS aunque haya
   una sola empresa. Sin la variable, el comportamiento es el de siempre.
 - **S-15 — dependencias.** `next` y `eslint-config-next` a 16.3.8 (Prisma 7.10.0 no se baja), `npm run auditar:dependencias`
-  (`npm audit --omit=dev --audit-level=high`) y `.github/dependabot.yml`. Quedan avisos altos en la cadena del CLI de Prisma que no
-  se resuelven sin bajar Prisma: el comando sale con código 1 hasta decidir una lista de excepciones.
+  (ahora `tsx scripts/auditar-dependencias.ts`) y `.github/dependabot.yml`. Quedan avisos altos en la cadena del CLI de Prisma que no
+  se resuelven sin bajar Prisma. Decisión del dueño 2026-10-02: se aceptan con excepciones que VENCEN. La lista vive en
+  `scripts/auditoria-dependencias-excepciones.ts` (aviso, paquete, motivo y `venceElDia`; hoy `GHSA-ggr8-5vv4-36mx` de `deepmerge-ts` y
+  `GHSA-3f6p-5ww8-9rcr` de `mysql2`, ambas hasta 2026-12-01) y la lógica en `src/core/seguridad/auditoria-dependencias.ts`. El comando
+  sale con 1 si aparece un aviso alto o crítico sin excepción o con la excepción vencida; las excepciones que ya no corresponden a ningún
+  aviso se informan como sobrantes. Al vencer: revisar si Prisma ya publicó una versión sin el aviso, o renovar la fecha con el motivo vigente.
 - **S-16 — Sentry.** `src/lib/sentry-limpiar.ts` (`beforeSend` servidor y cliente): los errores de Prisma se reducen a tipo y código,
   a los textos se les tapan emails y tokens, y se descartan cuerpo, cookies, cabeceras de autenticación, query string y datos del
   usuario. Los `console.error` de `registrar-movimiento.ts` y `conteo-fisico.ts` siguen imprimiendo el error crudo.
@@ -450,5 +454,24 @@ Preview de Vercel podría migrar producción si apunta a esa base (mitigado: ver
   agrupados, 20 sustitutos) y de números (enteros ≤ 100 000, merma ≤ 1000 %, stock mínimo ≤ 1e9), siempre por debajo de la columna.
 - **S-29.** El proceso se busca con `Object.hasOwn` (un `"constructor"` ya no pasa por proceso válido); el slug de empresa sigue
   RFC 1123 (1–63, sin guion en los bordes); regla ESLint que prohíbe `$queryRawUnsafe`/`$executeRawUnsafe` en `src/`.
+- **Prisma `strictUndefinedChecks`** (autorizado por el dueño 2026-10-02, una línea del generador en `prisma/schema.prisma`, sin migración): un
+  `undefined` en un `where`/`data` lanza en vez de ignorarse (antes `findMany({ where: { empresaId: undefined } })` devolvía todo). Para omitir un
+  campo a propósito se usa `Prisma.skip`. Guardián: `test/persistencia/strict-undefined.test.ts`.
 - **No aplicado:** S-24 (`registrarMovimiento` no valida `proveedorId`; vive en el caso de uso), S-25 (`listarClientes` y el
   `include` completo de `listarUsuariosDeSucursal`) y S-26 (cambio de rol + auditoría en una transacción): quedan para decisión.
+
+## Puesta en marcha en las bases reales (pendiente del dueño; sin código)
+
+Orden pensado para no cortar el servicio. Nada de esto lo hace el código: son pasos del dueño en Vercel y en Neon.
+
+1. **Aplicar las migraciones S-5** (auditoría inmutable, gerente único, RLS de `UsuarioEmpresa`) a cada base real. La del gerente único
+   frena sola si una empresa tiene dos gerentes y nombra la empresa; hay que resolverlo antes. Requiere autorización expresa por base.
+2. **`MOTOR2_ROL_ESTRICTO=1`** (S-11). La variable hace que la aplicación se NIEGUE a arrancar si el usuario de base de datos con el que
+   se conecta salta el aislamiento por empresa (superusuario, `BYPASSRLS` o dueño de las tablas). Es un seguro contra una conexión mal
+   puesta. Para activarla sin cortar nada: (a) probarla primero en Preview con `DATABASE_URL` del rol `motor2_app`; (b) cambiar la
+   `DATABASE_URL` de Producción a `motor2_app` y verificar que la aplicación anda; (c) recién entonces poner `MOTOR2_ROL_ESTRICTO=1`
+   en Producción. La `DIRECT_URL` (migraciones) sigue usando el dueño de las tablas. Si algo falla, quitar la variable vuelve al
+   comportamiento anterior.
+3. **`AUTH_URL` fijo** en Producción (necesario para la cookie `__Host-`); la primera vez cierra las sesiones abiertas por https.
+4. **Dominio de la carta**: agregar en Vercel el dominio exacto `<slug>.carta.zuluhub.com.ar` y `CARTA_DOMINIO_BASE=carta.zuluhub.com.ar`.
+5. Correr `npm run detectar-cuentas-vinculadas` contra cada base real, rotar la credencial `neondb_owner` y borrar `.env.multitenancy`.

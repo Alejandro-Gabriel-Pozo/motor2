@@ -11,7 +11,7 @@
     "lint": "eslint",
     "arquitectura": "depcruise src --config .dependency-cruiser.cjs",
     "analizar:muerto": "knip",
-    "auditar:dependencias": "npm audit --omit=dev --audit-level=high",
+    "auditar:dependencias": "tsx scripts/auditar-dependencias.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
