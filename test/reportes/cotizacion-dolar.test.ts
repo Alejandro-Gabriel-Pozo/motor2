@@ -11,6 +11,7 @@ import {
   leerDolarApi,
   leerHistorial,
   obtenerUltimaCotizacion,
+  obtenerUltimaCotizacionSinRomper,
   pesosADolares,
   reiniciarLimitadorDolar,
   sincronizarDolar,
@@ -127,6 +128,24 @@ describe("sincronizarDolar", () => {
 
   it("sin ninguna cotización guardada, obtenerUltimaCotizacion da null", async () => {
     expect(await obtenerUltimaCotizacion(prisma)).toBeNull();
+  });
+});
+
+describe("obtenerUltimaCotizacionSinRomper: la pantalla sigue sin el dólar, pero el fallo queda en Sentry", () => {
+  beforeEach(() => vi.mocked(Sentry.captureException).mockClear());
+
+  it("con la base sana devuelve la cotización y no reporta nada", async () => {
+    await prisma.cotizacionDolar.create({ data: { fecha: new Date("2026-09-18"), fuente: "BNA", compra: 1485, venta: 1535 } });
+    expect(await obtenerUltimaCotizacionSinRomper(prisma)).toMatchObject({ venta: 1535 });
+    expect(Sentry.captureException).not.toHaveBeenCalled();
+  });
+
+  it("si la lectura falla devuelve null (no tira la pantalla) y reporta el error, una sola vez por arranque", async () => {
+    const rota = { cotizacionDolar: { findFirst: async () => { throw new Error("base caída"); } } } as unknown as typeof prisma;
+    expect(await obtenerUltimaCotizacionSinRomper(rota)).toBeNull();
+    expect(await obtenerUltimaCotizacionSinRomper(rota)).toBeNull();
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+    expect(Sentry.captureException).toHaveBeenCalledWith(expect.objectContaining({ message: "base caída" }), { tags: { area: "dolar-lectura" } });
   });
 });
 

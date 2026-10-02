@@ -1,4 +1,4 @@
-import { reportarError } from "@/lib/reportar-error";
+import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 import type { Db } from "./comun";
 
 /**
@@ -181,6 +181,19 @@ export async function obtenerUltimaCotizacion(db: Db): Promise<UltimaCotizacion 
   const fila = await db.cotizacionDolar.findFirst({ orderBy: [{ fecha: "desc" }, { fuente: "desc" }] });
   if (!fila) return null;
   return { fecha: fila.fecha, compra: fila.compra !== null ? Number(fila.compra) : null, venta: Number(fila.venta), fuente: fila.fuente };
+}
+
+/**
+ * Para las pantallas: el dólar es un extra (la equivalencia en US$), así que si la lectura falla la pantalla sigue sin él. Pero un fallo
+ * NO se traga en silencio: queda en Sentry (una vez por arranque, para no gastar la cuota si la base está caída y todas las pantallas lo piden).
+ */
+export async function obtenerUltimaCotizacionSinRomper(db: Db): Promise<UltimaCotizacion | null> {
+  try {
+    return await obtenerUltimaCotizacion(db);
+  } catch (e) {
+    await reportarErrorUnaVez("cotizacion-lectura", e, "dolar-lectura");
+    return null;
+  }
 }
 
 /** Pesos → dólares, con 2 decimales, a la cotización dada (se usa la de VENTA: lo que costaría comprar esos dólares). */

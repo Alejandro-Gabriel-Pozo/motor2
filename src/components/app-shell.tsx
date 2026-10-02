@@ -5,7 +5,7 @@ import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import { Suspense } from "react";
 import { after } from "next/server";
-import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
 import { SidebarColapsable } from "./sidebar-colapsable";
@@ -29,7 +29,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
   const politica = await politicaDeEmpresa(ctx.empresaId, ctx.db);
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
-  const cotizacion = await obtenerUltimaCotizacion(ctx.db).catch(() => null);
+  const cotizacion = await obtenerUltimaCotizacionSinRomper(ctx.db);
   // Si falta la cotización de hoy (el cron diario puede no haber corrido), la aplicación se pone al día sola DESPUÉS de responder.
   if (cotizacionVencida(cotizacion)) after(() => actualizarDolarSiHaceFalta(ctx.db));
 

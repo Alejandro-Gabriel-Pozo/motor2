@@ -9,7 +9,7 @@ import { ComparativaPrecios } from "./comparativa-precios";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
-import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
 
 export default async function PeriodoPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -24,7 +24,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const hastaStr = rango.hastaISO;
   const [rep, cotizacion] = await Promise.all([
     obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db),
-    obtenerUltimaCotizacion(ctx.db).catch(() => null),
+    obtenerUltimaCotizacionSinRomper(ctx.db),
   ]);
 
   return (

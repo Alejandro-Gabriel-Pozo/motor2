@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = join(__dirname, "../../src");
 const CARPETAS = ["server", "core", "lib"];
+/** `.catch(() => valor)` también se mira en las pantallas y los componentes de servidor: ahí fue donde se tragaba el fallo del dólar. */
+const CARPETAS_DE_PROMESAS = [...CARPETAS, "app", "components"];
 const REPORTA = new Set(["reportarError", "reportarErrorUnaVez"]);
 
 function archivos(dir: string, salida: string[] = []): string[] {
@@ -47,6 +49,29 @@ export function catchesMudos(rel: string, codigo: string): string[] {
   return mudos;
 }
 
+/** `archivo:línea` de cada `.catch(() => ...)` SIN parámetro (no mira el error) y sin llamada a `reportarError*`: descarta el fallo en silencio. */
+export function promesasMudas(rel: string, codigo: string): string[] {
+  const fuente = ts.createSourceFile(rel, codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const mudas: string[] = [];
+  const visitar = (n: ts.Node) => {
+    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "catch") {
+      const manejador = n.arguments[0];
+      if (manejador && (ts.isArrowFunction(manejador) || ts.isFunctionExpression(manejador)) && manejador.parameters.length === 0) {
+        let reporta = false;
+        const mirar = (h: ts.Node) => {
+          if (ts.isCallExpression(h) && ts.isIdentifier(h.expression) && REPORTA.has(h.expression.text)) reporta = true;
+          ts.forEachChild(h, mirar);
+        };
+        mirar(manejador.body);
+        if (!reporta) mudas.push(`${rel}:${fuente.getLineAndCharacterOfPosition(n.getStart(fuente)).line + 1}`);
+      }
+    }
+    ts.forEachChild(n, visitar);
+  };
+  visitar(fuente);
+  return mudas;
+}
+
 describe("los catch del servidor que registran un error también lo reportan", () => {
   it("el analizador distingue un catch ruidoso de uno mudo (sanidad: no pasa en vacío)", () => {
     expect(catchesMudos("x.ts", "async function f() { try { a(); } catch (e) { console.error(e); } }")).toEqual(["x.ts:1"]);
@@ -60,5 +85,19 @@ describe("los catch del servidor que registran un error también lo reportan", (
       .map((a) => relative(RAIZ, a).replace(/\\/g, "/"))
       .flatMap((rel) => catchesMudos(rel, readFileSync(join(RAIZ, rel), "utf8")));
     expect(mudos, "un catch que solo hace console.error pasa desapercibido: llamá también a reportarError(e, \"<area>\") de @/lib/reportar-error").toEqual([]);
+  });
+
+  it("el analizador de promesas distingue `.catch(() => null)` mudo de uno que reporta o que traduce el error (sanidad)", () => {
+    expect(promesasMudas("x.ts", "const a = f().catch(() => null);")).toEqual(["x.ts:1"]);
+    expect(promesasMudas("x.ts", "const a = f().catch(() => { return undefined; });")).toEqual(["x.ts:1"]);
+    expect(promesasMudas("x.ts", "const a = f().catch(async () => { await reportarError(1, 'x'); return null; });")).toEqual([]);
+    expect(promesasMudas("x.ts", "const a = f().catch((e) => { throw traducir(e); });")).toEqual([]);
+  });
+
+  it("ningún `.catch(() => valor)` de src/ descarta el fallo sin reportarlo", () => {
+    const mudas = CARPETAS_DE_PROMESAS.flatMap((c) => archivos(join(RAIZ, c)))
+      .map((a) => relative(RAIZ, a).replace(/\\/g, "/"))
+      .flatMap((rel) => promesasMudas(rel, readFileSync(join(RAIZ, rel), "utf8")));
+    expect(mudas, "un `.catch(() => null)` esconde el fallo: usá un ayudante que llame a reportarError*/reportarErrorUnaVez (ej. obtenerUltimaCotizacionSinRomper)").toEqual([]);
   });
 });

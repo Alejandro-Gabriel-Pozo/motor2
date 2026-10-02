@@ -6,7 +6,7 @@ import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
-import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
 import { EnlaceInterno } from "@/components/enlace-interno";
 
 export default async function ReportesResumenPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
@@ -20,7 +20,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
   const rango = resolverRangoDeReporte(sp);
   const [r, cotizacion] = await Promise.all([
     obtenerResumenOperativo(ctx.sucursalId, ctx.db, { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }),
-    obtenerUltimaCotizacion(ctx.db).catch(() => null),
+    obtenerUltimaCotizacionSinRomper(ctx.db),
   ]);
 
   return (
