@@ -1,11 +1,14 @@
 import { NAV_MOVIMIENTOS } from "@/core/movimientos/public";
 import type { AccionClave } from "@/core/permisos/acciones";
+import type { PanelActivo, PanelNav } from "./panel";
 
 export interface ItemNav {
   href: string;
   label: string;
   /** El ítem solo se muestra a quien puede VER esa acción (la misma que protege la página; un test lo comprueba para todos los ítems). */
   accion?: AccionClave;
+  /** En qué panel del menú aparece (ADR-010). Se declara en CADA ítem a propósito: un ítem nuevo sin panel no compila. */
+  panel: PanelNav;
 }
 
 export interface GrupoNav {
@@ -27,25 +30,25 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "administracion",
     label: "Administración",
     items: [
-      { href: "/administracion/usuarios", label: "Usuarios", accion: "gestion_usuarios" },
-      { href: "/administracion/roles", label: "Roles", accion: "gestion_roles" },
-      { href: "/administracion/permisos", label: "Permisos", accion: "gestion_permisos" },
-      { href: "/administracion/capacidades-sucursal", label: "Capacidades por sucursal", accion: "capacidades_sucursal" },
-      { href: "/administracion/sucursales", label: "Sucursales", accion: "alta_sucursal" },
-      { href: "/administracion/auditoria", label: "Auditoría", accion: "ver_auditoria" },
+      { href: "/administracion/usuarios", label: "Usuarios", accion: "gestion_usuarios", panel: "sucursal" },
+      { href: "/administracion/roles", label: "Roles", accion: "gestion_roles", panel: "empresa" },
+      { href: "/administracion/permisos", label: "Permisos", accion: "gestion_permisos", panel: "empresa" },
+      { href: "/administracion/capacidades-sucursal", label: "Capacidades por sucursal", accion: "capacidades_sucursal", panel: "empresa" },
+      { href: "/administracion/sucursales", label: "Sucursales", accion: "alta_sucursal", panel: "empresa" },
+      { href: "/administracion/auditoria", label: "Auditoría", accion: "ver_auditoria", panel: "sucursal" },
     ],
   },
   {
     id: "catalogo",
     label: "Catálogo",
     items: [
-      { href: "/catalogo/productos", label: "Productos", accion: "producto_ver_catalogo" },
-      { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores" },
-      { href: "/catalogo/clientes", label: "Clientes con descuento", accion: "clientes" },
-      { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta" },
-      { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia" },
-      { href: "/catalogo/categorias", label: "Categorías", accion: "categorias" },
-      { href: "/catalogo/unidades", label: "Unidades", accion: "unidades" },
+      { href: "/catalogo/productos", label: "Productos", accion: "producto_ver_catalogo", panel: "ambos" },
+      { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores", panel: "empresa" },
+      { href: "/catalogo/clientes", label: "Clientes con descuento", accion: "clientes", panel: "empresa" },
+      { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta", panel: "empresa" },
+      { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia", panel: "empresa" },
+      { href: "/catalogo/categorias", label: "Categorías", accion: "categorias", panel: "empresa" },
+      { href: "/catalogo/unidades", label: "Unidades", accion: "unidades", panel: "empresa" },
     ],
   },
   {
@@ -54,10 +57,10 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "carta",
     label: "Carta",
     items: [
-      { href: "/carta", label: "Carta pública", accion: "carta_ver" },
-      { href: "/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta_items_agrupados" },
-      { href: "/carta/portal", label: "Portal de sucursales", accion: "carta_portal" },
-      { href: "/carta/tema", label: "Tema de la carta", accion: "carta_tema" },
+      { href: "/carta", label: "Carta pública", accion: "carta_ver", panel: "sucursal" },
+      { href: "/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta_items_agrupados", panel: "empresa" },
+      { href: "/carta/portal", label: "Portal de sucursales", accion: "carta_portal", panel: "empresa" },
+      { href: "/carta/tema", label: "Tema de la carta", accion: "carta_tema", panel: "sucursal" },
     ],
   },
   {
@@ -69,13 +72,13 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "stock",
     label: "Stock",
     items: [
-      { href: "/stock/consolidado", label: "Consolidado", accion: "ver_stock" },
-      { href: "/stock/por-familia", label: "Por familia", accion: "ver_stock" },
-      { href: "/stock/alertas", label: "Alertas", accion: "ver_stock" },
-      { href: "/stock/minimo", label: "Stock mínimo", accion: "stock_minimo" },
-      { href: "/stock/seccion-habitual", label: "Sección habitual", accion: "stock_seccion_habitual" },
-      { href: "/stock/reclasificar", label: "Reclasificar", accion: "stock_reclasificar" },
-      { href: "/stock/conteo-frecuencia", label: "Frecuencia de conteo", accion: "conteo_frecuencia" },
+      { href: "/stock/consolidado", label: "Consolidado", accion: "ver_stock", panel: "sucursal" },
+      { href: "/stock/por-familia", label: "Por familia", accion: "ver_stock", panel: "sucursal" },
+      { href: "/stock/alertas", label: "Alertas", accion: "ver_stock", panel: "sucursal" },
+      { href: "/stock/minimo", label: "Stock mínimo", accion: "stock_minimo", panel: "sucursal" },
+      { href: "/stock/seccion-habitual", label: "Sección habitual", accion: "stock_seccion_habitual", panel: "sucursal" },
+      { href: "/stock/reclasificar", label: "Reclasificar", accion: "stock_reclasificar", panel: "sucursal" },
+      { href: "/stock/conteo-frecuencia", label: "Frecuencia de conteo", accion: "conteo_frecuencia", panel: "sucursal" },
     ],
   },
   {
@@ -85,42 +88,42 @@ export const GRUPOS_NAV: GrupoNav[] = [
       // Cada reporte se protege con la acción de «Ver» que lleva `accion` (la página usa la misma clave; un test lo comprueba).
       // Grupos: dinero (ventas, costos, márgenes, valuación), control (pérdidas, devoluciones, diferencias), operativos,
       // catálogo; y los que ya tenían acción propia (promociones, consignación, conteos, huecos de catálogo).
-      { href: "/reportes", label: "Resumen", accion: "reporte_resumen" },
-      { href: "/reportes/consolidado", label: "Consolidado (mis sucursales)", accion: "reporte_consolidado" },
-      { href: "/reportes/periodo", label: "Período", accion: "reporte_periodo" },
-      { href: "/reportes/categorias", label: "Por categoría", accion: "reporte_categorias" },
-      { href: "/reportes/ventas-por-seccion", label: "Por sección de carta", accion: "reporte_ventas_por_seccion" },
-      { href: "/reportes/costos", label: "Costos y márgenes", accion: "reporte_costos" },
-      { href: "/reportes/compras", label: "Compras registradas", accion: "reporte_compras" },
-      { href: "/reportes/rendimiento-recetas", label: "Rendimiento real de recetas", accion: "reporte_rendimiento_recetas" },
-      { href: "/reportes/rendimiento-recetas/por-sucursal", label: "Rendimiento por sucursal", accion: "reporte_rendimiento_sucursal" },
-      { href: "/reportes/valuacion", label: "Valuación de inventario", accion: "reporte_valuacion" },
-      { href: "/reportes/perdidas", label: "Pérdidas", accion: "reporte_perdidas" },
-      { href: "/reportes/devoluciones", label: "Devoluciones", accion: "reporte_devoluciones" },
-      { href: "/reportes/vencimientos", label: "Vencimientos", accion: "reporte_vencimientos" },
-      { href: "/reportes/diferencias", label: "Diferencias de ajuste", accion: "reporte_diferencias" },
-      { href: "/reportes/sin-receta", label: "Ventas sin receta", accion: "reporte_sin_receta" },
-      { href: "/reportes/insumos-sin-receta", label: "Insumos sin receta", accion: "reporte_insumos_sin_receta" },
-      { href: "/reportes/consignacion", label: "Consignación", accion: "pagar_consignante" },
-      { href: "/reportes/salud", label: "Salud por producto", accion: "reporte_salud" },
-      { href: "/reportes/huecos-catalogo", label: "Huecos de catálogo", accion: "reporte_huecos_catalogo" },
-      { href: "/reportes/conteos", label: "Conteos físicos", accion: "reporte_conteos" },
-      { href: "/reportes/historial", label: "Historial de un producto", accion: "reporte_historial" },
-      { href: "/reportes/trazabilidad", label: "Trazabilidad por ID", accion: "reporte_trazabilidad" },
-      { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "reporte_rotacion_mesas" },
-      { href: "/reportes/boletas", label: "Boletas emitidas", accion: "reporte_boletas" },
-      { href: "/reportes/descuentos-clientes", label: "Descuentos por cliente", accion: "reporte_descuentos_clientes" },
-      { href: "/reportes/descuentos-productos", label: "Descuentos de productos", accion: "reporte_descuentos_productos" },
-      { href: "/reportes/margen-promociones", label: "Margen de promociones", accion: "reporte_margen_promociones" },
+      { href: "/reportes", label: "Resumen", accion: "reporte_resumen", panel: "sucursal" },
+      { href: "/reportes/consolidado", label: "Consolidado (mis sucursales)", accion: "reporte_consolidado", panel: "sucursal" },
+      { href: "/reportes/periodo", label: "Período", accion: "reporte_periodo", panel: "sucursal" },
+      { href: "/reportes/categorias", label: "Por categoría", accion: "reporte_categorias", panel: "sucursal" },
+      { href: "/reportes/ventas-por-seccion", label: "Por sección de carta", accion: "reporte_ventas_por_seccion", panel: "sucursal" },
+      { href: "/reportes/costos", label: "Costos y márgenes", accion: "reporte_costos", panel: "sucursal" },
+      { href: "/reportes/compras", label: "Compras registradas", accion: "reporte_compras", panel: "sucursal" },
+      { href: "/reportes/rendimiento-recetas", label: "Rendimiento real de recetas", accion: "reporte_rendimiento_recetas", panel: "sucursal" },
+      { href: "/reportes/rendimiento-recetas/por-sucursal", label: "Rendimiento por sucursal", accion: "reporte_rendimiento_sucursal", panel: "sucursal" },
+      { href: "/reportes/valuacion", label: "Valuación de inventario", accion: "reporte_valuacion", panel: "sucursal" },
+      { href: "/reportes/perdidas", label: "Pérdidas", accion: "reporte_perdidas", panel: "sucursal" },
+      { href: "/reportes/devoluciones", label: "Devoluciones", accion: "reporte_devoluciones", panel: "sucursal" },
+      { href: "/reportes/vencimientos", label: "Vencimientos", accion: "reporte_vencimientos", panel: "sucursal" },
+      { href: "/reportes/diferencias", label: "Diferencias de ajuste", accion: "reporte_diferencias", panel: "sucursal" },
+      { href: "/reportes/sin-receta", label: "Ventas sin receta", accion: "reporte_sin_receta", panel: "sucursal" },
+      { href: "/reportes/insumos-sin-receta", label: "Insumos sin receta", accion: "reporte_insumos_sin_receta", panel: "sucursal" },
+      { href: "/reportes/consignacion", label: "Consignación", accion: "pagar_consignante", panel: "sucursal" },
+      { href: "/reportes/salud", label: "Salud por producto", accion: "reporte_salud", panel: "sucursal" },
+      { href: "/reportes/huecos-catalogo", label: "Huecos de catálogo", accion: "reporte_huecos_catalogo", panel: "empresa" },
+      { href: "/reportes/conteos", label: "Conteos físicos", accion: "reporte_conteos", panel: "sucursal" },
+      { href: "/reportes/historial", label: "Historial de un producto", accion: "reporte_historial", panel: "sucursal" },
+      { href: "/reportes/trazabilidad", label: "Trazabilidad por ID", accion: "reporte_trazabilidad", panel: "sucursal" },
+      { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "reporte_rotacion_mesas", panel: "sucursal" },
+      { href: "/reportes/boletas", label: "Boletas emitidas", accion: "reporte_boletas", panel: "sucursal" },
+      { href: "/reportes/descuentos-clientes", label: "Descuentos por cliente", accion: "reporte_descuentos_clientes", panel: "sucursal" },
+      { href: "/reportes/descuentos-productos", label: "Descuentos de productos", accion: "reporte_descuentos_productos", panel: "sucursal" },
+      { href: "/reportes/margen-promociones", label: "Margen de promociones", accion: "reporte_margen_promociones", panel: "sucursal" },
     ],
   },
   {
     id: "traspasos",
     label: "Traspasos",
     items: [
-      { href: "/traspasos", label: "Bandeja", accion: "traspaso_ver_bandeja" },
-      { href: "/traspasos/solicitar", label: "Solicitar (a otra sucursal)", accion: "traspaso_solicitar" },
-      { href: "/traspasos/enviar", label: "Enviar directo", accion: "traspaso_enviar_directo" },
+      { href: "/traspasos", label: "Bandeja", accion: "traspaso_ver_bandeja", panel: "sucursal" },
+      { href: "/traspasos/solicitar", label: "Solicitar (a otra sucursal)", accion: "traspaso_solicitar", panel: "sucursal" },
+      { href: "/traspasos/enviar", label: "Enviar directo", accion: "traspaso_enviar_directo", panel: "sucursal" },
     ],
   },
   {
@@ -129,7 +132,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
     // pantalla de inicio lo manda directo a /mesas (`elegirPantallaDeInicio`); el resto lo ve como una tarjeta más de `/inicio`.
     id: "pos",
     label: "Salón",
-    items: [{ href: "/mesas", label: "Mapa de mesas", accion: "pos_mesas" }],
+    items: [{ href: "/mesas", label: "Mapa de mesas", accion: "pos_mesas", panel: "sucursal" }],
   },
 ];
 
@@ -139,8 +142,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
  * `/catalogo/recetas/[id]/historial`, `/movimientos/compra?…`) no van acá: `accionDeRuta` las resuelve por el ítem del que cuelgan.
  */
 export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
-  { href: "/catalogo/proveedores/comparativa", label: "Comparativa de precios", accion: "comparar_precios" },
-  { href: "/catalogo/productos/nuevo", label: "Nuevo producto", accion: "alta_producto" },
+  { href: "/catalogo/proveedores/comparativa", label: "Comparativa de precios", accion: "comparar_precios", panel: "empresa" },
+  { href: "/catalogo/productos/nuevo", label: "Nuevo producto", accion: "alta_producto", panel: "ambos" },
 ];
 
 /**
@@ -180,6 +183,36 @@ export function hrefActivoDelMenu(pathname: string, hrefsDelMenuCompleto: readon
     if ((ruta === href || ruta.startsWith(`${href}/`)) && (mejor === null || href.length > mejor.length)) mejor = href;
   }
   return mejor !== null && hrefsVisibles.has(mejor) ? mejor : null;
+}
+
+/**
+ * El panel al que pertenece la pantalla abierta, o `null` si no se puede decir (es una pantalla de ambos paneles —`/catalogo/productos`—,
+ * el inicio, o una ruta que no es del menú): en ese caso el menú se queda en el último panel que eligió la persona. Usa la MISMA
+ * coincidencia que el ítem activo (`hrefActivoDelMenu`: la ruta más larga que es prefijo), sobre el menú completo y las pantallas fuera
+ * del menú (`/catalogo/proveedores/comparativa` es de Empresa como Proveedores), sin mirar permisos.
+ */
+export function panelDeRuta(pathname: string, grupos: GrupoNav[] = GRUPOS_NAV): PanelActivo | null {
+  const items = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU];
+  const hrefs = items.map((i) => i.href);
+  const href = hrefActivoDelMenu(pathname, hrefs, new Set(hrefs));
+  const panel = items.find((i) => i.href === href)?.panel;
+  return panel === "empresa" || panel === "sucursal" ? panel : null;
+}
+
+/** El menú partido en sus dos paneles: un ítem `ambos` está en los dos; un grupo que se queda sin ítems en un panel no aparece en él. */
+export function particionarMenu(grupos: GrupoNav[]): Record<PanelActivo, GrupoNav[]> {
+  const de = (panel: PanelActivo) =>
+    grupos.map((g) => ({ ...g, items: g.items.filter((i) => i.panel === panel || i.panel === "ambos") })).filter((g) => g.items.length > 0);
+  return { empresa: de("empresa"), sucursal: de("sucursal") };
+}
+
+/**
+ * Si el menú de este usuario se muestra en dos paneles: solo cuando ve al menos una pantalla EXCLUSIVA de Empresa (si no, no hay nada que
+ * separar y el menú es uno solo, como antes) y el panel Sucursal no queda vacío (con un menú de pura Empresa, el selector sería un botón
+ * que lleva a la nada). `grupos` es el menú ya filtrado por permiso.
+ */
+export function mostrarSelectorDePaneles(grupos: GrupoNav[]): boolean {
+  return grupos.some((g) => g.items.some((i) => i.panel === "empresa")) && particionarMenu(grupos).sucursal.length > 0;
 }
 
 /** Las acciones del menú más las de las pantallas fuera del menú: todo lo que hay que consultar para decidir qué enlaces mostrar. */

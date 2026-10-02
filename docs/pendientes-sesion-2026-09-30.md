@@ -107,7 +107,7 @@ commit, siempre con OK expreso del dueño.
 ## Sin empezar (necesitan visto bueno del dueño antes de implementar)
 
 2. Add-on de plataforma: catálogo/«plan» de permisos por empresa e interruptor «puede editar/otorgar permisos». Siguiente peldaño
-   de la partición. **Cableado hecho (2026-10-01, sin commitear, sin schema):** `politicaDeEmpresa` (hoy siempre `permisosEditables: true`) +
+   de la partición. **Cableado hecho (2026-10-01, `6d12685`, sin schema):** `politicaDeEmpresa` (hoy siempre `permisosEditables: true`) +
    gate `conEdicionDePermisos` en `guardarPermisos`/`crearRol`/`actualizarActivoRol`, con guardián
    `test/arquitectura/escrituras-de-permisos-por-politica.test.ts` y test con la política en false
    (`test/permisos/con-edicion-de-permisos.test.ts`). **Pendiente:** el dato (dónde se guarda la perilla y el plan/catálogo por empresa) —
@@ -121,13 +121,13 @@ commit, siempre con OK expreso del dueño.
    Indicador de stock en tránsito (Lote 1): `/stock/consolidado` muestra, solo si hay algo, lo que ya salió del Kardex del origen y todavía no
    figura en ninguna sucursal (traspaso ENVIADA: por recibir / enviado por aceptar; RECHAZADA_DESTINO: pendiente de reingreso). Cálculo en
    `src/core/stock/en-transito.ts`; tests `test/stock/en-transito.test.ts` y fila axe en `test/e2e/accesibilidad.spec.ts`.
-5. Iconos lucide en el menú, con medición de bundle antes de decidir.
-6. `/inicio` real (hoy no es una pantalla propia).
-7. Plan de cambio de sucursal / salida del salón (navegación decidida, sin implementar).
-8. Dos paneles, Empresa y Sucursal.
+5. ~~Iconos lucide en el menú, con medición de bundle antes de decidir~~ — HECHO (Lote 3, tanda A, `c570111`; bundle 1,925,207 B crudo / 621,892 B gzip). Íconos de acciones de tabla: tanda B (P6).
+6. ~~`/inicio` real~~ — HECHO (Lote 3, tanda A, `c570111`).
+7. ~~Plan de cambio de sucursal / salida del salón~~ — HECHO (Lote 3, tanda A, `969e52e`).
+8. ~~Dos paneles, Empresa y Sucursal~~ — HECHO (Lote 3, tanda B, sin commitear): `docs/adr/ADR-010-dos-paneles-empresa-sucursal.md` (opción B, selector en el sidebar, `panel` en cada ítem, `dosPaneles` en `politicaDeEmpresa`). Tests `test/navegacion/paneles.test.ts` y `test/e2e/menu-paneles.spec.ts`. F3 (resumen de sucursal, mover «Calibrar recetas») diferida.
 9. Módulo de margen objetivo.
 10. Unificar la semántica de «sin fila» (sin precio local, sin receta propia, sin carta propia).
-    **Tanda 1 hecha (2026-10-01, sin commitear):** `docs/adr/ADR-009-semantica-de-ausencia-por-sucursal.md` (cinco familias, embudo por modelo,
+    **Tanda 1 hecha (2026-10-01, `c4b2c28`):** `docs/adr/ADR-009-semantica-de-ausencia-por-sucursal.md` (cinco familias, embudo por modelo,
     inconsistencias R1–R4). Guardianes `test/arquitectura/semantica-sin-fila.test.ts` y `promo-sucursal-en-un-solo-lugar.test.ts`;
     caracterización en `test/core/semantica-sin-fila.test.ts` y `test/carta/promo-sucursal.test.ts`. R4 resuelta (`elegirMinimo`,
     `whereSeccionHabitualVigente`). **Pendiente del dueño:** R1 (¿la capacidad `precio_local` apaga también el precio local de la promo y el

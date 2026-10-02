@@ -21,7 +21,17 @@ const CLAVE_STORAGE = "motor2:sidebar-colapsado";
  * completa, pero la navegación normal dentro de la app no remonta este
  * layout, así que en el uso real casi nunca se nota.
  */
-export function SidebarColapsable({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; hrefsDelMenu: readonly string[] }) {
+export function SidebarColapsable({
+  grupos,
+  hrefsDelMenu,
+  dosPaneles,
+  sucursalNombre,
+}: {
+  grupos: GrupoNav[];
+  hrefsDelMenu: readonly string[];
+  dosPaneles: boolean;
+  sucursalNombre: string;
+}) {
   const [colapsado, setColapsado] = useState(false);
 
   useEffect(() => {
@@ -62,7 +72,7 @@ export function SidebarColapsable({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]
           </Link>
         </div>
         <div className="w-56">
-          <SidebarNav grupos={grupos} hrefsDelMenu={hrefsDelMenu} />
+          <SidebarNav grupos={grupos} hrefsDelMenu={hrefsDelMenu} dosPaneles={dosPaneles} sucursalNombre={sucursalNombre} />
         </div>
       </aside>
       <button

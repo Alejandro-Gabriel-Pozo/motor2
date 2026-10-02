@@ -2,6 +2,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu } from "@/core/navegacion/estructura";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import { Suspense } from "react";
 import { after } from "next/server";
 import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
@@ -26,6 +27,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   // permiso»). Lo mismo vale para los enlaces entre pantallas (`EnlaceInterno`), que reciben este conjunto por contexto.
   const puedeVer = await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, accionesDeNavegacion(), ctx.db);
   const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
+  const politica = await politicaDeEmpresa(ctx.empresaId, ctx.db);
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
   const cotizacion = await obtenerUltimaCotizacion(ctx.db).catch(() => null);
   // Si falta la cotización de hoy (el cron diario puede no haber corrido), la aplicación se pone al día sola DESPUÉS de responder.
@@ -36,7 +38,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
       <Suspense fallback={null}>
         <RecordarPantallaDeGestion sucursalId={ctx.sucursalId} />
       </Suspense>
-      <SidebarColapsable grupos={grupos} hrefsDelMenu={hrefsDelMenu()} />
+      <SidebarColapsable grupos={grupos} hrefsDelMenu={hrefsDelMenu()} dosPaneles={politica.dosPaneles} sucursalNombre={ctx.sucursalNombre} />
       {/* min-w-0: un ítem flex tiene `min-width: auto` (el ancho mínimo de su contenido) y, sin esto, una tabla ancha, aunque esté dentro de su propio
           `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
