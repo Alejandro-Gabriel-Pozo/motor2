@@ -40,7 +40,17 @@ const envSchema = z.object({
   // Dominio base del subdominio de la carta (`<empresa>.<dominioBase>`, core/carta/host.ts). Sin configurar, la
   // carta pública solo se sirve por path directo (`/carta-publica/...`), sin subdominio (Fase 6 del plan).
   CARTA_DOMINIO_BASE: z.string().min(1).optional(),
+
+  // URL pública de la app para Auth.js: con https decide la cookie de sesión (`sirvePorHttps`, core/auth/cookie-sesion.ts).
+  AUTH_URL: z.string().min(1).optional(),
+  // "1" se niega a operar con un rol de base que salta el RLS aunque haya una sola empresa (core/auth/rol-de-ejecucion.ts).
+  MOTOR2_ROL_ESTRICTO: z.string().min(1).optional(),
+  // "1" aplica el chequeo de producción fuera de Vercel; "0" lo relaja al esquema común (`validarEntornoAlArrancar`).
+  MOTOR2_ENTORNO_ESTRICTO: z.string().min(1).optional(),
 });
+
+/** Las variables que el schema declara: el test de arquitectura exige que todo `process.env.X` del código esté acá o inventariado. */
+export const CLAVES_DE_ENTORNO_DECLARADAS: readonly string[] = Object.keys(envSchema.shape);
 
 export type Env = z.infer<typeof envSchema>;
 
