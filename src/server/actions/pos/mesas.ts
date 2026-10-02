@@ -1,6 +1,6 @@
 "use server";
 
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarMaxMesasAbiertas } from "@/core/pos/mesas";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
@@ -23,7 +23,7 @@ const NUMERO_MESA_MAXIMO = 9999;
  */
 export async function crearMesa(numero: number): Promise<ResultadoAccion> {
   return conPermiso("pos_alta_mesa", async (ctx) => {
-    if (!Number.isInteger(numero) || !esNumeroFinito(numero) || numero < 1 || numero > NUMERO_MESA_MAXIMO) {
+    if (!Number.isInteger(numero) || !esNumeroEstricto(numero) || numero < 1 || numero > NUMERO_MESA_MAXIMO) {
       return error(`El número de mesa tiene que ser un entero entre 1 y ${NUMERO_MESA_MAXIMO}.`);
     }
     try {

@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
 import { guardLineaCompra } from "@/core/features/compras/compra.guard";
 import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import type { ConsumoParaFilas } from "@/core/movimientos/armar-filas-de-movimiento";
@@ -141,7 +141,7 @@ export async function armarLineaMovimiento(
     } else if (cant < 0) {
       return { ok: false, mensaje: `La cantidad de "${producto.nombre}" no puede ser negativa.` };
     }
-    if (item.precioTotal && item.precioTotal > 0 && !esNumeroFinito(item.precioTotal)) {
+    if (item.precioTotal && item.precioTotal > 0 && !esNumeroEstricto(item.precioTotal)) {
       return { ok: false, mensaje: `El precio de "${producto.nombre}" no es un número válido.` };
     }
     numCant = cant;

@@ -19,3 +19,12 @@
 export function esNumeroFinito(valor: unknown): boolean {
   return Number.isFinite(Number(valor));
 }
+
+/**
+ * true solo si `valor` YA ES un número (typeof "number") finito. A diferencia de `esNumeroFinito` no convierte: `null`, `""`, `[]` y `"5"`
+ * quedan fuera. Es el chequeo para los datos que llegan de un POST crudo a una Server Action y se GUARDAN tal cual: si se valida con
+ * `Number(x)` pero se guarda `x`, lo validado y lo guardado pueden ser cosas distintas.
+ */
+export function esNumeroEstricto(valor: unknown): valor is number {
+  return typeof valor === "number" && Number.isFinite(valor);
+}

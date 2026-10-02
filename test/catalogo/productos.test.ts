@@ -458,4 +458,21 @@ describe("productos", () => {
       expect(Number(sigueIgual.precioVenta)).toBe(1000);
     });
   });
+
+  describe("lo que se guarda es lo validado, no el valor crudo del POST", () => {
+    it("un precio de venta tecleado en es-AR («1.234,5») se guarda normalizado (1234.5)", async () => {
+      const r = await darDeAltaProducto({ nombre: "Pizza tecleada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: "1.234,5" as never });
+      expect(r.ok, r.mensaje).toBe(true);
+      const creado = await prisma.producto.findFirstOrThrow({ where: { nombre: "Pizza tecleada" } });
+      expect(Number(creado.precioVenta)).toBe(1234.5);
+    });
+
+    it("un precio de consignación negativo o inválido se rechaza aunque el producto NO sea de consignación (antes pasaba crudo)", async () => {
+      for (const precioConsignacion of [-5, "abc", NaN]) {
+        const r = await darDeAltaProducto({ nombre: "Gaseosa " + String(precioConsignacion), tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, precioConsignacion: precioConsignacion as never });
+        expect(r.ok, String(precioConsignacion)).toBe(false);
+      }
+      expect(await prisma.producto.count({ where: { nombre: { startsWith: "Gaseosa" } } })).toBe(0);
+    });
+  });
 });

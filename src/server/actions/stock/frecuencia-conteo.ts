@@ -1,6 +1,6 @@
 "use server";
 
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
 import { ENTERO_MAXIMO_RAZONABLE, validarNumeroHasta } from "@/core/datos/limites";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -27,7 +27,7 @@ export async function listarFrecuenciasConteo(sucursalId: string) {
 export async function setFrecuenciaConteo(productoId: string, frecuenciaDias: number): Promise<ResultadoAccion> {
   return conPermiso("conteo_frecuencia", async (ctx) => {
     if (!Number.isInteger(frecuenciaDias) || frecuenciaDias < 0) return error("La frecuencia tiene que ser un número entero de días, 0 o más.");
-    if (!esNumeroFinito(frecuenciaDias)) return error("La frecuencia no es un número válido.");
+    if (!esNumeroEstricto(frecuenciaDias)) return error("La frecuencia no es un número válido.");
     const alta = validarNumeroHasta(frecuenciaDias, "La frecuencia", ENTERO_MAXIMO_RAZONABLE);
     if (alta) return error(alta);
 

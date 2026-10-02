@@ -3,7 +3,7 @@
 import type { TipoProducto } from "@prisma/client";
 import type { Db } from "@/lib/db-tipos";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
 import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
@@ -218,35 +218,52 @@ export interface DatosProducto {
   activoEnTodasLasSucursales?: boolean;
 }
 
-async function validarComun(db: Db, datos: DatosProducto, productoIdExcluir?: string): Promise<string | null> {
+/** Los números del producto ya validados Y NORMALIZADOS: lo que se guarda es esto, nunca el valor crudo del POST (que pudo ser «1.234,5», « 5 » o null). */
+interface NumerosValidados {
+  factorConversion: number;
+  precioVenta: number;
+  precioConsignacion: number;
+  pasoVenta: number | null;
+}
+
+async function validarComun(db: Db, datos: DatosProducto, productoIdExcluir?: string): Promise<{ error: string } | { numeros: NumerosValidados }> {
   const nombre = texto(datos.nombre);
-  if (!nombre) return "El nombre no puede estar vacío.";
+  if (!nombre) return { error: "El nombre no puede estar vacío." };
   const invalido = validarTextoCatalogo(nombre, "El nombre");
-  if (invalido) return invalido;
+  if (invalido) return { error: invalido };
   const observaciones = validarTextoLibre(datos.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
-  if (!observaciones.ok) return observaciones.mensaje;
-  if (!datos.unidadStockId) return "La unidad de stock es obligatoria.";
+  if (!observaciones.ok) return { error: observaciones.mensaje };
+  if (!datos.unidadStockId) return { error: "La unidad de stock es obligatoria." };
   // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
   // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.
   const unidadStock = await db.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
-  if (!unidadStock) return "La unidad de stock es obligatoria.";
+  if (!unidadStock) return { error: "La unidad de stock es obligatoria." };
 
   const factorConversion = validarCantidad(datos.factorConversion, unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
-  if (!factorConversion.ok) return factorConversion.mensaje;
+  if (!factorConversion.ok) return { error: factorConversion.mensaje };
 
   const precioVenta = validarImporte(datos.precioVenta, { etiqueta: "El precio de venta" });
-  if (!precioVenta.ok) return precioVenta.mensaje;
+  if (!precioVenta.ok) return { error: precioVenta.mensaje };
 
+  let precioConsignacion: number | null;
   if (datos.esConsignacion) {
-    if (!datos.proveedorConsignacionId) return "Falta el proveedor de consignación.";
-    const precioConsignacion = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación", obligatorio: true, permitirCero: false });
-    if (!precioConsignacion.ok) return precioConsignacion.mensaje;
+    if (!datos.proveedorConsignacionId) return { error: "Falta el proveedor de consignación." };
+    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación", obligatorio: true, permitirCero: false });
+    if (!r.ok) return { error: r.mensaje };
+    precioConsignacion = r.valor;
+  } else {
+    // Sin consignación el precio no se usa, pero igual se guarda: tiene que ser un importe válido (antes pasaba crudo, hasta un negativo).
+    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación" });
+    if (!r.ok) return { error: r.mensaje };
+    precioConsignacion = r.valor;
   }
 
+  let pasoVenta: number | null = null;
   if (datos.pasoVenta !== undefined && datos.pasoVenta !== null) {
-    if (datos.tipo !== "PV") return "El paso de venta solo aplica a productos de venta (PV).";
+    if (datos.tipo !== "PV") return { error: "El paso de venta solo aplica a productos de venta (PV)." };
     const r = validarPasoVenta(datos.pasoVenta, { decimalesUnidad: unidadStock.decimales, tieneStockReal: tieneStockReal("PV", datos.seProduce ?? false) });
-    if (!r.ok) return r.mensaje;
+    if (!r.ok) return { error: r.mensaje };
+    pasoVenta = r.paso;
   }
 
   const dup = await db.producto.findFirst({
@@ -256,26 +273,28 @@ async function validarComun(db: Db, datos: DatosProducto, productoIdExcluir?: st
       ...(productoIdExcluir ? { id: { not: productoIdExcluir } } : {}),
     },
   });
-  if (dup) return `Ya existe un producto disponible llamado "${nombre}".`;
+  if (dup) return { error: `Ya existe un producto disponible llamado "${nombre}".` };
 
-  return validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir, db);
+  const errorInsumo = await validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir, db);
+  if (errorInsumo) return { error: errorInsumo };
+  return { numeros: { factorConversion: factorConversion.valor!, precioVenta: precioVenta.valor ?? 0, precioConsignacion: precioConsignacion ?? 0, pasoVenta } };
 }
 
-function datosParaGuardar(datos: DatosProducto) {
+function datosParaGuardar(datos: DatosProducto, numeros: NumerosValidados) {
   return {
     nombre: texto(datos.nombre),
     categoriaId: datos.categoriaId || null,
     unidadCompraId: datos.unidadCompraId || null,
     unidadStockId: datos.unidadStockId,
-    factorConversion: datos.factorConversion,
+    factorConversion: numeros.factorConversion,
     insumoId: datos.insumoId || null,
-    precioVenta: datos.precioVenta ?? 0,
+    precioVenta: numeros.precioVenta,
     // Defensivo (validarComun ya lo rechaza para MP): un paso de venta nunca se guarda fuera de un PV.
-    pasoVenta: datos.tipo === "PV" ? (datos.pasoVenta ?? null) : null,
+    pasoVenta: datos.tipo === "PV" ? numeros.pasoVenta : null,
     seProduce: datos.seProduce ?? false,
     esConsignacion: datos.esConsignacion ?? false,
     proveedorConsignacionId: datos.proveedorConsignacionId || null,
-    precioConsignacion: datos.precioConsignacion ?? 0,
+    precioConsignacion: numeros.precioConsignacion,
     // Sin el campo, Prisma no lo toca (strictUndefinedChecks no admite `undefined`).
     ...(datos.observaciones !== undefined && { observaciones: datos.observaciones }),
   };
@@ -329,12 +348,12 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
  */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
   return conPermisoDeEmpresa("alta_producto", async (ctx) => {
-    const invalido = await validarComun(ctx.db, datos);
-    if (invalido) return error(invalido);
+    const validado = await validarComun(ctx.db, datos);
+    if ("error" in validado) return error(validado.error);
 
     try {
       const producto = await crearConCodigoAutogenerado(datos.tipo, datos.codigo, (codigo) =>
-        ctx.db.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos) } })
+        ctx.db.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos, validado.numeros) } })
       );
       const sucursalIds =
         datos.activoEnTodasLasSucursales !== false ? (await ctx.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [ctx.sucursalId];
@@ -372,10 +391,10 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       return error(`El tipo no se puede cambiar — este producto ya es "${existente.tipo}". Dado de baja y creá uno nuevo si necesitás el otro tipo.`);
     }
 
-    const invalido = await validarComun(ctx.db, datos, productoId);
-    if (invalido) return error(invalido);
+    const validado = await validarComun(ctx.db, datos, productoId);
+    if ("error" in validado) return error(validado.error);
 
-    const nuevos = datosParaGuardar(datos);
+    const nuevos = datosParaGuardar(datos, validado.numeros);
     const nombreActual = texto(datos.nombre);
     // El `update` y sus filas de auditoría van en UNA transacción (Task #41, M10): antes iban sueltos y, si la auditoría fallaba
     // (o el proceso se caía en el medio), el precio quedaba cambiado sin rastro.
@@ -422,7 +441,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
  */
 export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
-    if (!esNumeroFinito(precio)) return error("El precio de venta no es un número válido.");
+    if (!esNumeroEstricto(precio)) return error("El precio de venta no es un número válido.");
     if (!(precio >= 0)) return error("El precio de venta no puede ser negativo.");
     const ids = [...new Set(productoIds)];
     if (!ids.length) return error("No hay productos para actualizar.");

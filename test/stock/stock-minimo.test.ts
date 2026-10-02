@@ -30,6 +30,12 @@ describe("Stock Mínimo", () => {
     expect(await resolverStockMinimo(sucursalId, mpId, seccionId, prisma)).toBeNull();
   });
 
+  it.each([[null], [""], [[]], ["5"], [NaN], [Infinity]])("un mínimo que no es un número real (%j) se rechaza sin guardar nada", async (minimo) => {
+    const r = await setStockMinimoProducto(mpId, minimo as never);
+    expect(r.ok).toBe(false);
+    expect(await prisma.stockMinimoProducto.count()).toBe(0);
+  });
+
   it("fija el mínimo global y se resuelve para cualquier sección sin fila propia", async () => {
     await setStockMinimoProducto(mpId, 5);
     expect(await resolverStockMinimo(sucursalId, mpId, seccionId, prisma)).toBe(5);
