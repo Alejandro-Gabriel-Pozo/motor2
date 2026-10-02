@@ -1,0 +1,153 @@
+# Gate de verificación en CI: los mismos 7 comandos que AGENTS.md exige correr limpios en la misma corrida.
+#   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip)
+#   integración → npm test (Vitest contra Postgres real) + npm run build
+#   e2e         → npm run test:e2e (Playwright, servidor de producción)
+# El job `gate` es el ÚNICO que hay que marcar como requerido en la protección de rama / Vercel Deployment Checks: falla si cualquiera
+# de los otros no terminó en verde (un job omitido o cancelado también lo hace fallar).
+# No usa secretos: las bases son un Postgres descartable del propio runner y las claves de abajo son de ese contenedor, no de ningún entorno real.
+name: CI
+
+on:
+  push:
+    branches: [multitenancy-fase-a, "ci/**"]
+  pull_request:
+    branches: [multitenancy-fase-a]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  # Rol dueño de las tablas (el que migra) y rol de ejecución sin privilegios (ADR-007, A0), como en local.
+  CLAVE_DUENIO: ci-duenio-descartable
+  CLAVE_APP: ci-app-descartable
+  # Variables que Prisma/Auth.js exigen para arrancar; valores de relleno, nunca reales.
+  AUTH_SECRET: ci-auth-secret-de-relleno-0123456789abcdef
+  AUTH_GOOGLE_ID: ci-google-id
+  AUTH_GOOGLE_SECRET: ci-google-secret
+
+jobs:
+  estatico:
+    name: Estático (tipos, lint, arquitectura, código muerto)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run arquitectura
+      - run: npm run analizar:muerto
+
+  integracion:
+    name: Integración (npm test + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Migrar (como dueño)
+        run: npx prisma migrate deploy
+      - name: npm test
+        run: npm test
+      - name: npm run build
+        run: npm run build
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Migrar la base E2E (como dueño)
+        run: npx prisma migrate deploy
+      - run: npx playwright install --with-deps chromium
+      - name: npm run test:e2e
+        run: npm run test:e2e
+      - name: Trazas de los specs que fallaron
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  gate:
+    name: Gate (requerido)
+    if: always()
+    needs: [estatico, integracion, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Todos los jobs terminaron en verde
+        run: |
+          echo "estatico=${{ needs.estatico.result }} integracion=${{ needs.integracion.result }} e2e=${{ needs.e2e.result }}"
+          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
