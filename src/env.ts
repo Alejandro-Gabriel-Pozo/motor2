@@ -67,15 +67,33 @@ export function parseEnv(source: Record<string, string | undefined>, produccion 
   return (produccion ? schemaDeProduccion : envSchema).parse(source);
 }
 
+const entornoEstricto = (source: Record<string, string | undefined>) => source.VERCEL_ENV === "production" || source.MOTOR2_ENTORNO_ESTRICTO === "1";
+
 /**
  * Fail-fast del arranque (`instrumentation.ts`): en un despliegue de Producción de Vercel (`VERCEL_ENV=production`) o con
  * `MOTOR2_ENTORNO_ESTRICTO=1`, el proceso no arranca con una variable requerida ausente. Fuera de eso (local, `next start` del e2e,
  * Preview) no hace nada. El error lista solo los nombres de las variables, nunca sus valores.
  */
 export function validarEntornoAlArrancar(source: Record<string, string | undefined> = process.env): void {
-  if (source.VERCEL_ENV !== "production" && source.MOTOR2_ENTORNO_ESTRICTO !== "1") return;
+  if (!entornoEstricto(source)) return;
   const resultado = (source.MOTOR2_ENTORNO_ESTRICTO === "0" ? envSchema : schemaDeProduccion).safeParse(source);
   if (resultado.success) return;
   const detalle = resultado.error.issues.map((i) => `${i.path.join(".")} (${i.message})`).join(", ");
   throw new Error(`Configuración inválida: ${detalle}. El proceso no arranca.`);
+}
+
+/**
+ * `CARTA_DOMINIO_BASE` se lee en DOS momentos: al compilar (`next.config.ts`: reescrituras, redirecciones y CSP de la carta) y al correr
+ * (`proxy.ts`: el 404 del resto en el host de la carta). Si difieren —se cargó la variable después del build, o se cambió sin volver a
+ * desplegar— la carta queda a medias (el proxy cree que hay zona de cartas y las reglas compiladas no existen, o al revés), sin ningún error.
+ * `compilado` es la copia que `next.config.ts` deja dentro del bundle (`CARTA_DOMINIO_BASE_COMPILADO`); `undefined` = no hay bundle compilado
+ * (tests, `next dev`) y no hay nada que comparar. Mismo criterio de entorno estricto que `validarEntornoAlArrancar`.
+ */
+export function validarDominioCartaAlArrancar(source: Record<string, string | undefined>, compilado: string | undefined): void {
+  if (!entornoEstricto(source) || compilado === undefined) return;
+  const normalizar = (v: string | undefined) => v?.trim().toLowerCase() ?? "";
+  if (normalizar(source.CARTA_DOMINIO_BASE) === normalizar(compilado)) return;
+  throw new Error(
+    `CARTA_DOMINIO_BASE difiere entre el build (${normalizar(compilado) ? "con valor" : "vacía"}) y el arranque (${normalizar(source.CARTA_DOMINIO_BASE) ? "con valor" : "vacía"}): las reglas de la carta se fijan al compilar. Volvé a desplegar con la variable en el entorno del build. El proceso no arranca.`,
+  );
 }

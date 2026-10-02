@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { validarEntornoAlArrancar } from "@/env";
+import { validarDominioCartaAlArrancar, validarEntornoAlArrancar } from "@/env";
 import { limpiarEventoSentry } from "@/lib/sentry-limpiar";
 
 /**
@@ -12,6 +12,7 @@ import { limpiarEventoSentry } from "@/lib/sentry-limpiar";
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     validarEntornoAlArrancar();
+    validarDominioCartaAlArrancar(process.env, process.env.CARTA_DOMINIO_BASE_COMPILADO);
     Sentry.init({
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
       tracesSampleRate: 0.1,

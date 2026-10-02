@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { describe, expect, it } from "vitest";
-import { parseEnv, validarEntornoAlArrancar } from "../../src/env";
+import { parseEnv, validarDominioCartaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
 
 /**
  * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): confirma que el schema de
@@ -94,5 +94,31 @@ describe("validarEntornoAlArrancar (S-20)", () => {
     expect(() => validarEntornoAlArrancar({})).not.toThrow();
     expect(() => validarEntornoAlArrancar({ NODE_ENV: "production" })).not.toThrow();
     expect(() => validarEntornoAlArrancar({ VERCEL_ENV: "preview" })).not.toThrow();
+  });
+});
+
+describe("validarDominioCartaAlArrancar (CARTA_DOMINIO_BASE: build vs arranque)", () => {
+  const PROD = { VERCEL_ENV: "production" };
+
+  it("en Producción no arranca si la variable del arranque difiere de la que vio el build (en cualquier sentido)", () => {
+    expect(() => validarDominioCartaAlArrancar({ ...PROD, CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, "")).toThrow(/CARTA_DOMINIO_BASE difiere/);
+    expect(() => validarDominioCartaAlArrancar({ ...PROD }, "carta.ejemplo.com")).toThrow(/CARTA_DOMINIO_BASE difiere/);
+    expect(() => validarDominioCartaAlArrancar({ ...PROD, CARTA_DOMINIO_BASE: "otra.ejemplo.com" }, "carta.ejemplo.com")).toThrow(/CARTA_DOMINIO_BASE difiere/);
+  });
+
+  it("el error no revela los dominios", () => {
+    expect(() => validarDominioCartaAlArrancar({ ...PROD, CARTA_DOMINIO_BASE: "secreta.ejemplo.com" }, "")).not.toThrow(/secreta.ejemplo/);
+  });
+
+  it("iguales (sin importar mayúsculas ni espacios) o ambas vacías: arranca", () => {
+    expect(() => validarDominioCartaAlArrancar({ ...PROD, CARTA_DOMINIO_BASE: " Carta.Ejemplo.com " }, "carta.ejemplo.com")).not.toThrow();
+    expect(() => validarDominioCartaAlArrancar({ ...PROD }, "")).not.toThrow();
+  });
+
+  it("sin bundle compilado (compilado indefinido) o fuera del entorno estricto, no compara nada", () => {
+    expect(() => validarDominioCartaAlArrancar({ ...PROD, CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, undefined)).not.toThrow();
+    expect(() => validarDominioCartaAlArrancar({ CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, "")).not.toThrow();
+    expect(() => validarDominioCartaAlArrancar({ VERCEL_ENV: "preview", CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, "")).not.toThrow();
+    expect(() => validarDominioCartaAlArrancar({ MOTOR2_ENTORNO_ESTRICTO: "1", CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, "")).toThrow();
   });
 });

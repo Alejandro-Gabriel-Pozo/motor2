@@ -7,6 +7,8 @@ import { cabecerasCarta, cabecerasComunes } from "./src/core/seguridad/cabeceras
 const dominioBaseCarta = process.env.CARTA_DOMINIO_BASE?.trim().toLowerCase();
 
 const nextConfig: NextConfig = {
+  // Copia de CARTA_DOMINIO_BASE tal como la vio el build (se incrusta en el bundle): `instrumentation.ts` la compara con la del arranque.
+  env: { CARTA_DOMINIO_BASE_COMPILADO: dominioBaseCarta ?? "" },
   // Silencia el warning de Turbopack: hay otro package-lock.json en la raíz
   // del repo (motor/), del tooling de Apps Script (clasp/gen-wrappers.js) —
   // no tiene nada que ver con este proyecto Next.js.
