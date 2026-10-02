@@ -149,6 +149,10 @@ export function patronHostZonaCarta(dominioBase: string): string {
  * En el host de una carta SOLO se sirven la raíz (portal de la empresa) y `/<sucursal>`; cualquier otro path (`/login`, `/api/…`,
  * `/mesas/…`, una carpeta de la app) es 404 sin llegar a la aplicación. Es la misma forma que reescribe `reglasRewriteCarta`.
  */
+export function esMetodoDeLecturaEnHostCarta(metodo: string): boolean {
+  return metodo === "GET" || metodo === "HEAD";
+}
+
 export function esPathPermitidoEnHostCarta(pathname: string): boolean {
   return pathname === "/" || /^\/[a-z0-9][a-z0-9-]*\/?$/.test(pathname);
 }

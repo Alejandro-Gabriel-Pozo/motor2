@@ -35,6 +35,16 @@ describe("proxy — host de la carta", () => {
     }
   });
 
+  it("en el host de una carta solo se lee: cualquier método que no sea GET/HEAD, y cualquier pedido con next-action, es 404", () => {
+    const pedirCon = (metodo: string, headers: Record<string, string> = {}) =>
+      proxy(new NextRequest(`http://acme.${BASE}/centro`, { method: metodo, headers: { host: `acme.${BASE}`, ...headers } }));
+    for (const metodo of ["POST", "PUT", "PATCH", "DELETE"]) expect(pedirCon(metodo).status, metodo).toBe(404);
+    expect(pedirCon("GET", { "next-action": "abc123" }).status).toBe(404);
+    expect(pedirCon("POST", { "next-action": "abc123" }).status).toBe(404);
+    expect(pedirCon("GET").status).toBe(200);
+    expect(pedirCon("HEAD").status).toBe(200);
+  });
+
   it("el dominio base pelado, un subdominio de dos niveles y el puerto: 404 / reglas coherentes", () => {
     expect(pedir(BASE, "/").status).toBe(404);
     expect(pedir(BASE, "/api/auth/signin").status).toBe(404);

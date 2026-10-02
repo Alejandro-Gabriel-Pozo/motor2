@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ENCABEZADO_RUTA_PEDIDA } from "@/core/navegacion/volver";
-import { esHostDeZonaCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "@/core/carta/host";
+import { esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "@/core/carta/host";
 import { NOMBRES_COOKIE_SESION, sirvePorHttps } from "@/core/auth/cookie-sesion";
 import { cabecerasComunes, cspApp, generarNonce } from "@/core/seguridad/cabeceras";
 
@@ -8,8 +8,8 @@ import { cabecerasComunes, cspApp, generarNonce } from "@/core/seguridad/cabecer
  * Puerta de entrada de todos los pedidos que no son archivos de Next (el `matcher` excluye `_next/static`, `_next/image` y el favicon).
  * Hace tres cosas, en este orden:
  *
- * 1. Host de la carta (`<empresa>.<CARTA_DOMINIO_BASE>`): ahí solo se sirve la carta pública (la raíz y `/<sucursal>`); cualquier otro
- *    path (login, API, cron, la aplicación) es 404 sin llegar a la app. Un host de la zona de cartas que no es una carta válida
+ * 1. Host de la carta (`<empresa>.<CARTA_DOMINIO_BASE>`): ahí solo se sirve la carta pública (la raíz y `/<sucursal>`, solo con GET/HEAD y
+ *    sin `next-action`); cualquier otro path (login, API, cron, la aplicación) es 404 sin llegar a la app. Un host de la zona de cartas que no es una carta válida
  *    (el dominio base pelado, un subdominio de dos niveles) también es 404. La CSP de la carta es estática (`next.config.ts`) para
  *    que la carta siga siendo ISR: acá no se le pone nonce.
  * 2. CSP con nonce por pedido para las pantallas de la aplicación (no para la carta ni para `/api`): ver `core/seguridad/cabeceras.ts`.
@@ -43,7 +43,8 @@ export function proxy(request: NextRequest) {
   const host = request.headers.get("host");
 
   if (esHostDeZonaCarta(host, dominioBaseCarta)) {
-    if (!interpretarHostCarta(host, dominioBaseCarta) || !esPathPermitidoEnHostCarta(pathname)) return respuesta404();
+    // La carta es de solo lectura: un POST (y con él una Server Action, que viaja con `next-action`) no tiene nada que hacer en este host.
+    if (!interpretarHostCarta(host, dominioBaseCarta) || !esPathPermitidoEnHostCarta(pathname) || !esMetodoDeLecturaEnHostCarta(request.method) || request.headers.has("next-action")) return respuesta404();
     return NextResponse.next();
   }
 
