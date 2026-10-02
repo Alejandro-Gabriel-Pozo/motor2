@@ -475,3 +475,33 @@ Orden pensado para no cortar el servicio. Nada de esto lo hace el código: son p
 3. **`AUTH_URL` fijo** en Producción (necesario para la cookie `__Host-`); la primera vez cierra las sesiones abiertas por https.
 4. **Dominio de la carta**: agregar en Vercel el dominio exacto `<slug>.carta.zuluhub.com.ar` y `CARTA_DOMINIO_BASE=carta.zuluhub.com.ar`.
 5. Correr `npm run detectar-cuentas-vinculadas` contra cada base real, rotar la credencial `neondb_owner` y borrar `.env.multitenancy`.
+
+## Revisión de un snapshot nuevo (2026-10-02): configuración de la corrida de tests y validación pendiente en infraestructura real
+
+**Corrida de tests.** La primera corrida del snapshot nuevo no llegó a los casos de negocio: el runner heredó `DATABASE_URL=motor2_app`, pero los
+fixtures de Vitest todavía siembran roles y datos con permisos de dueño. Es un problema de configuración del test, no una falla de I3. La corrida
+MVP se ajusta a `motor2` (dueño) y `motor2_app` se mantiene para validar aparte el runtime multiempresa.
+
+**Qué falta para declararla «lista para producción multiempresa».** Hoy está lista para pasar a staging; el único bloqueo es operativo y consiste
+en validar A8 en infraestructura real con dos empresas:
+- crear el rol `motor2_app` en Neon/proveedor productivo;
+- aplicar y probar la migración RLS;
+- configurar correctamente `DATABASE_URL` (`motor2_app`) y `DIRECT_URL` (dueño);
+- probar pooler, DNS wildcard y carta pública;
+- ejecutar login, POS, carta y crons con dos empresas reales.
+
+(Nota de conciliación: el registro de arriba dice que A8 ya se ejecutó el 2026-09-30 en `motor2-demo` y `stockhneuquen` con UNA empresa cada
+una, y que `npm test` corrió como `motor2_app` en el gate de V. Lo que sigue sin probarse es el recorrido completo con DOS empresas reales,
+el wildcard DNS de la carta y los crons; esa es la validación que falta.)
+
+## Nota operativa: traspasos entre sucursales (aprobados para piloto)
+
+El ciclo completo está cubierto por tests: `SOLICITADA → ENVIADA → ACEPTADA` y `ENVIADA → RECHAZADA_DESTINO → CERRADA` por reingreso. Pasaron las
+carreras relevantes (aceptación duplicada, rechazo simultáneo, aceptación contra rechazo, reingreso simultáneo, aprobación contra rechazo de
+solicitud), la ausencia de doble entrada y de stock perdido, las cantidades inválidas, la disponibilidad y pertenencia de sucursales, y la
+idempotencia en aceptación y reingreso. Los e2e cubren cancelar solicitudes, rechazar desde origen, rechazar desde destino y validar decimales.
+
+**Decisión que hay que explicar a los usuarios:** mientras un traspaso está `ENVIADA`, la cantidad sale del Kardex de origen pero todavía no
+aparece en el Kardex de destino. El stock queda temporalmente fuera de ambos saldos, pero el traspaso sigue visible y trazable en la bandeja.
+Es coherente con el diseño elegido (estado de workflow deliberado, «en tránsito»), no una pérdida técnica: no se debe interpretar como merma ni
+faltante.
