@@ -91,6 +91,19 @@ testAutenticado("catalogo/categorias: sin violaciones de axe", async ({ paginaAu
   }
 });
 
+testAutenticado("catalogo/margen-objetivo: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E A11y Objetivo ${Date.now()}`;
+  await prisma.categoriaProducto.create({ data: { nombre } });
+  try {
+    await page.goto("/catalogo/margen-objetivo");
+    await conTitulo(page, /Margen objetivo/);
+    await expect(page.getByLabel(`Food cost objetivo de ${nombre} (%)`)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  } finally {
+    await prisma.categoriaProducto.deleteMany({ where: { nombre } });
+  }
+});
+
 testAutenticado("catalogo/unidades: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   await page.goto("/catalogo/unidades");
   await conTitulo(page, "Unidades de medida");

@@ -3,16 +3,17 @@ import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Regla de arquitectura: el food cost objetivo (hoy 40 % del precio de venta, sin packaging) vive en UN solo lugar —
- * `FOOD_COST_OBJETIVO_PCT` (`core/reportes/margen-objetivo.ts`). El estado «Food cost alto», la columna «Precio para food cost» y los textos de
- * ayuda de los reportes salen de ahí. Un `0.4` o un «40%» escritos a mano en un reporte quedarían desfasados el día que el objetivo se
- * configure (por empresa o por categoría), y TypeScript no lo detecta: es un número como cualquier otro.
+ * Regla de arquitectura: el food cost objetivo POR DEFECTO (40 % del precio de venta, sin packaging; la empresa y cada categoría pueden fijar el
+ * suyo, `MargenObjetivo`) vive en UN solo lugar — `FOOD_COST_OBJETIVO_PCT` (`core/reportes/margen-objetivo.ts`). El estado «Food cost alto», la
+ * columna «Precio para el objetivo» y los textos de ayuda salen de ahí (o del objetivo resuelto con `resolverObjetivoFoodCost`). Un `0.4` o un
+ * «40%» escritos a mano en un reporte o en la pantalla del objetivo quedarían desfasados el día que el valor por defecto cambie, y TypeScript
+ * no lo detecta: es un número como cualquier otro.
  *
- * Cómo se controla: en `src/core/reportes/` y `src/app/(app)/reportes/`, ningún archivo salvo `margen-objetivo.ts` puede escribir 0.4, .4, 0.40
- * ni 40% (ni «40 %») fuera de un comentario.
+ * Cómo se controla: en `src/core/reportes/`, `src/app/(app)/reportes/`, la pantalla `src/app/(app)/catalogo/margen-objetivo/` y la acción
+ * `src/server/actions/reportes/`, ningún archivo salvo `margen-objetivo.ts` puede escribir 0.4, .4, 0.40 ni 40% (ni «40 %») fuera de un comentario.
  */
 const RAIZ = join(__dirname, "../../src");
-const CARPETAS = ["core/reportes", "app/(app)/reportes"];
+const CARPETAS = ["core/reportes", "app/(app)/reportes", "app/(app)/catalogo/margen-objetivo", "server/actions/reportes"];
 const DUENO = "core/reportes/margen-objetivo.ts";
 const NUMERO_FIJO = /(?<![\w.])0?\.40?(?!\d)|(?<![\d.])40\s*%/;
 

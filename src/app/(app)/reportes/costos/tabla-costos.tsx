@@ -19,8 +19,10 @@ const AYUDA_MARGEN = "Margen $ = Precio venta − Costo. Margen % = Margen $ / P
 const AYUDA_FOOD_COST =
   "Food cost % = (Costo de comida y bebida) / Precio venta × 100 — qué porción del precio de venta se va en insumos. NO incluye el packaging ni la limpieza de la receta (los insumos del grupo «No comestibles»): esos cuentan en el Costo y en el Margen, pero no en el food cost.";
 const AYUDA_ESTADO =
-  `Margen negativo: el costo supera el precio de venta. Food cost alto: el costo de comida y bebida (sin el packaging ni la limpieza del grupo «No comestibles») supera el ${FOOD_COST_OBJETIVO_PCT}% del precio de venta (objetivo fijo por ahora, no configurable). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular.`;
-const AYUDA_PRECIO_SUGERIDO = `Precio de venta con el que el food cost (comida y bebida, sin el packaging ni la limpieza) quedaría justo en ${FOOD_COST_OBJETIVO_PCT}%: costo de comida y bebida / ${FOOD_COST_OBJETIVO_PCT}% × 100. Es el precio neto (sin IVA), igual que el precio de venta de la tabla. Se muestra «—» si falta algún costo de la receta o el producto no tiene receta.`;
+  "Margen negativo: el costo supera el precio de venta. Food cost alto: el costo de comida y bebida (sin el packaging ni la limpieza del grupo «No comestibles») supera el food cost objetivo del producto (columna «Food cost objetivo»). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular.";
+const AYUDA_OBJETIVO = `El food cost que se quiere como máximo para este producto: el de su categoría si la categoría tiene uno; si no, el de la empresa; y si la empresa no cargó ninguno, ${FOOD_COST_OBJETIVO_PCT}%. Lo fija administración en Catálogo → Margen objetivo.`;
+const AYUDA_PRECIO_SUGERIDO =
+  "Precio de venta MÍNIMO con el que el food cost (comida y bebida, sin el packaging ni la limpieza) no pasa del objetivo del producto: costo de comida y bebida / objetivo × 100, redondeado al centavo hacia arriba. Es el precio neto (sin IVA), igual que el precio de venta de la tabla. Se muestra «—» si falta algún costo de la receta o el producto no tiene receta.";
 
 const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   {
@@ -52,8 +54,16 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
     render: (p) => (p.foodCostPct === null ? "—" : `${p.foodCostPct}%`),
   },
   {
+    clave: "objetivo",
+    etiqueta: "Food cost objetivo",
+    ayuda: AYUDA_OBJETIVO,
+    alinear: "derecha",
+    valor: (p) => p.objetivoFoodCostPct,
+    render: (p) => `${p.objetivoFoodCostPct}%`,
+  },
+  {
     clave: "precioSugerido",
-    etiqueta: `Precio para food cost ${FOOD_COST_OBJETIVO_PCT}%`,
+    etiqueta: "Precio para el objetivo",
     ayuda: AYUDA_PRECIO_SUGERIDO,
     alinear: "derecha",
     valor: (p) => p.precioSugerido,

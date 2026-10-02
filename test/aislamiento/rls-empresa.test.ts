@@ -23,7 +23,7 @@ async function unidadesComoDuenio(empresaId: string) {
 }
 
 describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", () => {
-  it("las 51 tablas con `empresaId` (menos UsuarioEmpresa) tienen RLS habilitado, sin FORCE, y la política de aislamiento", async () => {
+  it("las 52 tablas con `empresaId` (menos UsuarioEmpresa) tienen RLS habilitado, sin FORCE, y la política de aislamiento", async () => {
     const tablas = await prismaAdmin.$queryRaw<Array<{ tabla: string; rls: boolean; forzado: boolean; politicas: string[] }>>`
       SELECT c.relname::text AS tabla, c.relrowsecurity AS rls, c.relforcerowsecurity AS forzado,
              COALESCE((SELECT array_agg(p.policyname::text ORDER BY p.policyname) FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = c.relname), '{}') AS politicas
@@ -32,7 +32,7 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
          AND EXISTS (SELECT 1 FROM information_schema.columns k WHERE k.table_schema = 'public' AND k.table_name = c.relname AND k.column_name = 'empresaId')
          AND c.relname <> 'UsuarioEmpresa'
        ORDER BY 1`;
-    expect(tablas).toHaveLength(51);
+    expect(tablas).toHaveLength(52);
     for (const t of tablas) {
       expect(t.rls, `${t.tabla}: RLS deshabilitado`).toBe(true);
       expect(t.forzado, `${t.tabla}: FORCE no está en el diseño (el dueño que migra debe poder saltarlo)`).toBe(false);
@@ -43,7 +43,7 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
   it("la política usa `(SELECT app_empresa_actual())` en USING y en WITH CHECK", async () => {
     const politicas = await prismaAdmin.$queryRaw<Array<{ tabla: string; usando: string; con_check: string }>>`
       SELECT tablename::text AS tabla, qual AS usando, with_check AS con_check FROM pg_policies WHERE schemaname = 'public'`;
-    expect(politicas).toHaveLength(51);
+    expect(politicas).toHaveLength(52);
     for (const p of politicas) {
       expect(p.usando, p.tabla).toContain("app_empresa_actual()");
       expect(p.con_check, p.tabla).toContain("app_empresa_actual()");
@@ -65,7 +65,7 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
   it("no queda ninguna otra tabla de `public` con RLS", async () => {
     const [{ n }] = await prismaAdmin.$queryRaw<Array<{ n: number }>>`
       SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace WHERE ns.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity`;
-    expect(n).toBe(51);
+    expect(n).toBe(52);
   });
 });
 

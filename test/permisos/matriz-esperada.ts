@@ -24,6 +24,7 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   unidades: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   proveedores: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   categorias: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
+  margen_objetivo_editar: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
 motivos_merma: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   motivos_destino_consumo: { contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   carta_ver: { contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },

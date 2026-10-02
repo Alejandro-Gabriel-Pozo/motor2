@@ -3,9 +3,10 @@ import { prisma } from "../../src/lib/db";
 import { usuarioConDosSucursales } from "./fixtures/dos-sucursales";
 
 /**
- * Food cost objetivo (40 % sobre el precio de venta, sin packaging) en /reportes/costos: la columna «Precio para food cost 40%» y el estado
- * «Food cost alto» salen del mismo número (`FOOD_COST_OBJETIVO_PCT`). El objetivo es único para la empresa, pero se evalúa en cada sucursal con
- * SU costo (la última compra de esa sucursal), así que el mismo plato puede estar bien en una y alto en otra.
+ * Food cost objetivo (por defecto 40 % sobre el precio de venta, sin packaging; sin objetivo cargado en la empresa) en /reportes/costos: la
+ * columna «Precio para el objetivo» y el estado «Food cost alto» salen del mismo número. El objetivo es el de la empresa, pero se evalúa en cada
+ * sucursal con SU costo (la última compra de esa sucursal), así que el mismo plato puede estar bien en una y alto en otra. El objetivo
+ * configurable (empresa / categoría) se prueba en `margen-objetivo.spec.ts`.
  */
 
 async function sembrarPlatos(marca: number) {
@@ -43,7 +44,8 @@ test("justo en el 40 % es OK y un punto más es «Food cost alto»; la columna m
   try {
     await page.goto("/reportes/costos");
     await expect(page.getByRole("heading", { name: "Costos y márgenes" })).toBeVisible();
-    await expect(page.getByRole("columnheader", { name: /Precio para food cost 40%/ })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /Precio para el objetivo/ })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /^Food cost objetivo/ })).toBeVisible();
 
     const filaJusto = page.locator("tr", { hasText: platos.justo.nombre });
     await expect(filaJusto).toContainText("40%");

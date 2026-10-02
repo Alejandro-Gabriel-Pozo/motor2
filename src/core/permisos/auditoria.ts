@@ -39,6 +39,8 @@ export const ENTIDADES_AUDITABLES = [
   "Cliente",
   // "Empresa": un cambio de la política de plataforma (`cambiarPoliticaDeEmpresa`) — `entidadId` es el id de la Empresa, `campo` la perilla (`permisosEditables`, `dosPaneles`), `sucursalId` null.
   "Empresa",
+  // "MargenObjetivo": el food cost objetivo de la empresa (sin categoría) o de una categoría — `entidadId` es la categoría (`empresa` si es el de toda la empresa), `sucursalId` null, `campo: "foodCostObjetivoPct"`.
+  "MargenObjetivo",
 ] as const;
 
 /**

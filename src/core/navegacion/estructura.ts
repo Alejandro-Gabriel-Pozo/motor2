@@ -49,6 +49,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia", panel: "empresa" },
       { href: "/catalogo/categorias", label: "Categorías", accion: "categorias", panel: "empresa" },
       { href: "/catalogo/unidades", label: "Unidades", accion: "unidades", panel: "empresa" },
+      { href: "/catalogo/margen-objetivo", label: "Margen objetivo", accion: "margen_objetivo_editar", panel: "empresa" },
     ],
   },
   {

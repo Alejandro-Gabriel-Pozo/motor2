@@ -487,7 +487,26 @@ model CategoriaProducto {
   activo    Boolean    @default(true)
   productos Producto[]
 
+  margenesObjetivo MargenObjetivo[]
+
   @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Food cost objetivo (2026-10-01, decisión del dueño): el tope de la porción del precio de carta (neto) que puede irse en comida y
+/// bebida. `categoriaId` NULL = el de TODA la empresa; con categoría, el de esa categoría (gana sobre el de la empresa). Sin ninguna
+/// fila rige la constante `FOOD_COST_OBJETIVO_PCT`. Lo edita SOLO administración (`margen_objetivo_editar`). La migración agrega a mano
+/// (Prisma no los declara): un índice único parcial para permitir UNA sola fila de empresa (`categoriaId IS NULL`) y un CHECK que fuerza
+/// 0 < foodCostObjetivoPct < 100.
+model MargenObjetivo {
+  id                  String             @id @default(cuid())
+  empresaId           String             @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa            @relation(fields: [empresaId], references: [id])
+  categoriaId         String?
+  categoria           CategoriaProducto? @relation(fields: [empresaId, categoriaId], references: [empresaId, id])
+  foodCostObjetivoPct Decimal            @db.Decimal(5, 2)
+
+  @@unique([empresaId, categoriaId])
   @@unique([empresaId, id])
 }
 
@@ -2149,6 +2168,7 @@ model Empresa {
   insumoRel                      Insumo[]
   grupoRel                       Grupo[]
   categoriaProductoRel           CategoriaProducto[]
+  margenObjetivoRel              MargenObjetivo[]
   unidadRel                      Unidad[]
   presentacionRel                Presentacion[]
   proveedorRel                   Proveedor[]

@@ -19,6 +19,8 @@ export interface InfoProductoReporte {
   seProduce: boolean;
   precioVenta: number;
   categoriaNombre: string | null;
+  /** La categoría del producto: con ella se resuelve su food cost objetivo (`resolverObjetivoFoodCost`). */
+  categoriaId: string | null;
   /// Nombre interno histórico "Familia" en Apps Script (Catalogo.js:180-197)
   /// — es el Insumo, no el árbol de Grupo (ver docstring del modelo Insumo).
   insumoNombre: string | null;
@@ -89,6 +91,7 @@ export async function construirMapaProductos(
         seProduce: p.seProduce,
         precioVenta: preciosLocales.get(p.id)?.precio ?? Number(p.precioVenta),
         categoriaNombre: p.categoria?.nombre ?? null,
+        categoriaId: p.categoriaId,
         insumoNombre: p.insumo?.nombre ?? null,
         grupoNombre: p.insumo?.grupo?.nombre ?? null,
         esNoComestible: p.insumo?.grupoId ? clasificacion.idsGrupos.has(p.insumo.grupoId) : false,

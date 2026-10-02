@@ -12,7 +12,7 @@ import {
   type InfoProductoReporte,
 } from "./comun";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { precioParaObjetivo, superaFoodCostObjetivo } from "./margen-objetivo";
+import { precioParaObjetivo, resolverObjetivoFoodCost, superaFoodCostObjetivo, type ObjetivosDeMargen } from "./margen-objetivo";
 
 export type EstadoCosto = "MARGEN_NEGATIVO" | "FOOD_COST_ALTO" | "COSTO_INCOMPLETO" | "SIN_PRECIO_VENTA" | "SIN_RECETA" | "OK";
 
@@ -101,7 +101,9 @@ export interface FilaCostoProducto {
   foodCostPct: number | null;
   /** Parte de `costo` que es packaging, limpieza y demás no comestibles de la receta. Cuenta en el costo y el margen, no en el food cost. */
   costoNoComestible: number;
-  /** Precio de venta con el que el food cost quedaría justo en el objetivo (`FOOD_COST_OBJETIVO_PCT`). `null` si el costo de comida no se conoce (receta incompleta o sin receta). Se calcula aunque el producto no tenga precio de venta. */
+  /** El food cost objetivo que rige para ESTE producto (el de su categoría, el de la empresa o el de por defecto: `resolverObjetivoFoodCost`). Con él se decide «Food cost alto» y se calcula `precioSugerido`. */
+  objetivoFoodCostPct: number;
+  /** Precio de venta MÍNIMO con el que el food cost no pasa de `objetivoFoodCostPct`. `null` si el costo de comida no se conoce (receta incompleta o sin receta). Se calcula aunque el producto no tenga precio de venta. */
   precioSugerido: number | null;
   costoIncompleto: boolean;
   componentes: ComponenteCosto[];
@@ -139,7 +141,9 @@ export async function calcularCostosYMargenes(
    */
   productosCargados?: Map<string, InfoProductoReporte>,
   /** El índice de recetas ya cargado, mismo motivo que `productosCargados` — ver `calcularMargenDelPeriodo`/`obtenerReportePorPeriodoConCatalogo`, que lo comparten entre las funciones que lo necesitan. */
-  indiceRecetas?: IndiceRecetas
+  indiceRecetas?: IndiceRecetas,
+  /** Los food cost objetivo cargados (`cargarObjetivosDeMargen`). Sin ellos rige el de por defecto: así el POS (`registrarVenta`) y el margen del período, que no lo usan, no leen esa tabla. */
+  objetivos?: ObjetivosDeMargen
 ): Promise<FilaCostoProducto[]> {
   if (indiceRecetas) asegurarIndiceRecetasDeLaSucursal(indiceRecetas, sucursalId);
   const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
@@ -207,6 +211,7 @@ export async function calcularCostosYMargenes(
     }
 
     const precioVenta = info.precioVenta;
+    const objetivoPct = resolverObjetivoFoodCost(objetivos, info.categoriaId);
     const conocido = !costoIncompleto && costoTotal > 0;
     const margen = conocido && precioVenta > 0 ? precioVenta - costoTotal : null;
 
@@ -215,7 +220,7 @@ export async function calcularCostosYMargenes(
     else if (!tieneReceta) estado = "SIN_RECETA";
     else if (costoIncompleto) estado = "COSTO_INCOMPLETO";
     else if (margen !== null && margen < 0) estado = "MARGEN_NEGATIVO";
-    else if (margen !== null && superaFoodCostObjetivo(costoTotal - costoNoComestible, precioVenta)) estado = "FOOD_COST_ALTO"; // food cost = solo comida y bebida (USAR)
+    else if (margen !== null && superaFoodCostObjetivo(costoTotal - costoNoComestible, precioVenta, objetivoPct)) estado = "FOOD_COST_ALTO"; // food cost = solo comida y bebida (USAR)
     else estado = "OK";
 
     filas.push({
@@ -229,7 +234,8 @@ export async function calcularCostosYMargenes(
       margenPct: margen !== null && precioVenta > 0 ? Math.round((margen / precioVenta) * 1000) / 10 : null,
       foodCostPct: conocido && precioVenta > 0 ? Math.round(((costoTotal - costoNoComestible) / precioVenta) * 1000) / 10 : null,
       costoNoComestible: redondearMoneda(costoNoComestible),
-      precioSugerido: costoIncompleto ? null : precioParaObjetivo(costoTotal - costoNoComestible),
+      objetivoFoodCostPct: objetivoPct,
+      precioSugerido: costoIncompleto ? null : precioParaObjetivo(costoTotal - costoNoComestible, objetivoPct),
       costoIncompleto,
       componentes,
       estado,

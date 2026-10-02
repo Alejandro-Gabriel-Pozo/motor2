@@ -52,6 +52,7 @@ describe("cada pantalla del menú declara su panel", () => {
 describe("panelDeRuta: el panel de la pantalla abierta", () => {
   it.each([
     ["/catalogo/categorias", "empresa"],
+    ["/catalogo/margen-objetivo", "empresa"],
     ["/administracion/roles", "empresa"],
     ["/carta/agrupados", "empresa"],
     ["/carta/tema", "sucursal"],

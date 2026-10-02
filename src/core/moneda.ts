@@ -43,6 +43,18 @@ export function redondearMoneda(n: number): number {
   return aCentavos(new D(n));
 }
 
+/**
+ * `numerador × factor ÷ denominador` en decimal EXACTO, redondeado a centavos HACIA ARRIBA (nunca baja de lo que da la cuenta). 12,5 no sube a
+ * 12,51; y el ruido de coma flotante de un costo calculado (`4.000000000000001`) no empuja un centavo de más: antes de subir se redondea a
+ * 6 decimales, que descarta ese ruido sin tocar ningún resto real (menos de una millonésima de peso). `denominador` debe ser mayor que 0 (quien
+ * llama lo valida); si algún dato no es finito, `NaN`.
+ */
+export function cocienteRedondeadoArriba(numerador: number, denominador: number, factor = 1): number {
+  if (!Number.isFinite(numerador) || !Number.isFinite(denominador) || !Number.isFinite(factor) || denominador <= 0) return Number.NaN;
+  const cociente = new D(numerador).times(factor).dividedBy(denominador).toDecimalPlaces(6, D.ROUND_HALF_UP);
+  return sinCeroNegativo(cociente.toDecimalPlaces(2, D.ROUND_CEIL).toNumber());
+}
+
 /** Importe de una línea: producto cantidad × precio unitario EXACTO (en decimal, no en float) y un solo redondeo a centavos. */
 export function importeDeLinea(cantidad: number, precioUnitario: number): number {
   if (!Number.isFinite(cantidad) || !Number.isFinite(precioUnitario)) return redondearMoneda(cantidad * precioUnitario);

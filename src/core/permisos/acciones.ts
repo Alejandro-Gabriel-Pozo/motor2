@@ -40,6 +40,8 @@ export const ACCIONES = [
   { clave: "unidades", descripcion: "Administrar el catálogo de Unidades de medida", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "proveedores", descripcion: "Administrar el catálogo de Proveedores (activar/desactivar)", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "categorias", descripcion: "Administrar el catálogo de Categorías", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Food cost objetivo (2026-10-01): lo fija SOLO administración (decisión del dueño), el de la empresa y el de cada categoría.
+  { clave: "margen_objetivo_editar", descripcion: "Fijar el food cost objetivo de la empresa y de cada categoría", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Los motivos de Consumo/Merma ya no vienen hardcodeados en un enum fijo (hallazgo real, 2026-09-23). Una clave por catálogo (decisión
   // del dueño, 2026-09-30: una clave por acción); `motivos_movimiento` (una sola para los dos) se retiró.
 { clave: "motivos_merma", descripcion: "Administrar el catálogo de Motivos de merma", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
