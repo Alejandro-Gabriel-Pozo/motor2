@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -27,6 +28,12 @@ import { describe, expect, it } from "vitest";
  */
 const SRC = join(__dirname, "../../src");
 const CARPETAS = ["core/carta", "app/(carta-publica)", "components/carta-publica"];
+/** Puntos de entrada de la carta sin sesión: de acá se calcula TODO lo que alcanza, no solo lo que vive en CARPETAS. */
+const ENTRADAS = (rel: string) => /^(app\/\(carta-publica\)\/|components\/carta-publica\/|core\/carta\/publica-sin-sesion\.ts$)/.test(rel);
+/** Escrituras toleradas fuera de CARPETAS (archivo → qué línea se acepta y por qué). Lista cerrada: agregar una acá exige un motivo. */
+const ESCRITURAS_TOLERADAS_EN_EL_ALCANCE: Record<string, { patron: RegExp; motivo: string }> = {
+  "core/auth/base.ts": { patron: /\$executeRaw`SELECT set_config\('app\.(empresa|usuario)_id'/, motivo: "fija empresa/usuario de la transacción (RLS, SET LOCAL); no escribe ningún dato" },
+};
 /** Captura el modelo de una escritura `cliente.modelo.op(`. */
 const ESCRITURA_POR_MODELO = /\w\s*\.\s*(\w+)\s*\.\s*(?:create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(/;
 const ESCRITURA = /\w\s*\.\s*\w+\s*\.\s*(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(|\$executeRaw/;
@@ -37,6 +44,43 @@ function archivos(dir: string): string[] {
     const ruta = join(dir, nombre);
     return statSync(ruta).isDirectory() ? archivos(ruta) : /\.tsx?$/.test(nombre) ? [ruta] : [];
   });
+}
+
+function importadosDe(ruta: string, codigo: string): string[] {
+  const fuente = ts.createSourceFile(ruta, codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const especificadores: string[] = [];
+  const visitar = (n: ts.Node) => {
+    if ((ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier)) especificadores.push(n.moduleSpecifier.text);
+    else if (ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword && n.arguments[0] && ts.isStringLiteralLike(n.arguments[0])) especificadores.push(n.arguments[0].text);
+    ts.forEachChild(n, visitar);
+  };
+  visitar(fuente);
+  return especificadores;
+}
+
+function resolver(desde: string, especificador: string): string | null {
+  const base = especificador.startsWith("@/") ? join(SRC, especificador.slice(2)) : especificador.startsWith(".") ? join(desde, "..", especificador) : null;
+  if (!base) return null;
+  for (const candidata of [`${base}.ts`, `${base}.tsx`, join(base, "index.ts"), join(base, "index.tsx")]) if (existsSync(candidata)) return candidata;
+  return null;
+}
+
+/** Todo archivo de src alcanzable (import estático, reexport o import()) desde las entradas de la carta sin sesión, ellas incluidas. */
+function alcanceDeLaCartaPublica(): string[] {
+  const rel = (r: string) => relative(SRC, r).split(sep).join("/");
+  const vistos = new Set(archivos(SRC).filter((r) => ENTRADAS(rel(r))));
+  const pendientes = [...vistos];
+  while (pendientes.length) {
+    const actual = pendientes.pop()!;
+    for (const e of importadosDe(actual, readFileSync(actual, "utf8"))) {
+      const destino = resolver(actual, e);
+      if (destino && !vistos.has(destino)) {
+        vistos.add(destino);
+        pendientes.push(destino);
+      }
+    }
+  }
+  return [...vistos];
 }
 
 function esComentario(linea: string): boolean {
@@ -65,6 +109,25 @@ describe("carta: solo lectura", () => {
   it("ningún archivo de src/core/carta ni de las páginas públicas escribe en la base", () => {
     const problemas = rutas.flatMap((ruta) => lineasQueEscriben(readFileSync(ruta, "utf8")).map((l) => `${relative(SRC, ruta).split(sep).join("/")}:${l}`));
     expect(problemas, `La carta pública es de solo lectura; estas líneas escriben:\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("tampoco escribe nada de lo que la carta pública ALCANZA fuera de sus carpetas (catálogo, auth, lib), salvo lo tolerado con motivo", () => {
+    const alcance = alcanceDeLaCartaPublica();
+    const nombres = alcance.map((r) => relative(SRC, r).split(sep).join("/"));
+    expect(nombres, "el cálculo de alcance no llega al catálogo: la prueba pasaría en vacío").toContain("core/catalogo/public-servidor.ts");
+    expect(nombres).toContain("core/auth/base.ts");
+    const problemas = alcance.flatMap((ruta) => {
+      const nombre = relative(SRC, ruta).split(sep).join("/");
+      const tolerada = ESCRITURAS_TOLERADAS_EN_EL_ALCANCE[nombre];
+      return readFileSync(ruta, "utf8")
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .flatMap((linea, i) => (!esComentario(linea) && ESCRITURA.test(linea) && !(tolerada && tolerada.patron.test(linea)) ? [`${nombre}:${i + 1}`] : []));
+    });
+    expect(problemas, `Un archivo que la carta pública alcanza escribe en la base (la carta es de solo lectura):\n${problemas.join("\n")}`).toEqual([]);
+    for (const [nombre, { patron }] of Object.entries(ESCRITURAS_TOLERADAS_EN_EL_ALCANCE)) {
+      expect(readFileSync(join(SRC, nombre), "utf8"), `${nombre} ya no tiene la escritura tolerada: sacalo de la lista`).toMatch(patron);
+    }
   });
 
   it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 12 tablas de carta", () => {
