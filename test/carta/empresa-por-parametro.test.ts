@@ -14,7 +14,7 @@ const { prismaFalso, resolverPortalCarta, resolverCartaPublica, resolverConfigPo
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
-vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }) }));
+vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
 vi.mock("@/core/carta/publica-consulta", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
 vi.mock("@/core/carta/empresa-carta", () => ({ resolverEmpresaCarta }));
 vi.mock("@/core/carta/publica-sin-sesion", async (importOriginal) => {
