@@ -16,6 +16,8 @@ const RAIZ = join(__dirname, "../../src/app/(app)");
 const PAGINAS_DE_EDICION = [
   { pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "producto_editar" },
   { pagina: "catalogo/productos/nuevo/page.tsx", clave: "alta_producto" },
+  { pagina: "catalogo/proveedores/[id]/editar/page.tsx", clave: "proveedores" },
+  { pagina: "catalogo/proveedores/nuevo/page.tsx", clave: "proveedor_alta" },
 ];
 
 describe("páginas de edición: exigen el permiso de Editar en el servidor", () => {

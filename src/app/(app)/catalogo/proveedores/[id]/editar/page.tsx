@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { obtenerProveedorPorId } from "@/server/consultas/catalogo/proveedores";
 import { ProveedorForm, type ProveedorExistente } from "../../proveedor-form";
 
@@ -12,6 +12,9 @@ export default async function EditarProveedorPage({ params }: { params: Promise<
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  // Además de Ver, EDITAR: `actualizarProveedor` exige Editar de `proveedores`. Quien solo ve proveedores no recibe el formulario para descubrirlo al guardar.
+  const gateEditar = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
+  if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
 
   const { id } = await params;
   const p = await obtenerProveedorPorId(id, ctx.db);
