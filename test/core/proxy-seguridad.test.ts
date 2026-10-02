@@ -86,6 +86,14 @@ describe("proxy — host de la aplicación", () => {
     }
   });
 
+  it("un cliente no puede falsear la ruta a la que vuelve el login: con sesión y en /login se descarta, sin sesión se pisa", () => {
+    const conEncabezado = (path: string, cookie?: string) =>
+      proxy(new NextRequest(`http://app.example.com${path}`, { headers: { host: "app.example.com", [ENCABEZADO_RUTA_PEDIDA]: "//evil.example", ...(cookie ? { cookie } : {}) } }));
+    expect(aLaApp(conEncabezado("/mesas/1", "authjs.session-token=abc"), ENCABEZADO_RUTA_PEDIDA)).toBeNull();
+    expect(aLaApp(conEncabezado("/login"), ENCABEZADO_RUTA_PEDIDA)).toBeNull();
+    expect(aLaApp(conEncabezado("/mesas/1"), ENCABEZADO_RUTA_PEDIDA)).toBe("/mesas/1");
+  });
+
   it("no pisa la CSP estática de la carta por path ni de /api (esas no llevan nonce)", () => {
     for (const path of ["/carta-publica/acme", "/carta-publica/acme/centro", "/api/auth/session", "/api/cron/sincronizar-dolar"]) {
       expect(pedir("app.example.com", path).headers.get("content-security-policy"), path).toBeNull();

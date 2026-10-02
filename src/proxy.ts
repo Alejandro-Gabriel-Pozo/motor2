@@ -55,6 +55,8 @@ export function proxy(request: NextRequest) {
   const csp = cspApp({ nonce, desarrollo: process.env.NODE_ENV === "development", https: sirvePorHttps(process.env) });
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", csp);
+  // Siempre se descarta lo que mande el cliente: con sesión (o en /login) el proxy no lo pone, y un valor falseado llegaría tal cual a `irAlLogin`.
+  headers.delete(ENCABEZADO_RUTA_PEDIDA);
 
   const sinSesion = !NOMBRES_COOKIE_SESION.some((nombre) => request.cookies.has(nombre));
   if (sinSesion && pathname !== "/login") {
