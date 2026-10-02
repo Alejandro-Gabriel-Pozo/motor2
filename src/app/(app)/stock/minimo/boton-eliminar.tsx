@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { eliminarStockMinimo } from "@/server/actions/stock/stock-minimo";
+import { IconoDeAccion } from "@/components/iconos";
 
 /**
  * "Eliminar" acá es la única acción de borrado duro de toda la app (no es
@@ -46,7 +47,8 @@ export function BotonEliminarStockMinimo({ id, etiqueta }: { id: string; etiquet
 
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline">
+      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline inline-flex items-center gap-1">
+        <IconoDeAccion id="eliminar" />
         Eliminar
       </button>
       {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}

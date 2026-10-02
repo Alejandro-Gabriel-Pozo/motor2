@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { IconoDeAccion } from "@/components/iconos";
 
 /**
  * «Activar» / «Desactivar» de una fila de administración (roles, usuarios).
@@ -62,7 +63,8 @@ export function BotonActivarDesactivar({
 
   if (!activo) {
     return (
-      <button type="button" onClick={onCambiar} className="text-sm underline">
+      <button type="button" onClick={onCambiar} className="text-sm underline inline-flex items-center gap-1">
+        <IconoDeAccion id="activar" />
         Activar
       </button>
     );
@@ -70,7 +72,8 @@ export function BotonActivarDesactivar({
 
   if (!mostrarConfirmacion) {
     return (
-      <button ref={botonDesactivar} type="button" onClick={() => setConfirmando(true)} className="text-sm underline">
+      <button ref={botonDesactivar} type="button" onClick={() => setConfirmando(true)} className="text-sm underline inline-flex items-center gap-1">
+        <IconoDeAccion id="activar" />
         Desactivar
       </button>
     );

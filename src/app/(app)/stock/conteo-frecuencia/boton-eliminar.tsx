@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { eliminarFrecuenciaConteo } from "@/server/actions/stock/frecuencia-conteo";
+import { IconoDeAccion } from "@/components/iconos";
 
 /** Mismo patrón de confirmación inline que BotonEliminarStockMinimo (stock/minimo/boton-eliminar.tsx) — nunca window.confirm. */
 export function BotonEliminarFrecuenciaConteo({ id, etiqueta }: { id: string; etiqueta: string }) {
@@ -41,7 +42,8 @@ export function BotonEliminarFrecuenciaConteo({ id, etiqueta }: { id: string; et
 
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline">
+      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline inline-flex items-center gap-1">
+        <IconoDeAccion id="eliminar" />
         Eliminar
       </button>
       {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}

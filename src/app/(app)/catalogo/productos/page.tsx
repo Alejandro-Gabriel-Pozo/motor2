@@ -5,6 +5,7 @@ import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa, obtenerMiNivelPermi
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { actualizarDisponibilidadProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
+import { IconoDeAccion } from "@/components/iconos";
 
 /**
  * Lista de productos. Ya no comparte pantalla con el formulario: el alta está en `/nuevo`, la ficha (solo lectura) en `/[id]` y la edición en
@@ -82,7 +83,8 @@ export default async function ProductosPage({
                   {(puedeEditarProducto || puedeCambiarDisponibilidad) && (
                     <div className="flex items-start gap-3">
                       {puedeEditarProducto && (
-                        <Link href={`/catalogo/productos/${p.id}/editar`} className="text-sm underline">
+                        <Link href={`/catalogo/productos/${p.id}/editar`} className="text-sm underline inline-flex items-center gap-1">
+                          <IconoDeAccion id="editar" />
                           Editar
                         </Link>
                       )}

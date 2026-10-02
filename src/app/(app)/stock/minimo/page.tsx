@@ -5,6 +5,7 @@ import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarStockMinimo } from "@/server/actions/stock/stock-minimo";
 import { StockMinimoForm } from "./stock-minimo-form";
 import { BotonEliminarStockMinimo } from "./boton-eliminar";
+import { IconoDeAccion } from "@/components/iconos";
 
 export default async function StockMinimoPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -38,8 +39,9 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
                 <td>{Number(f.minimo)}</td>
                 <td>
                   {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
-                  <div className="flex gap-3">
-                    <Link href={`/stock/minimo?editar=${f.id}`} className="text-sm underline">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <Link href={`/stock/minimo?editar=${f.id}`} className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="editar" />
                       Editar
                     </Link>
                     <BotonEliminarStockMinimo id={f.id} etiqueta={`"${f.producto.nombre}" en ${f.seccion?.nombre ?? "Global (toda la sucursal)"}`} />

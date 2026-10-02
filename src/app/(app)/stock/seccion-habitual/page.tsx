@@ -5,6 +5,7 @@ import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarSeccionesHabituales } from "@/server/actions/stock/seccion-habitual";
 import { SeccionHabitualForm } from "./seccion-habitual-form";
 import { BotonQuitarSeccionHabitual } from "./boton-quitar";
+import { IconoDeAccion } from "@/components/iconos";
 
 /**
  * Sección habitual de cada producto de venta en esta sucursal (docs/plan-seccion-habitual-stock-2026-09-25.md, C2): de qué sección de
@@ -45,8 +46,9 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
                 <td>{f.seccion.nombre}</td>
                 <td>
                   {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
-                  <div className="flex gap-3">
-                    <Link href={`/stock/seccion-habitual?editar=${f.id}`} className="text-sm underline">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <Link href={`/stock/seccion-habitual?editar=${f.id}`} className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="editar" />
                       Editar
                     </Link>
                     <BotonQuitarSeccionHabitual id={f.id} producto={f.producto.nombre} />

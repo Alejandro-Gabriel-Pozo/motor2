@@ -5,6 +5,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { IconoDeAccion } from "@/components/iconos";
 
 /**
  * Lista de proveedores. Ya no comparte pantalla con el formulario: el alta
@@ -62,7 +63,8 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
               <td>{p.activo ? "Sí" : "No"}</td>
               <td className="py-2">
                 <div className="flex gap-3">
-                  <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline">
+                  <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="editar" />
                     Editar
                   </Link>
                   <FormConResultado
@@ -71,7 +73,8 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
                       return actualizarActivaProveedor(p.id, !p.activo);
                     }}
                   >
-                    <button type="submit" className="text-sm underline">
+                    <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="activar" />
                       {p.activo ? "Desactivar" : "Activar"}
                     </button>
                   </FormConResultado>

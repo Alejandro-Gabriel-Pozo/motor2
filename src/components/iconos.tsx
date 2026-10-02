@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BookOpen, Boxes, ChartColumn, CircleQuestionMark, Package, ShieldCheck, Truck, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, BookOpen, Boxes, ChartColumn, CircleQuestionMark, Eye, History, Package, Pencil, Power, ShieldCheck, Trash2, Truck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 
 /**
  * Único archivo que importa `lucide-react` (lo comprueba test/arquitectura/iconos-accesibles.test.ts). Todo ícono es decorativo: va
@@ -24,6 +24,19 @@ const ICONO_DE_MODULO: Record<string, LucideIcon> = {
 export function IconoDeModulo({ id, className }: { id: string; className?: string }) {
   const icono = ICONO_DE_MODULO[id];
   return icono ? <Icono icono={icono} className={className} /> : null;
+}
+
+/** Un ícono por acción de tabla; va siempre junto al texto de la acción («Editar», «Quitar»…), que sigue siendo su nombre accesible. */
+const ICONO_DE_ACCION: Record<"editar" | "eliminar" | "activar" | "ver" | "historial", LucideIcon> = {
+  editar: Pencil,
+  eliminar: Trash2,
+  activar: Power,
+  ver: Eye,
+  historial: History,
+};
+
+export function IconoDeAccion({ id }: { id: keyof typeof ICONO_DE_ACCION }) {
+  return <Icono icono={ICONO_DE_ACCION[id]} className="h-3.5 w-3.5 shrink-0" />;
 }
 
 export function IconoAyuda() {

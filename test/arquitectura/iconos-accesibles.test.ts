@@ -14,7 +14,7 @@ import { GRUPOS_NAV } from "../../src/core/navegacion/estructura";
  */
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVO_DE_ICONOS = "components/iconos.tsx";
-const COMPONENTES_ICONO = new Set(["Icono", "IconoDeModulo", "IconoAyuda"]);
+const COMPONENTES_ICONO = new Set(["Icono", "IconoDeModulo", "IconoDeAccion", "IconoAyuda"]);
 const CONTROLES = new Set(["button", "a", "Link", "EnlaceInterno"]);
 
 function archivos(dir: string): string[] {
@@ -158,6 +158,8 @@ describe("íconos accesibles", () => {
     it("(c) marca un control que es solo el ícono, y no los que tienen texto, texto dinámico o aria-label", () => {
       expect(controlesConIconoSinNombre('const a = <Link href="/x"><IconoDeModulo id="x" /></Link>;')).toEqual(["Link@1"]);
       expect(controlesConIconoSinNombre('const a = <button type="button"><IconoAyuda /></button>;')).toEqual(["button@1"]);
+      expect(controlesConIconoSinNombre('const a = <Link href="/x"><IconoDeAccion id="editar" /></Link>;')).toEqual(["Link@1"]);
+      expect(controlesConIconoSinNombre('const a = <Link href="/x"><IconoDeAccion id="editar" />Editar</Link>;')).toEqual([]);
       expect(controlesConIconoSinNombre('const a = <a href="/x"><Icono icono={X} />{abierto && <IconoAyuda />}</a>;')).toEqual(["a@1"]);
       expect(controlesConIconoSinNombre('const a = <Link href="/x"><IconoDeModulo id="x" />Inicio</Link>;')).toEqual([]);
       expect(controlesConIconoSinNombre('const a = <button><span><IconoDeModulo id="x" />{grupo.label}</span></button>;')).toEqual([]);

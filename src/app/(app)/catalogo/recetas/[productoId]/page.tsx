@@ -28,6 +28,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
+import { IconoDeAccion } from "@/components/iconos";
 
 export default async function RecetaEditorPage({
   params,
@@ -138,10 +139,12 @@ export default async function RecetaEditorPage({
         </h1>
         {vigente && (
           <div className="flex gap-3">
-            <Link href={`${volver}/historial`} className="text-sm text-neutral-500 underline">
+            <Link href={`${volver}/historial`} className="text-sm text-neutral-500 underline inline-flex items-center gap-1">
+              <IconoDeAccion id="historial" />
               Ver historial de versiones ({vigente.version})
             </Link>
-            <EnlaceInterno href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline">
+            <EnlaceInterno href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline inline-flex items-center gap-1">
+              <IconoDeAccion id="ver" />
               Ver rendimiento real
             </EnlaceInterno>
           </div>
@@ -298,7 +301,8 @@ export default async function RecetaEditorPage({
                   {vigente.presentacionEmplatado && <p className="text-neutral-500">Presentación o emplatado: {vigente.presentacionEmplatado}</p>}
                   {vigente.notasAdicionales && <p className="text-neutral-500">Notas adicionales: {vigente.notasAdicionales}</p>}
                   {vigente.equipamientoNecesario && <p className="text-neutral-500">Equipamiento necesario: {vigente.equipamientoNecesario}</p>}
-                  <Link href={`${volver}?editarFicha=1`} className="self-start underline">
+                  <Link href={`${volver}?editarFicha=1`} className="self-start underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="editar" />
                     Editar
                   </Link>
                 </div>
@@ -427,7 +431,8 @@ export default async function RecetaEditorPage({
                         <td>{Number(ing.mermaPorcentaje)}</td>
                         <td>
                           <div className="flex gap-3">
-                            <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline">
+                            <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline inline-flex items-center gap-1">
+                              <IconoDeAccion id="editar" />
                               Editar
                             </Link>
                             <FormConResultado
@@ -436,7 +441,8 @@ export default async function RecetaEditorPage({
                                 return quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
                               }}
                             >
-                              <button type="submit" className="text-sm underline">
+                              <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                                <IconoDeAccion id="eliminar" />
                                 Quitar
                               </button>
                             </FormConResultado>
@@ -562,7 +568,8 @@ export default async function RecetaEditorPage({
                           </p>
                         )}
                         <div className="flex gap-3">
-                          <Link href={`${volver}?editarPaso=${paso.orden}`} className="text-xs underline">
+                          <Link href={`${volver}?editarPaso=${paso.orden}`} className="text-xs underline inline-flex items-center gap-1">
+                            <IconoDeAccion id="editar" />
                             Editar
                           </Link>
                           <FormConResultado
