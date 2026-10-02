@@ -66,6 +66,71 @@ describe("proxy — host de la carta", () => {
   });
 });
 
+describe("proxy — carta de la empresa única en el dominio base (add-on CARTA_EMPRESA_UNICA)", () => {
+  const previoBase = process.env.CARTA_DOMINIO_BASE;
+  const previoUnica = process.env.CARTA_EMPRESA_UNICA_COMPILADO;
+  beforeEach(() => {
+    process.env.CARTA_DOMINIO_BASE = BASE;
+    process.env.CARTA_EMPRESA_UNICA_COMPILADO = "acme";
+  });
+  afterEach(() => {
+    if (previoBase === undefined) delete process.env.CARTA_DOMINIO_BASE;
+    else process.env.CARTA_DOMINIO_BASE = previoBase;
+    if (previoUnica === undefined) delete process.env.CARTA_EMPRESA_UNICA_COMPILADO;
+    else process.env.CARTA_EMPRESA_UNICA_COMPILADO = previoUnica;
+  });
+
+  it("la raíz y /<sucursal> del dominio base pasan a la aplicación, también con puerto y en mayúsculas", () => {
+    for (const path of ["/", "/centro", "/centro/"]) {
+      const r = pedir(BASE, path);
+      expect(r.status, path).toBe(200);
+      expect(r.headers.get("x-middleware-next"), path).toBe("1");
+    }
+    expect(pedir(`${BASE}:3000`, "/centro").status).toBe(200);
+    expect(pedir(BASE.toUpperCase(), "/centro").status).toBe(200);
+  });
+
+  it("en el dominio base todo lo demás es 404: auth, cron, API, la aplicación, archivos, rutas de más de un segmento, escrituras y Server Actions", () => {
+    for (const path of ["/api/auth/signin", "/api/auth/session", "/api/cron/sincronizar-dolar", "/mesas/abc", "/carta/tema", "/a/b", "/api/x", "/x.png", "/carta-publica/acme"]) {
+      const r = pedir(BASE, path);
+      expect(r.status, path).toBe(404);
+      expect(r.headers.get("x-middleware-next"), path).toBeNull();
+    }
+    const pedirCon = (metodo: string, headers: Record<string, string> = {}) =>
+      proxy(new NextRequest(`http://${BASE}/centro`, { method: metodo, headers: { host: BASE, ...headers } }));
+    for (const metodo of ["POST", "PUT", "PATCH", "DELETE"]) expect(pedirCon(metodo).status, metodo).toBe(404);
+    expect(pedirCon("GET", { "next-action": "abc123" }).status).toBe(404);
+    expect(pedirCon("HEAD").status).toBe(200);
+  });
+
+  it("<empresa>.<base> sigue resolviendo por subdominio; el punto final y un subdominio de dos niveles siguen siendo 404", () => {
+    expect(pedir(`acme.${BASE}`, "/centro").status).toBe(200);
+    expect(pedir(`otra.${BASE}`, "/centro").status).toBe(200);
+    expect(pedir(`acme.${BASE}`, "/api/auth/signin").status).toBe(404);
+    expect(pedir(`${BASE}.`, "/").status).toBe(404);
+    expect(pedir(`a.b.${BASE}`, "/").status).toBe(404);
+  });
+
+  it("sin el add-on (variable compilada vacía o ausente) el dominio base pelado sigue siendo 404", () => {
+    process.env.CARTA_EMPRESA_UNICA_COMPILADO = "";
+    expect(pedir(BASE, "/").status).toBe(404);
+    expect(pedir(BASE, "/centro").status).toBe(404);
+    delete process.env.CARTA_EMPRESA_UNICA_COMPILADO;
+    expect(pedir(BASE, "/").status).toBe(404);
+  });
+
+  it("un valor compilado que no es un slug no habilita nada", () => {
+    process.env.CARTA_EMPRESA_UNICA_COMPILADO = "No Valido";
+    expect(pedir(BASE, "/").status).toBe(404);
+  });
+
+  it("el host de la app no se ve afectado: sigue con su CSP con nonce", () => {
+    const r = pedir("app.example.com", "/login");
+    expect(r.status).toBe(200);
+    expect(aLaApp(r, "content-security-policy")).toContain("nonce-");
+  });
+});
+
 describe("proxy — host de la aplicación", () => {
   beforeEach(() => {
     delete process.env.CARTA_DOMINIO_BASE;

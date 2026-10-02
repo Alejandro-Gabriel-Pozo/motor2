@@ -103,6 +103,8 @@ export default defineConfig({
       AUTH_TRUST_HOST: "1",
       // ADR-006, Fase 6: con esto next.config.ts arma el rewrite de e2e.carta.localhost (se lee al compilar, por eso está en el env del build); lo usa test/e2e/carta-subdominio.spec.ts.
       CARTA_DOMINIO_BASE: "carta.localhost",
+      // Add-on de la empresa única: `carta.localhost` pelado sirve la carta de la empresa `e2e` sin su slug en la URL (también se lee al compilar); lo usa test/e2e/carta-empresa-unica.spec.ts.
+      CARTA_EMPRESA_UNICA: "e2e",
     },
     url: URL_BASE,
     reuseExistingServer: false,

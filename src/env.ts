@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { esSlugPublicoValido } from "./core/carta/host";
 
 /**
  * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): Zod en env — "el proceso no
@@ -40,6 +41,8 @@ const envSchema = z.object({
   // Dominio base del subdominio de la carta (`<empresa>.<dominioBase>`, core/carta/host.ts). Sin configurar, la
   // carta pública solo se sirve por path directo (`/carta-publica/...`), sin subdominio (Fase 6 del plan).
   CARTA_DOMINIO_BASE: z.string().min(1).optional(),
+  // Add-on (core/carta/carta-empresa-unica.ts): slug de la empresa cuya carta se sirve en el dominio base, sin su slug en la URL. Requiere CARTA_DOMINIO_BASE.
+  CARTA_EMPRESA_UNICA: z.string().refine(esSlugPublicoValido, "no es un slug válido").optional(),
 
   // URL pública de la app para Auth.js: con https decide la cookie de sesión (`sirvePorHttps`, core/auth/cookie-sesion.ts).
   AUTH_URL: z.string().min(1).optional(),
@@ -95,5 +98,18 @@ export function validarDominioCartaAlArrancar(source: Record<string, string | un
   if (normalizar(source.CARTA_DOMINIO_BASE) === normalizar(compilado)) return;
   throw new Error(
     `CARTA_DOMINIO_BASE difiere entre el build (${normalizar(compilado) ? "con valor" : "vacía"}) y el arranque (${normalizar(source.CARTA_DOMINIO_BASE) ? "con valor" : "vacía"}): las reglas de la carta se fijan al compilar. Volvé a desplegar con la variable en el entorno del build. El proceso no arranca.`,
+  );
+}
+
+/**
+ * Lo mismo para el add-on `CARTA_EMPRESA_UNICA` (core/carta/carta-empresa-unica.ts): las reglas y el proxy usan la copia compilada
+ * (`CARTA_EMPRESA_UNICA_COMPILADO`); si el arranque ve otro valor, el host del dominio base se serviría distinto de lo compilado.
+ */
+export function validarEmpresaUnicaAlArrancar(source: Record<string, string | undefined>, compilado: string | undefined): void {
+  if (!entornoEstricto(source) || compilado === undefined) return;
+  const normalizar = (v: string | undefined) => v?.trim() ?? "";
+  if (normalizar(source.CARTA_EMPRESA_UNICA) === normalizar(compilado)) return;
+  throw new Error(
+    `CARTA_EMPRESA_UNICA difiere entre el build (${normalizar(compilado) ? "con valor" : "vacía"}) y el arranque (${normalizar(source.CARTA_EMPRESA_UNICA) ? "con valor" : "vacía"}): las reglas de la carta se fijan al compilar. Volvé a desplegar con la variable en el entorno del build. El proceso no arranca.`,
   );
 }

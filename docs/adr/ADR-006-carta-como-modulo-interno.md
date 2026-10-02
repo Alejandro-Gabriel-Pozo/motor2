@@ -145,6 +145,18 @@ wildcard `*.<dominio>` sirve a toda empresa nueva sin tocar nada.
   valdría reconsiderar separar el módulo de carta en su propio deployment,
   aunque siga siendo el mismo repo/monorepo.
 
+## Add-on CARTA_EMPRESA_UNICA: la carta de una empresa en el dominio base, sin slug
+
+Para una instalación de una sola empresa (hoy stockhneuquen, `carta.hotelesdelneuquen.com.ar`) se quiere `https://<base>/` (portal) y `https://<base>/<sucursal>` (carta) sin el slug de la empresa en la URL. Es un **módulo opcional, apagado por defecto**: sin la variable el comportamiento es el de siempre.
+
+- **Variables:** `CARTA_EMPRESA_UNICA=<slug>` junto con `CARTA_DOMINIO_BASE=<base>`. Ambas se leen AL COMPILAR (`next.config.ts`); `instrumentation.ts` falla el arranque en entorno estricto si el valor de arranque difiere del compilado (`validarEmpresaUnicaAlArrancar`, en `src/env.ts` junto a su par de `CARTA_DOMINIO_BASE`). Un slug inválido, o el add-on sin dominio base, rompe el build (falla cerrado).
+- **Código:** `src/core/carta/carta-empresa-unica.ts` (puro) arma las reglas; `next.config.ts` las suma a `rewrites()` y `redirects()`; `src/proxy.ts` solo agrega que el host base EXACTO (sin punto final, sin prefijos) pase la misma lista de paths permitidos que un host de carta; el portal de administración arma sus links con `urlCartaPublicaConEmpresaUnica`.
+- **Seguridad:** el slug sale de la configuración, nunca del pedido; el host se compara exacto. En el dominio base solo se sirven `/` y `/<segmento>` por GET/HEAD: login, auth, cron, la aplicación, escrituras y Server Actions dan 404 (mismo criterio que los hosts de carta). Una empresa inexistente da 404 en la página.
+- **Redirecciones:** en el dominio base, `/carta-publica/<slug>[/<sucursal>]` pasa a `/[<sucursal>]`; en el host de la app (cualquier host fuera de la zona de cartas, de `localhost` y de `127.0.0.1`) esos paths van a `https://<base>/...`.
+- **Diferencia con la V3 de ADR-007** (`EMPRESA_UNICA` como forma de resolver la empresa): acá la empresa SIGUE resolviéndose desde la base por su slug (la tabla `Empresa`); la variable solo decide qué slug se muestra sin prefijo y en qué host. No cambia aislamiento ni RLS.
+- **Límite conocido:** la barra de direcciones queda limpia, pero los `href` internos de la carta siguen siendo `/carta-publica/<slug>/...` (la carta es ISR y no depende del host): cada click cuesta un 307 hacia la URL limpia.
+- **Cómo quitarlo:** `git revert` del commit del add-on; no deja datos ni migraciones.
+
 ## Progreso de implementación
 
 > Esta sección es la fuente de verdad del avance — no la conversación que

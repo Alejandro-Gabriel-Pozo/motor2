@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { cargarAdminPortal, cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
 import { CLAVES_PORTAL_V1 } from "@/core/carta/portal";
-import { urlCartaPublica } from "@/core/carta/host";
+import { urlCartaPublicaConEmpresaUnica } from "@/core/carta/carta-empresa-unica";
 import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
 import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -49,7 +49,7 @@ export default async function PortalSucursalesPage() {
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
-          <a href={urlCartaPublica(process.env.CARTA_DOMINIO_BASE, ctx.empresaSlug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+          <a href={urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, ctx.empresaSlug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
             Ver el portal de motor2 →
           </a>
         </div>
@@ -68,7 +68,7 @@ export default async function PortalSucursalesPage() {
           version={apariencia.actualizadoEn?.toISOString() ?? "sin-apariencia"}
           empresaNombre={ctx.empresaNombre}
           sucursales={entradasVistaPreviaPortal(sucursales)}
-          urlsPorSlug={Object.fromEntries(sucursales.flatMap((s) => (s.publica ? [[s.publica.slug, urlCartaPublica(process.env.CARTA_DOMINIO_BASE, ctx.empresaSlug, s.publica.slug)]] : [])))}
+          urlsPorSlug={Object.fromEntries(sucursales.flatMap((s) => (s.publica ? [[s.publica.slug, urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, ctx.empresaSlug, s.publica.slug)]] : [])))}
           accion={async (fd: FormData) => {
             "use server";
             return refrescarSiOk(await guardarPortalEmpresa(valoresDelFormulario(fd)));
@@ -112,7 +112,7 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
         {p && seVeEnVivo(s) && (
           <>
             {" · "}
-            <a href={urlCartaPublica(process.env.CARTA_DOMINIO_BASE, empresaSlug, p.slug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+            <a href={urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, empresaSlug, p.slug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
               Ver la carta de motor2 →
             </a>
           </>

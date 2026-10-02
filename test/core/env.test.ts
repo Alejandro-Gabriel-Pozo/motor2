@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { describe, expect, it } from "vitest";
-import { parseEnv, validarDominioCartaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
+import { parseEnv, validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
 
 /**
  * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): confirma que el schema de
@@ -120,5 +120,41 @@ describe("validarDominioCartaAlArrancar (CARTA_DOMINIO_BASE: build vs arranque)"
     expect(() => validarDominioCartaAlArrancar({ CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, "")).not.toThrow();
     expect(() => validarDominioCartaAlArrancar({ VERCEL_ENV: "preview", CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, "")).not.toThrow();
     expect(() => validarDominioCartaAlArrancar({ MOTOR2_ENTORNO_ESTRICTO: "1", CARTA_DOMINIO_BASE: "carta.ejemplo.com" }, "")).toThrow();
+  });
+});
+
+describe("CARTA_EMPRESA_UNICA (add-on de la empresa única)", () => {
+  it("es opcional, pero si viene tiene que ser un slug (parseEnv la rechaza si no)", () => {
+    expect(() => parseEnv({ ...ENV_VALIDO, CARTA_DOMINIO_BASE: "carta.ejemplo.com", CARTA_EMPRESA_UNICA: "hoteles-neuquen" })).not.toThrow();
+    for (const malo of ["X", "a--b", "a.b", "-x", "https://x", ""]) {
+      expect(() => parseEnv({ ...ENV_VALIDO, CARTA_EMPRESA_UNICA: malo }), malo).toThrow(/CARTA_EMPRESA_UNICA/);
+    }
+  });
+
+  it("en Producción un valor inválido impide arrancar y el error nombra la variable", () => {
+    expect(() => validarEntornoAlArrancar({ ...ENV_PRODUCCION, VERCEL_ENV: "production", CARTA_EMPRESA_UNICA: "No Valido" })).toThrow(/CARTA_EMPRESA_UNICA/);
+  });
+});
+
+describe("validarEmpresaUnicaAlArrancar (CARTA_EMPRESA_UNICA: build vs arranque)", () => {
+  const PROD = { VERCEL_ENV: "production" };
+
+  it("en Producción no arranca si la variable del arranque difiere de la que vio el build (en cualquier sentido), sin revelar el slug", () => {
+    expect(() => validarEmpresaUnicaAlArrancar({ ...PROD, CARTA_EMPRESA_UNICA: "hoteles" }, "")).toThrow(/CARTA_EMPRESA_UNICA difiere/);
+    expect(() => validarEmpresaUnicaAlArrancar({ ...PROD }, "hoteles")).toThrow(/CARTA_EMPRESA_UNICA difiere/);
+    expect(() => validarEmpresaUnicaAlArrancar({ ...PROD, CARTA_EMPRESA_UNICA: "otra" }, "hoteles")).toThrow(/CARTA_EMPRESA_UNICA difiere/);
+    expect(() => validarEmpresaUnicaAlArrancar({ ...PROD, CARTA_EMPRESA_UNICA: "secreta" }, "")).not.toThrow(/secreta/);
+  });
+
+  it("iguales o ambas vacías: arranca", () => {
+    expect(() => validarEmpresaUnicaAlArrancar({ ...PROD, CARTA_EMPRESA_UNICA: "hoteles" }, "hoteles")).not.toThrow();
+    expect(() => validarEmpresaUnicaAlArrancar({ ...PROD }, "")).not.toThrow();
+  });
+
+  it("sin bundle compilado (compilado indefinido) o fuera del entorno estricto, no compara nada", () => {
+    expect(() => validarEmpresaUnicaAlArrancar({ ...PROD, CARTA_EMPRESA_UNICA: "hoteles" }, undefined)).not.toThrow();
+    expect(() => validarEmpresaUnicaAlArrancar({ CARTA_EMPRESA_UNICA: "hoteles" }, "")).not.toThrow();
+    expect(() => validarEmpresaUnicaAlArrancar({ VERCEL_ENV: "preview", CARTA_EMPRESA_UNICA: "hoteles" }, "")).not.toThrow();
+    expect(() => validarEmpresaUnicaAlArrancar({ MOTOR2_ENTORNO_ESTRICTO: "1", CARTA_EMPRESA_UNICA: "hoteles" }, "")).toThrow();
   });
 });

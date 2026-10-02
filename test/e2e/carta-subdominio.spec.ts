@@ -71,13 +71,14 @@ test.describe("carta por subdominio", () => {
     // El pedido va a loopback con otro header Host (Node no resuelve *.localhost; el matching de Next es por header).
     const pedir = (path: string) => request.get(`${baseURL}${path}`, { headers: { host: hostApp }, maxRedirects: 0 });
 
-    const portal = await pedir("/carta-publica/e2e");
+    // Con el add-on activo (CARTA_EMPRESA_UNICA=e2e) la empresa `e2e` va al dominio base pelado (carta-empresa-unica.spec.ts); acá se prueba el camino por subdominio con otra empresa.
+    const portal = await pedir("/carta-publica/otra");
     expect(portal.status()).toBe(307);
-    expect(portal.headers()["location"]).toBe("https://e2e.carta.localhost/");
+    expect(portal.headers()["location"]).toBe("https://otra.carta.localhost/");
 
-    const carta = await pedir("/carta-publica/e2e/central");
+    const carta = await pedir("/carta-publica/otra/central");
     expect(carta.status()).toBe(307);
-    expect(carta.headers()["location"]).toBe("https://e2e.carta.localhost/central");
+    expect(carta.headers()["location"]).toBe("https://otra.carta.localhost/central");
 
     // `localhost` pelado (desarrollo) sigue sirviendo por path, sin redirigir.
     const local = await request.get(`${baseURL}/carta-publica/e2e/central`, { maxRedirects: 0 });
@@ -94,11 +95,11 @@ test.describe("carta por subdominio", () => {
       expect(r.status(), path).toBe(404);
       expect(await r.text(), path).not.toMatch(/csrfToken|providers|Iniciar sesión|<form/i);
     }
-    // El dominio base pelado y los subdominios de dos niveles no son una carta.
+    // Los subdominios de dos niveles no son una carta. El dominio base pelado solo lo es con el add-on de la empresa única (carta-empresa-unica.spec.ts), y aun así /login es 404.
     for (const host of ["carta.localhost", "a.b.carta.localhost"]) {
-      expect((await pedir(host, "/")).status(), host).toBe(404);
       expect((await pedir(host, "/login")).status(), host).toBe(404);
     }
+    expect((await pedir("a.b.carta.localhost", "/")).status()).toBe(404);
     // El host de la app sigue sirviendo su login.
     expect((await request.get(`${baseURL}/login`, { maxRedirects: 0 })).status()).toBe(200);
   });

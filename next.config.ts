@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
+import { reglasRedirectEmpresaUnica, reglasRewriteEmpresaUnica } from "./src/core/carta/carta-empresa-unica";
 import { sirvePorHttps } from "./src/core/auth/cookie-sesion";
 import { cabecerasCarta, cabecerasComunes } from "./src/core/seguridad/cabeceras";
 
@@ -8,7 +9,7 @@ const dominioBaseCarta = process.env.CARTA_DOMINIO_BASE?.trim().toLowerCase();
 
 const nextConfig: NextConfig = {
   // Copia de CARTA_DOMINIO_BASE tal como la vio el build (se incrusta en el bundle): `instrumentation.ts` la compara con la del arranque.
-  env: { CARTA_DOMINIO_BASE_COMPILADO: dominioBaseCarta ?? "" },
+  env: { CARTA_DOMINIO_BASE_COMPILADO: dominioBaseCarta ?? "", CARTA_EMPRESA_UNICA_COMPILADO: process.env.CARTA_EMPRESA_UNICA ?? "" },
   // Silencia el warning de Turbopack: hay otro package-lock.json en la raíz
   // del repo (motor/), del tooling de Apps Script (clasp/gen-wrappers.js) —
   // no tiene nada que ver con este proyecto Next.js.
@@ -34,6 +35,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/catalogo/carta/:path*", destination: "/carta/:path*", permanent: false },
+      // Add-on CARTA_EMPRESA_UNICA (apagado sin la variable): antes que las del núcleo, gana la primera que coincide.
+      ...reglasRedirectEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA),
       // En el host de la carta, los links internos /carta-publica/... se llevan a la URL limpia (ver reglasRedirectCarta).
       ...reglasRedirectCarta(process.env.CARTA_DOMINIO_BASE),
       // En cualquier otro host (el de la app), esos paths redirigen al host de la carta (ver reglasRedirectAppACarta).
@@ -43,7 +46,7 @@ const nextConfig: NextConfig = {
   // ADR-006, Fase 6: <empresa>.<CARTA_DOMINIO_BASE> sirve la carta pública sin mostrar /carta-publica en la URL. Sin la variable
   // (leída al compilar) no hay reglas. `revalidatePath` sigue operando sobre el path destino, no sobre el host.
   async rewrites() {
-    return { beforeFiles: reglasRewriteCarta(process.env.CARTA_DOMINIO_BASE) };
+    return { beforeFiles: [...reglasRewriteEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA), ...reglasRewriteCarta(process.env.CARTA_DOMINIO_BASE)] };
   },
 };
 
