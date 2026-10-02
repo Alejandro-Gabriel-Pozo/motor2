@@ -71,15 +71,6 @@
     "prisma/**/*.{ts,prisma}"
   ],
 
-  "ignoreDependencies": [
-    // RESERVADO — driver de Postgres de `@prisma/adapter-pg` (src/lib/db.ts elige PrismaPg para cualquier host que no
-    // sea Neon: local, docker compose, E2E). Nadie hace `import "pg"`: lo carga el adapter. Se declaró a propósito junto
-    // con el adapter (docs/plan-migracion.md, "Bugs de infraestructura...") para fijar la versión del driver que corre en
-    // producción en vez de heredarla transitivamente.
-    "pg",
-    // RESERVADO — tipos del driver anterior, agregados en el mismo cambio y por el mismo motivo que `pg`.
-    "@types/pg"
-  ],
 
   // RESERVADO — tipos e interfaces exportados que solo se usan dentro de su propio archivo. Casi todos describen la forma
   // de lo que devuelve o recibe una función exportada (filas de reportes, entradas de armar-menu, etc.): son parte de la
