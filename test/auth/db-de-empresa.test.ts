@@ -1,13 +1,15 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, prisma, prismaAdmin } from "../setup/test-db";
 import { baseDeEmpresa, dbDeEmpresa, transaccionDeEmpresa } from "../../src/core/auth/base";
 import { verificarRolDeEjecucion, datosDelRolDeEjecucion } from "../../src/core/auth/rol-de-ejecucion";
+import { reportarErrorUnaVez } from "../../src/lib/reportar-error";
 
 /**
  * ADR-007, A5: cada operación del contexto de un usuario corre con `app.empresa_id` fijado (local a su transacción). Se prueba con DOS
  * empresas ACTIVE, donde el default de `empresaId` (`app_empresa_actual()`) es NULL salvo que haya contexto: si una fila queda en la
  * empresa correcta sin decir `empresaId`, es porque el contexto llegó a la consulta.
  */
+vi.mock("../../src/lib/reportar-error", () => ({ reportarErrorUnaVez: vi.fn(async () => undefined), reportarError: vi.fn(async () => undefined) }));
 afterAll(() => prismaAdmin.$disconnect());
 
 async function crearEmpresa(id: string) {
@@ -113,6 +115,16 @@ describe("verificarRolDeEjecucion", () => {
     await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
     await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "DELETING" } });
     await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
+  });
+
+  it("tolerar un rol que salta el RLS con una sola empresa se AVISA a Sentry; el rol sin privilegios no avisa nada", async () => {
+    vi.mocked(reportarErrorUnaVez).mockClear();
+    const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false };
+    await verificarRolDeEjecucion(prisma, base);
+    expect(reportarErrorUnaVez).not.toHaveBeenCalled();
+    await verificarRolDeEjecucion(prisma, { ...base, bypassRls: true });
+    expect(reportarErrorUnaVez).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reportarErrorUnaVez).mock.calls[0][1]).toMatchObject({ message: expect.stringContaining("BYPASSRLS") });
   });
 
   it("una empresa que todavía nace (PROVISIONING) no cuenta", async () => {

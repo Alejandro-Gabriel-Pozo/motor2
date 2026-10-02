@@ -1,4 +1,5 @@
 import type { Db } from "@/lib/db-tipos";
+import { reportarErrorUnaVez } from "@/lib/reportar-error";
 
 export interface DatosDelRol {
   usuario: string;
@@ -24,6 +25,8 @@ export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {
  * (`PROVISIONING`): una suspendida o en baja sigue teniendo sus datos en las tablas. `datos` permite reusar la lectura del rol (no cambia mientras dura el proceso).
  * `empresasNuevas` suma las que la operación en curso va a dejar activas (`crearEmpresa`: 1): dar de alta una segunda empresa con un rol que salta el RLS es justo lo que se rechaza.
  * `estricto` (`MOTOR2_ROL_ESTRICTO=1`) se niega con un rol que salta el RLS aunque haya una sola empresa.
+ * Tolerar no es callar: con una sola empresa se avisa (una vez por arranque) a Sentry, porque instalar el rol equivocado en producción no
+ * rompe nada a la vista y se descubriría recién al sumar la segunda empresa.
  */
 export async function verificarRolDeEjecucion(db: Db, datos?: DatosDelRol, empresasNuevas = 0, estricto = false): Promise<void> {
   const rol = datos ?? (await datosDelRolDeEjecucion(db));
@@ -31,6 +34,9 @@ export async function verificarRolDeEjecucion(db: Db, datos?: DatosDelRol, empre
   const motivo = rol.superusuario ? "es superusuario" : rol.bypassRls ? "tiene BYPASSRLS" : "es dueño de las tablas (o miembro del rol dueño)";
   if (estricto) throw new Error(`El rol de ejecución "${rol.usuario}" ${motivo} y MOTOR2_ROL_ESTRICTO=1 exige un rol sin privilegios. Usar el rol motor2_app en DATABASE_URL.`);
   const empresas = (await db.empresa.count({ where: { estado: { not: "PROVISIONING" } } })) + empresasNuevas;
-  if (empresas <= 1) return;
+  if (empresas <= 1) {
+    await reportarErrorUnaVez("rol-de-ejecucion-privilegiado", new Error(`El rol de ejecución "${rol.usuario}" ${motivo}: se tolera porque hay una sola empresa, pero no aísla por empresa. Usar el rol motor2_app en DATABASE_URL.`), "rol-de-ejecucion");
+    return;
+  }
   throw new Error(`El rol de ejecución "${rol.usuario}" ${motivo}: no queda aislado por empresa y hay ${empresas} empresas. Usar el rol motor2_app en DATABASE_URL.`);
 }
