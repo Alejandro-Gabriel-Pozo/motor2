@@ -50,6 +50,38 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     expect(Number(venta.precioTotal)).toBe(100);
   });
 
+  it.each([[NaN], [-1], ["2"], [Infinity]])("una cantidad inválida (%s) rechaza TODO el lote en el núcleo y no escribe nada", async (cantidadInvalida) => {
+    const antes = await prisma.movimientoStock.count();
+    const r = await prisma.$transaction((tx) =>
+      registrarVentaEnTx(tx, actor, {
+        fecha: new Date(),
+        origen: { tipo: "seccion", seccionId },
+        lineas: [
+          { productoId: pvGaseosaId, cantidadVendida: 1 },
+          { productoId: pvPanId, cantidadVendida: cantidadInvalida as never },
+        ],
+      })
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.mensaje).toBe("La cantidad vendida no es un número válido.");
+    expect(await prisma.movimientoStock.count()).toBe(antes);
+  });
+
+  it("una cantidad en 0 se sigue salteando sin rechazar el resto del lote", async () => {
+    const r = await prisma.$transaction((tx) =>
+      registrarVentaEnTx(tx, actor, {
+        fecha: new Date(),
+        origen: { tipo: "seccion", seccionId },
+        lineas: [
+          { productoId: pvGaseosaId, cantidadVendida: 1 },
+          { productoId: pvPanId, cantidadVendida: 0 },
+        ],
+      })
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.operacionIds).toHaveLength(1);
+  });
+
   it("con override de precio, cobra ese precio y devuelve una Operacion por línea, en el orden de las líneas", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 10 }] });
     const r = await prisma.$transaction((tx) =>

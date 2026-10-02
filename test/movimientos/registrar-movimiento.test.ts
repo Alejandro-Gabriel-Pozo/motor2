@@ -605,5 +605,18 @@ describe("registrarMovimiento", () => {
       expect(await calcularSaldoTotal(harina.id, seccionAId, prisma)).toBe(8);
       expect(await calcularSaldoTotal(azucar.id, seccionAId, prisma)).toBe(10);
     });
+
+    it.each([[NaN], [-1], [Infinity], ["2"]])("una línea de Merma con cantidad inválida (%s) rechaza todo el movimiento: no se registra la otra línea", async (cantidadInvalida) => {
+      const harina = await crearMP("Harina");
+      const azucar = await crearMP("Azúcar");
+      await compra([{ productoId: harina.id, cantidad: 10 }, { productoId: azucar.id, cantidad: 10 }]);
+      const resultado = await registrarMovimiento({
+        proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
+        items: [{ productoId: harina.id, cantidad: 2 }, { productoId: azucar.id, cantidad: cantidadInvalida as never }],
+      });
+      expect(resultado.ok).toBe(false);
+      expect(await calcularSaldoTotal(harina.id, seccionAId, prisma)).toBe(10);
+      expect(await calcularSaldoTotal(azucar.id, seccionAId, prisma)).toBe(10);
+    });
   });
 });

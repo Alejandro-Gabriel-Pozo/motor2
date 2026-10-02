@@ -83,8 +83,8 @@ describe("guards: topes de texto y de listas", () => {
   });
 
   it("conteo físico: tope de detalle", () => {
-    expect(guardComandoConteoFisico({ seccionId: "s", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE) }).ok).toBe(true);
-    expect(guardComandoConteoFisico({ seccionId: "s", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE + 1) })).toMatchObject({ ok: false, codigo: "largo" });
+    expect(guardComandoConteoFisico({ seccionId: "s", accion: "AJUSTAR", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE) }).ok).toBe(true);
+    expect(guardComandoConteoFisico({ seccionId: "s", accion: "AJUSTAR", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE + 1) })).toMatchObject({ ok: false, codigo: "largo" });
   });
 
   it("pago a consignante: tope de notas", () => {
