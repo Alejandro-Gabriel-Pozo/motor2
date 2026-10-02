@@ -1,5 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/core/reportes/trazabilidad";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
 import { BotonAnularVenta } from "./boton-anular-venta";
@@ -12,6 +12,8 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_trazabilidad", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
+  // Ver la trazabilidad no autoriza a anular: el botón solo aparece con `anular_venta` (la acción lo vuelve a exigir en el servidor).
+  const { editar: puedeAnularVenta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_venta", ctx.db);
   const sp = unicosDeUrl(await searchParams);
   const operacion = sp.idOperacion ? await obtenerOperacionPorId(ctx.sucursalId, sp.idOperacion, ctx.db) : null;
   const encontradas = !sp.idOperacion && sp.producto ? await buscarOperacionesPorProducto(ctx.sucursalId, sp.producto, ctx.db) : [];
@@ -63,7 +65,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
               {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
             </p>
           ) : (
-            operacion.proceso === "VENTA" && <BotonAnularVenta idOperacion={operacion.idOperacion} />
+            operacion.proceso === "VENTA" && puedeAnularVenta && <BotonAnularVenta idOperacion={operacion.idOperacion} />
           )}
           <TablaItemsOperacion filas={operacion.items} nombreExport={`operacion-${operacion.idOperacion}`} />
         </div>
