@@ -1,4 +1,5 @@
 import type { Db } from "@/lib/db-tipos";
+import { esSlugPublicoValido } from "./host";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`) y ADR-007 (A3): la empresa de la carta pública sale de la tabla
@@ -14,7 +15,8 @@ export interface EmpresaCarta {
 
 const SELECCION_EMPRESA = { id: true, slug: true, nombre: true } as const;
 
-/** La empresa ACTIVE con ese slug (comparación exacta, sensible a mayúsculas: el slug de la URL llega ya en minúsculas). */
+/** La empresa ACTIVE con ese slug (comparación exacta, sensible a mayúsculas: el slug de la URL llega ya en minúsculas). Un slug sin forma de slug es `null` sin consultar. */
 export async function resolverEmpresaCarta(slug: string, db: Db): Promise<EmpresaCarta | null> {
+  if (!esSlugPublicoValido(slug)) return null;
   return db.empresa.findFirst({ where: { slug, estado: "ACTIVE" }, select: SELECCION_EMPRESA });
 }

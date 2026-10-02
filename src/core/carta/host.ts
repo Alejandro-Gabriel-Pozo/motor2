@@ -26,6 +26,19 @@ function regexHostCarta(dominioBase: string): RegExp {
   return new RegExp(`^${patronHostCarta(dominioBase, "")}$`);
 }
 
+/** Largo máximo de un slug público: el de una etiqueta de hostname (RFC 1123); los slugs de sucursal (60) caben. */
+const LARGO_MAXIMO_SLUG_PUBLICO = 63;
+const RE_SLUG_PUBLICO = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * `true` si el segmento de URL tiene forma de slug (minúsculas, dígitos y guiones sueltos, hasta 63). La carta pública lo exige ANTES de
+ * tocar la base: un valor de la URL con un byte nulo (`%00`) u otro texto que Postgres no acepta haría fallar la consulta (500), y uno
+ * cualquiera gastaría una consulta; con forma inválida no existe ninguna empresa ni sucursal con ese slug, así que es un 404.
+ */
+export function esSlugPublicoValido(valor: unknown): valor is string {
+  return typeof valor === "string" && valor.length <= LARGO_MAXIMO_SLUG_PUBLICO && RE_SLUG_PUBLICO.test(valor);
+}
+
 export interface ReglaRewriteCarta {
   source: string;
   has: { type: "host"; value: string }[];

@@ -4,6 +4,7 @@ import type { EmpresaCarta } from "./empresa-carta";
 import { posicionCompleta, resolverEstiloPortal, type EstiloPortal, type PosicionPortal } from "./portal";
 import { estiloCartaPorDefecto, resolverEstiloCarta, type EstiloCarta } from "./estilo";
 import { resolverMenuCarta } from "./menu-consulta";
+import { esSlugPublicoValido } from "./host";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -72,6 +73,7 @@ export interface CartaPublicaResuelta {
  * El slug es único POR empresa (`@@unique([empresaId, slug])`): dos empresas pueden tener una sucursal `central`.
  */
 export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
+  if (!esSlugPublicoValido(slug)) return null;
   const publica = await db.sucursalPublica.findUnique({
     where: { empresaId_slug: { empresaId: empresa.id, slug } },
     select: {
