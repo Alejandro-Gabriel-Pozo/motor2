@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+// Pasa-través: solo el test de "carrera simulada" le hace devolver null UNA vez (el chequeo previo no ve al ganador).
+vi.mock("../../src/server/persistencia/reportes/pago-consignante", async (original) => {
+  const real = await original<typeof import("../../src/server/persistencia/reportes/pago-consignante")>();
+  return { ...real, cargarPagoConsignantePorClave: vi.fn(real.cargarPagoConsignantePorClave) };
+});
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -8,6 +13,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarPagoConsignante } from "../../src/server/actions/reportes/consignacion";
 import { generarReporteConsignacion } from "../../src/core/reportes/consignacion";
+import { cargarPagoConsignantePorClave } from "../../src/server/persistencia/reportes/pago-consignante";
 
 describe("generarReporteConsignacion", () => {
   let sucursalId: string;
@@ -186,6 +192,28 @@ describe("generarReporteConsignacion", () => {
         const filas = await prisma.pagoConsignante.count({ where: { proveedorId: consignante.id } });
         expect(filas, `iteración ${i}: exactamente una fila, nunca dos`).toBe(1);
       }
+    });
+
+    // La carrera de verdad (el chequeo previo no ve al ganador, el insert choca con el @@unique) es no determinista: acá se la FUERZA
+    // haciendo que el chequeo previo devuelva null. El perdedor con OTRO importe no puede recibir el mensaje del ganador como si su pago
+    // ya estuviera registrado: es un conflicto. Con el MISMO importe sí es un reenvío.
+    it("carrera simulada (P2002): la misma clave con OTRO importe da conflicto, no el éxito del ganador; con el mismo importe es un reenvío", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const claveIdempotencia = crypto.randomUUID();
+      const fecha = new Date();
+      const ganador = await registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia);
+      expect(ganador.ok, ganador.mensaje).toBe(true);
+
+      vi.mocked(cargarPagoConsignantePorClave).mockResolvedValueOnce(null);
+      const otroImporte = await registrarPagoConsignante(consignante.id, 20, fecha, undefined, claveIdempotencia);
+      expect(otroImporte.ok, otroImporte.mensaje).toBe(false);
+
+      vi.mocked(cargarPagoConsignantePorClave).mockResolvedValueOnce(null);
+      const mismoImporte = await registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia);
+      expect(mismoImporte.ok, mismoImporte.mensaje).toBe(true);
+      expect(mismoImporte.mensaje).toBe(ganador.mensaje);
+
+      expect(await prisma.pagoConsignante.count()).toBe(1);
     });
 
     it("la misma clave con un importe distinto da conflicto, no un segundo pago", async () => {

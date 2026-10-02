@@ -33,9 +33,11 @@ export async function cargarConteoFisicoPorClave(
 }
 
 /** El ganador de una carrera por la misma clave, leído FUERA de la transacción que chocó (I3). */
-export async function cargarMensajeDelConteoGanador(db: Prisma.TransactionClient | PrismaClient, claveIdempotencia: string): Promise<string | null> {
-  const ganador = await db.conteoFisico.findUnique({ where: { claveIdempotencia }, select: { resultadoMensaje: true } });
-  return ganador?.resultadoMensaje ?? null;
+export async function cargarGanadorDelConteo(
+  db: Prisma.TransactionClient | PrismaClient,
+  claveIdempotencia: string
+): Promise<{ payloadHash: string | null; resultadoMensaje: string | null } | null> {
+  return db.conteoFisico.findUnique({ where: { claveIdempotencia }, select: { payloadHash: true, resultadoMensaje: true } });
 }
 
 export async function escribirConteoFisico(tx: Prisma.TransactionClient, datos: ConteoFisicoAEscribir): Promise<{ id: string }> {

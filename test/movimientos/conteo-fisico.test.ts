@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+// Pasa-través: solo el test de "carrera simulada" le hace devolver null UNA vez (el chequeo previo no ve al ganador).
+vi.mock("../../src/server/persistencia/movimientos/escribir-conteo-fisico", async (original) => {
+  const real = await original<typeof import("../../src/server/persistencia/movimientos/escribir-conteo-fisico")>();
+  return { ...real, cargarConteoFisicoPorClave: vi.fn(real.cargarConteoFisicoPorClave) };
+});
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -9,6 +14,7 @@ import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { getUsuarioActual } from "../../src/core/auth/session";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { cargarConteoFisicoPorClave } from "../../src/server/persistencia/movimientos/escribir-conteo-fisico";
 
 describe("Conteo Físico", () => {
   let sucursalId: string;
@@ -415,6 +421,25 @@ describe("Conteo Físico", () => {
       expect(await prisma.conteoFisico.count()).toBe(2);
       expect(await ajustesDeControl()).toBe(0);
       expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10);
+    });
+
+    // La carrera de verdad es no determinista: acá se la FUERZA haciendo que el chequeo previo devuelva null (el insert choca con el
+    // @@unique de la clave). El perdedor con OTROS datos no puede recibir el mensaje del ganador como si su conteo ya estuviera hecho.
+    it("carrera simulada (P2002): la misma clave con OTROS datos da conflicto, no el éxito del ganador; con los mismos datos es un reenvío", async () => {
+      const clave = crypto.randomUUID();
+      const ganador = await registrarConteoFisico(comando(mpId, 7, clave));
+      expect(ganador.ok, ganador.mensaje).toBe(true);
+
+      vi.mocked(cargarConteoFisicoPorClave).mockResolvedValueOnce(null);
+      const otrosDatos = await registrarConteoFisico(comando(mpId, 9, clave));
+      expect(otrosDatos.ok, otrosDatos.mensaje).toBe(false);
+
+      vi.mocked(cargarConteoFisicoPorClave).mockResolvedValueOnce(null);
+      const mismosDatos = await registrarConteoFisico(comando(mpId, 7, clave));
+      expect(mismosDatos.ok, mismosDatos.mensaje).toBe(true);
+      expect(mismosDatos.mensaje).toBe(ganador.mensaje);
+
+      expect(await prisma.conteoFisico.count()).toBe(1);
     });
 
     it("la misma clave con OTROS datos es un conflicto: se rechaza y no se escribe nada nuevo", async () => {

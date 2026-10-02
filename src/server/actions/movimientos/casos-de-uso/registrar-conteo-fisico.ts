@@ -16,7 +16,7 @@ import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoConteoFisico, ResultadoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";
 import { cargarProductoConUnidadDeStock } from "@/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock";
-import { cargarConteoFisicoPorClave, cargarMensajeDelConteoGanador, escribirConteoFisico } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
+import { cargarConteoFisicoPorClave, cargarGanadorDelConteo, escribirConteoFisico } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 
 /**
@@ -185,11 +185,13 @@ export async function registrarConteoFisicoCasoDeUso(
     return exito(mensaje, { repetido: false, conteoId: conteo.id, diferencia, ajustado });
   }).catch(async (e) => {
     // Carrera real (dos envíos simultáneos con la MISMA clave): el índice único deja pasar a uno y al otro lo rechaza con P2002 (la
-    // transacción ya hizo rollback). Se relee al ganador FUERA de ella; si ya dejó su mensaje, es un reenvío. Fail closed: si no se
-    // puede confirmar qué pasó, se relanza el error.
+    // transacción ya hizo rollback). Se relee al ganador FUERA de ella; si tiene el MISMO payloadHash y ya dejó su mensaje, es un
+    // reenvío; con otro hash es un conflicto (no se le dice "ya está" a quien mandó otro conteo). Fail closed: si no se puede
+    // confirmar qué pasó, se relanza el error.
     if (comando.claveIdempotencia && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      const mensajeGanador = await cargarMensajeDelConteoGanador(actor.db, comando.claveIdempotencia);
-      if (mensajeGanador) return exito(mensajeGanador, { repetido: true, conteoId: null, diferencia: null, ajustado: null });
+      const ganador = await cargarGanadorDelConteo(actor.db, comando.claveIdempotencia);
+      if (ganador && ganador.payloadHash !== payloadHash) return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+      if (ganador?.resultadoMensaje) return exito(ganador.resultadoMensaje, { repetido: true, conteoId: null, diferencia: null, ajustado: null });
     }
     throw e;
   });
