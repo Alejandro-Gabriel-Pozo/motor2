@@ -12,8 +12,9 @@ import { revalidatePath } from "next/cache";
  * que `refrescarVistaSiHaceFalta`, traga solo el error E263 (fuera de un contexto Next —Vitest llamando la acción directo—
  * `revalidatePath` lanza "static generation store missing") y deja pasar cualquier otro.
  *
- * Límite conocido: un cambio hecho FUERA del módulo carta que la carta muestra (precio, nombre o disponibilidad de un
- * producto, en catálogo/precios) no pasa por acá; se ve dentro de los 5 minutos del `revalidate`.
+ * Lo que la carta muestra de un producto (nombre, precio, disponibilidad) también se cambia desde el catálogo: `actualizarProducto`,
+ * `sincronizarPrecioGrupoCarta`, `actualizarDisponibilidadProducto` y las de precio local también la llaman
+ * (`test/carta/revalida-al-cambiar-el-catalogo.test.ts`). Un cambio por una vía que no la llame se ve dentro de los 5 minutos del `revalidate`.
  */
 export function revalidarCartasPublicas(): void {
   try {

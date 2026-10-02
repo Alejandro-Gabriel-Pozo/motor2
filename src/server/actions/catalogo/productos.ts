@@ -22,6 +22,7 @@ import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
+import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
@@ -424,6 +425,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       });
     });
 
+    revalidarCartasPublicas();
     const mensaje = `Producto "${nombreActual}" actualizado.`;
     const precioNuevo = Number(nuevos.precioVenta);
     if (precioNuevo !== Number(existente.precioVenta)) {
@@ -463,6 +465,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
       }
       return productos;
     });
+    revalidarCartasPublicas();
     return ok(`Precio de venta de ${productos.map((p) => `"${p.nombre}"`).join(", ")} actualizado a $${precio.toLocaleString("es-AR")} («${grupo.nombreItem}»).`);
   });
 }
@@ -511,6 +514,7 @@ export async function actualizarDisponibilidadProducto(productoId: string, dispo
       descripcion: `Producto "${existente.nombre}" en "${ctx.sucursalNombre}": disponible`,
       valorAnterior: anterior, valorNuevo: disponible, actorId: ctx.usuarioId,
     });
+    revalidarCartasPublicas();
     return ok(`Producto "${existente.nombre}" ${disponible ? "activado" : "desactivado"} en "${ctx.sucursalNombre}".`);
   });
 }
