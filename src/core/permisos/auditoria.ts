@@ -37,6 +37,8 @@ export const ENTIDADES_AUDITABLES = [
   "DescuentoProductoSucursal",
   // "Cliente": alta, edición (nombre y % de descuento) y activar/desactivar — catálogo central, `sucursalId` null. `entidadId` es el id del Cliente.
   "Cliente",
+  // "Empresa": un cambio de la política de plataforma (`cambiarPoliticaDeEmpresa`) — `entidadId` es el id de la Empresa, `campo` la perilla (`permisosEditables`, `dosPaneles`), `sucursalId` null.
+  "Empresa",
 ] as const;
 
 /**

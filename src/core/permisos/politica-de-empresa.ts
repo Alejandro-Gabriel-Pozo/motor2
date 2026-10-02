@@ -3,24 +3,36 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
- * Lo que la PLATAFORMA decide para una empresa (add-on, ADR-008 y ADR-010). Es el único lugar que lo decide.
+ * Lo que la PLATAFORMA decide para una empresa (add-on, ADR-008 y ADR-010). Es el único lugar que lo lee.
  *  - `permisosEditables`: si la empresa puede editar y otorgar permisos (`PermisoRol`) y crear/activar/desactivar roles; las acciones lo
  *    consultan a través de `conEdicionDePermisos`.
  *  - `dosPaneles`: si el menú lateral se parte en los paneles Empresa y Sucursal (ADR-010) para quien ve pantallas de empresa. En `false`
- *    el menú es uno solo, como antes de los paneles: es la marcha atrás y lo que tendrá la versión «lite» de un cliente chico.
+ *    el menú es uno solo, como antes de los paneles: es la marcha atrás y lo que tiene la versión «lite» de un cliente chico.
  *
- * Hoy NO hay dónde guardar las perillas (haría falta una columna o tabla: schema, con autorización expresa), así que valen lo mismo para
- * toda empresa (`permisosEditables: true`, `dosPaneles: true`). Cuando exista el dato, solo cambia el cuerpo de esta función.
+ * Los valores viven en `Empresa.permisosEditables` y `Empresa.dosPaneles` (por defecto `true`: una empresa nueva es «completa»). Solo los
+ * cambia la plataforma —por el script `npm run politica-empresa`—, nunca la propia empresa: ninguna pantalla ni acción de `src/` los escribe
+ * (guardián `politica-de-empresa-solo-plataforma.test.ts`).
  */
-interface PoliticaDeEmpresa {
+export interface PoliticaDeEmpresa {
   permisosEditables: boolean;
   dosPaneles: boolean;
 }
 
+/**
+ * Atajos de la plataforma: un «plan» no se guarda, es solo un nombre para fijar las dos perillas de una vez. Lo que queda guardado en la
+ * empresa son las perillas, así que se puede ajustar una sola sin inventar un plan nuevo.
+ */
+export const PLANES = {
+  completo: { permisosEditables: true, dosPaneles: true },
+  lite: { permisosEditables: false, dosPaneles: false },
+} as const satisfies Record<string, PoliticaDeEmpresa>;
+
+export type NombreDePlan = keyof typeof PLANES;
+
 export const MENSAJE_PERMISOS_DE_PLATAFORMA = "Los permisos de tu empresa los administra la plataforma; no se pueden editar desde acá.";
 
 export async function politicaDeEmpresa(empresaId: string, db: Db): Promise<PoliticaDeEmpresa> {
-  void empresaId;
-  void db;
-  return { permisosEditables: true, dosPaneles: true };
+  const empresa = await db.empresa.findUnique({ where: { id: empresaId }, select: { permisosEditables: true, dosPaneles: true } });
+  if (!empresa) throw new Error(`politicaDeEmpresa: no existe la empresa ${empresaId}.`);
+  return { permisosEditables: empresa.permisosEditables, dosPaneles: empresa.dosPaneles };
 }

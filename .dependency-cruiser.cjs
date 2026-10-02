@@ -201,6 +201,16 @@ module.exports = {
       to: { path: "^src/app/\\(app\\)/catalogo/" },
     },
     {
+      name: "politica-solo-desde-plataforma",
+      comment:
+        "Add-on C2 (ADR-008/ADR-010): la política de plataforma de una empresa (permisosEditables, dosPaneles) solo la cambia la plataforma, " +
+        "por scripts/politica-empresa.ts (fuera de src/). Ningún archivo de src/ importa core/features/empresa/cambiar-politica-empresa.ts: " +
+        "ni una Server Action, ni una pantalla, ni otro caso de uso. Complemento: test/arquitectura/politica-de-empresa-solo-plataforma.test.ts.",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/core/features/empresa/cambiar-politica-empresa\\.ts$" },
+      to: { path: "^src/core/features/empresa/cambiar-politica-empresa\\.ts$" },
+    },
+    {
       name: "sin-ciclos",
       comment:
         "Sin dependencias circulares entre archivos (incluye las de solo tipos). Ciclos preexistentes exceptuados: .dependency-cruiser-excepciones.cjs.",

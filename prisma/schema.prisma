@@ -2133,6 +2133,9 @@ model Empresa {
   moneda      String
   estado      EstadoEmpresa @default(PROVISIONING)
   creadoEn    DateTime      @default(now())
+  /// Política de plataforma (ADR-008/ADR-010): solo la cambia la plataforma (scripts/politica-empresa.ts), nunca la propia empresa.
+  permisosEditables Boolean @default(true)
+  dosPaneles        Boolean @default(true)
 
   usuarios                       UsuarioEmpresa[]
   sucursalRel                    Sucursal[]

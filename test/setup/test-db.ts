@@ -137,7 +137,7 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.empresa.deleteMany({ where: { id: { not: EMPRESA_POR_DEFECTO_ID } } });
   await prismaAdmin.empresa.upsert({
     where: { id: EMPRESA_POR_DEFECTO_ID },
-    update: { estado: "ACTIVE" },
+    update: { estado: "ACTIVE", permisosEditables: true, dosPaneles: true },
     create: { id: EMPRESA_POR_DEFECTO_ID, nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
   });
 }
