@@ -23,7 +23,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   const p = await obtenerProductoPorId(id, ctx.db);
   if (!p) notFound();
 
-  const { unidades, insumos, categorias, proveedores } = await cargarOpcionesFormularioProducto();
+  const { unidades, insumos, categorias, proveedores, puedeCrear } = await cargarOpcionesFormularioProducto(ctx);
   const productoExistente: ProductoExistente = {
     id: p.id,
     codigo: p.codigo,
@@ -57,6 +57,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
         insumosIniciales={insumos}
         categoriasIniciales={categorias}
         proveedoresIniciales={proveedores}
+        puedeCrear={puedeCrear}
         productoExistente={productoExistente}
         presentacionesIniciales={presentaciones}
       />

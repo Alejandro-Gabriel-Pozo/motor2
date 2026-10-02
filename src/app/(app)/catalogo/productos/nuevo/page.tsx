@@ -17,7 +17,7 @@ export default async function NuevoProductoPage() {
   const gateAlta = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
-  const [{ unidades, insumos, categorias, proveedores }, sucursales] = await Promise.all([cargarOpcionesFormularioProducto(), listarSucursales()]);
+  const [{ unidades, insumos, categorias, proveedores, puedeCrear }, sucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), listarSucursales()]);
 
   return (
     <div className="max-w-xl">
@@ -30,6 +30,7 @@ export default async function NuevoProductoPage() {
         insumosIniciales={insumos}
         categoriasIniciales={categorias}
         proveedoresIniciales={proveedores}
+        puedeCrear={puedeCrear}
         cantidadSucursales={sucursales.length}
         nombreSucursalActual={ctx.sucursalNombre}
       />

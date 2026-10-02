@@ -10,14 +10,16 @@ import { crearMembresia } from "../setup/membresia";
  * Nada depende del rol `operador` compartido (otros specs lo mutan).
  */
 /** `editarProducto`: Ver+Editar de `producto_editar`. `disponibilidad`: Ver+Editar de `producto_disponibilidad` (el «Desactivar»; clave propia). `altaEditar`: Editar (además de Ver) de `alta_producto`, el permiso del alta. Por defecto solo Ver de `alta_producto`. */
-async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, permisos: { editarProducto?: boolean; altaEditar?: boolean; disponibilidad?: boolean }) {
-  const { editarProducto: puedeEditarProducto = false, altaEditar = false, disponibilidad = false } = permisos;
+async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucursalId: string, permisos: { editarProducto?: boolean; altaEditar?: boolean; disponibilidad?: boolean; altasRapidas?: boolean }) {
+  const { editarProducto: puedeEditarProducto = false, altaEditar = false, disponibilidad = false, altasRapidas = false } = permisos;
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const rol = await prisma.rol.create({ data: { nombre: `e2e-productos-${puedeEditarProducto ? "edita" : "solo-ve"}-${disponibilidad ? "disp-" : ""}${marca}` } });
   await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "alta_producto", puedeVer: true, puedeEditar: altaEditar } });
   await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_ver_catalogo", puedeVer: true, puedeEditar: false } });
   if (puedeEditarProducto) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_editar", puedeVer: true, puedeEditar: true } });
   if (disponibilidad) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_disponibilidad", puedeVer: true, puedeEditar: true } });
+  // `altasRapidas`: Editar de las tres altas que el formulario ofrece en línea (categoría, insumo, proveedor), cada una con su propia clave.
+  if (altasRapidas) for (const accionClave of ["categoria_alta", "insumo_alta", "proveedor_alta"]) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave, puedeVer: true, puedeEditar: true } });
   const usuario = await prisma.user.create({ data: { email: `e2e-productos-${marca}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
@@ -164,6 +166,37 @@ test("un rol CON permiso de editar el alta ve «+ Nuevo producto» y el formular
     await page.goto("/catalogo/productos");
     await page.locator('a[href="/catalogo/productos/nuevo"]').click();
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
+  } finally {
+    await limpiar();
+  }
+});
+
+test("el formulario de producto no ofrece «+ Nueva categoría», «+ Nuevo insumo» ni «+ Nuevo proveedor» a quien no puede dar de alta eso", async ({ browser, baseURL, sucursalId }) => {
+  // Cada alta rápida la guarda su propio permiso de Editar (categoria_alta, insumo_alta, proveedor_alta); el rol puede dar de alta productos pero nada de eso.
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { altaEditar: true });
+  try {
+    await page.goto("/catalogo/productos/nuevo");
+    await expect(page.locator('input[name="nombre"]')).toBeVisible();
+    await page.getByLabel("Es consignación").check();
+    await expect(page.getByLabel("Proveedor de consignación")).toBeVisible(); // el bloque de consignación está desplegado
+    await expect(page.getByRole("button", { name: "+ Nueva categoría" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "+ Nuevo insumo" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toHaveCount(0);
+  } finally {
+    await limpiar();
+  }
+});
+
+test("un rol CON los permisos de alta de categoría, insumo y proveedor ve los tres «+ Nuevo …» en el formulario de producto", async ({ browser, baseURL, sucursalId }) => {
+  // Contraespejo: impide «arreglarlo» escondiendo las altas rápidas para todos.
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { altaEditar: true, altasRapidas: true });
+  try {
+    await page.goto("/catalogo/productos/nuevo");
+    await expect(page.locator('input[name="nombre"]')).toBeVisible();
+    await page.getByLabel("Es consignación").check();
+    await expect(page.getByRole("button", { name: "+ Nueva categoría" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "+ Nuevo insumo" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toBeVisible();
   } finally {
     await limpiar();
   }
