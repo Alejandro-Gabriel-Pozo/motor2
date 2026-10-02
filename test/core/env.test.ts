@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { describe, expect, it } from "vitest";
-import { parseEnv } from "../../src/env";
+import { parseEnv, validarEntornoAlArrancar } from "../../src/env";
 
 /**
  * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): confirma que el schema de
@@ -60,5 +60,39 @@ describe("parseEnv", () => {
     expect(process.env.DATABASE_URL).toBeTruthy();
     expect(process.env.DIRECT_URL).toBeTruthy();
     expect(process.env.AUTH_SECRET).toBeTruthy();
+  });
+});
+
+const ENV_PRODUCCION: Record<string, string> = { ...ENV_VALIDO, AUTH_SECRET: "x".repeat(32), CRON_SECRET: "cron-secreto" };
+
+describe("parseEnv en modo producción (S-20)", () => {
+  it("exige AUTH_SECRET de al menos 32 caracteres y CRON_SECRET; el modo normal no", () => {
+    expect(() => parseEnv(ENV_PRODUCCION, true)).not.toThrow();
+    expect(() => parseEnv({ ...ENV_PRODUCCION, AUTH_SECRET: "x".repeat(31) }, true)).toThrow();
+    expect(() => parseEnv({ ...ENV_VALIDO, AUTH_SECRET: "x".repeat(32) }, true)).toThrow();
+    expect(() => parseEnv({ ...ENV_VALIDO, AUTH_SECRET: "corto" })).not.toThrow();
+  });
+});
+
+describe("validarEntornoAlArrancar (S-20)", () => {
+  it("en Producción de Vercel no arranca con una variable ausente y el error nombra la variable, sin valores", () => {
+    const sinCron = { ...ENV_PRODUCCION, VERCEL_ENV: "production" } as Record<string, string | undefined>;
+    delete sinCron.CRON_SECRET;
+    expect(() => validarEntornoAlArrancar(sinCron)).toThrow(/CRON_SECRET/);
+    expect(() => validarEntornoAlArrancar({ ...ENV_PRODUCCION, VERCEL_ENV: "production", AUTH_SECRET: "corto-secreto" })).toThrow(/AUTH_SECRET .debe tener al menos 32/);
+    expect(() => validarEntornoAlArrancar({ ...ENV_PRODUCCION, VERCEL_ENV: "production", AUTH_SECRET: "corto-secreto" })).not.toThrow(/corto-secreto/);
+    expect(() => validarEntornoAlArrancar({ ...ENV_PRODUCCION, VERCEL_ENV: "production" })).not.toThrow();
+  });
+
+  it("MOTOR2_ENTORNO_ESTRICTO=1 lo exige fuera de Vercel; =0 relaja solo CRON_SECRET y el largo de AUTH_SECRET", () => {
+    expect(() => validarEntornoAlArrancar({ ...ENV_VALIDO, MOTOR2_ENTORNO_ESTRICTO: "1" })).toThrow();
+    expect(() => validarEntornoAlArrancar({ ...ENV_VALIDO, VERCEL_ENV: "production", MOTOR2_ENTORNO_ESTRICTO: "0" })).not.toThrow();
+    expect(() => validarEntornoAlArrancar({ VERCEL_ENV: "production", MOTOR2_ENTORNO_ESTRICTO: "0" })).toThrow(/DATABASE_URL/);
+  });
+
+  it("local, e2e (NODE_ENV=production sin VERCEL_ENV) y Preview no validan nada, aunque falte todo", () => {
+    expect(() => validarEntornoAlArrancar({})).not.toThrow();
+    expect(() => validarEntornoAlArrancar({ NODE_ENV: "production" })).not.toThrow();
+    expect(() => validarEntornoAlArrancar({ VERCEL_ENV: "preview" })).not.toThrow();
   });
 });

@@ -58,5 +58,5 @@ export async function verificarRolDeEjecucionDelProceso(): Promise<void> {
     datosDelRolDelProceso = undefined;
     throw error;
   });
-  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso);
+  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso, 0, process.env.MOTOR2_ROL_ESTRICTO === "1");
 }

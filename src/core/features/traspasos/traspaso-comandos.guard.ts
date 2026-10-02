@@ -1,6 +1,7 @@
 import { texto } from "@/core/texto";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
 import type {
   ComandoAceptarTraspaso,
   ComandoAprobarYEnviarTraspaso,
@@ -149,7 +150,9 @@ export function guardComandoCrearSolicitudTraspaso(entrada: unknown): ResultadoD
   if (!origen) return rechazar("vacio", MENSAJE_FALTA_SUCURSAL_ORIGEN);
   if (typeof seccionDestinoId !== "string") return rechazar("formato", MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA);
   if (typeof productoId !== "string") return rechazar("formato", MENSAJE_PRODUCTO_NO_EXISTE);
-  return aceptar({ origenSucursalId: origen, productoId, cantidad, seccionDestinoId, detalle: texto(detalle) || null });
+  const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
+  return aceptar({ origenSucursalId: origen, productoId, cantidad, seccionDestinoId, detalle: detalleValido.valor });
 }
 
 /** Guard del comando «enviar directo» (PUSH). */
@@ -159,5 +162,7 @@ export function guardComandoCrearEnvioDirectoTraspaso(entrada: unknown): Resulta
   if (!destino) return rechazar("vacio", MENSAJE_FALTA_SUCURSAL_DESTINO);
   if (typeof seccionOrigenId !== "string") return rechazar("formato", MENSAJE_SECCION_ORIGEN_NO_PROPIA);
   if (typeof productoId !== "string") return rechazar("formato", MENSAJE_PRODUCTO_NO_EXISTE);
-  return aceptar({ destinoSucursalId: destino, productoId, cantidad, seccionOrigenId, detalle: texto(detalle) || null });
+  const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
+  return aceptar({ destinoSucursalId: destino, productoId, cantidad, seccionOrigenId, detalle: detalleValido.valor });
 }

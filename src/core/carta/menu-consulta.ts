@@ -26,12 +26,14 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * Una sucursal inexistente o inactiva da `null` (el endpoint responde 404 igual en los dos casos, para no revelar cuál).
  */
 export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<MenuArmado | null> {
-  const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true, activo: true } });
+  const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true, activo: true, empresaId: true } });
   if (!sucursal || !sucursal.activo) return null;
+  // Filtro explícito por la empresa de la sucursal, además del RLS: con un rol que lo salta, secciones/promos/agrupados no se mezclan entre empresas.
+  const { empresaId } = sucursal;
 
   const [productos, secciones, promos, agrupados] = await Promise.all([
     db.producto.findMany({
-      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), contenidoCarta: { is: { visibleEnCarta: true } }, opcionItemAgrupadoCarta: { is: null } },
+      where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), contenidoCarta: { is: { visibleEnCarta: true } }, opcionItemAgrupadoCarta: { is: null } },
       select: {
         id: true,
         nombre: true,
@@ -41,7 +43,7 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
       },
     }),
     db.seccionCarta.findMany({
-      where: { activa: true },
+      where: { empresaId, activa: true },
       select: {
         id: true,
         nombre: true,
@@ -52,11 +54,11 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
       },
     }),
     db.promoCarta.findMany({
-      where: wherePromoOfrecidaEn(sucursalId),
+      where: { empresaId, ...wherePromoOfrecidaEn(sucursalId) },
       select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
     }),
     db.itemAgrupadoCarta.findMany({
-      where: { activo: true },
+      where: { empresaId, activo: true },
       select: {
         id: true,
         nombre: true,

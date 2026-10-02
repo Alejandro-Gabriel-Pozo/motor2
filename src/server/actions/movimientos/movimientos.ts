@@ -36,7 +36,7 @@ export type DatosMovimientoInput = DatosMovimientoInputSchema;
  * hookup de proveedor) → `aResultadoAccion`.
  */
 export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<ResultadoAccion> {
-  const accionClave = ACCION_POR_PROCESO[datos.proceso];
+  const accionClave = Object.hasOwn(ACCION_POR_PROCESO, datos.proceso) ? ACCION_POR_PROCESO[datos.proceso] : undefined;
   if (!accionClave) return error(`Proceso "${datos.proceso}" no se registra con esta acción.`);
 
   return conPermiso(accionClave, async (ctx) => {

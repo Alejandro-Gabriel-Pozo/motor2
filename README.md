@@ -32,7 +32,7 @@ UX no bloqueantes y una modularización de código pendiente — ver
    - `DATABASE_URL` (pooled, con `pgbouncer=true` si es Neon) y `DIRECT_URL` (directa, sin pooler) — Prisma 7 las separa: `DIRECT_URL` es la que usan Migrate/CLI (`prisma.config.ts`), `DATABASE_URL` la que usa el runtime vía el driver adapter (`src/lib/db.ts`, ver nota abajo).
    - `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (OAuth de Google Cloud Console — cualquier cuenta del negocio debe poder loguearse).
    - `BOOTSTRAP_ADMIN_EMAILS` — tu email, para quedar admin automático la primera vez (ver `src/core/auth/bootstrap.ts`).
-3. `npm install`
+3. `npm ci` (instala exactamente lo del `package-lock.json`; `npm install` solo para agregar o actualizar una dependencia)
 4. `npm run db:migrate` — aplica el schema completo (Core + Catálogo + Movimientos + Stock + Reportes + Traspasos, más los índices manuales) y corre el seed (34 acciones + roles admin/operador + sucursal "Central" + unidades base kg/g/l/ml/unidad). Verificado contra Postgres 16 real.
 5. `npm run dev` y entrar a `http://localhost:3000`.
 
@@ -43,6 +43,10 @@ Vercel) solo si es un host `neon.tech`; cualquier otro caso (local,
 TCP normal) — antes de este fix, `docker compose up -d` no funcionaba en
 absoluto contra el runtime de la app (sí contra Migrate/CLI), pese a que
 el Setup de arriba lo ofrecía como opción.
+
+## Auditoría de dependencias
+
+`npm run auditar:dependencias` corre `npm audit --omit=dev --audit-level=high`. Hoy sale con código 1 por la cadena de la CLI de Prisma (`prisma` → `@prisma/config` → `deepmerge-ts`, y `mysql2` de `@prisma/dev`): son herramientas de build/migración que no se cargan en el runtime de la app. NO aplicar `npm audit fix --force`: «arregla» bajando `prisma` a 6.x (cambio mayor). Todo hallazgo nuevo fuera de esa cadena se corrige. Dependabot (`.github/dependabot.yml`) propone las actualizaciones semanales.
 
 ## Tests
 

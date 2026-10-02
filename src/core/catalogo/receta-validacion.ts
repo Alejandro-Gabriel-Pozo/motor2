@@ -1,7 +1,19 @@
 import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
-import { validarCantidad } from "@/core/datos/cantidad";
+import { CANTIDAD_MAXIMA, validarCantidad } from "@/core/datos/cantidad";
+import {
+  ENTERO_MAXIMO_RAZONABLE,
+  LARGO_MAXIMO_NOTAS,
+  LARGO_MAXIMO_TEXTO_RECETA,
+  MAXIMO_INGREDIENTES_RECETA,
+  MAXIMO_PASOS_RECETA,
+  MAXIMO_SUSTITUTOS_POR_INGREDIENTE,
+  MERMA_PORCENTAJE_MAXIMA,
+  validarNumeroHasta,
+  validarTextoLibre,
+  validarTopeDeLista,
+} from "@/core/datos/limites";
 import { whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
 import { validarUnidadInsumo } from "./producto";
 
@@ -79,6 +91,8 @@ async function validarSustitutosDeIngrediente(db: Db, insumoSustitutoIds: string
 
 export async function validarIngredientes(db: Db, items: IngredienteInput[], producto: { seProduce: boolean }) {
   if (!items.length) return "La receta necesita al menos un ingrediente.";
+  const excedeIngredientes = validarTopeDeLista(items, "Los ingredientes", MAXIMO_INGREDIENTES_RECETA);
+  if (excedeIngredientes) return excedeIngredientes;
   // D2: la sustitución automática solo tiene sentido donde el libro de origen-venta.ts decide la sección (venta de un PV que se
   // vende tal cual) — Producción usa resolverConsumoPorFamilia, que no la conoce (fuera de alcance de este plan).
   if (producto.seProduce && items.some((i) => i.insumoSustitutoIds?.length)) {
@@ -87,8 +101,15 @@ export async function validarIngredientes(db: Db, items: IngredienteInput[], pro
   for (const item of items) {
     if (!(Number(item.cantidad) > 0)) return "Cada ingrediente necesita una cantidad mayor a 0.";
     if (!esNumeroFinito(item.cantidad)) return "Cada ingrediente necesita una cantidad válida.";
+    if (Number(item.cantidad) >= CANTIDAD_MAXIMA) return "La cantidad de un ingrediente es demasiado grande.";
     if (Number(item.mermaPorcentaje ?? 0) < 0) return "La merma no puede ser negativa.";
     if (!esNumeroFinito(item.mermaPorcentaje ?? 0)) return "La merma no es un número válido.";
+    const mermaAlta = validarNumeroHasta(item.mermaPorcentaje ?? 0, "La merma", MERMA_PORCENTAJE_MAXIMA);
+    if (mermaAlta) return mermaAlta;
+    const observaciones = validarTextoLibre(item.observaciones, "Las observaciones del ingrediente", LARGO_MAXIMO_NOTAS);
+    if (!observaciones.ok) return observaciones.mensaje;
+    const excedeSustitutos = validarTopeDeLista(item.insumoSustitutoIds ?? [], "Los sustitutos de un ingrediente", MAXIMO_SUSTITUTOS_POR_INGREDIENTE);
+    if (excedeSustitutos) return excedeSustitutos;
     const mp = await db.producto.findUnique({ where: { id: item.insumoProductoId } });
     if (!mp || mp.tipo !== "MP") {
       return `Cada ingrediente tiene que ser una materia prima (MP) (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
@@ -111,13 +132,23 @@ export async function validarIngredientes(db: Db, items: IngredienteInput[], pro
 export function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): string | null {
   const insumoIdsValidos = new Set(items.map((i) => i.insumoProductoId));
   const ordenesVistos = new Set<number>();
+  const excedePasos = validarTopeDeLista(pasos, "Los pasos", MAXIMO_PASOS_RECETA);
+  if (excedePasos) return excedePasos;
   for (const p of pasos) {
     if (!texto(p.instruccion)) return "Cada paso necesita una instrucción.";
     if (!(Number(p.orden) > 0)) return "Cada paso necesita un orden mayor a 0.";
+    if (!Number.isInteger(Number(p.orden)) || Number(p.orden) > ENTERO_MAXIMO_RAZONABLE) return "El orden de un paso tiene que ser un número entero razonable.";
+    const instruccion = validarTextoLibre(p.instruccion, "La instrucción de un paso", LARGO_MAXIMO_TEXTO_RECETA);
+    if (!instruccion.ok) return instruccion.mensaje;
+    const nombrePaso = validarTextoLibre(p.nombre, "El nombre de un paso", LARGO_MAXIMO_NOTAS);
+    if (!nombrePaso.ok) return nombrePaso.mensaje;
     if (ordenesVistos.has(p.orden)) return `Hay dos pasos con el mismo orden (${p.orden}).`;
     ordenesVistos.add(p.orden);
     if (p.minutos !== undefined && Number(p.minutos) < 0) return "Los minutos de un paso no pueden ser negativos.";
     if (p.minutos !== undefined && !esNumeroFinito(p.minutos)) return "Los minutos de un paso no son un número válido.";
+    if (p.minutos !== undefined && (!Number.isInteger(Number(p.minutos)) || Number(p.minutos) > ENTERO_MAXIMO_RAZONABLE)) return "Los minutos de un paso tienen que ser un número entero razonable.";
+    const excedeMarcados = validarTopeDeLista(p.insumoProductoIds ?? [], "Los ingredientes marcados en un paso", MAXIMO_INGREDIENTES_RECETA);
+    if (excedeMarcados) return excedeMarcados;
     for (const insumoProductoId of p.insumoProductoIds ?? []) {
       if (!insumoIdsValidos.has(insumoProductoId)) return "Un paso no puede marcar un ingrediente que no está en esta misma receta.";
     }
@@ -134,6 +165,22 @@ export function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): str
  * más arriba para los minutos de un paso.
  */
 export async function validarCabecera(db: Db, cabecera: CabeceraRecetaInput): Promise<string | null> {
+  const textos: [unknown, string][] = [
+    [cabecera.comentarios, "Los comentarios"],
+    [cabecera.presentacionEmplatado, "La presentación o emplatado"],
+    [cabecera.notasAdicionales, "Las notas adicionales"],
+    [cabecera.equipamientoNecesario, "El equipamiento necesario"],
+  ];
+  for (const [valor, etiqueta] of textos) {
+    const r = validarTextoLibre(valor, etiqueta, LARGO_MAXIMO_TEXTO_RECETA);
+    if (!r.ok) return r.mensaje;
+  }
+  for (const [valor, etiqueta] of [[cabecera.racionesCantidad, "La cantidad de raciones"], [cabecera.tiempoPreparacionMinutos, "El tiempo de preparación"], [cabecera.tiempoCoccionMinutos, "El tiempo de cocción"]] as const) {
+    if (valor !== undefined && esNumeroFinito(valor)) {
+      const alto = validarNumeroHasta(valor, etiqueta, ENTERO_MAXIMO_RAZONABLE);
+      if (alto) return alto;
+    }
+  }
   if (cabecera.rendimientoCantidad !== undefined) {
     if (!cabecera.rendimientoUnidadId) return "Falta la unidad del rendimiento.";
     const unidad = await db.unidad.findUnique({ where: { id: cabecera.rendimientoUnidadId }, select: { nombre: true, decimales: true } });

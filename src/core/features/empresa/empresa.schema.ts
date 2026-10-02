@@ -11,7 +11,10 @@ import { z } from "zod";
  */
 export const crearEmpresaSchema = z.object({
   nombre: z.string().trim().min(1).max(120),
-  slug: z.string().regex(/^[a-z0-9-]+$/, "Solo minúsculas, dígitos y guiones."),
+  slug: z
+    .string()
+    .max(63, "Hasta 63 caracteres (un subdominio no admite más).")
+    .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "Solo minúsculas, dígitos y guiones, sin empezar ni terminar con guion."),
   zonaHoraria: z.string().min(1),
   moneda: z.string().length(3),
 });

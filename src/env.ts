@@ -10,8 +10,8 @@ import { z } from "zod";
  * solo con importar este archivo, como sugería el ejemplo del checklist): eso arriesgaría el arranque de dev/build/tests con solo
  * agregar el import en algún lado, sin poder probar antes con cuidado que el schema refleja EXACTAMENTE lo que ya está
  * configurado. `parseEnv()` es una función — quien la llama decide cuándo, y los tests le pasan un `process.env` de prueba en vez
- * de mutar el global. **Conectarla al arranque real (`next.config.ts`, un layout raíz) es un paso APARTE, más riesgoso, que
- * todavía no se hizo — este archivo, sin usar en ningún lado del arranque real, es inerte.**
+ * de mutar el global. Desde la auditoría de seguridad (S-20) `instrumentation.ts` la conecta al arranque vía
+ * `validarEntornoAlArrancar`, y solo en Producción de Vercel (ver abajo): dev, build, tests y e2e no la ejecutan.
  *
  * Requeridas (confirmadas en el `.env` real: sin ellas, Prisma o Auth.js ya fallan hoy, esto solo lo hace explícito y con un
  * mensaje más claro): `DATABASE_URL`/`DIRECT_URL` (Prisma), `AUTH_SECRET`/`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (Auth.js, Google
@@ -44,7 +44,28 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-/** No lee `process.env` por defecto a propósito (ver el docstring del módulo) — quien la llama pasa la fuente explícita. */
-export function parseEnv(source: Record<string, string | undefined>): Env {
-  return envSchema.parse(source);
+const schemaDeProduccion = envSchema.extend({
+  AUTH_SECRET: z.string().min(32, "debe tener al menos 32 caracteres"),
+  CRON_SECRET: z.string().min(1),
+});
+
+/**
+ * No lee `process.env` por defecto a propósito (ver el docstring del módulo) — quien la llama pasa la fuente explícita.
+ * `produccion` agrega lo que solo se exige en un despliegue real: `AUTH_SECRET` de al menos 32 caracteres y `CRON_SECRET` presente.
+ */
+export function parseEnv(source: Record<string, string | undefined>, produccion = false): Env {
+  return (produccion ? schemaDeProduccion : envSchema).parse(source);
+}
+
+/**
+ * Fail-fast del arranque (`instrumentation.ts`): en un despliegue de Producción de Vercel (`VERCEL_ENV=production`) o con
+ * `MOTOR2_ENTORNO_ESTRICTO=1`, el proceso no arranca con una variable requerida ausente. Fuera de eso (local, `next start` del e2e,
+ * Preview) no hace nada. El error lista solo los nombres de las variables, nunca sus valores.
+ */
+export function validarEntornoAlArrancar(source: Record<string, string | undefined> = process.env): void {
+  if (source.VERCEL_ENV !== "production" && source.MOTOR2_ENTORNO_ESTRICTO !== "1") return;
+  const resultado = (source.MOTOR2_ENTORNO_ESTRICTO === "0" ? envSchema : schemaDeProduccion).safeParse(source);
+  if (resultado.success) return;
+  const detalle = resultado.error.issues.map((i) => `${i.path.join(".")} (${i.message})`).join(", ");
+  throw new Error(`Configuración inválida: ${detalle}. El proceso no arranca.`);
 }

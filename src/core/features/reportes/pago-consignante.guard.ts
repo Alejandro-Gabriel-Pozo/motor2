@@ -3,6 +3,7 @@ import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { validarImporte } from "@/core/datos/importe";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import type { ComandoRegistrarPagoConsignante } from "./pago-consignante.schema";
 
 /**
@@ -34,6 +35,8 @@ export function guardComandoRegistrarPagoConsignante(entrada: unknown): Resultad
 
   const fechaValida = validarFechaOperacion(fecha);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
+  const notasValidas = validarTextoLibre(notas, "Las notas", LARGO_MAXIMO_NOTAS);
+  if (!notasValidas.ok) return rechazar(notasValidas.codigo, notasValidas.mensaje);
 
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
     return rechazar("formato", "Clave de reintento inválida.");

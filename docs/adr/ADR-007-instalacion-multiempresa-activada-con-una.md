@@ -425,4 +425,30 @@ del rol. Reversa: restaurar desde el branch de respaldo.
 Rendimiento (cada consulta suma BEGIN + `set_config` + COMMIT; se mide en A5
 con `scripts/benchmark-reportes.ts`); el adaptador PrismaNeon hay que
 verificarlo en A8; los tipos de Prisma cambian con las FK compuestas; un
-Preview de Vercel podría migrar producción si apunta a esa base.
+Preview de Vercel podría migrar producción si apunta a esa base (mitigado: ver «Endurecimiento de configuración y entradas»).
+
+## Endurecimiento de configuración y entradas (auditoría de seguridad 2026-10-01, lotes S-3 y S-4)
+
+- **S-03 — el Preview no migra la base compartida.** `npm run build` ahora es `tsx scripts/construir.ts`: `prisma generate` →
+  `prisma migrate deploy` → `next build`. En Vercel, `migrate deploy` corre solo si `VERCEL_ENV=production`; local y el gate migran
+  siempre, como antes. `MOTOR2_MIGRAR_EN_BUILD=1|0` fuerza la decisión. Ojo: si la rama que se despliega a producción no es la que
+  Vercel considera «Production», hay que poner `MOTOR2_MIGRAR_EN_BUILD=1` ahí o las migraciones dejan de aplicarse solas.
+  `vercel.json` no admite comentarios: esto vive acá. `ignoreCommand` no se tocó. `installCommand` pasó a `npm ci`.
+- **S-11 — rol de ejecución.** Modo estricto opt-in (`MOTOR2_ROL_ESTRICTO=1`): se niega con un rol que salta el RLS aunque haya
+  una sola empresa. Sin la variable, el comportamiento es el de siempre.
+- **S-15 — dependencias.** `next` y `eslint-config-next` a 16.3.8 (Prisma 7.10.0 no se baja), `npm run auditar:dependencias`
+  (`npm audit --omit=dev --audit-level=high`) y `.github/dependabot.yml`. Quedan avisos altos en la cadena del CLI de Prisma que no
+  se resuelven sin bajar Prisma: el comando sale con código 1 hasta decidir una lista de excepciones.
+- **S-16 — Sentry.** `src/lib/sentry-limpiar.ts` (`beforeSend` servidor y cliente): los errores de Prisma se reducen a tipo y código,
+  a los textos se les tapan emails y tokens, y se descartan cuerpo, cookies, cabeceras de autenticación, query string y datos del
+  usuario. Los `console.error` de `registrar-movimiento.ts` y `conteo-fisico.ts` siguen imprimiendo el error crudo.
+- **S-20 — entorno al arrancar.** `register()` valida el entorno en producción y falla rápido: `AUTH_SECRET` de 32+ caracteres y
+  `CRON_SECRET` obligatorio. Escape de emergencia: `MOTOR2_ENTORNO_ESTRICTO=0`.
+- **S-28 — Postgres local.** `docker-compose.yml` publica `127.0.0.1:5432:5432`, no en todas las interfaces.
+- **S-22/S-23 — topes de entrada.** `src/core/datos/limites.ts`: largo de textos libres (detalle 200, notas 500, contacto 120,
+  textos de receta 2000), email con formato, topes de listas (500 líneas por operación, 100 ingredientes/pasos/destinos/productos
+  agrupados, 20 sustitutos) y de números (enteros ≤ 100 000, merma ≤ 1000 %, stock mínimo ≤ 1e9), siempre por debajo de la columna.
+- **S-29.** El proceso se busca con `Object.hasOwn` (un `"constructor"` ya no pasa por proceso válido); el slug de empresa sigue
+  RFC 1123 (1–63, sin guion en los bordes); regla ESLint que prohíbe `$queryRawUnsafe`/`$executeRawUnsafe` en `src/`.
+- **No aplicado:** S-24 (`registrarMovimiento` no valida `proveedorId`; vive en el caso de uso), S-25 (`listarClientes` y el
+  `include` completo de `listarUsuariosDeSucursal`) y S-26 (cambio de rol + auditoría en una transacción): quedan para decisión.

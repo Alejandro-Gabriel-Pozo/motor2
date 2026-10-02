@@ -2,6 +2,7 @@ import { texto } from "@/core/texto";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
 import type { ComandoConteoFisico } from "./conteo-fisico.schema";
 
 /**
@@ -18,10 +19,12 @@ import type { ComandoConteoFisico } from "./conteo-fisico.schema";
  * Devuelve `aceptar(entrada)` SIN transformar nada.
  */
 export function guardComandoConteoFisico(entrada: unknown): ResultadoDato<ComandoConteoFisico> {
-  const { seccionId, claveIdempotencia, fechaConteo } = (entrada ?? {}) as { seccionId?: unknown; claveIdempotencia?: unknown; fechaConteo?: unknown };
+  const { seccionId, claveIdempotencia, fechaConteo, detalle } = (entrada ?? {}) as { seccionId?: unknown; claveIdempotencia?: unknown; fechaConteo?: unknown; detalle?: unknown };
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección — no se puede dejar en blanco.");
   const fechaValida = validarFechaOperacion(fechaConteo);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
+  const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
     return rechazar("formato", "Clave de reintento inválida.");
   }

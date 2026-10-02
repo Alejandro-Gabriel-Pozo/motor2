@@ -2,6 +2,7 @@ import { texto } from "@/core/texto";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { LARGO_MAXIMO_DETALLE, MAXIMO_DESTINOS_RECLASIFICACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 import type { ComandoReclasificarStock } from "./reclasificacion.schema";
 
 /**
@@ -19,7 +20,8 @@ import type { ComandoReclasificarStock } from "./reclasificacion.schema";
  * tal cual llegó, no de una versión normalizada acá.
  */
 export function guardComandoReclasificarStock(entrada: unknown): ResultadoDato<ComandoReclasificarStock> {
-  const { productoId, seccionOrigenId, destinos, claveIdempotencia, fecha } = (entrada ?? {}) as {
+  const { productoId, seccionOrigenId, destinos, claveIdempotencia, fecha, detalle } = (entrada ?? {}) as {
+    detalle?: unknown;
     productoId?: unknown;
     fecha?: unknown;
     seccionOrigenId?: unknown;
@@ -30,8 +32,12 @@ export function guardComandoReclasificarStock(entrada: unknown): ResultadoDato<C
   if (!texto(productoId)) return rechazar("vacio", "Elegí un producto.");
   if (!texto(seccionOrigenId)) return rechazar("vacio", "Elegí la sección de origen — no se puede dejar en blanco.");
   if (!Array.isArray(destinos) || !destinos.length) return rechazar("vacio", "Agregá al menos un destino.");
+  const excedeDestinos = validarTopeDeLista(destinos, "Los destinos", MAXIMO_DESTINOS_RECLASIFICACION);
+  if (excedeDestinos) return rechazar("rango", excedeDestinos);
   const fechaValida = validarFechaOperacion(fecha);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
+  const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
     return rechazar("formato", "Clave de reintento inválida.");
   }

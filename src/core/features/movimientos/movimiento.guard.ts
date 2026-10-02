@@ -2,6 +2,7 @@ import { texto } from "@/core/texto";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 import type { DatosMovimientoInput, ProcesoGenerico } from "./movimiento.schema";
 
 /**
@@ -18,10 +19,11 @@ import type { DatosMovimientoInput, ProcesoGenerico } from "./movimiento.schema"
  * tal cual llegó, no de una versión normalizada acá.
  */
 export function guardComandoRegistrarMovimiento(entrada: unknown): ResultadoDato<DatosMovimientoInput> {
-  const { proceso, items, seccionId, claveIdempotencia, seccionDestinoId, fecha } = (entrada ?? {}) as {
+  const { proceso, items, seccionId, claveIdempotencia, seccionDestinoId, fecha, detalleLibre } = (entrada ?? {}) as {
     proceso?: unknown;
     fecha?: unknown;
     items?: unknown;
+    detalleLibre?: unknown;
     seccionId?: unknown;
     claveIdempotencia?: unknown;
     seccionDestinoId?: unknown;
@@ -35,6 +37,10 @@ export function guardComandoRegistrarMovimiento(entrada: unknown): ResultadoDato
   if (!esProcesoGenerico(proceso)) return rechazar("formato", `Proceso "${proceso}" no se registra con esta acción.`);
 
   if (!Array.isArray(items) || !items.length) return rechazar("vacio", "Cargá al menos un producto con cantidad.");
+  const excedeLineas = validarTopeDeLista(items, "Las líneas", MAXIMO_LINEAS_POR_OPERACION);
+  if (excedeLineas) return rechazar("rango", excedeLineas);
+  const detalleValido = validarTextoLibre(detalleLibre, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección.");
   const fechaValida = validarFechaOperacion(fecha);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
@@ -70,5 +76,5 @@ const MAPA_PROCESOS_GENERICOS: Record<ProcesoGenerico, true> = {
 };
 
 function esProcesoGenerico(proceso: unknown): proceso is ProcesoGenerico {
-  return typeof proceso === "string" && proceso in MAPA_PROCESOS_GENERICOS;
+  return typeof proceso === "string" && Object.hasOwn(MAPA_PROCESOS_GENERICOS, proceso);
 }

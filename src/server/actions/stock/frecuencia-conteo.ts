@@ -1,6 +1,7 @@
 "use server";
 
 import { esNumeroFinito } from "@/core/numero";
+import { ENTERO_MAXIMO_RAZONABLE, validarNumeroHasta } from "@/core/datos/limites";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
@@ -27,6 +28,8 @@ export async function setFrecuenciaConteo(productoId: string, frecuenciaDias: nu
   return conPermiso("conteo_frecuencia", async (ctx) => {
     if (!Number.isInteger(frecuenciaDias) || frecuenciaDias < 0) return error("La frecuencia tiene que ser un número entero de días, 0 o más.");
     if (!esNumeroFinito(frecuenciaDias)) return error("La frecuencia no es un número válido.");
+    const alta = validarNumeroHasta(frecuenciaDias, "La frecuencia", ENTERO_MAXIMO_RAZONABLE);
+    if (alta) return error(alta);
 
     const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");

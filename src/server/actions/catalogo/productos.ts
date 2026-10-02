@@ -6,6 +6,7 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
+import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import {
   crearConCodigoAutogenerado,
   esErrorDeUnicidad,
@@ -222,6 +223,8 @@ async function validarComun(db: Db, datos: DatosProducto, productoIdExcluir?: st
   if (!nombre) return "El nombre no puede estar vacío.";
   const invalido = validarTextoCatalogo(nombre, "El nombre");
   if (invalido) return invalido;
+  const observaciones = validarTextoLibre(datos.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
+  if (!observaciones.ok) return observaciones.mensaje;
   if (!datos.unidadStockId) return "La unidad de stock es obligatoria.";
   // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
   // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.

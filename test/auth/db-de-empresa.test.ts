@@ -104,12 +104,29 @@ describe("verificarRolDeEjecucion", () => {
     await expect(verificarRolDeEjecucion(prismaAdmin)).rejects.toThrow(/no queda aislado por empresa/);
   });
 
-  it("superusuario y BYPASSRLS también se niegan con más de una empresa; una empresa suspendida no cuenta", async () => {
+  it("superusuario y BYPASSRLS también se niegan con más de una empresa; una suspendida o en baja SÍ cuenta (sus datos siguen en las tablas)", async () => {
     await crearEmpresa("norte");
     const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false };
     await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
     await expect(verificarRolDeEjecucion(prisma, { ...base, bypassRls: true })).rejects.toThrow(/BYPASSRLS/);
     await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "SUSPENDED" } });
-    await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).resolves.toBeUndefined();
+    await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
+    await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "DELETING" } });
+    await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
   });
+
+  it("una empresa que todavía nace (PROVISIONING) no cuenta", async () => {
+    await crearEmpresa("norte");
+    await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "PROVISIONING" } });
+    const base = { usuario: "x", superusuario: true, bypassRls: false, duenio: false };
+    await expect(verificarRolDeEjecucion(prisma, base)).resolves.toBeUndefined();
+  });
+
+  it("en modo estricto un rol que salta el RLS se niega aunque haya una sola empresa; el rol sin privilegios pasa", async () => {
+    const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false };
+    await expect(verificarRolDeEjecucion(prisma, { ...base, duenio: true })).resolves.toBeUndefined();
+    await expect(verificarRolDeEjecucion(prisma, { ...base, duenio: true }, 0, true)).rejects.toThrow(/MOTOR2_ROL_ESTRICTO/);
+    await expect(verificarRolDeEjecucion(prisma, base, 0, true)).resolves.toBeUndefined();
+  });
+
 });

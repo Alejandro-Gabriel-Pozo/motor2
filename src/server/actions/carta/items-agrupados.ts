@@ -11,6 +11,7 @@ import {
   validarTextoLibreCarta,
   LARGO_MAXIMO_DESCRIPCION_CARTA,
 } from "@/core/carta/validaciones";
+import { MAXIMO_PRODUCTOS_POR_ITEM_AGRUPADO, validarTopeDeLista } from "@/core/datos/limites";
 import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -68,6 +69,8 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     if (!tags.ok) return error(tags.mensaje);
     const orden = validarOrdenCarta(datos.orden);
     if (!orden.ok) return error(orden.mensaje);
+    const excedeProductos = validarTopeDeLista(datos.productoIds ?? [], "Los productos", MAXIMO_PRODUCTOS_POR_ITEM_AGRUPADO);
+    if (excedeProductos) return error(excedeProductos);
 
     if (!datos.seccionCartaId) return error("Elegí la sección de carta del ítem agrupado.");
     const seccion = await ctx.db.seccionCarta.findUnique({ where: { id: datos.seccionCartaId }, select: { id: true } });

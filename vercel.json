@@ -1,5 +1,6 @@
 {
   "regions": ["pdx1"],
+  "installCommand": "npm ci",
   "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"multitenancy-fase-a\" ] && exit 1; case \"$DIRECT_URL\" in *.c-6.us-east-2.aws.neon.tech*) case \"$DATABASE_URL\" in *.c-6.us-east-2.aws.neon.tech*) exit 1;; esac;; esac; exit 0",
   "crons": [
     { "path": "/api/cron/sincronizar-ipc", "schedule": "0 12 * * *" },

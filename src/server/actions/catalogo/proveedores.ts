@@ -1,6 +1,15 @@
 "use server";
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
+import {
+  LARGO_MAXIMO_CONTACTO,
+  LARGO_MAXIMO_CUIT,
+  LARGO_MAXIMO_DETALLE,
+  LARGO_MAXIMO_NOTAS,
+  LARGO_MAXIMO_TELEFONO,
+  validarEmailOpcional,
+  validarTextoLibre,
+} from "@/core/datos/limites";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -25,6 +34,23 @@ export interface DatosProveedor {
   notas?: string;
 }
 
+type CamposDeContacto = Omit<DatosProveedor, "nombre">;
+
+/** Largo máximo de cada texto libre y formato del email (S-22). Recortados; vacío → `null`. */
+function validarCamposDeContacto(datos: CamposDeContacto): { ok: true; valores: Record<keyof CamposDeContacto, string | null> } | { ok: false; mensaje: string } {
+  const campos = {
+    contacto: validarTextoLibre(datos.contacto, "El contacto", LARGO_MAXIMO_CONTACTO),
+    telefono: validarTextoLibre(datos.telefono, "El teléfono", LARGO_MAXIMO_TELEFONO),
+    email: validarEmailOpcional(datos.email),
+    cuit: validarTextoLibre(datos.cuit, "El CUIT", LARGO_MAXIMO_CUIT),
+    condicionesPago: validarTextoLibre(datos.condicionesPago, "Las condiciones de pago", LARGO_MAXIMO_DETALLE),
+    notas: validarTextoLibre(datos.notas, "Las notas", LARGO_MAXIMO_NOTAS),
+  };
+  for (const r of Object.values(campos)) if (!r.ok) return { ok: false, mensaje: r.mensaje };
+  const valores = Object.fromEntries(Object.entries(campos).map(([k, r]) => [k, r.ok ? r.valor : null])) as Record<keyof CamposDeContacto, string | null>;
+  return { ok: true, valores };
+}
+
 /**
  * Equivalente de altaProveedor (Catalogo.js:3757-3775). Gatea con
  * 'alta_producto', no con un permiso propio — se preserva la decisión
@@ -37,6 +63,8 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre");
     if (invalido) return error(invalido);
+    const campos = validarCamposDeContacto(datos);
+    if (!campos.ok) return error(campos.mensaje);
 
     const dup = await ctx.db.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
     if (dup) return error(`Ya existe un proveedor llamado "${nombre}".`);
@@ -47,12 +75,7 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
           data: {
             codigo,
             nombre,
-            contacto: datos.contacto,
-            telefono: datos.telefono,
-            email: datos.email,
-            cuit: datos.cuit,
-            condicionesPago: datos.condicionesPago,
-            notas: datos.notas,
+            ...campos.valores,
           },
         })
       );
@@ -86,18 +109,10 @@ export async function actualizarProveedor(proveedorId: string, datos: Omit<Datos
   return conPermisoDeEmpresa("proveedores", async (ctx) => {
     const proveedor = await ctx.db.proveedor.findUnique({ where: { id: proveedorId } });
     if (!proveedor) return error("No se encontró ese proveedor.");
+    const campos = validarCamposDeContacto(datos);
+    if (!campos.ok) return error(campos.mensaje);
 
-    await ctx.db.proveedor.update({
-      where: { id: proveedorId },
-      data: {
-        contacto: texto(datos.contacto ?? "") || null,
-        telefono: texto(datos.telefono ?? "") || null,
-        email: texto(datos.email ?? "") || null,
-        cuit: texto(datos.cuit ?? "") || null,
-        condicionesPago: texto(datos.condicionesPago ?? "") || null,
-        notas: texto(datos.notas ?? "") || null,
-      },
-    });
+    await ctx.db.proveedor.update({ where: { id: proveedorId }, data: campos.valores });
     return ok(`Proveedor "${proveedor.nombre}" actualizado.`);
   });
 }
