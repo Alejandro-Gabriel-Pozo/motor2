@@ -3,7 +3,8 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { intentarBootstrapAdmin } from "@/core/auth/bootstrap";
-import { emailPuedeIniciarSesion } from "@/core/auth/acceso";
+import { cookies } from "next/headers";
+import { inicioDeSesionPermitido, NOMBRES_COOKIE_DE_SESION } from "@/core/auth/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -30,11 +31,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Gate de acceso: rechaza el login ANTES de que el adapter cree
     // User/Account, para que una cuenta de Google fuera de la empresa (y
     // no dada de alta a mano) ni siquiera llegue a tener sesión. Detalle
-    // de las reglas en emailPuedeIniciarSesion.
+    // de las reglas en inicioDeSesionPermitido (incluye no dejar vincular una cuenta de Google ajena a una sesión abierta).
     async signIn({ user, profile }) {
-      if (!user.email || profile?.email_verified !== true) return false;
+      if (!user.email || !profile?.email || profile.email_verified !== true) return false;
       const hd = typeof profile.hd === "string" ? profile.hd : undefined;
-      return emailPuedeIniciarSesion(user.email, hd);
+      const cookieStore = await cookies();
+      const tokenDeSesionAbierta = NOMBRES_COOKIE_DE_SESION.map((n) => cookieStore.get(n)?.value).find(Boolean);
+      return inicioDeSesionPermitido({ emailUsuario: user.email, emailPerfil: profile.email, hd, tokenDeSesionAbierta });
     },
     // Kill-switch en vivo: con estrategia 'database', esto corre en CADA
     // request con sesión (auth() lo llama), no solo al loguearse — así que

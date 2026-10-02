@@ -41,6 +41,8 @@ export const ENTIDADES_AUDITABLES = [
   "Empresa",
   // "MargenObjetivo": el food cost objetivo de la empresa (sin categoría) o de una categoría — `entidadId` es la categoría (`empresa` si es el de toda la empresa), `sucursalId` null, `campo: "foodCostObjetivoPct"`.
   "MargenObjetivo",
+  // "UsuarioSucursal": alta, cambio de rol y activar/desactivar un usuario en una sucursal — `entidadId` es el id de la membresía, `sucursalId` la de la membresía.
+  "UsuarioSucursal",
 ] as const;
 
 /**

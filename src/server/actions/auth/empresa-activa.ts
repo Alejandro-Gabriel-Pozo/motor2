@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { baseDeEmpresa } from "@/core/auth/base";
 import { getUsuarioActual } from "@/core/auth/session";
-import { COOKIE_EMPRESA_ACTIVA, COOKIE_SUCURSAL_ACTIVA } from "@/core/auth/contexto";
+import { COOKIE_EMPRESA_ACTIVA, COOKIE_SUCURSAL_ACTIVA, opcionesCookieActiva } from "@/core/auth/contexto";
 
 /**
  * Cambia en qué empresa trabaja el usuario en esta sesión (ADR-007, A4) — solo entre las que YA tiene como pertenencia
@@ -33,12 +33,7 @@ export async function cambiarEmpresaActiva(empresaId: string): Promise<void> {
   if (!conSucursal) return;
 
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_EMPRESA_ACTIVA, empresaId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  cookieStore.set(COOKIE_EMPRESA_ACTIVA, empresaId, opcionesCookieActiva());
   cookieStore.delete(COOKIE_SUCURSAL_ACTIVA);
 
   redirect("/");

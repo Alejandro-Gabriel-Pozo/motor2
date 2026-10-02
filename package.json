@@ -21,7 +21,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "crear-empresa": "tsx scripts/crear-empresa.ts",
-    "politica-empresa": "tsx scripts/politica-empresa.ts"
+    "politica-empresa": "tsx scripts/politica-empresa.ts",
+    "detectar-cuentas-vinculadas": "tsx scripts/detectar-cuentas-vinculadas.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

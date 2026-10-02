@@ -5,7 +5,7 @@ import { texto } from "@/core/texto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
 import { conGerenteDeEmpresa, conPermiso, conPermisoDeEmpresa } from "../con-permiso";
-import { esUsuarioGerenteDeEmpresa, transferirGerenciaDeEmpresa } from "@/core/permisos/gerencia";
+import { esUsuarioGerenteDeEmpresa, transferirGerenciaDeEmpresa, tuvoRolAdminEnLaEmpresa } from "@/core/permisos/gerencia";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
@@ -26,6 +26,8 @@ async function noPuedeTocarAlGerente(ctx: { db: Db; empresaId: string; usuarioId
   if (ctx.usuarioId === usuarioObjetivoId) return false;
   return esUsuarioGerenteDeEmpresa(ctx.db, ctx.empresaId, usuarioObjetivoId);
 }
+
+const MENSAJE_SOLO_EL_GERENTE_REACTIVA_ADMIN = "Solo el gerente de la empresa puede reactivar a un administrador.";
 
 async function contarAdminsActivosExcluyendo(db: Db, empresaId: string, idExcluido?: string): Promise<number> {
   return db.usuarioSucursal.count({
@@ -68,7 +70,7 @@ export async function agregarOActualizarUsuario(input: {
     const rol = await ctx.db.rol.findFirst({ where: { id: input.rolId, empresaId: ctx.empresaId } });
     if (!rol || !rol.activo) return error("Rol inválido o inactivo.");
 
-    const sucursal = await ctx.db.sucursal.findFirst({ where: { id: input.sucursalId, empresaId: ctx.empresaId }, select: { id: true } });
+    const sucursal = await ctx.db.sucursal.findFirst({ where: { id: input.sucursalId, empresaId: ctx.empresaId }, select: { id: true, nombre: true } });
     if (!sucursal) return error("Sucursal inválida.");
 
     // `conPermiso` solo validó la sucursal ACTIVA: el alta apunta a la que eligió el formulario (viene del cliente), y ahí el
@@ -108,16 +110,34 @@ export async function agregarOActualizarUsuario(input: {
       }
     }
 
-    // Las dos pertenencias van juntas: sin la de empresa el usuario no tendría contexto (core/auth/contexto.ts).
-    await ctx.db.usuarioEmpresa.upsert({
-      where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } },
-      update: { activo: true },
-      create: { usuarioId: usuario.id, empresaId: ctx.empresaId },
-    });
-    await ctx.db.usuarioSucursal.upsert({
-      where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: input.sucursalId } },
-      update: { rolId: rol.id, notas: input.notas, activo: true },
-      create: { usuarioId: usuario.id, sucursalId: input.sucursalId, empresaId: ctx.empresaId, rolId: rol.id, notas: input.notas },
+    // Reactivar a un administrador (su membresía en esta sucursal, o su cuenta en la empresa) es solo del gerente: si no, quien tiene
+    // `gestion_usuarios` desharía por esta vía lo que el gerente apagó con `apagar_cuenta_empresa`.
+    const pertenenciaPrevia = await ctx.db.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } }, select: { activo: true } });
+    const reactivaAdmin =
+      (existente && !existente.activo && existente.rol.nombre === "admin") ||
+      (pertenenciaPrevia && !pertenenciaPrevia.activo && (await tuvoRolAdminEnLaEmpresa(ctx.db, ctx.empresaId, usuario.id)));
+    if (reactivaAdmin && !esGerenteDeEmpresa(ctx.rolEmpresa)) return error(MENSAJE_SOLO_EL_GERENTE_REACTIVA_ADMIN);
+
+    // Las dos pertenencias van juntas: sin la de empresa el usuario no tendría contexto (core/auth/contexto.ts). Con su auditoría, en la misma transacción.
+    await ctx.transaccion(async (tx) => {
+      await tx.usuarioEmpresa.upsert({
+        where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } },
+        update: { activo: true },
+        create: { usuarioId: usuario.id, empresaId: ctx.empresaId },
+      });
+      const membresia = await tx.usuarioSucursal.upsert({
+        where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: input.sucursalId } },
+        update: { rolId: rol.id, notas: input.notas, activo: true },
+        create: { usuarioId: usuario.id, sucursalId: input.sucursalId, empresaId: ctx.empresaId, rolId: rol.id, notas: input.notas },
+      });
+      await registrarCambioAuditado(tx, {
+        entidad: "UsuarioEmpresa", entidadId: usuario.id, campo: "activo", descripcion: `Cuenta de "${email}" en la empresa`,
+        valorAnterior: pertenenciaPrevia ? pertenenciaPrevia.activo : null, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
+      });
+      const descripcion = `Usuario "${email}" en la sucursal "${sucursal.nombre}"`;
+      const comun = { entidad: "UsuarioSucursal", entidadId: membresia.id, actorId: ctx.usuarioId, sucursalId: input.sucursalId } as const;
+      await registrarCambioAuditado(tx, { ...comun, campo: "rol", descripcion: `${descripcion}: rol`, valorAnterior: existente?.rol.nombre ?? null, valorNuevo: rol.nombre });
+      await registrarCambioAuditado(tx, { ...comun, campo: "activo", descripcion: `${descripcion}: activo`, valorAnterior: existente ? existente.activo : null, valorNuevo: true });
     });
 
     return ok(`Usuario "${email}" guardado en la sucursal.`);
@@ -137,6 +157,7 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
       return error("Solo un admin o el gerente de la empresa puede modificar a un admin.");
     }
     if (await noPuedeTocarAlGerente(ctx, membresia.usuarioId)) return error(MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE);
+    if (activo && !membresia.activo && membresia.rol.nombre === "admin" && !esGerenteDeEmpresa(ctx.rolEmpresa)) return error(MENSAJE_SOLO_EL_GERENTE_REACTIVA_ADMIN);
     // La empresa nunca queda sin gerente: sin ninguna sucursal activa no tendría contexto (core/auth/contexto.ts) y la gerencia quedaría huérfana.
     if (!activo && membresia.activo && (await esUsuarioGerenteDeEmpresa(ctx.db, ctx.empresaId, membresia.usuarioId))) {
       const otras = await ctx.db.usuarioSucursal.count({ where: { empresaId: ctx.empresaId, usuarioId: membresia.usuarioId, activo: true, id: { not: membresiaId } } });
@@ -151,7 +172,14 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
       }
     }
 
-    await ctx.db.usuarioSucursal.update({ where: { id: membresiaId }, data: { activo } });
+    await ctx.transaccion(async (tx) => {
+      await tx.usuarioSucursal.update({ where: { id: membresiaId }, data: { activo } });
+      const usuario = await tx.user.findUniqueOrThrow({ where: { id: membresia.usuarioId }, select: { email: true } });
+      await registrarCambioAuditado(tx, {
+        entidad: "UsuarioSucursal", entidadId: membresiaId, campo: "activo", descripcion: `Usuario "${usuario.email}" en la sucursal "${ctx.sucursalNombre}": activo`,
+        valorAnterior: membresia.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: membresia.sucursalId,
+      });
+    });
     return ok(`Usuario ${activo ? "activado" : "desactivado"}.`);
   });
 }
@@ -199,6 +227,9 @@ export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo
     if (esAdminActivo && !puedeTocarAdmins(ctx, ctx.membresias.some((m) => m.rolNombre === "admin"))) {
       return error("Solo un admin o el gerente de la empresa puede modificar a un admin.");
     }
+    if (activo && !pertenencia.activo && !esGerenteDeEmpresa(ctx.rolEmpresa) && (await tuvoRolAdminEnLaEmpresa(ctx.db, ctx.empresaId, usuarioId))) {
+      return error(MENSAJE_SOLO_EL_GERENTE_REACTIVA_ADMIN);
+    }
     if (!activo && esGerenteDeEmpresa(pertenencia.rolEmpresa)) {
       return error(
         ctx.usuarioId === usuarioId
@@ -216,7 +247,13 @@ export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo
       }
     }
 
-    await ctx.db.usuarioEmpresa.update({ where: { id: pertenencia.id }, data: { activo } });
+    await ctx.transaccion(async (tx) => {
+      await tx.usuarioEmpresa.update({ where: { id: pertenencia.id }, data: { activo } });
+      await registrarCambioAuditado(tx, {
+        entidad: "UsuarioEmpresa", entidadId: usuarioId, campo: "activo", descripcion: `Cuenta de "${usuario.email}" en la empresa`,
+        valorAnterior: pertenencia.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: null,
+      });
+    });
     return ok(`Cuenta de "${usuario.email}" ${activo ? "reactivada" : "desactivada"} en la empresa.`);
   });
 }

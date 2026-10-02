@@ -3,6 +3,9 @@
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import { conPermisoDeEmpresa } from "../con-permiso";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { gerentesQueQuedaranSinSucursalActiva, tuvoRolAdminEnLaEmpresa } from "@/core/permisos/gerencia";
+import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirSesion } from "../con-sesion";
@@ -58,6 +61,15 @@ export async function crearSucursalConAdmin(input: {
     }
     const universales = productosUniversales(disponibilidadPorProducto, sucursalIdsActivas);
 
+    // Nombrar primer admin a alguien cuya cuenta en la empresa está apagada la reactivaría: si fue admin, eso es solo del gerente (mismo criterio que `usuarios.ts`).
+    const usuarioPrevio = await ctx.db.user.findUnique({ where: { email }, select: { id: true } });
+    if (usuarioPrevio && !esGerenteDeEmpresa(ctx.rolEmpresa)) {
+      const pertenencia = await ctx.db.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, select: { activo: true } });
+      if (pertenencia && !pertenencia.activo && (await tuvoRolAdminEnLaEmpresa(ctx.db, ctx.empresaId, usuarioPrevio.id))) {
+        return error("Solo el gerente de la empresa puede reactivar a un administrador.");
+      }
+    }
+
     await ctx.transaccion(async (tx) => {
       const sucursal = await tx.sucursal.create({ data: { nombre, empresaId: ctx.empresaId } });
       const usuario = await tx.user.upsert({
@@ -65,12 +77,13 @@ export async function crearSucursalConAdmin(input: {
         update: {},
         create: { email },
       });
+      const pertenenciaPrevia = await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } }, select: { activo: true } });
       await tx.usuarioEmpresa.upsert({
         where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } },
         update: { activo: true },
         create: { usuarioId: usuario.id, empresaId: ctx.empresaId },
       });
-      await tx.usuarioSucursal.create({
+      const membresia = await tx.usuarioSucursal.create({
         data: {
           usuarioId: usuario.id,
           sucursalId: sucursal.id,
@@ -78,6 +91,18 @@ export async function crearSucursalConAdmin(input: {
           rolId: rolAdmin.id,
           notas: "Alta automática al crear la sucursal.",
         },
+      });
+      await registrarCambioAuditado(tx, {
+        entidad: "Sucursal", entidadId: sucursal.id, campo: "activo", descripcion: `Sucursal "${nombre}": alta`,
+        valorAnterior: null, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
+      });
+      await registrarCambioAuditado(tx, {
+        entidad: "UsuarioEmpresa", entidadId: usuario.id, campo: "activo", descripcion: `Cuenta de "${email}" en la empresa`,
+        valorAnterior: pertenenciaPrevia ? pertenenciaPrevia.activo : null, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
+      });
+      await registrarCambioAuditado(tx, {
+        entidad: "UsuarioSucursal", entidadId: membresia.id, campo: "rol", descripcion: `Usuario "${email}" en la sucursal "${nombre}": rol`,
+        valorAnterior: null, valorNuevo: rolAdmin.nombre, actorId: ctx.usuarioId, sucursalId: sucursal.id,
       });
       if (universales.length) {
         await tx.disponibilidadProducto.createMany({ data: universales.map((productoId) => ({ sucursalId: sucursal.id, empresaId: ctx.empresaId, productoId, disponible: true })) });
@@ -109,7 +134,21 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
       );
     }
 
-    await ctx.db.sucursal.update({ where: { id: sucursalId }, data: { activo } });
+    // El gerente también necesita contexto: apagar la última sucursal activa donde tiene membresía lo deja sin acceso y la empresa sin quien la gestione.
+    if (!activo && sucursal.activo) {
+      const gerentes = await gerentesQueQuedaranSinSucursalActiva(ctx.db, ctx.empresaId, sucursalId);
+      if (gerentes.length) {
+        return error(`No se puede desactivar "${sucursal.nombre}": el gerente de la empresa (${gerentes.join(", ")}) se quedaría sin ninguna sucursal activa. Asignale antes otra sucursal activa.`);
+      }
+    }
+
+    await ctx.transaccion(async (tx) => {
+      await tx.sucursal.update({ where: { id: sucursalId }, data: { activo } });
+      await registrarCambioAuditado(tx, {
+        entidad: "Sucursal", entidadId: sucursalId, campo: "activo", descripcion: `Sucursal "${sucursal.nombre}": activa`,
+        valorAnterior: sucursal.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: null,
+      });
+    });
     // A propósito SIN `refrescarVistaSiHaceFalta()`: su único llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente, y
     // otras pantallas que reusen ese componente heredan lo mismo (ver la regla en refrescar.ts).
     return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
@@ -130,7 +169,13 @@ export async function renombrarSucursal(sucursalId: string, nombreNuevo: string)
     const existente = await ctx.db.sucursal.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" }, id: { not: sucursalId } } });
     if (existente) return error(`Ya existe una sucursal "${existente.nombre}".`);
 
-    await ctx.db.sucursal.update({ where: { id: sucursalId }, data: { nombre } });
+    await ctx.transaccion(async (tx) => {
+      await tx.sucursal.update({ where: { id: sucursalId }, data: { nombre } });
+      await registrarCambioAuditado(tx, {
+        entidad: "Sucursal", entidadId: sucursalId, campo: "nombre", descripcion: `Sucursal "${sucursal.nombre}": nombre`,
+        valorAnterior: sucursal.nombre, valorNuevo: nombre, actorId: ctx.usuarioId, sucursalId: null,
+      });
+    });
     refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
     return ok(`Sucursal renombrada a "${nombre}".`);
   });

@@ -22,8 +22,9 @@ export async function cookies() {
       if (nombre === "empresaActivaId" && cookieEmpresaActiva !== undefined) return { name: nombre, value: cookieEmpresaActiva };
       return undefined;
     },
-    set: (nombre: string, valor: string) => {
+    set: (nombre: string, valor: string, opciones?: Record<string, unknown>) => {
       cookiesEscritas.set(nombre, valor);
+      opcionesEscritas.set(nombre, opciones ?? {});
     },
     delete: (nombre: string) => {
       cookiesBorradas.push(nombre);
@@ -33,16 +34,18 @@ export async function cookies() {
 
 // Lo que un server action escribió/borró en las cookies — para verificar cambiarEmpresaActiva sin un request real.
 const cookiesEscritas = new Map<string, string>();
+const opcionesEscritas = new Map<string, Record<string, unknown>>();
 const cookiesBorradas: string[] = [];
 
 export function __cookiesDeTest() {
-  return { escritas: cookiesEscritas, borradas: cookiesBorradas };
+  return { escritas: cookiesEscritas, opciones: opcionesEscritas, borradas: cookiesBorradas };
 }
 
 export function __limpiarCookiesDeTest() {
   cookieSucursalActiva = undefined;
   cookieEmpresaActiva = undefined;
   cookiesEscritas.clear();
+  opcionesEscritas.clear();
   cookiesBorradas.length = 0;
 }
 

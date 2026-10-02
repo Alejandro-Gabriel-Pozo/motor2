@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
-import { COOKIE_SUCURSAL_ACTIVA, obtenerContextoUsuario } from "@/core/auth/contexto";
+import { COOKIE_SUCURSAL_ACTIVA, obtenerContextoUsuario, opcionesCookieActiva } from "@/core/auth/contexto";
 import { accionesDeNavegacion } from "@/core/navegacion/estructura";
 import { pantallaTrasCambiarSucursal } from "@/core/navegacion/pantalla-tras-cambio";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
@@ -28,12 +28,7 @@ export async function cambiarSucursalActiva(sucursalId: string, pantallaActual?:
   if (!membresia?.activo) return;
 
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_SUCURSAL_ACTIVA, sucursalId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  cookieStore.set(COOKIE_SUCURSAL_ACTIVA, sucursalId, opcionesCookieActiva());
 
   // Lo que el rol puede ver en la sucursal NUEVA (la cookie recién escrita todavía no rige en este pedido).
   const puedeVer = await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, sucursalId, accionesDeNavegacion(), ctx.db);

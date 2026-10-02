@@ -8,6 +8,31 @@ export async function obtenerGerenteDeEmpresa(db: Db, empresaId: string) {
   return db.usuarioEmpresa.findFirst({ where: { empresaId, rolEmpresa: ROL_EMPRESA_GERENTE }, select: { id: true, usuarioId: true, activo: true } });
 }
 
+/** Tiene (o tuvo) el rol admin en alguna sucursal de la empresa, activa o no: la cuenta de alguien así la reactiva solo el gerente. */
+export async function tuvoRolAdminEnLaEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
+  return Boolean(await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, rol: { nombre: "admin" } }, select: { id: true } }));
+}
+
+/**
+ * Apagar `sucursalId` deja sin contexto (core/auth/contexto.ts, que solo cuenta membresías de sucursales activas) a un gerente que no
+ * tenga otra membresía activa en OTRA sucursal activa: la empresa quedaría sin quien la gestione. Devuelve los emails de esos gerentes.
+ */
+export async function gerentesQueQuedaranSinSucursalActiva(db: Db, empresaId: string, sucursalId: string): Promise<string[]> {
+  const gerentes = await db.usuarioEmpresa.findMany({
+    where: { empresaId, rolEmpresa: ROL_EMPRESA_GERENTE, activo: true },
+    select: { usuarioId: true, usuario: { select: { email: true } } },
+  });
+  const sinSucursal: string[] = [];
+  for (const g of gerentes) {
+    const otra = await db.usuarioSucursal.findFirst({
+      where: { empresaId, usuarioId: g.usuarioId, activo: true, sucursalId: { not: sucursalId }, sucursal: { activo: true } },
+      select: { id: true },
+    });
+    if (!otra) sinSucursal.push(g.usuario.email);
+  }
+  return sinSucursal;
+}
+
 export async function esUsuarioGerenteDeEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
   const fila = await db.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, select: { rolEmpresa: true } });
   return fila?.rolEmpresa === ROL_EMPRESA_GERENTE;

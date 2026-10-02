@@ -26,9 +26,20 @@ describe("emailPuedeIniciarSesion", () => {
     expect(await emailPuedeIniciarSesion("dueño@negocio.com", undefined)).toBe(true);
   });
 
-  it("un email de un dominio en ALLOWED_EMAIL_DOMAINS puede entrar aunque no exista todavía", async () => {
+  it("un email de un dominio en ALLOWED_EMAIL_DOMAINS puede entrar aunque no exista todavía, si Google certifica el dominio (claim hd)", async () => {
     process.env.ALLOWED_EMAIL_DOMAINS = "negocio.com";
-    expect(await emailPuedeIniciarSesion("cualquiera@negocio.com", undefined)).toBe(true);
+    expect(await emailPuedeIniciarSesion("cualquiera@negocio.com", "negocio.com")).toBe(true);
+    expect(await emailPuedeIniciarSesion("cualquiera@negocio.com", " Negocio.COM ")).toBe(true);
+  });
+
+  it("S-17: sin el claim hd, el sufijo del email no alcanza: una cuenta personal de Google con ese dominio no entra", async () => {
+    process.env.ALLOWED_EMAIL_DOMAINS = "negocio.com";
+    expect(await emailPuedeIniciarSesion("cualquiera@negocio.com", undefined)).toBe(false);
+  });
+
+  it("S-17: un hd de otro dominio no habilita el email aunque su sufijo sea el permitido", async () => {
+    process.env.ALLOWED_EMAIL_DOMAINS = "negocio.com";
+    expect(await emailPuedeIniciarSesion("cualquiera@negocio.com", "otro.com")).toBe(false);
   });
 
   it("un email ya dado de alta con membresía activa puede entrar, aunque no matchee ningún dominio", async () => {

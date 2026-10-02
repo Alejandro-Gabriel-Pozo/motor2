@@ -18,10 +18,14 @@ function obtenerDominiosPermitidos(): string[] {
  * Tres vías de entrada, en orden:
  *  1. Email en BOOTSTRAP_ADMIN_EMAILS — arranca el primer admin (ver
  *     intentarBootstrapAdmin), independiente del dominio.
- *  2. Dominio de Google Workspace: el claim `hd` del profile (o el sufijo
- *     del email si `hd` no vino, p.ej. cuentas no-Workspace) matchea
+ *  2. Dominio de Google Workspace: el claim `hd` del profile matchea
  *     ALLOWED_EMAIL_DOMAINS — cualquiera de la empresa entra, aunque un
  *     admin todavía no lo haya dado de alta a mano en ninguna sucursal.
+ *     El claim `hd` es OBLIGATORIO para esta vía: solo Google lo firma para una cuenta
+ *     administrada por ese dominio. Una cuenta personal de Google puede tener como email
+ *     un `@dominio-de-la-empresa` (sin ser de la empresa) y no trae `hd`; el sufijo del email
+ *     no prueba nada. Por eso ALLOWED_EMAIL_DOMAINS solo sirve para dominios de Workspace
+ *     (`gmail.com` no tiene `hd`: ese caso entra por la vía 3).
  *  3. Excepción manual: el email ya fue dado de alta por un admin
  *     (UsuarioSucursal activo vía agregarOActualizarUsuario) aunque no sea
  *     del dominio de la empresa — para alguien externo con Gmail personal.
@@ -42,12 +46,43 @@ export async function emailPuedeIniciarSesion(email: string, hd: string | undefi
   if (obtenerEmailsBootstrap().includes(emailNorm)) return true;
 
   const dominiosPermitidos = obtenerDominiosPermitidos();
-  const dominioCuenta = (hd ?? emailNorm.split("@")[1] ?? "").toLowerCase();
-  if (dominiosPermitidos.length > 0 && dominiosPermitidos.includes(dominioCuenta)) {
-    return true;
-  }
+  if (hd && dominiosPermitidos.includes(hd.trim().toLowerCase())) return true;
 
   return usuarioExistente ? tieneSucursalActiva(usuarioExistente.id) : false;
+}
+
+/** Nombres con los que Auth.js guarda el token de sesión (con `__Secure-` cuando el sitio va por https). */
+export const NOMBRES_COOKIE_DE_SESION = ["__Secure-authjs.session-token", "authjs.session-token"] as const;
+
+function normalizar(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * Gate completo de `signIn` (src/lib/auth.ts). Además de `emailPuedeIniciarSesion`, cierra la vinculación de cuentas de Google ajenas:
+ *  - `emailUsuario` es el del `User` que Auth.js va a usar y `emailPerfil` el de la cuenta de Google que acaba de autenticarse. Si
+ *    difieren, la cuenta de Google no es la dueña de ese usuario (una cuenta vinculada de más, o un email cambiado): no entra.
+ *  - Con una sesión abierta de OTRO email, Auth.js vincularía esta cuenta de Google al usuario de la sesión (`handleLoginOrRegister`)
+ *    y esa persona quedaría con el acceso del otro para siempre. Hay que cerrar la sesión antes de entrar con otra cuenta.
+ */
+export async function inicioDeSesionPermitido(entrada: {
+  emailUsuario: string;
+  emailPerfil: string;
+  hd: string | undefined;
+  tokenDeSesionAbierta: string | undefined;
+}): Promise<boolean> {
+  const emailUsuario = normalizar(entrada.emailUsuario);
+  if (!emailUsuario || emailUsuario !== normalizar(entrada.emailPerfil)) return false;
+
+  if (entrada.tokenDeSesionAbierta) {
+    const abierta = await prisma.session.findUnique({
+      where: { sessionToken: entrada.tokenDeSesionAbierta },
+      select: { expires: true, user: { select: { email: true } } },
+    });
+    if (abierta && abierta.expires > new Date() && normalizar(abierta.user.email) !== emailUsuario) return false;
+  }
+
+  return emailPuedeIniciarSesion(emailUsuario, entrada.hd);
 }
 
 /**

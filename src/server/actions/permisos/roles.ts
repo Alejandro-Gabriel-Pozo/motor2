@@ -22,7 +22,13 @@ export async function crearRol(nombre: string): Promise<ResultadoAccion> {
     const existente = await ctx.db.rol.findFirst({ where: { nombre: n } });
     if (existente) return error(`Ya existe el rol "${n}".`);
 
-    await ctx.db.rol.create({ data: { nombre: n } });
+    await ctx.transaccion(async (tx) => {
+      const rol = await tx.rol.create({ data: { nombre: n } });
+      await registrarCambioAuditado(tx, {
+        entidad: "Rol", entidadId: rol.id, campo: "nombre", descripcion: `Rol "${n}": alta`,
+        valorAnterior: null, valorNuevo: n, actorId: ctx.usuarioId,
+      });
+    });
     return ok(`Rol "${n}" creado.`);
   });
 }

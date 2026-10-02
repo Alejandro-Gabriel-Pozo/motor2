@@ -61,6 +61,6 @@ describe("conEdicionDePermisos: la política de la empresa corta la edición de 
     expect(apagado.ok, apagado.ok ? "" : apagado.mensaje).toBe(true);
     const despues = await estado();
     expect(despues.roles).toBe(antes.roles + 1);
-    expect(despues.auditoria).toBe(antes.auditoria + 1);
+    expect(despues.auditoria).toBe(antes.auditoria + 2); // el alta del rol (S-10) y el apagado
   });
 });

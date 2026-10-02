@@ -8,6 +8,11 @@ import { getUsuarioActual } from "./session";
 export const COOKIE_SUCURSAL_ACTIVA = "sucursalActivaId";
 export const COOKIE_EMPRESA_ACTIVA = "empresaActivaId";
 
+/** Opciones de las cookies de empresa y sucursal activas: `secure` en producción para que nunca viajen por http. */
+export function opcionesCookieActiva() {
+  return { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 60 * 60 * 24 * 365, secure: process.env.NODE_ENV === "production" };
+}
+
 export interface MembresiaUsuario {
   sucursalId: string;
   sucursalNombre: string;
