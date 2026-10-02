@@ -41,14 +41,9 @@ function excepcionesDe(regla) {
   return (EXCEPCIONES[regla] ?? []).map((e) => rutaExacta(e.ruta));
 }
 
-/**
- * Dominios de NEGOCIO de `src/core/` — carpetas con lógica/estado propio que en principio no debería filtrarse fuera por sus
- * archivos internos. Excluye a propósito la infraestructura transversal (`auth`, `permisos`, `datos`, `features`, `estadistica`,
- * `navegacion`): esas se consumen desde cualquier lado por diseño, no tienen "internals" que proteger, y forzarlas acá rompería
- * el proyecto entero sin aportar nada (mismo criterio que separa `core/moneda.ts`/`numero.ts`/`texto.ts`, sueltos en la raíz, de
- * las carpetas por dominio).
- */
-const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stock", "compras", "carta"];
+/** Dominios de negocio e infraestructura transversal de `src/core/`: ver `.dependency-cruiser-dominios.cjs` (cada carpeta en exactamente una lista; lo verifica `dominios-clasificados.test.ts`). */
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- misma razón que EXCEPCIONES: dependency-cruiser carga esta config como CommonJS.
+const { DOMINIOS_DE_NEGOCIO } = require("./.dependency-cruiser-dominios.cjs");
 
 /**
  * Dominios de negocio que TODAVÍA no tienen su fachada `public.ts`/`public-servidor.ts` — excepción con motivo (2026-09-28,
@@ -72,9 +67,9 @@ const DOMINIOS_SIN_PUBLIC_TODAVIA = {
 
 const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => !(dominio in DOMINIOS_SIN_PUBLIC_TODAVIA)).map((dominio) => ({
   name: "sin-internals-de-otro-dominio",
-  comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos.`,
+  comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos. Las Server Actions de OTRO dominio también (las del propio dominio, server/actions/${dominio}/, sí pueden usar su core).`,
   severity: "error",
-  from: { path: `^src/(core/(?!${dominio}/)|server/consultas/|server/persistencia/)` },
+  from: { path: `^src/(core/(?!${dominio}/)|server/actions/(?!${dominio}/)|server/(consultas|persistencia)/)` },
   to: { path: `^src/core/${dominio}/`, pathNot: `^src/core/${dominio}/public(-servidor)?\\.ts$` },
 }));
 

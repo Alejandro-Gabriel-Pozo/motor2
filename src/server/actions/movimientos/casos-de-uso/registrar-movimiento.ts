@@ -4,8 +4,7 @@ import { mensajeSeguro } from "@/lib/mensaje-seguro";
 import { texto } from "@/core/texto";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { TRANSICIONES, redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import { armarFilasDeMovimiento } from "@/core/movimientos/armar-filas-de-movimiento";
+import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import {
   obtenerSeccionPropia,
   seccionesConStock,

@@ -20,7 +20,7 @@ import {
 import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
+import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/public-servidor";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";

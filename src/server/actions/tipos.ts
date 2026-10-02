@@ -1,4 +1,4 @@
-import type { SincronizablePrecioGrupo } from "@/core/carta/grupo-producto-consulta";
+import type { SincronizablePrecioGrupo } from "@/core/carta/public-servidor";
 
 export type ResultadoAccion = { ok: true; mensaje: string } | { ok: false; mensaje: string };
 

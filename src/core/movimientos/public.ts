@@ -35,4 +35,6 @@ export {
   descripcionAuditoriaAnulacionDeVenta,
 } from "./anulaciones";
 export type { ResultadoAnulacionDeVenta, LineaVendida, LineaDeReversionDeVenta } from "./anulaciones";
+export { armarFilasDeMovimiento } from "./armar-filas-de-movimiento";
+export type { ConsumoParaFilas } from "./armar-filas-de-movimiento";
 export type { AccionConteo } from "@prisma/client";

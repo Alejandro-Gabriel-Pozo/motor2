@@ -3,8 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { esNumeroEstricto } from "@/core/numero";
 import { guardLineaCompra } from "@/core/features/compras/compra.guard";
-import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import type { ConsumoParaFilas } from "@/core/movimientos/armar-filas-de-movimiento";
+import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
 import {
   obtenerLoteMasProximoAVencer,
   resolverConsumoPorFamilia,

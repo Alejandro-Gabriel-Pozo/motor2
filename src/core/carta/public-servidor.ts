@@ -12,4 +12,6 @@
  */
 export { resolverMenuCarta } from "./menu-consulta";
 export { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
+export { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "./grupo-producto-consulta";
+export type { SincronizablePrecioGrupo } from "./grupo-producto-consulta";
 export type { EntradaPortalCarta } from "./publica-consulta";
