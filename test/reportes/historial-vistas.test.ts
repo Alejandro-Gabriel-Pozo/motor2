@@ -4,6 +4,7 @@ import {
   GRUPO_POR_PROCESO,
   agruparVentasPorDia,
   filtrarEventosKardex,
+  quitarDineroDeEventos,
   resolverRangoHistorial,
   resumirCompras,
   variacionPorcentual,
@@ -229,5 +230,34 @@ describe("agruparVentasPorDia", () => {
 
   it("sin ventas: lista vacía", () => {
     expect(agruparVentasPorDia([])).toEqual([]);
+  });
+});
+
+describe("quitarDineroDeEventos", () => {
+  const conDinero = [
+    { tipo: "movimiento" as const, proceso: "COMPRA", fecha: new Date("2026-09-01T00:00:00Z"), cantidadConSigno: 5, saldoCorriente: 5, precioTotal: 500, precioPorUnidadStock: 100, proveedorNombre: "P" },
+    { tipo: "conteo" as const, fecha: new Date("2026-09-02T00:00:00Z"), conteoReal: 4 },
+  ];
+
+  it("saca precioTotal y precioPorUnidadStock de cada evento y conserva el resto", () => {
+    const sin = quitarDineroDeEventos(conDinero);
+    expect(sin[0]).toEqual({ tipo: "movimiento", proceso: "COMPRA", fecha: new Date("2026-09-01T00:00:00Z"), cantidadConSigno: 5, saldoCorriente: 5, proveedorNombre: "P" });
+    expect("precioTotal" in sin[0]!).toBe(false);
+    expect("precioPorUnidadStock" in sin[0]!).toBe(false);
+    expect(sin[1]).toEqual(conDinero[1]);
+  });
+
+  it("no muta los eventos originales", () => {
+    quitarDineroDeEventos(conDinero);
+    expect(conDinero[0]!.precioTotal).toBe(500);
+  });
+
+  it("los resúmenes armados sobre eventos sin dinero no inventan precios", () => {
+    const sin = quitarDineroDeEventos(conDinero);
+    const compras = resumirCompras(sin);
+    expect(compras.precioMin).toBeNull();
+    expect(compras.filas[0]!.precioPorUnidadStock).toBeNull();
+    expect(compras.filas[0]!.variacionPct).toBeNull();
+    expect(JSON.stringify(compras)).not.toContain("500");
   });
 });

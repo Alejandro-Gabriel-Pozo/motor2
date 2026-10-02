@@ -1,6 +1,7 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
+import { esIdentificador } from "@/core/datos/identificador";
 import { slugTenant, slugTenantUnico } from "@/core/carta/registro-tenants";
 import {
   LARGO_MAXIMO_ETIQUETA_PORTAL,
@@ -25,6 +26,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  */
 
 const MAXIMO_INTENTOS_SLUG = 5;
+const SUCURSAL_INVALIDA = "Sucursal inválida.";
 
 function esChoqueDeUnicidad(e: unknown): boolean {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
@@ -36,6 +38,7 @@ function esChoqueDeUnicidad(e: unknown): boolean {
  */
 export async function agregarSucursalAlPortal(sucursalId: string): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_portal", async (ctx) => {
+    if (!esIdentificador(sucursalId)) return error(SUCURSAL_INVALIDA);
     const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true } });
     if (!sucursal) return error("No se encontró la sucursal.");
 
@@ -74,6 +77,8 @@ export interface DatosSucursalPublica {
  */
 export async function guardarSucursalPublica(sucursalId: string, datos: DatosSucursalPublica): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_portal", async (ctx) => {
+    if (!esIdentificador(sucursalId)) return error(SUCURSAL_INVALIDA);
+    if (!datos || typeof datos !== "object" || typeof datos.publicada !== "boolean") return error("Datos inválidos.");
     const slug = validarSlugTenant(datos.slug);
     if (!slug.ok) return error(slug.mensaje);
     const etiqueta = validarTextoLibreCarta(datos.etiqueta, "La etiqueta", LARGO_MAXIMO_ETIQUETA_PORTAL);
@@ -120,9 +125,10 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
  */
 export async function quitarSucursalDelPortal(sucursalId: string): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_portal", async (ctx) => {
-    const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { slug: true, sucursal: { select: { nombre: true } } } });
+    if (!esIdentificador(sucursalId)) return error(SUCURSAL_INVALIDA);
+    const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { id: true, slug: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal.");
-    await ctx.db.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await ctx.db.sucursalPublica.deleteMany({ where: { id: existente.id } });
     revalidarCartasPublicas();
     return ok(`"${existente.sucursal.nombre}" quitada del portal (slug ${existente.slug}).`);
   });
@@ -135,6 +141,7 @@ export async function quitarSucursalDelPortal(sucursalId: string): Promise<Resul
  */
 export async function moverSucursalEnMapa(sucursalId: string, x: number, y: number): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_portal", async (ctx) => {
+    if (!esIdentificador(sucursalId)) return error(SUCURSAL_INVALIDA);
     const existente = await ctx.db.sucursalPublica.findFirst({ where: { sucursalId }, select: { id: true, posW: true, posH: true, sucursal: { select: { nombre: true } } } });
     if (!existente) return error("Esta sucursal no está en el portal.");
     if (existente.posW === null) return error("Esta sucursal todavía no tiene posición en el mapa: cargala con los números de su formulario.");

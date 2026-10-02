@@ -268,6 +268,20 @@ export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; ran
   return { rango: "90d", desde, hasta: undefined };
 }
 
+/**
+ * Saca de los eventos los dos campos de dinero (`precioTotal`, `precioPorUnidadStock`). Se aplica en el SERVIDOR antes de armar
+ * cualquier prop de un componente cliente cuando el rol no tiene `reporte_historial_importes`: ocultar la columna al dibujar no
+ * alcanza, el dato viaja igual en el payload y se lee con las herramientas del navegador.
+ */
+export function quitarDineroDeEventos<T extends { precioTotal?: number; precioPorUnidadStock?: number }>(eventos: T[]): T[] {
+  return eventos.map((ev) => {
+    const sinDinero = { ...ev };
+    delete sinDinero.precioTotal;
+    delete sinDinero.precioPorUnidadStock;
+    return sinDinero;
+  });
+}
+
 /** Ventas agrupadas por día — EXCLUYE las anuladas (mismo criterio que `resumirCompras`). Orden cronológico ascendente. */
 export function agruparVentasPorDia(eventos: EventoParaVentas[]): FilaVentaPorDia[] {
   const porDia = new Map<string, { cantidad: number; importe: number }>();

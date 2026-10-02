@@ -1,4 +1,5 @@
 import { texto } from "@/core/texto";
+import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { DatosMovimientoInput, ProcesoGenerico } from "./movimiento.schema";
@@ -17,8 +18,9 @@ import type { DatosMovimientoInput, ProcesoGenerico } from "./movimiento.schema"
  * tal cual llegó, no de una versión normalizada acá.
  */
 export function guardComandoRegistrarMovimiento(entrada: unknown): ResultadoDato<DatosMovimientoInput> {
-  const { proceso, items, seccionId, claveIdempotencia, seccionDestinoId } = (entrada ?? {}) as {
+  const { proceso, items, seccionId, claveIdempotencia, seccionDestinoId, fecha } = (entrada ?? {}) as {
     proceso?: unknown;
+    fecha?: unknown;
     items?: unknown;
     seccionId?: unknown;
     claveIdempotencia?: unknown;
@@ -34,6 +36,8 @@ export function guardComandoRegistrarMovimiento(entrada: unknown): ResultadoDato
 
   if (!Array.isArray(items) || !items.length) return rechazar("vacio", "Cargá al menos un producto con cantidad.");
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección.");
+  const fechaValida = validarFechaOperacion(fecha);
+  if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
     return rechazar("formato", "Clave de reintento inválida.");
   }

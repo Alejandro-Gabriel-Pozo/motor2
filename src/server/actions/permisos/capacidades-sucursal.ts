@@ -1,5 +1,6 @@
 "use server";
 
+import { esIdentificador } from "@/core/datos/identificador";
 import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermisoDeEmpresa } from "../con-permiso";
@@ -34,6 +35,12 @@ export async function actualizarCapacidad(
       return error("Esta acción no se puede gobernar a sí misma.");
     }
 
+    // `null` es la fila default a propósito; un `undefined` o un objeto es un argumento roto y con `findFirst({ where: { sucursalId } })` tocaría la fila de cualquier sucursal.
+    if (sucursalId !== null && !esIdentificador(sucursalId)) return error("Sucursal inválida.");
+    if (!claveEnCatalogo(accionClave)) return error("Acción inválida.");
+    if (typeof habilitado !== "boolean") return error("Valor inválido.");
+    if (sucursalId !== null && !(await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true } }))) return error("No se encontró la sucursal.");
+
     // sucursalId puede ser null (fila default) — el tipo generado del
     // unique compuesto accionClave_sucursalId no acepta null ahí (Prisma
     // no permite un campo nullable como parte del input de una unique
@@ -42,19 +49,17 @@ export async function actualizarCapacidad(
     // garantiza el índice único parcial agregado a mano en la migración
     // (ver schema.prisma, comentario en CapacidadSucursal) — Postgres no
     // la garantiza sola sobre una columna nullable dentro de un @@unique.
-    const existente = await ctx.db.capacidadSucursal.findFirst({ where: { accionClave, sucursalId } });
-    let fila;
-    if (existente) {
-      fila = await ctx.db.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } });
-    } else {
-      fila = await ctx.db.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
-    }
-
-    // Auditoría administrativa (A3, Pivote 6).
-    await registrarCambioAuditado(ctx.db, {
-      entidad: "CapacidadSucursal", entidadId: fila.id, campo: "habilitado",
-      descripcion: `Capacidad "${accionClave}"${sucursalId ? "" : " (default)"}`,
-      valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId,
+    // El cambio y su auditoría (A3, Pivote 6) van en UNA transacción: o quedan los dos o ninguno.
+    await ctx.transaccion(async (tx) => {
+      const existente = await tx.capacidadSucursal.findFirst({ where: { accionClave, sucursalId } });
+      const fila = existente
+        ? await tx.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } })
+        : await tx.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
+      await registrarCambioAuditado(tx, {
+        entidad: "CapacidadSucursal", entidadId: fila.id, campo: "habilitado",
+        descripcion: `Capacidad "${accionClave}"${sucursalId ? "" : " (default)"}`,
+        valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId,
+      });
     });
 
     // Se llama desde un closure "use server" de la página, sin redirigir. Acá el botón ES el estado (✅/⛔): sin esto seguía mostrando el estado

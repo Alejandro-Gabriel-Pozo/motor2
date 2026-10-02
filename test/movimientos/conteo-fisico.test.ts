@@ -308,8 +308,8 @@ describe("Conteo Físico", () => {
       const espia = vi.spyOn(console, "error").mockImplementation(() => {});
       const b = await crearMpConStock("MP_B", 8);
 
-      // Una fecha inválida hace lanzar a Prisma dentro de la transacción (no es un `return error(...)`).
-      const r = await registrarConteosFisicos([fila(mpId, 7), { ...fila(b.id, 5), fechaConteo: new Date("no-es-una-fecha") }, fila(b.id, 6)]);
+      // Un productoId que no es texto hace lanzar a Prisma dentro de la transacción (no es un `return error(...)`); la fecha inválida ya la rechaza el guard.
+      const r = await registrarConteosFisicos([fila(mpId, 7), { ...fila(b.id, 5), productoId: 123 as unknown as string }, fila(b.id, 6)]);
       espia.mockRestore();
 
       expect(r.ok).toBe(true);

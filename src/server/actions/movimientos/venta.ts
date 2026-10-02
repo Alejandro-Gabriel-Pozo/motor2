@@ -1,6 +1,7 @@
 "use server";
 
 import { texto, validarLargoTexto, LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
+import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { guardComandoAnularVenta } from "@/core/features/ventas/venta.guard";
 import type { DatosVentaInput as DatosVentaInputSchema, ItemVentaInput as ItemVentaInputSchema } from "@/core/features/ventas/venta.schema";
@@ -39,6 +40,8 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
   return conPermiso("proceso_venta", async (ctx) => {
     if (!datos.ventas.length) return error("Cargá al menos un producto con cantidad.");
     if (!texto(datos.seccionId)) return error("Elegí una sección.");
+    const fecha = validarFechaOperacion(datos.fecha);
+    if (!fecha.ok) return error(fecha.mensaje);
     if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
       return error("Clave de reintento inválida.");
     }

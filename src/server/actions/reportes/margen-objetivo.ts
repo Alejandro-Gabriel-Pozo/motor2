@@ -1,5 +1,6 @@
 "use server";
 
+import { esIdentificador } from "@/core/datos/identificador";
 import { validarFoodCostObjetivo } from "@/core/datos/food-cost-objetivo";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermisoDeEmpresa } from "../con-permiso";
@@ -13,6 +14,8 @@ import { error, ok, type ResultadoAccion } from "../tipos";
  */
 export async function guardarMargenObjetivo(categoriaId: string | null, porcentaje: number | string | null): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("margen_objetivo_editar", async (ctx) => {
+    // `null` es "toda la empresa" a propósito; un `undefined` o un objeto es un argumento roto y con `findFirst({ where: { categoriaId } })` tocaría cualquier fila.
+    if (categoriaId !== null && !esIdentificador(categoriaId)) return error("Categoría inválida.");
     const validado = validarFoodCostObjetivo(porcentaje);
     if (!validado.ok) return error(validado.mensaje);
     const valor = validado.valor;

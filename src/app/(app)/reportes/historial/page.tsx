@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/core/reportes/historial-producto";
-import { agruparVentasPorDia, filtrarEventosKardex, resolverRangoHistorial, resumirCompras, type QueMostrar, type RangoHistorial } from "@/core/reportes/historial-vistas";
+import { agruparVentasPorDia, filtrarEventosKardex, quitarDineroDeEventos, resolverRangoHistorial, resumirCompras, type QueMostrar, type RangoHistorial } from "@/core/reportes/historial-vistas";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";
@@ -47,6 +47,9 @@ export default async function HistorialProductoPage({
 
   const historial = sp.productoId ? await obtenerHistorialProducto(ctx.sucursalId, sp.productoId, sp.seccionId || undefined, desde, hasta, ctx.db) : null;
 
+  // Sin la clave de importes el dinero no sale del servidor: ocultar la columna al dibujar no alcanza, los props de un componente cliente viajan en el payload.
+  const eventos = historial ? (mostrarDinero ? historial.eventos : quitarDineroDeEventos(historial.eventos)) : [];
+
   // Solo para un PV sin stock propio (§4, decisiones 7-8) — para el resto, ni se consulta.
   const ingredientes = historial && !historial.tieneStockPropio ? await obtenerIngredientesRecetaVigente(historial.productoId, ctx.db, ctx.sucursalId) : null;
 
@@ -73,7 +76,7 @@ export default async function HistorialProductoPage({
             {historial.tieneStockPropio && ` — saldo actual: ${historial.saldoActual} ${historial.unidadStockNombre}`}
           </h2>
           <p className="mb-2 text-xs text-neutral-500">
-            Mostrando {ETIQUETA_RANGO_HISTORIAL[rango]}: {historial.eventos.length} evento(s) visible(s), de {historial.totalMovimientos} movimiento(s) y{" "}
+            Mostrando {ETIQUETA_RANGO_HISTORIAL[rango]}: {eventos.length} evento(s) visible(s), de {historial.totalMovimientos} movimiento(s) y{" "}
             {historial.totalConteos} conteo(s) en total
             {historial.tieneStockPropio && " (el saldo corriente arranca del primer movimiento real, no del rango elegido)"}.
           </p>
@@ -81,18 +84,18 @@ export default async function HistorialProductoPage({
             <div className="mb-4">
               <h3 className="mb-2 text-sm font-medium">Evolución del saldo</h3>
               {/* El mismo rango elegido arriba — no "Qué mostrar" (ese filtro es solo para el Kardex de abajo, declutter, no cambia qué pasó de verdad). */}
-              <GraficoSaldoCorriente eventos={historial.eventos} unidadStockNombre={historial.unidadStockNombre} />
+              <GraficoSaldoCorriente eventos={eventos} unidadStockNombre={historial.unidadStockNombre} />
             </div>
           ) : (
             <CartelSinStockPropio productoId={historial.productoId} ingredientes={ingredientes ?? []} />
           )}
-          {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(historial.eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} />}
-          {historial.tipo === "PV" && <ComoSeVendio filas={agruparVentasPorDia(historial.eventos)} mostrarDinero={mostrarDinero} />}
+          {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} />}
+          {historial.tipo === "PV" && <ComoSeVendio filas={agruparVentasPorDia(eventos)} mostrarDinero={mostrarDinero} />}
           <details className="mt-2">
             <summary className="cursor-pointer text-sm font-medium">Movimiento por movimiento (auditoría)</summary>
             <div className="mt-2">
               <TablaHistorialEventos
-                filas={filtrarEventosKardex(historial.eventos, queMostrar)}
+                filas={filtrarEventosKardex(eventos, queMostrar)}
                 nombreExport={`historial-${historial.codigo}`}
                 mostrarSaldo={historial.tieneStockPropio}
               />
