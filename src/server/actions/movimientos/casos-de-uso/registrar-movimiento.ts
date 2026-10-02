@@ -1,6 +1,7 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
 import { mensajeSeguro } from "@/lib/mensaje-seguro";
+import { reportarError } from "@/lib/reportar-error";
 import { texto } from "@/core/texto";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
@@ -63,7 +64,7 @@ function sinLineasParaProveedor(resultado: ResultadoRegistrarMovimiento): Result
  *
  * Limitación conocida, decisión DEFERIDA — no un bug (backlog post-cierre de Task #41, 2026-09-28,
  * docs/pendientes-sesion-2026-09-27.md §11): si `upsertProveedorPorProducto` falla para una línea, el catch de más abajo lo
- * `console.error`ea y sigue con la línea siguiente — no hay forma de reintentar SOLO ese hookup después. `upsertProveedorPorProducto`
+ * `console.error`ea, lo manda a Sentry (`reportarError`) y sigue con la línea siguiente — no hay forma de reintentar SOLO ese hookup después. `upsertProveedorPorProducto`
  * no tiene ningún otro punto de entrada en el proyecto (confirmado: es la ÚNICA llamada real, `grep -rn
  * upsertProveedorPorProducto src/`) — ni una pantalla de administración, ni una acción de "reconciliar catálogo de esta compra". Y
  * reintentar la Compra ENTERA no sirve: con la MISMA `claveIdempotencia` el paso 0 (I3) corta antes de llegar acá (`repetida: true`,
@@ -91,6 +92,7 @@ async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha
       // docs/pendientes-sesion-2026-09-27.md §5): el cast (e as Error).message revienta con TypeError si algo
       // no-Error (ej. null/undefined) se lanza acá adentro — mismo criterio que core/reportes/cotizacion-dolar.ts.
       console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${mensajeSeguro(e)}`);
+      await reportarError(e, "compra-proveedor-por-producto");
     }
   }
 }
