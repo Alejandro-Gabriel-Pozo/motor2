@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { IconoDeAccion } from "@/components/iconos";
@@ -25,6 +25,8 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/proveedores?editar=…` (la edición estaba en esta misma pantalla).
   if (editar) redirect(`/catalogo/proveedores/${encodeURIComponent(editar)}/editar`);
 
+  // `/nuevo` exige `proveedor_alta`: quien solo ve proveedores no recibe el botón para descubrirlo recién al entrar.
+  const { editar: puedeDarDeAlta } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedor_alta", ctx.db);
   const proveedores = await listarProveedores();
 
   return (
@@ -35,9 +37,11 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
           <EnlaceInterno href="/catalogo/proveedores/comparativa" className="text-sm underline">
             Comparativa de precios →
           </EnlaceInterno>
-          <Link href="/catalogo/proveedores/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
-            + Nuevo proveedor
-          </Link>
+          {puedeDarDeAlta && (
+            <Link href="/catalogo/proveedores/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+              + Nuevo proveedor
+            </Link>
+          )}
         </div>
       </div>
 
