@@ -230,6 +230,7 @@ export async function actualizarPasoDeReceta(
 
 /** Quita un paso de la receta vigente. */
 export async function quitarPasoDeReceta(productoId: string, orden: number): Promise<ResultadoAccion> {
+  if (!Number.isInteger(orden)) return error("El número de paso no es válido.");
   const vigente = await obtenerRecetaVigente(productoId);
   const pasos = mapPasosAInput(vigente).filter((p) => p.orden !== orden);
   return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
@@ -266,6 +267,8 @@ export async function reordenarPasosDeReceta(productoId: string, secuencia: numb
  * `orden` duplicado (esa función queda intacta, es el camino "Al final").
  */
 export async function insertarPasoEnReceta(productoId: string, posicion: number, paso: Omit<PasoInput, "orden">): Promise<ResultadoAccion> {
+  // `insertarEnPosicion` recorta una posición fuera de rango (0, 99), pero un NaN lo dejaría en silencio al principio.
+  if (!Number.isInteger(posicion)) return error("La posición del paso no es válida.");
   const vigente = await obtenerRecetaVigente(productoId);
   const pasosExistentes = mapPasosAInput(vigente);
 
