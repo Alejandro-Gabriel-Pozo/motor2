@@ -3,7 +3,11 @@ import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
+import type { AccionConteo } from "@prisma/client";
 import type { ComandoConteoFisico } from "./conteo-fisico.schema";
+
+/** Las acciones válidas; la clave es el enum de Prisma, así que una acción nueva obliga a tocar esta lista. */
+const ACCIONES_VALIDAS: Record<AccionConteo, true> = { AJUSTAR: true, FALTA_MOVIMIENTO: true, DESCARTAR: true };
 
 /**
  * Guard del comando «registrar un conteo físico» (convención "guard por feature", 2026-09-25; Task #41, Fase M, M13e1 —
@@ -19,8 +23,9 @@ import type { ComandoConteoFisico } from "./conteo-fisico.schema";
  * Devuelve `aceptar(entrada)` SIN transformar nada.
  */
 export function guardComandoConteoFisico(entrada: unknown): ResultadoDato<ComandoConteoFisico> {
-  const { seccionId, claveIdempotencia, fechaConteo, detalle } = (entrada ?? {}) as { seccionId?: unknown; claveIdempotencia?: unknown; fechaConteo?: unknown; detalle?: unknown };
+  const { seccionId, claveIdempotencia, fechaConteo, detalle, accion } = (entrada ?? {}) as { seccionId?: unknown; claveIdempotencia?: unknown; fechaConteo?: unknown; detalle?: unknown; accion?: unknown };
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección — no se puede dejar en blanco.");
+  if (typeof accion !== "string" || !Object.hasOwn(ACCIONES_VALIDAS, accion)) return rechazar("formato", "Elegí qué hacer con la diferencia del conteo.");
   const fechaValida = validarFechaOperacion(fechaConteo);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
   const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);

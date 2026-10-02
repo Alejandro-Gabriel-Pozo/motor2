@@ -5,9 +5,13 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * un conteo YA APLICADO (estado RESUELTO): escribe una fila de reversión en el Kardex (misma magnitud, signo contrario) si el conteo
  * había ajustado algo, y lo marca CANCELADO.
  *
- * Sin `.guard.ts` propio, mismo criterio que `resolver-conteo.schema.ts`: `conteoId` es un id opaco, sin ningún formato que validar
- * antes de la transacción — se queda todo en el caso de uso (`casos-de-uso/cancelar-conteo-fisico.ts`).
+ * El formato (`conteoId` es un texto no vacío) lo valida `guardComandoCancelarConteo` (`cancelar-conteo.guard.ts`); el resto depende de
+ * datos de base y se queda en el caso de uso (`casos-de-uso/cancelar-conteo-fisico.ts`).
  */
+export interface ComandoCancelarConteo {
+  conteoId: string;
+}
+
 export type CodigoCancelarConteo = "CONTEO_NO_ENCONTRADO" | "CONTEO_YA_CANCELADO" | "CONTEO_NO_RESUELTO";
 
 /** `datos` de un conteo cancelado con éxito. */

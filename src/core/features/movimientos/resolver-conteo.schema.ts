@@ -6,12 +6,18 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * solo, no hay nada más que hacer acá) o 'ajustar' si se buscó y no apareció (se ajusta contra el saldo de HOY, no el del día del
  * conteo — entre medio pudo haber más movimientos).
  *
- * Sin `.guard.ts` propio a propósito: a diferencia de `ComandoConteoFisico` (M13e1), acá no hay ningún campo de formato libre que
- * validar antes de la transacción — `conteoId` es un id opaco y `comoResolver` ya viene acotado por el tipo `ComoResolverConteo` en
- * tiempo de compilación. Todo lo demás (el conteo existe, es de esta sucursal, está PENDIENTE, el producto sigue en el catálogo)
- * depende de datos de base y se queda en el caso de uso (`casos-de-uso/resolver-conteo-pendiente.ts`).
+ * El formato lo valida `guardComandoResolverConteo` (`resolver-conteo.guard.ts`): el tipo `ComoResolverConteo` solo acota en tiempo de
+ * compilación, y un POST crudo con otro valor caía en la rama «ajustar» y escribía un movimiento de stock. Todo lo demás (el conteo
+ * existe, es de esta sucursal, está PENDIENTE, el producto sigue en el catálogo) depende de datos de base y se queda en el caso de uso
+ * (`casos-de-uso/resolver-conteo-pendiente.ts`).
  */
 export type ComoResolverConteo = "resuelto" | "ajustar";
+
+/** Comando «resolver un conteo pendiente»: lo que valida `guardComandoResolverConteo` antes de abrir la transacción. */
+export interface ComandoResolverConteo {
+  conteoId: string;
+  comoResolver: ComoResolverConteo;
+}
 
 /** Por qué no se pudo resolver el conteo. */
 export type CodigoResolverConteo = "CONTEO_NO_ENCONTRADO" | "CONTEO_NO_PENDIENTE" | "PRODUCTO_NO_ENCONTRADO";

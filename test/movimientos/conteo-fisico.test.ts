@@ -105,6 +105,36 @@ describe("Conteo Físico", () => {
     expect((await prisma.conteoFisico.findUniqueOrThrow({ where: { id: conteo.id } })).estado).toBe("RESUELTO");
   });
 
+  it("resolverConteoPendiente con un comoResolver que no es 'resuelto' ni 'ajustar' (POST crudo) rechaza: no cierra el conteo ni escribe un ajuste", async () => {
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
+    const movimientosAntes = await prisma.movimientoStock.count();
+
+    for (const invalido of ["x", null, undefined, "AJUSTAR", "constructor"]) {
+      const r = await resolverConteoPendiente(conteo.id, invalido as never);
+      expect(r.ok, String(invalido)).toBe(false);
+    }
+    expect(await prisma.movimientoStock.count()).toBe(movimientosAntes);
+    expect((await prisma.conteoFisico.findUniqueOrThrow({ where: { id: conteo.id } })).estado).toBe("PENDIENTE");
+  });
+
+  it("registrarConteoFisico con una acción que no existe (POST crudo) rechaza con un mensaje, sin escribir nada", async () => {
+    const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "BORRAR" as never });
+    expect(r.ok).toBe(false);
+    expect(await prisma.conteoFisico.count()).toBe(0);
+  });
+
+  it("cancelarConteoFisico sin un conteoId de texto (POST crudo) rechaza sin cargar ningún conteo", async () => {
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "AJUSTAR" });
+    const movimientosAntes = await prisma.movimientoStock.count();
+    for (const invalido of [undefined, null, "", 42]) {
+      const r = await cancelarConteoFisico(invalido as never);
+      expect(r.ok, String(invalido)).toBe(false);
+    }
+    expect(await prisma.movimientoStock.count()).toBe(movimientosAntes);
+    expect((await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } })).estado).toBe("RESUELTO");
+  });
+
   it("resolverConteoPendiente('ajustar') ajusta contra el saldo de HOY, no el del día del conteo", async () => {
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
