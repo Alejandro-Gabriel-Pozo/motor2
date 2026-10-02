@@ -6,6 +6,7 @@ import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { actualizarDisponibilidadProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
 import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Lista de productos. Ya no comparte pantalla con el formulario: el alta está en `/nuevo`, la ficha (solo lectura) en `/[id]` y la edición en
@@ -14,7 +15,7 @@ import { IconoDeAccion } from "@/components/iconos";
 export default async function ProductosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; q?: string; cursor?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"id" | "q" | "cursor">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -28,7 +29,7 @@ export default async function ProductosPage({
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
   const { editar: puedeDarDeAlta } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
 
-  const { id, q, cursor } = await searchParams;
+  const { id, q, cursor } = unicosDeUrl(await searchParams);
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/productos?id=…` (la edición estaba en esta misma pantalla).
   if (id) redirect(`/catalogo/productos/${encodeURIComponent(id)}/editar`);
 

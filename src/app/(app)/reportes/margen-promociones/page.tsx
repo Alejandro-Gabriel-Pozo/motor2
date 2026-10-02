@@ -4,6 +4,7 @@ import { obtenerReporteMargenPromociones } from "@/core/reportes/margen-promocio
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaMargenPromociones } from "./tabla-margen-promociones";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Margen de promociones armables (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 12): por cada promo de carta, cuánto
@@ -13,14 +14,14 @@ import { TablaMargenPromociones } from "./tabla-margen-promociones";
  *
  * Sin ninguna venta de una promo armable en el rango: tabla vacía, sin ningún error.
  */
-export default async function MargenPromocionesPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function MargenPromocionesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_margen_promociones", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
   const rep = await obtenerReporteMargenPromociones(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
 

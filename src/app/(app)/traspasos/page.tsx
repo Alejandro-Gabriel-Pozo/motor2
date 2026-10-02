@@ -3,6 +3,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate"
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerBandejaTransferencias } from "@/server/actions/traspasos/lecturas";
 import { Bandeja, type FilaBandeja } from "./bandeja";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const LABEL_ESTADO: Record<string, string> = {
   SOLICITADA: "Solicitada",
@@ -14,14 +15,14 @@ const LABEL_ESTADO: Record<string, string> = {
   CANCELADA: "Cancelada por quien la pidió",
 };
 
-export default async function TraspasosPage({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
+export default async function TraspasosPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"cursor">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "traspaso_ver_bandeja", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { cursor } = await searchParams;
+  const { cursor } = unicosDeUrl(await searchParams);
   const [bandeja, secciones, aprobar, rechazarSolicitud, aceptar, rechazarEnvio, confirmarReingreso, cancelarSolicitud] = await Promise.all([
     obtenerBandejaTransferencias(ctx.sucursalId, cursor),
     listarSeccionesActivas(ctx.sucursalId),

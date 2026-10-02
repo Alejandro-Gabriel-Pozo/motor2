@@ -2,6 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/core/permisos/gate";
 import { compararRendimientosDeSucursales } from "@/server/consultas/reportes/rendimiento-por-sucursal";
 import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursal";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * D8 (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 8): compara el rendimiento CALIBRADO de cada línea de
@@ -11,7 +12,7 @@ import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursa
 export default async function RendimientoPorSucursalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ productoId?: string; todas?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"productoId" | "todas">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -19,7 +20,7 @@ export default async function RendimientoPorSucursalPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_sucursal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   // El gate de arriba es de la sucursal activa: las otras se comparan solo si allí el rol también puede ver el dinero.
   const sucursales = await sucursalesVisiblesPara(ctx, "reporte_rendimiento_sucursal");
   const todas = sp.todas === "1";

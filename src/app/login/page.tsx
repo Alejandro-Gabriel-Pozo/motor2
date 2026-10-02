@@ -3,10 +3,11 @@ import { signIn, signOut } from "@/lib/auth";
 import { getUsuarioActual } from "@/core/auth/session";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { rutaInternaSegura } from "@/core/navegacion/volver";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ volver?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"volver">> }) {
   // Adónde volver después de entrar (la pantalla en la que estaba cuando venció la sesión). Viene de la URL: solo se acepta una ruta interna.
-  const volver = rutaInternaSegura((await searchParams).volver);
+  const volver = rutaInternaSegura(unicosDeUrl(await searchParams).volver);
   const usuario = await getUsuarioActual();
 
   if (usuario) {

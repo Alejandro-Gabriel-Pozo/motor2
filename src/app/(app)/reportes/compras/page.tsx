@@ -6,6 +6,7 @@ import { listarComprasRegistradas, SIN_PROVEEDOR } from "@/core/reportes/compras
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { BotonAnularCompra } from "./boton-anular-compra";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
@@ -19,7 +20,7 @@ const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 export default async function ComprasRegistradasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ desde?: string; hasta?: string; proveedorId?: string; factura?: string; cursor?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "proveedorId" | "factura" | "cursor">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -31,7 +32,7 @@ export default async function ComprasRegistradasPage({
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_compra", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "corregir_compra", ctx.db),
   ]);
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const desde = sp.desde && !Number.isNaN(new Date(sp.desde).getTime()) ? sp.desde : "";
   const hasta = sp.hasta && !Number.isNaN(new Date(sp.hasta).getTime()) ? sp.hasta : "";
   const [{ items, nextCursor }, proveedores] = await Promise.all([

@@ -4,6 +4,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -27,7 +28,7 @@ export default async function FichaProveedorPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ guardado?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"guardado">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -36,7 +37,7 @@ export default async function FichaProveedorPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { id } = await params;
-  const { guardado } = await searchParams;
+  const { guardado } = unicosDeUrl(await searchParams);
   const p = await obtenerFichaProveedor(id, ctx.db);
   if (!p) notFound();
 

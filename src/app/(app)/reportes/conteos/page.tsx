@@ -6,11 +6,12 @@ import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { TablaHistorialConteos, type FilaConteo } from "./tabla-conteos";
 import { FiltrosConteos } from "./filtros-conteos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 export default async function ConteosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cursor?: string; seccionId?: string; productoId?: string; desde?: string; hasta?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"cursor" | "seccionId" | "productoId" | "desde" | "hasta">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -18,7 +19,7 @@ export default async function ConteosPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_conteos", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const [secciones, productoElegido] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
     sp.productoId ? obtenerProductoOpcion(sp.productoId) : Promise.resolve(null),

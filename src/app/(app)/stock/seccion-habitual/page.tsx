@@ -6,20 +6,21 @@ import { listarSeccionesHabituales } from "@/server/actions/stock/seccion-habitu
 import { SeccionHabitualForm } from "./seccion-habitual-form";
 import { BotonQuitarSeccionHabitual } from "./boton-quitar";
 import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Sección habitual de cada producto de venta en esta sucursal (docs/plan-seccion-habitual-stock-2026-09-25.md, C2): de qué sección de
  * stock sale PRIMERO lo que consume al cerrar una cuenta del salón. Mismo molde que `/stock/minimo` (tabla + formulario de alta/edición,
  * permiso propio `stock_seccion_habitual`). Un producto sin fila no tiene preferencia: sale de la sección con stock que vence antes.
  */
-export default async function SeccionHabitualPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
+export default async function SeccionHabitualPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_seccion_habitual", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar } = await searchParams;
+  const { editar } = unicosDeUrl(await searchParams);
   const [filas, secciones] = await Promise.all([listarSeccionesHabituales(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
 

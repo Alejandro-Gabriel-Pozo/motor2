@@ -10,15 +10,16 @@ import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
 import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
-export default async function PeriodoPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function PeriodoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_periodo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;

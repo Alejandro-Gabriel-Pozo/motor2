@@ -8,13 +8,14 @@ import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarMotivosMermaActivos, listarDestinosConsumoActivos } from "@/server/actions/movimientos/motivos";
 import { obtenerProductoOpcion } from "@/server/consultas/catalogo/productos";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 export default async function MovimientoPage({
   params,
   searchParams,
 }: {
   params: Promise<{ proceso: string }>;
-  searchParams: Promise<{ productoId?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"productoId">>;
 }) {
   const { proceso: slug } = await params;
   const config = obtenerConfigProceso(slug);
@@ -29,7 +30,7 @@ export default async function MovimientoPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, accionClave, ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { productoId } = await searchParams;
+  const { productoId } = unicosDeUrl(await searchParams);
 
   const [secciones, proveedores, unidades, motivos, destinos, productoInicial] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),

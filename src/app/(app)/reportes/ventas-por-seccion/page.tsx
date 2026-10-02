@@ -4,20 +4,21 @@ import { generarReporteVentasPorSeccion } from "@/core/carta/reporte-secciones";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { TablaCategoriasDeSeccion } from "./tabla-seccion";
 import { SelectorRango } from "@/components/selector-rango";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Ventas por sección de carta (docs/plan-carta-catalogo-2026-09-24.md, M7): las mismas ventas que «Por categoría», agrupadas
  * como las ve el cliente en la carta pública — por la sección donde se ve CADA producto (docs/plan-carta-seccion-directa-2026-09-25.md,
  * M5), y dentro de cada sección, por categoría. Mismo permiso que «Por categoría» (dinero).
  */
-export default async function VentasPorSeccionPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function VentasPorSeccionPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_ventas_por_seccion", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;

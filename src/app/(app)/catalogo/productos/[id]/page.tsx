@@ -7,6 +7,7 @@ import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
 import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/public-servidor";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -29,7 +30,7 @@ export default async function FichaProductoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ guardado?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"guardado">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -42,7 +43,7 @@ export default async function FichaProductoPage({
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
 
   const { id } = await params;
-  const { guardado } = await searchParams;
+  const { guardado } = unicosDeUrl(await searchParams);
   const p = await obtenerFichaProducto(id, ctx.db);
   if (!p) notFound();
 

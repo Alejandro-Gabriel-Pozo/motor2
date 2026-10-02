@@ -8,6 +8,7 @@ import { resolverRangoPorDefecto } from "@/core/reportes/rango-por-defecto";
 import { ConteoFrecuenciaForm } from "./conteo-frecuencia-form";
 import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
 import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Agenda de conteo físico periódico por sucursal × producto (decisión 2 de
@@ -17,14 +18,14 @@ import { IconoDeAccion } from "@/components/iconos";
  * alta/edición + eliminar. `frecuenciaDias = 0` desactiva la agenda sin
  * borrar la fila.
  */
-export default async function ConteoFrecuenciaPage({ searchParams }: { searchParams: Promise<{ editar?: string; sugerido?: string; sugeridoNombre?: string }> }) {
+export default async function ConteoFrecuenciaPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar" | "sugerido" | "sugeridoNombre">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "conteo_frecuencia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar, sugerido, sugeridoNombre } = await searchParams;
+  const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
   const rango = resolverRangoPorDefecto(undefined);
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),

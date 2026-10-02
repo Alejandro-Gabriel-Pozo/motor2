@@ -3,15 +3,16 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteConsignacion } from "@/core/reportes/consignacion";
 import { TablaDebidoConsignante, TablaStockSinVenderConsignacion } from "./tabla-consignacion";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
-export default async function ConsignacionPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string }> }) {
+export default async function ConsignacionPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { desde, hasta } = await searchParams;
+  const { desde, hasta } = unicosDeUrl(await searchParams);
   // Sin filtro por defecto: "Debido por consignante" es un saldo acumulado
   // desde siempre, no una ventana — filtrar por período acá sería mostrar
   // solo el movimiento de ese lapso, no cuánto se le debe HOY. El filtro es

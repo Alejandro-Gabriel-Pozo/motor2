@@ -6,6 +6,7 @@ import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Lista de proveedores. Ya no comparte pantalla con el formulario: el alta
@@ -13,14 +14,14 @@ import { IconoDeAccion } from "@/components/iconos";
  * `/[id]/editar` — mismo patrón F1/F2 de Productos
  * (docs/grounding-lista-ver-editar-2026-09-18.md, F4).
  */
-export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
+export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar } = await searchParams;
+  const { editar } = unicosDeUrl(await searchParams);
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/proveedores?editar=…` (la edición estaba en esta misma pantalla).
   if (editar) redirect(`/catalogo/proveedores/${encodeURIComponent(editar)}/editar`);
 

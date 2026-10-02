@@ -6,15 +6,16 @@ import { listarStockMinimo } from "@/server/actions/stock/stock-minimo";
 import { StockMinimoForm } from "./stock-minimo-form";
 import { BotonEliminarStockMinimo } from "./boton-eliminar";
 import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
-export default async function StockMinimoPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
+export default async function StockMinimoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_minimo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar } = await searchParams;
+  const { editar } = unicosDeUrl(await searchParams);
   const [filas, secciones] = await Promise.all([listarStockMinimo(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
 

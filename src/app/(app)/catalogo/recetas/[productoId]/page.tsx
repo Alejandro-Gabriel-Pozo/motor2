@@ -29,17 +29,14 @@ import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 export default async function RecetaEditorPage({
   params,
   searchParams,
 }: {
   params: Promise<{ productoId: string }>;
-  searchParams: Promise<{
-    editar?: string;
-    editarPaso?: string;
-    editarFicha?: string;
-  }>;
+  searchParams: Promise<ParametrosDeUrl<"editar" | "editarPaso" | "editarFicha">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -51,7 +48,7 @@ export default async function RecetaEditorPage({
   // Rendimiento por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 7): "Usar este valor" del
   // reporte de Rendimiento real de recetas YA NO navega acá con `?sugerido=` — calibra la sucursal directo
   // (fijarRendimientoLocal). Este editor solo toca la receta CENTRAL.
-  const { editar, editarPaso, editarFicha } = await searchParams;
+  const { editar, editarPaso, editarFicha } = unicosDeUrl(await searchParams);
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpDisponibles, unidades] = await Promise.all([

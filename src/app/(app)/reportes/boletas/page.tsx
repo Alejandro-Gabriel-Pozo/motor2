@@ -5,6 +5,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarBoletasEmitidas, leerFiltroBoletas, obtenerNumeroDeMesa, serializarFiltroBoletas } from "@/core/reportes/boletas-emitidas";
 import { formatearFechaHora, formatearMonto, nombreDeMesa } from "@/core/pos/formato";
 import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Boletas emitidas (Task #17 del backlog): antes de esta pantalla, «Cuentas cerradas» (al pie de una mesa) mostraba como mucho
@@ -24,7 +25,7 @@ import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
 export default async function BoletasEmitidasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ desde?: string; hasta?: string; mesaId?: string; cursor?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "mesaId" | "cursor">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -32,7 +33,7 @@ export default async function BoletasEmitidasPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_boletas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const { desde, hasta, mesaId, filtro } = leerFiltroBoletas(sp);
 
   const [{ items, nextCursor }, mesaNumero] = await Promise.all([

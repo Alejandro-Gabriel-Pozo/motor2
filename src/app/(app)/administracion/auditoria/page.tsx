@@ -3,11 +3,12 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
 import { ENTIDADES_AUDITABLES, listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 export default async function AuditoriaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ entidad?: string; cursor?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"entidad" | "cursor">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -15,7 +16,7 @@ export default async function AuditoriaPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_auditoria", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const entidad = (ENTIDADES_AUDITABLES as readonly string[]).includes(sp.entidad as string) ? (sp.entidad as CambioAuditable["entidad"]) : undefined;
   // El gate de arriba es de la sucursal activa: las filas de las otras se muestran solo si allí el rol también puede ver la auditoría.
   const sucursalIds = await sucursalesVisiblesDeAuditoria(ctx.usuarioId, ctx.membresias.map((m) => m.sucursalId), ctx.db);

@@ -10,6 +10,7 @@ import { GraficoSaldoCorriente } from "./grafico-saldo";
 import { CartelSinStockPropio } from "./cartel-sin-stock-propio";
 import { ComoSeCompro } from "./como-se-compro";
 import { ComoSeVendio } from "./como-se-vendio";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const VALORES_QUE_MOSTRAR: readonly QueMostrar[] = ["todo", "compras", "consumos-ventas", "ajustes-conteos"];
 
@@ -27,7 +28,7 @@ const ETIQUETA_RANGO_HISTORIAL: Record<RangoHistorial, string> = {
 export default async function HistorialProductoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ productoId?: string; seccionId?: string; desde?: string; hasta?: string; queMostrar?: string; rango?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"productoId" | "seccionId" | "desde" | "hasta" | "queMostrar" | "rango">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -40,7 +41,7 @@ export default async function HistorialProductoPage({
   // usa /reportes/compras (que gatea la pantalla entera; acá se condicionan solo las columnas de dinero, ver grounding §7).
   const { ver: mostrarDinero } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_historial_importes", ctx.db);
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const secciones = await listarSeccionesActivas(ctx.sucursalId);
   const queMostrar = comoQueMostrar(sp.queMostrar);
   // Un solo rango para TODA la pantalla (decisión 10 de §4): los números de arriba y el Kardex de abajo siempre parten de

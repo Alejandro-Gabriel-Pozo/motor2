@@ -4,6 +4,7 @@ import { obtenerReporteDescuentosClientes } from "@/core/reportes/descuentos-cli
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaDescuentosClientes } from "./tabla-descuentos-clientes";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Descuentos por cliente (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 10 — último del plan): cuánto se "regaló"
@@ -14,14 +15,14 @@ import { TablaDescuentosClientes } from "./tabla-descuentos-clientes";
  * Sin ninguna venta con cliente asignado en el rango: tabla vacía, sin ningún error — un cliente que existe pero no compró en el
  * rango simplemente no sale listado (no hay ninguna fila "en 0" que mostrar).
  */
-export default async function DescuentosClientesPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function DescuentosClientesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_descuentos_clientes", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
   const rep = await obtenerReporteDescuentosClientes(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
 

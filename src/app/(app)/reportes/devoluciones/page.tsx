@@ -3,15 +3,16 @@ import { diasAtrasDeUrl } from "@/core/reportes/dias-atras";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteDevoluciones } from "@/core/reportes/devoluciones";
 import { TablaDevolucionesClientes, TablaDevolucionesProveedor } from "./tabla-devoluciones";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
-export default async function DevolucionesPage({ searchParams }: { searchParams: Promise<{ dias?: string }> }) {
+export default async function DevolucionesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_devoluciones", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const dias = diasAtrasDeUrl(sp.dias, 30);
   const rep = await generarReporteDevoluciones(ctx.sucursalId, dias, ctx.db);
 

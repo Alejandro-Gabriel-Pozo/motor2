@@ -5,6 +5,7 @@ import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/lec
 import { listarStockParaConteo } from "@/core/movimientos/public-servidor";
 import { ConteoFisicoGrid, type FilaBaseConteo } from "./conteo-fisico-grid";
 import { AccionesConteoPendiente, BotonCancelarConteo } from "./acciones-historial";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const ESTADO_COLOR: Record<string, string> = {
   RESUELTO: "text-green-700",
@@ -17,7 +18,7 @@ const ESTADO_COLOR: Record<string, string> = {
 // filas una por una; una grilla grande tarda más que el límite por defecto de una función. Se aplica a todas las Server Actions de la página.
 export const maxDuration = 60;
 
-export default async function ConteoFisicoPage({ searchParams }: { searchParams: Promise<{ seccionId?: string }> }) {
+export default async function ConteoFisicoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"seccionId">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
@@ -26,7 +27,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
   // Cortesía de la interfaz, no barrera: la acción exige `conteo_resolver_pendiente` (clave propia, antes compartía `proceso_control`).
   const { editar: puedeResolverPendiente } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "conteo_resolver_pendiente", ctx.db);
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const [secciones, { items: historial }] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
     obtenerHistorialConteosFisicos(ctx.sucursalId),

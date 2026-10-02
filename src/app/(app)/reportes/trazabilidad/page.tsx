@@ -3,15 +3,16 @@ import { requierePermisoVer } from "@/core/permisos/gate";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/core/reportes/trazabilidad";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
 import { BotonAnularVenta } from "./boton-anular-venta";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
-export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<{ producto?: string; idOperacion?: string }> }) {
+export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"producto" | "idOperacion">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_trazabilidad", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const operacion = sp.idOperacion ? await obtenerOperacionPorId(ctx.sucursalId, sp.idOperacion, ctx.db) : null;
   const encontradas = !sp.idOperacion && sp.producto ? await buscarOperacionesPorProducto(ctx.sucursalId, sp.producto, ctx.db) : [];
 

@@ -4,20 +4,21 @@ import { obtenerReporteDescuentosProductos } from "@/core/reportes/descuentos-pr
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaDescuentosProductos } from "./tabla-descuentos-productos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Descuentos de productos (Fase 2 de promociones): cuánto se ahorraron los clientes en el rango por el descuento porcentual que la carta le pone a un
  * producto en esta sucursal (`src/core/reportes/descuentos-productos.ts`). Mismo permiso que el resto de los reportes de dinero
  * (`reporte_descuentos_productos`) y mismo selector de rango que «Descuentos por cliente».
  */
-export default async function DescuentosProductosPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function DescuentosProductosPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_descuentos_productos", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
   const rep = await obtenerReporteDescuentosProductos(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
 
