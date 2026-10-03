@@ -14,3 +14,9 @@ export async function activarTodosLosModulos(empresaId: string): Promise<void> {
   await prismaAdmin.moduloEmpresa.createMany({ data: MODULOS_VENDIBLES.map((modulo) => ({ empresaId, modulo })), skipDuplicates: true });
   await prismaAdmin.moduloEmpresa.updateMany({ where: { empresaId, estado: { not: "ACTIVO" } }, data: { estado: "ACTIVO" } });
 }
+
+/** Deja el registro de la empresa con EXACTAMENTE estos módulos en ACTIVO (los demás filas se borran). Para probar el guard con un plan parcial o vacío. */
+export async function fijarModulosActivos(empresaId: string, modulos: readonly string[]): Promise<void> {
+  await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId } });
+  if (modulos.length) await prismaAdmin.moduloEmpresa.createMany({ data: modulos.map((modulo) => ({ empresaId, modulo })) });
+}

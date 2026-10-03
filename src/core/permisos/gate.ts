@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import { capacidadesDeSucursal, sucursalTieneCapacidad } from "./capacidades-sucursal";
-import { contextoDeAccion, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
+import { contextoDeAccion, moduloDeAccion, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
 import { textoDeDenegacion, type Denegacion } from "./motivos";
+import { algunaAccionNecesitaElRegistro, denegacionDeModulo, denegacionDeModuloDeAccion, modulosEfectivosDeEmpresa } from "./modulos-de-empresa";
 import { esGerenteDeEmpresa } from "./rol-empresa";
 
 /** Una denegación lleva su MOTIVO tipado (ver `motivos.ts`) y el `mensaje` ya armado: las pantallas que solo muestran el texto no cambian. */
@@ -37,12 +38,32 @@ async function obtenerMembresiaConPermiso(
   return { membresia, permiso: rolAlcanzaLaAccion(membresia.rol.nombre, accionClave) ? (membresia.rol.permisos[0] ?? null) : null };
 }
 
+type MembresiaConPermiso = NonNullable<Awaited<ReturnType<typeof obtenerMembresiaConPermiso>>>;
+type AccesoDeSucursal = { denegacion: Denegacion } | ({ denegacion: null } & MembresiaConPermiso);
+
+/**
+ * Lo que tienen en común el gate de editar, el de ver y el nivel: ORDEN de evaluación membresía → módulo de la empresa → capacidad de la
+ * sucursal → (lo que sigue es del rol, que mira cada gate). La membresía va primero porque las acciones de sucursal no reciben `empresaId`:
+ * sale de `UsuarioSucursal.empresaId`. La capacidad se consulta en paralelo con la membresía (2 consultas, como antes) pero se evalúa después.
+ * El módulo de Administración (fijo) no lee el registro.
+ */
+async function resolverAccesoDeSucursal(usuarioId: string, sucursalId: string, accionClave: AccionDeSucursal, db: PrismaClient): Promise<AccesoDeSucursal> {
+  const [resultado, tieneCapacidad] = await Promise.all([
+    obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db),
+    sucursalTieneCapacidad(sucursalId, accionClave, db),
+  ]);
+  if (!resultado) return { denegacion: { motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_SUCURSAL" } };
+
+  const sinModulo = await denegacionDeModuloDeAccion(accionClave, resultado.membresia.empresaId, db);
+  if (sinModulo) return { denegacion: sinModulo };
+  if (!tieneCapacidad) return { denegacion: { motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursal" } };
+  return { denegacion: null, ...resultado };
+}
+
 /**
  * Equivalente de requierePermiso_ (Core.js:1455-1459): gate de EDITAR.
- * Orden de chequeo, igual que hoy: capacidad de sucursal → rol del usuario
- * en esa sucursal → permiso del rol para la acción — ahora en 2 queries
- * en vez de hasta 4 (ver `sucursalTieneCapacidad` y
- * `obtenerMembresiaConPermiso`).
+ * Orden de chequeo: membresía → módulo de la empresa → capacidad de
+ * sucursal → permiso del rol para la acción (ver `resolverAccesoDeSucursal`).
  */
 export async function requierePermiso(
   usuarioId: string,
@@ -50,17 +71,11 @@ export async function requierePermiso(
   accionClave: AccionDeSucursal,
   db: PrismaClient
 ): Promise<ResultadoGate> {
-  if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
-    return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursal" });
-  }
+  const acceso = await resolverAccesoDeSucursal(usuarioId, sucursalId, accionClave, db);
+  if (acceso.denegacion) return denegado(acceso.denegacion);
 
-  const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
-  if (!resultado) {
-    return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_SUCURSAL" });
-  }
-
-  if (!resultado.permiso?.puedeEditar) {
-    return denegado({ motivo: "SIN_PERMISO", caso: "ROL_SIN_LA_ACCION", para: "editar", accion: accionClave, rol: resultado.membresia.rol.nombre });
+  if (!acceso.permiso?.puedeEditar) {
+    return denegado({ motivo: "SIN_PERMISO", caso: "ROL_SIN_LA_ACCION", para: "editar", accion: accionClave, rol: acceso.membresia.rol.nombre });
   }
   return OK;
 }
@@ -78,17 +93,11 @@ export async function requierePermisoVer(
   accionClave: AccionDeSucursal,
   db: PrismaClient
 ): Promise<ResultadoGate> {
-  if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
-    return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursal" });
-  }
+  const acceso = await resolverAccesoDeSucursal(usuarioId, sucursalId, accionClave, db);
+  if (acceso.denegacion) return denegado(acceso.denegacion);
 
-  const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
-  if (!resultado) {
-    return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_SUCURSAL" });
-  }
-
-  if (!resultado.permiso?.puedeVer) {
-    return denegado({ motivo: "SIN_PERMISO", caso: "ROL_SIN_LA_ACCION", para: "ver", accion: accionClave, rol: resultado.membresia.rol.nombre });
+  if (!acceso.permiso?.puedeVer) {
+    return denegado({ motivo: "SIN_PERMISO", caso: "ROL_SIN_LA_ACCION", para: "ver", accion: accionClave, rol: acceso.membresia.rol.nombre });
   }
   return OK;
 }
@@ -97,9 +106,8 @@ export async function requierePermisoVer(
  * Equivalente de obtenerMiNivelPermiso (Core.js:1480-1485) — para que el
  * cliente sepa si mostrar controles de edición o solo la lista. A
  * diferencia de llamar `requierePermisoVer`+`requierePermiso` por
- * separado (4 queries, 2 pares en paralelo), acá se resuelve la
- * membresía+permiso UNA sola vez y se derivan ambos flags de ahí — 2
- * queries en total.
+ * separado, acá se resuelve el acceso UNA sola vez y se derivan ambos
+ * flags de ahí.
  */
 export async function obtenerMiNivelPermiso(
   usuarioId: string,
@@ -107,18 +115,14 @@ export async function obtenerMiNivelPermiso(
   accionClave: AccionDeSucursal,
   db: PrismaClient
 ): Promise<{ ver: boolean; editar: boolean }> {
-  if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
-    return { ver: false, editar: false };
-  }
+  const acceso = await resolverAccesoDeSucursal(usuarioId, sucursalId, accionClave, db);
+  if (acceso.denegacion) return { ver: false, editar: false };
 
-  const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
-  if (!resultado) return { ver: false, editar: false };
-
-  return { ver: resultado.permiso?.puedeVer ?? false, editar: resultado.permiso?.puedeEditar ?? false };
+  return { ver: acceso.permiso?.puedeVer ?? false, editar: acceso.permiso?.puedeEditar ?? false };
 }
 
 /**
- * De una lista de acciones, cuáles puede VER el usuario en esa sucursal (capacidad de la sucursal + «Ver» de su rol). Es lo
+ * De una lista de acciones, cuáles puede VER el usuario en esa sucursal (módulo de la empresa + capacidad de la sucursal + «Ver» de su rol). Es lo
  * mismo que `requierePermisoVer` por cada una, pero en 2 consultas para toda la lista: sirve para armar el menú sin una
  * consulta por ítem. Sin membresía activa, el resultado es vacío.
  */
@@ -140,10 +144,11 @@ export async function accionesQueElUsuarioPuedeVer(
   ]);
   if (!membresia || !membresia.activo || !membresia.rol.activo) return new Set();
 
+  const efectivos = algunaAccionNecesitaElRegistro(unicas) ? await modulosEfectivosDeEmpresa(membresia.empresaId, db) : null;
   return new Set(
     membresia.rol.permisos
       .map((p) => p.accionClave as AccionDeSucursal)
-      .filter((clave) => habilitadas.has(clave) && rolAlcanzaLaAccion(membresia.rol.nombre, clave))
+      .filter((clave) => habilitadas.has(clave) && rolAlcanzaLaAccion(membresia.rol.nombre, clave) && (!efectivos || !denegacionDeModulo(moduloDeAccion(clave), efectivos)))
   );
 }
 
@@ -179,10 +184,12 @@ interface NivelEnEmpresa {
   editar: boolean;
   /** Algún rol del usuario tiene la acción, pero la Central la deshabilitó en TODAS las sucursales donde la tiene. */
   bloqueadaPorLaCentral: boolean;
+  /** La empresa no tiene el módulo de la acción: manda sobre la capacidad y el rol, y `ver` y `editar` quedan en falso. */
+  sinModulo: Denegacion | null;
 }
 
 /**
- * Qué puede hacer el usuario con cada acción de CONTEXTO EMPRESA: una acción de empresa no depende de la sucursal en la que está parado, así que
+ * Qué puede hacer el usuario con cada acción de CONTEXTO EMPRESA (si la empresa tiene el módulo de la acción, antes que todo lo demás): una acción de empresa no depende de la sucursal en la que está parado, así que
  * vale si CUALQUIERA de sus membresías activas en esa empresa (sucursal activa, rol activo) tiene la clave Y la Central no la deshabilitó en esa
  * sucursal. Lo contrario (mirar solo la sucursal activa) le niega a un usuario con dos sucursales una acción de empresa según cuál tenga abierta.
  *
@@ -200,7 +207,10 @@ async function nivelesEnLaEmpresa(
     where: { usuarioId, activo: true, sucursal: { activo: true, empresaId }, rol: { activo: true } },
     include: { rol: { include: { permisos: { where: { accionClave: { in: unicas } } } } } },
   });
-  const habilitadas = await Promise.all(membresias.map((m) => capacidadesDeSucursal(m.sucursalId, unicas, db)));
+  const [habilitadas, efectivos] = await Promise.all([
+    Promise.all(membresias.map((m) => capacidadesDeSucursal(m.sucursalId, unicas, db))),
+    membresias.length > 0 && algunaAccionNecesitaElRegistro(unicas) ? modulosEfectivosDeEmpresa(empresaId, db) : null,
+  ]);
   const hayDeGerente = unicas.some((c) => nivelMinimoDeAccion(c) === "gerente");
   const esGerente =
     hayDeGerente && membresias.length > 0
@@ -209,7 +219,11 @@ async function nivelesEnLaEmpresa(
 
   const niveles = new Map<AccionDeEmpresa, NivelEnEmpresa>();
   for (const clave of unicas) {
-    const nivel: NivelEnEmpresa = { ver: false, editar: false, bloqueadaPorLaCentral: false };
+    const nivel: NivelEnEmpresa = { ver: false, editar: false, bloqueadaPorLaCentral: false, sinModulo: efectivos ? denegacionDeModulo(moduloDeAccion(clave), efectivos) : null };
+    if (nivel.sinModulo) {
+      niveles.set(clave, nivel);
+      continue;
+    }
     if (nivelMinimoDeAccion(clave) === "gerente") {
       nivel.ver = esGerente;
       nivel.editar = esGerente;
@@ -242,6 +256,7 @@ export async function requierePermisoDeEmpresa(
   if (!hayMembresia) return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_EMPRESA" });
 
   const nivel = niveles.get(accionClave)!;
+  if (nivel.sinModulo) return denegado(nivel.sinModulo);
   if (nivel.editar) return OK;
   if (nivel.bloqueadaPorLaCentral && !nivel.ver) return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursales_del_usuario" });
   if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado({ motivo: "SIN_PERMISO", caso: "SOLO_GERENTE", para: "editar" });
@@ -259,6 +274,7 @@ export async function requierePermisoVerDeEmpresa(
   if (!hayMembresia) return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_EMPRESA" });
 
   const nivel = niveles.get(accionClave)!;
+  if (nivel.sinModulo) return denegado(nivel.sinModulo);
   if (nivel.ver) return OK;
   if (nivel.bloqueadaPorLaCentral) return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursales_del_usuario" });
   if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado({ motivo: "SIN_PERMISO", caso: "SOLO_GERENTE", para: "ver" });

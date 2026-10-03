@@ -30,6 +30,11 @@ const CORE_CON_REACT_NEXT = [
       "Adaptador de sesión del pedido: `cache` de react (memoiza getUsuarioActual por request). Ruta fija en GUARDAS_POR_MODULO; 123 archivos lo referencian (casi todos vi.mock de test/).",
   },
   {
+    ruta: "src/core/permisos/modulos-de-empresa.ts",
+    motivo:
+      "Lector del registro de módulos de la empresa para el guard y el menú: `cache` de react lo memoiza por request (una lectura por pedido, no una por acción). Es el único archivo que consulta `ModuloEmpresa`.",
+  },
+  {
     ruta: "src/core/auth/ir-al-login.ts",
     motivo:
       "Adaptador de sesión del pedido: `headers` de next/headers (ruta pedida) + `redirect` de next/navigation (manda al login recordando la pantalla). Lo usan con-permiso.ts y las páginas.",
