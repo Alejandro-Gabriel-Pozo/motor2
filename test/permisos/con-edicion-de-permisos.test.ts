@@ -57,7 +57,8 @@ describe("conEdicionDePermisos: la política de la empresa corta la edición de 
     const antes = await estado();
     const creado = await crearRol("cajero");
     expect(creado.ok, creado.ok ? "" : creado.mensaje).toBe(true);
-    const apagado = await actualizarActivoRol(operadorRolId, false);
+    const cajero = await prisma.rol.findFirstOrThrow({ where: { nombre: "cajero" } });
+    const apagado = await actualizarActivoRol(cajero.id, false);
     expect(apagado.ok, apagado.ok ? "" : apagado.mensaje).toBe(true);
     const despues = await estado();
     expect(despues.roles).toBe(antes.roles + 1);

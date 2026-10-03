@@ -43,7 +43,6 @@ const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
   "server/actions/permisos/capacidades-sucursal.ts": { tipo: "permanente", motivo: "administra las capacidades por sucursal (CapacidadSucursal): es su trabajo.", esperados: 4 },
   "core/features/empresa/crear-empresa.ts": { tipo: "permanente", motivo: "siembra la matriz de permisos al crear la empresa.", esperados: 1 },
   "app/(app)/administracion/permisos/permisos-matriz.tsx": { tipo: "permanente", motivo: "solo MUESTRA la columna «Piso» de la matriz; no decide acceso.", esperados: 1 },
-  "server/actions/permisos/roles.ts": { tipo: "deuda", motivo: DEUDA_BLOQUE_G, esperados: 1 },
   "server/actions/auth/sucursales.ts": { tipo: "deuda", motivo: DEUDA_BLOQUE_G, esperados: 1 },
 };
 /** Archivo → motivo. Regla 2: la consola de plataforma muestra el estado de los módulos de cada empresa; se declara acá cuando exista. */
@@ -176,10 +175,10 @@ describe("acceso: fuera de core/permisos nada decide el acceso por su cuenta", (
     }
   });
 
-  it("la deuda del bloque G está acotada: solo dos archivos, 2 hallazgos (el bloque G la deja en cero)", () => {
+  it("la deuda del bloque G está acotada: solo un archivo, 1 hallazgo (el bloque G la deja en cero)", () => {
     const deuda = Object.entries(EXCEPCIONES_DE_ROL_Y_GUARD).filter(([, e]) => e.tipo === "deuda");
-    expect(deuda.map(([n]) => n).sort()).toEqual(["server/actions/auth/sucursales.ts", "server/actions/permisos/roles.ts"]);
-    expect(deuda.reduce((suma, [, e]) => suma + e.esperados, 0)).toBe(2);
+    expect(deuda.map(([n]) => n).sort()).toEqual(["server/actions/auth/sucursales.ts"]);
+    expect(deuda.reduce((suma, [, e]) => suma + e.esperados, 0)).toBe(1);
   });
 });
 
@@ -214,7 +213,7 @@ describe("el analizador de acceso detecta lo que dice detectar", () => {
   it("una excepción con cantidad declarada falla si aparece un hallazgo más o si se paga deuda sin bajarla", () => {
     const uno = analizarAcceso(`if (rol === "admin") {}`);
     const dos = analizarAcceso(`if (rol === "admin") {}\nif (rol.nombre === "x") {}`);
-    const archivo = "server/actions/permisos/roles.ts";
+    const archivo = "server/actions/auth/sucursales.ts";
     expect(problemasDe(archivo, uno)).toEqual([]);
     expect(problemasDe(archivo, dos).join("\n")).toContain("NUEVAS");
     expect(problemasDe(archivo, []).join("\n")).toContain("Se pagó deuda");

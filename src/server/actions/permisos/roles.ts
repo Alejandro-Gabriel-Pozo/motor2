@@ -2,7 +2,9 @@
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { invarianteRolDeSistemaIntacto, invarianteRolSinUsuariosActivos } from "@/core/permisos/invariantes";
 import { conEdicionDePermisos } from "../con-permiso";
+import { conGobierno } from "../con-gobierno";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerDeEmpresa } from "../con-sesion";
 
@@ -34,38 +36,32 @@ export async function crearRol(nombre: string): Promise<ResultadoAccion> {
 }
 
 /**
- * Equivalente de actualizarActivoRol (Core.js:994-1018): dos salvaguardas,
- * mismo espíritu que ya existe para Usuarios (nunca dejar el sistema sin
- * ningún admin activo):
- *   - 'admin' nunca se puede desactivar.
- *   - un rol con membresías ACTIVAS asignadas no se puede desactivar sin
- *     reasignarlas antes.
+ * Equivalente de actualizarActivoRol (Core.js:994-1018): dos salvaguardas de gobierno (G2), con la regla en `core/permisos/invariantes`:
+ *   - (c) un rol de sistema (con clave: «admin» y «operador») no se desactiva: la empresa lo necesita para gobernarse;
+ *   - (e) un rol con usuarios ACTIVOS asignados (cualquier sucursal) no se desactiva sin reasignarlos antes.
+ * Se lee y se escribe en la misma transacción serializable: una alta simultánea con ese rol no cuela a alguien en un rol recién apagado.
  */
 export async function actualizarActivoRol(rolId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conEdicionDePermisos("gestion_roles", async (ctx) => {
-    const rol = await ctx.db.rol.findUnique({ where: { id: rolId } });
-    if (!rol) return error("No se encontró ese rol.");
+  return conEdicionDePermisos("gestion_roles", async (ctx) =>
+    conGobierno(ctx, async (tx) => {
+      const rol = await tx.rol.findUnique({ where: { id: rolId } });
+      if (!rol) return error("No se encontró ese rol.");
 
-    if (!activo && rol.nombre === "admin") {
-      return error('El rol "admin" no se puede desactivar — sin él nadie podría volver a gestionar Usuarios/Permisos.');
-    }
-
-    if (!activo) {
-      const enUso = await ctx.db.usuarioSucursal.count({ where: { rolId, activo: true } });
-      if (enUso > 0) {
-        return error(`No se puede desactivar "${rol.nombre}": todavía hay usuarios activos con ese rol. Reasignalos primero.`);
+      if (!activo) {
+        const rechazo = invarianteRolDeSistemaIntacto(rol) ?? (await invarianteRolSinUsuariosActivos(tx, rol));
+        if (rechazo) return error(rechazo);
       }
-    }
 
-    await ctx.db.rol.update({ where: { id: rolId }, data: { activo } });
+      await tx.rol.update({ where: { id: rolId }, data: { activo } });
 
-    // Auditoría administrativa (A3, Pivote 6).
-    await registrarCambioAuditado(ctx.db, {
-      entidad: "Rol", entidadId: rolId, campo: "activo",
-      descripcion: `Rol "${rol.nombre}": activo`,
-      valorAnterior: rol.activo, valorNuevo: activo, actorId: ctx.usuarioId,
-    });
+      // Auditoría administrativa (A3, Pivote 6).
+      await registrarCambioAuditado(tx, {
+        entidad: "Rol", entidadId: rolId, campo: "activo",
+        descripcion: `Rol "${rol.nombre}": activo`,
+        valorAnterior: rol.activo, valorNuevo: activo, actorId: ctx.usuarioId,
+      });
 
-    return ok(`Rol "${rol.nombre}" ${activo ? "activado" : "desactivado"}.`);
-  });
+      return ok(`Rol "${rol.nombre}" ${activo ? "activado" : "desactivado"}.`);
+    }),
+  );
 }
