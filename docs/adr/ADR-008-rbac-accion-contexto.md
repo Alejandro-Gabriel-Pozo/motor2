@@ -130,9 +130,9 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 
 ## Riesgos y pendientes abiertos
 
-- **Índice único del gerente en la base** (schema, requiere autorización expresa). Hasta entonces dos asignaciones simultáneas en una
-  empresa SIN gerente no están protegidas (el traspaso entre gerentes sí, por la baja condicional).
-- **UI del traspaso de gerencia**: la acción existe, falta la pantalla.
+- ~~**Índice único del gerente en la base**~~ — HECHO (migración `20261001240000_gerente_unico_indice`, aplicada también en stockhneuquen).
+- **UI del traspaso de gerencia**: la acción existe, falta la pantalla. Decidido el 2026-10-02: clave propia `traspasar_gerencia`
+  (contexto empresa, piso gerente), confirmación escribiendo el email del destino y auditoría con emails.
 - **Gerente cuyo rol de sucursal no es `admin`**: no alcanza las acciones de piso administrador (el piso sale del rol de la sucursal). Hoy
   el gerente es siempre un admin activo al asumir, pero nada impide después cambiarle el rol en una sucursal. Decisión de diseño abierta.
 - **Superadmin de plataforma**: no existe como concepto en el código; hoy es una función del core que su herramienta puede llamar.

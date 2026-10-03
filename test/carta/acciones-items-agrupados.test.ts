@@ -11,6 +11,7 @@ import {
   guardarItemAgrupadoCarta,
   quitarOpcionItemAgrupadoCarta,
 } from "../../src/server/actions/carta/items-agrupados";
+import { cargarAdminItemsAgrupados } from "../../src/core/carta/admin-consulta";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 import { validarNombreItemAgrupadoCarta } from "../../src/core/carta/validaciones";
 
@@ -180,6 +181,36 @@ describe("Server Actions de ítems agrupados", () => {
       // Deshabilitado: vuelve a valer el global ($5000) y entra.
       await prisma.precioLocalProducto.updateMany({ where: { productoId: ids.sprite }, data: { habilitado: false } });
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
+    });
+
+    it("R3 por diseño (ADR-009): un descuento en OTRA sucursal bloquea agrupar, aunque en la activa no haya", async () => {
+      const agId = await crearGaseosa();
+      const otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+      await prisma.descuentoProductoSucursal.create({ data: { productoId: ids.coca, sucursalId: otra, porcentaje: 10 } });
+      expect(await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).toEqual({
+        ok: false,
+        mensaje: "«Coca-Cola 500cc» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).",
+      });
+      expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(0);
+      await prisma.descuentoProductoSucursal.deleteMany({ where: { productoId: ids.coca } });
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
+    });
+
+    it("R3 por diseño (ADR-009): un precio local distinto en OTRA sucursal NO bloquea; esa sucursal ve el mayor y el admin lo avisa", async () => {
+      const agId = await crearGaseosa();
+      const otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+      await prisma.disponibilidadProducto.createMany({
+        data: [ids.coca, ids.sprite].map((productoId) => ({ sucursalId: otra, productoId, disponible: true })),
+      });
+      await prisma.precioLocalProducto.create({ data: { sucursalId: otra, productoId: ids.sprite, precio: 5500, habilitado: true } });
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
+
+      const enActiva = await cargarAdminItemsAgrupados(sucursalId, prisma);
+      expect(enActiva.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
+      const enOtra = await cargarAdminItemsAgrupados(otra, prisma);
+      expect(enOtra.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
+      expect(enOtra.items[0].precio).toEqual({ minimo: 5000, maximo: 5500 });
     });
 
     it("agregar, reordenar y quitar; quitar deja intacto el ContenidoCartaProducto", async () => {

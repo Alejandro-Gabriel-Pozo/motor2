@@ -4,6 +4,8 @@ Historial de lo que falta, en el formato del `docs/pendientes-sesion-2026-09-27.
 (`TaskCreate`/`TaskList`) no está disponible en esta sesión y no es visible desde otra, así que el historial vive acá. Cada
 pendiente lleva su estado; al cerrar uno se actualiza este archivo en el mismo commit.
 
+**Estado vigente (2026-10-02): `docs/pendientes-sesion-2026-10-02.md`** — los ítems 3, 8, 9 y 10 de abajo estaban atrasados y se corrigieron ahí y acá.
+
 Rama de trabajo: `multitenancy-fase-a`. `origin/main` = `72acca5` y no se toca. Commits/push se habilitan por hash y por
 commit, siempre con OK expreso del dueño.
 
@@ -112,8 +114,7 @@ commit, siempre con OK expreso del dueño.
    `test/arquitectura/escrituras-de-permisos-por-politica.test.ts` y test con la política en false
    (`test/permisos/con-edicion-de-permisos.test.ts`). **Pendiente:** el dato (dónde se guarda la perilla y el plan/catálogo por empresa) —
    necesita schema, autorización expresa.
-3. Permisos de carta (corrida 1, sin schema) y recetas (corrida 1, sin schema), según
-   `motor2-recetas-carta-por-sucursal-decisiones`.
+3. ~~Permisos de carta (corrida 1) y recetas (corrida 1)~~ — HECHOS (`15ca92d`, `2c8c5db`, carta `c055f7e`). Lo que sigue (R2/C2 sin schema, luego receta y carta propias con schema) está en `pendientes-sesion-2026-10-02.md`.
 4. ~~Auditoría de traspasos, compras, clientes, api y cron~~ — HECHO (Lote 1, 2026-10-01). Se verificó contra el código: traspasos y compras
    ya dejan rastro propio (`TraspasoSucursal`, `Operacion` con su actor); el hueco real eran Clientes (alta/edición/activar) y la asignación
    de cliente a una cuenta, que ahora auditan, más el filtro "Cuenta" y la lista única `ENTIDADES_AUDITABLES`. Guardián:
@@ -124,11 +125,12 @@ commit, siempre con OK expreso del dueño.
 5. ~~Iconos lucide en el menú, con medición de bundle antes de decidir~~ — HECHO (Lote 3, tanda A, `c570111`; bundle 1,925,207 B crudo / 621,892 B gzip). Íconos de acciones de tabla: tanda B (P6).
 6. ~~`/inicio` real~~ — HECHO (Lote 3, tanda A, `c570111`).
 7. ~~Plan de cambio de sucursal / salida del salón~~ — HECHO (Lote 3, tanda A, `969e52e`).
-8. ~~Dos paneles, Empresa y Sucursal~~ — HECHO (Lote 3, tanda B, sin commitear): `docs/adr/ADR-010-dos-paneles-empresa-sucursal.md` (opción B, selector en el sidebar, `panel` en cada ítem, `dosPaneles` en `politicaDeEmpresa`). Tests `test/navegacion/paneles.test.ts` y `test/e2e/menu-paneles.spec.ts`. F3 (resumen de sucursal, mover «Calibrar recetas») diferida.
-9. Módulo de margen objetivo.
+8. ~~Dos paneles, Empresa y Sucursal~~ — HECHO (Lote 3, tanda B, sin commitear): `docs/adr/ADR-010-dos-paneles-empresa-sucursal.md` (opción B, selector en el sidebar, `panel` en cada ítem, `dosPaneles` en `politicaDeEmpresa`). Tests `test/navegacion/paneles.test.ts` y `test/e2e/menu-paneles.spec.ts`. F3 decidida el 2026-10-02: no se mueve nada («Calibrar recetas» ya está en Sucursal) y el selector muestra el nombre de la sucursal activa (HECHO el 2026-10-02: `data-sucursal-activa` en `sidebar-nav.tsx`).
+9. Módulo de margen objetivo. **Etapas 0 y 1 hechas** (`395e0e3`, `3a48990`: modelo `MargenObjetivo`, `/catalogo/margen-objetivo`, reporte de costos). **Alerta pasiva en Período HECHA** (2026-10-02, sin commitear): `resumirFueraDeObjetivo` + alerta «media» con enlace «Ver en Costos» (solo si hay objetivos cargados y el rol ve Costos); tests en `test/reportes/margen-objetivo.test.ts`, `test/reportes/periodo.test.ts` y `test/e2e/margen-objetivo.spec.ts`.
 10. Unificar la semántica de «sin fila» (sin precio local, sin receta propia, sin carta propia).
     **Tanda 1 hecha (2026-10-01, `c4b2c28`):** `docs/adr/ADR-009-semantica-de-ausencia-por-sucursal.md` (cinco familias, embudo por modelo,
     inconsistencias R1–R4). Guardianes `test/arquitectura/semantica-sin-fila.test.ts` y `promo-sucursal-en-un-solo-lugar.test.ts`;
     caracterización en `test/core/semantica-sin-fila.test.ts` y `test/carta/promo-sucursal.test.ts`. R4 resuelta (`elegirMinimo`,
     `whereSeccionHabitualVigente`). **Pendiente del dueño:** R1 (¿la capacidad `precio_local` apaga también el precio local de la promo y el
     descuento?) y R2 (qué muestra un reporte sin sucursal: `reportes/comun.ts` asume `disponible: true`). R3 se revisa con la carta propia.
+    **Actualización 2026-10-02:** R1 y R2 ya están resueltas (`35fb344`) y R3 quedó «por diseño» (ver ADR-009).

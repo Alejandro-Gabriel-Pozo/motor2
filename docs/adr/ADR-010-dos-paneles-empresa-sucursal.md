@@ -49,7 +49,7 @@ sucursal lo mira y edita lo suyo (disponibilidad, precio local).
   traspasos, mesas).
 
 Defaults asumidos, cambiables con una línea (el `panel` del ítem): Usuarios, Auditoría y Consolidado (stock y reportes) en Sucursal;
-«Calibrar recetas» no se movió de su grupo.
+«Calibrar recetas» (`/reportes/rendimiento-recetas`) ya está en el panel Sucursal y no se mueve (decisión del dueño, 2026-10-02).
 
 ### 4. `dosPaneles` en la política de la empresa
 
@@ -75,7 +75,7 @@ funcionando con la política apagada (cubierto por los e2e previos al flip, que 
 - F1: sidebar con selector detrás de `dosPaneles = false` (UI idéntica).
 - F2: `dosPaneles = true`; spec e2e `menu-paneles.spec.ts` (admin ve dos paneles, un rol sin Empresa no ve selector, entrar a
   `/catalogo/categorias` activa Empresa, Productos conserva el último panel, axe en ambos paneles).
-- **F3 diferida:** el selector podría llevar un resumen de la sucursal activa y mover «Calibrar recetas»; no se hace sin pedido del dueño.
+- **F3 (decidida 2026-10-02):** «Calibrar recetas» no se mueve (ya está en Sucursal). El resumen del selector se reduce a mostrar el nombre de la sucursal activa como texto visible bajo el selector; nada más.
 
 ## Consecuencias
 

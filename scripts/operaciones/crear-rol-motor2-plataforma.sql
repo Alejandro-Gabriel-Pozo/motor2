@@ -13,7 +13,12 @@
 -- Uso (como dueño/superusuario; la clave por variable psql, nunca en el repo):
 --   psql <conexión del dueño a la base> -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql          (crea el rol y sus grants)
 --   psql <conexión del dueño a la base> -v restringir=1 -f scripts/operaciones/crear-rol-motor2-plataforma.sql              (además quita la escritura de Empresa a motor2_app)
--- En Neon: el rol se crea con el dueño (`neondb_owner`) desde el SQL editor o psql; no hace falta superusuario. Idempotente. Reversa: quitar-rol-motor2-plataforma.sql
+-- En Neon: SOLO con psql y este archivo, conectado como el dueño (`neondb_owner`); no hace falta superusuario. NUNCA crear el rol desde la consola o la API de
+-- Neon: esos roles nacen como `neon_superuser` con BYPASSRLS y se saltarían el aislamiento por empresa. Los roles son POR RAMA de Neon: hay que correrlo en
+-- cada rama (la de producción de cada despliegue; stockhneuquen y zuluhub son proyectos distintos). Idempotente. Reversa: quitar-rol-motor2-plataforma.sql
+-- La URL del rol (PLATAFORMA_DATABASE_URL) vive SOLO en un archivo local gitignored (p. ej. `.env.plataforma.<despliegue>`) y se usa con
+-- `DOTENV_CONFIG_PATH=.env.plataforma.<despliegue> npx tsx scripts/crear-empresa.ts ...`. NO se carga en Vercel: la aplicación no debe tener las
+-- credenciales del rol que escribe `Empresa` (cargar-env-vercel.sh la rechaza).
 
 \set ON_ERROR_STOP on
 

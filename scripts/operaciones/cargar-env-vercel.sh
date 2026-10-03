@@ -16,7 +16,9 @@ set -euo pipefail
 
 PROYECTOS_PERMITIDOS=" motor2-demo stockhneuquen "
 SCOPE="${VERCEL_SCOPE:-alepozod}"
-SENSIBLES=" DATABASE_URL DIRECT_URL PLATAFORMA_DATABASE_URL AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET CRON_SECRET BOOTSTRAP_ADMIN_EMAILS ALLOWED_EMAIL_DOMAINS "
+# PLATAFORMA_DATABASE_URL NO va a Vercel: la usan solo scripts locales (crear-empresa, politica-empresa). Cargarla en el entorno de la app le daría
+# a la app las credenciales del rol que puede escribir `Empresa`, justo lo que la separación de roles (S-13) quiere evitar.
+SENSIBLES=" DATABASE_URL DIRECT_URL AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET CRON_SECRET BOOTSTRAP_ADMIN_EMAILS ALLOWED_EMAIL_DOMAINS "
 # NEXT_PUBLIC_* viaja al navegador: Vercel no admite que sea sensible.
 PUBLICAS=" AUTH_URL CARTA_DOMINIO_BASE CARTA_EMPRESA_UNICA MOTOR2_ROL_ESTRICTO MOTOR2_MIGRAR_EN_BUILD NEXT_PUBLIC_SENTRY_DSN "
 
@@ -50,6 +52,10 @@ while IFS= read -r linea || [[ -n "$linea" ]]; do
   [[ "$linea" =~ ^[A-Z_][A-Z0-9_]*= ]] || fallar "línea $numero: no tiene la forma NOMBRE=valor"
   nombre="${linea%%=*}"
   valor="${linea#*=}"
+  if [[ "$nombre" == "PLATAFORMA_DATABASE_URL" ]]; then
+    [[ -z "$valor" ]] || fallar "línea $numero: PLATAFORMA_DATABASE_URL no se carga en Vercel (solo la usan scripts locales: ponela en un archivo local y apuntá DOTENV_CONFIG_PATH a él)"
+    continue
+  fi
   [[ "$SENSIBLES$PUBLICAS" == *" $nombre "* ]] || fallar "línea $numero: «$nombre» no está en las listas permitidas (¿error de tipeo?)"
   [[ -z "${VALORES[$nombre]+x}" ]] || fallar "línea $numero: «$nombre» está repetida"
   [[ -n "$valor" ]] || continue
@@ -74,7 +80,7 @@ if [[ -n "${VALORES[CARTA_EMPRESA_UNICA]+x}" && -n "${VALORES[CARTA_EMPRESA_UNIC
   [[ "${VALORES[CARTA_EMPRESA_UNICA]}" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ && ${#VALORES[CARTA_EMPRESA_UNICA]} -le 63 ]] || fallar "CARTA_EMPRESA_UNICA es un slug (minúsculas, números y guiones simples, hasta 63 caracteres)"
   [[ -n "${VALORES[CARTA_DOMINIO_BASE]+x}" && -n "${VALORES[CARTA_DOMINIO_BASE]}" ]] || fallar "CARTA_EMPRESA_UNICA se carga junto con CARTA_DOMINIO_BASE: sin dominio base el add-on no tiene dónde servir la carta"
 fi
-for u in DATABASE_URL DIRECT_URL PLATAFORMA_DATABASE_URL; do
+for u in DATABASE_URL DIRECT_URL; do
   if [[ -n "${VALORES[$u]+x}" ]]; then
     [[ "${VALORES[$u]}" == postgres://* || "${VALORES[$u]}" == postgresql://* ]] || fallar "$u no parece una URL de Postgres"
   fi
@@ -89,7 +95,7 @@ for nombre in "${ORDEN[@]}"; do
   tipo="config"; [[ "$SENSIBLES" == *" $nombre "* ]] && tipo="SENSIBLE"
   extra=""
   case "$nombre" in
-    DATABASE_URL | DIRECT_URL | PLATAFORMA_DATABASE_URL) extra=" · rol de base: $(usuario_de_url "${VALORES[$nombre]}")" ;;
+    DATABASE_URL | DIRECT_URL) extra=" · rol de base: $(usuario_de_url "${VALORES[$nombre]}")" ;;
   esac
   printf '  %-26s %-9s %4d caracteres%s\n' "$nombre" "$tipo" "${#VALORES[$nombre]}" "$extra"
 done
