@@ -60,6 +60,17 @@ describe("la aprobación de migraciones está cableada", () => {
     }
   });
 
+  it("el registro de módulos se verifica solo en modo «verificar», después de `migrate status`, y su script existe", () => {
+    const fuente = readFileSync(join(raiz, "scripts/construir.ts"), "utf8");
+    const desde = fuente.indexOf('modo === "verificar"');
+    const rama = fuente.slice(desde, fuente.indexOf("} else {", desde));
+    expect(rama.indexOf("npx prisma migrate status")).toBeGreaterThan(-1);
+    expect(rama.indexOf("verificar-registro-de-modulos.ts")).toBeGreaterThan(rama.indexOf("npx prisma migrate status"));
+    expect(fuente.match(/verificar-registro-de-modulos/g)?.length).toBe(2); // el comentario del encabezado y la llamada
+    expect(scripts["verificar:modulos"]).toBe("tsx scripts/verificar-registro-de-modulos.ts");
+    expect(existsSync(join(raiz, "scripts/verificar-registro-de-modulos.ts"))).toBe(true);
+  });
+
   it("el doc que nombra el mensaje del build existe", () => {
     expect(existsSync(join(raiz, "docs/deploy-con-migraciones.md"))).toBe(true);
   });

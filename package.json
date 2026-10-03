@@ -26,7 +26,8 @@
     "politica-empresa": "tsx scripts/politica-empresa.ts",
     "detectar-cuentas-vinculadas": "tsx scripts/detectar-cuentas-vinculadas.ts",
     "medir-precargados": "tsx scripts/medir-precargados-sin-google.ts",
-    "medir-zonas": "tsx scripts/medir-zonas-horarias.ts"
+    "medir-zonas": "tsx scripts/medir-zonas-horarias.ts",
+    "verificar:modulos": "tsx scripts/verificar-registro-de-modulos.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

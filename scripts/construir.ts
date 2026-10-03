@@ -4,7 +4,8 @@
  * El build NUNCA aplica migraciones por su cuenta (Tanda 7, 2026-10-02): aplicar una migración a una base es una decisión del dueño, no un
  * efecto secundario de compilar. Tres modos (`modoDeMigracionEnBuild`):
  *  - `verificar` (por defecto, local, gate y Producción de Vercel): corre `prisma migrate status`; con migraciones pendientes el build FALLA
- *    con el mensaje de cómo aprobarlas. Sin pendientes sigue igual que siempre.
+ *    con el mensaje de cómo aprobarlas. Sin pendientes, verifica además el registro de módulos (solo lectura, `verificar-registro-de-modulos.ts`):
+ *    una empresa activa anterior a la migración sin registro hace fallar el build. Sigue igual que siempre si todo está en orden.
  *  - `aplicar`: solo con `MOTOR2_MIGRAR_EN_BUILD=1`, puesto a propósito para UN deploy; corre `prisma migrate deploy`.
  *  - `omitir`: `MOTOR2_MIGRAR_EN_BUILD=0`, o un build de Vercel que no es de Producción (el Preview de `stockhneuquen` comparte la base de
  *    producción, ADR-007): no toca la base ni la mira.
@@ -49,6 +50,7 @@ if (process.argv[1] && /construir\.ts$/.test(process.argv[1].replace(/\\/g, "/")
       console.error(mensajeDeMigracionesSinAprobar());
       process.exit(1);
     }
+    correrOSalir("npx tsx scripts/verificar-registro-de-modulos.ts");
   } else {
     console.log("[build] No se toca la base: MOTOR2_MIGRAR_EN_BUILD=" + (process.env.MOTOR2_MIGRAR_EN_BUILD ?? "(sin definir)") + ", VERCEL_ENV=" + (process.env.VERCEL_ENV ?? "(sin definir)") + ".");
   }

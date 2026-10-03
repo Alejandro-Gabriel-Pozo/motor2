@@ -14,7 +14,6 @@ import { MODULOS } from "../../src/core/modulos/catalogo";
  * El camino de `motor2_plataforma` no se puede ejercitar acá: es un rol que se crea a mano en cada base y no existe en la de test. Se verifica en el
  * ensayo O0 (rama de Neon) con `verificacion-previa.sql`; acá se comprueba que la política y el trigger lo nombran.
  */
-afterAll(() => prismaAdmin.$disconnect());
 
 const A = "empresa_principal";
 const B = "norte";
@@ -22,6 +21,14 @@ const C = "sur";
 
 const MIGRACION = readFileSync(join(__dirname, "../../prisma/migrations/20261004120000_registro_de_modulos_por_empresa/migration.sql"), "utf8").replace(/\r\n/g, "\n");
 const BACKFILL = MIGRACION.slice(MIGRACION.indexOf('INSERT INTO "ModuloEmpresa"'));
+// Los tests de acá vacían el registro; la base compartida tiene que quedar como la dejó la migración (la empresa por defecto con sus 9 módulos),
+// porque `verificar-registro-de-modulos` corre en el build después de los tests.
+afterAll(async () => {
+  await limpiarBaseDeTest();
+  await prismaAdmin.$executeRawUnsafe(BACKFILL);
+  await prismaAdmin.$disconnect();
+});
+
 const VENDIBLES = MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id as string).sort();
 
 async function filas(empresaId: string) {
