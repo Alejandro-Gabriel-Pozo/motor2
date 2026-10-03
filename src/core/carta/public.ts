@@ -14,6 +14,7 @@ export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from 
 export { aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "./descuento-producto";
 export type { Resultado } from "./validaciones";
 export { formatearPrecioCarta } from "./precio-carta";
+export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
 export type { EstiloPortal } from "./portal";

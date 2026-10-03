@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { armarMenuCarta, type CartaV1, type MenuArmado } from "./armar-menu";
 import { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
+import { whereCartaDeSucursal } from "./carta-de-sucursal";
 import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -14,7 +15,8 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * catálogo. Qué entra:
  *  - PV disponibles en la sucursal — con `whereDisponibleEn`, el único lugar que escribe ese filtro ("fila ausente = no
  *    disponible", guardián disponibilidad-en-un-solo-lugar.test.ts);
- *  - y con `ContenidoCartaProducto.visibleEnCarta` en true (sin fila de contenido = no se muestra, decisión D3);
+ *  - y con `ContenidoCartaProducto.visibleEnCarta` en true EN LA CARTA PROPIA DE ESTA SUCURSAL (sin fila de contenido = no se muestra, decisión D3;
+ *    una sucursal sin carta propia no muestra nada: ADR-009, C3);
  *  - con el precio local habilitado de la sucursal si lo hay (la regla la aplica `precioDeCarta`);
  *  - ubicados DIRECTO en las secciones de carta ACTIVAS, cada uno por su `seccionCartaId` (docs/plan-carta-seccion-directa-2026-09-25.md;
  *    la Categoría de producto solo viaja como texto informativo);
@@ -33,13 +35,13 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
 
   const [productos, secciones, promos, agrupados] = await Promise.all([
     db.producto.findMany({
-      where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), contenidoCarta: { is: { visibleEnCarta: true } }, opcionItemAgrupadoCarta: { is: null } },
+      where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } },
       select: {
         id: true,
         nombre: true,
         precioVenta: true,
         categoria: { select: { nombre: true } },
-        contenidoCarta: { select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true } },
+        contenidosCarta: { where: whereCartaDeSucursal(sucursalId), select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true }, take: 1 },
       },
     }),
     db.seccionCarta.findMany({
@@ -58,7 +60,7 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
       select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
     }),
     db.itemAgrupadoCarta.findMany({
-      where: { empresaId, activo: true },
+      where: { empresaId, activo: true, ...whereCartaDeSucursal(sucursalId) },
       select: {
         id: true,
         nombre: true,
@@ -87,16 +89,16 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
     generadoEn: ahora,
     secciones,
     productos: productos.flatMap((p) =>
-      // El `where` ya exige la fila de contenido; el guard es solo para el tipo (la relación es opcional).
-      p.contenidoCarta
+      // El `where` ya exige la fila de contenido de ESTA sucursal; el guard es solo para el tipo.
+      p.contenidosCarta[0]
         ? [
             {
               id: p.id,
               nombre: p.nombre,
               precioVenta: Number(p.precioVenta),
               categoriaNombre: p.categoria?.nombre ?? null,
-              seccionCartaId: p.contenidoCarta.seccionCartaId,
-              contenido: p.contenidoCarta,
+              seccionCartaId: p.contenidosCarta[0].seccionCartaId,
+              contenido: p.contenidosCarta[0],
             },
           ]
         : []

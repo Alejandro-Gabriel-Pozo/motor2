@@ -29,7 +29,7 @@ export interface ResultadoAnalisis {
 
 /** Nombres de guarda reconocidos, por el módulo del que se importan (sufijo del specifier). */
 const GUARDAS_POR_MODULO: Record<string, string[]> = {
-  "con-permiso": ["conPermiso", "conPermisoDeEmpresa", "conEdicionDePermisos", "conGerenteDeEmpresa"],
+  "con-permiso": ["conPermiso", "conPermisoDeEmpresa", "conEdicionDePermisos"],
   "con-sesion": ["requerirSesion", "requerirSesionEnSucursal", "requerirVer", "requerirVerEnSucursal", "requerirVerDeEmpresa"],
   "core/auth/contexto": ["obtenerContextoUsuario"],
   "core/auth/session": ["getUsuarioActual"],

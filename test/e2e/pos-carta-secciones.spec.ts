@@ -38,13 +38,13 @@ async function sembrarCarta(sucursalId: string) {
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas ${marca}`, orden: 2 } });
   await prisma.contenidoCartaProducto.createMany({
     data: [
-      { productoId: bife.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
-      { productoId: milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
-      { productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
+      { sucursalId, productoId: bife.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
+      { sucursalId, productoId: milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
+      { sucursalId, productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
     ],
   });
-  const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Gaseosa 500cc ${marca}`, seccionCartaId: bebidas.id, orden: 2 } });
-  await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite, fanta].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+  const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E Gaseosa 500cc ${marca}`, seccionCartaId: bebidas.id, orden: 2 } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite, fanta].map((p, orden) => ({ sucursalId, itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
 
   return {
     bife,
@@ -297,16 +297,16 @@ async function sembrarCartaConGenero(sucursalId: string) {
 
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas Género ${marca}`, orden: 1 } });
   const postres = await prisma.seccionCarta.create({ data: { nombre: `E2E Postres Género ${marca}`, orden: 2 } });
-  const genero = await prisma.generoCarta.create({ data: { nombre: `E2E Cerveza ${marca}`, orden: 0 } });
+  const genero = await prisma.generoCarta.create({ data: { sucursalId, nombre: `E2E Cerveza ${marca}`, orden: 0 } });
   await prisma.contenidoCartaProducto.createMany({
     data: [
-      { productoId: ipa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1, generoCartaId: genero.id },
-      { productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
-      { productoId: flan.id, visibleEnCarta: true, seccionCartaId: postres.id, orden: 1 },
+      { sucursalId, productoId: ipa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1, generoCartaId: genero.id },
+      { sucursalId, productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
+      { sucursalId, productoId: flan.id, visibleEnCarta: true, seccionCartaId: postres.id, orden: 1 },
     ],
   });
-  const artesanal = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Cerveza Artesanal ${marca}`, seccionCartaId: bebidas.id, orden: 0, generoCartaId: genero.id } });
-  await prisma.opcionItemAgrupadoCarta.createMany({ data: [stout, rubia].map((p, orden) => ({ itemAgrupadoCartaId: artesanal.id, productoId: p.id, orden })) });
+  const artesanal = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E Cerveza Artesanal ${marca}`, seccionCartaId: bebidas.id, orden: 0, generoCartaId: genero.id } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: [stout, rubia].map((p, orden) => ({ sucursalId, itemAgrupadoCartaId: artesanal.id, productoId: p.id, orden })) });
 
   return {
     ipa,

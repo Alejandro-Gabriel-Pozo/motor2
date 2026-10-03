@@ -62,7 +62,7 @@ describe("Precio Local y la capacidad precio_local", () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 1000 }, sucursalId);
     productoId = pv.id;
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Platos", orden: 1 } });
-    await prisma.contenidoCartaProducto.create({ data: { productoId, visibleEnCarta: true, seccionCartaId: seccionCarta.id } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccionCarta.id } });
     await prisma.precioLocalProducto.create({ data: { sucursalId, productoId, precio: 800, habilitado: true } });
   });
 

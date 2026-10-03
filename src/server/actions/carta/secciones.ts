@@ -6,7 +6,8 @@ import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from ".
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
- * Secciones de carta (docs/plan-carta-catalogo-2026-09-24.md, M9). Globales (Catálogo Central, decisión D4). Solo escriben en
+ * Secciones de carta (docs/plan-carta-catalogo-2026-09-24.md, M9). De la EMPRESA, no de la sucursal (decisión D4; la carta propia de cada
+ * sucursal, ADR-009 C3, decide qué contenido pone en cada sección, no las secciones). Solo escriben en
  * `SeccionCarta`. Cada producto suelto y cada ítem agrupado elige su sección directo (docs/plan-carta-seccion-directa-2026-09-25.md):
  * la Categoría de producto no ubica nada en la carta. Gate: `carta_secciones` (empresa; solo admin en la semilla).
  */

@@ -114,7 +114,7 @@ test.describe("carta de una sucursal", () => {
     });
     const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sección ${marca}` } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
-    await prisma.contenidoCartaProducto.create({ data: { productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
     const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E Promo ${marca}`, precio: 5000 } });
     await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
 
@@ -150,7 +150,7 @@ test.describe("carta de una sucursal", () => {
     });
     const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sección Local ${marca}` } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
-    await prisma.contenidoCartaProducto.create({ data: { productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
     await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 22222, habilitado: true } });
     await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
     await prisma.capacidadSucursal.create({ data: { accionClave: "precio_local", sucursalId, habilitado: false } });

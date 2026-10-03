@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
   obtenerRecetaVigente,
   agregarIngredienteAReceta,
@@ -30,13 +30,15 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { listarSucursalesConRecetaPropia, obtenerEstadoDeRecetaPropia } from "@/server/consultas/catalogo/receta-propia";
+import { RecetaDeLaSucursal } from "./receta-de-la-sucursal";
 
 export default async function RecetaEditorPage({
   params,
   searchParams,
 }: {
   params: Promise<{ productoId: string }>;
-  searchParams: Promise<ParametrosDeUrl<"editar" | "editarPaso" | "editarFicha">>;
+  searchParams: Promise<ParametrosDeUrl<"editar" | "editarPaso" | "editarFicha" | "editarPropia">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
@@ -48,7 +50,7 @@ export default async function RecetaEditorPage({
   // Rendimiento por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 7): "Usar este valor" del
   // reporte de Rendimiento real de recetas YA NO navega acá con `?sugerido=` — calibra la sucursal directo
   // (fijarRendimientoLocal). Este editor solo toca la receta CENTRAL.
-  const { editar, editarPaso, editarFicha } = unicosDeUrl(await searchParams);
+  const { editar, editarPaso, editarFicha, editarPropia } = unicosDeUrl(await searchParams);
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpDisponibles, unidades] = await Promise.all([
@@ -124,6 +126,15 @@ export default async function RecetaEditorPage({
       calibracionesPorIngrediente.set(c.recetaIngredienteId, lista);
     }
   }
+
+  // Receta propia de la sucursal activa (ADR-009, R3/R4): estado + qué acciones le tocan a este usuario (una clave por acción).
+  const [estadoPropia, otrasConRecetaPropia, nivelEditar, nivelCopiar, nivelVolver] = await Promise.all([
+    obtenerEstadoDeRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
+    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_editar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_copiar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),
+  ]);
 
   return (
     <div className="flex max-w-2xl flex-col gap-8">
@@ -663,6 +674,18 @@ export default async function RecetaEditorPage({
           </AgregarColapsable>
         </div>
       )}
+
+      <RecetaDeLaSucursal
+        producto={{ id: producto.id, nombre: producto.nombre }}
+        sucursalNombre={ctx.sucursalNombre}
+        estado={estadoPropia}
+        otrasConRecetaPropia={otrasConRecetaPropia}
+        puede={{ editar: nivelEditar.editar, copiar: nivelCopiar.editar, volverALaCentral: nivelVolver.editar }}
+        unidades={unidades}
+        materiasPrimas={mpDisponibles}
+        ingredienteEnEdicion={editarPropia ?? null}
+        volver={volver}
+      />
     </div>
   );
 }

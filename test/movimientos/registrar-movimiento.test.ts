@@ -162,6 +162,39 @@ describe("registrarMovimiento", () => {
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
   });
 
+  it("Tanda 6: un motivoId en un Consumo, o un destinoId en una Merma, se ignoran en vez de chocar con el CHECK de la base", async () => {
+    const mp = await crearMP("Cebolla");
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    const consumo = await registrarMovimiento({
+      proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId, motivoId: motivoRotoId,
+      items: [{ productoId: mp.id, cantidad: 1 }],
+    });
+    const merma = await registrarMovimiento({
+      proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, destinoId: destinoPersonalId,
+      items: [{ productoId: mp.id, cantidad: 1 }],
+    });
+    expect(consumo.ok).toBe(true);
+    expect(merma.ok).toBe(true);
+
+    const consumoGuardado = await prisma.operacion.findFirstOrThrow({ where: { proceso: "CONSUMO" } });
+    expect(consumoGuardado.destinoId).toBe(destinoPersonalId);
+    expect(consumoGuardado.motivoId).toBeNull();
+    const mermaGuardada = await prisma.operacion.findFirstOrThrow({ where: { proceso: "MERMA" } });
+    expect(mermaGuardada.motivoId).toBe(motivoRotoId);
+    expect(mermaGuardada.destinoId).toBeNull();
+  });
+
+  it("Tanda 6: un motivoId inexistente en un Consumo se ignora (no aplica a ese proceso), no devuelve 'motivo no disponible'", async () => {
+    const mp = await crearMP("Zanahoria");
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    const r = await registrarMovimiento({
+      proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId, motivoId: "no-existe",
+      items: [{ productoId: mp.id, cantidad: 1 }],
+    });
+    expect(r.ok).toBe(true);
+  });
+
   it("Ajuste: el usuario carga el delta ya con signo, no se multiplica por signoStock", async () => {
     const mp = await crearMP("Sal");
     // Ajuste, como Consumo/Merma, valida stock suficiente cuando el delta

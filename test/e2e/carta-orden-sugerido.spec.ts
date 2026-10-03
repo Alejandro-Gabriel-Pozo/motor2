@@ -20,11 +20,11 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
   const [ubicado, conOrden, nuevo, opcion] = await Promise.all([crear("Ubicado"), crear("ConOrden"), crear("Nuevo"), crear("Opcion")]);
   const productoIds = [ubicado, conOrden, nuevo, opcion].map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
-  await prisma.contenidoCartaProducto.create({ data: { productoId: ubicado.id, visibleEnCarta: true, seccionCartaId: llena.id, orden: 0 } });
+  await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: ubicado.id, visibleEnCarta: true, seccionCartaId: llena.id, orden: 0 } });
   // Guardado en «Llena» con orden 7 (y oculto, así no cambia la cuenta de «Llena»).
-  await prisma.contenidoCartaProducto.create({ data: { productoId: conOrden.id, visibleEnCarta: false, seccionCartaId: llena.id, orden: 7 } });
-  const agrupado = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Orden Agrupado ${marca}`, seccionCartaId: llena.id, orden: 3 } });
-  await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: agrupado.id, productoId: opcion.id } });
+  await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: conOrden.id, visibleEnCarta: false, seccionCartaId: llena.id, orden: 7 } });
+  const agrupado = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E Orden Agrupado ${marca}`, seccionCartaId: llena.id, orden: 3 } });
+  await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: agrupado.id, productoId: opcion.id } });
   const nombreSeccionNueva = `E2E Orden Nueva ${marca}`;
 
   try {

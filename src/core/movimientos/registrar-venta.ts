@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
-import { cargarRecetaVigente, cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
+import { alcanceDeSucursal, cargarRecetaVigente, cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { seccionesConStock } from "@/core/movimientos/stock";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
@@ -177,7 +177,7 @@ async function armarLinea(
   const pedidos: LineaArmada["pedidos"] = [];
   if (!producto.seProduce) {
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
-    const receta = await cargarRecetaVigente(tx, producto.id, {
+    const receta = await cargarRecetaVigente(tx, alcanceDeSucursal(sucursalId), producto.id, {
       include: {
         ingredientes: {
           orderBy: { id: "asc" },

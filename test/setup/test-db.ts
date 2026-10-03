@@ -119,11 +119,13 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.user.deleteMany();
   await prismaAdmin.rol.deleteMany();
   await prismaAdmin.accion.deleteMany();
-  await prismaAdmin.sucursal.deleteMany();
-
+  // RecetaVersion.sucursalId / RecetaSucursal.sucursalId referencian a la sucursal: las recetas se borran antes que ella.
+  await prismaAdmin.recetaSucursal.deleteMany();
   await prismaAdmin.sustitutoRecetaIngrediente.deleteMany();
   await prismaAdmin.recetaIngrediente.deleteMany();
   await prismaAdmin.recetaVersion.deleteMany();
+  await prismaAdmin.sucursal.deleteMany();
+
   await prismaAdmin.presentacion.deleteMany();
   await prismaAdmin.proveedorPorProducto.deleteMany();
   await prismaAdmin.producto.deleteMany();
@@ -153,6 +155,31 @@ export async function sembrarProductoDisponible(data: Prisma.ProductoUncheckedCr
   const producto = await prisma.producto.create({ data });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
   return producto;
+}
+
+/**
+ * Replica en `destinoId` la carta PROPIA (contenido, géneros e ítems agrupados con sus opciones) de `origenId` (ADR-009, C3): la carta es de cada
+ * sucursal, así que un test que quiere que DOS sucursales vean la misma estructura tiene que dársela a las dos. Mismo mapeo que la acción
+ * `copiarCartaDeSucursal`, sin permisos ni auditoría.
+ */
+export async function replicarCartaDeSucursal(origenId: string, destinoId: string) {
+  const generoNuevo = new Map<string, string>();
+  for (const g of await prisma.generoCarta.findMany({ where: { sucursalId: origenId } })) {
+    const n = await prisma.generoCarta.create({ data: { sucursalId: destinoId, nombre: g.nombre, orden: g.orden, activo: g.activo } });
+    generoNuevo.set(g.id, n.id);
+  }
+  const genero = (id: string | null) => (id ? (generoNuevo.get(id) ?? null) : null);
+  for (const it of await prisma.itemAgrupadoCarta.findMany({ where: { sucursalId: origenId }, include: { opciones: true } })) {
+    const n = await prisma.itemAgrupadoCarta.create({
+      data: { sucursalId: destinoId, nombre: it.nombre, seccionCartaId: it.seccionCartaId, descripcion: it.descripcion, tags: it.tags, especial: it.especial, orden: it.orden, activo: it.activo, generoCartaId: genero(it.generoCartaId) },
+    });
+    for (const o of it.opciones) await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: destinoId, itemAgrupadoCartaId: n.id, productoId: o.productoId, orden: o.orden } });
+  }
+  for (const c of await prisma.contenidoCartaProducto.findMany({ where: { sucursalId: origenId } })) {
+    await prisma.contenidoCartaProducto.create({
+      data: { sucursalId: destinoId, productoId: c.productoId, visibleEnCarta: c.visibleEnCarta, seccionCartaId: c.seccionCartaId, descripcion: c.descripcion, tags: c.tags, especial: c.especial, orden: c.orden, generoCartaId: genero(c.generoCartaId) },
+    });
+  }
 }
 
 /** Fixtures mínimas de Catálogo: unidades kg/g, una categoría y un insumo. */

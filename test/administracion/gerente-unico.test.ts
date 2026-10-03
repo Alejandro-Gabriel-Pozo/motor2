@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
-import { obtenerGerenteDeEmpresa, transferirGerenciaDeEmpresa } from "../../src/core/permisos/gerencia";
+import { listarCandidatosAGerente, obtenerGerenteDeEmpresa, transferirGerenciaDeEmpresa } from "../../src/core/permisos/gerencia";
 import {
   actualizarActivoMembresia,
   actualizarActivoUsuarioEnEmpresa,
@@ -181,11 +181,33 @@ describe("el gerente está por encima del admin: nadie más lo toca", () => {
 
   it("una vez traspasada la gerencia, quien dejó de ser gerente ya es un admin común (se lo puede desactivar)", async () => {
     await actuarComo(gerenteId, "gerente@test.com");
-    expect((await transferirGerencia(adminId)).ok).toBe(true);
+    expect((await transferirGerencia(adminId, "admin@test.com")).ok).toBe(true);
 
     await actuarComo(adminId, "admin@test.com");
     const r = await actualizarActivoUsuarioEnEmpresa(gerenteId, false);
     expect(r.ok, r.mensaje).toBe(true);
+  });
+});
+
+describe("listarCandidatosAGerente", () => {
+  it("ofrece solo a los administradores activos de la empresa que no son el gerente (cuenta y pertenencia activas)", async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    const gerente = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const admin = await crearUsuarioConMembresia({ email: "b-admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    const apagado = await crearUsuarioConMembresia({ email: "apagado@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    const sinCuenta = await crearUsuarioConMembresia({ email: "sin-cuenta@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await hacerGerente(gerente.id);
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: apagado.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { activo: false } });
+    await prismaAdmin.user.update({ where: { id: sinCuenta.id }, data: { activoGlobal: false } });
+
+    const candidatos = await listarCandidatosAGerente(prismaAdmin, EMPRESA_POR_DEFECTO_ID);
+    expect(candidatos.map((c) => c.email)).toEqual(["b-admin@test.com"]);
+    expect(candidatos[0].id).toBe(admin.id);
+    // Sin gerente (dato viejo): todos los admins activos son candidatos.
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: gerente.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: null } });
+    expect((await listarCandidatosAGerente(prismaAdmin, EMPRESA_POR_DEFECTO_ID)).map((c) => c.email)).toEqual(["b-admin@test.com", "gerente@test.com"]);
   });
 });
 
@@ -204,18 +226,43 @@ describe("transferirGerencia (la acción)", () => {
 
   it("el gerente traspasa la gerencia a un admin y queda en la auditoría de la empresa", async () => {
     await mockearUsuarioActual({ id: gerenteId, email: "gerente@test.com", nombre: null });
-    const r = await transferirGerencia(adminId);
+    const r = await transferirGerencia(adminId, "admin@test.com");
     expect(r.ok, r.mensaje).toBe(true);
 
     expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
     const registros = await prisma.registroAuditoria.findMany({ where: { entidad: "UsuarioEmpresa" } });
     expect(registros).toHaveLength(1);
-    expect(registros[0]).toMatchObject({ entidadId: adminId, campo: "rolEmpresa", actorId: gerenteId, sucursalId: null, valorAnterior: gerenteId, valorNuevo: adminId });
+    expect(registros[0]).toMatchObject({ entidadId: adminId, campo: "rolEmpresa", actorId: gerenteId, sucursalId: null, valorAnterior: "gerente@test.com", valorNuevo: "admin@test.com" });
+  });
+
+  it("sin el email correcto de la persona elegida no se traspasa nada ni queda rastro en la auditoría", async () => {
+    await mockearUsuarioActual({ id: gerenteId, email: "gerente@test.com", nombre: null });
+    for (const tipeado of ["", "otro@test.com", "gerente@test.com"]) {
+      const r = await transferirGerencia(adminId, tipeado);
+      expect(r.ok, tipeado).toBe(false);
+      expect(r.mensaje).toMatch(/email/);
+    }
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "UsuarioEmpresa" } })).toBe(0);
+  });
+
+  it("el email confirmado se compara sin espacios ni mayúsculas", async () => {
+    await mockearUsuarioActual({ id: gerenteId, email: "gerente@test.com", nombre: null });
+    const r = await transferirGerencia(adminId, "  Admin@Test.COM ");
+    expect(r.ok, r.mensaje).toBe(true);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
+  });
+
+  it("un destino que no es de la empresa se rechaza", async () => {
+    await mockearUsuarioActual({ id: gerenteId, email: "gerente@test.com", nombre: null });
+    const r = await transferirGerencia("no-existe", "x@test.com");
+    expect(r.ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
   });
 
   it("un admin que no es gerente no puede pedir el traspaso, ni a sí mismo", async () => {
     await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
-    const r = await transferirGerencia(adminId);
+    const r = await transferirGerencia(adminId, "admin@test.com");
     expect(r.ok).toBe(false);
     expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "UsuarioEmpresa" } })).toBe(0);
@@ -224,7 +271,7 @@ describe("transferirGerencia (la acción)", () => {
   it("un destino que no corresponde no cambia nada ni deja rastro en la auditoría", async () => {
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     await mockearUsuarioActual({ id: gerenteId, email: "gerente@test.com", nombre: null });
-    const r = await transferirGerencia(operador.id);
+    const r = await transferirGerencia(operador.id, "operador@test.com");
     expect(r.ok).toBe(false);
     expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "UsuarioEmpresa" } })).toBe(0);

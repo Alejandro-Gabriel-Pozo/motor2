@@ -37,7 +37,7 @@ describe("corregirCompraCasoDeUso", () => {
       },
     });
     await prisma.movimientoStock.create({
-      data: { operacionId: op.id, productoId: harinaId, seccionId, proceso: op.proceso, cantidad: 10, detalle: "Compra", precioTotal: 1000, precioPorUnidadStock: 100 },
+      data: { operacionId: op.id, productoId: harinaId, seccionId, proceso: op.proceso, cantidad: op.proceso === "MERMA" ? -10 : 10, detalle: "Compra", precioTotal: 1000, precioPorUnidadStock: 100 },
     });
     return op;
   }

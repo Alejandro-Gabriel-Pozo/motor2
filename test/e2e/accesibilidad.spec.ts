@@ -772,7 +772,7 @@ testAutenticado(
       )
     );
     // El primero se ve en la sección de carta; el segundo no tiene contenido de carta → "Sin sección" y el aviso ámbar.
-    await prisma.contenidoCartaProducto.create({ data: { productoId: pvs[0].id, visibleEnCarta: true, seccionCartaId: seccionCarta.id } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: pvs[0].id, visibleEnCarta: true, seccionCartaId: seccionCarta.id } });
     const op = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date("2026-08-04T12:00:00Z"), usuarioId: admin.id } });
     for (const pv of pvs) {
       await prisma.movimientoStock.create({
@@ -811,7 +811,7 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el av
     )
   );
   await prisma.disponibilidadProducto.createMany({ data: [conContenido, sinContenido].map((p) => ({ sucursalId, productoId: p.id, disponible: true })) });
-  await prisma.contenidoCartaProducto.create({ data: { productoId: conContenido.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
+  await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: conContenido.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
   const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
   try {
     await page.goto("/carta");
@@ -855,8 +855,8 @@ testAutenticado("carta/agrupados: sin violaciones de axe, con un ítem abierto, 
   );
   const ids = productos.map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: ids.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
-  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, especial: true, tags: ["Sin alcohol"] } });
-  await prisma.opcionItemAgrupadoCarta.createMany({ data: ids.slice(0, 2).map((productoId, orden) => ({ itemAgrupadoCartaId: item.id, productoId, orden })) });
+  const item = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, especial: true, tags: ["Sin alcohol"] } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: ids.slice(0, 2).map((productoId, orden) => ({ sucursalId, itemAgrupadoCartaId: item.id, productoId, orden })) });
   try {
     await page.goto("/carta/agrupados");
     await expect(page.getByRole("heading", { name: "Ítems agrupados de la carta", level: 1 })).toBeVisible();
@@ -1138,9 +1138,9 @@ testAutenticado(
     const sprite = await crear("SPRITE", "Sprite");
     const productoIds = [agua.id, coca.id, sprite.id];
     const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Bebidas ${marca}`, orden: 1 } });
-    await prisma.contenidoCartaProducto.create({ data: { productoId: agua.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
-    const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, orden: 1 } });
-    await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: agua.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E A11y Gaseosa ${marca}`, seccionCartaId: seccion.id, orden: 1 } });
+    await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ sucursalId, itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 987 } });
     const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id } });
     const secciones = page.getByRole("group", { name: "Secciones de la carta" });

@@ -42,8 +42,8 @@ describe("claves de producto: valen con cualquier membresía de la empresa", () 
     hermanoId = (await sembrarProductoDisponible({ codigo: "CPE_2", nombre: "Hermano", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidadId }, sucursalA)).id;
     // La sincronización necesita que el producto esté en un ítem agrupado de la carta.
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas" } });
-    const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa", seccionCartaId: seccion.id } });
-    await prisma.opcionItemAgrupadoCarta.createMany({ data: [productoId, hermanoId].map((id, orden) => ({ itemAgrupadoCartaId: item.id, productoId: id, orden })) });
+    const item = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: sucursalA, nombre: "Gaseosa", seccionCartaId: seccion.id } });
+    await prisma.opcionItemAgrupadoCarta.createMany({ data: [productoId, hermanoId].map((id, orden) => ({ sucursalId: sucursalA, itemAgrupadoCartaId: item.id, productoId: id, orden })) });
   });
 
   it("la clave que tiene la membresía de OTRA sucursal alcanza, sea cual sea la sucursal activa", async () => {

@@ -131,6 +131,8 @@ export const ACCIONES = [
   // Primera acción de piso gerente: la tiene solo el gerente de la empresa, sin pasar por la matriz (reemplaza el `esGerenteDeEmpresa` suelto de la
   // pantalla de Auditoría). No tiene padre: no existía como clave, así que la migración solo la da de alta y nadie la hereda.
   { clave: "ver_auditoria_empresa", descripcion: "Ver las filas de auditoría de la empresa (las que no son de una sucursal)", contexto: "empresa", nivelMinimo: "gerente", rolesEditarSemilla: [] },
+  // Segunda de piso gerente: reemplaza el `conGerenteDeEmpresa` suelto de la acción de traspaso. Sin padre, como la anterior.
+  { clave: "traspasar_gerencia", descripcion: "Traspasar la gerencia de la empresa a otro administrador", contexto: "empresa", nivelMinimo: "gerente", rolesEditarSemilla: [] },
   // Reportes: UNA clave por reporte (decisión del dueño, 2026-09-30; reemplaza la agrupación `ver_reportes_*` del 2026-09-19). Son claves de
   // «Ver»: no hay nada que editar. Los reportes de dinero y de control tienen piso de administrador (un operario nunca los recibe); los
   // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación)
@@ -176,6 +178,14 @@ export const ACCIONES = [
   // de datos 20260926012600_permiso_calibrar_rendimiento_local): separada de `guardar_receta` a propósito — editar la
   // receta global es una decisión distinta de calibrar la sucursal propia.
   { clave: "calibrar_rendimiento_local", descripcion: "Calibrar el rendimiento de las recetas en esta sucursal (cantidad y merma propias de cada ingrediente)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Receta propia por sucursal (decisión del dueño, 2026-10-02; ADR-009, familia override; migración de datos 20261002140000_permisos_receta_sucursal):
+  // UNA clave por acción, todas de contexto sucursal (operan sobre la receta de la sucursal activa); `editar` es de nivel operario (el dueño decidió que un operador de la sucursal la pueda recibir tildándola), copiar y volver a la central son de administrador. Separadas de `guardar_receta`
+  // (la receta central) y de `calibrar_rendimiento_local` a propósito: apagar la calibración no apaga la receta propia. Como toda acción de sucursal, la Central
+  // puede deshabilitar cada una de las tres por sucursal desde la matriz de capacidades.
+  { clave: "receta_sucursal_editar", descripcion: "Crear o editar la receta propia de esta sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "receta_sucursal_copiar", descripcion: "Copiar a esta sucursal la receta propia de otra sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "receta_sucursal_volver_central", descripcion: "Volver la receta de esta sucursal a la central", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_copiar_de_sucursal", descripcion: "Copiar a esta sucursal la carta propia de otra sucursal (solo sobre una carta vacía)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 9): 'clientes' administra el catálogo (alta,
   // edición del %, activar/desactivar), mismo criterio admin-only que el resto del catálogo (proveedores, categorías, ...).
   { clave: "clientes", descripcion: "Administrar el catálogo de Clientes y su % de descuento", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },

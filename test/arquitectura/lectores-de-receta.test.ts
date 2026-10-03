@@ -13,8 +13,10 @@ import { describe, expect, it } from "vitest";
  *    descendente, un `take: 1` anidado, un `groupBy _max`): cinco formas de la misma regla.
  *
  * 2. CLASIFICACIÓN: todo archivo que CONSUME el embudo, o lee `recetaIngrediente.find*` directo, tiene que estar en la lista explícita de
- *    abajo, clasificado `efectivo` (resuelve `rendimientoEfectivo` — cantidad/merma DE LA SUCURSAL) o `central` (nunca calibra por
- *    sucursal: es el editor central, o solo mira la estructura — existe la receta, quién referencia qué — sin leer cantidad/merma). Un
+ *    abajo, clasificado `efectivo` (resuelve la receta EFECTIVA de una sucursal — la propia si la tiene habilitada, si no la central con
+ *    `rendimientoEfectivo`: cantidad/merma DE LA SUCURSAL), `central` (lee SOLO la serie central: es el editor central, o solo mira la
+ *    estructura — existe la receta, quién referencia qué — sin leer cantidad/merma) o `series` (lee las DOS series por separado, la central
+ *    y la propia de una sucursal: el estado de la receta propia, que tiene que compararlas — nunca resuelve una receta efectiva). Un
  *    archivo nuevo que empiece a leer la receta y se olvide de pasar `sucursalId`/incluir `rendimientosLocales` reintroduciría en
  *    silencio el bug que motivó todo el plan (el botón "Usar este valor" escribiendo en la sucursal equivocada): este test lo obliga a
  *    declararse acá primero, con motivo.
@@ -32,7 +34,7 @@ const FACHADA = "core/catalogo/public.ts";
 
 interface ArchivoClasificado {
   ruta: string;
-  clase: "efectivo" | "central";
+  clase: "efectivo" | "central" | "series";
   motivo: string;
 }
 
@@ -65,8 +67,9 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
   },
   {
     ruta: "core/reportes/rendimiento-por-sucursal.ts",
-    clase: "efectivo",
-    motivo: "D8 (compararRendimientosPorSucursal): resuelve el efectivo de CADA sucursal pedida, una al lado de la otra, para compararlas.",
+    clase: "central",
+    motivo:
+      "D8 (compararRendimientosPorSucursal) + R3: compara el rendimiento (calibraciones por sucursal) sobre la estructura de la receta CENTRAL; donde una sucursal tiene receta PROPIA habilitada (cargarRecetasPropiasHabilitadas) no hay calibración que mostrar y la celda se marca como 'receta propia' en vez de mezclar series.",
   },
   {
     ruta: "server/actions/catalogo/recetas.ts",
@@ -75,8 +78,9 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
   },
   {
     ruta: "server/persistencia/catalogo/guardar-version-de-receta.ts",
-    clase: "central",
-    motivo: "cargarUltimaVersionDeReceta (Task #41, P1 — antes en línea en guardarReceta): la versión vigente de la receta CENTRAL, para calcular MAX(version)+1 y para el arrastre de D3, que lee la versión vieja completa solo para copiar/descartar RendimientoLocalIngrediente — nunca resuelve ningún efectivo por sucursal.",
+    clase: "series",
+    motivo:
+      "cargarUltimaVersionDeReceta (Task #41, P1) / cargarIdDeVersionCentralVigente (R3): la última versión de UNA serie —la central o la propia de una sucursal— para calcular MAX(version)+1 de ESA serie, y la central vigente en la que se basa una propia; el arrastre de D3 es solo de la central — lee las series por separado, nunca resuelve ningún efectivo.",
   },
   {
     ruta: "server/actions/catalogo/rendimiento-local.ts",
@@ -91,8 +95,21 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
   },
   {
     ruta: "core/catalogo/desactivar-producto.ts",
+    clase: "efectivo",
+    motivo:
+      "Chequea si algún RecetaIngrediente referencia el producto a desactivar (dependencias): cuenta como referencia solo la versión VIGENTE de cada plato EN LA SUCURSAL del actor (la propia si la tiene habilitada, si no la central) — no resuelve ningún rendimiento.",
+  },
+  {
+    ruta: "server/actions/catalogo/receta-sucursal.ts",
     clase: "central",
-    motivo: "Chequea si algún RecetaIngrediente referencia el producto a desactivar (dependencias) y cuál es la versión vigente de esos platos — no resuelve ningún rendimiento.",
+    motivo:
+      "R3/R4: las acciones de la receta PROPIA de la sucursal activa. De la receta central solo lee la vigente para partir de ella (crear desde la central); el estado de la propia lo resuelve receta-propia-estado.ts (series) y la escritura el caso de uso — nunca resuelve una receta efectiva.",
+  },
+  {
+    ruta: "core/catalogo/receta-propia-estado.ts",
+    clase: "series",
+    motivo:
+      "R3/R4 (obtenerEstadoDeRecetaPropia): lee la serie PROPIA de la sucursal (alcanceDeSucursal) y la central vigente (ALCANCE_CENTRAL) por separado, para decidir 'habilitada' y 'la central cambió' — compara las series, no resuelve una efectiva.",
   },
 ] as const;
 
@@ -213,6 +230,55 @@ describe("lectores de receta: todo archivo que consume el embudo o lee RecetaIng
 
   it("la fachada del dominio reexporta el embudo sin consumirlo (no entra en la clasificación)", () => {
     expect(fuentes.get(FACHADA)).toMatch(/recetas-vigentes/);
+  });
+});
+
+/**
+ * ALCANCE (ADR-009, R2): cada lector declara desde qué sucursal lee la receta. Un lector "efectivo" arma su alcance con
+ * `alcanceDeSucursal(...)`; uno "central" usa `ALCANCE_CENTRAL`. Mezclarlos (un editor central que lee "como una sucursal", o un
+ * reporte efectivo que se declara central) es justo el error que R3 volvería real cuando la receta pueda ser propia de una sucursal.
+ * Devuelve el problema, o null si el archivo declara el alcance que le corresponde a su clase.
+ */
+function problemaDeAlcance(clase: ArchivoClasificado["clase"], fuente: string): string | null {
+  const limpia = sinComentarios(fuente);
+  const usaCentral = /\bALCANCE_CENTRAL\b/.test(limpia);
+  const usaSucursal = /\balcanceDeSucursal\s*\(/.test(limpia);
+  if (clase === "series") {
+    if (!usaCentral || !usaSucursal) return "es series pero no declara las DOS series (ALCANCE_CENTRAL y alcanceDeSucursal)";
+    return null;
+  }
+  if (clase === "central") {
+    if (!usaCentral) return "es central pero no usa ALCANCE_CENTRAL";
+    if (usaSucursal) return "es central pero arma un alcance de sucursal (alcanceDeSucursal)";
+    return null;
+  }
+  if (!usaSucursal) return "es efectivo pero no arma su alcance con alcanceDeSucursal";
+  if (usaCentral) return "es efectivo pero usa ALCANCE_CENTRAL";
+  return null;
+}
+
+describe("lectores de receta: cada archivo declara el alcance que le corresponde a su clase", () => {
+  const fuentes = new Map(archivosFuente(SRC).map((ruta) => [relative(SRC, ruta).split(sep).join("/"), readFileSync(ruta, "utf8")]));
+
+  it("los efectivos usan alcanceDeSucursal, los centrales ALCANCE_CENTRAL y los de series las dos", () => {
+    const problemas = ARCHIVOS_CLASIFICADOS.flatMap((a) => {
+      const fuente = fuentes.get(a.ruta);
+      const problema = fuente === undefined ? "no existe" : problemaDeAlcance(a.clase, fuente);
+      return problema ? [`${a.ruta}: ${problema}`] : [];
+    });
+    expect(problemas, `Alcance de lectura de receta inconsistente con la clasificación:\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("el detector (con fuentes sintéticas)", () => {
+    expect(problemaDeAlcance("central", "cargarRecetaVigente(db, ALCANCE_CENTRAL, id, {})")).toBeNull();
+    expect(problemaDeAlcance("efectivo", "cargarRecetaVigente(tx, alcanceDeSucursal(sucursalId), id, {})")).toBeNull();
+    expect(problemaDeAlcance("central", "cargarRecetaVigente(db, alcanceDeSucursal(s), id, {})")).toMatch(/central pero/);
+    expect(problemaDeAlcance("efectivo", "cargarRecetaVigente(db, ALCANCE_CENTRAL, id, {})")).toMatch(/efectivo pero/);
+    expect(problemaDeAlcance("efectivo", "cargarRecetaVigente(db, alcanceDeSucursal(s), id, {}); x(ALCANCE_CENTRAL)")).toMatch(/usa ALCANCE_CENTRAL/);
+    expect(problemaDeAlcance("central", "// ALCANCE_CENTRAL\nconst x = 1;")).toMatch(/no usa ALCANCE_CENTRAL/);
+    expect(problemaDeAlcance("series", "cargarRecetaVigente(db, ALCANCE_CENTRAL, id, {}); cargarHistorialDeVersiones(db, alcanceDeSucursal(s), id, {})")).toBeNull();
+    expect(problemaDeAlcance("series", "cargarRecetaVigente(db, ALCANCE_CENTRAL, id, {})")).toMatch(/DOS series/);
+    expect(problemaDeAlcance("series", "cargarRecetaVigente(db, alcanceDeSucursal(s), id, {})")).toMatch(/DOS series/);
   });
 });
 

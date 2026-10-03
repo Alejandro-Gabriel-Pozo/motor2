@@ -42,10 +42,10 @@ async function sembrarPromoCombo(sucursalId: string) {
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Promo Bebidas ${marca}`, orden: 2 } });
   await prisma.contenidoCartaProducto.createMany({
     data: [
-      { productoId: empanada.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 1 },
-      { productoId: tarta.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 2 },
-      { productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
-      { productoId: gaseosa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
+      { sucursalId, productoId: empanada.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 1 },
+      { sucursalId, productoId: tarta.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 2 },
+      { sucursalId, productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
+      { sucursalId, productoId: gaseosa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
     ],
   });
   const titulo = `E2E Combo ${marca}`;

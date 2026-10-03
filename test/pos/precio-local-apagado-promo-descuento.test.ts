@@ -36,7 +36,7 @@ describe("R1: apagar precio_local desactiva el precio local de la promo y el des
     s = await sembrarSalon();
     await entrarComo(s.admin);
     seccionId = (await prisma.seccionCarta.create({ data: { nombre: "Postres", orden: 1 } })).id;
-    await prisma.contenidoCartaProducto.create({ data: { productoId: s.flan.id, visibleEnCarta: true, seccionCartaId: seccionId } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId: s.sucursalId, productoId: s.flan.id, visibleEnCarta: true, seccionCartaId: seccionId } });
     promoId = (await prisma.promoCarta.create({ data: { seccionCartaId: seccionId, titulo: "Combo flan", precio: 25000, sucursales: { create: { sucursalId: s.sucursalId, precioLocal: 22000 } } } })).id;
     await prisma.promoCartaCupo.create({ data: { promoCartaId: promoId, seccionCartaId: seccionId, cantidadMinima: 1, cantidadMaxima: 1 } });
     expect((await guardarDescuentoProducto(s.flan.id, 15)).ok).toBe(true);

@@ -17,7 +17,7 @@ test("cargar y sacar el descuento de un producto desde /carta se refleja en la c
     data: { codigo: `E2E_DESC_${marca}`, nombre: `E2E Descuento Plato ${marca}`, tipo: "PV", precioVenta: 10000, unidadStockId: unidad.id },
   });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
-  await prisma.contenidoCartaProducto.create({ data: { productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id, orden: 1 } });
+  await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id, orden: 1 } });
 
   const itemEnCarta = async () => {
     const carta = await menuCartaPublicado(sucursalId);

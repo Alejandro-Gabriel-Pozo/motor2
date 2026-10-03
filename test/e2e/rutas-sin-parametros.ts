@@ -2,6 +2,8 @@
  * Todas las pantallas de la aplicación que abren SIN parámetros de ruta ni de query obligatorios — lista compartida entre
  * `maquetacion-general.spec.ts` (E2E normal, datos mínimos) y `test/e2e-demo/todas-las-pantallas.spec.ts` (proyecto de la
  * demo, datos reales de 6 meses). Un solo lugar para agregar una pantalla nueva: agregarla acá la suma a los dos barridos.
+ * Fuera de la lista, a propósito: `/administracion/gerencia` (solo la ve el gerente y el usuario de las pruebas no lo es: sin título que esperar);
+ * su maquetación la revisa `administracion-gerencia.spec.ts`.
  */
 export const RUTAS_SIN_PARAMETROS = [
   "/inicio",

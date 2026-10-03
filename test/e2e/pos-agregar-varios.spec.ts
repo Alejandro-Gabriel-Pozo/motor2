@@ -30,8 +30,8 @@ async function sembrarCatalogo(sucursalId: string) {
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas AV ${marca}`, orden: 2 } });
   await prisma.contenidoCartaProducto.createMany({
     data: [
-      { productoId: milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
-      { productoId: coca.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
+      { sucursalId, productoId: milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
+      { sucursalId, productoId: coca.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
     ],
   });
 

@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { cargarRecetasVigentes, clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
+import { alcanceDeSucursal, cargarRecetasVigentes, clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
 import { disponibilidadDeProductos, disponibilidadEnAlgunaSucursal, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
@@ -142,7 +142,7 @@ export interface IndiceRecetas {
  * ver test/reportes/catalogo-una-sola-carga.test.ts).
  */
 export async function construirIndiceRecetas(db: Db, sucursalId?: string): Promise<IndiceRecetas> {
-  const vigentes = await cargarRecetasVigentes(db, {
+  const vigentes = await cargarRecetasVigentes(db, alcanceDeSucursal(sucursalId), {
     include: {
       ingredientes: {
         include: {

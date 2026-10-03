@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { cargarRecetaVigente } from "@/core/catalogo/public";
+import { alcanceDeSucursal, cargarRecetaVigente } from "@/core/catalogo/public";
 
 /**
  * Persistencia de las dos lecturas que hace `armarLineaMovimiento`/`calcularConsumosProduccion` DENTRO de la transacción (Task #41,
@@ -47,7 +47,7 @@ export async function cargarRecetaVigenteParaProducir(
   tx: Prisma.TransactionClient,
   args: { productoId: string; sucursalId: string }
 ): Promise<IngredienteRecetaParaProducir[]> {
-  const receta = await cargarRecetaVigente(tx, args.productoId, {
+  const receta = await cargarRecetaVigente(tx, alcanceDeSucursal(args.sucursalId), args.productoId, {
     include: { ingredientes: { include: { rendimientosLocales: { where: { sucursalId: args.sucursalId } } } } },
   });
   if (!receta?.ingredientes.length) return [];

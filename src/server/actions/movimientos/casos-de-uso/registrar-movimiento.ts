@@ -147,12 +147,16 @@ export async function registrarMovimientoCasoDeUso(
   // Motivo/Destino: catálogos GLOBALES (no por sucursal, a diferencia de Sección) — solo hace falta que la fila
   // exista y siga activa (un motivo desactivado no puede ELEGIRSE de nuevo, pero las Operacion viejas que ya lo
   // usaban lo conservan, mismo criterio "nunca DELETE" que el resto de los catálogos).
-  if (datos.motivoId) {
-    const motivo = await cargarMotivoMerma(actor.db, datos.motivoId);
+  // Tanda 6: la base rechaza un motivo fuera de una Merma y un destino fuera de un Consumo (CHECK en Operacion); el cliente solo manda
+  // lo que corresponde, pero un pedido armado a mano que traiga el otro se ignora acá en vez de terminar en un error crudo de la base.
+  const motivoId = datos.proceso === "MERMA" ? datos.motivoId : undefined;
+  const destinoId = datos.proceso === "CONSUMO" ? datos.destinoId : undefined;
+  if (motivoId) {
+    const motivo = await cargarMotivoMerma(actor.db, motivoId);
     if (!motivo?.activo) return fracaso("MOTIVO_NO_DISPONIBLE", "El motivo elegido ya no está disponible.");
   }
-  if (datos.destinoId) {
-    const destino = await cargarDestinoConsumo(actor.db, datos.destinoId);
+  if (destinoId) {
+    const destino = await cargarDestinoConsumo(actor.db, destinoId);
     if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
   }
   // Mismo criterio que motivo/destino: un id que no existe, es de otra empresa o está desactivado no puede quedar guardado en la operación (antes, un id inexistente reventaba con un error de clave foránea).
@@ -252,8 +256,8 @@ export async function registrarMovimientoCasoDeUso(
       proveedorId: datos.proveedorId ?? null,
       nroFactura,
       seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? (datos.seccionDestinoId ?? null) : null,
-      motivoId: datos.motivoId ?? null,
-      destinoId: datos.destinoId ?? null,
+      motivoId: motivoId ?? null,
+      destinoId: destinoId ?? null,
       detalleLibre: texto(datos.detalleLibre) || null,
       usuarioId: actor.usuarioId,
       claveIdempotencia: datos.claveIdempotencia ?? null,

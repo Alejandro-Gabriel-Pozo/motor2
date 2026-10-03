@@ -35,7 +35,7 @@ describe("anularCompraCasoDeUso", () => {
     if (!opciones.sinLineas) {
       const cantidad = opciones.cantidad ?? 10;
       await prisma.movimientoStock.create({
-        data: { operacionId: op.id, productoId: harinaId, seccionId, proceso, cantidad, detalle: "Compra", precioTotal: cantidad * 100, precioPorUnidadStock: 100 },
+        data: { operacionId: op.id, productoId: harinaId, seccionId, proceso, cantidad: proceso === "MERMA" ? -cantidad : cantidad, detalle: "Compra", precioTotal: cantidad * 100, precioPorUnidadStock: 100 },
       });
     }
     return op;

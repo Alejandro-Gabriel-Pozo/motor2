@@ -21,7 +21,7 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
   const productoIds = [coca, sprite, pomelo, fanta].map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
   // Fanta ya sale suelta en la carta (con su contenido): el bloqueo la deja así.
-  await prisma.contenidoCartaProducto.create({ data: { productoId: fanta.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+  await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: fanta.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
 
   const leerSeccion = async () => {
     const carta = await menuCartaPublicado(sucursalId);

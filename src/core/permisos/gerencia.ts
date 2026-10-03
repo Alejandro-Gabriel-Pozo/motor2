@@ -33,6 +33,24 @@ export async function gerentesQueQuedaranSinSucursalActiva(db: Db, empresaId: st
   return sinSucursal;
 }
 
+/**
+ * Quiénes pueden recibir la gerencia: las mismas condiciones que `transferirGerenciaDeEmpresa` exige al destino (pertenencia y cuenta activas,
+ * admin activo en alguna sucursal) y que no sea ya el gerente. Alimenta el selector de la pantalla de traspaso; el traspaso vuelve a validar.
+ */
+export async function listarCandidatosAGerente(db: Db, empresaId: string) {
+  const filas = await db.usuarioEmpresa.findMany({
+    where: {
+      empresaId,
+      activo: true,
+      OR: [{ rolEmpresa: null }, { rolEmpresa: { not: ROL_EMPRESA_GERENTE } }],
+      usuario: { activoGlobal: true, sucursales: { some: { empresaId, activo: true, rol: { nombre: "admin", activo: true } } } },
+    },
+    select: { usuarioId: true, usuario: { select: { email: true, name: true } } },
+    orderBy: { usuario: { email: "asc" } },
+  });
+  return filas.map((f) => ({ id: f.usuarioId, email: f.usuario.email, nombre: f.usuario.name }));
+}
+
 export async function esUsuarioGerenteDeEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
   const fila = await db.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, select: { rolEmpresa: true } });
   return fila?.rolEmpresa === ROL_EMPRESA_GERENTE;

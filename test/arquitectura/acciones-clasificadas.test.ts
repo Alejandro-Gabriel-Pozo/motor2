@@ -22,6 +22,7 @@ const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/sucursales.ts": SIN_CASO_DE_USO,
   "auth/usuarios.ts": SIN_CASO_DE_USO,
   "carta/contenido-producto.ts": SIN_CASO_DE_USO,
+  "carta/copiar-carta.ts": SIN_CASO_DE_USO,
   "carta/descuento-producto.ts": SIN_CASO_DE_USO,
   "carta/generos.ts": SIN_CASO_DE_USO,
   "carta/items-agrupados.ts": SIN_CASO_DE_USO,
@@ -36,6 +37,8 @@ const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "catalogo/proveedor-por-producto.ts": SIN_CASO_DE_USO,
   "catalogo/proveedores.ts": SIN_CASO_DE_USO,
   "catalogo/recetas.ts": "la escritura de la receta ya vive en casos-de-uso/guardar-version-de-receta.ts (lo exige escrituras-auditadas.test.ts); el resto son lecturas.",
+  "catalogo/receta-sucursal.ts":
+    "las escrituras de la versión propia ya viven en casos-de-uso/guardar-version-de-receta.ts (lo exige escrituras-auditadas.test.ts); volverALaRecetaCentral deshabilita una fila en una transacción serializable con su auditoría — candidata a caso de uso si gana más orquestación.",
   "catalogo/rendimiento-local.ts": SIN_CASO_DE_USO,
   "catalogo/unidades.ts": SIN_CASO_DE_USO,
   "clientes/cliente.ts": SIN_CASO_DE_USO,

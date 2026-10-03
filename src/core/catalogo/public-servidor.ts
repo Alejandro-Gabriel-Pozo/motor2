@@ -17,6 +17,7 @@ export {
   whereDisponibleEn,
   whereDisponibleEnAlguna,
 } from "./disponibilidad-producto-consulta";
+export { obtenerEstadoDeRecetaPropia } from "./receta-propia-estado";
 export { precioLocalActivoEn, preciosLocalesVigentes } from "./precio-local-consulta";
 export { creariaCiclo, textoCadenaDeGrupos } from "./grupo";
 export { validarFusionInsumos, validarUnidadInsumo } from "./producto";
@@ -24,3 +25,5 @@ export { dependenciasParaDesactivar } from "./desactivar-producto";
 export { crearConCodigoAutogenerado, esErrorDeUnicidad } from "./generar-codigo";
 export { validarCabecera, validarIngredientes, validarPasos } from "./receta-validacion";
 export type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "./receta-validacion";
+export { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput } from "./receta-a-input";
+export type { RecetaCompleta } from "./receta-a-input";

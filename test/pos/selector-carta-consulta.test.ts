@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
+import { limpiarBaseDeTest, replicarCartaDeSucursal, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { sembrarSalon } from "./salon-fixture";
 import { cargarSelectorCartaPos } from "../../src/core/pos/selector-carta-consulta";
 import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
@@ -44,27 +44,27 @@ describe("cargarSelectorCartaPos", () => {
     const barra = await prisma.seccionCarta.create({ data: { nombre: "Barra", orden: 0, activa: false } });
     await prisma.contenidoCartaProducto.createMany({
       data: [
-        { productoId: s.pizza.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
-        { productoId: s.milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
+        { sucursalId: s.sucursalId, productoId: s.pizza.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
+        { sucursalId: s.sucursalId, productoId: s.milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
         // No visible: aunque tenga sección, va a «Fuera de carta».
-        { productoId: s.flan.id, visibleEnCarta: false, seccionCartaId: platos.id },
+        { sucursalId: s.sucursalId, productoId: s.flan.id, visibleEnCarta: false, seccionCartaId: platos.id },
         // Sección apagada: «Fuera de carta».
-        { productoId: ids.fernet, visibleEnCarta: true, seccionCartaId: barra.id },
+        { sucursalId: s.sucursalId, productoId: ids.fernet, visibleEnCarta: true, seccionCartaId: barra.id },
         // La MP nunca es pedible, aunque tenga contenido visible.
-        { productoId: s.muzzarella.id, visibleEnCarta: true, seccionCartaId: platos.id },
+        { sucursalId: s.sucursalId, productoId: s.muzzarella.id, visibleEnCarta: true, seccionCartaId: platos.id },
       ],
     });
-    agrupadoGaseosa = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } })).id;
+    agrupadoGaseosa = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
       data: [
-        { itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.sprite, orden: 2 },
-        { itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.coca, orden: 1 },
-        { itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.fanta, orden: 3 },
+        { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.sprite, orden: 2 },
+        { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.coca, orden: 1 },
+        { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.fanta, orden: 3 },
       ],
     });
     // Un agrupado APAGADO: su opción no sale en la carta, así que va suelta a «Fuera de carta».
-    agrupadoJugos = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Jugos", seccionCartaId: bebidas.id, activo: false } })).id;
-    await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: agrupadoJugos, productoId: ids.jugo } });
+    agrupadoJugos = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, nombre: "Jugos", seccionCartaId: bebidas.id, activo: false } })).id;
+    await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoJugos, productoId: ids.jugo } });
 
     // Precio Local: habilitado en la Milanesa y en la Sprite; deshabilitado en la Pizza (se cobra el global).
     await prisma.precioLocalProducto.createMany({
@@ -127,12 +127,14 @@ describe("cargarSelectorCartaPos", () => {
     expect(central.seccionesCarta[0].entradas[0]).toMatchObject({ producto: { productoId: s.milanesa.id } });
     expect(central.fueraDeCarta.find((p) => p.productoId === s.flan.id)?.precio).toBe(3000);
 
+    // Norte arma su carta propia (ADR-009, C3) con la misma estructura que Central; lo que cambia es la disponibilidad.
+    await replicarCartaDeSucursal(s.sucursalId, norte);
     const enNorte = await cargarSelectorCartaPos(norte, prisma);
     const idsNorte = [...enNorte.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId)), ...enNorte.fueraDeCarta.map((p) => p.productoId)];
     expect(idsNorte.sort()).toEqual([ids.fanta, ids.soloNorte].sort());
     // En Norte la Fanta es la única opción disponible del agrupado.
     expect(enNorte.seccionesCarta).toEqual([
-      { seccionCartaId: expect.any(String), nombre: "Bebidas", entradas: [expect.objectContaining({ tipo: "agrupado", itemAgrupadoCartaId: agrupadoGaseosa, opciones: [expect.objectContaining({ productoId: ids.fanta })] })] },
+      { seccionCartaId: expect.any(String), nombre: "Bebidas", entradas: [expect.objectContaining({ tipo: "agrupado", itemAgrupadoCartaId: expect.not.stringMatching(new RegExp(`^${agrupadoGaseosa}$`)), opciones: [expect.objectContaining({ productoId: ids.fanta })] })] },
     ]);
   });
 

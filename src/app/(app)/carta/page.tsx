@@ -19,6 +19,7 @@ import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
+import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
 
 /**
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que muestra la carta pública interna
@@ -56,7 +57,7 @@ export default async function CartaPage() {
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio, nivelDescuento] = await Promise.all([
+  const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio, nivelDescuento, nivelCopiar] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_generos", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_contenido_producto", ctx.db),
@@ -64,6 +65,7 @@ export default async function CartaPage() {
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_activar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_precio_local", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_producto_descuento", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_copiar_de_sucursal", ctx.db),
   ]);
   const puedeEditarSecciones = nivelSecciones.editar;
   const puedeEditarGeneros = nivelGeneros.editar;
@@ -72,6 +74,7 @@ export default async function CartaPage() {
   const puedeActivarPromos = nivelPromoActivar.editar;
   const puedePrecioLocalPromos = nivelPromoPrecio.editar;
   const puedeDescuento = nivelDescuento.editar;
+  const puedeCopiarCarta = nivelCopiar.editar;
   const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos || puedeDescuento;
 
   const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db);
@@ -92,6 +95,25 @@ export default async function CartaPage() {
         </p>
         {!puedeEditarAlgo && <AvisoSoloLectura />}
       </div>
+
+      {/* Carta PROPIA de cada sucursal (ADR-009, C3/C4): una sucursal sin carta propia no muestra nada hasta que la arma o la copia de otra. */}
+      {datos.cartaVacia && (
+        <section aria-labelledby="titulo-carta-vacia" className="flex max-w-2xl flex-col gap-3 rounded border border-dashed p-4" data-carta-vacia>
+          <h2 id="titulo-carta-vacia" className="text-lg font-medium">
+            Tu sucursal no tiene carta propia todavía
+          </h2>
+          <p role="status" className="text-sm text-neutral-600">
+            Mientras no armes la carta, la carta pública y el selector del POS de esta sucursal salen vacíos (las secciones son de la empresa y ya están).
+            Podés armarla producto por producto{puedeCopiarCarta ? " o copiar la de otra sucursal" : ""}.
+          </p>
+          {puedeEditarContenido && (
+            <a href="#titulo-contenido" className="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+              Armar carta
+            </a>
+          )}
+          {puedeCopiarCarta && <CopiarCartaDeSucursal origenes={datos.sucursalesConCarta} />}
+        </section>
+      )}
 
       {/* 1. Secciones de carta */}
       <section aria-labelledby="titulo-secciones" className="flex flex-col gap-3">

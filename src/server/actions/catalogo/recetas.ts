@@ -1,8 +1,8 @@
 "use server";
 
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { cargarHistorialDeVersiones, cargarRecetaVigente, esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
-import type { IngredienteInput, PasoInput, CabeceraRecetaInput } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL, cargarHistorialDeVersiones, cargarRecetaVigente, esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
+import { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public-servidor";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
@@ -10,19 +10,10 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerDeEmpresa } from "../con-sesion";
 import { guardarVersionDeRecetaCasoDeUso } from "./casos-de-uso/guardar-version-de-receta";
 
-const INCLUDE_RECETA_COMPLETA = {
-  ingredientes: {
-    include: { insumoProducto: true, unidad: true, sustitutos: { orderBy: { orden: "asc" as const }, include: { insumoSustituto: true } } },
-  },
-  pasos: { orderBy: { orden: "asc" as const }, include: { ingredientes: { include: { recetaIngrediente: { include: { insumoProducto: true } } } } } },
-  rendimientoUnidad: true,
-  racionUnidad: true,
-};
-
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
   const ctx = await requerirVerDeEmpresa("guardar_receta");
-  return cargarRecetaVigente(ctx.db, productoId, { include: INCLUDE_RECETA_COMPLETA });
+  return cargarRecetaVigente(ctx.db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_RECETA_COMPLETA });
 }
 
 /**
@@ -33,55 +24,7 @@ export async function obtenerRecetaVigente(productoId: string) {
  */
 export async function listarVersionesDeReceta(productoId: string) {
   const ctx = await requerirVerDeEmpresa("guardar_receta");
-  return cargarHistorialDeVersiones(ctx.db, productoId, INCLUDE_RECETA_COMPLETA);
-}
-
-type RecetaVigente = Awaited<ReturnType<typeof obtenerRecetaVigente>>;
-
-/**
- * Round-trip de la receta vigente a los inputs de guardarReceta — usado por cada acción puntual (agregar/editar/quitar UN
- * ingrediente o paso) para no pisar lo que no se está tocando. Copia `insumoSustitutoIds` (ya en su `orden` — la ida y vuelta
- * CRÍTICA de docs/plan-sustitucion-insumos-receta-2026-09-26.md §0.6/D1: sin esto, cualquier edición puntual que no toque el
- * ingrediente sustituido igual le borraría los sustitutos en la próxima versión).
- */
-function mapIngredientesAInput(vigente: RecetaVigente): IngredienteInput[] {
-  if (!vigente) return [];
-  return vigente.ingredientes.map((i) => ({
-    insumoProductoId: i.insumoProductoId,
-    cantidad: Number(i.cantidad),
-    unidadId: i.unidadId,
-    mermaPorcentaje: Number(i.mermaPorcentaje),
-    observaciones: i.observaciones ?? undefined,
-    insumoSustitutoIds: i.sustitutos.map((s) => s.insumoSustitutoId),
-  }));
-}
-
-function mapPasosAInput(vigente: RecetaVigente): PasoInput[] {
-  if (!vigente) return [];
-  return vigente.pasos.map((p) => ({
-    orden: p.orden,
-    nombre: p.nombre ?? undefined,
-    instruccion: p.instruccion,
-    minutos: p.minutos ?? undefined,
-    insumoProductoIds: p.ingredientes.map((pi) => pi.recetaIngrediente.insumoProductoId),
-  }));
-}
-
-function mapCabeceraAInput(vigente: RecetaVigente): CabeceraRecetaInput {
-  if (!vigente) return {};
-  return {
-    rendimientoCantidad: vigente.rendimientoCantidad ? Number(vigente.rendimientoCantidad) : undefined,
-    rendimientoUnidadId: vigente.rendimientoUnidadId ?? undefined,
-    racionesCantidad: vigente.racionesCantidad ?? undefined,
-    racionTamano: vigente.racionTamano ? Number(vigente.racionTamano) : undefined,
-    racionUnidadId: vigente.racionUnidadId ?? undefined,
-    tiempoPreparacionMinutos: vigente.tiempoPreparacionMinutos ?? undefined,
-    tiempoCoccionMinutos: vigente.tiempoCoccionMinutos ?? undefined,
-    comentarios: vigente.comentarios ?? undefined,
-    presentacionEmplatado: vigente.presentacionEmplatado ?? undefined,
-    notasAdicionales: vigente.notasAdicionales ?? undefined,
-    equipamientoNecesario: vigente.equipamientoNecesario ?? undefined,
-  };
+  return cargarHistorialDeVersiones(ctx.db, ALCANCE_CENTRAL, productoId, INCLUDE_RECETA_COMPLETA);
 }
 
 /**

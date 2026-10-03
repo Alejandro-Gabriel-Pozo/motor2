@@ -190,8 +190,8 @@ describe("tomar pedido (server actions)", () => {
         const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 1 } });
         const coca = await sembrarProductoDisponible({ codigo: "PV_COCA", nombre: "Coca-Cola 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
         const sprite = await sembrarProductoDisponible({ codigo: "PV_SPRITE", nombre: "Sprite 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
-        const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } });
-        await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+        const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } });
+        await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ sucursalId: s.sucursalId, itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
         return { coca, sprite, gaseosa };
       }
 

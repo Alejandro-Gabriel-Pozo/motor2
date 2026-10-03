@@ -76,7 +76,7 @@ describe("server/consultas/reportes/rendimiento-por-sucursal", () => {
       algunaCalibrada: true,
     });
     expect(Array.from(fila.porSucursal.keys())).toEqual([central.id, norte.id]);
-    expect(fila.porSucursal.get(central.id)).toEqual({ cantidad: 2, mermaPorcentaje: 50, bruto: 3, calibrado: true, desviacionPorcentaje: 140 });
+    expect(fila.porSucursal.get(central.id)).toEqual({ cantidad: 2, mermaPorcentaje: 50, bruto: 3, calibrado: true, desviacionPorcentaje: 140, recetaPropia: false });
     expect(fila.porSucursal.get(norte.id)).toMatchObject({ cantidad: 1, mermaPorcentaje: 25, bruto: 1.25, calibrado: false, desviacionPorcentaje: 0 });
     expect(fila.porSucursal.has(fuera.id)).toBe(false);
   });

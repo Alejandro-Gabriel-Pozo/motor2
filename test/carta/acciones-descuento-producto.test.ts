@@ -40,7 +40,7 @@ describe("guardarDescuentoProducto", () => {
     pv2Id = (await sembrarProductoDisponible({ codigo: "PV_FLAN", nombre: "Flan", tipo: "PV", precioVenta: 1234.55, unidadStockId: u.id }, sucursalId)).id;
     mpId = (await prisma.producto.create({ data: { codigo: "MP_CARNE", nombre: "Carne", tipo: "MP", unidadStockId: u.id } })).id;
     for (const [id, orden] of [[pvId, 1], [pv2Id, 2]] as const) {
-      await prisma.contenidoCartaProducto.create({ data: { productoId: id, visibleEnCarta: true, seccionCartaId: seccionId, orden } });
+      await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: id, visibleEnCarta: true, seccionCartaId: seccionId, orden } });
     }
   });
 
@@ -140,6 +140,7 @@ describe("guardarDescuentoProducto", () => {
   it("el descuento de una sucursal no aparece en la carta de la otra", async () => {
     await guardarDescuentoProducto(pv2Id, 15);
     await prisma.disponibilidadProducto.create({ data: { sucursalId: otraSucursalId, productoId: pv2Id, disponible: true } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId: otraSucursalId, productoId: pv2Id, visibleEnCarta: true, seccionCartaId: seccionId, orden: 2 } });
     const cartaOtra = (await resolverMenuCarta(otraSucursalId, prisma))!;
     const flan = cartaOtra.secciones.flatMap((s) => s.items).find((i) => i.nombre === "Flan")!;
     expect(flan.precio).toBe(1234.55);

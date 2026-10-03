@@ -4,7 +4,7 @@ import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { requierePermiso } from "@/core/permisos/gate";
 import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
-import { conGerenteDeEmpresa, conPermiso, conPermisoDeEmpresa } from "../con-permiso";
+import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { esUsuarioGerenteDeEmpresa, transferirGerenciaDeEmpresa, tuvoRolAdminEnLaEmpresa } from "@/core/permisos/gerencia";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -260,13 +260,22 @@ export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo
 }
 
 /**
- * Traspasa la gerencia de la empresa a otro usuario (el gerente actual deja de serlo). Solo la pide el gerente actual: es una acción
- * de la jerarquía y no de la matriz de permisos (la autoridad de empresa no se delega). La baja del actual y el alta del nuevo van en
- * una sola transacción, y queda en la auditoría de la empresa.
+ * Traspasa la gerencia de la empresa a otro usuario (el gerente actual deja de serlo). Solo la pide el gerente actual: `traspasar_gerencia`
+ * es una acción de piso gerente, que no pasa por la matriz de permisos (la autoridad de empresa no se delega). Se confirma tipeando el email
+ * del destino. La baja del actual y el alta del nuevo van en una sola transacción, y queda en la auditoría de la empresa.
  */
-export async function transferirGerencia(usuarioDestinoId: string): Promise<ResultadoAccion> {
-  return conGerenteDeEmpresa(async (ctx) => {
+export async function transferirGerencia(usuarioDestinoId: string, emailConfirmado: string): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("traspasar_gerencia", async (ctx) => {
     const resultado = await ctx.transaccion(async (tx) => {
+      // Se confirma tipeando el email de quien recibe la gerencia: el gerente que traspasa ya no puede deshacerlo solo.
+      const destino = await tx.usuarioEmpresa.findUnique({
+        where: { usuarioId_empresaId: { usuarioId: usuarioDestinoId, empresaId: ctx.empresaId } },
+        select: { usuario: { select: { email: true } } },
+      });
+      if (!destino) return { ok: false as const, mensaje: "Ese usuario no pertenece a esta empresa." };
+      if (emailConfirmado.trim().toLowerCase() !== destino.usuario.email.trim().toLowerCase()) {
+        return { ok: false as const, mensaje: "El email no coincide con el de la persona elegida: no se traspasó la gerencia." };
+      }
       const r = await transferirGerenciaDeEmpresa(tx, { empresaId: ctx.empresaId, usuarioDestinoId });
       if (r.ok) {
         await registrarCambioAuditado(tx, {
@@ -274,8 +283,8 @@ export async function transferirGerencia(usuarioDestinoId: string): Promise<Resu
           entidadId: usuarioDestinoId,
           descripcion: "Gerente de la empresa",
           campo: "rolEmpresa",
-          valorAnterior: ctx.usuarioId,
-          valorNuevo: usuarioDestinoId,
+          valorAnterior: ctx.email,
+          valorNuevo: destino.usuario.email,
           actorId: ctx.usuarioId,
           sucursalId: null,
         });

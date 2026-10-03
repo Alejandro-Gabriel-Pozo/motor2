@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
-import { cargarRecetaVigente, rendimientoEfectivo } from "@/core/catalogo/public";
+import { alcanceDeSucursal, cargarRecetaVigente, rendimientoEfectivo } from "@/core/catalogo/public";
 import { redondearCantidad, type Db } from "./comun";
 
 export interface FilaBusquedaProducto {
@@ -250,7 +250,7 @@ export interface IngredienteRecetaVigente {
  * calibración de esa sucursal si la hay); sin ella, queda en el valor central.
  */
 export async function obtenerIngredientesRecetaVigente(productoId: string, db: Db, sucursalId?: string): Promise<IngredienteRecetaVigente[]> {
-  const version = await cargarRecetaVigente(db, productoId, {
+  const version = await cargarRecetaVigente(db, alcanceDeSucursal(sucursalId), productoId, {
     include: {
       ingredientes: {
         include: {

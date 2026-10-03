@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { disponibilidadDeProductos, precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
+import { whereCartaDeSucursal } from "./carta-de-sucursal";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
 import { esClavePortal, posicionCompleta, type PosicionPortal } from "./portal";
 import { esClaveTema } from "./tema";
@@ -47,7 +48,7 @@ export interface ProductoCartaAdmin {
   generoCarta: string | null;
 }
 
-/** Un género de carta (docs/plan-genero-carta-2026-09-26.md): carpeta VISUAL del POS, global. */
+/** Un género de carta (docs/plan-genero-carta-2026-09-26.md): carpeta VISUAL del POS, propia de cada sucursal (ADR-009, C3). */
 export interface GeneroCartaAdmin {
   id: string;
   nombre: string;
@@ -87,7 +88,22 @@ export interface PromoCartaAdmin {
   cupos: CupoPromoCartaAdmin[];
 }
 
+/** Otra sucursal de la empresa que ya tiene carta propia armada: se puede copiar a una sucursal sin carta (ADR-009, C3). */
+export interface SucursalConCartaPropia {
+  id: string;
+  nombre: string;
+  /** Cuántos productos tienen contenido de carta en ella (informativo, para elegir de dónde copiar). */
+  cantidadProductos: number;
+}
+
 export interface DatosAdminCarta {
+  /**
+   * La sucursal activa NO tiene carta propia todavía (ADR-009, C3; familia «opt-in»): ningún contenido de producto, ningún género y ningún
+   * ítem agrupado propios. Su carta pública y el selector del POS salen vacíos hasta que la arme o la copie de otra sucursal.
+   */
+  cartaVacia: boolean;
+  /** Otras sucursales ACTIVAS con carta propia, de donde se puede copiar (solo se usa si `cartaVacia`). */
+  sucursalesConCarta: SucursalConCartaPropia[];
   secciones: SeccionCartaAdmin[];
   /** TODOS los géneros (activos primero, orden, nombre) — para el select "Género (opcional)" de cada contenido. */
   generos: GeneroCartaAdmin[];
@@ -109,14 +125,14 @@ export interface DatosAdminCarta {
 }
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
-async function seccionesConCantidad(db: Db): Promise<SeccionCartaAdmin[]> {
+async function seccionesConCantidad(sucursalId: string, db: Db): Promise<SeccionCartaAdmin[]> {
   const secciones = await db.seccionCarta.findMany({
     include: {
       _count: {
         select: {
-          // Mismo criterio que la carta: un PV agrupado no sale suelto (D3), aunque tenga contenido visible.
-          contenidos: { where: { visibleEnCarta: true, producto: { opcionItemAgrupadoCarta: { is: null } } } },
-          agrupados: { where: { activo: true } },
+          // Mismo criterio que la carta: un PV agrupado no sale suelto (D3), aunque tenga contenido visible. Cuenta solo la carta PROPIA de la sucursal.
+          contenidos: { where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, producto: { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } } },
+          agrupados: { where: { ...whereCartaDeSucursal(sucursalId), activo: true } },
         },
       },
     },
@@ -135,22 +151,43 @@ async function seccionesConCantidad(db: Db): Promise<SeccionCartaAdmin[]> {
 }
 
 /** Todos los géneros (docs/plan-genero-carta-2026-09-26.md), activos primero, orden, nombre — reusado por las dos pantallas. */
-async function generosOrdenados(db: Db): Promise<GeneroCartaAdmin[]> {
-  const generos = await db.generoCarta.findMany({ orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }] });
+async function generosOrdenados(sucursalId: string, db: Db): Promise<GeneroCartaAdmin[]> {
+  const generos = await db.generoCarta.findMany({ where: whereCartaDeSucursal(sucursalId), orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }] });
   return generos.map((g) => ({ id: g.id, nombre: g.nombre, orden: g.orden, activo: g.activo }));
 }
 
+/**
+ * Si la sucursal tiene carta propia y cuáles otras sucursales activas tienen la suya. La única lectura de la estructura que cruza sucursales a
+ * propósito (para ofrecer de dónde copiar); va por el conteo de la relación de `Sucursal`, nunca por los modelos de la carta, y el RLS la deja
+ * dentro de la empresa.
+ */
+async function estadoCartaPropia(sucursalId: string, db: Db): Promise<{ cartaVacia: boolean; sucursalesConCarta: SucursalConCartaPropia[] }> {
+  const sucursales = await db.sucursal.findMany({
+    where: { activo: true },
+    select: { id: true, nombre: true, _count: { select: { contenidosCarta: true, generosCarta: true, itemsAgrupadosCarta: true } } },
+    orderBy: { nombre: "asc" },
+  });
+  const tiene = (s: (typeof sucursales)[number]) => s._count.contenidosCarta + s._count.generosCarta + s._count.itemsAgrupadosCarta > 0;
+  const propia = sucursales.find((s) => s.id === sucursalId);
+  return {
+    cartaVacia: propia ? !tiene(propia) : true,
+    sucursalesConCarta: sucursales.filter((s) => s.id !== sucursalId && tiene(s)).map((s) => ({ id: s.id, nombre: s.nombre, cantidadProductos: s._count.contenidosCarta })),
+  };
+}
+
 export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<DatosAdminCarta> {
-  const [secciones, generos, productos, promos, armado, precioLocalActivo] = await Promise.all([
-    seccionesConCantidad(db),
-    generosOrdenados(db),
+  const [secciones, generos, productos, promos, armado, precioLocalActivo, estado] = await Promise.all([
+    seccionesConCantidad(sucursalId, db),
+    generosOrdenados(sucursalId, db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: {
         id: true,
         nombre: true,
         precioVenta: true,
-        contenidoCarta: {
+        contenidosCarta: {
+          where: whereCartaDeSucursal(sucursalId),
+          take: 1,
           select: {
             visibleEnCarta: true,
             seccionCartaId: true,
@@ -163,7 +200,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
             generoCarta: { select: { nombre: true, activo: true } },
           },
         },
-        opcionItemAgrupadoCarta: { select: { itemAgrupadoCarta: { select: { nombre: true } } } },
+        opcionesItemAgrupadoCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { itemAgrupadoCarta: { select: { nombre: true } } } },
       },
       orderBy: { nombre: "asc" },
     }),
@@ -177,18 +214,19 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
     }),
     resolverMenuCartaConDiagnostico(sucursalId, db),
     precioLocalActivoEn(sucursalId, db),
+    estadoCartaPropia(sucursalId, db),
   ]);
 
   const descuentos = await descuentosConfiguradosEnSucursal(sucursalId, db, productos.map((p) => p.id));
   const productosAdmin: ProductoCartaAdmin[] = productos.map((p) => {
-    const c = p.contenidoCarta;
+    const c = p.contenidosCarta[0];
     return {
       id: p.id,
       nombre: p.nombre,
       seccionCarta: c?.seccionCarta?.activa ? c.seccionCarta.nombre : null,
       precio: Number(p.precioVenta),
       descuento: descuentos.get(p.id) ?? null,
-      contenido: c && {
+      contenido: c ? {
         visibleEnCarta: c.visibleEnCarta,
         seccionCartaId: c.seccionCartaId,
         descripcion: c.descripcion,
@@ -196,13 +234,15 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
         especial: c.especial,
         orden: c.orden,
         generoCartaId: c.generoCartaId,
-      },
-      agrupadoEn: p.opcionItemAgrupadoCarta?.itemAgrupadoCarta.nombre ?? null,
+      } : null,
+      agrupadoEn: p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null,
       generoCarta: c?.generoCarta?.activo ? c.generoCarta.nombre : null,
     };
   });
 
   return {
+    cartaVacia: estado.cartaVacia,
+    sucursalesConCarta: estado.sucursalesConCarta,
     secciones,
     generos,
     productos: productosAdmin,
@@ -287,6 +327,7 @@ export interface DatosAdminItemsAgrupados {
 export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Promise<DatosAdminItemsAgrupados> {
   const [items, secciones, generos, sinGrupo, armado] = await Promise.all([
     db.itemAgrupadoCarta.findMany({
+      where: whereCartaDeSucursal(sucursalId),
       select: {
         id: true,
         nombre: true,
@@ -309,10 +350,10 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Pro
       },
       orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }],
     }),
-    seccionesConCantidad(db),
-    generosOrdenados(db),
+    seccionesConCantidad(sucursalId, db),
+    generosOrdenados(sucursalId, db),
     db.producto.findMany({
-      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), opcionItemAgrupadoCarta: { is: null } },
+      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } },
       select: { id: true, nombre: true, precioVenta: true },
       orderBy: { nombre: "asc" },
     }),

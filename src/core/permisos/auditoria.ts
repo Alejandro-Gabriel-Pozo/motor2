@@ -24,6 +24,8 @@ export const ENTIDADES_AUDITABLES = [
   // "Cuenta": cambios sobre la cuenta de una mesa (boleta corregida, cliente asignado) — `entidadId` es el id de la Cuenta.
   "Cuenta",
   "RecetaVersion",
+  // "RecetaSucursal": una sucursal pasa a usar su receta propia de un plato o vuelve a la central — `entidadId` es `${sucursalId}:${productoId}`, `campo: "habilitada"`, con `sucursalId`.
+  "RecetaSucursal",
   "RendimientoLocalIngrediente",
   // "Sucursal" (docs/plan-comensales-y-limite-mesas-2026-09-26.md): el límite de mesas abiertas (`maxMesasAbiertas`) se edita desde
   // el mapa de mesas con el mismo permiso que da de alta mesas (`pos_mesas`) — `entidadId` es el id de la Sucursal.
@@ -43,6 +45,8 @@ export const ENTIDADES_AUDITABLES = [
   "MargenObjetivo",
   // "UsuarioSucursal": alta, cambio de rol y activar/desactivar un usuario en una sucursal — `entidadId` es el id de la membresía, `sucursalId` la de la membresía.
   "UsuarioSucursal",
+  // "CartaSucursal": la carta propia de una sucursal se arma por copia de otra (`copiarCartaDeSucursal`) — `entidadId` es el id de la Sucursal, `campo: "cartaPropia"`, con `sucursalId`.
+  "CartaSucursal",
 ] as const;
 
 /**

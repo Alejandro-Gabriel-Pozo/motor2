@@ -12,6 +12,7 @@ import {
   LARGO_MAXIMO_DESCRIPCION_CARTA,
 } from "@/core/carta/validaciones";
 import { MAXIMO_PRODUCTOS_POR_ITEM_AGRUPADO, validarTopeDeLista } from "@/core/datos/limites";
+import { whereCartaDeSucursal } from "@/core/carta/public";
 import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -19,9 +20,10 @@ import { revalidarCartasPublicas } from "./revalidar";
 
 /**
  * Ítems AGRUPADOS de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): un renglón visible ("Gaseosa 500 CC") que
- * agrupa varios PV reales (Coca-Cola, Sprite, Fanta 500cc). Globales (Catálogo Central, D9). Solo escriben en `ItemAgrupadoCarta`
+ * agrupa varios PV reales (Coca-Cola, Sprite, Fanta 500cc). PROPIOS de cada sucursal (ADR-009, C3): se crean y se editan siempre en la
+ * sucursal activa; la sección donde se ubican sí es de la empresa. Solo escriben en `ItemAgrupadoCarta`
  * y `OpcionItemAgrupadoCarta`: el producto (nombre, precio, categoría, disponibilidad) y su `ContenidoCartaProducto` no se tocan.
- * Nunca se borra un ítem agrupado: se apaga. Quitar una opción borra solo la fila de referencia. Gate: `carta_items_agrupados` (empresa: los ítems agrupados son globales).
+ * Nunca se borra un ítem agrupado: se apaga. Quitar una opción borra solo la fila de referencia. Gate: `carta_items_agrupados`.
  *
  * UBICACIÓN (docs/plan-carta-seccion-directa-2026-09-25.md): el ítem agrupado elige su sección de carta DIRECTO, sin Categoría
  * de producto de por medio, y no tiene imagen propia (la carta solo dibuja la de la sección).
@@ -75,11 +77,11 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     if (!datos.seccionCartaId) return error("Elegí la sección de carta del ítem agrupado.");
     const seccion = await ctx.db.seccionCarta.findUnique({ where: { id: datos.seccionCartaId }, select: { id: true } });
     if (!seccion) return error("No se encontró la sección de carta.");
-    const genero = await validarGeneroCartaOpcional(ctx.db, datos.generoCartaId);
+    const genero = await validarGeneroCartaOpcional(ctx.db, ctx.sucursalId, datos.generoCartaId);
     if (!genero.ok) return error(genero.mensaje);
 
     const repetido = await ctx.db.itemAgrupadoCarta.findFirst({
-      where: { nombre: { equals: nombre.valor, mode: "insensitive" }, ...(datos.id ? { NOT: { id: datos.id } } : {}) },
+      where: { nombre: { equals: nombre.valor, mode: "insensitive" }, ...whereCartaDeSucursal(ctx.sucursalId), ...(datos.id ? { NOT: { id: datos.id } } : {}) },
     });
     if (repetido) return error(`Ya existe el ítem agrupado "${repetido.nombre}".`);
 
@@ -95,13 +97,13 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     let it: { id: string; nombre: string };
     try {
       if (datos.id) {
-        const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: datos.id } });
+        const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: datos.id, ...whereCartaDeSucursal(ctx.sucursalId) } });
         if (!existente) return error("No se encontró el ítem agrupado.");
         const editado = await ctx.db.itemAgrupadoCarta.update({ where: { id: datos.id }, data });
         revalidarCartasPublicas();
         return okConId(`Ítem agrupado "${editado.nombre}" guardado.`, editado.id, editado.nombre);
       }
-      it = await ctx.db.itemAgrupadoCarta.create({ data });
+      it = await ctx.db.itemAgrupadoCarta.create({ data: { sucursalId: ctx.sucursalId, ...data } });
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error(`Ya existe el ítem agrupado "${nombre.valor}".`);
       throw e;
@@ -128,7 +130,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
 /** Nunca se borra un ítem agrupado: se apaga (deja de salir en la carta, y sus opciones tampoco salen sueltas, D3). */
 export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
-    const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: itemAgrupadoCartaId } });
+    const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: itemAgrupadoCartaId, ...whereCartaDeSucursal(ctx.sucursalId) } });
     if (!existente) return error("No se encontró el ítem agrupado.");
     await ctx.db.itemAgrupadoCarta.update({ where: { id: itemAgrupadoCartaId }, data: { activo } });
     revalidarCartasPublicas();
@@ -137,8 +139,8 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
 }
 
 /** El mensaje cuando el producto ya está en un ítem agrupado (el mismo u otro): un producto va en a lo sumo uno (D2). */
-async function mensajeYaAgrupado(db: Db, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
-  const ya = await db.opcionItemAgrupadoCarta.findFirst({ where: { productoId }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
+async function mensajeYaAgrupado(db: Db, sucursalId: string, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
+  const ya = await db.opcionItemAgrupadoCarta.findFirst({ where: { productoId, ...whereCartaDeSucursal(sucursalId) }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
   if (!ya) return null;
   if (ya.itemAgrupadoCartaId === itemAgrupadoCartaId) return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}».`;
   return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}»: quitalo de ahí primero.`;
@@ -159,7 +161,7 @@ export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string
  */
 async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: string, productoId: string, orden: number | string | null): Promise<ResultadoAccion> {
   const item = await db.itemAgrupadoCarta.findUnique({
-    where: { id: itemAgrupadoCartaId },
+    where: { id: itemAgrupadoCartaId, ...whereCartaDeSucursal(sucursalId) },
     select: {
       id: true,
       nombre: true,
@@ -176,7 +178,7 @@ async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: st
   if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
   if (await productoTieneDescuentoEnAlgunaSucursal(producto.id, db)) return error(`«${producto.nombre}» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).`);
 
-  const yaAgrupado = await mensajeYaAgrupado(db, producto.id, producto.nombre, item.id);
+  const yaAgrupado = await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id);
   if (yaAgrupado) return error(yaAgrupado);
 
   const o = validarOrdenCarta(orden ?? item.opciones.length);
@@ -199,10 +201,10 @@ async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: st
   }
 
   try {
-    await db.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor } });
+    await db.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor } });
   } catch (e) {
     // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
-    if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(db, producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
+    if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
     throw e;
   }
   revalidarCartasPublicas();
@@ -213,7 +215,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
   return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
     const o = validarOrdenCarta(orden);
     if (!o.ok) return error(o.mensaje);
-    const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({ where: { id: opcionId }, select: { producto: { select: { nombre: true } } } });
+    const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({ where: { id: opcionId, ...whereCartaDeSucursal(ctx.sucursalId) }, select: { producto: { select: { nombre: true } } } });
     if (!opcion) return error("No se encontró la opción.");
     await ctx.db.opcionItemAgrupadoCarta.update({ where: { id: opcionId }, data: { orden: o.valor } });
     revalidarCartasPublicas();
@@ -225,7 +227,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
 export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
     const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({
-      where: { id: opcionId },
+      where: { id: opcionId, ...whereCartaDeSucursal(ctx.sucursalId) },
       select: { producto: { select: { nombre: true } }, itemAgrupadoCarta: { select: { nombre: true } } },
     });
     if (!opcion) return error("No se encontró la opción.");

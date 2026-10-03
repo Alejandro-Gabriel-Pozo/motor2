@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { incluirRecetaVigente, whereConReceta } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, incluirRecetaVigente, whereConReceta } from "@/core/catalogo/public";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 
 /**
@@ -20,9 +20,9 @@ import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
  */
 export async function listarProductosConReceta(db: Db) {
   return db.producto.findMany({
-    where: { ...whereDisponibleEnAlguna(), ...whereConReceta() },
+    where: { ...whereDisponibleEnAlguna(), ...whereConReceta(ALCANCE_CENTRAL) },
     orderBy: { nombre: "asc" },
-    include: incluirRecetaVigente({ _count: { select: { ingredientes: true } } }),
+    include: incluirRecetaVigente(ALCANCE_CENTRAL, { _count: { select: { ingredientes: true } } }),
   });
 }
 

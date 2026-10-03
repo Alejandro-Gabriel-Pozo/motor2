@@ -83,10 +83,10 @@ describe("la salida de la carta pública está inventariada", () => {
     });
     const otro = await prisma.producto.create({ data: { codigo: "OPC", nombre: "Opción", tipo: "PV", precioVenta: 900, unidadStockId: u.id } });
     for (const p of [unico, otro]) await prisma.disponibilidadProducto.create({ data: { sucursalId: central, productoId: p.id, disponible: true } });
-    await prisma.contenidoCartaProducto.create({ data: { productoId: unico.id, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: "400 g", tags: ["Regional"], especial: true } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId: central, productoId: unico.id, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: "400 g", tags: ["Regional"], especial: true } });
     await prisma.descuentoProductoSucursal.create({ data: { productoId: unico.id, sucursalId: central, porcentaje: 10 } });
-    const agrupado = await prisma.itemAgrupadoCarta.create({ data: { nombre: "Combo", seccionCartaId: seccion.id, orden: 2 } });
-    await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: agrupado.id, productoId: otro.id, orden: 0 } });
+    const agrupado = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: central, nombre: "Combo", seccionCartaId: seccion.id, orden: 2 } });
+    await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: central, itemAgrupadoCartaId: agrupado.id, productoId: otro.id, orden: 0 } });
     await prisma.promoCarta.create({ data: { seccionCartaId: seccion.id, titulo: "Promo", descripcion: "x", precio: 100, sucursales: { create: [{ sucursalId: central }] } } });
   });
 

@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { whereDisponibleEn } from "./disponibilidad-producto-consulta";
-import { versionVigentePorProducto } from "./recetas-vigentes";
+import { alcanceDeSucursal, cargarRecetasVigentes } from "./recetas-vigentes";
 
 export interface DependenciasDeProducto {
   /** Platos cuya receta VIGENTE usa el producto y que están disponibles EN ESTA SUCURSAL, por nombre. */
@@ -15,7 +15,7 @@ export interface DependenciasDeProducto {
  * MP de la receta vigente de un plato disponible ahí, ese plato deja de poder venderse ahí. Por eso se cuentan dos cosas, LAS
  * DOS acotadas a `sucursalId` — saldo en OTRA sucursal no bloquea, saldo en ESTA sí:
  *
- * - recetas VIGENTES (la de mayor versión de cada plato, el mismo criterio que usa la venta) de platos DISPONIBLES EN ESTA
+ * - recetas VIGENTES (la EFECTIVA de esta sucursal de cada plato, el mismo criterio que usa la venta: su receta propia si la tiene habilitada, si no la central) de platos DISPONIBLES EN ESTA
  *   SUCURSAL (`whereDisponibleEn`, no ya "activos" — un plato que solo existe en otra sucursal no se puede vender acá, así que
  *   no bloquea acá). Una versión vieja no se puede vender, así que no bloquea nada.
  * - saldo por sección, de ESTA sucursal únicamente. Se agrupa por sección y se ignoran las que suman cero (un +5 y un −5 en la
@@ -24,13 +24,13 @@ export interface DependenciasDeProducto {
 export async function dependenciasParaDesactivar(productoId: string, sucursalId: string, db: PrismaClient): Promise<DependenciasDeProducto> {
   const usos = await db.recetaIngrediente.findMany({
     where: { insumoProductoId: productoId, recetaVersion: { producto: whereDisponibleEn(sucursalId) } },
-    select: { recetaVersion: { select: { productoId: true, version: true, producto: { select: { nombre: true } } } } },
+    select: { recetaVersion: { select: { id: true, productoId: true, producto: { select: { nombre: true } } } } },
   });
   const platos = [...new Set(usos.map((u) => u.recetaVersion.productoId))];
-  const versionVigente = await versionVigentePorProducto(db, platos);
+  const vigentes = await cargarRecetasVigentes(db, alcanceDeSucursal(sucursalId), { where: { productoId: { in: platos } }, include: {} });
   const recetasVigentes = new Map<string, string>();
   for (const { recetaVersion } of usos) {
-    if (recetaVersion.version === versionVigente.get(recetaVersion.productoId)) recetasVigentes.set(recetaVersion.productoId, recetaVersion.producto.nombre);
+    if (recetaVersion.id === vigentes.get(recetaVersion.productoId)?.id) recetasVigentes.set(recetaVersion.productoId, recetaVersion.producto.nombre);
   }
 
   const porSeccion = await db.movimientoStock.groupBy({ by: ["seccionId"], where: { productoId, seccion: { sucursalId } }, _sum: { cantidad: true } });

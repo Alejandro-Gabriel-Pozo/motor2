@@ -1,14 +1,14 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import fc from "fast-check";
-import { cargarRecetaVigente, cargarRecetasVigentes, incluirRecetaVigente, quedarseConLaVigente, versionVigentePorProducto, whereConReceta } from "../../src/core/catalogo/recetas-vigentes";
+import { ALCANCE_CENTRAL, alcanceDeSucursal, cargarRecetaVigente, cargarRecetasVigentes, incluirRecetaVigente, quedarseConLaVigente, versionVigentePorProducto, whereConReceta } from "../../src/core/catalogo/recetas-vigentes";
 
 /**
  * El embudo de la receta vigente (vigente = la de mayor `version` de cada plato). La lógica pura es `quedarseConLaVigente`; el resto son
  * consultas finas que se verifican de punta a punta en `test/recetas/caracterizacion-vigente-por-lector.test.ts` y
  * `test/reportes/recetas-una-consulta.test.ts` (contra Postgres real).
  *
- * `>` vs `>=` en la comparación es una mutación equivalente: `@@unique([productoId, version])` impide dos versiones iguales de un plato, así
- * que el empate no existe. Quedarse con la MENOR (o la primera de una lista descendente) sí lo detectan la propiedad y la caracterización.
+ * `>` vs `>=` en la comparación es una mutación equivalente: los índices únicos parciales de (productoId, version) por serie impiden dos
+ * versiones iguales de un plato en la misma serie, así que el empate no existe. Quedarse con la MENOR (o la primera de una lista descendente) sí lo detectan la propiedad y la caracterización.
  */
 type Fila = { productoId: string; version: number; marca: number };
 
@@ -98,7 +98,24 @@ describe("tipos del embudo", () => {
   });
 
   it("los fragmentos de Producto son estructuras literales de solo lectura", () => {
-    expect(whereConReceta()).toEqual({ recetaVersiones: { some: {} } });
-    expect(incluirRecetaVigente({ ingredientes: true })).toEqual({ recetaVersiones: { orderBy: { version: "desc" }, take: 1, include: { ingredientes: true } } });
+    expect(whereConReceta(ALCANCE_CENTRAL)).toEqual({ recetaVersiones: { some: { sucursalId: null } } });
+    expect(incluirRecetaVigente(ALCANCE_CENTRAL, { ingredientes: true })).toEqual({ recetaVersiones: { where: { sucursalId: null }, orderBy: { version: "desc" }, take: 1, include: { ingredientes: true } } });
+  });
+});
+
+describe("alcance de la lectura (ADR-009, R2)", () => {
+  it("el alcance central no tiene sucursal; el de una sucursal la lleva; sin sucursal es central", () => {
+    expect(ALCANCE_CENTRAL).toEqual({ sucursalId: null });
+    expect(alcanceDeSucursal("suc-1")).toEqual({ sucursalId: "suc-1" });
+    expect(alcanceDeSucursal(undefined)).toEqual(ALCANCE_CENTRAL);
+    expect(alcanceDeSucursal(null)).toEqual(ALCANCE_CENTRAL);
+  });
+
+  it("los fragmentos de Producto (filtro e include) solo aceptan el alcance central: la receta efectiva de una sucursal se resuelve con cargarRecetasVigentes", () => {
+    // @ts-expect-error — un alcance de sucursal no es AlcanceCentral
+    whereConReceta(alcanceDeSucursal("suc-1"));
+    // @ts-expect-error — un alcance de sucursal no es AlcanceCentral
+    incluirRecetaVigente(alcanceDeSucursal("suc-1"), { ingredientes: true });
+    expectTypeOf(ALCANCE_CENTRAL.sucursalId).toEqualTypeOf<null>();
   });
 });

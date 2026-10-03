@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { cargarRecetasVigentes, rendimientoEfectivo } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes, rendimientoEfectivo } from "@/core/catalogo/public";
 import { calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, desvioEsNotable } from "./rendimiento-recetas-vistas";
 
 /**
@@ -21,6 +21,8 @@ export interface ValorPorSucursal {
   /** BRUTO = cantidad × (1 + merma/100) — la métrica que se COMPARA entre sucursales (D8: comparar solo el neto engaña si dos sucursales calibraron mermas distintas). */
   bruto: number;
   calibrado: boolean;
+  /** true si esta sucursal tiene RECETA PROPIA habilitada para el plato: la línea central no rige ahí (ni sus calibraciones), así que los valores de esta celda son los centrales sin aplicar y la pantalla lo avisa en vez de compararlos. */
+  recetaPropia: boolean;
   /** % de desvío del bruto de ESTA sucursal contra el bruto CENTRAL — decide el ámbar (desvioEsNotable). `null` si el central es 0. */
   desviacionPorcentaje: number | null;
 }
@@ -52,7 +54,8 @@ export async function compararRendimientosPorSucursal(
   db: Db
 ): Promise<FilaComparacionRendimiento[]> {
   const sucursalIds = sucursales.map((s) => s.id);
-  const vigentePorProducto = await cargarRecetasVigentes(db, {
+  // Compara las calibraciones de las líneas de la receta CENTRAL: lee la estructura central y, de cada sucursal, solo si tiene receta propia (ahí la línea central no rige).
+  const vigentePorProducto = await cargarRecetasVigentes(db, ALCANCE_CENTRAL, {
     where: filtro.productoId ? { productoId: filtro.productoId } : undefined,
     include: {
       producto: { select: { nombre: true } },
@@ -66,6 +69,8 @@ export async function compararRendimientosPorSucursal(
     },
   });
 
+  const conRecetaPropia = await cargarRecetasPropiasHabilitadas(db, sucursalIds, [...vigentePorProducto.keys()]);
+
   const filas: FilaComparacionRendimiento[] = [];
   for (const v of vigentePorProducto.values()) {
     for (const ing of v.ingredientes) {
@@ -75,10 +80,11 @@ export async function compararRendimientosPorSucursal(
       const porSucursal = new Map<string, ValorPorSucursal>();
       let algunaCalibrada = false;
       for (const s of sucursales) {
+        const recetaPropia = conRecetaPropia.has(`${s.id}:${v.productoId}`);
         const ef = rendimientoEfectivo(
           central,
           ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
-          s.id
+          recetaPropia ? "" : s.id
         );
         if (ef.calibrado) algunaCalibrada = true;
         const bruto = calcularCantidadTeoricaBruta(ef.cantidad, ef.mermaPorcentaje);
@@ -87,6 +93,7 @@ export async function compararRendimientosPorSucursal(
           mermaPorcentaje: ef.mermaPorcentaje,
           bruto,
           calibrado: ef.calibrado,
+          recetaPropia,
           desviacionPorcentaje: calcularDesviacionPorcentaje(bruto, centralBruto),
         });
       }

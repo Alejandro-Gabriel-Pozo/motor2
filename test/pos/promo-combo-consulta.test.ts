@@ -27,9 +27,9 @@ describe("cargarPromoCartaParaAgregar", () => {
 
     empanadaId = (await prisma.producto.create({ data: { codigo: "PV_EMPA", nombre: "Empanada de carne", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 700 } })).id;
     await prisma.disponibilidadProducto.create({ data: { sucursalId: s.sucursalId, productoId: empanadaId, disponible: true } });
-    await prisma.contenidoCartaProducto.create({ data: { productoId: empanadaId, visibleEnCarta: true, seccionCartaId: seccionEntradasId } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId: s.sucursalId, productoId: empanadaId, visibleEnCarta: true, seccionCartaId: seccionEntradasId } });
     // Flan (de sembrarSalon) visible en Postres.
-    await prisma.contenidoCartaProducto.create({ data: { productoId: s.flan.id, visibleEnCarta: true, seccionCartaId: seccionPostresId } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId: s.sucursalId, productoId: s.flan.id, visibleEnCarta: true, seccionCartaId: seccionPostresId } });
 
     const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionEntradasId, titulo: "Menú del día", precio: 2000 } });
     promoCartaId = promo.id;

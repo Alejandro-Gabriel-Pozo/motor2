@@ -137,6 +137,12 @@ model Sucursal {
   temaCarta                TemaCartaSucursal?
   mesas                    Mesa[]
   rendimientosLocales      RendimientoLocalIngrediente[]
+  recetasPropias           RecetaSucursal[]
+  contenidosCarta          ContenidoCartaProducto[]
+  generosCarta             GeneroCarta[]
+  itemsAgrupadosCarta      ItemAgrupadoCarta[]
+  opcionesAgrupadasCarta   OpcionItemAgrupadoCarta[]
+  versionesDeRecetaPropia  RecetaVersion[]               @relation("RecetaVersionSucursal")
   ejemplaresBoleta         EjemplarBoleta[]
 
   @@unique([empresaId, nombre])
@@ -363,23 +369,24 @@ model Producto {
 
   creadoEn DateTime @default(now())
 
-  presentaciones          Presentacion[]
-  proveedorPorProducto    ProveedorPorProducto[]
-  recetaVersiones         RecetaVersion[]             @relation("RecetaVersionProducto")
-  usadoComoIngrediente    RecetaIngrediente[]         @relation("RecetaIngredienteInsumo")
-  movimientos             MovimientoStock[]
-  conteosFisicos          ConteoFisico[]
-  preciosLocales          PrecioLocalProducto[]
-  stockMinimos            StockMinimoProducto[]
-  seccionesHabituales     SeccionHabitualProducto[]
-  frecuenciasConteo       FrecuenciaConteoProducto[]
-  disponibilidades        DisponibilidadProducto[]
-  traspasos               TraspasoSucursal[]
-  contenidoCarta          ContenidoCartaProducto?
-  descuentosCarta         DescuentoProductoSucursal[]
-  opcionItemAgrupadoCarta OpcionItemAgrupadoCarta?
-  cuentaItems             CuentaItem[]
-  consumosQueLoSustituyen MovimientoStock[]           @relation("MovimientoSustituyeA")
+  presentaciones            Presentacion[]
+  proveedorPorProducto      ProveedorPorProducto[]
+  recetaVersiones           RecetaVersion[]             @relation("RecetaVersionProducto")
+  recetasPorSucursal        RecetaSucursal[]
+  usadoComoIngrediente      RecetaIngrediente[]         @relation("RecetaIngredienteInsumo")
+  movimientos               MovimientoStock[]
+  conteosFisicos            ConteoFisico[]
+  preciosLocales            PrecioLocalProducto[]
+  stockMinimos              StockMinimoProducto[]
+  seccionesHabituales       SeccionHabitualProducto[]
+  frecuenciasConteo         FrecuenciaConteoProducto[]
+  disponibilidades          DisponibilidadProducto[]
+  traspasos                 TraspasoSucursal[]
+  contenidosCarta           ContenidoCartaProducto[]
+  descuentosCarta           DescuentoProductoSucursal[]
+  opcionesItemAgrupadoCarta OpcionItemAgrupadoCarta[]
+  cuentaItems               CuentaItem[]
+  consumosQueLoSustituyen   MovimientoStock[]           @relation("MovimientoSustituyeA")
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, id])
@@ -687,14 +694,22 @@ model Cliente {
 /// la vigente es SIEMPRE MAX(version) para ese producto, derivado, nunca
 /// un flag a mantener transaccionalmente.
 model RecetaVersion {
-  id         String   @id @default(cuid())
-  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
-  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  id                String    @id @default(cuid())
+  empresaId         String    @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa   @relation(fields: [empresaId], references: [id])
   /// El plato (PV) o la MP con seProduce=true.
-  productoId String
-  producto   Producto @relation("RecetaVersionProducto", fields: [empresaId, productoId], references: [empresaId, id])
-  version    Int
-  creadoEn   DateTime @default(now())
+  productoId        String
+  producto          Producto  @relation("RecetaVersionProducto", fields: [empresaId, productoId], references: [empresaId, id])
+  version           Int
+  creadoEn          DateTime  @default(now())
+  /// NULL = la receta CENTRAL del producto (la de toda la empresa). Con valor = una versión de la receta PROPIA de esa sucursal
+  /// (ADR-009, familia override): la numeración de `version` es independiente por (producto, sucursal) y la unicidad la dan dos
+  /// índices únicos parciales hechos a mano en la migración (Prisma no los declara).
+  sucursalId        String?
+  sucursal          Sucursal? @relation("RecetaVersionSucursal", fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// Solo en versiones propias: la versión CENTRAL vigente en la que se basó (o que había cuando se creó). Sirve para avisar «la central
+  /// cambió» cuando hay una central más nueva; nunca se aplica nada solo. Dato derivado, sin FK: la versión central es append-only.
+  basadaEnVersionId String?
 
   ingredientes RecetaIngrediente[]
   pasos        RecetaPaso[]
@@ -727,7 +742,26 @@ model RecetaVersion {
   /// un catálogo de equipos propio, ver §6 del documento de grounding.
   equipamientoNecesario    String?
 
-  @@unique([productoId, version])
+  // La unicidad de (productoId, sucursalId, version) son DOS índices únicos parciales (migración receta_propia_por_sucursal): uno con
+  // sucursalId NULL (la central) y otro con sucursalId NOT NULL. Postgres trata NULL como distinto de NULL en un UNIQUE común.
+  @@unique([empresaId, id])
+  @@index([productoId, sucursalId])
+}
+
+/// Receta propia de una sucursal para un producto (ADR-009, familia override). Una fila por (sucursal, producto) cuando la sucursal la
+/// creó alguna vez; `habilitada` dice si rige (la receta vigente de ESA sucursal pasa a ser la propia) o si la sucursal volvió a la central
+/// (las versiones propias quedan como historial, no se borran). SIN fila = rige la central (más las calibraciones por sucursal).
+model RecetaSucursal {
+  id         String   @id @default(cuid())
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  habilitada Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
   @@unique([empresaId, id])
 }
 
@@ -1675,6 +1709,9 @@ model ContenidoCartaProducto {
   id             String        @id @default(cuid())
   empresaId      String        @default(dbgenerated("app_empresa_actual()"))
   empresa        Empresa       @relation(fields: [empresaId], references: [id])
+  /// La carta es PROPIA de cada sucursal (ADR-009, C3; decisión del dueño 2026-10-02): el contenido de un producto es de UNA sucursal.
+  sucursalId     String
+  sucursal       Sucursal      @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   productoId     String
   producto       Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id])
   visibleEnCarta Boolean       @default(false)
@@ -1694,7 +1731,7 @@ model ContenidoCartaProducto {
   generoCarta    GeneroCarta?  @relation(fields: [empresaId, generoCartaId], references: [empresaId, id])
   actualizadoEn  DateTime      @updatedAt
 
-  @@unique([empresaId, productoId])
+  @@unique([sucursalId, productoId])
   @@unique([empresaId, id])
   @@index([seccionCartaId])
   @@index([generoCartaId])
@@ -1703,13 +1740,16 @@ model ContenidoCartaProducto {
 /// Ítem AGRUPADO de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md): un solo renglón visible ("Gaseosa 500cc") que
 /// agrupa varios PV reales y distintos (Coca-Cola 500cc, Sprite 500cc…). Lleva lo de cara al cliente (como ContenidoCartaProducto).
 /// SIN precio propio (D5): el precio es el de sus opciones, que tienen que coincidir; si no, la carta muestra el mayor y el
-/// admin avisa. Global (Catálogo Central). Se ubica DIRECTO en su sección de carta, igual que un PV suelto
+/// admin avisa. PROPIO de cada sucursal (ADR-009 C3; antes global). Se ubica DIRECTO en su sección de carta, igual que un PV suelto
 /// (docs/plan-carta-seccion-directa-2026-09-25.md). Sin imagen propia. Un solo nivel, sin árbol (no es Grupo). Nunca se borra:
 /// se apaga.
 model ItemAgrupadoCarta {
   id             String                    @id @default(cuid())
   empresaId      String                    @default(dbgenerated("app_empresa_actual()"))
   empresa        Empresa                   @relation(fields: [empresaId], references: [id])
+  /// De UNA sucursal (la carta es propia de cada una, ADR-009 C3); la sección donde se ubica sigue siendo de la empresa.
+  sucursalId     String
+  sucursal       Sucursal                  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   nombre         String
   seccionCartaId String
   seccionCarta   SeccionCarta              @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
@@ -1727,7 +1767,7 @@ model ItemAgrupadoCarta {
   actualizadoEn  DateTime                  @updatedAt
   opciones       OpcionItemAgrupadoCarta[]
 
-  @@unique([empresaId, nombre])
+  @@unique([sucursalId, nombre])
   @@unique([empresaId, id])
   @@index([seccionCartaId])
   @@index([activo])
@@ -1737,13 +1777,16 @@ model ItemAgrupadoCarta {
 /// Carpeta VISUAL del POS que agrupa, dentro de una sección de carta, tanto productos sueltos como ítems agrupados que
 /// comparten género (p. ej. "Cerveza"; docs/plan-genero-carta-2026-09-26.md). NO implica precio ni sustituibilidad (eso lo
 /// sigue manejando ItemAgrupadoCarta, que no se toca); NO es Insumo, ni Grupo (que es de stock/Insumo), ni CategoriaProducto
-/// (que no ubica nada en la carta ni en el POS). GLOBAL (como SeccionCarta, G1): "Cerveza" aparece en cualquier sección donde
+/// (que no ubica nada en la carta ni en el POS). PROPIO de cada sucursal (ADR-009 C3; las SECCIONES siguen siendo de la empresa): "Cerveza" aparece en cualquier sección donde
 /// tenga contenido pedible, no en una sola. SOLO interno del POS por ahora (G4): la carta pública (`CartaV1`) no lo usa.
 /// Nunca se borra: se apaga (mismo patrón que el resto del catálogo/carta).
 model GeneroCarta {
   id         String                   @id @default(cuid())
   empresaId  String                   @default(dbgenerated("app_empresa_actual()"))
   empresa    Empresa                  @relation(fields: [empresaId], references: [id])
+  /// De UNA sucursal (la carta es propia de cada una, ADR-009 C3).
+  sucursalId String
+  sucursal   Sucursal                 @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   nombre     String
   orden      Int                      @default(0)
   activo     Boolean                  @default(true)
@@ -1751,7 +1794,7 @@ model GeneroCarta {
   contenidos ContenidoCartaProducto[]
   agrupados  ItemAgrupadoCarta[]
 
-  @@unique([empresaId, nombre])
+  @@unique([sucursalId, nombre])
   @@unique([empresaId, id])
   @@index([activo, orden])
 }
@@ -1763,6 +1806,9 @@ model OpcionItemAgrupadoCarta {
   id                  String            @id @default(cuid())
   empresaId           String            @default(dbgenerated("app_empresa_actual()"))
   empresa             Empresa           @relation(fields: [empresaId], references: [id])
+  /// De la misma sucursal que su ítem agrupado (lo valida la Server Action; la FK compuesta solo ata a la empresa).
+  sucursalId          String
+  sucursal            Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   itemAgrupadoCartaId String
   itemAgrupadoCarta   ItemAgrupadoCarta @relation(fields: [empresaId, itemAgrupadoCartaId], references: [empresaId, id])
   productoId          String
@@ -1771,7 +1817,7 @@ model OpcionItemAgrupadoCarta {
   orden               Int               @default(0)
   creadoEn            DateTime          @default(now())
 
-  @@unique([empresaId, productoId])
+  @@unique([sucursalId, productoId])
   @@unique([empresaId, id])
   @@index([itemAgrupadoCartaId])
 }
@@ -2145,17 +2191,17 @@ enum EstadoEmpresa {
 }
 
 model Empresa {
-  id          String        @id @default(cuid())
-  nombre      String        @unique
-  slug        String        @unique
-  cuit        String?
-  zonaHoraria String
-  moneda      String
-  estado      EstadoEmpresa @default(PROVISIONING)
-  creadoEn    DateTime      @default(now())
+  id                String        @id @default(cuid())
+  nombre            String        @unique
+  slug              String        @unique
+  cuit              String?
+  zonaHoraria       String
+  moneda            String
+  estado            EstadoEmpresa @default(PROVISIONING)
+  creadoEn          DateTime      @default(now())
   /// Política de plataforma (ADR-008/ADR-010): solo la cambia la plataforma (scripts/politica-empresa.ts), nunca la propia empresa.
-  permisosEditables Boolean @default(true)
-  dosPaneles        Boolean @default(true)
+  permisosEditables Boolean       @default(true)
+  dosPaneles        Boolean       @default(true)
 
   usuarios                       UsuarioEmpresa[]
   sucursalRel                    Sucursal[]
@@ -2177,6 +2223,7 @@ model Empresa {
   proveedorPorProductoRel        ProveedorPorProducto[]
   clienteRel                     Cliente[]
   recetaVersionRel               RecetaVersion[]
+  recetaSucursalRel              RecetaSucursal[]
   recetaIngredienteRel           RecetaIngrediente[]
   sustitutoRecetaIngredienteRel  SustitutoRecetaIngrediente[]
   recetaPasoRel                  RecetaPaso[]

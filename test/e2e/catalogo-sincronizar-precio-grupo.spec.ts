@@ -20,8 +20,8 @@ test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y
   );
   const productoIds = [coca, sprite, fanta].map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
-  const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Sync Gaseosa ${marca}`, seccionCartaId: seccion.id } });
-  await prisma.opcionItemAgrupadoCarta.createMany({ data: productoIds.map((productoId, orden) => ({ itemAgrupadoCartaId: item.id, productoId, orden })) });
+  const item = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E Sync Gaseosa ${marca}`, seccionCartaId: seccion.id } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: productoIds.map((productoId, orden) => ({ sucursalId, itemAgrupadoCartaId: item.id, productoId, orden })) });
 
   try {
     await page.goto(`/catalogo/productos/${fanta.id}/editar`);

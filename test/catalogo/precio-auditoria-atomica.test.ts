@@ -52,9 +52,9 @@ describe("cambio de precio y su auditoría son atómicos", () => {
     const pv = async (codigo: string, nombre: string) =>
       (await sembrarProductoDisponible({ codigo, nombre, tipo: "PV", precioVenta: 5000, unidadStockId: unidadId }, sucursalId)).id;
     ids = { coca: await pv("PAA_COCA", "Coca-Cola 500cc"), sprite: await pv("PAA_SPRITE", "Sprite 500cc") };
-    const agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
+    const agId = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
-      data: [ids.coca, ids.sprite].map((productoId, orden) => ({ itemAgrupadoCartaId: agId, productoId, orden })),
+      data: [ids.coca, ids.sprite].map((productoId, orden) => ({ sucursalId, itemAgrupadoCartaId: agId, productoId, orden })),
     });
     interruptor.llamadas = 0;
   });

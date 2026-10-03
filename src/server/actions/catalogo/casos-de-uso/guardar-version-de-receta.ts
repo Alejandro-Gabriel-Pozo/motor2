@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { describirCambioVersionReceta, describirDescarteArrastre } from "@/core/catalogo/public";
+import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
 import { esErrorDeUnicidad, validarCabecera, validarIngredientes, validarPasos } from "@/core/catalogo/public-servidor";
 import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-version.guard";
 import type { ComandoGuardarVersionDeReceta, ResultadoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.schema";
@@ -8,11 +8,13 @@ import { conReintento, conTransaccionSerializable, esConflictoDeEscritura } from
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import {
+  cargarIdDeVersionCentralVigente,
   cargarNombresDeSucursales,
   cargarProductoParaReceta,
   cargarUltimaVersionDeReceta,
   copiarCalibracionesLocales,
   escribirVersionDeReceta,
+  habilitarRecetaPropia,
 } from "@/server/persistencia/catalogo/guardar-version-de-receta";
 
 /**
@@ -38,16 +40,26 @@ import {
  *        - auditoría de la versión nueva (D6(b), paso 2): `RecetaVersion`/`version`, `sucursalId` siempre `null` (Catálogo Central);
  *  4. el mensaje de éxito, con el aviso de las calibraciones descartadas si hubo.
  *
+ * RECETA PROPIA (ADR-009, receta propia por sucursal): con `destino.sucursalId` el caso de uso guarda en la serie PROPIA de esa sucursal en vez de la central —
+ * la versión se numera sobre SU historial, la receta propia queda habilitada, la versión declara en qué versión central se basó (`basadaEnVersionId`:
+ * la central vigente de hoy, o la que pase quien llama, p. ej. al copiar de otra sucursal) y la auditoría lleva la sucursal. No arrastra ni descarta
+ * calibraciones: no las hay sobre una receta propia (cuelgan de las líneas de la central y no rigen mientras la propia está habilitada).
+ *
  * @contract Crea una versión NUEVA de la receta (append-only) y arrastra las calibraciones locales compatibles, auditando las que se descartan.
  * @idempotency No aplica — append-only, cada guardado crea una versión nueva; no hay un "duplicado" que detectar.
  * @transaction conTransaccionSerializable (SERIALIZABLE), reabierta hasta 5 veces vía conReintento si choca el UNIQUE(productoId, version) o hay conflicto de escritura.
  * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
  */
+/** Dónde se guarda la versión: la serie CENTRAL (`sucursalId` null) o la PROPIA de una sucursal. */
+export type DestinoDeVersionDeReceta = { sucursalId: null } | { sucursalId: string; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };
+
 export async function guardarVersionDeRecetaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion">,
-  comando: ComandoGuardarVersionDeReceta
+  comando: ComandoGuardarVersionDeReceta,
+  destino: DestinoDeVersionDeReceta = { sucursalId: null }
 ): Promise<ResultadoGuardarVersionDeReceta> {
   const { productoId, items, pasos, cabecera } = comando;
+  const sucursalId = destino.sucursalId;
 
   const producto = await cargarProductoParaReceta(actor.db, productoId);
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", MENSAJE_PRODUCTO_NO_ENCONTRADO);
@@ -80,17 +92,18 @@ export async function guardarVersionDeRecetaCasoDeUso(
       descartes = [];
       // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el
       // ingrediente haya cambiado de unidad o haya salido de la receta. Fuera de la transacción, igual que antes.
-      const ultima = await cargarUltimaVersionDeReceta(actor.db, productoId);
+      const ultima = await cargarUltimaVersionDeReceta(actor.db, productoId, sucursalId);
       version = (ultima?.version ?? 0) + 1;
+      const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(actor.db, productoId);
       await conTransaccionSerializable(actor.transaccion, async (tx) => {
-        const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera });
+        const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId });
         recetaVersionId = creada.id;
 
         // D3 — arrastre de calibraciones locales (RendimientoLocalIngrediente) de la versión vieja a la nueva, por
         // insumoProductoId. Si cambió la unidad, o el ingrediente salió de la receta, la calibración se DESCARTA
         // (nunca se arrastra "resucitada" con otra unidad) y se audita. Un cambio de cantidad/merma CENTRAL no
         // descarta nada — la calibración es de la sucursal, no del valor central.
-        if (ultima) {
+        if (ultima && sucursalId === null) {
           const sucursalIds = new Set<string>();
           for (const viejoIng of ultima.ingredientes) for (const r of viejoIng.rendimientosLocales) sucursalIds.add(r.sucursalId);
           const sucursales = await cargarNombresDeSucursales(tx, Array.from(sucursalIds));
@@ -132,12 +145,32 @@ export async function guardarVersionDeRecetaCasoDeUso(
           entidad: "RecetaVersion",
           entidadId: creada.id,
           campo: "version",
-          descripcion: describirCambioVersionReceta(producto.nombre, actor.sucursalNombre),
+          descripcion:
+            sucursalId === null
+              ? describirCambioVersionReceta(producto.nombre, actor.sucursalNombre)
+              : destino.copiadaDeSucursal
+                ? describirCopiaDeRecetaPropia(producto.nombre, actor.sucursalNombre, destino.copiadaDeSucursal, version)
+                : describirRecetaPropiaGuardada(producto.nombre, actor.sucursalNombre, version),
           valorAnterior: ultima ? ultima.version : null,
           valorNuevo: version,
           actorId: actor.usuarioId,
-          sucursalId: null,
+          sucursalId,
         });
+
+        // Guardar en la serie propia la deja habilitada (si estaba deshabilitada, o es la primera vez): se audita ese cambio de «rige la central» a «rige la propia».
+        if (sucursalId !== null) {
+          const estabaHabilitada = await habilitarRecetaPropia(tx, sucursalId, productoId);
+          await registrarCambioAuditado(tx, {
+            entidad: "RecetaSucursal",
+            entidadId: `${sucursalId}:${productoId}`,
+            campo: "habilitada",
+            descripcion: `Receta de "${producto.nombre}" en "${actor.sucursalNombre}": pasa a usar la receta propia de la sucursal.`,
+            valorAnterior: estabaHabilitada,
+            valorNuevo: true,
+            actorId: actor.usuarioId,
+            sucursalId,
+          });
+        }
       });
     },
     { maxIntentos: 5, esReintentable: (e) => esErrorDeUnicidad(e) || esConflictoDeEscritura(e) }

@@ -31,8 +31,8 @@ describe("el catálogo invalida la carta pública al cambiar lo que ella muestra
     productoId = (await sembrarProductoDisponible({ codigo: "RV_1", nombre: "Coca", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidadId }, sucursalId)).id;
     hermanoId = (await sembrarProductoDisponible({ codigo: "RV_2", nombre: "Sprite", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidadId }, sucursalId)).id;
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas" } });
-    const item = await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa", seccionCartaId: seccion.id } });
-    await prisma.opcionItemAgrupadoCarta.createMany({ data: [productoId, hermanoId].map((id, orden) => ({ itemAgrupadoCartaId: item.id, productoId: id, orden })) });
+    const item = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Gaseosa", seccionCartaId: seccion.id } });
+    await prisma.opcionItemAgrupadoCarta.createMany({ data: [productoId, hermanoId].map((id, orden) => ({ sucursalId, itemAgrupadoCartaId: item.id, productoId: id, orden })) });
   });
 
   it("actualizarProducto", async () => {

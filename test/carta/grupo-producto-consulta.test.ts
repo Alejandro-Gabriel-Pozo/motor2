@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
+import { limpiarBaseDeTest, replicarCartaDeSucursal, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "../../src/core/carta/grupo-producto-consulta";
 
 /**
@@ -29,9 +29,9 @@ describe("resolverGrupoDeProducto", () => {
       suelto: await pv("GPC_SUELTO", "Tónica 500cc", 5000),
     };
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } });
-    agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
+    agId = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: central, nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
-      data: [ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ itemAgrupadoCartaId: agId, productoId, orden })),
+      data: [ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ sucursalId: central, itemAgrupadoCartaId: agId, productoId, orden })),
     });
   });
 
@@ -77,7 +77,8 @@ describe("resolverGrupoDeProducto", () => {
     const grupo = await resolverGrupoDeProducto(ids.fanta, central, prisma);
     expect(grupo!.hermanos.map((h) => h.precioActual)).toEqual([5000, 5000]);
     expect(ofrecerSincronizarPrecio(grupo, 5000, "enSucursal")).toBeNull();
-    // En la otra sucursal, sí.
+    // En la otra sucursal, sí (con su carta propia: ADR-009, C3).
+    await replicarCartaDeSucursal(central, otra);
     expect((await resolverGrupoDeProducto(ids.fanta, otra, prisma))!.hermanos.find((h) => h.productoId === ids.coca)!.precioActual).toBe(9999);
   });
 

@@ -25,9 +25,10 @@ describe("resolverMenuCartaConDiagnostico — aislamiento por empresa sin RLS", 
 
   it("los ítems agrupados de otra empresa no aparecen en el diagnóstico de la carta de esta", async () => {
     const propia = await prismaAdmin.seccionCarta.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, nombre: "Propia" } });
-    await prismaAdmin.itemAgrupadoCarta.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, nombre: "Gaseosa propia", seccionCartaId: propia.id } });
+    await prismaAdmin.itemAgrupadoCarta.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: central, nombre: "Gaseosa propia", seccionCartaId: propia.id } });
     const ajena = await prismaAdmin.seccionCarta.create({ data: { empresaId: OTRA_EMPRESA_ID, nombre: "Ajena" } });
-    await prismaAdmin.itemAgrupadoCarta.create({ data: { empresaId: OTRA_EMPRESA_ID, nombre: "Gaseosa ajena", seccionCartaId: ajena.id } });
+    const sucursalAjena = await prismaAdmin.sucursal.create({ data: { empresaId: OTRA_EMPRESA_ID, nombre: "Sucursal ajena" } });
+    await prismaAdmin.itemAgrupadoCarta.create({ data: { empresaId: OTRA_EMPRESA_ID, sucursalId: sucursalAjena.id, nombre: "Gaseosa ajena", seccionCartaId: ajena.id } });
 
     const armado = await resolverMenuCartaConDiagnostico(central, prismaAdmin);
 

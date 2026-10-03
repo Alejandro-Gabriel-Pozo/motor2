@@ -3,7 +3,7 @@
 import { esNumeroEstricto } from "@/core/numero";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import { cargarRecetaVigente, describirCalibracion, describirVueltaAlCentral, normalizarOrigen, type OrigenCalibracionInput } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, cargarRecetaVigente, describirCalibracion, describirVueltaAlCentral, normalizarOrigen, type OrigenCalibracionInput } from "@/core/catalogo/public";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -70,7 +70,7 @@ export async function fijarRendimientoLocal(
       const ing = await tx.recetaIngrediente.findUnique({ where: { id: recetaIngredienteId }, include: INCLUDE_LINEA });
       if (!ing) return error("No se encontró esa línea de receta.");
 
-      const vigente = await cargarRecetaVigente(tx, ing.recetaVersion.productoId, { select: { id: true } });
+      const vigente = await cargarRecetaVigente(tx, ALCANCE_CENTRAL, ing.recetaVersion.productoId, { select: { id: true } });
       if (!vigente || vigente.id !== ing.recetaVersionId) {
         return error("La receta cambió mientras mirabas el reporte; recargá.");
       }
@@ -123,7 +123,7 @@ export async function volverAlRendimientoCentral(recetaIngredienteId: string): P
       const ing = await tx.recetaIngrediente.findUnique({ where: { id: recetaIngredienteId }, include: INCLUDE_LINEA });
       if (!ing) return error("No se encontró esa línea de receta.");
 
-      const vigente = await cargarRecetaVigente(tx, ing.recetaVersion.productoId, { select: { id: true } });
+      const vigente = await cargarRecetaVigente(tx, ALCANCE_CENTRAL, ing.recetaVersion.productoId, { select: { id: true } });
       if (!vigente || vigente.id !== ing.recetaVersionId) {
         return error("La receta cambió mientras mirabas el reporte; recargá.");
       }

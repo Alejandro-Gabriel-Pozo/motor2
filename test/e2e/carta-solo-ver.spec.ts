@@ -59,13 +59,13 @@ async function crearCarta(sucursalId: string) {
   const [suelto, agrupado] = await Promise.all([crearPV("Plato"), crearPV("Gaseosa")]);
   await prisma.disponibilidadProducto.createMany({ data: [suelto, agrupado].map((p) => ({ sucursalId, productoId: p.id, disponible: true })) });
   await prisma.contenidoCartaProducto.create({
-    data: { productoId: suelto.id, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: `Contenido del plato ${marca}`, tags: ["Sin TACC"], especial: true, orden: 2 },
+    data: { sucursalId, productoId: suelto.id, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: `Contenido del plato ${marca}`, tags: ["Sin TACC"], especial: true, orden: 2 },
   });
   const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E Solo ver Promo ${marca}`, descripcion: `Descripción de promo ${marca}`, precio: 9900 } });
   const item = await prisma.itemAgrupadoCarta.create({
-    data: { nombre: `E2E Solo ver Ítem ${marca}`, seccionCartaId: seccion.id, descripcion: `Descripción del ítem ${marca}`, tags: ["Bien fría"], orden: 4 },
+    data: { sucursalId, nombre: `E2E Solo ver Ítem ${marca}`, seccionCartaId: seccion.id, descripcion: `Descripción del ítem ${marca}`, tags: ["Bien fría"], orden: 4 },
   });
-  await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: item.id, productoId: agrupado.id } });
+  await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: item.id, productoId: agrupado.id } });
   return {
     marca,
     seccion,

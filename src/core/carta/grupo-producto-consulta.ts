@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "./armar-menu";
+import { whereCartaDeSucursal } from "./carta-de-sucursal";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -33,7 +34,7 @@ export interface GrupoDeProducto {
 /** `null` si el producto no está en ningún ítem agrupado. */
 export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db): Promise<GrupoDeProducto | null> {
   const opcion = await db.opcionItemAgrupadoCarta.findFirst({
-    where: { productoId },
+    where: { productoId, ...whereCartaDeSucursal(sucursalId) },
     select: {
       itemAgrupadoCarta: {
         select: {

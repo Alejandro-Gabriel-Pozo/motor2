@@ -71,8 +71,8 @@ describe("resolverMenuCarta", () => {
     };
     await prisma.contenidoCartaProducto.createMany({
       data: [
-        ...Object.entries(seccionDe).map(([k, seccionCartaId]) => ({ productoId: ids[k], visibleEnCarta: true, seccionCartaId })),
-        { productoId: ids.oculto, visibleEnCarta: false, seccionCartaId: platos.id },
+        ...Object.entries(seccionDe).map(([k, seccionCartaId]) => ({ sucursalId: central, productoId: ids[k], visibleEnCarta: true, seccionCartaId })),
+        { sucursalId: central, productoId: ids.oculto, visibleEnCarta: false, seccionCartaId: platos.id },
       ],
     });
     await prisma.contenidoCartaProducto.updateMany({
@@ -80,6 +80,8 @@ describe("resolverMenuCarta", () => {
       data: { descripcion: "400 g", tags: ["Regional"], especial: true, orden: 2 },
     });
     await prisma.contenidoCartaProducto.updateMany({ where: { productoId: ids.ojo }, data: { orden: 1 } });
+    // La carta es propia de cada sucursal (ADR-009, C3): «Otra» arma la suya, con su único producto.
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId: otra, productoId: ids.soloOtra, visibleEnCarta: true, seccionCartaId: platos.id } });
 
     await prisma.precioLocalProducto.createMany({
       data: [
