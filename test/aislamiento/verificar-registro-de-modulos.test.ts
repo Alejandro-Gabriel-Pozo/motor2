@@ -65,11 +65,18 @@ describe("verificar-registro-de-modulos contra la base", () => {
     await expect(diagnosticarBase(sinLaClave)).rejects.toThrow(/20261006120000_clave_de_rol_de_sistema no figura como aplicada/);
   });
 
-  it("falla si una empresa tiene un rol «admin» sin la clave «admin»", async () => {
+  it("falla si una empresa CON usuarios tiene un rol «admin» sin la clave «admin»", async () => {
     await prismaAdmin.rol.create({ data: { empresaId: "empresa_principal", nombre: "admin" } });
+    const u = await prismaAdmin.user.create({ data: { email: "u@test.com" } });
+    await prismaAdmin.usuarioEmpresa.create({ data: { usuarioId: u.id, empresaId: "empresa_principal" } });
     const d = await diagnosticarBase(consulta);
     expect(d.fallas).toHaveLength(1);
     expect(d.fallas[0]).toContain("principal [ACTIVE]");
     expect(d.fallas[0]).toContain("clave");
+  });
+
+  it("D8: la misma empresa SIN usuarios no falla", async () => {
+    await prismaAdmin.rol.create({ data: { empresaId: "empresa_principal", nombre: "admin" } });
+    expect((await diagnosticarBase(consulta)).fallas).toEqual([]);
   });
 });

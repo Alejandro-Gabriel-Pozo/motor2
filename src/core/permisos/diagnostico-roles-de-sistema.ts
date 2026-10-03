@@ -2,6 +2,8 @@ export interface EmpresaParaDiagnosticoDeRoles {
   id: string;
   slug: string;
   estado: string;
+  /** Con algún usuario (pertenencia a la empresa o membresía en una sucursal). Una empresa sin usuarios no tiene a quién dejar sin administrador. */
+  tieneUsuarios: boolean;
 }
 
 export interface RolParaDiagnostico {
@@ -20,7 +22,7 @@ export interface DiagnosticoDeRolesDeSistema {
 /**
  * Bloque G, G1. Regla: toda empresa que tenga un rol llamado «admin» tiene también uno con la clave «admin» (el backfill de la migración, o el punto que
  * creó el rol, tenía que ponerla). Una empresa ACTIVE sin ningún rol administrador solo avisa: puede ser una empresa recién creada a mano, y no la rompe
- * esta migración.
+ * esta migración. Una empresa SIN usuarios (la principal de una instalación nueva, por ejemplo) queda fuera de la regla: no hay a quién dejar sin admin.
  */
 export function diagnosticarRolesDeSistema(entrada: {
   empresas: readonly EmpresaParaDiagnosticoDeRoles[];
@@ -29,7 +31,7 @@ export function diagnosticarRolesDeSistema(entrada: {
   const fallas: string[] = [];
   const avisos: string[] = [];
 
-  for (const e of [...entrada.empresas].sort((a, b) => a.slug.localeCompare(b.slug))) {
+  for (const e of [...entrada.empresas].filter((x) => x.tieneUsuarios).sort((a, b) => a.slug.localeCompare(b.slug))) {
     const roles = entrada.roles.filter((r) => r.empresaId === e.id);
     const etiqueta = `${e.slug} [${e.estado}]`;
     const conNombreAdmin = roles.some((r) => r.nombre === "admin");

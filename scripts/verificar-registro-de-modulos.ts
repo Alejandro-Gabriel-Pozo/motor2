@@ -33,12 +33,15 @@ export async function diagnosticarBase(consulta: Consulta): Promise<DiagnosticoD
   const empresas = await consulta(SQL_EMPRESAS, [MIGRACION_DEL_REGISTRO]);
   const filas = await consulta(`SELECT "empresaId", "modulo" FROM "ModuloEmpresa"`);
   const roles = await consulta(`SELECT "empresaId", "nombre", "clave" FROM "Rol"`);
+  const conUsuarios = new Set(
+    (await consulta(`SELECT "empresaId" FROM "UsuarioEmpresa" UNION SELECT "empresaId" FROM "UsuarioSucursal"`)).map((f) => String(f.empresaId))
+  );
   const modulos = diagnosticarRegistroDeModulos({
     empresas: empresas.map((e) => ({ id: String(e.id), slug: String(e.slug), estado: String(e.estado), creadaAntesDeLaMigracion: e.creadaAntesDeLaMigracion === true })),
     filas: filas.map((f) => ({ empresaId: String(f.empresaId), modulo: String(f.modulo) })),
   });
   const rolesDeSistema = diagnosticarRolesDeSistema({
-    empresas: empresas.map((e) => ({ id: String(e.id), slug: String(e.slug), estado: String(e.estado) })),
+    empresas: empresas.map((e) => ({ id: String(e.id), slug: String(e.slug), estado: String(e.estado), tieneUsuarios: conUsuarios.has(String(e.id)) })),
     roles: roles.map((r) => ({ empresaId: String(r.empresaId), nombre: String(r.nombre), clave: r.clave === null ? null : String(r.clave) })),
   });
   return { fallas: [...modulos.fallas, ...rolesDeSistema.fallas], avisos: [...modulos.avisos, ...rolesDeSistema.avisos] };

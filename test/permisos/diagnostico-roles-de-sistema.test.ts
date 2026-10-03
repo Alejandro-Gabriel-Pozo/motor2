@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { diagnosticarRolesDeSistema } from "../../src/core/permisos/diagnostico-roles-de-sistema";
 
-const empresa = (slug: string, estado = "ACTIVE") => ({ id: `id-${slug}`, slug, estado });
+const empresa = (slug: string, estado = "ACTIVE", tieneUsuarios = true) => ({ id: `id-${slug}`, slug, estado, tieneUsuarios });
 const rol = (slug: string, nombre: string, clave: string | null) => ({ empresaId: `id-${slug}`, nombre, clave });
 
 describe("diagnosticarRolesDeSistema (G1)", () => {
@@ -35,5 +35,13 @@ describe("diagnosticarRolesDeSistema (G1)", () => {
     expect(d.fallas).toEqual([]);
     expect(d.avisos).toHaveLength(1);
     expect(d.avisos[0]).toContain("vacia [ACTIVE]");
+  });
+
+  it("D8: una empresa sin usuarios queda fuera de la regla: ni falla ni avisa (la principal de una instalación nueva)", () => {
+    const d = diagnosticarRolesDeSistema({
+      empresas: [empresa("principal", "ACTIVE", false), empresa("sin-clave", "ACTIVE", false)],
+      roles: [rol("sin-clave", "admin", null)],
+    });
+    expect(d).toEqual({ fallas: [], avisos: [] });
   });
 });
