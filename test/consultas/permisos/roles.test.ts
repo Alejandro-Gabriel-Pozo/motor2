@@ -19,7 +19,7 @@ describe("server/consultas/permisos/roles", () => {
     // Sembrados fuera de orden alfabético a propósito, activos e inactivos intercalados.
     await prisma.rol.create({ data: { nombre: "mozo" } });
     await prisma.rol.create({ data: { nombre: "bartender", activo: false } });
-    await prisma.rol.create({ data: { nombre: "admin" } });
+    await prisma.rol.create({ data: { nombre: "admin", clave: "admin" } });
     await prisma.rol.create({ data: { nombre: "zz_retirado", activo: false } });
     await prisma.rol.create({ data: { nombre: "cajero" } });
   });

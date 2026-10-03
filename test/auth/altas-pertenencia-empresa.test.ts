@@ -47,7 +47,7 @@ describe("altas de usuario — pertenencia a la empresa", () => {
     const base = await sembrarBase();
     await prismaAdmin.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
     const sucursalOtra = await prismaAdmin.sucursal.create({ data: { nombre: "Ajena", empresaId: "otra" } });
-    const rolOtra = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "otra" } });
+    const rolOtra = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "otra" } });
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 

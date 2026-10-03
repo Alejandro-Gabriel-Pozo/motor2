@@ -26,7 +26,7 @@ async function crearEmpresa(id: string, estado: "ACTIVE" | "SUSPENDED" = "ACTIVE
 async function empresaConSucursal(id: string, estado: "ACTIVE" | "SUSPENDED" = "ACTIVE") {
   await crearEmpresa(id, estado);
   const sucursal = await prismaAdmin.sucursal.create({ data: { nombre: `Sucursal ${id}`, empresaId: id } });
-  const rolAdmin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: id } });
+  const rolAdmin = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: id } });
   return { sucursal, rolAdmin };
 }
 

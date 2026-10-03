@@ -73,7 +73,7 @@ describe("bootstrap del primer admin", () => {
     await sembrarBase();
     await prismaAdmin.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "PROVISIONING" } });
     const sucursalOtra = await prismaAdmin.sucursal.create({ data: { nombre: "Otra sucursal", empresaId: "otra" } });
-    const rolOtra = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "otra" } });
+    const rolOtra = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "otra" } });
     await crearUsuarioConMembresia({ email: "admin-otra@negocio.com", sucursalId: sucursalOtra.id, rolId: rolOtra.id });
 
     process.env.BOOTSTRAP_ADMIN_EMAILS = "dueño@negocio.com";

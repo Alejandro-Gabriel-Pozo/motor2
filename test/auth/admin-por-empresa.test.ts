@@ -17,7 +17,7 @@ describe("último admin activo — por empresa", () => {
     const base = await sembrarBase();
     await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
     const sucursalNorte = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } });
-    const rolNorte = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "norte" } });
+    const rolNorte = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "norte" } });
     const unico = await crearUsuarioConMembresia({ email: "unico@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     const ajeno = await crearUsuarioConMembresia({ email: "ajeno@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     await prismaAdmin.usuarioSucursal.deleteMany({ where: { usuarioId: ajeno.id } });

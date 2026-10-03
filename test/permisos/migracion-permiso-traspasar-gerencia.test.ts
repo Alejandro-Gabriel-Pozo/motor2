@@ -47,7 +47,7 @@ describe("migración de datos: acción «traspasar_gerencia»", () => {
   });
 
   it("no asigna la acción a ningún rol ni sucursal (la tiene solo el gerente, sin pasar por la matriz)", async () => {
-    const rol = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
+    const rol = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
     await prismaAdmin.accion.create({ data: { clave: "gestion_usuarios", descripcion: "x" } });
     await prismaAdmin.permisoRol.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, rolId: rol.id, accionClave: "gestion_usuarios", puedeVer: true, puedeEditar: true } });
     await correr("migration.sql");
@@ -57,7 +57,7 @@ describe("migración de datos: acción «traspasar_gerencia»", () => {
 
   it("la reversa borra la acción y todo lo configurado sobre ella", async () => {
     await correr("migration.sql");
-    const rol = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
+    const rol = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
     await prismaAdmin.permisoRol.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, rolId: rol.id, accionClave: CLAVE, puedeVer: true, puedeEditar: true } });
     await correr("down.sql");
     expect(await prismaAdmin.accion.count({ where: { clave: CLAVE } })).toBe(0);

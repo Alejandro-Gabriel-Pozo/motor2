@@ -31,8 +31,8 @@ describe("migración de datos del permiso carta", () => {
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
-    adminId = (await prisma.rol.create({ data: { nombre: "admin" } })).id;
-    operadorId = (await prisma.rol.create({ data: { nombre: "operador" } })).id;
+    adminId = (await prisma.rol.create({ data: { nombre: "admin", clave: "admin" } })).id;
+    operadorId = (await prisma.rol.create({ data: { nombre: "operador", clave: "operador" } })).id;
   });
 
   it("tiene las dos sentencias esperadas (la acción y el permiso de admin)", () => {

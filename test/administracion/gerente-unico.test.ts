@@ -25,7 +25,7 @@ async function crearEmpresaNorte() {
     data: { id: NORTE, nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
   });
   const sucursal = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: NORTE } });
-  const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: NORTE } });
+  const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: NORTE } });
   return { sucursal, admin };
 }
 

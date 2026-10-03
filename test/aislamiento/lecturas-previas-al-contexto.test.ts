@@ -14,7 +14,7 @@ afterAll(() => prismaAdmin.$disconnect());
 async function empresaNorteConAdmin() {
   await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
   const sucursal = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } });
-  const rol = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "norte" } });
+  const rol = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "norte" } });
   return { sucursal, rol };
 }
 

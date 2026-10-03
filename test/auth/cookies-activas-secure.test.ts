@@ -29,7 +29,7 @@ describe("cookies de empresa/sucursal activa", () => {
     const base = await sembrarBase();
     await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
     const sucursalNorte = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } });
-    const rolNorte = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "norte" } });
+    const rolNorte = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "norte" } });
     const otraSucursal = await prismaAdmin.sucursal.create({ data: { nombre: "Otra", empresaId: base.sucursal.empresaId } });
     const usuario = await crearUsuarioConMembresia({ email: "multi@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await crearMembresia({ usuarioId: usuario.id, sucursalId: otraSucursal.id, rolId: base.admin.id });

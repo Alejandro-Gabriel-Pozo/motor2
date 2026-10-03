@@ -72,9 +72,9 @@ export function probarMigracionDeParticion(opciones: {
       });
       sucCentral = (await prismaAdmin.sucursal.create({ data: { nombre: "Central", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
       sucNorte = (await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: NORTE } })).id;
-      adminCentral = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
-      operadorCentral = (await prismaAdmin.rol.create({ data: { nombre: "operador", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
-      adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: NORTE } })).id;
+      adminCentral = (await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
+      operadorCentral = (await prismaAdmin.rol.create({ data: { nombre: "operador", clave: "operador", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
+      adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: NORTE } })).id;
       const conDescripcionReescrita = [...SQL.matchAll(/UPDATE "Accion" SET "descripcion" = '[^\n]*' WHERE "clave" = '([a-z_]+)'/g)].map((m) => m[1]);
       await prismaAdmin.accion.createMany({ data: [...new Set([...PADRES, ...conDescripcionReescrita])].map((clave) => ({ clave, descripcion: clave })) });
     });

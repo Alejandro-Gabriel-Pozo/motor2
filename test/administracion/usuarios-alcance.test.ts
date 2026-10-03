@@ -17,8 +17,8 @@ async function crearEmpresaAjena() {
     data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
   });
   const sucursal = await prismaAdmin.sucursal.create({ data: { nombre: "Ajena", empresaId: "otra" } });
-  const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "otra" } });
-  const operador = await prismaAdmin.rol.create({ data: { nombre: "operador", empresaId: "otra" } });
+  const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "otra" } });
+  const operador = await prismaAdmin.rol.create({ data: { nombre: "operador", clave: "operador", empresaId: "otra" } });
   return { sucursal, admin, operador };
 }
 

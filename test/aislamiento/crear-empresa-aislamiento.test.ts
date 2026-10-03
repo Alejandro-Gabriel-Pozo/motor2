@@ -17,7 +17,7 @@ beforeEach(async () => {
   await limpiarBaseDeTest();
   await prismaAdmin.unidad.createMany({ data: [{ empresaId: A, nombre: "kg-a", magnitud: "PESO" }, { empresaId: A, nombre: "kg", magnitud: "PESO" }] });
   await prismaAdmin.sucursal.create({ data: { empresaId: A, nombre: "Sucursal A" } });
-  await prismaAdmin.rol.create({ data: { empresaId: A, nombre: "admin" } });
+  await prismaAdmin.rol.create({ data: { empresaId: A, nombre: "admin", clave: "admin" } });
   ({ empresaId: B } = await crearEmpresa(prisma, {
     nombre: "Pizzería Norte",
     slug: "norte",

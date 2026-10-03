@@ -50,8 +50,8 @@ describe("migración de datos: acciones de la receta propia por sucursal", () =>
   });
 
   it("se las da (ver y editar) al rol admin y a ningún otro", async () => {
-    const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
-    const operador = await prismaAdmin.rol.create({ data: { nombre: "operador", empresaId: EMPRESA_POR_DEFECTO_ID } });
+    const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
+    const operador = await prismaAdmin.rol.create({ data: { nombre: "operador", clave: "operador", empresaId: EMPRESA_POR_DEFECTO_ID } });
     await correr("migration.sql");
     await correr("migration.sql");
 
@@ -62,7 +62,7 @@ describe("migración de datos: acciones de la receta propia por sucursal", () =>
   });
 
   it("no pisa un permiso ya configurado del admin", async () => {
-    const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
+    const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
     await prismaAdmin.accion.create({ data: { clave: "receta_sucursal_copiar", descripcion: "x" } });
     await prismaAdmin.permisoRol.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, rolId: admin.id, accionClave: "receta_sucursal_copiar", puedeVer: true, puedeEditar: false } });
     await correr("migration.sql");
@@ -71,7 +71,7 @@ describe("migración de datos: acciones de la receta propia por sucursal", () =>
   });
 
   it("la reversa borra las acciones y todo lo configurado sobre ellas", async () => {
-    const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
+    const admin = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } });
     await correr("migration.sql");
     await correr("down.sql");
     expect(await prismaAdmin.accion.count({ where: { clave: { in: [...CLAVES] } } })).toBe(0);

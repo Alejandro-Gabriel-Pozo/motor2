@@ -155,9 +155,9 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
     });
 
     it("Rol y Sucursal: nombre por empresa", async () => {
-      await prisma.rol.create({ data: { nombre: "admin" } });
-      await prisma.rol.create({ data: { empresaId: "empresa_b", nombre: "admin" } });
-      expect(codigoDeError(await prisma.rol.create({ data: { nombre: "admin" } }).catch((e: unknown) => e))).toBe("P2002");
+      await prisma.rol.create({ data: { nombre: "admin", clave: "admin" } });
+      await prisma.rol.create({ data: { empresaId: "empresa_b", nombre: "admin", clave: "admin" } });
+      expect(codigoDeError(await prisma.rol.create({ data: { nombre: "admin", clave: "admin" } }).catch((e: unknown) => e))).toBe("P2002");
 
       await prisma.sucursal.create({ data: { nombre: "Central" } });
       await prisma.sucursal.create({ data: { empresaId: "empresa_b", nombre: "Central" } });

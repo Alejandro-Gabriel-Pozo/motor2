@@ -65,9 +65,9 @@ describe("migración de datos: partición de las claves de permisos de los repor
     });
     sucCentral = (await prismaAdmin.sucursal.create({ data: { nombre: "Central", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
     sucNorte = (await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: NORTE } })).id;
-    adminCentral = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
-    operadorCentral = (await prismaAdmin.rol.create({ data: { nombre: "operador", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
-    adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: NORTE } })).id;
+    adminCentral = (await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
+    operadorCentral = (await prismaAdmin.rol.create({ data: { nombre: "operador", clave: "operador", empresaId: EMPRESA_POR_DEFECTO_ID } })).id;
+    adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: NORTE } })).id;
     await prismaAdmin.accion.createMany({ data: PADRES.map((clave) => ({ clave, descripcion: clave })) });
   });
 

@@ -51,8 +51,8 @@ describe("migración de datos: un gerente por empresa", () => {
     });
     for (const empresaId of EMPRESAS) {
       sucursal[empresaId] = (await prismaAdmin.sucursal.create({ data: { nombre: `Suc ${empresaId}`, empresaId } })).id;
-      rolAdmin[empresaId] = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId } })).id;
-      rolOperador[empresaId] = (await prismaAdmin.rol.create({ data: { nombre: "operador", empresaId } })).id;
+      rolAdmin[empresaId] = (await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId } })).id;
+      rolOperador[empresaId] = (await prismaAdmin.rol.create({ data: { nombre: "operador", clave: "operador", empresaId } })).id;
     }
   });
 

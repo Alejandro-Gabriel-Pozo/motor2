@@ -10,7 +10,7 @@ const ACCION = "reporte_salud";
 
 async function operador() {
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
-  return prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador" } });
+  return prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
 }
 async function fijar(rolId: string, puedeVer: boolean, puedeEditar: boolean) {
   await prisma.permisoRol.upsert({

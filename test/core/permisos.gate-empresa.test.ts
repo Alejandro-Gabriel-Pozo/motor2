@@ -105,7 +105,7 @@ describe("gate de permisos — acciones de empresa", () => {
     });
     await activarTodosLosModulos("norte");
     const sucursalNorte = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } });
-    const rolNorte = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "norte" } });
+    const rolNorte = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "norte" } });
     await prismaAdmin.permisoRol.create({
       data: { rolId: rolNorte.id, accionClave: "gestion_permisos", puedeVer: true, puedeEditar: true, empresaId: "norte" },
     });

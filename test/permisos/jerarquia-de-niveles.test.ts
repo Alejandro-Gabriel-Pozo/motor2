@@ -222,7 +222,7 @@ describe("anti-escalada: un rol por debajo del piso no llega a la acción", () =
       await activarTodosLosModulos("norte");
       const sucNorte = (await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } })).id;
       const mozoNorte = (await prismaAdmin.rol.create({ data: { nombre: "mozo", empresaId: "norte" } })).id;
-      const adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "norte" } })).id;
+      const adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "norte" } })).id;
       for (const rolId of [mozoNorte, adminNorte]) {
         for (const accionClave of [DE_ADMIN_SUCURSAL, DE_ADMIN_EMPRESA]) {
           await prismaAdmin.permisoRol.create({ data: { empresaId: "norte", rolId, accionClave, puedeVer: true, puedeEditar: true } });
