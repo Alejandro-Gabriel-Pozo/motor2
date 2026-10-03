@@ -35,15 +35,12 @@ interface Excepcion {
   esperados: number;
 }
 
-const DEUDA_BLOQUE_G = "deuda → bloque G: las reglas de gobierno (proteger admins, gerente siempre con sucursal, siempre un admin activo) dependen del NOMBRE «admin» y están copiadas; pasan a core/permisos con el rol identificado por clave técnica.";
-
 /** Archivo → excepción. Regla 1 y 3. Ninguna se agrega ni se sube de cantidad sin que el dueño la vea. */
 const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
   "server/actions/permisos/permisos.ts": { tipo: "permanente", motivo: "administra la matriz de permisos (PermisoRol): es su trabajo.", esperados: 3 },
   "server/actions/permisos/capacidades-sucursal.ts": { tipo: "permanente", motivo: "administra las capacidades por sucursal (CapacidadSucursal): es su trabajo.", esperados: 4 },
   "core/features/empresa/crear-empresa.ts": { tipo: "permanente", motivo: "siembra la matriz de permisos al crear la empresa.", esperados: 1 },
   "app/(app)/administracion/permisos/permisos-matriz.tsx": { tipo: "permanente", motivo: "solo MUESTRA la columna «Piso» de la matriz; no decide acceso.", esperados: 1 },
-  "server/actions/auth/sucursales.ts": { tipo: "deuda", motivo: DEUDA_BLOQUE_G, esperados: 1 },
 };
 /** Archivo → motivo. Regla 2: la consola de plataforma muestra el estado de los módulos de cada empresa; se declara acá cuando exista. */
 const EXCEPCIONES_DEL_REGISTRO_DE_MODULOS: Record<string, string> = {
@@ -175,10 +172,9 @@ describe("acceso: fuera de core/permisos nada decide el acceso por su cuenta", (
     }
   });
 
-  it("la deuda del bloque G está acotada: solo un archivo, 1 hallazgo (el bloque G la deja en cero)", () => {
+  it("la deuda del bloque G está pagada: ninguna excepción es de deuda", () => {
     const deuda = Object.entries(EXCEPCIONES_DE_ROL_Y_GUARD).filter(([, e]) => e.tipo === "deuda");
-    expect(deuda.map(([n]) => n).sort()).toEqual(["server/actions/auth/sucursales.ts"]);
-    expect(deuda.reduce((suma, [, e]) => suma + e.esperados, 0)).toBe(1);
+    expect(deuda.map(([n]) => n)).toEqual([]);
   });
 });
 
@@ -213,7 +209,7 @@ describe("el analizador de acceso detecta lo que dice detectar", () => {
   it("una excepción con cantidad declarada falla si aparece un hallazgo más o si se paga deuda sin bajarla", () => {
     const uno = analizarAcceso(`if (rol === "admin") {}`);
     const dos = analizarAcceso(`if (rol === "admin") {}\nif (rol.nombre === "x") {}`);
-    const archivo = "server/actions/auth/sucursales.ts";
+    const archivo = "core/features/empresa/crear-empresa.ts";
     expect(problemasDe(archivo, uno)).toEqual([]);
     expect(problemasDe(archivo, dos).join("\n")).toContain("NUEVAS");
     expect(problemasDe(archivo, []).join("\n")).toContain("Se pagó deuda");

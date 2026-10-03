@@ -46,6 +46,11 @@ export async function objetivoEnLaEmpresa(db: Db, empresaId: string, usuarioId: 
   return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: esAdmin !== null };
 }
 
+/** El rol «admin» de la empresa, buscado por su CLAVE técnica (el nombre se puede cambiar: bloque G3). `null` si la empresa no lo tiene. */
+export async function buscarRolAdmin(db: Db, empresaId: string) {
+  return db.rol.findFirst({ where: { empresaId, clave: CLAVE_ROL_ADMIN } });
+}
+
 /** Se gestiona a quien está en el mismo nivel o más abajo; el mensaje dice a quién protege el techo (el gerente o los administradores). */
 export function mensajeSiNoPuedeGestionar(actor: PersonaParaJerarquia, objetivo: PersonaParaJerarquia): string | null {
   if (puedeGestionarA(actor, objetivo)) return null;

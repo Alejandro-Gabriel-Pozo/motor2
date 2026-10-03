@@ -4,8 +4,10 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { gerentesQueQuedaranSinSucursalActiva, tuvoRolAdminEnLaEmpresa } from "@/core/permisos/gerencia";
-import { esGerenteDeEmpresa } from "@/core/permisos/rol-empresa";
+import { gerentesQueQuedaranSinSucursalActiva } from "@/core/permisos/gerencia";
+import { actorEnLaEmpresa, buscarRolAdmin, mensajeSiReactivaAdminSinSerGerente, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
+import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
+import { conGobierno } from "../con-gobierno";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -40,11 +42,6 @@ export async function crearSucursalConAdmin(input: {
     const existente = await ctx.db.sucursal.findFirst({ where: { empresaId: ctx.empresaId, nombre } });
     if (existente) return error(`Ya existe una sucursal "${nombre}".`);
 
-    const rolAdmin = await ctx.db.rol.findFirst({ where: { empresaId: ctx.empresaId, nombre: "admin" } });
-    if (!rolAdmin || !rolAdmin.activo) {
-      return error('No se encontró el rol "admin" (¿corriste el seed?) — no se puede asignar el primer admin.');
-    }
-
     // Decisión 4 del dueño (2026-09-23, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10): la sucursal nueva arranca
     // SOLO con los productos que ya son "universales" — disponibles en TODAS las sucursales activas de hoy, sin excepción.
     // Nunca con los que son mayoría pero no unanimidad: un producto sucursal-específico no se contagia solo por ser común.
@@ -62,23 +59,29 @@ export async function crearSucursalConAdmin(input: {
     }
     const universales = productosUniversales(disponibilidadPorProducto, sucursalIdsActivas);
 
-    // Nombrar primer admin a alguien cuya cuenta en la empresa está apagada la reactivaría: si fue admin, eso es solo del gerente (mismo criterio que `usuarios.ts`).
-    const usuarioPrevio = await ctx.db.user.findUnique({ where: { email }, select: { id: true } });
-    if (usuarioPrevio && !esGerenteDeEmpresa(ctx.rolEmpresa)) {
-      const pertenencia = await ctx.db.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, select: { activo: true } });
-      if (pertenencia && !pertenencia.activo && (await tuvoRolAdminEnLaEmpresa(ctx.db, ctx.empresaId, usuarioPrevio.id))) {
-        return error("Solo el gerente de la empresa puede reactivar a un administrador.");
+    const resultado = await conGobierno(ctx, (tx) => conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
+      const rolAdmin = await buscarRolAdmin(tx, ctx.empresaId);
+      if (!rolAdmin || !rolAdmin.activo) {
+        return error('No se encontró el rol "admin" (¿corriste el seed?) — no se puede asignar el primer admin.');
       }
-    }
 
-    await ctx.transaccion(async (tx) => {
+      // Nombrar primer admin a alguien cuya cuenta en la empresa está apagada la reactivaría: si fue admin, eso es solo del gerente (mismo criterio que `usuarios.ts`).
+      const usuarioPrevio = await tx.user.findUnique({ where: { email }, select: { id: true } });
+      const pertenenciaPrevia = usuarioPrevio
+        ? await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, select: { activo: true } })
+        : null;
+      if (usuarioPrevio) {
+        const reactivaAdmin = await reactivaAUnAdmin(tx, ctx.empresaId, usuarioPrevio.id, { cuentaDeEmpresa: pertenenciaPrevia });
+        const rechazo = mensajeSiReactivaAdminSinSerGerente(actorEnLaEmpresa(ctx), reactivaAdmin);
+        if (rechazo) return error(rechazo);
+      }
+
       const sucursal = await tx.sucursal.create({ data: { nombre, empresaId: ctx.empresaId } });
       const usuario = await tx.user.upsert({
         where: { email },
         update: {},
         create: { email },
       });
-      const pertenenciaPrevia = await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } }, select: { activo: true } });
       await tx.usuarioEmpresa.upsert({
         where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } },
         update: { activo: true },
@@ -108,7 +111,9 @@ export async function crearSucursalConAdmin(input: {
       if (universales.length) {
         await tx.disponibilidadProducto.createMany({ data: universales.map((productoId) => ({ sucursalId: sucursal.id, empresaId: ctx.empresaId, productoId, disponible: true })) });
       }
-    }, { maxWait: 5_000, timeout: 15_000 });
+      return ok("");
+    }));
+    if (!resultado.ok) return resultado;
 
     // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).
     refrescarVistaSiHaceFalta();
@@ -124,36 +129,41 @@ export async function crearSucursalConAdmin(input: {
  */
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("activar_sucursal", async (ctx) => {
-    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId } });
-    if (!sucursal) return error("No se encontró esa sucursal.");
+    const resultado = await conGobierno(ctx, async (tx) => {
+      const sucursal = await tx.sucursal.findUnique({ where: { id: sucursalId } });
+      if (!sucursal) return error("No se encontró esa sucursal.");
 
-    // `obtenerContextoUsuario` solo cuenta las membresías de sucursales activas: quien desactiva la suya (y no tiene otra)
-    // queda sin contexto en toda la aplicación y ya no puede volver a activarla, solo desde la base de datos.
-    if (!activo && sucursalId === ctx.sucursalId) {
-      return error(
-        `No podés desactivar la sucursal en la que estás ahora ("${sucursal.nombre}"): te quedarías sin acceso a la aplicación. Hacelo desde otra sucursal, o pedile a otro admin.`
-      );
-    }
-
-    // El gerente también necesita contexto: apagar la última sucursal activa donde tiene membresía lo deja sin acceso y la empresa sin quien la gestione.
-    if (!activo && sucursal.activo) {
-      const gerentes = await gerentesQueQuedaranSinSucursalActiva(ctx.db, ctx.empresaId, sucursalId);
-      if (gerentes.length) {
-        return error(`No se puede desactivar "${sucursal.nombre}": el gerente de la empresa (${gerentes.join(", ")}) se quedaría sin ninguna sucursal activa. Asignale antes otra sucursal activa.`);
+      // `obtenerContextoUsuario` solo cuenta las membresías de sucursales activas: quien desactiva la suya (y no tiene otra)
+      // queda sin contexto en toda la aplicación y ya no puede volver a activarla, solo desde la base de datos.
+      if (!activo && sucursalId === ctx.sucursalId) {
+        return error(
+          `No podés desactivar la sucursal en la que estás ahora ("${sucursal.nombre}"): te quedarías sin acceso a la aplicación. Hacelo desde otra sucursal, o pedile a otro admin.`
+        );
       }
-    }
 
-    await ctx.transaccion(async (tx) => {
-      await tx.sucursal.update({ where: { id: sucursalId }, data: { activo } });
-      await registrarCambioAuditado(tx, {
-        entidad: "Sucursal", entidadId: sucursalId, campo: "activo", descripcion: `Sucursal "${sucursal.nombre}": activa`,
-        valorAnterior: sucursal.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: null,
+      // El gerente también necesita contexto: apagar la última sucursal activa donde tiene membresía lo deja sin acceso y la empresa sin quien la gestione.
+      if (!activo && sucursal.activo) {
+        const gerentes = await gerentesQueQuedaranSinSucursalActiva(tx, ctx.empresaId, sucursalId);
+        if (gerentes.length) {
+          return error(`No se puede desactivar "${sucursal.nombre}": el gerente de la empresa (${gerentes.join(", ")}) se quedaría sin ninguna sucursal activa. Asignale antes otra sucursal activa.`);
+        }
+      }
+
+      // D9: apagar una sucursal también puede dejar a la empresa sin admin efectivo (a) o sin sucursal al gerente (b): se mide antes y después.
+      await conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
+        await tx.sucursal.update({ where: { id: sucursalId }, data: { activo } });
+        await registrarCambioAuditado(tx, {
+          entidad: "Sucursal", entidadId: sucursalId, campo: "activo", descripcion: `Sucursal "${sucursal.nombre}": activa`,
+          valorAnterior: sucursal.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: null,
+        });
       });
+      return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
     });
+    if (!resultado.ok) return resultado;
     revalidarCartasPublicas(); // la carta pública de una sucursal desactivada tiene que dejar de verse al instante, no a los 5 minutos
     // A propósito SIN `refrescarVistaSiHaceFalta()`: su único llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente, y
     // otras pantallas que reusen ese componente heredan lo mismo (ver la regla en refrescar.ts).
-    return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
+    return resultado;
   });
 }
 
