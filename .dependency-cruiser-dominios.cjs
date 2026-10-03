@@ -18,6 +18,7 @@ const INFRA_TRANSVERSAL = {
   features: "contratos (schemas) y guards de comandos de cada feature: son la frontera de entrada de las Server Actions, no la lógica de un dominio.",
   estadistica: "cálculos estadísticos puros sin estado propio.",
   navegacion: "estructura del menú: la leen las pantallas y los shells.",
+  modulos: "catálogo de módulos y su clausura por dependencias (ADR-011/014/015): puro, lo consumen la guarda, el menú y la consola de plataforma.",
   precios: "sincronización de precios: una sola pieza, sin dominio propio todavía; si crece, pasa a DOMINIOS_DE_NEGOCIO con su fachada.",
   seguridad: "cabeceras HTTP y auditoría de dependencias: se consumen desde la configuración y los scripts.",
 };
