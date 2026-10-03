@@ -47,6 +47,8 @@ export const ENTIDADES_AUDITABLES = [
   "UsuarioSucursal",
   // "CartaSucursal": la carta propia de una sucursal se arma por copia de otra (`copiarCartaDeSucursal`) — `entidadId` es el id de la Sucursal, `campo: "cartaPropia"`, con `sucursalId`.
   "CartaSucursal",
+  // "ModuloEmpresa": la plataforma activa o desactiva un módulo de la empresa (`cambiarModulosDeEmpresa`) — `entidadId` es `${empresaId}:${modulo}`, `campo: "estado"`, `valorAnterior: null` si el módulo no tenía fila, `sucursalId` null.
+  "ModuloEmpresa",
 ] as const;
 
 /**

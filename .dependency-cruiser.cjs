@@ -241,6 +241,16 @@ module.exports = {
       to: { path: "^src/core/features/empresa/cambiar-politica-empresa\\.ts$" },
     },
     {
+      name: "modulos-solo-desde-plataforma",
+      comment:
+        "Bloque 5A, P9 (ADR-011/ADR-012): el registro de módulos de una empresa solo lo cambia la plataforma, por scripts/modulos-empresa.ts (fuera de src/). " +
+        "Ningún archivo de src/ importa core/features/empresa/cambiar-modulos-de-empresa.ts: ni una Server Action, ni una pantalla, ni otro caso de uso. " +
+        "La base lo exige además (solo el dueño y motor2_plataforma escriben ModuloEmpresa).",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/core/features/empresa/cambiar-modulos-de-empresa\\.ts$" },
+      to: { path: "^src/core/features/empresa/cambiar-modulos-de-empresa\\.ts$" },
+    },
+    {
       name: "sin-ciclos",
       comment:
         "Sin dependencias circulares entre archivos (incluye las de solo tipos). Ciclos preexistentes exceptuados: .dependency-cruiser-excepciones.cjs.",

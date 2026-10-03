@@ -48,7 +48,9 @@ const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
   "server/actions/auth/sucursales.ts": { tipo: "deuda", motivo: DEUDA_BLOQUE_G, esperados: 1 },
 };
 /** Archivo → motivo. Regla 2: la consola de plataforma muestra el estado de los módulos de cada empresa; se declara acá cuando exista. */
-const EXCEPCIONES_DEL_REGISTRO_DE_MODULOS: Record<string, string> = {};
+const EXCEPCIONES_DEL_REGISTRO_DE_MODULOS: Record<string, string> = {
+  "core/features/empresa/cambiar-modulos-de-empresa.ts": "es QUIEN ESCRIBE el registro, y solo lo llama scripts/modulos-empresa.ts (regla `modulos-solo-desde-plataforma` de dependency-cruiser); no decide acceso.",
+};
 
 export interface Hallazgo {
   regla: 1 | 2 | 3;
