@@ -156,12 +156,16 @@ model Rol {
   /// Catálogo único para todo el negocio — guardar siempre en minúscula,
   /// mismo criterio que ROLES_VALIDOS/obtenerRolesActivos_ en Core.js.
   nombre    String
+  /// Identidad estable de un rol de SISTEMA ("admin", "operador"); null en un rol creado a mano. El nombre se puede cambiar (bloque G3), la clave no:
+  /// es lo que el código compara para saber QUÉ rol es. Una empresa tiene a lo sumo un rol por clave.
+  clave     String?
   activo    Boolean @default(true)
 
   usuarios UsuarioSucursal[]
   permisos PermisoRol[]
 
   @@unique([empresaId, nombre])
+  @@unique([empresaId, clave])
   @@unique([empresaId, id])
 }
 

@@ -45,6 +45,8 @@ describe("crearEmpresa: lo que deja una empresa recién creada", () => {
 
     const roles = await prismaAdmin.rol.findMany({ where: { empresaId: empresa.id }, orderBy: { nombre: "asc" } });
     expect(roles.map((r) => r.nombre)).toEqual(["admin", "operador"]);
+    // G1: los dos roles de sistema nacen con su clave estable (igual al nombre de hoy).
+    expect(roles.map((r) => r.clave)).toEqual(["admin", "operador"]);
 
     // La matriz de permisos es la misma que siembra prisma/seed.ts: cada acción × cada rol, Ver = Editar.
     const permisos = await prismaAdmin.permisoRol.findMany({ where: { empresaId: empresa.id } });

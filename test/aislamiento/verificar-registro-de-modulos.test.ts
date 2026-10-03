@@ -58,4 +58,18 @@ describe("verificar-registro-de-modulos contra la base", () => {
   it("si la migración no figura como aplicada, es un error (no un registro «vacío»)", async () => {
     await expect(diagnosticarBase(async (sql) => (sql.includes("_prisma_migrations") ? [] : consulta(sql)))).rejects.toThrow(/no figura como aplicada/);
   });
+
+  it("lo mismo vale para la migración de la clave de los roles de sistema (G1)", async () => {
+    const sinLaClave: Consulta = async (sql, params = []) =>
+      sql.includes("_prisma_migrations") && params[0] === "20261006120000_clave_de_rol_de_sistema" ? [] : consulta(sql, params);
+    await expect(diagnosticarBase(sinLaClave)).rejects.toThrow(/20261006120000_clave_de_rol_de_sistema no figura como aplicada/);
+  });
+
+  it("falla si una empresa tiene un rol «admin» sin la clave «admin»", async () => {
+    await prismaAdmin.rol.create({ data: { empresaId: "empresa_principal", nombre: "admin" } });
+    const d = await diagnosticarBase(consulta);
+    expect(d.fallas).toHaveLength(1);
+    expect(d.fallas[0]).toContain("principal [ACTIVE]");
+    expect(d.fallas[0]).toContain("clave");
+  });
 });

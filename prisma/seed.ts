@@ -10,8 +10,8 @@ async function main() {
   // "Roles/permisos" — decisión confirmada con el dueño tras investigar
   // ERPNext/Dolibarr).
   const [admin, operador] = await Promise.all([
-    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "admin" } }, update: {}, create: { nombre: "admin" } }),
-    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: {}, create: { nombre: "operador" } }),
+    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "admin" } }, update: {}, create: { nombre: "admin", clave: "admin" } }),
+    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: {}, create: { nombre: "operador", clave: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 

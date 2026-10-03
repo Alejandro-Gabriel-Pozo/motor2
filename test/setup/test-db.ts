@@ -205,8 +205,8 @@ export async function sembrarCatalogoBase() {
  */
 export async function sembrarBase() {
   const [admin, operador] = await Promise.all([
-    prisma.rol.create({ data: { nombre: "admin" } }),
-    prisma.rol.create({ data: { nombre: "operador" } }),
+    prisma.rol.create({ data: { nombre: "admin", clave: "admin" } }),
+    prisma.rol.create({ data: { nombre: "operador", clave: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 

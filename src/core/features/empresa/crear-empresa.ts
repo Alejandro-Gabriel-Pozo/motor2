@@ -64,8 +64,8 @@ export async function crearEmpresa(db: PrismaClient, entrada: ComandoCrearEmpres
       // `Accion` es global (una fila por clave para todo el sistema): las de la primera empresa ya están, no se pisan.
       await tx.accion.createMany({ data: ACCIONES.map((a) => ({ clave: a.clave, descripcion: a.descripcion })), skipDuplicates: true });
 
-      const rolAdmin = await tx.rol.create({ data: { empresaId, nombre: "admin" } });
-      const rolOperador = await tx.rol.create({ data: { empresaId, nombre: "operador" } });
+      const rolAdmin = await tx.rol.create({ data: { empresaId, nombre: "admin", clave: "admin" } });
+      const rolOperador = await tx.rol.create({ data: { empresaId, nombre: "operador", clave: "operador" } });
       const rolesPorNombre = { admin: rolAdmin, operador: rolOperador } as const;
       await tx.permisoRol.createMany({
         data: ACCIONES.flatMap((accion) =>

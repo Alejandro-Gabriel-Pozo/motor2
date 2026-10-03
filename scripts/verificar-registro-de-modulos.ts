@@ -1,13 +1,16 @@
 /**
  * Bloque 5A, P5 (solo lectura): verifica el registro de módulos de la base que apunte DIRECT_URL (el dueño: salta el RLS y ve todas las empresas).
  * Corre solo al final de `scripts/construir.ts` en modo `verificar` y a mano con `npm run verificar:modulos`. Sale con código 1 si una empresa ACTIVE
- * que existía antes de la migración quedó sin registro (ver `diagnosticarRegistroDeModulos`), o si no se puede leer el registro.
+ * que existía antes de la migración quedó sin registro (ver `diagnosticarRegistroDeModulos`), si una empresa tiene un rol «admin» sin la clave «admin»
+ * (G1, `diagnosticarRolesDeSistema`), o si no se puede leer.
  */
 import "dotenv/config";
 import { Client } from "pg";
 import { diagnosticarRegistroDeModulos, type DiagnosticoDelRegistro } from "../src/core/modulos/diagnostico-registro";
+import { diagnosticarRolesDeSistema } from "../src/core/permisos/diagnostico-roles-de-sistema";
 
 export const MIGRACION_DEL_REGISTRO = "20261004120000_registro_de_modulos_por_empresa";
+const MIGRACION_DE_LA_CLAVE_DE_ROL = "20261006120000_clave_de_rol_de_sistema";
 
 export type Consulta = (sql: string, params?: unknown[]) => Promise<Array<Record<string, unknown>>>;
 
@@ -19,15 +22,26 @@ const SQL_EMPRESAS = `
       SELECT finished_at FROM _prisma_migrations WHERE migration_name = $1 AND finished_at IS NOT NULL AND rolled_back_at IS NULL
     ) m`;
 
+async function exigirMigracionAplicada(consulta: Consulta, migracion: string): Promise<void> {
+  const aplicada = await consulta(`SELECT 1 FROM _prisma_migrations WHERE migration_name = $1 AND finished_at IS NOT NULL AND rolled_back_at IS NULL`, [migracion]);
+  if (aplicada.length === 0) throw new Error(`La migración ${migracion} no figura como aplicada en esta base.`);
+}
+
 export async function diagnosticarBase(consulta: Consulta): Promise<DiagnosticoDelRegistro> {
-  const aplicada = await consulta(`SELECT 1 FROM _prisma_migrations WHERE migration_name = $1 AND finished_at IS NOT NULL AND rolled_back_at IS NULL`, [MIGRACION_DEL_REGISTRO]);
-  if (aplicada.length === 0) throw new Error(`La migración ${MIGRACION_DEL_REGISTRO} no figura como aplicada en esta base.`);
+  await exigirMigracionAplicada(consulta, MIGRACION_DEL_REGISTRO);
+  await exigirMigracionAplicada(consulta, MIGRACION_DE_LA_CLAVE_DE_ROL);
   const empresas = await consulta(SQL_EMPRESAS, [MIGRACION_DEL_REGISTRO]);
   const filas = await consulta(`SELECT "empresaId", "modulo" FROM "ModuloEmpresa"`);
-  return diagnosticarRegistroDeModulos({
+  const roles = await consulta(`SELECT "empresaId", "nombre", "clave" FROM "Rol"`);
+  const modulos = diagnosticarRegistroDeModulos({
     empresas: empresas.map((e) => ({ id: String(e.id), slug: String(e.slug), estado: String(e.estado), creadaAntesDeLaMigracion: e.creadaAntesDeLaMigracion === true })),
     filas: filas.map((f) => ({ empresaId: String(f.empresaId), modulo: String(f.modulo) })),
   });
+  const rolesDeSistema = diagnosticarRolesDeSistema({
+    empresas: empresas.map((e) => ({ id: String(e.id), slug: String(e.slug), estado: String(e.estado) })),
+    roles: roles.map((r) => ({ empresaId: String(r.empresaId), nombre: String(r.nombre), clave: r.clave === null ? null : String(r.clave) })),
+  });
+  return { fallas: [...modulos.fallas, ...rolesDeSistema.fallas], avisos: [...modulos.avisos, ...rolesDeSistema.avisos] };
 }
 
 async function main(): Promise<number> {
