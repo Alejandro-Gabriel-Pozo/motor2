@@ -50,6 +50,33 @@ describe("Proveedores", () => {
     expect((await prisma.proveedor.findUniqueOrThrow({ where: { id: creado.id } })).cuit).toBe("30703088534");
   });
 
+  it("el alta rechaza un CUIT que ya tiene otro proveedor de la empresa, aunque se escriba con guiones, y nombra al otro", async () => {
+    const primero = await altaProveedor({ nombre: "Primero", cuit: "30703088534" });
+    expect(primero.ok, primero.mensaje).toBe(true);
+    const resultado = await altaProveedor({ nombre: "Segundo", cuit: "30-70308853-4" });
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toContain("Ya existe un proveedor con ese CUIT");
+    expect(resultado.mensaje).toContain("Primero");
+    expect(await prisma.proveedor.count({ where: { nombre: "Segundo" } })).toBe(0);
+  });
+
+  it("varios proveedores sin CUIT conviven", async () => {
+    expect((await altaProveedor({ nombre: "Uno" })).ok).toBe(true);
+    expect((await altaProveedor({ nombre: "Dos", cuit: "" })).ok).toBe(true);
+  });
+
+  it("actualizarProveedor rechaza el CUIT de otro proveedor, pero deja guardar el propio sin cambios", async () => {
+    const a = await altaProveedor({ nombre: "A", cuit: "30703088534" });
+    const b = await altaProveedor({ nombre: "B" });
+    if (!a.ok || !b.ok) throw new Error("esperaba ok");
+    const choque = await actualizarProveedor(b.id, { cuit: "30-70308853-4" });
+    expect(choque.ok).toBe(false);
+    expect(choque.mensaje).toContain("Ya existe un proveedor con ese CUIT");
+    expect((await prisma.proveedor.findUniqueOrThrow({ where: { id: b.id } })).cuit).toBeNull();
+    const propio = await actualizarProveedor(a.id, { cuit: "30-70308853-4", contacto: "Ana" });
+    expect(propio.ok, propio.mensaje).toBe(true);
+  });
+
   it("el alta persiste condicionesPago y notas (F4: el form nuevo los manda, el inline viejo no)", async () => {
     const resultado = await altaProveedor({
       nombre: "Distribuidora Sur",

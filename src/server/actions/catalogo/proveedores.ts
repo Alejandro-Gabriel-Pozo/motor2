@@ -9,12 +9,22 @@ import {
   validarEmailOpcional,
   validarTextoLibre,
 } from "@/core/datos/limites";
+import type { ContextoUsuario } from "@/core/auth/contexto";
 import { validarCuit } from "@/core/fiscal/cuit";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
+
+const MENSAJE_CUIT_DUPLICADO = (nombre: string) =>
+  `Ya existe un proveedor con ese CUIT («${nombre}»). Dos proveedores de una misma empresa no pueden compartir CUIT: revisá que esté bien cargado.`;
+
+/** El nombre del OTRO proveedor de la empresa que ya tiene ese CUIT (el RLS acota a la empresa activa), o `null`. */
+async function proveedorConCuit(db: ContextoUsuario["db"], cuit: string | null, excluirId?: string) {
+  if (!cuit) return null;
+  return (await db.proveedor.findFirst({ where: { cuit, ...(excluirId ? { id: { not: excluirId } } : {}) }, select: { nombre: true } }))?.nombre ?? null;
+}
 
 export async function listarProveedores(soloActivos = false) {
   const ctx = await requerirSesion();
@@ -68,6 +78,8 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
 
     const dup = await ctx.db.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
     if (dup) return error(`Ya existe un proveedor llamado "${nombre}".`);
+    const conMismoCuit = await proveedorConCuit(ctx.db, campos.valores.cuit);
+    if (conMismoCuit) return error(MENSAJE_CUIT_DUPLICADO(conMismoCuit));
 
     try {
       const proveedor = await crearConCodigoAutogenerado("PRV", undefined, (codigo) =>
@@ -81,7 +93,11 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
       );
       return okConId(`Proveedor "${proveedor.nombre}" creado.`, proveedor.id, proveedor.nombre);
     } catch (e) {
-      if (esErrorDeUnicidad(e)) return error("Colisión generando el código del proveedor — reintentá.");
+      // Carrera: dos altas con el mismo CUIT a la vez pasan el chequeo de arriba y las frena el índice único (empresaId, cuit).
+      if (esErrorDeUnicidad(e)) {
+        const carrera = await proveedorConCuit(ctx.db, campos.valores.cuit);
+        return error(carrera ? MENSAJE_CUIT_DUPLICADO(carrera) : "Colisión generando el código del proveedor — reintentá.");
+      }
       throw e;
     }
   });
@@ -112,7 +128,16 @@ export async function actualizarProveedor(proveedorId: string, datos: Omit<Datos
     const campos = validarCamposDeContacto(datos);
     if (!campos.ok) return error(campos.mensaje);
 
-    await ctx.db.proveedor.update({ where: { id: proveedorId }, data: campos.valores });
+    const conMismoCuit = await proveedorConCuit(ctx.db, campos.valores.cuit, proveedorId);
+    if (conMismoCuit) return error(MENSAJE_CUIT_DUPLICADO(conMismoCuit));
+
+    try {
+      await ctx.db.proveedor.update({ where: { id: proveedorId }, data: campos.valores });
+    } catch (e) {
+      if (!esErrorDeUnicidad(e)) throw e;
+      const carrera = await proveedorConCuit(ctx.db, campos.valores.cuit, proveedorId);
+      return error(carrera ? MENSAJE_CUIT_DUPLICADO(carrera) : "No se pudo guardar: el dato choca con otro proveedor.");
+    }
     return ok(`Proveedor "${proveedor.nombre}" actualizado.`);
   });
 }

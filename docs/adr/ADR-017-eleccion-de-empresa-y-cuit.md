@@ -1,8 +1,8 @@
 # ADR-017: Con acceso a varias empresas hay que elegir una; el CUIT se valida y se guarda canónico
 
-> Redactado el 2026-10-03 (pasos E1 y E2 del plan de plataforma). **Estado: implementado en el árbol de trabajo (E1 y E2 paso 1-3), sin commit ni
-> despliegue.** La migración del índice único de CUIT (E2 paso 5) **no está decidida ni aplicada**: requiere autorización expresa, ensayo en una rama de
-> Neon y copia previa. La parte de `PROVISIONING`/alta de empresas se documentará acá cuando se implemente (E3 en adelante).
+> Redactado el 2026-10-03 (pasos E1 y E2 del plan de plataforma). **Estado: E1 y E2 pasos 1-3 pusheados; la migración `cuit_unico` (E2 paso 5)
+> está aprobada por el dueño (2026-10-03) y escrita**, pendiente de ensayo en una rama de Neon, copia previa y aplicación a cada base de producción antes de
+> su push (ver `docs/deploy-con-migraciones.md`). La parte de `PROVISIONING`/alta de empresas se documentará acá cuando se implemente (E3 en adelante).
 
 ## Contexto
 
@@ -33,7 +33,17 @@ sigue a la ruta pedida si es interna (`rutaInternaSegura`). Para que una carga d
 
 `core/fiscal/cuit.ts`: se normaliza (sin espacios, puntos ni guiones, 11 dígitos), se valida el prefijo (20, 23, 24, 27, 30, 33, 34) y el dígito
 verificador (módulo 11, pesos 5-4-3-2-7-6-5-4-3-2), se **guarda canónico** (11 dígitos) y se **muestra** como `XX-XXXXXXXX-X`. El proveedor ya valida y
-guarda así; `scripts/medir-cuit.ts` (`npm run medir-cuit`) cuenta los CUIT existentes que no cumplen, para decidir la migración con datos.
+guarda así; `scripts/medir-cuit.ts` (`npm run medir-cuit`) cuenta los CUIT existentes que no cumplen, para decidir la migración con datos
+(ninguna empresa tenía CUIT cargado: nada que corregir).
+
+### 3. CUIT único (E2 paso 5, migración `20261008120000_cuit_unico`)
+
+Decisión del dueño (2026-10-03): **dos proveedores de una misma empresa no pueden compartir CUIT**. Un mismo proveedor con otro «punto de venta» no es otro
+CUIT (el punto de venta aún no está diseñado y valdrá para empresas y proveedores); un duplicado es un error de carga. Índices únicos comunes (no parciales:
+Postgres admite varios NULL): `Proveedor(empresaId, cuit)` —por empresa, no global: un índice global filtraría, por el error de unicidad, la existencia de un
+proveedor de otra empresa— y `Empresa(cuit)`, global (una empresa = un CUIT). La migración normaliza primero los CUIT existentes (vacío → NULL, separadores →
+11 dígitos; los inválidos no se tocan) y se detiene, nombrando las filas, si queda alguno repetido. `altaProveedor` y `actualizarProveedor` chequean antes y
+responden «Ya existe un proveedor con ese CUIT (…)» nombrando al otro; el índice cubre la carrera. Reversa: `down.sql` (solo los índices).
 
 ## Correcciones a otros ADR
 
@@ -44,5 +54,5 @@ guarda así; `scripts/medir-cuit.ts` (`npm run medir-cuit`) cuenta los CUIT exis
 
 - Quien tenía acceso a dos empresas verá la pantalla de elección en su primer ingreso tras el despliegue.
 - Un CUIT inválido ya guardado en un proveedor hace fallar la edición hasta corregirlo (la validación es estricta).
-- Pendiente de decisión del dueño: si dos proveedores de una empresa pueden compartir CUIT (de eso depende el índice único) y el contacto que se muestra
-  en el mensaje de empresa suspendida (hoy texto fijo).
+- Cargar un CUIT que ya tiene otro proveedor de la empresa falla con el nombre del otro; antes se aceptaba.
+- Mensaje de empresa suspendida: el dueño lo dejó como está (texto fijo, sin contacto); quizá una casilla específica más adelante.
