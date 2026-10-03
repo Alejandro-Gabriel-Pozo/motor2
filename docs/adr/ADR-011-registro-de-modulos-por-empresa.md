@@ -3,6 +3,9 @@
 > Redactado el 2026-10-03 (Bloque 0 del plan de plataforma). **Decidido, todavía sin implementar**: ni la tabla ni el campo `modulo` de las
 > acciones existen aún. Complementa ADR-007 (una empresa es un dato), ADR-008 (permisos por acción y contexto) y ADR-010 (paneles). Lo
 > implementa el bloque 5A del plan; cada migración que haga falta se autoriza por separado.
+>
+> Corregido por ADR-014 (2026-10-03): no hay núcleo de negocio (solo Administración es fija; Stock y Proveedores son módulos) y se agregan los
+> módulos de soporte calculados (§2 y §3).
 
 ## Contexto
 
