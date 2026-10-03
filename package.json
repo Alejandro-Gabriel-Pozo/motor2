@@ -19,6 +19,7 @@
     "mutacion": "stryker run",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "migrar:aprobar": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "crear-empresa": "tsx scripts/crear-empresa.ts",

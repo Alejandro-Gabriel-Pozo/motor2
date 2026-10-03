@@ -433,6 +433,9 @@ Preview de Vercel podría migrar producción si apunta a esa base (mitigado: ver
   `prisma migrate deploy` → `next build`. En Vercel, `migrate deploy` corre solo si `VERCEL_ENV=production`; local y el gate migran
   siempre, como antes. `MOTOR2_MIGRAR_EN_BUILD=1|0` fuerza la decisión. Ojo: si la rama que se despliega a producción no es la que
   Vercel considera «Production», hay que poner `MOTOR2_MIGRAR_EN_BUILD=1` ahí o las migraciones dejan de aplicarse solas.
+  **Reemplazado el 2026-10-02 (Tanda 7):** el build ya NO aplica migraciones por defecto; las verifica (`prisma migrate status`) y falla si
+  hay pendientes. Aplicarlas es un paso explícito del dueño (`npm run migrar:aprobar`) antes del deploy; `MOTOR2_MIGRAR_EN_BUILD=1` queda
+  solo para un deploy puntual. Ver `docs/deploy-con-migraciones.md`.
   `vercel.json` no admite comentarios: esto vive acá. `ignoreCommand` no se tocó. `installCommand` pasó a `npm ci`.
 - **S-11 — rol de ejecución.** Modo estricto opt-in (`MOTOR2_ROL_ESTRICTO=1`): se niega con un rol que salta el RLS aunque haya
   una sola empresa. Sin la variable, el comportamiento es el de siempre.

@@ -4,6 +4,9 @@
 > implementado en `f0f6bfa`, `def9ea4`, `d991688` y `2ad044d`. Complementa ADR-007 (instalación multiempresa): ahí se decidió que una
 > empresa es un dato; acá se decide cómo se reparte el poder dentro de ella. El schema NO cambia por lo decidido acá (vive en código y en
 > migraciones de datos); la única excepción es la partición de las promos (§5), que sí lo toca — ver `20261001180000_promo_de_empresa`.
+>
+> Actualizado el 2026-10-02 (Tanda 8): el traspaso de gerencia ya tiene pantalla y clave propia (`traspasar_gerencia`), y `conGerenteDeEmpresa` se
+> eliminó. El test `test/arquitectura/adr-al-dia.test.ts` verifica que las claves y las rutas que cita este ADR existan.
 
 ## Contexto
 
@@ -45,8 +48,9 @@ Niveles, de menor a mayor: **operario < administrador < gerente (uno por empresa
 
 - **Piso (`nivelMinimo`).** Cada acción declara el nivel mínimo para hacerla. El rol llega al piso así: `nivelDeRol(nombre)` es
   «administrador» solo para el rol de nombre `admin`; cualquier otro (`operador` y todo rol personalizado, p. ej. «mozo») es «operario».
-  Las acciones de piso gerente no las alcanza ningún rol: las tiene solo el gerente de la empresa (`esGerenteDeEmpresa`), no entran a la
-  matriz ni a la capacidad de la Central, y por eso son siempre de contexto empresa.
+  Las acciones de piso gerente no las alcanza ningún rol: las tiene solo el gerente de la empresa (`UsuarioEmpresa.rolEmpresa = "gerente"`, activo y con
+  alguna membresía activa en la empresa; el gate lo resuelve con `esGerenteDeEmpresa`), no entran a la matriz ni a la capacidad de la Central, y por eso
+  son siempre de contexto empresa. Hoy son dos: `ver_auditoria_empresa` y `traspasar_gerencia`.
 - **Se hace cumplir en dos lugares.** `guardarPermisos` rechaza dar una acción por encima del nivel del rol (todo o nada: un lote con una
   celda ilegítima no guarda ninguna; sí deja SACAR una fila vieja). Y el gate ignora la fila de un rol por debajo del piso aunque exista
   (permiso, menú y lecturas), así un dato viejo o una migración no se convierten en acceso. Las filas viejas por encima del piso quedan en
@@ -56,14 +60,14 @@ Niveles, de menor a mayor: **operario < administrador < gerente (uno por empresa
   función del gate, el menú, un usuario con dos membresías de distinto nivel y dos empresas.
 - **El gerente conserva su rol por sucursal** (normalmente `admin`) y suma lo suyo; el piso gerente se chequea aparte.
 
-Hoy no existe ninguna acción de piso gerente en el catálogo (la suscripción, que sería la primera, no existe todavía y necesita schema); el
-mecanismo está probado con un mock.
+Las dos acciones de piso gerente se declaran en `ACCIONES` con `rolesEditarSemilla: []` y sin clave madre (no había nada que heredar). Se gatean con
+`conPermisoDeEmpresa` / `requierePermisoVerDeEmpresa`, nunca con un chequeo de gerente suelto: `conGerenteDeEmpresa` ya no existe.
 
 ### 3. Un solo gerente por empresa
 
 El gerente es `UsuarioEmpresa.rolEmpresa = "gerente"` y hay uno por empresa. Se hace cumplir **en código primero**:
 
-- La empresa nunca queda sin gerente. Lo traspasa el propio gerente (`transferirGerencia`, protegida con `conGerenteDeEmpresa`) o la
+- La empresa nunca queda sin gerente. Lo traspasa el propio gerente (`transferirGerencia`, `conPermisoDeEmpresa("traspasar_gerencia")`, desde `/administracion/gerencia`, y confirmando con el email de la persona elegida) o la
   plataforma (la función del core, `transferirGerenciaDeEmpresa`, sin guarda de rol: la plataforma la llama con su propio contexto).
 - El destino tiene que ser un admin activo de la empresa, con la cuenta activa en la empresa y `activoGlobal`. La baja del gerente anterior
   es condicional (`updateMany` sobre `rolEmpresa = "gerente"`): si la gerencia cambió mientras tanto, el traspaso se rechaza. Queda fila
@@ -131,8 +135,8 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 ## Riesgos y pendientes abiertos
 
 - ~~**Índice único del gerente en la base**~~ — HECHO (migración `20261001240000_gerente_unico_indice`, aplicada también en stockhneuquen).
-- **UI del traspaso de gerencia**: la acción existe, falta la pantalla. Decidido el 2026-10-02: clave propia `traspasar_gerencia`
-  (contexto empresa, piso gerente), confirmación escribiendo el email del destino y auditoría con emails.
+- ~~**UI del traspaso de gerencia**~~ — HECHO (2026-10-02, Tanda 3): `/administracion/gerencia`, clave propia `traspasar_gerencia` (contexto empresa, piso
+  gerente), confirmación escribiendo el email del destino (se compara sin espacios ni mayúsculas) y auditoría con emails.
 - **Gerente cuyo rol de sucursal no es `admin`**: no alcanza las acciones de piso administrador (el piso sale del rol de la sucursal). Hoy
   el gerente es siempre un admin activo al asumir, pero nada impide después cambiarle el rol en una sucursal. Decisión de diseño abierta.
 - **Superadmin de plataforma**: no existe como concepto en el código; hoy es una función del core que su herramienta puede llamar.
@@ -141,7 +145,7 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
   usan `guardarPermisos`, `crearRol` y `actualizarActivoRol`; el guardián `escrituras-de-permisos-por-politica.test.ts` exige que toda escritura de
   `PermisoRol`/`Rol` de `src/` pase por él (excepción: el alta de empresa). Falta el DATO (dónde se guarda la perilla y el plan/catálogo de permisos
   por empresa), que sí necesita schema y autorización expresa; cuando exista, solo cambia el cuerpo de `politicaDeEmpresa`.
-- **Suscripción** (primera acción de piso gerente): no existe; solo está preparado el piso.
+- **Suscripción** (próxima acción de piso gerente): no existe; hace falta schema y su propia clave.
 - **Partición pendiente**: solo el contract (borrar las `Accion` padre en un deploy posterior). Ya no queda ninguna clave mixta.
 - **Contexto empresa de las claves de producto**: vale si CUALQUIER membresía activa de la empresa la tiene (más laxo que la sucursal activa),
   igual que `alta_producto`. Un producto es dato de empresa, así que es lo coherente; la edición por campo (p. ej. el precio) no se partió.
