@@ -5,6 +5,7 @@ import { prisma } from "../../../src/lib/db";
 import { crearEmpresa } from "../../../src/core/features/empresa/crear-empresa";
 import { prismaAdmin } from "../../setup/cliente-duenio";
 import { crearMembresia } from "../../setup/membresia";
+import { activarTodosLosModulos } from "../../setup/modulos";
 import { asegurarBaseSeed } from "./auth";
 
 /**
@@ -35,6 +36,8 @@ export async function activarEmpresaB(): Promise<EmpresasDeLaPrueba> {
     emailPrimerAdmin: `gerente-${marca}@local.test`,
     nombreSucursal: sucursalNombre,
   });
+  // El alta no siembra el registro de módulos (la activa la plataforma): la empresa B arranca con todos, como la A.
+  await activarTodosLosModulos(creada.empresaId);
   const rolB = await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId: creada.empresaId, nombre: "admin" } });
   const empresaA = await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: sucursal.empresaId } });
   return {

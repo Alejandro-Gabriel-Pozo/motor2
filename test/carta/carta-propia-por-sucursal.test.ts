@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
+import { activarTodosLosModulos } from "../setup/modulos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
@@ -280,6 +281,7 @@ describe("carta propia por sucursal — acciones", () => {
     it("una sucursal de otra empresa no se puede copiar ni aparece como origen; sus cartas no se mezclan", async () => {
       await armarCartaDeA();
       await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+      await activarTodosLosModulos("norte");
       const sucursalNorte = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } });
       const unidadNorte = await prismaAdmin.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0, empresaId: "norte" } });
       const seccionNorte = await prismaAdmin.seccionCarta.create({ data: { nombre: "Norte", empresaId: "norte" } });

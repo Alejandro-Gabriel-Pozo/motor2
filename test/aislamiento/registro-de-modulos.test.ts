@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { MODULOS } from "../../src/core/modulos/catalogo";
+import { MODULOS_VENDIBLES, activarTodosLosModulos } from "../setup/modulos";
 
 /**
  * Bloque 5A, P4: la tabla `ModuloEmpresa` (migración 20261004120000). Qué se prueba, contra Postgres real:
@@ -21,11 +22,10 @@ const C = "sur";
 
 const MIGRACION = readFileSync(join(__dirname, "../../prisma/migrations/20261004120000_registro_de_modulos_por_empresa/migration.sql"), "utf8").replace(/\r\n/g, "\n");
 const BACKFILL = MIGRACION.slice(MIGRACION.indexOf('INSERT INTO "ModuloEmpresa"'));
-// Los tests de acá vacían el registro; la base compartida tiene que quedar como la dejó la migración (la empresa por defecto con sus 9 módulos),
+// Los tests de acá vacían el registro; `limpiarBaseDeTest` deja la base como la dejó la migración (la empresa por defecto con sus 9 módulos),
 // porque `verificar-registro-de-modulos` corre en el build después de los tests.
 afterAll(async () => {
   await limpiarBaseDeTest();
-  await prismaAdmin.$executeRawUnsafe(BACKFILL);
   await prismaAdmin.$disconnect();
 });
 
@@ -145,6 +145,36 @@ describe("registro de módulos por empresa (P4)", () => {
       expect(await prismaAdmin.moduloEmpresa.count({ where: { estado: "INACTIVO" } })).toBe(9);
       await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: A } });
       expect(await prismaAdmin.moduloEmpresa.count()).toBe(18);
+    });
+  });
+
+  describe("fixtures de test (P6)", () => {
+    it("activarTodosLosModulos deja exactamente los vendibles en ACTIVO: completa, reactiva y borra lo que no corresponde, y es idempotente", async () => {
+      expect([...MODULOS_VENDIBLES].sort()).toEqual(VENDIBLES);
+      await prismaAdmin.moduloEmpresa.createMany({
+        data: [
+          { empresaId: B, modulo: "stock", estado: "INACTIVO" },
+          { empresaId: B, modulo: "inventado" },
+          { empresaId: B, modulo: "administracion" },
+        ],
+      });
+      await activarTodosLosModulos(B);
+      await activarTodosLosModulos(B);
+      const f = await filas(B);
+      expect(f.map((x) => x.modulo)).toEqual(VENDIBLES);
+      expect(new Set(f.map((x) => x.estado))).toEqual(new Set(["ACTIVO"]));
+      expect(await filas(A)).toEqual([]);
+    });
+
+    it("limpiarBaseDeTest deja el registro de la empresa por defecto con los 9 en ACTIVO y borra el de las demás", async () => {
+      await activarTodosLosModulos(B);
+      await prismaAdmin.moduloEmpresa.updateMany({ where: { empresaId: A, modulo: "salon" }, data: { estado: "INACTIVO" } });
+      await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: A, modulo: "stock" } });
+      await limpiarBaseDeTest();
+      const f = await filas(A);
+      expect(f.map((x) => x.modulo)).toEqual(VENDIBLES);
+      expect(new Set(f.map((x) => x.estado))).toEqual(new Set(["ACTIVO"]));
+      expect(await prismaAdmin.moduloEmpresa.count({ where: { empresaId: { not: A } } })).toBe(0);
     });
   });
 

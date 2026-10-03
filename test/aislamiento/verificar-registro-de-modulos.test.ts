@@ -12,13 +12,6 @@ const ANTES = new Date("2000-01-01T00:00:00Z");
 
 afterAll(async () => {
   await limpiarBaseDeTest();
-  await prismaAdmin.moduloEmpresa.deleteMany();
-  await prismaAdmin.$executeRawUnsafe(
-    `INSERT INTO "ModuloEmpresa" ("id", "empresaId", "modulo", "estado")
-     SELECT gen_random_uuid()::text, e."id", m."modulo", 'ACTIVO' FROM "Empresa" e
-     CROSS JOIN (VALUES ('stock'),('compras'),('traspasos'),('consignacion'),('recetas'),('produccion'),('carta'),('promociones'),('salon')) AS m("modulo")
-     ON CONFLICT ("empresaId", "modulo") DO NOTHING`,
-  );
   await prismaAdmin.$disconnect();
 });
 

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin, EMPRESA_POR_DEFECTO_ID } from "../setup/test-db";
+import { activarTodosLosModulos } from "../setup/modulos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarPortalEmpresa } from "../../src/server/actions/carta/portal-empresa";
 import { cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "../../src/core/carta/admin-consulta";
@@ -115,6 +116,7 @@ describe("Server Action guardarPortalEmpresa", () => {
 
   it("no toca la apariencia de otra empresa", async () => {
     await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+    await activarTodosLosModulos("norte");
     await prismaAdmin.portalCartaEmpresa.create({ data: { empresaId: "norte", valores: { portal_titulo: "Norte" } } });
     await guardarPortalEmpresa({ portal_titulo: "Central" });
     expect(await prismaAdmin.portalCartaEmpresa.findMany({ orderBy: { empresaId: "asc" }, select: { empresaId: true, valores: true } })).toEqual([

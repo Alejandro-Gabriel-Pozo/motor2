@@ -4,6 +4,7 @@ import { prisma } from "../../src/lib/db";
 import { baseDelContexto } from "../../src/core/auth/base";
 import { crearMembresia } from "./membresia";
 import { prismaAdmin } from "./cliente-duenio";
+import { activarTodosLosModulos } from "./modulos";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
@@ -145,6 +146,8 @@ export async function limpiarBaseDeTest() {
     update: { estado: "ACTIVE", permisosEditables: true, dosPaneles: true },
     create: { id: EMPRESA_POR_DEFECTO_ID, nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
   });
+  // El registro de módulos de la empresa por defecto termina como lo deja la migración: los 9 vendibles ACTIVO (un test pudo apagar o borrar alguno).
+  await activarTodosLosModulos(EMPRESA_POR_DEFECTO_ID);
 }
 
 /**

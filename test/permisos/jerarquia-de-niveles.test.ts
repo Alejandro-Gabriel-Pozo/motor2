@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
+import { activarTodosLosModulos } from "../setup/modulos";
 import { ACCIONES, nivelDeRol, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import {
   accionesDelMenuQueElUsuarioPuedeVer,
@@ -218,6 +219,7 @@ describe("anti-escalada: un rol por debajo del piso no llega a la acción", () =
       await prismaAdmin.empresa.create({
         data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
       });
+      await activarTodosLosModulos("norte");
       const sucNorte = (await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } })).id;
       const mozoNorte = (await prismaAdmin.rol.create({ data: { nombre: "mozo", empresaId: "norte" } })).id;
       const adminNorte = (await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "norte" } })).id;

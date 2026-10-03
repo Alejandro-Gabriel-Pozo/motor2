@@ -5,6 +5,7 @@ import { prisma } from "../../../src/lib/db";
 import { ACCIONES } from "../../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
 import { crearMembresia } from "../../setup/membresia";
+import { activarTodosLosModulos } from "../../setup/modulos";
 
 const EMPRESA_E2E_ID = "empresa_principal";
 const SLUG_EMPRESA_E2E = "e2e";
@@ -44,6 +45,8 @@ export async function asegurarBaseSeed() {
     update: { estado: "ACTIVE", slug: SLUG_EMPRESA_E2E, permisosEditables: true, dosPaneles: true },
     create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: SLUG_EMPRESA_E2E, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
   });
+  // resetearBaseE2E también vació el registro de módulos que dejó la migración: la empresa por defecto vuelve a tener los 9 vendibles ACTIVO.
+  await activarTodosLosModulos(empresaId);
   const [admin, operador] = await Promise.all([
     prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "admin" } }, update: {}, create: { nombre: "admin" } }),
     prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: {}, create: { nombre: "operador" } }),

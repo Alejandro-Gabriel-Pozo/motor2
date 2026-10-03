@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
+import { activarTodosLosModulos } from "../setup/modulos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
 
@@ -192,6 +193,7 @@ describe("Server Actions del registro público", () => {
 
     it("no mueve la sucursal de otra empresa (aunque se pase su id)", async () => {
       await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+      await activarTodosLosModulos("norte");
       const ajena = await prismaAdmin.sucursal.create({ data: { nombre: "Ajena", empresaId: "norte" } });
       await prismaAdmin.sucursalPublica.create({ data: { empresaId: "norte", sucursalId: ajena.id, slug: "ajena", posX: 1, posY: 2, posW: 3 } });
       const r = await moverSucursalEnMapa(ajena.id, 50, 50);

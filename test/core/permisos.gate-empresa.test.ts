@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin } from "../setup/test-db";
+import { activarTodosLosModulos } from "../setup/modulos";
 import { crearMembresia } from "../setup/membresia";
 import {
   accionesDelMenuQueElUsuarioPuedeVer,
@@ -102,6 +103,7 @@ describe("gate de permisos — acciones de empresa", () => {
     await prismaAdmin.empresa.create({
       data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
     });
+    await activarTodosLosModulos("norte");
     const sucursalNorte = await prismaAdmin.sucursal.create({ data: { nombre: "Norte", empresaId: "norte" } });
     const rolNorte = await prismaAdmin.rol.create({ data: { nombre: "admin", empresaId: "norte" } });
     await prismaAdmin.permisoRol.create({
