@@ -1,3 +1,4 @@
+import { nivelMinimoDeAccion, type AccionClave } from "./acciones";
 import { esGerenteDeEmpresa } from "./rol-empresa";
 
 /**
@@ -19,6 +20,11 @@ export function esRolAdmin(rol: { clave: string | null }): boolean {
 /** Un rol de sucursal es administrador (la clave «admin») u operario (todo lo demás). Ningún rol es gerente: eso es `UsuarioEmpresa.rolEmpresa`. */
 export function nivelDeRolPorClave(rol: { clave: string | null }): "administrador" | "operario" {
   return esRolAdmin(rol) ? "administrador" : "operario";
+}
+
+/** ¿El rol llega al piso de la acción? Si no, ninguna fila de `PermisoRol` le da acceso: el piso manda sobre la matriz. */
+export function rolAlcanzaLaAccion(rol: { clave: string | null }, accion: AccionClave): boolean {
+  return ORDEN[nivelDeRolPorClave(rol)] >= ORDEN[nivelMinimoDeAccion(accion)];
 }
 
 /**

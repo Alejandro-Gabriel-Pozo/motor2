@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
-import { ACCIONES, rolAlcanzaLaAccion } from "../../src/core/permisos/acciones";
+import { ACCIONES } from "../../src/core/permisos/acciones";
+import { rolAlcanzaLaAccion } from "../../src/core/permisos/jerarquia";
 import { SIN_PERMISO } from "../../src/core/permisos/matriz";
 
 /**
@@ -28,7 +29,7 @@ const ITERACIONES = 12;
 
 // Acciones en las que el operador arranca SIN acceso (así el estado inicial de cada celda es SIN_PERMISO y no depende de la semilla exacta).
 // Solo las que el rol operador PUEDE tener por su nivel (el piso de la acción manda: las de administrador no se le pueden dar).
-const ACCIONES_SIN_ACCESO_DEL_OPERADOR = ACCIONES.filter((a) => !(a.rolesEditarSemilla as readonly string[]).includes("operador") && rolAlcanzaLaAccion("operador", a.clave)).map((a) => a.clave);
+const ACCIONES_SIN_ACCESO_DEL_OPERADOR = ACCIONES.filter((a) => !(a.rolesEditarSemilla as readonly string[]).includes("operador") && rolAlcanzaLaAccion({ clave: "operador" }, a.clave)).map((a) => a.clave);
 
 describe("guardarPermisos — concurrencia real", () => {
   let operadorRolId: string;

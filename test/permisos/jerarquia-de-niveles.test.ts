@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { activarTodosLosModulos } from "../setup/modulos";
-import { ACCIONES, nivelDeRol, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type NivelDeAccion } from "../../src/core/permisos/acciones";
+import { ACCIONES, nivelMinimoDeAccion, type AccionClave, type AccionDeEmpresa, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import {
   accionesDelMenuQueElUsuarioPuedeVer,
   accionesQueElUsuarioPuedeVer,
@@ -15,6 +15,7 @@ import {
   requierePermisoVer,
   requierePermisoVerDeEmpresa,
 } from "../../src/core/permisos/gate";
+import { nivelDeRolPorClave, rolAlcanzaLaAccion } from "../../src/core/permisos/jerarquia";
 import { esCeldaFueraDeNivel, SIN_PERMISO } from "../../src/core/permisos/matriz";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -40,17 +41,19 @@ describe("el catálogo y los niveles (puro)", () => {
     expect(nivelMinimoDeAccion(DE_OPERARIO_EMPRESA)).toBe("operario");
   });
 
-  it("«admin» es administrador; «operador» y cualquier rol personalizado son operario; ningún rol es gerente", () => {
-    expect(nivelDeRol("admin")).toBe("administrador");
-    for (const nombre of ["operador", "mozo", "cajero", "Admin", "administrador", "gerente"]) expect(nivelDeRol(nombre), nombre).toBe("operario");
+  it("la clave «admin» es administrador, se llame como se llame; «operador» y cualquier rol personalizado son operario; ningún rol es gerente", () => {
+    expect(nivelDeRolPorClave({ clave: "admin" })).toBe("administrador");
+    expect(nivelDeRolPorClave({ clave: "operador" })).toBe("operario");
+    expect(nivelDeRolPorClave({ clave: null })).toBe("operario");
+    for (const clave of ["Admin", "administrador", "gerente", "mozo"]) expect(nivelDeRolPorClave({ clave }), clave).toBe("operario");
   });
 
   it("un rol operario alcanza solo las acciones de piso operario; «admin», las de operario y administrador; ninguno, las de gerente", () => {
     for (const a of ACCIONES) {
       const clave = a.clave as AccionClave;
-      expect(rolAlcanzaLaAccion("mozo", clave), `mozo/${clave}`).toBe(a.nivelMinimo === "operario");
-      expect(rolAlcanzaLaAccion("operador", clave), `operador/${clave}`).toBe(a.nivelMinimo === "operario");
-      expect(rolAlcanzaLaAccion("admin", clave), `admin/${clave}`).toBe((a.nivelMinimo as NivelDeAccion) !== "gerente");
+      expect(rolAlcanzaLaAccion({ clave: null }, clave), `personalizado/${clave}`).toBe(a.nivelMinimo === "operario");
+      expect(rolAlcanzaLaAccion({ clave: "operador" }, clave), `operador/${clave}`).toBe(a.nivelMinimo === "operario");
+      expect(rolAlcanzaLaAccion({ clave: "admin" }, clave), `admin/${clave}`).toBe((a.nivelMinimo as NivelDeAccion) !== "gerente");
     }
   });
 
@@ -58,7 +61,7 @@ describe("el catálogo y los niveles (puro)", () => {
     // Hoy la única de piso gerente es `ver_auditoria_empresa`; la guarda vale también para las que se agreguen.
     for (const a of ACCIONES.filter((x) => (x.nivelMinimo as NivelDeAccion) === "gerente")) {
       expect(a.contexto, a.clave).toBe("empresa");
-      expect(esCeldaFueraDeNivel("admin", a.clave as AccionClave), a.clave).toBe(true);
+      expect(esCeldaFueraDeNivel({ clave: "admin" }, a.clave as AccionClave), a.clave).toBe(true);
     }
   });
 });

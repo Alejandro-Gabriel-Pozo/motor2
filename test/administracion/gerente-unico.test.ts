@@ -211,6 +211,42 @@ describe("listarCandidatosAGerente", () => {
   });
 });
 
+describe("D4: la validación del traspaso y la lista de candidatos usan el MISMO predicado (admin efectivo)", () => {
+  let base: Awaited<ReturnType<typeof sembrarBase>>;
+  let gerenteId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    base = await sembrarBase();
+    gerenteId = (await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    await hacerGerente(gerenteId);
+  });
+
+  const candidatos = async () => (await listarCandidatosAGerente(prismaAdmin, EMPRESA_POR_DEFECTO_ID)).map((c) => c.email);
+
+  it("un admin cuya única sucursal está apagada no es candidato y el traspaso lo rechaza (antes la lista lo ofrecía y la validación también)", async () => {
+    const apagada = await prismaAdmin.sucursal.create({ data: { nombre: "Apagada", activo: false } });
+    const admin = await crearUsuarioConMembresia({ email: "en-apagada@test.com", sucursalId: apagada.id, rolId: base.admin.id });
+    expect(await candidatos()).toEqual([]);
+    expect((await traspasar(admin.id)).ok).toBe(false);
+    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([gerenteId]);
+  });
+
+  it("un rol que solo se LLAMA «admin», sin la clave, no habilita para ser gerente", async () => {
+    const impostor = await prismaAdmin.rol.create({ data: { nombre: "Admin", clave: null } });
+    const u = await crearUsuarioConMembresia({ email: "impostor@test.com", sucursalId: base.sucursal.id, rolId: impostor.id });
+    expect(await candidatos()).toEqual([]);
+    expect((await traspasar(u.id)).ok).toBe(false);
+  });
+
+  it("el rol con la clave «admin» habilita aunque se llame distinto", async () => {
+    await prismaAdmin.rol.update({ where: { id: base.admin.id }, data: { nombre: "Dirección" } });
+    const u = await crearUsuarioConMembresia({ email: "direccion@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    expect(await candidatos()).toEqual(["direccion@test.com"]);
+    expect((await traspasar(u.id)).ok).toBe(true);
+  });
+});
+
 describe("transferirGerencia (la acción)", () => {
   let base: Awaited<ReturnType<typeof sembrarBase>>;
   let gerenteId: string;

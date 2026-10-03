@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { baseDeEmpresa, dbDeEmpresa, dbDeUsuario, verificarRolDeEjecucionDelProceso, type BaseDelContexto } from "./base";
+import { esRolAdmin } from "@/core/permisos/jerarquia";
 import { getUsuarioActual } from "./session";
 
 export const COOKIE_SUCURSAL_ACTIVA = "sucursalActivaId";
@@ -16,6 +17,8 @@ export interface MembresiaUsuario {
   sucursalId: string;
   sucursalNombre: string;
   rolNombre: string;
+  /** El rol de esta membresía es el administrador (por su clave, no por su nombre). Lo que se decide con esto vive en `core/permisos/jerarquia.ts`. */
+  esAdmin: boolean;
 }
 
 export interface EmpresaDelUsuario {
@@ -41,6 +44,8 @@ export interface ContextoUsuario extends BaseDelContexto {
   sucursalId: string;
   sucursalNombre: string;
   rolNombre: string;
+  /** Es administrador en la sucursal activa (por la clave de su rol). */
+  esAdminEnSucursal: boolean;
   /** Todas las sucursales activas de la empresa activa donde este usuario tiene membresía activa — para el selector de sucursal (ver src/components/selector-sucursal.tsx) cuando hay más de una. */
   membresias: MembresiaUsuario[];
 }
@@ -116,7 +121,8 @@ export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | 
     sucursalId: activa.sucursalId,
     sucursalNombre: activa.sucursal.nombre,
     rolNombre: activa.rol.nombre,
-    membresias: membresias.map((m) => ({ sucursalId: m.sucursalId, sucursalNombre: m.sucursal.nombre, rolNombre: m.rol.nombre })),
+    esAdminEnSucursal: esRolAdmin(activa.rol),
+    membresias: membresias.map((m) => ({ sucursalId: m.sucursalId, sucursalNombre: m.sucursal.nombre, rolNombre: m.rol.nombre, esAdmin: esRolAdmin(m.rol) })),
     ...baseDeEmpresa(empresaActiva.empresaId),
   };
 });

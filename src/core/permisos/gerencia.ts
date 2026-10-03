@@ -1,4 +1,6 @@
 import type { Db } from "@/lib/db-tipos";
+import { esAdminEfectivoEnAlgunaSucursal, membresiaDeAdminEfectivo } from "./invariantes";
+import { CLAVE_ROL_ADMIN } from "./jerarquia";
 import { ROL_EMPRESA_GERENTE } from "./rol-empresa";
 
 export type ResultadoGerencia = { ok: true; mensaje: string; gerenteAnteriorId: string | null } | { ok: false; mensaje: string };
@@ -10,7 +12,7 @@ export async function obtenerGerenteDeEmpresa(db: Db, empresaId: string) {
 
 /** Tiene (o tuvo) el rol admin en alguna sucursal de la empresa, activa o no: la cuenta de alguien así la reactiva solo el gerente. */
 export async function tuvoRolAdminEnLaEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
-  return Boolean(await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, rol: { nombre: "admin" } }, select: { id: true } }));
+  return Boolean(await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, rol: { clave: CLAVE_ROL_ADMIN } }, select: { id: true } }));
 }
 
 /**
@@ -35,7 +37,7 @@ export async function gerentesQueQuedaranSinSucursalActiva(db: Db, empresaId: st
 
 /**
  * Quiénes pueden recibir la gerencia: las mismas condiciones que `transferirGerenciaDeEmpresa` exige al destino (pertenencia y cuenta activas,
- * admin activo en alguna sucursal) y que no sea ya el gerente. Alimenta el selector de la pantalla de traspaso; el traspaso vuelve a validar.
+ * admin efectivo en alguna sucursal: el MISMO predicado que la validación, `membresiaDeAdminEfectivo`) y que no sea ya el gerente. Alimenta el selector de la pantalla de traspaso; el traspaso vuelve a validar.
  */
 export async function listarCandidatosAGerente(db: Db, empresaId: string) {
   const filas = await db.usuarioEmpresa.findMany({
@@ -43,7 +45,7 @@ export async function listarCandidatosAGerente(db: Db, empresaId: string) {
       empresaId,
       activo: true,
       OR: [{ rolEmpresa: null }, { rolEmpresa: { not: ROL_EMPRESA_GERENTE } }],
-      usuario: { activoGlobal: true, sucursales: { some: { empresaId, activo: true, rol: { nombre: "admin", activo: true } } } },
+      usuario: { activoGlobal: true, sucursales: { some: membresiaDeAdminEfectivo(empresaId) } },
     },
     select: { usuarioId: true, usuario: { select: { email: true, name: true } } },
     orderBy: { usuario: { email: "asc" } },
@@ -75,11 +77,7 @@ export async function transferirGerenciaDeEmpresa(tx: Db, input: { empresaId: st
   if (destino.rolEmpresa === ROL_EMPRESA_GERENTE) return { ok: false, mensaje: "Esa persona ya es el gerente de la empresa." };
   if (!destino.activo || !destino.usuario.activoGlobal) return { ok: false, mensaje: "Esa persona tiene la cuenta desactivada: no puede ser gerente." };
 
-  const esAdminActivo = await tx.usuarioSucursal.findFirst({
-    where: { empresaId, usuarioId: usuarioDestinoId, activo: true, rol: { nombre: "admin", activo: true } },
-    select: { id: true },
-  });
-  if (!esAdminActivo) return { ok: false, mensaje: "Para ser gerente primero tiene que ser admin activo en alguna sucursal." };
+  if (!(await esAdminEfectivoEnAlgunaSucursal(tx, empresaId, usuarioDestinoId))) return { ok: false, mensaje: "Para ser gerente primero tiene que ser admin activo en alguna sucursal." };
 
   const actual = await obtenerGerenteDeEmpresa(tx, empresaId);
   if (actual) {

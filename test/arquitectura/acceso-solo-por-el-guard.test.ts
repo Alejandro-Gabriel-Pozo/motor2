@@ -20,7 +20,7 @@ const RAIZ = join(__dirname, "../../src");
 
 const ROLES = new Set(["admin", "operador", "gerente", "operario", "administrador"]);
 const PROPIEDADES_DE_ROL = new Set(["rol", "rolNombre", "rolEmpresa", "nivel", "nivelMinimo"]);
-const FUNCIONES_DE_NIVEL = new Set(["nivelMinimoDeAccion", "nivelDeRol", "nivelesDeLaCelda"]);
+const FUNCIONES_DE_NIVEL = new Set(["nivelMinimoDeAccion", "nivelDeRolPorClave", "nivelesDeLaCelda"]);
 const MODELOS_DE_ACCESO = new Set(["permisoRol", "capacidadSucursal"]);
 
 /** Dónde vive el guard (no se analiza) y, para la regla 2, el módulo que implementa el registro. */

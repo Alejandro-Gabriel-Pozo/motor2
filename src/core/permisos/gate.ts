@@ -1,8 +1,9 @@
 import type { PrismaClient } from "@prisma/client";
 import { capacidadesDeSucursal, sucursalTieneCapacidad } from "./capacidades-sucursal";
-import { contextoDeAccion, moduloDeAccion, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
+import { contextoDeAccion, moduloDeAccion, nivelMinimoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
 import { textoDeDenegacion, type Denegacion } from "./motivos";
 import { algunaAccionNecesitaElRegistro, denegacionDeModulo, denegacionDeModuloDeAccion, modulosEfectivosDeEmpresa } from "./modulos-de-empresa";
+import { rolAlcanzaLaAccion } from "./jerarquia";
 import { esGerenteDeEmpresa } from "./rol-empresa";
 
 /** Una denegación lleva su MOTIVO tipado (ver `motivos.ts`) y el `mensaje` ya armado: las pantallas que solo muestran el texto no cambian. */
@@ -35,7 +36,7 @@ async function obtenerMembresiaConPermiso(
     include: { rol: { include: { permisos: { where: { accionClave } } } } },
   });
   if (!membresia || !membresia.activo || !membresia.rol.activo) return null;
-  return { membresia, permiso: rolAlcanzaLaAccion(membresia.rol.nombre, accionClave) ? (membresia.rol.permisos[0] ?? null) : null };
+  return { membresia, permiso: rolAlcanzaLaAccion(membresia.rol, accionClave) ? (membresia.rol.permisos[0] ?? null) : null };
 }
 
 type MembresiaConPermiso = NonNullable<Awaited<ReturnType<typeof obtenerMembresiaConPermiso>>>;
@@ -148,7 +149,7 @@ export async function accionesQueElUsuarioPuedeVer(
   return new Set(
     membresia.rol.permisos
       .map((p) => p.accionClave as AccionDeSucursal)
-      .filter((clave) => habilitadas.has(clave) && rolAlcanzaLaAccion(membresia.rol.nombre, clave) && (!efectivos || !denegacionDeModulo(moduloDeAccion(clave), efectivos)))
+      .filter((clave) => habilitadas.has(clave) && rolAlcanzaLaAccion(membresia.rol, clave) && (!efectivos || !denegacionDeModulo(moduloDeAccion(clave), efectivos)))
   );
 }
 
@@ -232,7 +233,7 @@ async function nivelesEnLaEmpresa(
     }
     membresias.forEach((m, i) => {
       const permiso = m.rol.permisos.find((p) => p.accionClave === clave);
-      if (!permiso?.puedeVer || !rolAlcanzaLaAccion(m.rol.nombre, clave)) return;
+      if (!permiso?.puedeVer || !rolAlcanzaLaAccion(m.rol, clave)) return;
       if (!habilitadas[i].has(clave)) {
         nivel.bloqueadaPorLaCentral = true;
         return;

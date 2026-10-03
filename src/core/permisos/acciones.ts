@@ -251,21 +251,6 @@ export function nivelMinimoDeAccion(clave: AccionClave): NivelDeAccion {
   return POR_CLAVE.get(clave)!.nivelMinimo;
 }
 
-const ORDEN_DE_NIVEL: Record<NivelDeAccion, number> = { operario: 0, administrador: 1, gerente: 2 };
-
-/**
- * El nivel de un ROL de sucursal, por su nombre (igual que `esCeldaFija`): «admin» es administrador y todo lo demás —«operador» y los roles
- * personalizados— es operario. Ningún rol es gerente: eso es `UsuarioEmpresa.rolEmpresa`.
- */
-export function nivelDeRol(rolNombre: string): NivelDeAccion {
-  return rolNombre === "admin" ? "administrador" : "operario";
-}
-
-/** ¿El rol llega al piso de la acción? Si no, ninguna fila de `PermisoRol` le da acceso: el piso manda sobre la matriz. */
-export function rolAlcanzaLaAccion(rolNombre: string, clave: AccionClave): boolean {
-  return ORDEN_DE_NIVEL[nivelDeRol(rolNombre)] >= ORDEN_DE_NIVEL[nivelMinimoDeAccion(clave)];
-}
-
 /**
  * Acciones que SIEMPRE deben conservar 'admin' entre sus roles de Editar —
  * mismo criterio que Core.js:1507-1511 (actualizarPermisoDesdePanel):

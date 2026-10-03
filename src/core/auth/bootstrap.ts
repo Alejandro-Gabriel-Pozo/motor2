@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { obtenerGerenteDeEmpresa } from "@/core/permisos/gerencia";
+import { CLAVE_ROL_ADMIN } from "@/core/permisos/jerarquia";
 import { ROL_EMPRESA_GERENTE } from "@/core/permisos/rol-empresa";
 import { dbDeEmpresa } from "./base";
 
@@ -47,11 +48,11 @@ export async function intentarBootstrapAdmin(usuarioId: string, email: string): 
   const { empresaId } = sucursal;
 
   const yaHayAdmin = await db.usuarioSucursal.findFirst({
-    where: { activo: true, rol: { nombre: "admin", activo: true }, sucursal: { empresaId } },
+    where: { activo: true, rol: { clave: CLAVE_ROL_ADMIN, activo: true }, sucursal: { empresaId } },
   });
   if (yaHayAdmin) return;
 
-  const rolAdmin = await db.rol.findFirst({ where: { empresaId, nombre: "admin" } });
+  const rolAdmin = await db.rol.findFirst({ where: { empresaId, clave: CLAVE_ROL_ADMIN } });
   if (!rolAdmin) return;
 
   // Las dos pertenencias (empresa y sucursal) van juntas: sin la de empresa el usuario no tendría contexto (contexto.ts).

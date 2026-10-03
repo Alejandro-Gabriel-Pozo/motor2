@@ -13,17 +13,22 @@ import { esCeldaFija, mismoEstado, normalizarPermiso, SIN_PERMISO, textoEstado }
  */
 describe("reglas de la matriz (puras)", () => {
   it("Ver ⊇ Editar: quien puede editar puede ver", () => {
-    expect(normalizarPermiso("operador", "proceso_venta", { puedeVer: false, puedeEditar: true })).toEqual({ puedeVer: true, puedeEditar: true });
-    expect(normalizarPermiso("operador", "proceso_venta", { puedeVer: true, puedeEditar: false })).toEqual({ puedeVer: true, puedeEditar: false });
-    expect(normalizarPermiso("operador", "proceso_venta", SIN_PERMISO)).toEqual(SIN_PERMISO);
+    expect(normalizarPermiso({ clave: "operador" }, "proceso_venta", { puedeVer: false, puedeEditar: true })).toEqual({ puedeVer: true, puedeEditar: true });
+    expect(normalizarPermiso({ clave: "operador" }, "proceso_venta", { puedeVer: true, puedeEditar: false })).toEqual({ puedeVer: true, puedeEditar: false });
+    expect(normalizarPermiso({ clave: "operador" }, "proceso_venta", SIN_PERMISO)).toEqual(SIN_PERMISO);
   });
 
   it("el admin siempre conserva Editar en gestion_permisos y gestion_usuarios; otros roles, no", () => {
-    expect(esCeldaFija("admin", "gestion_permisos")).toBe(true);
-    expect(esCeldaFija("admin", "gestion_usuarios")).toBe(true);
-    expect(esCeldaFija("admin", "proceso_venta")).toBe(false);
-    expect(esCeldaFija("operador", "gestion_permisos")).toBe(false);
-    expect(normalizarPermiso("admin", "gestion_permisos", SIN_PERMISO)).toEqual({ puedeVer: true, puedeEditar: true });
+    expect(esCeldaFija({ clave: "admin" }, "gestion_permisos")).toBe(true);
+    expect(esCeldaFija({ clave: "admin" }, "gestion_usuarios")).toBe(true);
+    expect(esCeldaFija({ clave: "admin" }, "proceso_venta")).toBe(false);
+    expect(esCeldaFija({ clave: "operador" }, "gestion_permisos")).toBe(false);
+    expect(normalizarPermiso({ clave: "admin" }, "gestion_permisos", SIN_PERMISO)).toEqual({ puedeVer: true, puedeEditar: true });
+  });
+
+  it("la salvaguarda es del rol con la CLAVE «admin», no del que se llama «admin» (el nombre se podrá cambiar)", () => {
+    expect(esCeldaFija({ clave: null }, "gestion_permisos")).toBe(false);
+    expect(normalizarPermiso({ clave: null }, "gestion_permisos", SIN_PERMISO)).toEqual(SIN_PERMISO);
   });
 
   it("textos del resumen y comparación de estados", () => {

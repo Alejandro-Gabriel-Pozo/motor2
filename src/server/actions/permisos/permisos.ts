@@ -89,11 +89,11 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
       if (!claveEnCatalogo(c.accionClave) || !accionesConocidas.has(c.accionClave)) return error(`No se encontró la acción "${c.accionClave}". No se guardó nada.`);
       // El piso de la acción manda: a un rol por debajo no se le puede dar (sacarle una fila que ya tenía sí). Anti-escalada: un admin no puede
       // armar un rol operario con una acción de administrador, ni nadie un rol con una de gerente.
-      if ((c.nuevo.puedeVer || c.nuevo.puedeEditar) && esCeldaFueraDeNivel(rol.nombre, c.accionClave)) {
-        const n = nivelesDeLaCelda(rol.nombre, c.accionClave)!;
+      if ((c.nuevo.puedeVer || c.nuevo.puedeEditar) && esCeldaFueraDeNivel(rol, c.accionClave)) {
+        const n = nivelesDeLaCelda(rol, c.accionClave)!;
         return error(`El rol «${rol.nombre}» (nivel ${n.delRol}) no puede tener "${c.accionClave}": es una acción de nivel ${n.piso}. No se guardó nada.`);
       }
-      const nuevo = normalizarPermiso(rol.nombre, c.accionClave, c.nuevo);
+      const nuevo = normalizarPermiso(rol, c.accionClave, c.nuevo);
       if (mismoEstado(nuevo, c.anterior)) continue;
       efectivos.push({ rolId: rol.id, rolNombre: rol.nombre, accionClave: c.accionClave as AccionClave, anterior: c.anterior, nuevo });
     }

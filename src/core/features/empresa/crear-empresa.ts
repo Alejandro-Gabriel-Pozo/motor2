@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { verificarRolDeEjecucion } from "@/core/auth/rol-de-ejecucion";
 import { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "@/core/movimientos/public";
 import { ACCIONES } from "@/core/permisos/acciones";
+import { CLAVE_ROL_ADMIN, CLAVE_ROL_OPERADOR } from "@/core/permisos/jerarquia";
 import { crearEmpresaConAdminSchema, esTransicionValida, type ComandoCrearEmpresaConAdmin } from "./empresa.schema";
 
 /** Mismas 5 unidades base que `prisma/seed.ts` (decimales por magnitud, como DECIMALES_DEFAULT_POR_CATEGORIA_ de Apps Script). */
@@ -64,8 +65,8 @@ export async function crearEmpresa(db: PrismaClient, entrada: ComandoCrearEmpres
       // `Accion` es global (una fila por clave para todo el sistema): las de la primera empresa ya están, no se pisan.
       await tx.accion.createMany({ data: ACCIONES.map((a) => ({ clave: a.clave, descripcion: a.descripcion })), skipDuplicates: true });
 
-      const rolAdmin = await tx.rol.create({ data: { empresaId, nombre: "admin", clave: "admin" } });
-      const rolOperador = await tx.rol.create({ data: { empresaId, nombre: "operador", clave: "operador" } });
+      const rolAdmin = await tx.rol.create({ data: { empresaId, nombre: "admin", clave: CLAVE_ROL_ADMIN } });
+      const rolOperador = await tx.rol.create({ data: { empresaId, nombre: "operador", clave: CLAVE_ROL_OPERADOR } });
       const rolesPorNombre = { admin: rolAdmin, operador: rolOperador } as const;
       await tx.permisoRol.createMany({
         data: ACCIONES.flatMap((accion) =>

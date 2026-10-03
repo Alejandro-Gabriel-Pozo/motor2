@@ -24,6 +24,7 @@ interface Accion {
 interface Rol {
   id: string;
   nombre: string;
+  clave: string | null;
 }
 interface Permiso {
   rolId: string;
@@ -99,7 +100,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
       cual === "ver"
         ? { puedeVer: !actual.puedeVer, puedeEditar: actual.puedeVer ? false : actual.puedeEditar } // sacar «Ver» saca también «Editar»
         : { puedeVer: actual.puedeVer || !actual.puedeEditar, puedeEditar: !actual.puedeEditar }; // poner «Editar» pone también «Ver»
-    setBorrador((previo) => new Map(previo).set(clave(rol.id, accionClave), normalizarPermiso(rol.nombre, accionClave, deseado)));
+    setBorrador((previo) => new Map(previo).set(clave(rol.id, accionClave), normalizarPermiso(rol, accionClave, deseado)));
     setMensaje(null);
   }
 
@@ -225,8 +226,8 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                   const actual = estadoActual(r.id, a.clave);
                   const anterior = base.get(clave(r.id, a.clave)) ?? SIN_PERMISO;
                   const cambiada = editando && !mismoEstado(anterior, actual);
-                  const fija = esCeldaFija(r.nombre, a.clave);
-                  const fueraDeNivel = esCeldaFueraDeNivel(r.nombre, a.clave);
+                  const fija = esCeldaFija(r, a.clave);
+                  const fueraDeNivel = esCeldaFueraDeNivel(r, a.clave);
                   const marca = (encendido: boolean) => (encendido ? "✅" : "⬜");
                   const celda = (cual: "ver" | "editar", encendido: boolean, difiere: boolean) => {
                     const etiqueta = `${r.nombre}: ${a.clave}, ${cual === "ver" ? "ver" : "editar"}`;
