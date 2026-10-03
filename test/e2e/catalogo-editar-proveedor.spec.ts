@@ -21,7 +21,7 @@ test("la edición carga todos los datos del proveedor, y el nombre se muestra si
       contacto: "Contacto X",
       telefono: "11-1234-5678",
       email: "proveedor@ejemplo.com",
-      cuit: "20-12345678-9",
+      cuit: "20123456786",
       condicionesPago: "Contado",
       notas: "Notas del proveedor",
     },
@@ -34,7 +34,7 @@ test("la edición carga todos los datos del proveedor, y el nombre se muestra si
   await expect(page.locator('input[name="contacto"]')).toHaveValue("Contacto X");
   await expect(page.locator('input[name="telefono"]')).toHaveValue("11-1234-5678");
   await expect(page.locator('input[name="email"]')).toHaveValue("proveedor@ejemplo.com");
-  await expect(page.locator('input[name="cuit"]')).toHaveValue("20-12345678-9");
+  await expect(page.locator('input[name="cuit"]')).toHaveValue("20-12345678-6");
   await expect(page.locator('input[name="condicionesPago"]')).toHaveValue("Contado");
   await expect(page.locator('textarea[name="notas"]')).toHaveValue("Notas del proveedor");
 });

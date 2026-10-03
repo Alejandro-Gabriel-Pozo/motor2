@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { formatearCuit } from "@/core/fiscal/cuit";
 import { obtenerProveedorPorId } from "@/server/consultas/catalogo/proveedores";
 import { ProveedorForm, type ProveedorExistente } from "../../proveedor-form";
 
@@ -27,7 +28,7 @@ export default async function EditarProveedorPage({ params }: { params: Promise<
     contacto: p.contacto ?? undefined,
     telefono: p.telefono ?? undefined,
     email: p.email ?? undefined,
-    cuit: p.cuit ?? undefined,
+    cuit: p.cuit ? formatearCuit(p.cuit) : undefined,
     condicionesPago: p.condicionesPago ?? undefined,
     notas: p.notas ?? undefined,
   };

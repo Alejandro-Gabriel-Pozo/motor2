@@ -21,6 +21,35 @@ describe("Proveedores", () => {
     expect(resultado.id).toBeTruthy();
   });
 
+  it("el alta guarda el CUIT canónico (11 dígitos) aunque se escriba con guiones o espacios", async () => {
+    const resultado = await altaProveedor({ nombre: "Con CUIT", cuit: " 30-70308853-4 " });
+    expect(resultado.ok, resultado.mensaje).toBe(true);
+    if (!resultado.ok) return;
+    expect((await prisma.proveedor.findUniqueOrThrow({ where: { id: resultado.id } })).cuit).toBe("30703088534");
+  });
+
+  it("el alta rechaza un CUIT con el dígito verificador mal y no crea el proveedor", async () => {
+    const resultado = await altaProveedor({ nombre: "CUIT inválido", cuit: "20-12345678-9" });
+    expect(resultado.ok).toBe(false);
+    expect(resultado.mensaje).toContain("dígito verificador");
+    expect(await prisma.proveedor.count({ where: { nombre: "CUIT inválido" } })).toBe(0);
+  });
+
+  it("sin CUIT el proveedor se crea con cuit null", async () => {
+    const resultado = await altaProveedor({ nombre: "Sin CUIT", cuit: "  " });
+    expect(resultado.ok, resultado.mensaje).toBe(true);
+    if (!resultado.ok) return;
+    expect((await prisma.proveedor.findUniqueOrThrow({ where: { id: resultado.id } })).cuit).toBeNull();
+  });
+
+  it("actualizarProveedor rechaza un CUIT inválido y deja el dato anterior", async () => {
+    const creado = await altaProveedor({ nombre: "Edita CUIT", cuit: "30703088534" });
+    if (!creado.ok) throw new Error("esperaba ok");
+    const resultado = await actualizarProveedor(creado.id, { cuit: "30-70308853-5" });
+    expect(resultado.ok).toBe(false);
+    expect((await prisma.proveedor.findUniqueOrThrow({ where: { id: creado.id } })).cuit).toBe("30703088534");
+  });
+
   it("el alta persiste condicionesPago y notas (F4: el form nuevo los manda, el inline viejo no)", async () => {
     const resultado = await altaProveedor({
       nombre: "Distribuidora Sur",
@@ -43,7 +72,7 @@ describe("Proveedores", () => {
         contacto: "María",
         telefono: "11-5555-5555",
         email: "maria@sur.com",
-        cuit: "20-12345678-9",
+        cuit: "20-12345678-6",
         condicionesPago: "30 días",
       });
       expect(resultado.ok, resultado.mensaje).toBe(true);
@@ -52,7 +81,7 @@ describe("Proveedores", () => {
       expect(actualizado.contacto).toBe("María");
       expect(actualizado.telefono).toBe("11-5555-5555");
       expect(actualizado.email).toBe("maria@sur.com");
-      expect(actualizado.cuit).toBe("20-12345678-9");
+      expect(actualizado.cuit).toBe("20123456786"); // se guarda canónico (11 dígitos)
       expect(actualizado.condicionesPago).toBe("30 días");
       expect(actualizado.nombre).toBe("Distribuidora Sur"); // el nombre no se toca acá
     });

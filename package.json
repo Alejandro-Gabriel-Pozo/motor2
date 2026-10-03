@@ -28,6 +28,7 @@
     "detectar-cuentas-vinculadas": "tsx scripts/detectar-cuentas-vinculadas.ts",
     "medir-precargados": "tsx scripts/medir-precargados-sin-google.ts",
     "medir-zonas": "tsx scripts/medir-zonas-horarias.ts",
+    "medir-cuit": "tsx scripts/medir-cuit.ts",
     "verificar:modulos": "tsx scripts/verificar-registro-de-modulos.ts"
   },
   "prisma": {

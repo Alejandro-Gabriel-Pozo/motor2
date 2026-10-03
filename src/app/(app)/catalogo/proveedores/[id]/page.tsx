@@ -4,6 +4,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
+import { formatearCuit } from "@/core/fiscal/cuit";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
@@ -76,7 +77,7 @@ export default async function FichaProveedorPage({
           <Dato etiqueta="Contacto">{p.contacto ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           <Dato etiqueta="Teléfono">{p.telefono ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           <Dato etiqueta="Email">{p.email ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
-          <Dato etiqueta="CUIT">{p.cuit ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="CUIT">{p.cuit ? formatearCuit(p.cuit) : <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           <Dato etiqueta="Condiciones de pago">{p.condicionesPago ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           {p.notas && (
             <div className="sm:col-span-2">

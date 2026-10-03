@@ -3,13 +3,13 @@
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import {
   LARGO_MAXIMO_CONTACTO,
-  LARGO_MAXIMO_CUIT,
   LARGO_MAXIMO_DETALLE,
   LARGO_MAXIMO_NOTAS,
   LARGO_MAXIMO_TELEFONO,
   validarEmailOpcional,
   validarTextoLibre,
 } from "@/core/datos/limites";
+import { validarCuit } from "@/core/fiscal/cuit";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -42,7 +42,7 @@ function validarCamposDeContacto(datos: CamposDeContacto): { ok: true; valores: 
     contacto: validarTextoLibre(datos.contacto, "El contacto", LARGO_MAXIMO_CONTACTO),
     telefono: validarTextoLibre(datos.telefono, "El teléfono", LARGO_MAXIMO_TELEFONO),
     email: validarEmailOpcional(datos.email),
-    cuit: validarTextoLibre(datos.cuit, "El CUIT", LARGO_MAXIMO_CUIT),
+    cuit: validarCuit(datos.cuit),
     condicionesPago: validarTextoLibre(datos.condicionesPago, "Las condiciones de pago", LARGO_MAXIMO_DETALLE),
     notas: validarTextoLibre(datos.notas, "Las notas", LARGO_MAXIMO_NOTAS),
   };

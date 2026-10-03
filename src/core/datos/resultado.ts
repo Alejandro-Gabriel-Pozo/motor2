@@ -5,7 +5,7 @@
  * `ResultadoDato<T>` sigue la convención `{ ok: true, valor } | { ok: false, mensaje }` de `Resultado<T>` (src/core/carta/validaciones.ts)
  * y es asignable a ella; suma un `codigo` estable para que el que llama pueda distinguir el motivo sin comparar textos.
  */
-export type CodigoDato = "vacio" | "formato" | "negativo" | "cero" | "decimales" | "rango" | "largo" | "sin_alfanumerico" | "caracteres";
+export type CodigoDato = "vacio" | "formato" | "negativo" | "cero" | "decimales" | "rango" | "largo" | "sin_alfanumerico" | "caracteres" | "verificador";
 
 export type ResultadoDato<T> = { ok: true; valor: T } | { ok: false; codigo: CodigoDato; mensaje: string };
 
