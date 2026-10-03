@@ -2,10 +2,12 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu } from "@/core/navegacion/estructura";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { situacionDelRegistroDeModulos } from "@/core/permisos/modulos-de-empresa";
 import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import { Suspense } from "react";
 import { after } from "next/server";
 import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
+import { reportarErrorUnaVez } from "@/lib/reportar-error";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
 import { SidebarColapsable } from "./sidebar-colapsable";
@@ -32,6 +34,14 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   const cotizacion = await obtenerUltimaCotizacionSinRomper(ctx.db);
   // Si falta la cotización de hoy (el cron diario puede no haber corrido), la aplicación se pone al día sola DESPUÉS de responder.
   if (cotizacionVencida(cotizacion)) after(() => actualizarDolarSiHaceFalta(ctx.db));
+  // Una empresa sin ningún módulo vendible disponible solo tiene Administración: se le dice por qué (si no, el menú vacío parece una falla). Si ni
+  // siquiera tiene filas en el registro se avisa además a Sentry, una vez por empresa y arranque: puede ser un registro que se perdió.
+  const registro = await situacionDelRegistroDeModulos(ctx.empresaId, ctx.db);
+  if (registro === "SIN_REGISTRO") {
+    after(() =>
+      reportarErrorUnaVez(`registro-de-modulos-vacio:${ctx.empresaId}`, new Error(`La empresa ${ctx.empresaId} no tiene ninguna fila en el registro de módulos`), "modulos")
+    );
+  }
 
   return (
     <div className="flex flex-1">
@@ -70,6 +80,12 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
             </button>
           </form>
         </header>
+        {registro !== "CON_MODULOS" && (
+          <p role="status" className="border-b border-amber-300 bg-amber-50 px-6 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            Esta empresa todavía no tiene ningún módulo activo, por eso solo está disponible Administración. Pedile a quien administra la plataforma que active
+            los módulos contratados.
+          </p>
+        )}
         <main className="flex-1 p-6">
           <AccionesVisiblesProvider acciones={[...puedeVer]}>{children}</AccionesVisiblesProvider>
         </main>

@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { cache } from "react";
-import { moduloDelCatalogo, type ModuloId } from "../modulos/catalogo";
+import { esModuloDelCatalogo, moduloDelCatalogo, type ModuloId } from "../modulos/catalogo";
 import { modulosEfectivos } from "../modulos/clausura";
 import { moduloDeAccion, type AccionClave } from "./acciones";
 import type { Denegacion } from "./motivos";
@@ -14,11 +14,27 @@ type Db = PrismaClient | Prisma.TransactionClient;
 // a todos con solo Administración. `cache` de React memoiza por pedido (mismos argumentos, mismo objeto `db`); fuera de un pedido de Next no
 // memoiza, y es lo que se quiere en los tests.
 
+// Una sola consulta por pedido: el guard, el menú y el aviso del shell leen las filas de la empresa (a lo sumo una por módulo vendible).
+const filasDelRegistro = cache(async (empresaId: string, db: Db) => db.moduloEmpresa.findMany({ where: { empresaId }, select: { modulo: true, estado: true } }));
+
 /** Los módulos con que cuenta la empresa: Administración, los vendibles ACTIVO del registro y todo lo que ellos requieren. */
 export const modulosEfectivosDeEmpresa = cache(async (empresaId: string, db: Db): Promise<ReadonlySet<string>> => {
-  const filas = await db.moduloEmpresa.findMany({ where: { empresaId, estado: "ACTIVO" }, select: { modulo: true } });
-  return modulosEfectivos(filas.map((f) => f.modulo));
+  const filas = await filasDelRegistro(empresaId, db);
+  return modulosEfectivos(filas.filter((f) => f.estado === "ACTIVO").map((f) => f.modulo));
 });
+
+/**
+ * Cómo está el registro de la empresa, para el aviso del shell (P8): `SIN_REGISTRO` (ni una fila: una empresa recién creada que la plataforma todavía no
+ * activó, o un registro que se perdió), `SIN_VENDIBLE_ACTIVO` (hay filas pero ninguna deja un módulo vendible disponible) o `CON_MODULOS`.
+ */
+type SituacionDelRegistro = "SIN_REGISTRO" | "SIN_VENDIBLE_ACTIVO" | "CON_MODULOS";
+
+export async function situacionDelRegistroDeModulos(empresaId: string, db: Db): Promise<SituacionDelRegistro> {
+  if ((await filasDelRegistro(empresaId, db)).length === 0) return "SIN_REGISTRO";
+  const efectivos = await modulosEfectivosDeEmpresa(empresaId, db);
+  const hayVendible = [...efectivos].some((id) => esModuloDelCatalogo(id) && moduloDelCatalogo(id).tipo === "vendible");
+  return hayVendible ? "CON_MODULOS" : "SIN_VENDIBLE_ACTIVO";
+}
 
 /** Por qué el módulo no está disponible, o null si lo está. Un módulo `en_desarrollo` se distingue de uno simplemente apagado. */
 export function denegacionDeModulo(modulo: ModuloId, efectivos: ReadonlySet<string>): Denegacion | null {
