@@ -193,11 +193,12 @@ describe("`ModuloEmpresa` solo se consulta desde modulos-de-empresa.ts", () => {
     });
   }
 
-  it("ningún otro archivo de src/ lee el registro: guard y menú no pueden discrepar", () => {
+  it("ningún otro archivo de src/ lee el registro para decidir acceso: guard y menú no pueden discrepar", () => {
     const raiz = join(__dirname, "../../src");
     const lectores = archivos(raiz)
       .filter((f) => /moduloEmpresa/.test(readFileSync(f, "utf8")))
       .map((f) => f.slice(raiz.length + 1).replace(/\\/g, "/"));
-    expect(lectores).toEqual(["core/permisos/modulos-de-empresa.ts"]);
+    // Además del guard, SOLO el escritor de la plataforma (`cambiarModulosDeEmpresa`, P9) toca la tabla: lee las filas de la empresa para diffear y las escribe. No decide acceso.
+    expect(lectores).toEqual(["core/features/empresa/cambiar-modulos-de-empresa.ts", "core/permisos/modulos-de-empresa.ts"]);
   });
 });
