@@ -39,7 +39,9 @@ interface Excepcion {
 const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
   "server/actions/permisos/permisos.ts": { tipo: "permanente", motivo: "administra la matriz de permisos (PermisoRol): es su trabajo.", esperados: 3 },
   "server/actions/permisos/capacidades-sucursal.ts": { tipo: "permanente", motivo: "administra las capacidades por sucursal (CapacidadSucursal): es su trabajo.", esperados: 4 },
-  "core/features/empresa/crear-empresa.ts": { tipo: "permanente", motivo: "siembra la matriz de permisos al crear la empresa.", esperados: 1 },
+  "core/features/empresa/crear-empresa.ts": { tipo: "permanente", motivo: "siembra los roles de sistema (con su clave técnica) y la matriz de permisos al crear la empresa.", esperados: 5 },
+  "core/auth/bootstrap.ts": { tipo: "permanente", motivo: "da el primer admin de una empresa nueva: es quien identifica el rol por su clave al arrancar.", esperados: 2 },
+  "core/auth/contexto.ts": { tipo: "permanente", motivo: "arma el contexto de la sesión: marca cada membresía como admin o no por la clave de su rol, una sola vez, para que nadie más lo calcule.", esperados: 2 },
   "app/(app)/administracion/permisos/permisos-matriz.tsx": { tipo: "permanente", motivo: "solo MUESTRA la columna «Piso» de la matriz; no decide acceso.", esperados: 1 },
 };
 /** Archivo → motivo. Regla 2: la consola de plataforma muestra el estado de los módulos de cada empresa; se declara acá cuando exista. */
@@ -48,7 +50,7 @@ const EXCEPCIONES_DEL_REGISTRO_DE_MODULOS: Record<string, string> = {
 };
 
 export interface Hallazgo {
-  regla: 1 | 2 | 3;
+  regla: 1 | 2 | 3 | 4;
   linea: number;
   que: string;
 }
@@ -86,7 +88,7 @@ function esRolOLNivel(nodo: ts.Node): boolean {
 
 const esLiteralDeRol = (nodo: ts.Node) => ts.isStringLiteralLike(nodo) && ROLES.has(nodo.text);
 
-/** Los hallazgos de las tres reglas en un fuente. Los comentarios no cuentan: se analiza el AST. */
+/** Los hallazgos de las cuatro reglas en un fuente. Los comentarios no cuentan: se analiza el AST. */
 export function analizarAcceso(fuente: string): Hallazgo[] {
   const sf = ts.createSourceFile("x.tsx", fuente, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const hallazgos: Hallazgo[] = [];
@@ -112,15 +114,25 @@ export function analizarAcceso(fuente: string): Hallazgo[] {
     if (ts.isPropertyAccessExpression(nodo) && MODELOS_DE_ACCESO.has(nodo.name.text) && ts.isPropertyAccessExpression(nodo.parent) && nodo.parent.expression === nodo) {
       hallazgos.push({ regla: 3, linea: linea(nodo), que: `matriz de acceso leída a mano (\`${nodo.name.text}\`)` });
     }
+    // Regla 4 (bloque G): qué rol es cada uno se sabe por la CLAVE técnica y solo core/permisos la lee; fuera de ahí, ni la clave ni el nombre de un rol de sistema.
+    if (ts.isIdentifier(nodo) && CLAVES_DE_ROL.has(nodo.text) && !ts.isImportSpecifier(nodo.parent)) {
+      hallazgos.push({ regla: 4, linea: linea(nodo), que: `clave técnica de rol leída fuera de core/permisos (\`${nodo.text}\`)` });
+    }
+    if (ts.isPropertyAssignment(nodo) && nombreDePropiedad(nodo.name) === "nombre" && esLiteralDeRol(nodo.initializer)) {
+      hallazgos.push({ regla: 4, linea: linea(nodo), que: `rol buscado o creado por su nombre: \`${nodo.getText(sf).replace(/\s+/g, " ")}\`` });
+    }
     ts.forEachChild(nodo, visitar);
   };
   visitar(sf);
   return hallazgos;
 }
 
+const CLAVES_DE_ROL = new Set(["CLAVE_ROL_ADMIN", "CLAVE_ROL_OPERADOR", "esRolAdmin"]);
+
 const SUGERENCIA: Record<Hallazgo["regla"], string> = {
   1: "El acceso lo decide el guard: declará `contexto` / `nivelMinimo` / `rolesEditarSemilla` en la acción (src/core/permisos/acciones.ts) y protegé con `conPermiso*` (acciones) o `requierePermisoVer*` (páginas). Para mostrar u ocultar controles, `obtenerMiNivelPermiso*`.",
   2: "El módulo se declara en la acción (`modulo` en src/core/permisos/acciones.ts) y lo evalúa solo el guard. Solo la consola de plataforma puede leer el registro (EXCEPCIONES_DEL_REGISTRO_DE_MODULOS, con motivo).",
+  4: "Preguntá a core/permisos (`gestion-de-usuarios`, `invariantes`, `jerarquia`): el rol se identifica por su clave técnica y el nombre se puede cambiar. No lo busques ni lo compares por nombre desde acá.",
   3: "Evaluá con `conPermiso*` / `requierePermiso*`; una acción de piso gerente se declara con `nivelMinimo: \"gerente\"` y el guard la resuelve.",
 };
 
@@ -206,10 +218,18 @@ describe("el analizador de acceso detecta lo que dice detectar", () => {
     expect(reglas(`await tx.capacidadSucursal.update({});`)).toEqual([3]);
   });
 
+  it("regla 4: la clave técnica de un rol y el rol de sistema buscado por nombre", () => {
+    expect(reglas(`const r = await db.rol.findFirst({ where: { clave: CLAVE_ROL_ADMIN } });`)).toEqual([4]);
+    expect(reglas(`if (esRolAdmin(m.rol)) {}`)).toEqual([4]);
+    expect(reglas(`await db.rol.findFirst({ where: { empresaId, nombre: "admin" } });`)).toEqual([4]);
+    expect(reglas(`import { CLAVE_ROL_ADMIN } from "@/core/permisos/jerarquia";`)).toEqual([]);
+    expect(reglas(`await db.rol.create({ data: { nombre: "cajero" } });`)).toEqual([]);
+  });
+
   it("una excepción con cantidad declarada falla si aparece un hallazgo más o si se paga deuda sin bajarla", () => {
     const uno = analizarAcceso(`if (rol === "admin") {}`);
     const dos = analizarAcceso(`if (rol === "admin") {}\nif (rol.nombre === "x") {}`);
-    const archivo = "core/features/empresa/crear-empresa.ts";
+    const archivo = "app/(app)/administracion/permisos/permisos-matriz.tsx";
     expect(problemasDe(archivo, uno)).toEqual([]);
     expect(problemasDe(archivo, dos).join("\n")).toContain("NUEVAS");
     expect(problemasDe(archivo, []).join("\n")).toContain("Se pagó deuda");
