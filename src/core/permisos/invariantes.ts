@@ -23,7 +23,7 @@ import { ROL_EMPRESA_GERENTE } from "./rol-empresa";
 export const MENSAJE_SIN_ADMIN_ACTIVO = "Esta operación dejaría el sistema sin ningún admin activo — no se puede aplicar. Dejá al menos un admin activo antes de hacer este cambio.";
 export const MENSAJE_GERENTE_SIN_SUCURSAL = "El gerente no puede quedarse sin ninguna sucursal activa: traspasá la gerencia antes de desactivarlo.";
 export const MENSAJE_GERENTE_DEJA_DE_SER_ADMIN = "El gerente tiene que ser admin activo en al menos una sucursal: traspasá la gerencia antes de dejar de serlo.";
-export const MENSAJE_ROL_DE_SISTEMA = "Un rol de sistema no se puede desactivar, borrar ni cambiar de clave: la empresa lo necesita para gobernarse.";
+const MENSAJE_ROL_DE_SISTEMA = "Un rol de sistema no se puede desactivar, borrar ni cambiar de clave: la empresa lo necesita para gobernarse.";
 
 /**
  * D1 — «admin efectivo»: la membresía que de verdad deja entrar a alguien como administrador. Membresía activa, rol activo con la clave «admin»,
@@ -50,7 +50,7 @@ export async function esAdminEfectivoEnAlgunaSucursal(db: Db, empresaId: string,
 }
 
 /** ¿Tiene al menos una membresía activa en una sucursal activa? (b) del gerente. */
-export async function tieneSucursalActiva(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
+async function tieneSucursalActiva(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
   return Boolean(await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, activo: true, sucursal: { activo: true } }, select: { id: true } }));
 }
 
@@ -89,7 +89,7 @@ export function invarianteGerenteEsAdminEfectivo(antes: EstadoDeGobierno, despue
 }
 
 /** El primer mensaje de las invariantes de estado que el cambio empeoró, o `null` si ninguna. */
-export function primeraInvarianteViolada(antes: EstadoDeGobierno, despues: EstadoDeGobierno): string | null {
+function primeraInvarianteViolada(antes: EstadoDeGobierno, despues: EstadoDeGobierno): string | null {
   return invarianteQuedaUnAdmin(antes, despues) ?? invarianteGerenteConSucursalActiva(antes, despues) ?? invarianteGerenteEsAdminEfectivo(antes, despues);
 }
 

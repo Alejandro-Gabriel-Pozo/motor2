@@ -43,7 +43,6 @@ const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
   "server/actions/permisos/capacidades-sucursal.ts": { tipo: "permanente", motivo: "administra las capacidades por sucursal (CapacidadSucursal): es su trabajo.", esperados: 4 },
   "core/features/empresa/crear-empresa.ts": { tipo: "permanente", motivo: "siembra la matriz de permisos al crear la empresa.", esperados: 1 },
   "app/(app)/administracion/permisos/permisos-matriz.tsx": { tipo: "permanente", motivo: "solo MUESTRA la columna «Piso» de la matriz; no decide acceso.", esperados: 1 },
-  "server/actions/auth/usuarios.ts": { tipo: "deuda", motivo: DEUDA_BLOQUE_G, esperados: 16 },
   "server/actions/permisos/roles.ts": { tipo: "deuda", motivo: DEUDA_BLOQUE_G, esperados: 1 },
   "server/actions/auth/sucursales.ts": { tipo: "deuda", motivo: DEUDA_BLOQUE_G, esperados: 1 },
 };
@@ -177,10 +176,10 @@ describe("acceso: fuera de core/permisos nada decide el acceso por su cuenta", (
     }
   });
 
-  it("la deuda del bloque G está acotada: solo tres archivos, 18 hallazgos (el bloque G la deja en cero)", () => {
+  it("la deuda del bloque G está acotada: solo dos archivos, 2 hallazgos (el bloque G la deja en cero)", () => {
     const deuda = Object.entries(EXCEPCIONES_DE_ROL_Y_GUARD).filter(([, e]) => e.tipo === "deuda");
-    expect(deuda.map(([n]) => n).sort()).toEqual(["server/actions/auth/sucursales.ts", "server/actions/auth/usuarios.ts", "server/actions/permisos/roles.ts"]);
-    expect(deuda.reduce((suma, [, e]) => suma + e.esperados, 0)).toBe(18);
+    expect(deuda.map(([n]) => n).sort()).toEqual(["server/actions/auth/sucursales.ts", "server/actions/permisos/roles.ts"]);
+    expect(deuda.reduce((suma, [, e]) => suma + e.esperados, 0)).toBe(2);
   });
 });
 

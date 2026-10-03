@@ -18,7 +18,6 @@ const EXCEPCIONES: Record<string, string> = {
   "components/pos-shell.tsx": "pinta el selector de sucursal: ahí van todas las del usuario, a propósito",
   "app/(app)/administracion/auditoria/page.tsx": "filtra con `sucursalesVisiblesDeAuditoria` (core/permisos/auditoria.ts), que mira `ver_auditoria` en cada una",
   "server/actions/con-sesion.ts": "`requerirSesionEnSucursal`: comprueba pertenencia a UNA sucursal, no arma un alcance de datos",
-  "server/actions/auth/usuarios.ts": "pregunta por el rol del usuario en una sucursal concreta, no recorre sucursales para mostrar datos",
 };
 
 function archivos(dir: string): string[] {

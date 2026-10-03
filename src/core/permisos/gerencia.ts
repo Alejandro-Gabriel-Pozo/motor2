@@ -53,11 +53,6 @@ export async function listarCandidatosAGerente(db: Db, empresaId: string) {
   return filas.map((f) => ({ id: f.usuarioId, email: f.usuario.email, nombre: f.usuario.name }));
 }
 
-export async function esUsuarioGerenteDeEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
-  const fila = await db.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, select: { rolEmpresa: true } });
-  return fila?.rolEmpresa === ROL_EMPRESA_GERENTE;
-}
-
 /**
  * Pasa la gerencia de la empresa a `usuarioDestinoId`: el gerente actual deja de serlo y el destino lo es, en un solo paso. La empresa
  * nunca queda sin gerente ni con dos: la baja del actual es condicional («sigue siendo el gerente»), así que dos traspasos simultáneos
