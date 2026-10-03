@@ -94,10 +94,11 @@ jobs:
           psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
       - name: Migrar (como dueño)
         run: npx prisma migrate deploy
-      - name: npm test
-        run: npm test
+      # El build verifica el registro de módulos de la base: va ANTES de los tests, que la dejan con empresas y roles de prueba.
       - name: npm run build
         run: npm run build
+      - name: npm test
+        run: npm test
 
   e2e:
     name: E2E (Playwright)
