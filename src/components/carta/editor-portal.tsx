@@ -6,7 +6,7 @@ import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { FormConResultado } from "@/components/form-con-resultado";
 import type { EntradaVistaPreviaPortal } from "@/core/carta/admin-consulta";
 import { decidirLayoutPortal, resolverEstiloPortal } from "@/core/carta/public";
-import { CLAVES_PORTAL_V1, validarValorPortal, ZONAS_PORTAL, type DefinicionClavePortal } from "@/core/carta/portal";
+import { avisoImagenSinMapa, CLAVES_PORTAL_V1, validarValorPortal, ZONAS_PORTAL, type DefinicionClavePortal } from "@/core/carta/portal";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoColor } from "./campo-color";
 
@@ -89,6 +89,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
   );
   const estilo = useMemo(() => resolverEstiloPortal(valores), [valores]);
   const layout = useMemo(() => decidirLayoutPortal(sucursales, estilo.imagenFondo), [sucursales, estilo.imagenFondo]);
+  const avisoMapa = avisoImagenSinMapa(Boolean(estilo.imagenFondo), layout.modo, sucursales.length);
 
   const releer = (e: FormEvent<HTMLDivElement>) => {
     const form = e.currentTarget.closest("form");
@@ -163,7 +164,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {campos.map((d) => (
-                <Campo key={d.clave} d={d as DefinicionClavePortal} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} />
+                <Campo key={d.clave} d={d as DefinicionClavePortal} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} aviso={d.clave === "portal_bg_image_url" ? avisoMapa : null} />
               ))}
             </div>
           </details>
@@ -212,12 +213,12 @@ const AYUDA: Partial<Record<DefinicionClavePortal["tipo"], string>> = {
   porcentaje: "Porcentaje del alto del mapa (0 a 100). Cada sucursal puede tener su propio alto en su posición.",
 };
 
-function Campo({ d, inicial, actual }: { d: DefinicionClavePortal; inicial: string; actual: string }) {
+function Campo({ d, inicial, actual, aviso }: { d: DefinicionClavePortal; inicial: string; actual: string; aviso: string | null }) {
   const id = `portal-${d.clave}`;
   const r = actual.trim() ? validarValorPortal(d.clave, actual) : null;
   const error = r && !r.ok ? r.mensaje : null;
   const ayuda = AYUDA[d.tipo];
-  const describedBy = [ayuda ? `${id}-ayuda` : null, error ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
+  const describedBy = [ayuda ? `${id}-ayuda` : null, error ? `${id}-error` : null, aviso ? `${id}-aviso` : null].filter(Boolean).join(" ") || undefined;
   const placeholder = d.defaultPortal || "sin valor";
   const comun = { id, name: d.clave, defaultValue: inicial, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy } as const;
 
@@ -255,6 +256,11 @@ function Campo({ d, inicial, actual }: { d: DefinicionClavePortal; inicial: stri
       {error && (
         <p id={`${id}-error`} className="text-xs text-red-600">
           No es válido: {error}.
+        </p>
+      )}
+      {aviso && !error && (
+        <p id={`${id}-aviso`} role="status" className="text-xs text-amber-700 dark:text-amber-600" data-aviso-mapa>
+          {aviso}
         </p>
       )}
     </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CLAVES_NO_POR_TENANT, CLAVES_TEMA_V1 } from "../../src/core/carta/tema";
 import {
   CLAVES_PORTAL_V1,
+  avisoImagenSinMapa,
   decidirLayoutPortal,
   extraerUrlImagen,
   posicionCompleta,
@@ -195,5 +196,18 @@ describe("decidirLayoutPortal", () => {
 
   it("sin sucursales → grilla vacía", () => {
     expect(decidirLayoutPortal([], IMG)).toEqual({ modo: "grilla", enMapa: [], enGrilla: [] });
+  });
+});
+
+describe("avisoImagenSinMapa", () => {
+  it("imagen cargada pero el portal no se ve como mapa → avisa qué falta (posición o sucursales publicadas)", () => {
+    expect(avisoImagenSinMapa(true, "grilla", 2)).toContain("ninguna sucursal tiene posición");
+    expect(avisoImagenSinMapa(true, "grilla", 0)).toContain("ninguna sucursal está publicada");
+  });
+
+  it("sin imagen, o ya en mapa → sin aviso", () => {
+    expect(avisoImagenSinMapa(false, "grilla", 2)).toBeNull();
+    expect(avisoImagenSinMapa(false, "grilla", 0)).toBeNull();
+    expect(avisoImagenSinMapa(true, "mapa", 2)).toBeNull();
   });
 });

@@ -76,6 +76,25 @@ test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", as
 });
 
 const IMAGEN_MAPA = "https://cdn.example.com/e2e-mapa-admin.svg";
+
+test("apariencia del portal: con imagen cargada y ninguna sucursal con posición, el campo de la imagen avisa qué falta", async ({ paginaAutenticada: page, sucursalId }) => {
+  const marca = `${Date.now()}`;
+  await prisma.portalCartaEmpresa.deleteMany();
+  await prisma.sucursalPublica.create({ data: { sucursalId, slug: `e2e-portal-aviso-${marca}`, publicada: true, etiqueta: `Aviso ${marca}` } });
+  try {
+    await page.goto("/carta/portal");
+    await page.locator("[data-zona-portal='Fondo y mapa'] summary").click();
+    const campo = page.locator("[data-campo-portal='portal_bg_image_url']");
+    await expect(campo.locator("[data-aviso-mapa]")).toHaveCount(0);
+    await page.getByLabel("URL de la imagen del mapa").fill(IMAGEN_MAPA);
+    await expect(campo.locator("[data-aviso-mapa]")).toContainText("ninguna sucursal tiene posición");
+    await expect(page.locator("[data-modo-portal]")).toHaveAttribute("data-modo-portal", "grilla");
+  } finally {
+    await prisma.portalCartaEmpresa.deleteMany();
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+  }
+});
+
 const SVG_MAPA = '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1533"><rect width="100%" height="100%" fill="#5a7d5a"/></svg>';
 
 test("apariencia del portal: guardar, ver el mapa en la vista previa y arrastrar una tarjeta guarda su posición", async ({ paginaAutenticada: page, sucursalId }) => {

@@ -264,3 +264,10 @@ export function decidirLayoutPortal<T extends SucursalConPosicion>(sucursales: r
   }
   return { modo: "grilla", enMapa: [], enGrilla: sucursales };
 }
+
+/** Qué le falta al portal para verse como mapa cuando ya hay imagen cargada; `null` si no hay imagen o ya se ve como mapa. */
+export function avisoImagenSinMapa(hayImagen: boolean, modo: LayoutPortal<SucursalConPosicion>["modo"], totalSucursales: number): string | null {
+  if (!hayImagen || modo === "mapa") return null;
+  if (totalSucursales === 0) return "La imagen está cargada, pero ninguna sucursal está publicada en el portal: sin sucursales publicadas no se ve el mapa.";
+  return "La imagen está cargada, pero ninguna sucursal tiene posición en el mapa, por eso el portal se ve como lista. Cargá x, y y ancho en «Posición en el mapa del portal» de cada sucursal (más abajo).";
+}
