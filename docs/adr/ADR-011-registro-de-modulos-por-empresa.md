@@ -1,7 +1,9 @@
 # ADR-011: Registro de módulos por empresa
 
-> Redactado el 2026-10-03 (Bloque 0 del plan de plataforma). **Decidido, todavía sin implementar**: ni la tabla ni el campo `modulo` de las
-> acciones existen aún. Complementa ADR-007 (una empresa es un dato), ADR-008 (permisos por acción y contexto) y ADR-010 (paneles). Lo
+> Redactado el 2026-10-03 (Bloque 0 del plan de plataforma). **Decidido. Estado (2026-10-03): implementado** en la rama `multitenancy-fase-a` (tabla
+> `ModuloEmpresa` `622a7c8`, verificación en el build `fd850fb`, guard y menú `a0cce27`, alta y baja solo por la plataforma `0a3f3b0`); falta aplicar las
+> migraciones en cada base antes de su deploy (`docs/deploy-con-migraciones.md`). Cuando se redactó, ni la tabla ni el campo `modulo` de las
+> acciones existían. Complementa ADR-007 (una empresa es un dato), ADR-008 (permisos por acción y contexto) y ADR-010 (paneles). Lo
 > implementa el bloque 5A del plan; cada migración que haga falta se autoriza por separado.
 >
 > Corregido por ADR-014 (2026-10-03): no hay núcleo de negocio (solo Administración es fija; Stock y Proveedores son módulos) y se agregan los

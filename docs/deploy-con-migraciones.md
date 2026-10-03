@@ -32,5 +32,23 @@ nota de «rama de Producción» de ADR-007), el dueño la quita (o la pone en `0
 
 - Local/gate: el build falla si la base de `DIRECT_URL` tiene migraciones sin aplicar. Antes del gate, `npm run migrar:aprobar` contra la base local
   (las migraciones nuevas de una tanda se aplican acá, nunca a Neon sin autorización).
-- CI (`.github/workflows/ci.yml`): ya corre `npx prisma migrate deploy` como dueño sobre la base efímera ANTES de `npm test` y de `npm run build`; el
-  build ve la base al día. No cambia.
+- CI (`.github/workflows/ci.yml`): corre `npx prisma migrate deploy` como dueño sobre la base efímera y después `npm run build`, y recién al final
+  `npm test`. El orden importa: el build verifica el registro de módulos (ver abajo) y los tests dejan la base con empresas y roles de prueba, que el
+  verificador rechazaría.
+
+## Bloque de módulos (migraciones 20261003 a 20261006): orden por base
+
+Cuatro migraciones llegan juntas a cada base: `20261003120000_extensiones_btree_gist_trgm_unaccent`, `20261004120000_registro_de_modulos_por_empresa`,
+`20261005120000_renombrar_boleta_a_ticket` y `20261006120000_clave_de_rol_de_sistema`. Se aplican **por base y con autorización expresa**:
+`zuluhub-demo` (Neon `vercel-dev`) ya las tiene; `hoteles-del-neuquen` (stockhneuquen) no, y no se despliega ahí hasta aplicarlas.
+
+1. Snapshot (rama de respaldo de Neon) de la base destino. Es el rollback del DEPLOY: código viejo más base vieja.
+2. `node scripts/operaciones/con-env.mjs <archivo-env> -- npx prisma migrate status` y revisar qué falta.
+3. `... -- npm run migrar:aprobar`.
+4. `... -- npx tsx scripts/verificar-registro-de-modulos.ts`: tiene que salir con código 0. Falla si hay una empresa activa anterior a la migración sin
+   registro de módulos, o con un rol llamado «admin» sin la clave «admin». El mismo chequeo corre dentro de `npm run build` (modo `verificar`), así que
+   un deploy sobre una base sin registro falla antes de publicar.
+5. Recién ahí el deploy.
+
+Alta y baja de módulos de una empresa: solo `npm run modulos-empresa` con `PLATAFORMA_DATABASE_URL` (rol `motor2_plataforma`); ninguna pantalla lo hace.
+Para volver atrás una migración del bloque, ver `scripts/operaciones/restaurar-registro-de-modulos.md`.

@@ -1,6 +1,6 @@
 # ADR-015: Dependencias completas entre módulos, Recetas y Clientes
 
-> Redactado el 2026-10-03 (Bloque 5A, después de ADR-014). **Decidido, todavía sin implementar.** Completa y corrige la tabla de dependencias de
+> Redactado el 2026-10-03 (Bloque 5A, después de ADR-014). **Decidido. Estado (2026-10-03): implementado** (la clausura de `src/core/modulos/clausura.ts` usa esta tabla). Completa y corrige la tabla de dependencias de
 > ADR-014 §3 con las tres respuestas del dueño a la revisión del catálogo de módulos y del mapeo de las 123 acciones de `ACCIONES`. No cambia
 > ninguna otra decisión de ADR-011 ni de ADR-014.
 

@@ -1,6 +1,6 @@
 # ADR-014: Sin núcleo de negocio, módulos de soporte calculados y Salón con venta rápida
 
-> Redactado el 2026-10-03 (Bloque 5A del plan de plataforma, antes de implementar). **Decidido, todavía sin implementar**: ni la tabla de
+> Redactado el 2026-10-03 (Bloque 5A del plan de plataforma, antes de implementar). **Decidido. Estado (2026-10-03): implementado** en el catálogo y la clausura de `src/core/modulos/` y en el guard (ver ADR-011); cuando se redactó, ni la tabla de
 > módulos ni el campo `modulo` de las acciones existen aún. Corrige ADR-011 en dos puntos (el «núcleo» del §2 y las dependencias del §3) y lo
 > completa con los módulos de soporte. Lo escribió el dueño de producto en sus respuestas D1 y D2 del 2026-10-03; este ADR las registra con su
 > motivo y con las consecuencias que se derivaron de leer el código. No toca la política de empresa, los planes (ADR-013) ni la identidad de
