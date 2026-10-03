@@ -11,6 +11,8 @@ import {
   type GrupoNav,
 } from "../../src/core/navegacion/estructura";
 import { ACCIONES, type AccionClave } from "../../src/core/permisos/acciones";
+import { MODULOS } from "../../src/core/modulos/catalogo";
+import { modulosEfectivos } from "../../src/core/modulos/clausura";
 
 /**
  * GOLDEN MASTER del registro de módulos (ADR-011, Bloque 0). Fija lo que una empresa «completa» —la que hoy tienen todas— le deja ver a cada
@@ -65,6 +67,12 @@ describe("golden master: lo que ve una empresa con todo activo (antes del regist
       writeFileSync(RUTA_JSON, JSON.stringify(actual, null, 2) + "\n");
     }
     expect(actual).toEqual(JSON.parse(readFileSync(RUTA_JSON, "utf8")));
+  });
+
+  it("con los módulos vendibles activos, el módulo de cada acción está efectivo: ninguna acción se pierde (la foto no cambia)", () => {
+    const vendibles = MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id);
+    const efectivos = modulosEfectivos(vendibles);
+    expect(ACCIONES.filter((a) => !efectivos.has(a.modulo)).map((a) => a.clave)).toEqual([]);
   });
 
   it("la foto no está vacía: el admin ve las pantallas del menú y hay un catálogo de acciones", () => {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ACCIONES, contextoDeAccion, nivelMinimoDeAccion, type NivelDeAccion } from "../../src/core/permisos/acciones";
+import { ACCIONES, contextoDeAccion, moduloDeAccion, nivelMinimoDeAccion, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import { MATRIZ_ESPERADA } from "./matriz-esperada";
 
 /**
- * Guardián de la matriz de fábrica: el contexto (empresa / sucursal), el nivel mínimo (operario / administrador / gerente) y los roles
+ * Guardián de la matriz de fábrica: el módulo, el contexto (empresa / sucursal), el nivel mínimo (operario / administrador / gerente) y los roles
  * que editan cada acción desde el arranque tienen que coincidir con `MATRIZ_ESPERADA`, que se escribe aparte a mano. Cambiar una acción
  * en el catálogo obliga a cambiarla también acá: el cambio queda en el diff de dos archivos y alguien lo mira.
  */
@@ -15,17 +15,19 @@ describe("matriz de fábrica: el catálogo coincide con lo esperado", () => {
     expect(enCatalogo).toEqual(esperadas);
   });
 
-  it.each(ACCIONES.map((a) => [a.clave, a] as const))("%s: contexto, nivel mínimo y roles de fábrica", (clave, accion) => {
+  it.each(ACCIONES.map((a) => [a.clave, a] as const))("%s: módulo, contexto, nivel mínimo y roles de fábrica", (clave, accion) => {
     const esperada = MATRIZ_ESPERADA[clave];
-    expect({ contexto: accion.contexto, nivelMinimo: accion.nivelMinimo, roles: [...accion.rolesEditarSemilla] }).toEqual({
+    expect({ modulo: accion.modulo, contexto: accion.contexto, nivelMinimo: accion.nivelMinimo, roles: [...accion.rolesEditarSemilla] }).toEqual({
+      modulo: esperada.modulo,
       contexto: esperada.contexto,
       nivelMinimo: esperada.nivelMinimo,
       roles: [...esperada.roles],
     });
   });
 
-  it("`contextoDeAccion` y `nivelMinimoDeAccion` leen lo mismo que el catálogo", () => {
+  it("`moduloDeAccion`, `contextoDeAccion` y `nivelMinimoDeAccion` leen lo mismo que el catálogo", () => {
     for (const a of ACCIONES) {
+      expect(moduloDeAccion(a.clave)).toBe(a.modulo);
       expect(contextoDeAccion(a.clave)).toBe(a.contexto);
       expect(nivelMinimoDeAccion(a.clave)).toBe(a.nivelMinimo);
     }
