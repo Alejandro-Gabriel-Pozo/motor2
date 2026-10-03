@@ -137,6 +137,8 @@ export async function limpiarBaseDeTest() {
 
   // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test
   // tiene que terminar con exactamente la empresa por defecto de la migración, en pie y ACTIVE, sea lo que sea que un test haya tocado.
+  // El registro de módulos (P4) apunta a la empresa con ON DELETE RESTRICT: las filas de las empresas que se van se borran antes. Las de la empresa por defecto quedan.
+  await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: { not: EMPRESA_POR_DEFECTO_ID } } });
   await prismaAdmin.empresa.deleteMany({ where: { id: { not: EMPRESA_POR_DEFECTO_ID } } });
   await prismaAdmin.empresa.upsert({
     where: { id: EMPRESA_POR_DEFECTO_ID },

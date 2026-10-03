@@ -2257,6 +2257,27 @@ model Empresa {
   promoCuentaRel                 PromoCuenta[]
   cuentaItemRel                  CuentaItem[]
   ejemplarTicketRel              EjemplarTicket[]
+  moduloEmpresaRel               ModuloEmpresa[]
+}
+
+enum EstadoModulo {
+  ACTIVO
+  INACTIVO
+}
+
+/// Registro de módulos vendibles por empresa (ADR-011, ADR-014, ADR-015). Qué módulos existen y sus dependencias es CÓDIGO (`src/core/modulos`); acá solo se
+/// guarda cuáles tiene cada empresa. Los módulos fijo y de soporte NO tienen fila (se calculan). `modulo` es TEXT validado en código a propósito: agregar un
+/// módulo al catálogo no requiere migración. Sin default de `empresaId` (a diferencia de las tablas de operación): quien escribe es la plataforma, siempre
+/// indicando la empresa. RLS: la app lee solo su empresa; escribe únicamente `motor2_plataforma` (política + REVOKE a motor2_app + trigger), a mano en la migración.
+model ModuloEmpresa {
+  id            String       @id @default(cuid())
+  empresaId     String
+  empresa       Empresa      @relation(fields: [empresaId], references: [id])
+  modulo        String
+  estado        EstadoModulo @default(ACTIVO)
+  actualizadoEn DateTime     @default(now()) @updatedAt
+
+  @@unique([empresaId, modulo])
 }
 
 model UsuarioEmpresa {
