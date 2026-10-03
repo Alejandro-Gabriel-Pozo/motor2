@@ -153,3 +153,39 @@ describe("validarEmpresaUnicaAlArrancar (CARTA_EMPRESA_UNICA: build vs arranque)
     expect(() => validarEmpresaUnicaAlArrancar({ MOTOR2_ENTORNO_ESTRICTO: "1", CARTA_EMPRESA_UNICA: "hoteles" }, "")).toThrow();
   });
 });
+
+describe("variables del envío de mails (E3, ADR-018)", () => {
+  const AVISOS = { CORREO_AVISOS_RESEND_API_KEY: "re_clave_avisos", CORREO_AVISOS_REMITENTE: "Avisos <no-responder@avisos.ejemplo.com>" };
+  const OPERATIVO = { CORREO_OPERATIVO_RESEND_API_KEY: "re_clave_operativo", CORREO_OPERATIVO_REMITENTE: "facturacion@operativo.ejemplo.com" };
+
+  it("son opcionales: sin ninguna, o con los dos canales completos, parseEnv acepta", () => {
+    expect(() => parseEnv(ENV_VALIDO)).not.toThrow();
+    expect(() => parseEnv({ ...ENV_VALIDO, ...AVISOS, ...OPERATIVO })).not.toThrow();
+  });
+
+  it("una clave que no parece de Resend o un remitente inválido se rechaza nombrando la variable", () => {
+    expect(() => parseEnv({ ...ENV_VALIDO, CORREO_AVISOS_RESEND_API_KEY: "sk_otra" })).toThrow(/CORREO_AVISOS_RESEND_API_KEY/);
+    expect(() => parseEnv({ ...ENV_VALIDO, CORREO_OPERATIVO_RESEND_API_KEY: "" })).toThrow(/CORREO_OPERATIVO_RESEND_API_KEY/);
+    expect(() => parseEnv({ ...ENV_VALIDO, CORREO_AVISOS_REMITENTE: "sin-arroba" })).toThrow(/CORREO_AVISOS_REMITENTE/);
+    expect(() => parseEnv({ ...ENV_VALIDO, CORREO_OPERATIVO_REMITENTE: "ana@dominio" })).toThrow(/CORREO_OPERATIVO_REMITENTE/);
+  });
+
+  it("en Producción no arranca con un canal a medias, ni con los dos canales con la misma clave o dominio; el error no revela valores", () => {
+    const PROD = { ...ENV_PRODUCCION, VERCEL_ENV: "production" };
+    expect(() => validarEntornoAlArrancar({ ...PROD, ...AVISOS, ...OPERATIVO })).not.toThrow();
+    expect(() => validarEntornoAlArrancar({ ...PROD, CORREO_AVISOS_RESEND_API_KEY: "re_clave_avisos" })).toThrow(/CORREO_AVISOS_REMITENTE/);
+    expect(() => validarEntornoAlArrancar({ ...PROD, CORREO_AVISOS_RESEND_API_KEY: "re_clave_avisos" })).not.toThrow(/re_clave_avisos/);
+    expect(() => validarEntornoAlArrancar({ ...PROD, ...AVISOS, ...OPERATIVO, CORREO_OPERATIVO_RESEND_API_KEY: "re_clave_avisos" })).toThrow(/misma clave/);
+    expect(() => validarEntornoAlArrancar({ ...PROD, ...AVISOS, ...OPERATIVO, CORREO_OPERATIVO_REMITENTE: "x@avisos.ejemplo.com" })).toThrow(/mismo dominio/);
+  });
+
+  it("el arranque junta los problemas del schema y los del correo en un solo error", () => {
+    const PROD = { ...ENV_PRODUCCION, VERCEL_ENV: "production" };
+    expect(() => validarEntornoAlArrancar({ ...PROD, CORREO_AVISOS_REMITENTE: "sin-arroba" })).toThrow(/CORREO_AVISOS_REMITENTE \(no es un remitente válido.*CORREO_AVISOS_RESEND_API_KEY y CORREO_AVISOS_REMITENTE se configuran juntas/);
+  });
+
+  it("fuera de Producción (local, Preview) un canal a medias no impide arrancar", () => {
+    expect(() => validarEntornoAlArrancar({ CORREO_AVISOS_RESEND_API_KEY: "re_clave_avisos" })).not.toThrow();
+    expect(() => validarEntornoAlArrancar({ VERCEL_ENV: "preview", CORREO_AVISOS_RESEND_API_KEY: "re_clave_avisos" })).not.toThrow();
+  });
+});

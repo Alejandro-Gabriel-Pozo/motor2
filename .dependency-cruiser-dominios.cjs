@@ -23,6 +23,7 @@ const INFRA_TRANSVERSAL = {
   fiscal: "identificadores fiscales puros (CUIT); si crece con ARCA pasa a DOMINIOS_DE_NEGOCIO con su fachada (mismo criterio que precios).",
   tiempo: "zona horaria de la empresa: formato de horas y límites de día con Intl; puro, lo consumen reportes, POS y validaciones de fecha.",
   seguridad: "cabeceras HTTP y auditoría de dependencias: se consumen desde la configuración y los scripts.",
+  correo: "envío de mails por canal (avisos / operativo): interfaz con implementaciones Resend, consola y memoria (E3, ADR-018); lo consumen las acciones de servidor y el arranque.",
 };
 
 module.exports = { DOMINIOS_DE_NEGOCIO, INFRA_TRANSVERSAL };

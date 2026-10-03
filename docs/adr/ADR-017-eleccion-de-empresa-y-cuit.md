@@ -1,8 +1,8 @@
 # ADR-017: Con acceso a varias empresas hay que elegir una; el CUIT se valida y se guarda canónico
 
-> Redactado el 2026-10-03 (pasos E1 y E2 del plan de plataforma). **Estado: E1 y E2 pasos 1-3 pusheados; la migración `cuit_unico` (E2 paso 5)
-> está aprobada por el dueño (2026-10-03) y escrita**, pendiente de ensayo en una rama de Neon, copia previa y aplicación a cada base de producción antes de
-> su push (ver `docs/deploy-con-migraciones.md`). La parte de `PROVISIONING`/alta de empresas se documentará acá cuando se implemente (E3 en adelante).
+> Redactado el 2026-10-03 (pasos E1 y E2 del plan de plataforma). **Estado: E1 y E2 completos**; la migración `cuit_unico` (E2 paso 5) se ensayó,
+> se aplicó a ambas bases de producción y se pusheó el 2026-10-03. La parte de `PROVISIONING`/alta de empresas se documentará acá cuando se implemente
+> (E5 en adelante); el envío de mails (E3) está en ADR-018.
 
 ## Contexto
 

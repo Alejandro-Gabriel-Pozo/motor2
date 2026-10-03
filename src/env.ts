@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { esSlugPublicoValido } from "./core/carta/host";
+import { problemasDeConfiguracionDeCorreo } from "./core/correo/configuracion";
+import { esRemitenteValido } from "./core/correo/direcciones";
 
 /**
  * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): Zod en env — "el proceso no
@@ -21,11 +23,15 @@ import { esSlugPublicoValido } from "./core/carta/host";
  * Opcionales (el proyecto funciona sin ellas, con la feature correspondiente deshabilitada — confirmado en el código real):
  * `ALLOWED_EMAIL_DOMAINS` (`src/core/auth/acceso.ts` — "hoy no hay dominios configurados"), `BOOTSTRAP_ADMIN_EMAILS`
  * (`src/core/auth/bootstrap.ts` — "hoy no hay emails configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
- * `CARTA_DOMINIO_BASE` (subdominio de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional).
+ * `CARTA_DOMINIO_BASE` (subdominio de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional), y las cuatro del envío de mails
+ * (`CORREO_AVISOS_*`, `CORREO_OPERATIVO_*`, E3/ADR-018: sin ellas el canal no envía; en local muestra el mail en la terminal).
  *
  * Fuera de este schema a propósito: `NODE_ENV`/`NEXT_RUNTIME` (los fija Next.js/Node, nunca el usuario) y
  * `MOTOR2_SIN_DOLAR_AUTOMATICO`/`MOTOR2_E2E_DATABASE_URL` (flags de test/e2e, no configuración de la app en sí).
  */
+const claveDeResend = z.string().regex(/^re_\S+$/, "no parece una clave de Resend");
+const remitente = z.string().refine(esRemitenteValido, "no es un remitente válido (ana@dominio.com o Nombre <ana@dominio.com>)");
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
@@ -50,6 +56,13 @@ const envSchema = z.object({
   MOTOR2_ROL_ESTRICTO: z.string().min(1).optional(),
   // "1" aplica el chequeo de producción fuera de Vercel; "0" lo relaja al esquema común (`validarEntornoAlArrancar`).
   MOTOR2_ENTORNO_ESTRICTO: z.string().min(1).optional(),
+
+  // Envío de mails (core/correo, ADR-018): dos canales con cuenta, clave y dominio propios. Clave y remitente de cada canal van juntas (el arranque
+  // estricto lo verifica) y por instalación: en las variables de CADA proyecto de Vercel, no en la base.
+  CORREO_AVISOS_RESEND_API_KEY: claveDeResend.optional(),
+  CORREO_AVISOS_REMITENTE: remitente.optional(),
+  CORREO_OPERATIVO_RESEND_API_KEY: claveDeResend.optional(),
+  CORREO_OPERATIVO_REMITENTE: remitente.optional(),
 });
 
 /** Las variables que el schema declara: el test de arquitectura exige que todo `process.env.X` del código esté acá o inventariado. */
@@ -80,9 +93,9 @@ const entornoEstricto = (source: Record<string, string | undefined>) => source.V
 export function validarEntornoAlArrancar(source: Record<string, string | undefined> = process.env): void {
   if (!entornoEstricto(source)) return;
   const resultado = (source.MOTOR2_ENTORNO_ESTRICTO === "0" ? envSchema : schemaDeProduccion).safeParse(source);
-  if (resultado.success) return;
-  const detalle = resultado.error.issues.map((i) => `${i.path.join(".")} (${i.message})`).join(", ");
-  throw new Error(`Configuración inválida: ${detalle}. El proceso no arranca.`);
+  const problemas = [...(resultado.success ? [] : resultado.error.issues.map((i) => `${i.path.join(".")} (${i.message})`)), ...problemasDeConfiguracionDeCorreo(source)];
+  if (problemas.length === 0) return;
+  throw new Error(`Configuración inválida: ${problemas.join(", ")}. El proceso no arranca.`);
 }
 
 /**
