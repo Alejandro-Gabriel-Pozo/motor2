@@ -92,6 +92,21 @@ testAutenticado("catalogo/categorias: sin violaciones de axe", async ({ paginaAu
   }
 });
 
+testAutenticado("catalogo/clientes: la lista con un cliente, con «Editar» desplegado, sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const nombre = `E2E A11y Cliente ${Date.now()}`;
+  await prisma.cliente.create({ data: { nombre, descuentoPorcentaje: 10 } });
+  try {
+    await page.goto("/catalogo/clientes");
+    await conTitulo(page, /Clientes con descuento/);
+    await expect(page.getByText(nombre)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "plegada").toEqual([]);
+    await page.locator("summary", { hasText: "Editar" }).first().click();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "desplegada").toEqual([]);
+  } finally {
+    await prisma.cliente.deleteMany({ where: { nombre } });
+  }
+});
+
 testAutenticado("catalogo/margen-objetivo: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   const nombre = `E2E A11y Objetivo ${Date.now()}`;
   await prisma.categoriaProducto.create({ data: { nombre } });

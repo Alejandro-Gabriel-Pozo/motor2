@@ -1,3 +1,4 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
@@ -79,7 +80,8 @@ export default async function InsumosGruposPage() {
                         return actualizarActivoInsumo(i.id, !i.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline">
+                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                        <IconoDeAccion id="activar" />
                         {i.activo ? "Desactivar" : "Activar"}
                       </button>
                     </FormConResultado>
@@ -133,7 +135,8 @@ export default async function InsumosGruposPage() {
                         return actualizarActivoGrupo(g.id, !g.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline">
+                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                        <IconoDeAccion id="activar" />
                         {g.activo ? "Desactivar" : "Activar"}
                       </button>
                     </FormConResultado>

@@ -25,12 +25,15 @@ test("admin: ve el selector de paneles, arranca en Sucursal y cada panel muestra
   await expect(selector(page)).toBeVisible();
   await expect(boton(page, "Sucursal")).toHaveAttribute("aria-pressed", "true");
   await expect(boton(page, "Empresa")).toHaveAttribute("aria-pressed", "false");
+  // La sucursal activa se ve siempre bajo el selector, en cualquiera de los dos paneles.
+  await expect(page.locator("nav [data-sucursal-activa]")).toHaveText(/^Sucursal: \S/);
   await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toBeVisible();
   await expect(page.locator("nav").getByRole("button", { name: "Traspasos" })).toBeVisible();
 
   await elegirPanel(page, "Empresa");
   await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toHaveCount(0);
   await expect(page.locator("nav").getByRole("button", { name: "Traspasos" })).toHaveCount(0);
+  await expect(page.locator("nav [data-sucursal-activa]")).toBeVisible();
   await expect(page.locator("nav").getByRole("button", { name: "Administración" })).toBeVisible();
 
   await elegirPanel(page, "Sucursal");

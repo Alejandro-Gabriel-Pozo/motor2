@@ -1,6 +1,8 @@
 import { esSignoFijo } from "@/core/movimientos/public";
 import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
-import { calcularImpactoRecetasPorPeriodo } from "./costos";
+import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "./costos";
+import { hayObjetivosCargados, resumirFueraDeObjetivo } from "./margen-objetivo";
+import { cargarObjetivosDeMargen } from "./margen-objetivo-consulta";
 import { rangoUtc, type FiltrosPeriodo, type ItemPeriodo } from "./periodo-tipos";
 import { generarDigestAlertas } from "./periodo-alertas";
 import { calcularRatioGastoVentas } from "./periodo-ratio";
@@ -133,7 +135,10 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos, indiceRecetas, clasificacionNoComestibles);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, indiceRecetas);
   const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db);
-  const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas);
+  // Alerta pasiva de margen objetivo: solo si la empresa cargó un objetivo (si no, no se calcula nada de más). Reusa el catálogo y el índice de recetas ya cargados.
+  const objetivos = await cargarObjetivosDeMargen(db);
+  const fueraDeObjetivo = hayObjetivosCargados(objetivos) ? resumirFueraDeObjetivo(await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas, objetivos)) : null;
+  const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas, fueraDeObjetivo);
 
   const reporte = {
     total: items.length,

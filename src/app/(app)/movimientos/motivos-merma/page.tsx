@@ -1,3 +1,4 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { crearMotivoMerma, actualizarActivoMotivoMerma, listarMotivosMermaParaPanel } from "@/server/actions/movimientos/motivos";
@@ -49,7 +50,8 @@ export default async function MotivosMermaPage() {
                         return actualizarActivoMotivoMerma(m.id, !m.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline">
+                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                        <IconoDeAccion id="activar" />
                         {m.activo ? "Desactivar" : "Activar"}
                       </button>
                     </FormConResultado>

@@ -1,3 +1,4 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { crearSeccion, actualizarActivaSeccion, actualizarRespaldoSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/movimientos/secciones";
@@ -42,7 +43,8 @@ export default async function SeccionesPage() {
                   className="flex gap-1"
                 >
                   <input name="nombre" defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
-                  <button type="submit" className="text-sm underline">
+                  <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="editar" />
                     Renombrar
                   </button>
                 </FormConResultado>
@@ -70,7 +72,8 @@ export default async function SeccionesPage() {
                     return actualizarActivaSeccion(s.id, !s.activa);
                   }}
                 >
-                  <button type="submit" className="text-sm underline">
+                  <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="activar" />
                     {s.activa ? "Desactivar" : "Activar"}
                   </button>
                 </FormConResultado>

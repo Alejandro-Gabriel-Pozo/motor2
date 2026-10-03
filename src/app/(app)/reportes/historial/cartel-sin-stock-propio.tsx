@@ -1,3 +1,4 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import type { IngredienteRecetaVigente } from "@/core/reportes/historial-producto";
 
@@ -35,7 +36,8 @@ export function CartelSinStockPropio({ productoId, ingredientes }: { productoId:
       ) : (
         <p className="mb-3 text-neutral-600 dark:text-neutral-400">Todavía no tiene una receta cargada.</p>
       )}
-      <EnlaceInterno href={`/catalogo/recetas/${productoId}`} className="underline">
+      <EnlaceInterno href={`/catalogo/recetas/${productoId}`} className="underline inline-flex items-center gap-1">
+        <IconoDeAccion id="ver" />
         Ver receta
       </EnlaceInterno>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { IconoDeAccion } from "@/components/iconos";
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { OperacionEncontrada, ItemOperacion } from "@/core/reportes/trazabilidad";
@@ -12,7 +13,8 @@ const COLUMNAS_ENCONTRADAS: ColumnaReporte<OperacionEncontrada>[] = [
     clave: "ver",
     etiqueta: "",
     render: (e) => (
-      <Link href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(e.idOperacion)}`} className="underline">
+      <Link href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(e.idOperacion)}`} className="underline inline-flex items-center gap-1">
+        <IconoDeAccion id="ver" />
         Ver operación
       </Link>
     ),

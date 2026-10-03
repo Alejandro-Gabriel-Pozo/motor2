@@ -23,9 +23,10 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const rango = resolverRangoDeReporte(sp);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const [rep, cotizacion] = await Promise.all([
+  const [rep, cotizacion, gateCostos] = await Promise.all([
     obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db),
     obtenerUltimaCotizacionSinRomper(ctx.db),
+    requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db),
   ]);
 
   return (
@@ -35,7 +36,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
         <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} />
       </div>
 
-      <DigestAlertas alertas={rep.digest} />
+      <DigestAlertas alertas={rep.digest} puedeVerCostos={gateCostos.ok} />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">

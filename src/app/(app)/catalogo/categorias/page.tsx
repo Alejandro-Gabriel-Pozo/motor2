@@ -1,3 +1,4 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { crearCategoriaProducto, actualizarActivaCategoriaProducto, listarCategoriasProducto } from "@/server/actions/catalogo/categorias-producto";
@@ -37,7 +38,8 @@ export default async function CategoriasPage() {
                     return actualizarActivaCategoriaProducto(c.id, !c.activo);
                   }}
                 >
-                  <button type="submit" className="text-sm underline">
+                  <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="activar" />
                     {c.activo ? "Desactivar" : "Activar"}
                   </button>
                 </FormConResultado>

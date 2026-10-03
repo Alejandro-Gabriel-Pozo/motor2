@@ -6,6 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-objetivo";
 import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../../src/core/reportes/periodo";
 
 describe("obtenerReportePorPeriodo", () => {
@@ -448,6 +449,41 @@ describe("obtenerReportePorPeriodo", () => {
     expect(alerta!.texto).not.toContain("golpead");
     expect(alerta!.texto).not.toContain("se encareció");
     expect(alerta!.severidad).toBe("media");
+  });
+
+  describe("alerta de margen objetivo (pasiva: solo si la empresa cargó un objetivo)", () => {
+    async function sembrarPlatoCaro(precioVenta: number, nombre = "Pizza Cara") {
+      const mp = await sembrarProductoDisponible({ codigo: "MP_OBJ", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      const pv = await sembrarProductoDisponible({ codigo: "PV_OBJ", nombre, tipo: "PV", unidadStockId: unidadKgId, precioVenta }, sucursalId);
+      await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+      // Costo de reposición $600 el kg: sobre un precio de $1000 es food cost 60 %.
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 600 }] });
+    }
+    const rango = () => [new Date(Date.now() - 86400000), new Date(Date.now() + 86400000)] as const;
+
+    it("sin objetivo cargado no avisa nada, aunque haya un plato con food cost altísimo", async () => {
+      await sembrarPlatoCaro(1000);
+      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma);
+      expect(rep.digest.some((a) => a.destino === "costos")).toBe(false);
+    });
+
+    it("con objetivo cargado avisa cuántos platos pasan y cuál es el peor, con severidad media y destino Costos", async () => {
+      await sembrarPlatoCaro(1000);
+      expect((await guardarMargenObjetivo(null, 35)).ok).toBe(true);
+      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma);
+      const alerta = rep.digest.find((a) => a.destino === "costos");
+      expect(alerta).toBeDefined();
+      expect(alerta!.severidad).toBe("media");
+      expect(alerta!.texto).toContain("1 plato tiene");
+      expect(alerta!.texto).toContain('"Pizza Cara" (60% contra 35%)');
+    });
+
+    it("con objetivo cargado pero todos los platos dentro, no avisa", async () => {
+      await sembrarPlatoCaro(1000);
+      expect((await guardarMargenObjetivo(null, 70)).ok).toBe(true);
+      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma);
+      expect(rep.digest.some((a) => a.destino === "costos")).toBe(false);
+    });
   });
 
   it("digest nunca tiene más de 5 alertas", async () => {

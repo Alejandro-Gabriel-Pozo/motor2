@@ -90,3 +90,49 @@ test("un operario no ve el enlace ni puede abrir la pantalla del margen objetivo
     await prisma.user.deleteMany({ where: { id: usuario.id } });
   }
 });
+
+test("el reporte por período avisa de los platos fuera del objetivo solo si la empresa cargó uno, y lleva a Costos", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-MP-ALERTA-${marca}`, nombre: `E2E Insumo Alerta ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+  const plato = await prisma.producto.create({ data: { codigo: `E2E-PV-ALERTA-${marca}`, nombre: `E2E Plato Alerta ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 10000 } });
+  await prisma.recetaVersion.create({ data: { productoId: plato.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const operacion = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
+  await prisma.movimientoStock.create({
+    data: { operacionId: operacion.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 40000, precioPorUnidadStock: 4000 },
+  });
+  const alerta = page.getByText(/sobre el objetivo cargado/);
+  const fijarObjetivo = async (pct: string) => {
+    await page.goto("/catalogo/margen-objetivo");
+    await page.getByLabel("Food cost objetivo (%)").fill(pct);
+    await page.locator("section", { hasText: "De toda la empresa" }).getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByText(`Food cost objetivo de la empresa: ${pct} %.`)).toBeVisible();
+  };
+  try {
+    // Sin objetivo cargado (rige el 40 % por defecto, sin avisar nada) el Período no dice nada del margen.
+    await page.goto("/reportes/periodo");
+    await expect(page.getByRole("heading", { name: "Reporte por período" })).toBeVisible();
+    await expect(alerta).toHaveCount(0);
+
+    // Con un objetivo que el plato (40 %) no cumple, aparece la alerta con el enlace a Costos.
+    await fijarObjetivo("30");
+    await page.goto("/reportes/periodo");
+    await expect(alerta).toBeVisible();
+    await page.getByRole("link", { name: "Ver en Costos" }).click();
+    await page.waitForURL((url) => url.pathname === "/reportes/costos");
+    await expect(page.getByRole("heading", { name: "Costos y márgenes" })).toBeVisible();
+
+    // Con un objetivo que cumple, la alerta desaparece.
+    await fijarObjetivo("50");
+    await page.goto("/reportes/periodo");
+    await expect(page.getByRole("heading", { name: "Reporte por período" })).toBeVisible();
+    await expect(alerta).toHaveCount(0);
+  } finally {
+    await prisma.margenObjetivo.deleteMany();
+    await prisma.movimientoStock.deleteMany({ where: { productoId: mp.id } });
+    await prisma.operacion.deleteMany({ where: { id: operacion.id } });
+    await prisma.recetaVersion.deleteMany({ where: { productoId: plato.id } });
+    await prisma.producto.deleteMany({ where: { id: { in: [mp.id, plato.id] } } });
+  }
+});

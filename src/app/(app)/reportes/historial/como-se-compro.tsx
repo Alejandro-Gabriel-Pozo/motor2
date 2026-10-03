@@ -1,5 +1,6 @@
 "use client";
 
+import { IconoDeAccion } from "@/components/iconos";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaCompraHistorial, ResumenCompras } from "@/core/reportes/historial-vistas";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -46,7 +47,8 @@ function columnas(mostrarDinero: boolean): ColumnaReporte<FilaCompraHistorial>[]
     etiqueta: "Origen",
     render: (f) =>
       f.idOperacion ? (
-        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(f.idOperacion)}`} className="underline">
+        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(f.idOperacion)}`} className="underline inline-flex items-center gap-1">
+          <IconoDeAccion id="ver" />
           Ver operación
         </EnlaceInterno>
       ) : null,

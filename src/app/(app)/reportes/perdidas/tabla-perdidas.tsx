@@ -1,5 +1,6 @@
 "use client";
 
+import { IconoDeAccion } from "@/components/iconos";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaPerdida } from "@/core/reportes/perdidas";
@@ -28,7 +29,8 @@ function columnas(): ColumnaReporte<FilaPerdida>[] {
       clave: "trazabilidad",
       etiqueta: "",
       render: (f) => (
-        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${f.idOperacion}`} className="text-sm underline">
+        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${f.idOperacion}`} className="text-sm underline inline-flex items-center gap-1">
+          <IconoDeAccion id="ver" />
           Ver operación
         </EnlaceInterno>
       ),

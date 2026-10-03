@@ -2,10 +2,13 @@ import type { FilaImpactoRecetaPorPeriodo } from "./costos";
 import type { RatioGastoVentas } from "./periodo-ratio";
 import type { GastoPorInsumoDelPeriodo } from "./periodo-compras";
 import type { FilaPrecioInsumo } from "./periodo-precios";
+import type { ResumenFueraDeObjetivo } from "./margen-objetivo";
 
 export interface FilaAlertaDigest {
   texto: string;
   severidad: "alta" | "media";
+  /** A qué pantalla lleva la alerta, si lleva a alguna: la pantalla decide si lo muestra según los permisos de quien mira. */
+  destino?: "costos";
 }
 
 /**
@@ -24,7 +27,9 @@ export function generarDigestAlertas(
   ratioGastoVentas: RatioGastoVentas,
   gastoPorInsumo: GastoPorInsumoDelPeriodo,
   tendenciaPrecios: FilaPrecioInsumo[],
-  impactoRecetas: FilaImpactoRecetaPorPeriodo[]
+  impactoRecetas: FilaImpactoRecetaPorPeriodo[],
+  /** Platos con el food cost sobre el objetivo que la empresa cargó (`resumirFueraDeObjetivo`); `null` si no cargó ninguno o no hay platos fuera. */
+  fueraDeObjetivo: ResumenFueraDeObjetivo | null
 ): FilaAlertaDigest[] {
   const alertas: FilaAlertaDigest[] = [];
 
@@ -70,6 +75,16 @@ export function generarDigestAlertas(
         texto: `Compras/Ventas ${diferencia > 0 ? "subió" : "bajó"} de ${ratioGastoVentas.porcentajePeriodoAnterior}% a ${ratioGastoVentas.porcentaje}% respecto al período anterior.`,
       });
     }
+  }
+
+  if (fueraDeObjetivo) {
+    const { cantidad, peor } = fueraDeObjetivo;
+    const pct = (n: number) => n.toLocaleString("es-AR");
+    alertas.push({
+      severidad: "media",
+      destino: "costos",
+      texto: `${cantidad === 1 ? "1 plato tiene" : `${cantidad} platos tienen`} el food cost sobre el objetivo cargado; el más lejos es "${peor.nombre}" (${pct(peor.foodCostPct)}% contra ${pct(peor.objetivoPct)}%). Se calcula con el precio de lista y el costo de hoy, no con lo vendido en el período.`,
+    });
   }
 
   if (alertas.length < 5 && gastoPorInsumo.porInsumo.length >= 3) {

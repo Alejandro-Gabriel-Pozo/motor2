@@ -61,6 +61,7 @@ describe("panelDeRuta: el panel de la pantalla abierta", () => {
     ["/movimientos/motivos-merma", "empresa"],
     ["/reportes/huecos-catalogo", "empresa"],
     ["/reportes/costos", "sucursal"],
+    ["/reportes/rendimiento-recetas", "sucursal"],
     ["/mesas", "sucursal"],
   ] as const)("%s → %s", (ruta, esperado) => {
     expect(panelDeRuta(ruta)).toBe(esperado);

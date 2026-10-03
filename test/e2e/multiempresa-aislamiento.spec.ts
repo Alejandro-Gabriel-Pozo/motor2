@@ -43,7 +43,7 @@ test.describe("app autenticada", () => {
     await page.goto("/catalogo/proveedores");
     await expect(page.getByText(proveedorB)).toBeVisible();
     await expect(page.getByText(proveedorA)).toHaveCount(0);
-    await expect(page.getByText(e.b.sucursalNombre)).toBeVisible();
+    await expect(page.locator("header").getByText(e.b.sucursalNombre)).toBeVisible();
     await expect(page.getByLabel("Empresa activa")).toHaveCount(0);
     await page.context().close();
   });

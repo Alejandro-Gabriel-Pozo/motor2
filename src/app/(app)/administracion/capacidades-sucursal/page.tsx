@@ -51,7 +51,7 @@ export default async function CapacidadesSucursalPage() {
                             return actualizarCapacidad(a.clave as AccionClave, sucursalId, !habilitado);
                           }}
                         >
-                          <button type="submit">{habilitado ? "✅" : "⛔"}</button>
+                          <button type="submit" aria-pressed={habilitado} aria-label={`${a.clave}: ${sucursalId ? (sucursales.find((s) => s.id === sucursalId)?.nombre ?? "sucursal") : "valor por defecto"}`}>{habilitado ? "✅" : "⛔"}</button>
                         </FormConAviso>
                       </td>
                     </Fragment>

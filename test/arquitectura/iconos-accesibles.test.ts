@@ -15,7 +15,7 @@ import { GRUPOS_NAV } from "../../src/core/navegacion/estructura";
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVO_DE_ICONOS = "components/iconos.tsx";
 const COMPONENTES_ICONO = new Set(["Icono", "IconoDeModulo", "IconoDeAccion", "IconoAyuda"]);
-const CONTROLES = new Set(["button", "a", "Link", "EnlaceInterno"]);
+const CONTROLES = new Set(["button", "a", "Link", "EnlaceInterno", "summary"]);
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
@@ -166,6 +166,8 @@ describe("íconos accesibles", () => {
       expect(controlesConIconoSinNombre('const a = <button aria-label="Cerrar"><IconoAyuda /></button>;')).toEqual([]);
       expect(controlesConIconoSinNombre('const a = <button><IconoAyuda /><span className="sr-only">Ayuda</span></button>;')).toEqual([]);
       expect(controlesConIconoSinNombre("const a = <div><IconoAyuda /></div>;")).toEqual([]);
+      expect(controlesConIconoSinNombre("const a = <details><summary><IconoDeAccion id=\"editar\" /></summary></details>;")).toEqual(["summary@1"]);
+      expect(controlesConIconoSinNombre("const a = <details><summary><IconoDeAccion id=\"editar\" />Editar</summary></details>;")).toEqual([]);
     });
 
     it("(d) lee las claves del mapa", () => {

@@ -1,3 +1,4 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { crearDestinoConsumo, actualizarActivoDestinoConsumo, listarDestinosConsumoParaPanel } from "@/server/actions/movimientos/motivos";
@@ -49,7 +50,8 @@ export default async function DestinosConsumoPage() {
                         return actualizarActivoDestinoConsumo(d.id, !d.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline">
+                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                        <IconoDeAccion id="activar" />
                         {d.activo ? "Desactivar" : "Activar"}
                       </button>
                     </FormConResultado>

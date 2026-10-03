@@ -1,3 +1,4 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
@@ -63,7 +64,8 @@ export default async function UnidadesPage() {
                     return actualizarActivaUnidad(u.id, !u.activa);
                   }}
                 >
-                  <button type="submit" className="text-sm underline">
+                  <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="activar" />
                     {u.activa ? "Desactivar" : "Activar"}
                   </button>
                 </FormConResultado>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FOOD_COST_OBJETIVO_PCT, precioParaObjetivo, resolverObjetivoFoodCost, superaFoodCostObjetivo } from "../../src/core/reportes/margen-objetivo";
+import { FOOD_COST_OBJETIVO_PCT, hayObjetivosCargados, precioParaObjetivo, resolverObjetivoFoodCost, resumirFueraDeObjetivo, superaFoodCostObjetivo } from "../../src/core/reportes/margen-objetivo";
 
 describe("FOOD_COST_OBJETIVO_PCT", () => {
   it("es 40 (decisión del dueño, 2026-10-01)", () => {
@@ -106,5 +106,44 @@ describe("precioParaObjetivo", () => {
       const precio = precioParaObjetivo(costo)!;
       expect(superaFoodCostObjetivo(costo, precio)).toBe(false);
     }
+  });
+});
+
+describe("hayObjetivosCargados", () => {
+  it("sin objetivo de empresa ni de categoría, no", () => {
+    expect(hayObjetivosCargados({ empresaPct: null, porCategoria: new Map() })).toBe(false);
+  });
+
+  it("con el de la empresa, sí; con el de una categoría sola, también", () => {
+    expect(hayObjetivosCargados({ empresaPct: 35, porCategoria: new Map() })).toBe(true);
+    expect(hayObjetivosCargados({ empresaPct: null, porCategoria: new Map([["cat", 30]]) })).toBe(true);
+  });
+});
+
+describe("resumirFueraDeObjetivo", () => {
+  const fila = (productoNombre: string, estado: string, foodCostPct: number | null, objetivoFoodCostPct = 40) => ({ productoNombre, estado, foodCostPct, objetivoFoodCostPct });
+
+  it("sin platos fuera del objetivo da null", () => {
+    expect(resumirFueraDeObjetivo([])).toBeNull();
+    expect(resumirFueraDeObjetivo([fila("Pizza", "OK", 38), fila("Flan", "SIN_RECETA", null), fila("Tarta", "COSTO_INCOMPLETO", null)])).toBeNull();
+  });
+
+  it("cuenta los de «Food cost alto» y nombra el más lejos de SU objetivo, no el de food cost más alto", () => {
+    const r = resumirFueraDeObjetivo([fila("Pizza", "FOOD_COST_ALTO", 52, 40), fila("Gaseosa", "FOOD_COST_ALTO", 36, 25), fila("Flan", "OK", 30)]);
+    expect(r).toEqual({ cantidad: 2, peor: { nombre: "Pizza", foodCostPct: 52, objetivoPct: 40 } });
+    const r2 = resumirFueraDeObjetivo([fila("Pizza", "FOOD_COST_ALTO", 45, 40), fila("Gaseosa", "FOOD_COST_ALTO", 36, 20)]);
+    expect(r2!.peor.nombre).toBe("Gaseosa");
+  });
+
+  it("un plato de margen negativo cuenta solo si su food cost también pasa del objetivo", () => {
+    expect(resumirFueraDeObjetivo([fila("Combo", "MARGEN_NEGATIVO", 30, 40)])).toBeNull();
+    expect(resumirFueraDeObjetivo([fila("Combo", "MARGEN_NEGATIVO", 120, 40)])).toEqual({ cantidad: 1, peor: { nombre: "Combo", foodCostPct: 120, objetivoPct: 40 } });
+  });
+
+  it("desempata por nombre: no depende del orden de las filas", () => {
+    const a = fila("Beta", "FOOD_COST_ALTO", 50);
+    const b = fila("Alfa", "FOOD_COST_ALTO", 50);
+    expect(resumirFueraDeObjetivo([a, b])!.peor.nombre).toBe("Alfa");
+    expect(resumirFueraDeObjetivo([b, a])!.peor.nombre).toBe("Alfa");
   });
 });

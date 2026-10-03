@@ -1,5 +1,6 @@
 "use client";
 
+import { IconoDeAccion } from "@/components/iconos";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { EventoHistorialProducto } from "@/core/reportes/historial-producto";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -59,7 +60,8 @@ function columnas(mostrarSaldo: boolean): ColumnaReporte<EventoHistorialProducto
     render: (ev) =>
       ev.tipo === "movimiento" && ev.idOperacion ? (
         // /reportes/trazabilidad tiene su propia clave (reporte_trazabilidad): EnlaceInterno deja el texto sin enlace si el rol no la tiene (test/arquitectura/enlaces-con-permiso.test.ts).
-        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(ev.idOperacion)}`} className="underline">
+        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(ev.idOperacion)}`} className="underline inline-flex items-center gap-1">
+          <IconoDeAccion id="ver" />
           Ver operación
         </EnlaceInterno>
       ) : null,

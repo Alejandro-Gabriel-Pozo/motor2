@@ -90,7 +90,8 @@ export function SidebarNav({
   return (
     <nav className="flex flex-col gap-0.5 overflow-y-auto px-2 py-3 text-sm">
       {conPaneles && (
-        <div role="group" aria-label="Panel del menú" className="mb-2 flex gap-1">
+        <>
+        <div role="group" aria-label="Panel del menú" className="flex gap-1">
           {PANELES.map((p) => (
             <button
               key={p.id}
@@ -111,6 +112,10 @@ export function SidebarNav({
             </button>
           ))}
         </div>
+        <p data-sucursal-activa className="mb-2 truncate px-1 text-xs text-neutral-500 dark:text-neutral-400" title={sucursalNombre}>
+          Sucursal: {sucursalNombre}
+        </p>
+        </>
       )}
       {gruposMostrados.map((grupo) => {
         const abierto = expandido[grupo.id] ?? false;
