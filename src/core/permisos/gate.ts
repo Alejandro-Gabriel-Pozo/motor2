@@ -246,6 +246,7 @@ export async function requierePermisoDeEmpresa(
   const nivel = niveles.get(accionClave)!;
   if (nivel.editar) return OK;
   if (nivel.bloqueadaPorLaCentral && !nivel.ver) return denegado(`La Central no habilitó "${accionClave}" para tus sucursales.`);
+  if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado("No tenés permiso para esta acción: solo la hace el gerente de la empresa.");
   return denegado(
     `No tenés permiso para esta acción. Ninguno de tus roles (${roles.map((r) => `"${r}"`).join(", ")}) tiene "${accionClave}" habilitado. Pedile a un admin que te lo habilite.`
   );
@@ -264,6 +265,7 @@ export async function requierePermisoVerDeEmpresa(
   const nivel = niveles.get(accionClave)!;
   if (nivel.ver) return OK;
   if (nivel.bloqueadaPorLaCentral) return denegado(`La Central no habilitó "${accionClave}" para tus sucursales.`);
+  if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado("No tenés permiso para ver esta sección: solo la ve el gerente de la empresa.");
   return denegado(
     `No tenés permiso para ver esta sección. Ninguno de tus roles (${roles.map((r) => `"${r}"`).join(", ")}) tiene "${accionClave}" habilitado.`
   );

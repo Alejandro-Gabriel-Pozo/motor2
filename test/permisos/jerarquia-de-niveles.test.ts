@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
-import { ACCIONES, nivelDeRol, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
+import { ACCIONES, nivelDeRol, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import {
   accionesDelMenuQueElUsuarioPuedeVer,
   accionesQueElUsuarioPuedeVer,
@@ -162,6 +162,16 @@ describe("anti-escalada: un rol por debajo del piso no llega a la acción", () =
         expect((await requierePermisoVerDeEmpresa(usuarioId, EMPRESA_POR_DEFECTO_ID, DE_ADMIN_EMPRESA, prisma)).ok, "ver").toBe(false);
         expect(await obtenerMiNivelPermisoDeEmpresa(usuarioId, EMPRESA_POR_DEFECTO_ID, DE_ADMIN_EMPRESA, prisma)).toEqual({ ver: false, editar: false });
       }
+    });
+
+    it("de piso gerente: el mensaje de la negativa dice que la hace solo el gerente, no que falte habilitar un rol", async () => {
+      const deGerente = ACCIONES.find((a) => (a.nivelMinimo as NivelDeAccion) === "gerente")!.clave as AccionDeEmpresa;
+      const editar = await requierePermisoDeEmpresa(adminId, EMPRESA_POR_DEFECTO_ID, deGerente, prisma);
+      const ver = await requierePermisoVerDeEmpresa(adminId, EMPRESA_POR_DEFECTO_ID, deGerente, prisma);
+      expect(editar).toEqual({ ok: false, mensaje: expect.stringMatching(/solo la hace el gerente/) });
+      expect(ver).toEqual({ ok: false, mensaje: expect.stringMatching(/solo la ve el gerente/) });
+      // Un piso administrador sigue explicando la causa por rol.
+      expect(await requierePermisoDeEmpresa(mozoId, EMPRESA_POR_DEFECTO_ID, DE_ADMIN_EMPRESA, prisma)).toEqual({ ok: false, mensaje: expect.stringMatching(/Ninguno de tus roles/) });
     });
 
     it("menú: no muestra al rol por debajo del piso lo que la página le negaría", async () => {
