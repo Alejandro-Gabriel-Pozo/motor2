@@ -95,6 +95,7 @@ export const ACCIONES = [
   { clave: "apagar_cuenta_empresa", modulo: "administracion", descripcion: "Apagar o reactivar la cuenta de un usuario en toda la empresa", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "gestion_permisos", modulo: "administracion", descripcion: "Gestionar la matriz de permisos de los roles", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "gestion_roles", modulo: "administracion", descripcion: "Crear, activar y desactivar roles", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "renombrar_rol", modulo: "administracion", descripcion: "Cambiar el nombre de un rol (nunca su clave técnica)", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "proceso_compra", modulo: "compras", descripcion: "Registrar una Compra", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_produccion", modulo: "produccion", descripcion: "Registrar una Producción", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_consumo", modulo: "stock", descripcion: "Registrar un Consumo", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },

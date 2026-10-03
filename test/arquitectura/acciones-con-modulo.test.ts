@@ -9,7 +9,7 @@ import { MODULOS, esModuloDelCatalogo, type ModuloDef } from "../../src/core/mod
  */
 
 const ACCIONES_DE_ADMINISTRACION = [
-  "gestion_usuarios", "activar_usuario_sucursal", "notas_usuario_sucursal", "apagar_cuenta_empresa", "gestion_permisos", "gestion_roles",
+  "gestion_usuarios", "activar_usuario_sucursal", "notas_usuario_sucursal", "apagar_cuenta_empresa", "gestion_permisos", "gestion_roles", "renombrar_rol",
   "capacidades_sucursal", "alta_sucursal", "activar_sucursal", "renombrar_sucursal", "ver_auditoria", "ver_auditoria_empresa", "traspasar_gerencia",
 ] as const;
 

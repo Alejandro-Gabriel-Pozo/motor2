@@ -683,6 +683,14 @@
       ]
     },
     {
+      "clave": "renombrar_rol",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
       "clave": "proceso_compra",
       "contexto": "sucursal",
       "nivelMinimo": "operario",

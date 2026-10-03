@@ -49,6 +49,7 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   gestion_usuarios: { modulo: "administracion", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
   gestion_permisos: { modulo: "administracion", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   gestion_roles: { modulo: "administracion", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
+  renombrar_rol: { modulo: "administracion", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   activar_usuario_sucursal: { modulo: "administracion", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
   notas_usuario_sucursal: { modulo: "administracion", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
   apagar_cuenta_empresa: { modulo: "administracion", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
