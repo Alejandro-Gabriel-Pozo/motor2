@@ -48,8 +48,8 @@ export async function asegurarBaseSeed() {
   // resetearBaseE2E también vació el registro de módulos que dejó la migración: la empresa por defecto vuelve a tener los 9 vendibles ACTIVO.
   await activarTodosLosModulos(empresaId);
   const [admin, operador] = await Promise.all([
-    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "admin" } }, update: {}, create: { nombre: "admin", clave: "admin" } }),
-    prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: {}, create: { nombre: "operador", clave: "operador" } }),
+    prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "admin" } }, update: {}, create: { nombre: "admin", clave: "admin" } }),
+    prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: {}, create: { nombre: "operador", clave: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 

@@ -234,7 +234,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                     const fondo = difiere ? "rounded bg-amber-200 px-1 dark:bg-amber-800" : "px-1";
                     if (fueraDeNivel) return <span title="Esta acción es de un nivel más alto que el de este rol: no se le puede dar" aria-label={`${etiqueta}: no aplica`}>🚫</span>;
                     if (!editando) return <span aria-label={`${etiqueta}: ${encendido ? "sí" : "no"}`}>{marca(encendido)}</span>;
-                    if (fija) return <span title="El admin siempre conserva este permiso" aria-label={`${etiqueta}: fijo`}>🔒</span>;
+                    if (fija) return <span title="El rol administrador siempre conserva este permiso" aria-label={`${etiqueta}: fijo`}>🔒</span>;
                     return (
                       <button
                         type="button"
@@ -262,7 +262,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
         </table>
       </div>
       <p className="text-xs text-neutral-500">
-        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el admin (🔒). Las acciones con «Piso» (administrador) no se le pueden dar a un rol de nivel operario (🚫).
+        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» (administrador) no se le pueden dar a un rol de nivel operario (🚫).
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
       </p>
     </div>

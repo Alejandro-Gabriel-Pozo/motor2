@@ -12,7 +12,7 @@ export type FilaPermiso = { puedeVer: boolean; puedeEditar: boolean } | null;
  */
 export async function ajustarCeldasDelAdmin(filas: Partial<Record<AccionClave, FilaPermiso>>) {
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
-  const rol = await prisma.rol.findUniqueOrThrow({ where: { empresaId_nombre: { empresaId, nombre: "admin" } } });
+  const rol = await prisma.rol.findUniqueOrThrow({ where: { empresaId_clave: { empresaId, clave: "admin" } } });
   const claves = Object.keys(filas) as AccionClave[];
   const originales = new Map<AccionClave, FilaPermiso>();
   for (const clave of claves) {

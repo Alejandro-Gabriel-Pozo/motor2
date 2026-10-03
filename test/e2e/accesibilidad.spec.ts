@@ -73,6 +73,17 @@ testAutenticado(
   }
 );
 
+testAutenticado("administracion/roles: la tabla con roles de sistema y el renombrado en línea abierto, sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  await page.goto("/administracion/roles");
+  await expect(page.getByRole("heading", { name: /^Roles/ })).toBeVisible();
+  await expect(page.getByText(/rol de sistema · clave técnica/).first()).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations, "tabla de roles").toEqual([]);
+
+  await page.getByRole("button", { name: /^Renombrar el rol / }).first().click();
+  await expect(page.getByRole("textbox", { name: /^Nuevo nombre del rol / })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations, "renombrado en línea abierto").toEqual([]);
+});
+
 /**
  * Pantallas de catálogo y administración que tenían formularios sueltos (revisadas al arreglar que descartaban el resultado de la acción).
  * Cada una se audita CON DATOS (una fila al menos): sin filas no hay inputs de fila ni botones que auditar. Scan completo, sin desactivar reglas.
@@ -706,7 +717,7 @@ base(
     const marca = Date.now();
     const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
     const segunda = await prisma.sucursal.create({ data: { nombre: `E2E A11y Sucursal Dos ${marca}` } });
-    const rol = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+    const rol = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
     const usuario = await prisma.user.create({ data: { email: `e2e-a11y-selector-sucursal-${marca}@local.test`, activoGlobal: true } });
     await crearMembresias([
         { usuarioId: usuario.id, sucursalId: central.id, rolId: rol.id, activo: true },

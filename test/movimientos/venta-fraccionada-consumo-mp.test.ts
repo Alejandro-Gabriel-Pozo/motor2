@@ -179,7 +179,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
   it("dos sucursales: la deuda de redondeo es independiente entre ellas (mismo producto, misma unidad, ninguna se contamina)", async () => {
     const sucursal2 = await prisma.sucursal.create({ data: { nombre: "Sucursal 2" } });
     const seccion2 = await sembrarSeccion(sucursal2.id, "Depósito 2");
-    const admin2 = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: sucursal2.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } })).id });
+    const admin2 = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: sucursal2.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
 
     const { mp, pv } = await crearPizzaConBollo(0.5, "F");
     // El mismo producto tiene que estar disponible (y comprado) en las DOS sucursales.

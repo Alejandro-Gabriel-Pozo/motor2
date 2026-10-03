@@ -28,7 +28,7 @@ test("un administrador que no es gerente no ve el traspaso, solo el aviso de per
 test("el gerente traspasa la gerencia: el email equivocado no la mueve, el correcto sí y deja el enlace al inicio", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = Date.now();
   const { empresaId } = await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id: sucursalId }, select: { empresaId: true } });
-  const rolAdmin = await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId, nombre: "admin" } });
+  const rolAdmin = await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId, clave: "admin" } });
   const admin = await prismaAdmin.user.findUniqueOrThrow({ where: { email: EMAIL_ADMIN_E2E } });
   const emailCandidato = `e2e-gerencia-${marca}@local.test`;
   const candidato = await prismaAdmin.user.create({ data: { email: emailCandidato, activoGlobal: true } });

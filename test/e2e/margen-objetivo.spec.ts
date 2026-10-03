@@ -70,7 +70,7 @@ test("el admin fija el objetivo de la empresa y el de una categoría, y Costos c
 
 test("un operario no ve el enlace ni puede abrir la pantalla del margen objetivo", async ({ browser, baseURL, sucursalId }) => {
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
-  const operador = await prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
+  const operador = await prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-operador-objetivo-${Date.now()}@local.test`, activoGlobal: true } });
   await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true });
   const sessionToken = randomUUID();

@@ -184,7 +184,7 @@ describe("Conteo Físico", () => {
     const otroAdmin = await crearUsuarioConMembresia({
       email: "admin2@test.com",
       sucursalId: otraSucursal.id,
-      rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } })).id,
+      rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id,
     });
     await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
 
@@ -204,7 +204,7 @@ describe("Conteo Físico", () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito otra sucursal");
     const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId }, otraSucursal.id);
-    const otroAdmin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } })).id });
+    const otroAdmin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
     await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
     await registrarConteoFisico({ productoId: otroMp.id, seccionId: otraSeccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
 
@@ -332,7 +332,7 @@ describe("Conteo Físico", () => {
     });
 
     it("sin el permiso de Control no se escribe nada y se avisa (un mensaje, no un redirect)", async () => {
-      const base = await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } });
+      const base = await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } });
       await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: base.id, accionClave: "proceso_control" } }, data: { puedeEditar: false } });
       const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.id });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });

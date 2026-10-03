@@ -100,7 +100,7 @@ test("precio local: un precio inválido muestra el error y la fila no cambia", a
 });
 
 test("capacidades: si no se pudo cambiar un ✅/⛔ se avisa, y el botón sigue mostrando el estado real", async ({ paginaAutenticada: page }) => {
-  const admin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+  const admin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
   const where = { rolId: admin.id, accionClave: "capacidades_sucursal" };
 
   try {

@@ -266,7 +266,7 @@ describe("productos", () => {
 
     it("sin tildar: el producto no aparece en el selector de otra sucursal (paso P6 — buscarProductosSelector ya filtra por soloDisponibles)", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-      const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+      const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
       await crearUsuarioConMembresia({ email: "otro@test.com", sucursalId: otraSucursal.id, rolId: rolAdmin.id });
 
       const r = await darDeAltaProducto({ nombre: "Solo en Central", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, activoEnTodasLasSucursales: false });

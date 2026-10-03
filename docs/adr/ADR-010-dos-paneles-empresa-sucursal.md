@@ -4,6 +4,8 @@
 > (`empresa` / `sucursal`) es lo que decide a qué panel va cada pantalla.
 >
 > Corregido por ADR-011 (2026-10-03): `dosPaneles` ya es una columna de `Empresa` (por defecto `true`), no una constante (§4).
+>
+> Aclarado por ADR-016 (2026-10-03): el rol administrador se reconoce por su clave técnica, no por su nombre.
 
 ## Contexto
 

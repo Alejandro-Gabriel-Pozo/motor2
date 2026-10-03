@@ -110,7 +110,7 @@ describe("calcularStockConsolidado", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const seccionNorte = await sembrarSeccion(norte.id, "Depósito Norte");
     await prisma.disponibilidadProducto.create({ data: { sucursalId: norte.id, productoId: mp.id, disponible: true } });
-    const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+    const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
     const adminNorte = await crearUsuarioConMembresia({ email: "norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });
     await mockearUsuarioActual({ id: adminNorte.id, email: adminNorte.email, nombre: null });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionNorte.id, items: [{ productoId: mp.id, cantidad: 100 }] });

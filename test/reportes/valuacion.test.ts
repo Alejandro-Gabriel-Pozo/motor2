@@ -69,7 +69,7 @@ describe("calcularValuacionInventario", () => {
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito 2");
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
 
-    const usuarioOtra = await crearUsuarioConMembresia({ email: "otra@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } })).id });
+    const usuarioOtra = await crearUsuarioConMembresia({ email: "otra@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
     await prisma.operacion.create({
       data: {
         sucursalId: otraSucursal.id, proceso: "COMPRA", fecha: new Date(), usuarioId: usuarioOtra.id,

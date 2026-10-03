@@ -62,7 +62,7 @@ export async function crearSucursalConAdmin(input: {
     const resultado = await conGobierno(ctx, (tx) => conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
       const rolAdmin = await buscarRolAdmin(tx, ctx.empresaId);
       if (!rolAdmin || !rolAdmin.activo) {
-        return error('No se encontró el rol "admin" (¿corriste el seed?) — no se puede asignar el primer admin.');
+        return error("No se encontró el rol de administrador de la empresa (¿corriste el seed?) — no se puede asignar el primer admin.");
       }
 
       // Nombrar primer admin a alguien cuya cuenta en la empresa está apagada la reactivaría: si fue admin, eso es solo del gerente (mismo criterio que `usuarios.ts`).

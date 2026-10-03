@@ -11,6 +11,8 @@
 > Corregido por ADR-011 y ADR-012 (2026-10-03): el core no audita el traspaso de gerencia (lo hace la acción de usuarios), el «superadmin de
 > plataforma» queda decidido en ADR-012, la política de empresa ya vive en columnas de `Empresa`, y los módulos se componen con este guard según
 > ADR-011. El detalle está en su sección «Correcciones a otros ADR».
+>
+> Ampliado por ADR-016 (2026-10-03): los roles de sistema se identifican por su clave técnica, y renombrar un rol es la acción `renombrar_rol`.
 
 ## Contexto
 

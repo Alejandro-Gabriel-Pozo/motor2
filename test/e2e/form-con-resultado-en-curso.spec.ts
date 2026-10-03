@@ -90,7 +90,7 @@ test("formulario: el resultado se trae a la vista aunque el botón esté al bord
 });
 
 test("aviso compartido: FormConAviso también marca el formulario en curso y no envía dos veces", async ({ paginaAutenticada: page }) => {
-  const admin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+  const admin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
   const where = { rolId: admin.id, accionClave: "capacidades_sucursal" };
   try {
     // Sin «editar» la acción contesta con un error y no cambia nada en la base: la pantalla se puede usar sin dejar datos (mismo truco que

@@ -145,7 +145,7 @@ test("la columna 'Origen' navega a la trazabilidad de la operación", async ({ p
  * helper de reportes-permisos.spec.ts, acá reporte_historial se deja en `true` a propósito. */
 async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undefined, sucursalId: string): Promise<Page> {
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
-  const operador = await prisma.rol.upsert({ where: { empresaId_nombre: { empresaId, nombre: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
+  const operador = await prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
   await prisma.permisoRol.upsert({
     where: { rolId_accionClave: { rolId: operador.id, accionClave: "reporte_historial" } },
     update: { puedeVer: true },

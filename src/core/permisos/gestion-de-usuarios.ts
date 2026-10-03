@@ -9,7 +9,7 @@ import { CLAVE_ROL_ADMIN, esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA,
  */
 
 const MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE = "Solo el gerente de la empresa puede modificar al gerente.";
-const MENSAJE_TECHO_DE_ADMIN = "Solo un admin o el gerente de la empresa puede dar el rol admin o modificar a un admin.";
+const MENSAJE_TECHO_DE_ADMIN = "Solo un administrador o el gerente de la empresa puede dar el rol de administrador o modificar a un administrador.";
 const MENSAJE_SOLO_EL_GERENTE_REACTIVA_ADMIN = "Solo el gerente de la empresa puede reactivar a un administrador.";
 const MENSAJE_GERENTE_NO_APAGA_SU_CUENTA = "El gerente no puede desactivar su propia cuenta: traspasá la gerencia antes.";
 

@@ -17,7 +17,7 @@ import { prismaAdmin } from "../setup/cliente-duenio";
 async function abrirEnDosSucursales(browser: Browser, baseURL: string | undefined, sucursalAId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E Disp Norte ${marca}` } });
-  const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+  const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-disp-${marca}@local.test`, activoGlobal: true } });
   await crearMembresias([
       { usuarioId: usuario.id, sucursalId: sucursalAId, rolId: rolAdmin.id, activo: true },

@@ -19,7 +19,7 @@ test("consolidado: con dos o más sucursales, arma la tabla y suma los totales",
   const marca = Date.now();
   const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
   const segunda = await prisma.sucursal.create({ data: { nombre: `E2E Sucursal Dos ${marca}` } });
-  const rol = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
+  const rol = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-consolidado-${marca}@local.test`, activoGlobal: true } });
   await crearMembresias([
       { usuarioId: usuario.id, sucursalId: central.id, rolId: rol.id, activo: true },

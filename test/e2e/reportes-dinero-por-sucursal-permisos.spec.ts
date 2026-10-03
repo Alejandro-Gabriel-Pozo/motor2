@@ -12,8 +12,8 @@ import { crearMembresias } from "../setup/membresia";
 async function abrirConDosSucursales(browser: Browser, baseURL: string | undefined, marca: number) {
   const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
   const otra = await prisma.sucursal.create({ data: { nombre: `E2E Sin Dinero ${marca}` } });
-  const admin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
-  const operador = await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } });
+  const admin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
+  const operador = await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-dinero-${marca}@local.test`, activoGlobal: true } });
   await crearMembresias([
     { usuarioId: usuario.id, sucursalId: central.id, rolId: admin.id, activo: true },
@@ -74,8 +74,8 @@ test("rendimiento por sucursal: no muestra la columna de una sucursal donde el r
 test("consolidado: suma las dos sucursales donde el rol puede ver el dinero y deja afuera la tercera", async ({ browser, baseURL }) => {
   const marca = Date.now();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
-  const admin = await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } });
-  const operador = await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } });
+  const admin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
+  const operador = await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-dinero-tres-${marca}@local.test`, activoGlobal: true } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-TRES-PV-${marca}`, nombre: `E2E Tres Plato ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   // A y B (admin: ven el dinero) y C (operador: no). Ventas del mes de 7.000, 3.000 y 99.000: el total del consolidado tiene que ser A+B = 10.000.

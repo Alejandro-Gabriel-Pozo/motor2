@@ -79,7 +79,7 @@ describe("generarReporteHuecosCatalogo", () => {
     expect(problemas[0].unidades.length).toBe(2);
 
     const base = await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId } });
-    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } })).id });
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } })).id });
     const gate = await requierePermisoVerDeEmpresa(operador.id, base.empresaId, "insumos_mezclados", prisma);
     expect(gate.ok).toBe(false);
   });

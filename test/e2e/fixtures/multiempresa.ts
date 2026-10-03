@@ -38,7 +38,7 @@ export async function activarEmpresaB(): Promise<EmpresasDeLaPrueba> {
   });
   // El alta no siembra el registro de módulos (la activa la plataforma): la empresa B arranca con todos, como la A.
   await activarTodosLosModulos(creada.empresaId);
-  const rolB = await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId: creada.empresaId, nombre: "admin" } });
+  const rolB = await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId: creada.empresaId, clave: "admin" } });
   const empresaA = await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: sucursal.empresaId } });
   return {
     marca,
