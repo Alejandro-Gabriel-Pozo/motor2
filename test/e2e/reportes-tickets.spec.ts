@@ -136,7 +136,7 @@ test("paginación por cursor: página siguiente muestra el resto sin repetir fil
   }
 });
 
-test("desde la pantalla de la mesa: «Ver todas los tickets de esta mesa» lleva al reporte filtrado por esa mesa", async ({ paginaAutenticada: page, sucursalId }) => {
+test("desde la pantalla de la mesa: «Ver todos los tickets de esta mesa» lleva al reporte filtrado por esa mesa", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = `${Date.now()}`;
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await sembrarProducto(sucursalId, marca);
@@ -144,7 +144,7 @@ test("desde la pantalla de la mesa: «Ver todas los tickets de esta mesa» lleva
   const { ejemplar } = await sembrarEjemplar(sucursalId, mesa.id, admin.id, producto.id, { numero: 100200 });
   try {
     await page.goto(`/mesas/${mesa.id}`);
-    const link = page.getByRole("link", { name: "Ver todas los tickets de esta mesa →" });
+    const link = page.getByRole("link", { name: "Ver todos los tickets de esta mesa →" });
     await expect(link).toBeVisible();
     await link.click();
     await page.waitForURL(new RegExp(`/reportes/tickets\\?mesaId=${mesa.id}`));
@@ -177,7 +177,7 @@ test("un rol sin \"reporte_tickets\" no ve el link en el menú, no puede abrir l
     await expect(sinDinero.page.getByRole("navigation").locator('a[href="/reportes/tickets"]')).toHaveCount(0);
 
     await sinDinero.page.goto(`/mesas/${mesa.id}`);
-    await expect(sinDinero.page.getByRole("link", { name: "Ver todas los tickets de esta mesa →" })).toHaveCount(0);
+    await expect(sinDinero.page.getByRole("link", { name: "Ver todos los tickets de esta mesa →" })).toHaveCount(0);
   } finally {
     await sinDinero.limpiar();
     await limpiarMesas([mesa.id]);
