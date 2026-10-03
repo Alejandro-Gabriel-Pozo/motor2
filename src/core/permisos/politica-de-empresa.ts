@@ -19,15 +19,16 @@ export interface PoliticaDeEmpresa {
 }
 
 /**
- * Atajos de la plataforma: un «plan» no se guarda, es solo un nombre para fijar las dos perillas de una vez. Lo que queda guardado en la
- * empresa son las perillas, así que se puede ajustar una sola sin inventar un plan nuevo.
+ * Atajos de la plataforma: un «perfil de política» no se guarda, es solo un nombre para fijar las dos perillas de una vez. Lo que queda
+ * guardado en la empresa son las perillas, así que se puede ajustar una sola sin inventar un perfil nuevo. No es un plan en el sentido de
+ * ADR-013 (un dato que agrupa módulos): por eso no se llama «plan».
  */
-export const PLANES = {
+export const PERFILES_DE_POLITICA = {
   completo: { permisosEditables: true, dosPaneles: true },
   lite: { permisosEditables: false, dosPaneles: false },
 } as const satisfies Record<string, PoliticaDeEmpresa>;
 
-export type NombreDePlan = keyof typeof PLANES;
+export type NombreDePerfilDePolitica = keyof typeof PERFILES_DE_POLITICA;
 
 export const MENSAJE_PERMISOS_DE_PLATAFORMA = "Los permisos de tu empresa los administra la plataforma; no se pueden editar desde acá.";
 

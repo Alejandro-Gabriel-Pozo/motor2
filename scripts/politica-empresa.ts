@@ -3,17 +3,17 @@
  * `src/core/features/empresa/cambiar-politica-empresa.ts` (transaccional, con auditoría, testeada); esto solo lee los argumentos. Es la ÚNICA
  * vía para cambiarla: ninguna pantalla de la app lo hace.
  *
- * Uso: npm run politica-empresa -- --slug norte --actor operador@plataforma.com [--plan lite|completo] \
+ * Uso: npm run politica-empresa -- --slug norte --actor operador@plataforma.com [--perfil lite|completo] \
  *        [--permisos-editables si|no] [--dos-paneles si|no]
  *
- * `--plan` fija las dos perillas de una vez (`lite`: sin edición de permisos y menú único; `completo`: todo activo); las perillas sueltas se
+ * `--perfil` (perfil de política, no un plan de módulos) fija las dos perillas de una vez (`lite`: sin edición de permisos y menú único; `completo`: todo activo); las perillas sueltas se
  * aplican después y lo pisan. Conexión: PLATAFORMA_DATABASE_URL o, si no está, DATABASE_URL, igual que en `crear-empresa`.
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";
 import { prismaPlataforma as prisma } from "./cliente-plataforma";
 import { cambiarPoliticaDeEmpresa, PoliticaDeEmpresaError } from "../src/core/features/empresa/cambiar-politica-empresa";
-import { PLANES, type NombreDePlan } from "../src/core/permisos/politica-de-empresa";
+import { PERFILES_DE_POLITICA, type NombreDePerfilDePolitica } from "../src/core/permisos/politica-de-empresa";
 
 function siONo(valor: string | undefined, opcion: string): boolean | undefined {
   if (valor === undefined) return undefined;
@@ -22,10 +22,10 @@ function siONo(valor: string | undefined, opcion: string): boolean | undefined {
   throw new PoliticaDeEmpresaError(`--${opcion} acepta "si" o "no" (llegó "${valor}").`);
 }
 
-function plan(valor: string | undefined): NombreDePlan | undefined {
+function perfil(valor: string | undefined): NombreDePerfilDePolitica | undefined {
   if (valor === undefined) return undefined;
-  if (valor in PLANES) return valor as NombreDePlan;
-  throw new PoliticaDeEmpresaError(`--plan acepta ${Object.keys(PLANES).join(" o ")} (llegó "${valor}").`);
+  if (valor in PERFILES_DE_POLITICA) return valor as NombreDePerfilDePolitica;
+  throw new PoliticaDeEmpresaError(`--perfil acepta ${Object.keys(PERFILES_DE_POLITICA).join(" o ")} (llegó "${valor}").`);
 }
 
 async function main() {
@@ -33,7 +33,7 @@ async function main() {
     options: {
       slug: { type: "string" },
       actor: { type: "string" },
-      plan: { type: "string" },
+      perfil: { type: "string" },
       "permisos-editables": { type: "string" },
       "dos-paneles": { type: "string" },
     },
@@ -43,12 +43,12 @@ async function main() {
 
   const permisosEditables = siONo(values["permisos-editables"], "permisos-editables");
   const dosPaneles = siONo(values["dos-paneles"], "dos-paneles");
-  const planElegido = plan(values.plan);
+  const perfilElegido = perfil(values.perfil);
 
   const resultado = await cambiarPoliticaDeEmpresa(prisma, {
     slug: values.slug,
     actorEmail: values.actor,
-    ...(planElegido ? { plan: planElegido } : {}),
+    ...(perfilElegido ? { perfil: perfilElegido } : {}),
     ...(permisosEditables !== undefined ? { permisosEditables } : {}),
     ...(dosPaneles !== undefined ? { dosPaneles } : {}),
   });

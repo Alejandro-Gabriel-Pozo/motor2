@@ -21,8 +21,8 @@ async function politicaGuardada(id: string) {
 }
 
 describe("cambiarPoliticaDeEmpresa", () => {
-  it("el plan lite apaga las dos perillas y deja una fila de auditoría por cada una, a nombre del operador", async () => {
-    const resultado = await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, plan: "lite" });
+  it("el perfil lite apaga las dos perillas y deja una fila de auditoría por cada una, a nombre del operador", async () => {
+    const resultado = await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, perfil: "lite" });
 
     expect([...resultado.cambiadas].sort()).toEqual(["dosPaneles", "permisosEditables"]);
     expect(await politicaGuardada(EMPRESA_POR_DEFECTO_ID)).toEqual({ permisosEditables: false, dosPaneles: false });
@@ -39,8 +39,8 @@ describe("cambiarPoliticaDeEmpresa", () => {
     }
   });
 
-  it("una perilla suelta pisa lo que fija el plan", async () => {
-    await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, plan: "lite", dosPaneles: true });
+  it("una perilla suelta pisa lo que fija el perfil", async () => {
+    await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, perfil: "lite", dosPaneles: true });
     expect(await politicaGuardada(EMPRESA_POR_DEFECTO_ID)).toEqual({ permisosEditables: false, dosPaneles: true });
   });
 
@@ -52,7 +52,7 @@ describe("cambiarPoliticaDeEmpresa", () => {
   });
 
   it("pedir lo que ya está así no cambia nada ni ensucia la auditoría", async () => {
-    const resultado = await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, plan: "completo" });
+    const resultado = await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, perfil: "completo" });
     expect(resultado.cambiadas).toEqual([]);
     expect(await prismaAdmin.registroAuditoria.count({ where: { entidad: "Empresa" } })).toBe(0);
   });
@@ -64,7 +64,7 @@ describe("cambiarPoliticaDeEmpresa", () => {
 
   it("no toca a las otras empresas", async () => {
     const otra = await crearOtraEmpresa();
-    await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, plan: "lite" });
+    await cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR, perfil: "lite" });
     expect(await politicaGuardada(otra.id)).toEqual({ permisosEditables: true, dosPaneles: true });
   });
 
@@ -76,17 +76,17 @@ describe("cambiarPoliticaDeEmpresa", () => {
     expect(fila.entidadId).toBe(otra.id);
   });
 
-  it("sin plan ni perillas es un error", async () => {
+  it("sin perfil ni perillas es un error", async () => {
     await expect(cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: ACTOR })).rejects.toThrow(PoliticaDeEmpresaError);
   });
 
   it("un slug que no existe es un error y no escribe nada", async () => {
-    await expect(cambiarPoliticaDeEmpresa(prisma, { slug: "nope", actorEmail: ACTOR, plan: "lite" })).rejects.toThrow(/No existe una empresa/);
+    await expect(cambiarPoliticaDeEmpresa(prisma, { slug: "nope", actorEmail: ACTOR, perfil: "lite" })).rejects.toThrow(/No existe una empresa/);
     expect(await prismaAdmin.registroAuditoria.count({ where: { entidad: "Empresa" } })).toBe(0);
   });
 
   it("un operador que no existe es un error y no cambia la política", async () => {
-    await expect(cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: "fantasma@x.com", plan: "lite" })).rejects.toThrow(/No existe un usuario/);
+    await expect(cambiarPoliticaDeEmpresa(prisma, { slug: "principal", actorEmail: "fantasma@x.com", perfil: "lite" })).rejects.toThrow(/No existe un usuario/);
     expect(await politicaGuardada(EMPRESA_POR_DEFECTO_ID)).toEqual({ permisosEditables: true, dosPaneles: true });
   });
 });

@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
-import { MENSAJE_PERMISOS_DE_PLATAFORMA, PLANES, politicaDeEmpresa } from "../../src/core/permisos/politica-de-empresa";
+import { MENSAJE_PERMISOS_DE_PLATAFORMA, PERFILES_DE_POLITICA, politicaDeEmpresa } from "../../src/core/permisos/politica-de-empresa";
 
 afterAll(() => prismaAdmin.$disconnect());
 beforeEach(limpiarBaseDeTest);
@@ -33,8 +33,8 @@ describe("politicaDeEmpresa (lee la política guardada en Empresa)", () => {
   });
 
   it("los planes fijan las dos perillas: completo todo activo, lite ninguna", () => {
-    expect(PLANES.completo).toEqual({ permisosEditables: true, dosPaneles: true });
-    expect(PLANES.lite).toEqual({ permisosEditables: false, dosPaneles: false });
+    expect(PERFILES_DE_POLITICA.completo).toEqual({ permisosEditables: true, dosPaneles: true });
+    expect(PERFILES_DE_POLITICA.lite).toEqual({ permisosEditables: false, dosPaneles: false });
   });
 
   it("el mensaje de rechazo le explica a la empresa quién administra sus permisos", () => {
