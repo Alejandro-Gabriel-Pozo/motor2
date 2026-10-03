@@ -24,7 +24,8 @@
     "db:studio": "prisma studio",
     "crear-empresa": "tsx scripts/crear-empresa.ts",
     "politica-empresa": "tsx scripts/politica-empresa.ts",
-    "detectar-cuentas-vinculadas": "tsx scripts/detectar-cuentas-vinculadas.ts"
+    "detectar-cuentas-vinculadas": "tsx scripts/detectar-cuentas-vinculadas.ts",
+    "medir-precargados": "tsx scripts/medir-precargados-sin-google.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
