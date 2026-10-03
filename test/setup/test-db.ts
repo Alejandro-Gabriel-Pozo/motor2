@@ -61,10 +61,10 @@ export async function limpiarBaseDeTest() {
 
   // POS antes que nada: CuentaItem referencia Cuenta, Producto, User, Operacion y PromoCuenta; Cuenta referencia Mesa y User;
   // Mesa referencia Sucursal. Las filas espejo (anulaciones) primero: referencian a su ítem original con ON DELETE RESTRICT.
-  // EjemplarBoleta referencia Cuenta, Sucursal y User (RESTRICT): antes que la cuenta. Los ejemplares de corrección (B, C…) primero:
+  // EjemplarTicket referencia Cuenta, Sucursal y User (RESTRICT): antes que la cuenta. Los ejemplares de corrección (B, C…) primero:
   // referencian a su ejemplar A con ON DELETE RESTRICT.
-  await prismaAdmin.ejemplarBoleta.deleteMany({ where: { corrigeAId: { not: null } } });
-  await prismaAdmin.ejemplarBoleta.deleteMany();
+  await prismaAdmin.ejemplarTicket.deleteMany({ where: { corrigeAId: { not: null } } });
+  await prismaAdmin.ejemplarTicket.deleteMany();
   await prismaAdmin.cuentaItem.deleteMany({ where: { anulaAItemId: { not: null } } });
   await prismaAdmin.cuentaItem.deleteMany();
   // Cuenta/Mesa se borran MÁS ABAJO (después de Operacion): PromoCuenta (Task #16) referencia Cuenta con RESTRICT, y tanto

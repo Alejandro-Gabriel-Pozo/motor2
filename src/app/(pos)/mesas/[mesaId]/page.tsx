@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerDetalleDeMesa, type ItemDeCuenta, type ItemEnEnvio } from "@/core/pos/cuenta";
 import { armarComandas } from "@/core/pos/comanda";
-import { obtenerBoletasRecientes } from "@/core/pos/boleta";
+import { obtenerTicketsRecientes } from "@/core/pos/ticket";
 import { cargarSelectorCartaPos } from "@/core/pos/selector-carta-consulta";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarClientesParaCuenta } from "@/server/actions/clientes/cliente";
@@ -30,9 +30,9 @@ import { formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/form
  * libera la mesa; `pos_anular_item` anula lo que ya salió a cocina; `pos_cerrar_cuenta` cierra la cuenta y registra la venta. Sin el
  * permiso, el botón queda deshabilitado con un `title` que lo explica. Un rol con solo Ver de `pos_mesas` ve la mesa de solo lectura.
  *
- * Impresión (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md): la comanda de cada envío se arma ACÁ, en el servidor y sin precios
+ * Impresión (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md): la comanda de cada envío se arma ACÁ, en el servidor y sin precios
  * (`armarComandas`), y va al proveedor de impresión, que envuelve las dos ramas (mesa libre y cuenta abierta) y «Cuentas cerradas» al
- * pie (las últimas boletas de la mesa, `obtenerBoletasRecientes`): así la boleta se imprime aunque el cierre deje la mesa libre.
+ * pie (las últimas tickets de la mesa, `obtenerTicketsRecientes`): así el ticket se imprime aunque el cierre deje la mesa libre.
  *
  * Ruta dinámica: no va en RUTAS_SIN_PARAMETROS ni en el menú. `params` es una Promise en esta versión de Next
  * (node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md).
@@ -57,7 +57,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     );
   }
 
-  const [tomarPedido, abrirCuenta, enviarACocina, liberarMesa, asignarCliente, anularItem, cerrarCuenta, emitirCorregida, verReportesDinero, secciones, boletas] = await Promise.all([
+  const [tomarPedido, abrirCuenta, enviarACocina, liberarMesa, asignarCliente, anularItem, cerrarCuenta, emitirCorregida, verReportesDinero, secciones, tickets] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_abrir_cuenta", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_enviar_a_cocina", ctx.db),
@@ -65,12 +65,12 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_asignar_cliente", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta", ctx.db),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_emitir_boleta_corregida", ctx.db),
-    // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Boletas emitidas» se
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_emitir_ticket_corregido", ctx.db),
+    // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Tickets emitidos» se
     // condiciona a mano, del lado del servidor (Task #17).
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_boletas", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_tickets", ctx.db),
     listarSeccionesActivas(ctx.sucursalId),
-    obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id, ctx.db),
+    obtenerTicketsRecientes(ctx.sucursalId, detalle.mesa.id, ctx.db),
   ]);
   const { mesa, cuenta } = detalle;
   // «Agregar al pedido» por sección de CARTA (docs/plan-selector-carta-pos-2026-09-25.md): solo con cuenta abierta y si quien mira
@@ -123,7 +123,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           )}
         </header>
 
-        <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} zonaHoraria={ctx.empresaZonaHoraria} comandas={comandas} boletas={boletas}>
+        <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} zonaHoraria={ctx.empresaZonaHoraria} comandas={comandas} tickets={tickets}>
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
               <p className="mb-4 font-semibold">La mesa está libre.</p>
@@ -186,11 +186,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
               </div>
             </div>
           )}
-          <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
+          <CuentasCerradas tickets={tickets} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
           {verReportesDinero.ver && (
             <p className="mt-3 text-[13px]">
-              <Link href={`/reportes/boletas?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
-                Ver todas las boletas de esta mesa →
+              <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
+                Ver todos los tickets de esta mesa →
               </Link>
             </p>
           )}

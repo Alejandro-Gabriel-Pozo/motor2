@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
-import { ENTIDADES_AUDITABLES, listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
+import { ENTIDADES_AUDITABLES, descripcionParaMostrar, listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
@@ -29,7 +29,7 @@ export default async function AuditoriaPage({
     id: r.id,
     fecha: r.creadoEn,
     entidad: r.entidad,
-    descripcion: r.descripcion,
+    descripcion: descripcionParaMostrar(r.descripcion),
     valorAnterior: r.valorAnterior,
     valorNuevo: r.valorNuevo,
     actorNombre: r.actor.name || r.actor.email,

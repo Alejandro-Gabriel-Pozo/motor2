@@ -1,41 +1,41 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { BoletaDeCuenta } from "@/core/pos/boleta";
-import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
-import { emitirBoletaCorregida } from "@/server/actions/pos/cuenta-cierre";
+import type { TicketDeCuenta } from "@/core/pos/ticket";
+import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
+import { emitirTicketCorregido } from "@/server/actions/pos/cuenta-cierre";
 import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
 import { formatearMonto } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 
 /**
- * «Emitir boleta corregida» en una fila de «Cuentas cerradas» (docs/plan-numeracion-boleta-2026-09-25.md, Fase 2): cuando después de
- * imprimir la boleta se anuló parte de la venta (una línea, desde Trazabilidad), la boleta quedó desactualizada. Diálogo con el motivo,
+ * «Emitir ticket corregido» en una fila de «Cuentas cerradas» (docs/plan-numeracion-ticket-2026-09-25.md, Fase 2): cuando después de
+ * imprimir el ticket se anuló parte de la venta (una línea, desde Trazabilidad), el ticket quedó desactualizado. Diálogo con el motivo,
  * obligatorio (lo valida el servidor y su mensaje se muestra acá, `role="alert"`); el motivo queda en pantalla y en la auditoría, no se
  * imprime. Al salir bien pide imprimir el ejemplar que emitió el servidor (mismo número, letra siguiente).
  *
- * Habilitado solo con la boleta «desactualizada» y numerada, y con `pos_cerrar_cuenta` Editar; si no, deshabilitado con un `title` que
+ * Habilitado solo con el ticket «desactualizada» y numerado, y con `pos_cerrar_cuenta` Editar; si no, deshabilitado con un `title` que
  * dice por qué.
  */
-export function EmitirBoletaCorregida({ boleta, hora, puede }: { boleta: BoletaDeCuenta; hora: string; puede: boolean }) {
+export function EmitirTicketCorregido({ ticket, hora, puede }: { ticket: TicketDeCuenta; hora: string; puede: boolean }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();
   const { pedir } = useImpresion();
   const [abierto, setAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const base = useId();
 
-  const numero = boleta.numero ? formatearNumeroBoleta(boleta.numero) : null;
+  const numero = ticket.numero ? formatearNumeroTicket(ticket.numero) : null;
   const bloqueo =
-    boleta.estado === "anulada"
-      ? "La venta se anuló entera: no hay boleta que corregir."
-      : boleta.estado === "vigente"
-        ? "La boleta ya refleja las anulaciones: no hay nada que corregir."
+    ticket.estado === "anulada"
+      ? "La venta se anuló entera: no hay ticket que corregir."
+      : ticket.estado === "vigente"
+        ? "El ticket ya refleja las anulaciones: no hay nada que corregir."
         : numero === null
-          ? "Esta cuenta se cerró antes de la numeración de boletas: no tiene boleta que corregir."
+          ? "Esta cuenta se cerró antes de la numeración de tickets: no tiene ticket que corregir."
           : puede
             ? null
-            : "Emitir la boleta corregida requiere un permiso propio, que tu rol no tiene.";
+            : "Emitir el ticket corregido requiere un permiso propio, que tu rol no tiene.";
 
   const abrir = () => {
     setMotivo("");
@@ -53,10 +53,10 @@ export function EmitirBoletaCorregida({ boleta, hora, puede }: { boleta: BoletaD
         className={BOTON_CHICO}
         disabled={bloqueo !== null}
         title={bloqueo ?? undefined}
-        aria-label={`Emitir la boleta corregida de la cuenta cerrada a las ${hora}`}
+        aria-label={`Emitir el ticket corregido de la cuenta cerrada a las ${hora}`}
         onClick={abrir}
       >
-        Emitir boleta corregida
+        Emitir ticket corregido
       </button>
 
       {abierto && (
@@ -72,20 +72,20 @@ export function EmitirBoletaCorregida({ boleta, hora, puede }: { boleta: BoletaD
             }}
           >
             <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
-              Emitir boleta corregida · N.º {numero}
+              Emitir ticket corregido · N.º {numero}
             </h2>
             <p className="mb-4 text-[13px] text-[var(--ink-soft)]">
-              Después de imprimir la boleta se anuló parte de la venta. La corregida sale con el mismo número y la letra siguiente, solo con lo
+              Después de imprimir el ticket se anuló parte de la venta. La corregida sale con el mismo número y la letra siguiente, solo con lo
               que sigue vendido.
             </p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 ejecutar(
-                  () => emitirBoletaCorregida(boleta.cuentaId, motivo),
+                  () => emitirTicketCorregido(ticket.cuentaId, motivo),
                   (r) => {
                     setAbierto(false);
-                    pedir({ tipo: "boleta-correccion", cuentaId: boleta.cuentaId, ejemplar: r.ejemplar });
+                    pedir({ tipo: "ticket-correccion", cuentaId: ticket.cuentaId, ejemplar: r.ejemplar });
                   }
                 );
               }}
@@ -93,7 +93,7 @@ export function EmitirBoletaCorregida({ boleta, hora, puede }: { boleta: BoletaD
             >
               <div className="flex items-baseline justify-between rounded-lg bg-[var(--paper)] px-3 py-2">
                 <span className="text-[13px] font-semibold">Total corregido</span>
-                <span className="text-xl font-extrabold tabular-nums">{formatearMonto(boleta.total)}</span>
+                <span className="text-xl font-extrabold tabular-nums">{formatearMonto(ticket.total)}</span>
               </div>
               <label htmlFor={`${base}-motivo`} className="text-[13px] font-semibold">
                 Motivo (obligatorio)

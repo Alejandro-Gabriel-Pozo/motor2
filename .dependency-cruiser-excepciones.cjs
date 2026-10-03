@@ -145,7 +145,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/pos/cuenta-cierre.ts",
     motivo:
-      "M12a + M12b: cerrarCuenta → pos/casos-de-uso/cerrar-cuenta.ts y emitirBoletaCorregida → pos/casos-de-uso/emitir-boleta-corregida.ts (transacción, carga, numeración/ejemplar de la boleta, persistencia y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
+      "M12a + M12b: cerrarCuenta → pos/casos-de-uso/cerrar-cuenta.ts y emitirTicketCorregido → pos/casos-de-uso/emitir-ticket-corregido.ts (transacción, carga, numeración/ejemplar del ticket, persistencia y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
   },
   {
     ruta: "src/server/actions/pos/cuenta-anulacion.ts",

@@ -22,7 +22,10 @@ const SENTENCIAS = SQL.replace(/\r\n/g, "\n")
   .filter((s) => s.length > 0);
 
 // «Descuentos de productos» llegó después, con su propia migración (20261001191000_reporte_descuentos_productos): no es parte de esta partición.
-const NUEVAS = ACCIONES.map((a) => a.clave).filter((c) => c.startsWith("reporte_") && c !== "reporte_descuentos_productos");
+// «Tickets emitidos» se llamaba `reporte_boletas` cuando corrió esta migración; 20261005120000_renombrar_boleta_a_ticket la renombró.
+const NUEVAS = ACCIONES.map((a) => a.clave as string)
+  .filter((c) => c.startsWith("reporte_") && c !== "reporte_descuentos_productos")
+  .map((c) => (c === "reporte_tickets" ? "reporte_boletas" : c));
 const PADRES = ["ver_reportes_dinero", "ver_reportes_control", "ver_reportes_operativos", "ver_reportes_catalogo", "proceso_control", "insumos_mezclados"];
 
 // Padre → hijas, leído del propio SQL: el test no repite el mapa, comprueba lo que la migración hace con él.
@@ -89,7 +92,8 @@ describe("migración de datos: partición de las claves de permisos de los repor
     const posterior = readFileSync(join(__dirname, "../../prisma/migrations/20261002100000_descripcion_historial_importes/migration.sql"), "utf8");
     await prismaAdmin.$executeRawUnsafe(quitarComentarios(posterior));
     const actualizadas = await prismaAdmin.accion.findMany({ where: { clave: { in: NUEVAS } } });
-    const delCodigo = new Map(ACCIONES.map((a) => [a.clave as string, a.descripcion]));
+    const delCodigo = new Map<string, string>(ACCIONES.map((a) => [a.clave as string, a.descripcion]));
+    delCodigo.set("reporte_boletas", "Ver el reporte «Boletas emitidas»"); // la descripción de entonces
     for (const a of actualizadas) expect(a.descripcion, a.clave).toBe(delCodigo.get(a.clave));
   });
 

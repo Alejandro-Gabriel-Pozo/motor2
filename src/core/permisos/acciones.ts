@@ -151,7 +151,7 @@ export const ACCIONES = [
   { clave: "reporte_rendimiento_recetas", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento real de recetas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_rendimiento_sucursal", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento por sucursal»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_valuacion", modulo: "stock", descripcion: "Ver el reporte «Valuación de inventario»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_boletas", modulo: "salon", descripcion: "Ver el reporte «Boletas emitidas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_tickets", modulo: "salon", descripcion: "Ver el reporte «Tickets emitidos»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_descuentos_clientes", modulo: "salon", descripcion: "Ver el reporte «Descuentos por cliente»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_descuentos_productos", modulo: "salon", descripcion: "Ver el reporte «Descuentos de productos»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_margen_promociones", modulo: "promociones", descripcion: "Ver el reporte «Margen de promociones»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
@@ -203,7 +203,7 @@ export const ACCIONES = [
   // 20261001130000_particion_permisos_stock_pos_catalogo). Cada una nace con lo que ya tenía en la clave de la que se separó (el mapa
   // padre → hija está en la migración); el padre sigue existiendo hasta la fase de contracción.
   { clave: "stock_seccion_habitual", modulo: "stock", descripcion: "Fijar la Sección habitual de cada producto", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "pos_emitir_boleta_corregida", modulo: "salon", descripcion: "Emitir la boleta corregida de una cuenta ya cerrada (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "pos_emitir_ticket_corregido", modulo: "salon", descripcion: "Emitir el ticket corregido de una cuenta ya cerrada (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "insumo_renombrar_fusionar", modulo: "catalogo_basico", descripcion: "Renombrar un insumo o fusionarlo con otro", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "conteo_resolver_pendiente", modulo: "stock", descripcion: "Resolver un conteo físico pendiente de revisión", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "stock_reclasificar", modulo: "stock", descripcion: "Reclasificar stock: repartir el saldo de un producto entre otras secciones y lotes", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },

@@ -37,7 +37,6 @@
         "proceso_venta",
         "producto_ver_catalogo",
         "proveedores",
-        "reporte_boletas",
         "reporte_categorias",
         "reporte_compras",
         "reporte_consolidado",
@@ -59,6 +58,7 @@
         "reporte_rotacion_mesas",
         "reporte_salud",
         "reporte_sin_receta",
+        "reporte_tickets",
         "reporte_trazabilidad",
         "reporte_valuacion",
         "reporte_vencimientos",
@@ -140,7 +140,7 @@
         "reportes|/reportes/historial",
         "reportes|/reportes/trazabilidad",
         "reportes|/reportes/rotacion-mesas",
-        "reportes|/reportes/boletas",
+        "reportes|/reportes/tickets",
         "reportes|/reportes/descuentos-clientes",
         "reportes|/reportes/descuentos-productos",
         "reportes|/reportes/margen-promociones",
@@ -217,7 +217,7 @@
         "reportes|/reportes/historial",
         "reportes|/reportes/trazabilidad",
         "reportes|/reportes/rotacion-mesas",
-        "reportes|/reportes/boletas",
+        "reportes|/reportes/tickets",
         "reportes|/reportes/descuentos-clientes",
         "reportes|/reportes/descuentos-productos",
         "reportes|/reportes/margen-promociones",
@@ -393,7 +393,7 @@
     "/reportes/historial",
     "/reportes/trazabilidad",
     "/reportes/rotacion-mesas",
-    "/reportes/boletas",
+    "/reportes/tickets",
     "/reportes/descuentos-clientes",
     "/reportes/descuentos-productos",
     "/reportes/margen-promociones",
@@ -1034,7 +1034,7 @@
       ]
     },
     {
-      "clave": "reporte_boletas",
+      "clave": "reporte_tickets",
       "contexto": "sucursal",
       "nivelMinimo": "administrador",
       "rolesEditarSemilla": [
@@ -1267,7 +1267,7 @@
       ]
     },
     {
-      "clave": "pos_emitir_boleta_corregida",
+      "clave": "pos_emitir_ticket_corregido",
       "contexto": "sucursal",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [

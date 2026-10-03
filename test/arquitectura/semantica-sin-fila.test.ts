@@ -50,7 +50,7 @@ const REGISTRO: Record<string, Entrada> = {
   Operacion: { familia: "propio", embudo: null, motivo: "cada fila es una operación de la sucursal (historia)." },
   ConteoFisico: { familia: "propio", embudo: null, motivo: "cada fila es un conteo hecho en la sucursal (historia)." },
   Mesa: { familia: "propio", embudo: null, motivo: "las mesas son propias de cada sucursal." },
-  EjemplarBoleta: { familia: "propio", embudo: null, motivo: "cada fila es un ejemplar impreso en la sucursal." },
+  EjemplarTicket: { familia: "propio", embudo: null, motivo: "cada fila es un ejemplar impreso en la sucursal." },
 };
 
 /** Los modelos de un schema Prisma que tienen una columna `sucursalId`. */

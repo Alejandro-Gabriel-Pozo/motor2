@@ -21,7 +21,7 @@ export const ENTIDADES_AUDITABLES = [
   "Rol",
   "Operacion",
   "CuentaItem",
-  // "Cuenta": cambios sobre la cuenta de una mesa (boleta corregida, cliente asignado) — `entidadId` es el id de la Cuenta.
+  // "Cuenta": cambios sobre la cuenta de una mesa (ticket corregido, cliente asignado) — `entidadId` es el id de la Cuenta.
   "Cuenta",
   "RecetaVersion",
   // "RecetaSucursal": una sucursal pasa a usar su receta propia de un plato o vuelve a la central — `entidadId` es `${sucursalId}:${productoId}`, `campo: "habilitada"`, con `sucursalId`.
@@ -68,6 +68,22 @@ export interface CambioAuditable {
   valorNuevo: unknown;
   actorId: string;
   sucursalId?: string | null;
+}
+
+/**
+ * Claves de acción renombradas («boleta» pasó a «ticket»). La auditoría no se reescribe: las filas viejas conservan en su `descripcion` la clave
+ * de entonces, y la pantalla las muestra con la vigente.
+ */
+export const CLAVES_DE_ACCION_RENOMBRADAS: Readonly<Record<string, string>> = {
+  reporte_boletas: "reporte_tickets",
+  pos_emitir_boleta_corregida: "pos_emitir_ticket_corregido",
+};
+
+/** La descripción de una fila de auditoría con las claves de acción renombradas puestas al día (solo para mostrar). */
+export function descripcionParaMostrar(descripcion: string): string {
+  let texto = descripcion;
+  for (const [vieja, nueva] of Object.entries(CLAVES_DE_ACCION_RENOMBRADAS)) texto = texto.replaceAll(`"${vieja}"`, `"${nueva}"`);
+  return texto;
 }
 
 function aTexto(valor: unknown): string | null {

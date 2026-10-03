@@ -297,7 +297,7 @@ html:has([data-carta-libro]) body {
   }
 }
 
-/* Impresión desde la pantalla de la mesa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B9): la comanda de cocina y la boleta
+/* Impresión desde la pantalla de la mesa (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B9): la comanda de cocina y el ticket
    del cliente se montan en un portal directo en <body> con `data-imprimible` (src/app/(pos)/mesas/[mesaId]/imprimir.tsx) y se imprimen
    con `window.print()` y el diálogo nativo, que deja elegir la térmica (58/80 mm) o la impresora común.
    - En pantalla NUNCA se ven (fuera del árbol de accesibilidad también).
@@ -342,15 +342,15 @@ html:has([data-carta-libro]) body {
   overflow-wrap: anywhere;
 }
 
-/* Sucursal (BoletaCuenta) y los encabezados de estado (COMANDA · COCINA / REIMPRESIÓN / ANULACIÓN / CORRECCIÓN, TicketCocina y
-   BoletaCuenta): 10pt a propósito, más grande que el resto (2026-09-28). */
+/* Sucursal (TicketCuenta) y los encabezados de estado (COMANDA · COCINA / REIMPRESIÓN / ANULACIÓN / CORRECCIÓN, TicketCocina y
+   TicketCuenta): 10pt a propósito, más grande que el resto (2026-09-28). */
 [data-imprimible] .ticket-encabezado {
   font-size: 10pt;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
-/* Identifica la mesa (única función de esta clase, TicketCocina y BoletaCuenta): bajado de 20pt a 9pt (2026-09-28) — ya no es un
+/* Identifica la mesa (única función de esta clase, TicketCocina y TicketCuenta): bajado de 20pt a 9pt (2026-09-28) — ya no es un
    título grande, va al mismo tamaño que el resto del ticket. */
 [data-imprimible] .ticket-titulo {
   font-size: 9pt;

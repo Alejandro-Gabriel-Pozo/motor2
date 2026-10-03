@@ -14,9 +14,9 @@ import { useAccionMesa } from "./usar-accion";
  * sin enviar el botón queda deshabilitado y se dice por qué; sin `pos_cerrar_cuenta`, también. Si el cierre dejó algún insumo en
  * negativo, el mensaje de éxito lo nombra, con su sección (aviso de la pantalla, en ámbar).
  *
- * Con total > 0, al salir bien pide imprimir la boleta para el cliente: la de esta cuenta, en cuanto el refresco la trae en «Cuentas
- * cerradas» (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B6). Sin navegar a otra pantalla, para no perder el aviso. Con total
- * 0 (todo anulado) no hay venta ni boleta.
+ * Con total > 0, al salir bien pide imprimir el ticket para el cliente: la de esta cuenta, en cuanto el refresco la trae en «Cuentas
+ * cerradas» (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B6). Sin navegar a otra pantalla, para no perder el aviso. Con total
+ * 0 (todo anulado) no hay venta ni ticket.
  */
 export function CerrarCuenta({
   cuentaId,
@@ -89,7 +89,7 @@ export function CerrarCuenta({
                   () => cerrarCuenta(cuentaId),
                   () => {
                     setAbierto(false);
-                    if (total > 0) pedir({ tipo: "boleta", cuentaId });
+                    if (total > 0) pedir({ tipo: "ticket", cuentaId });
                   }
                 );
               }}

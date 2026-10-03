@@ -40,10 +40,10 @@ const SIN_ENVOLTORIO_TODAVIA: Record<string, string> = {
     "crearSolicitudTransferencia devuelve ResultadoConId ({ ok, mensaje, id, nombre }), no ResultadoAccion — la UI necesita el traspasoId/productoNombre recién creados para navegar. okConId/error no filtran codigo/erroresPorCampo. Diseño permanente, no un olvido.",
   "server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso.ts":
     "crearEnvioDirectoTransferencia devuelve ResultadoConId ({ ok, mensaje, id, nombre }), no ResultadoAccion — mismo motivo que crear-solicitud-de-traspaso.ts. Diseño permanente, no un olvido.",
-  "server/actions/pos/casos-de-uso/emitir-boleta-corregida.ts":
-    "emitirBoletaCorregida arma { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } a mano (docstring propio: " +
+  "server/actions/pos/casos-de-uso/emitir-ticket-corregido.ts":
+    "emitirTicketCorregido arma { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } a mano (docstring propio: " +
     "\"Como aResultadoAccion, pero la pantalla necesita además QUÉ ejemplar se emitió — solo numero y ejemplar de datos, nunca los ids " +
-    "internos\") — devuelve ResultadoBoletaCorregida, no ResultadoAccion. Mismo criterio de aResultadoAccion (nunca ids internos), con 2 " +
+    "internos\") — devuelve ResultadoTicketCorregido, no ResultadoAccion. Mismo criterio de aResultadoAccion (nunca ids internos), con 2 " +
     "campos extra elegidos a mano. Diseño permanente, no un olvido.",
 };
 

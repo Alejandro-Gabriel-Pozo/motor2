@@ -11,7 +11,7 @@ const ENCABEZADO: Record<DocumentoDeCocina["tipo"], string> = {
 };
 
 /**
- * La comanda de cocina impresa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B1): solo presentación. SIN PRECIOS — los datos
+ * La comanda de cocina impresa (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B1): solo presentación. SIN PRECIOS — los datos
  * (`ComandaDeEnvio`) no los tienen. La hora es la de impresión (la del envío no se guarda). Estilos de papel en src/app/globals.css.
  *
  * Componente de una promo (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 10): `promoTitulo` anota "(Menú del día)" al

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
-import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDeBoleta } from "../../src/server/persistencia/pos/cargar-cuenta-para-cerrar";
-import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeBoleta, marcarCuentaCerrada } from "../../src/server/persistencia/pos/cerrar-cuenta";
-import { cargarCuentaParaCorregirBoleta } from "../../src/server/persistencia/pos/cargar-cuenta-para-corregir-boleta";
+import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDeTicket } from "../../src/server/persistencia/pos/cargar-cuenta-para-cerrar";
+import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeTicket, marcarCuentaCerrada } from "../../src/server/persistencia/pos/cerrar-cuenta";
+import { cargarCuentaParaCorregirTicket } from "../../src/server/persistencia/pos/cargar-cuenta-para-corregir-ticket";
 import { escribirEjemplarCorregido } from "../../src/server/persistencia/pos/escribir-ejemplar-corregido";
 
 /**
@@ -58,26 +58,26 @@ describe("persistencia del cierre de cuenta", () => {
     });
   });
 
-  it("cargarUltimoNumeroDeBoleta: null sin boletas; el máximo de ESTA sucursal (no el de otra)", async () => {
-    expect(await prisma.$transaction((tx) => cargarUltimoNumeroDeBoleta(tx, s.sucursalId))).toBeNull();
+  it("cargarUltimoNumeroDeTicket: null sin tickets; el máximo de ESTA sucursal (no el de otra)", async () => {
+    expect(await prisma.$transaction((tx) => cargarUltimoNumeroDeTicket(tx, s.sucursalId))).toBeNull();
 
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const mesaNorte = await prisma.mesa.create({ data: { sucursalId: norte.id, numero: 1 } });
     const cuentaNorte = await sembrarCuenta(mesaNorte.id, s.admin.id);
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
     await prisma.$transaction(async (tx) => {
-      await escribirEjemplarOriginalDeBoleta(tx, { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 7, emitidoEn: new Date(), emitidoPorId: s.admin.id });
-      await escribirEjemplarOriginalDeBoleta(tx, { sucursalId: norte.id, cuentaId: cuentaNorte.id, numero: 99, emitidoEn: new Date(), emitidoPorId: s.admin.id });
+      await escribirEjemplarOriginalDeTicket(tx, { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 7, emitidoEn: new Date(), emitidoPorId: s.admin.id });
+      await escribirEjemplarOriginalDeTicket(tx, { sucursalId: norte.id, cuentaId: cuentaNorte.id, numero: 99, emitidoEn: new Date(), emitidoPorId: s.admin.id });
     });
 
-    expect(await prisma.$transaction((tx) => cargarUltimoNumeroDeBoleta(tx, s.sucursalId))).toBe(7);
+    expect(await prisma.$transaction((tx) => cargarUltimoNumeroDeTicket(tx, s.sucursalId))).toBe(7);
   });
 
-  it("escribirEjemplarOriginalDeBoleta: el ejemplar A (1), sin corrección ni motivo", async () => {
+  it("escribirEjemplarOriginalDeTicket: el ejemplar A (1), sin corrección ni motivo", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
     const emitidoEn = new Date("2026-09-27T20:00:00.000Z");
-    await prisma.$transaction((tx) => escribirEjemplarOriginalDeBoleta(tx, { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, emitidoEn, emitidoPorId: s.admin.id }));
-    expect(await prisma.ejemplarBoleta.findMany()).toEqual([
+    await prisma.$transaction((tx) => escribirEjemplarOriginalDeTicket(tx, { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, emitidoEn, emitidoPorId: s.admin.id }));
+    expect(await prisma.ejemplarTicket.findMany()).toEqual([
       expect.objectContaining({ sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, ejemplar: 1, emitidoEn, emitidoPorId: s.admin.id, corrigeAId: null, motivo: null }),
     ]);
   });
@@ -124,8 +124,8 @@ describe("persistencia del cierre de cuenta", () => {
   });
 });
 
-/** `src/server/persistencia/pos/` de la boleta corregida (Task #41, Fase M12b), contra Postgres real y con el `tx` de un `$transaction` del test. */
-describe("persistencia de la boleta corregida", () => {
+/** `src/server/persistencia/pos/` del ticket corregido (Task #41, Fase M12b), contra Postgres real y con el `tx` de un `$transaction` del test. */
+describe("persistencia del ticket corregido", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
 
   beforeEach(async () => {
@@ -133,7 +133,7 @@ describe("persistencia de la boleta corregida", () => {
     s = await sembrarSalon();
   });
 
-  it("cargarCuentaParaCorregirBoleta: ítems con la anulación de su Operacion (Decimal → number) y ejemplares del último al primero", async () => {
+  it("cargarCuentaParaCorregirTicket: ítems con la anulación de su Operacion (Decimal → number) y ejemplares del último al primero", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [
       { productoId: s.flan.id, cantidad: 1.5, precioUnitario: 3000.5, numeroEnvio: 1 },
       { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000, numeroEnvio: 1 },
@@ -143,12 +143,12 @@ describe("persistencia de la boleta corregida", () => {
     await prisma.cuentaItem.update({ where: { id: cuenta.items[0].id }, data: { operacionId: venta.id } });
     const cerradaEn = new Date("2026-09-27T21:00:00.000Z");
     await prisma.cuenta.update({ where: { id: cuenta.id }, data: { cerradaEn, cerradaPorId: s.admin.id } });
-    const a = await prisma.ejemplarBoleta.create({ data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 9, ejemplar: 1, emitidoEn: cerradaEn, emitidoPorId: s.admin.id } });
-    const b = await prisma.ejemplarBoleta.create({
+    const a = await prisma.ejemplarTicket.create({ data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 9, ejemplar: 1, emitidoEn: cerradaEn, emitidoPorId: s.admin.id } });
+    const b = await prisma.ejemplarTicket.create({
       data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 9, ejemplar: 2, emitidoEn: anuladaEn, emitidoPorId: s.admin.id, corrigeAId: a.id, motivo: "x" },
     });
 
-    const c = await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: cuenta.id, sucursalId: s.sucursalId }));
+    const c = await prisma.$transaction((tx) => cargarCuentaParaCorregirTicket(tx, { cuentaId: cuenta.id, sucursalId: s.sucursalId }));
 
     expect(c).toEqual({
       id: cuenta.id,
@@ -166,24 +166,24 @@ describe("persistencia de la boleta corregida", () => {
     expect(c!.items).toHaveLength(2);
   });
 
-  it("cargarCuentaParaCorregirBoleta: null si el id no existe o la mesa es de OTRA sucursal", async () => {
+  it("cargarCuentaParaCorregirTicket: null si el id no existe o la mesa es de OTRA sucursal", async () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
-    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: "no-existe", sucursalId: s.sucursalId }))).toBeNull();
-    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: cuenta.id, sucursalId: norte.id }))).toBeNull();
-    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirBoleta(tx, { cuentaId: cuenta.id, sucursalId: s.sucursalId }))).toMatchObject({ items: [], ejemplares: [] });
+    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirTicket(tx, { cuentaId: "no-existe", sucursalId: s.sucursalId }))).toBeNull();
+    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirTicket(tx, { cuentaId: cuenta.id, sucursalId: norte.id }))).toBeNull();
+    expect(await prisma.$transaction((tx) => cargarCuentaParaCorregirTicket(tx, { cuentaId: cuenta.id, sucursalId: s.sucursalId }))).toMatchObject({ items: [], ejemplares: [] });
   });
 
   it("escribirEjemplarCorregido: el ejemplar pedido, con corrigeAId y motivo, y devuelve su id", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
     const emitidoEn = new Date("2026-09-27T20:00:00.000Z");
-    const a = await prisma.ejemplarBoleta.create({ data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, ejemplar: 1, emitidoEn, emitidoPorId: s.admin.id } });
+    const a = await prisma.ejemplarTicket.create({ data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, ejemplar: 1, emitidoEn, emitidoPorId: s.admin.id } });
 
     const id = await prisma.$transaction((tx) =>
       escribirEjemplarCorregido(tx, { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: 3, ejemplar: 2, emitidoEn, emitidoPorId: s.admin.id, corrigeAId: a.id, motivo: "No quiso el flan" })
     );
 
-    expect(await prisma.ejemplarBoleta.findUniqueOrThrow({ where: { id } })).toMatchObject({
+    expect(await prisma.ejemplarTicket.findUniqueOrThrow({ where: { id } })).toMatchObject({
       sucursalId: s.sucursalId,
       cuentaId: cuenta.id,
       numero: 3,

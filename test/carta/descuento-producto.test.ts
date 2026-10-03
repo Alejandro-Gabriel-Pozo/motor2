@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { aplicarDescuentoDeProducto, descuentosVigentes, precioCobradoConDescuentos } from "../../src/core/carta/descuento-producto";
 
 /**
- * Producto con descuento (Fase 2): el cálculo puro. Una sola definición para la carta, el selector, el alta a la cuenta, el cierre, la boleta y el
+ * Producto con descuento (Fase 2): el cálculo puro. Una sola definición para la carta, el selector, el alta a la cuenta, el cierre, el ticket y el
  * reporte — por eso se fija acá con los redondeos y el piso, no en cada pantalla.
  */
 describe("descuentosVigentes (R1: sin la capacidad precio_local no rige ningún descuento)", () => {

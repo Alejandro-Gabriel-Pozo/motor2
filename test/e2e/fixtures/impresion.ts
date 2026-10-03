@@ -9,7 +9,7 @@ export interface Impresion {
 const CLAVE = "motor2-e2e:impresiones";
 
 /**
- * Reemplaza `window.print()` en la página (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md): el diálogo nativo de impresión no es
+ * Reemplaza `window.print()` en la página (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md): el diálogo nativo de impresión no es
  * un `dialog` de Playwright (`page.on("dialog")` no lo ve) y bloquearía la prueba. Cada llamada guarda el tipo (`data-tipo`) y el texto
  * del documento montado; las impresiones se acumulan por pestaña (sessionStorage), también entre navegaciones. Con `simularAfterprint`
  * dispara además `afterprint`, como cuando la persona cierra el diálogo. Llamarla ANTES del primer `goto`.

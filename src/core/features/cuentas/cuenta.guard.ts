@@ -1,5 +1,5 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import type { ComandoCerrarCuenta, ComandoEmitirBoletaCorregida } from "./cuenta.schema";
+import type { ComandoCerrarCuenta, ComandoEmitirTicketCorregido } from "./cuenta.schema";
 
 /**
  * Guard de la feature Cuenta del salón (convención "guard por feature", 2026-09-25; Task #41, Fase M). Formato del comando, ANTES de
@@ -21,12 +21,12 @@ export function guardComandoCerrarCuenta(entrada: unknown): ResultadoDato<Comand
 }
 
 /**
- * Guard del comando «emitir boleta corregida» (M12b). Solo el `cuentaId`, con el mismo criterio que `guardComandoCerrarCuenta`: si no es
- * un string, «no encontrada» (lo que ya respondía `emitirBoletaCorregida`, que salteaba el `findFirst`). El `motivo` pasa TAL CUAL, sin
- * validar: `validarMotivoAnulacion` corre en el caso de uso, después de las guardas de estado (así un motivo vacío sobre una boleta vigente
+ * Guard del comando «emitir ticket corregido» (M12b). Solo el `cuentaId`, con el mismo criterio que `guardComandoCerrarCuenta`: si no es
+ * un string, «no encontrada» (lo que ya respondía `emitirTicketCorregido`, que salteaba el `findFirst`). El `motivo` pasa TAL CUAL, sin
+ * validar: `validarMotivoAnulacion` corre en el caso de uso, después de las guardas de estado (así un motivo vacío sobre un ticket vigente
  * sigue respondiendo «ya refleja las anulaciones», como antes).
  */
-export function guardComandoEmitirBoletaCorregida(entrada: unknown): ResultadoDato<ComandoEmitirBoletaCorregida> {
+export function guardComandoEmitirTicketCorregido(entrada: unknown): ResultadoDato<ComandoEmitirTicketCorregido> {
   const { cuentaId, motivo } = (entrada ?? {}) as { cuentaId?: unknown; motivo?: unknown };
   if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
   return aceptar({ cuentaId, motivo });

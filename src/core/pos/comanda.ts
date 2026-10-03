@@ -2,12 +2,12 @@ import type { DocumentoImprimible } from "./impresion";
 
 /**
  * Comanda de cocina (KOT) de cada envío de una cuenta: lo que se imprime para la cocina al enviar, al reimprimir y al anular
- * (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B1). Núcleo PURO: la página la arma en el servidor a partir de los envíos
+ * (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B1). Núcleo PURO: la página la arma en el servidor a partir de los envíos
  * agrupados (`agruparPorEnvio`) y se la pasa al proveedor de impresión del cliente.
  *
  * SIN PRECIOS, a propósito y a nivel de tipos: ningún tipo de este archivo tiene un campo de precio, y los objetos se arman campo por
- * campo (nunca con spread del ítem), así que un precio no puede colarse en la comanda aunque el ítem de entrada lo traiga. La boleta
- * del cliente (con precios) es otro documento, con su propio armador (src/core/pos/boleta.ts).
+ * campo (nunca con spread del ítem), así que un precio no puede colarse en la comanda aunque el ítem de entrada lo traiga. El ticket
+ * del cliente (con precios) es otro documento, con su propio armador (src/core/pos/ticket.ts).
  *
  * Sin importar `./cuenta` (que trae el cliente de Prisma): `documentoDeReimpresion` corre en el navegador, dentro del proveedor.
  */

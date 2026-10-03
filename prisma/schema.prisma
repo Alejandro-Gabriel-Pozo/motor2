@@ -42,7 +42,7 @@ model User {
   cuentasAbiertas           Cuenta[]            @relation("CuentaAbiertaPor")
   cuentasCerradas           Cuenta[]            @relation("CuentaCerradaPor")
   cuentaItemsCreados        CuentaItem[]        @relation("CuentaItemCreadoPor")
-  ejemplaresBoletaEmitidos  EjemplarBoleta[]    @relation("EjemplarBoletaEmitidoPor")
+  ejemplaresTicketEmitidos  EjemplarTicket[]    @relation("EjemplarTicketEmitidoPor")
   promosCreadas             PromoCuenta[]
   empresas                  UsuarioEmpresa[]
 }
@@ -143,7 +143,7 @@ model Sucursal {
   itemsAgrupadosCarta      ItemAgrupadoCarta[]
   opcionesAgrupadasCarta   OpcionItemAgrupadoCarta[]
   versionesDeRecetaPropia  RecetaVersion[]               @relation("RecetaVersionSucursal")
-  ejemplaresBoleta         EjemplarBoleta[]
+  ejemplaresTicket         EjemplarTicket[]
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, id])
@@ -2005,9 +2005,9 @@ model PortalCartaEmpresa {
 // - Un ítem SIN enviar (`numeroEnvio` null) es un borrador: se quita con DELETE físico, sin motivo ni auditoría.
 // Invariantes validadas en la APLICACIÓN (src/server/actions/pos/cuenta.ts), no en la base: espejo ⇒ cantidad < 0, mismo
 // numeroEnvio que su original y motivoAnulacion no vacío; original (anulaAItemId null) ⇒ cantidad > 0.
-// - NUMERACIÓN DE LA BOLETA (docs/plan-numeracion-boleta-2026-09-25.md): cada papel impreso de la boleta de cierre es una fila de
-//   `EjemplarBoleta` (control interno, no fiscal). Número base por sucursal = max + 1 dentro de la tx serializable de `cerrarCuenta`
-//   (solo con venta, después de validarla), ejemplar 1 = A. Corrección (`emitirBoletaCorregida`, tras anular una línea con
+// - NUMERACIÓN DE LA TICKET (docs/plan-numeracion-ticket-2026-09-25.md): cada papel impreso del ticket de cierre es una fila de
+//   `EjemplarTicket` (control interno, no fiscal). Número base por sucursal = max + 1 dentro de la tx serializable de `cerrarCuenta`
+//   (solo con venta, después de validarla), ejemplar 1 = A. Corrección (`emitirTicketCorregido`, tras anular una línea con
 //   anularVenta) = fila NUEVA con el mismo número, el ejemplar siguiente, `corrigeAId` → el A y el motivo. Nunca se edita ni se borra.
 // Grounding: docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6.
 // ===================================================================
@@ -2044,7 +2044,7 @@ model Cuenta {
   cerradaPorId     String?
   cerradaPor       User?            @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
   items            CuentaItem[]
-  ejemplaresBoleta EjemplarBoleta[]
+  ejemplaresTicket EjemplarTicket[]
   promos           PromoCuenta[]
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
@@ -2089,7 +2089,7 @@ model PromoCuenta {
   promoCarta   PromoCarta   @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
   /// Precio CONGELADO al agregarla (`PromoCarta.precio` en ese momento) — lo que se prorratea entre los componentes (D3).
   precio       Decimal      @db.Decimal(14, 2)
-  /// Snapshot del título en ese momento — la boleta ("1 × Menú del día") usa este, no el actual de `PromoCarta` (que puede
+  /// Snapshot del título en ese momento — el ticket ("1 × Menú del día") usa este, no el actual de `PromoCarta` (que puede
   /// haber cambiado de nombre después).
   titulo       String
   creadoPorId  String
@@ -2152,10 +2152,10 @@ model CuentaItem {
   @@index([promoCuentaId])
 }
 
-/// Ejemplar IMPRESO de la boleta de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
+/// Ejemplar IMPRESO del ticket de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
 /// numero: secuencial por sucursal, sin huecos (max+1 en la tx serializable de cerrarCuenta). ejemplar: 1 = A (original), 2 = B…
 /// Corrección = fila NUEVA (mismo numero, ejemplar siguiente, corrigeAId → el ejemplar A, motivo); nunca se edita ni se borra.
-model EjemplarBoleta {
+model EjemplarTicket {
   id           String           @id @default(cuid())
   empresaId    String           @default(dbgenerated("app_empresa_actual()"))
   empresa      Empresa          @relation(fields: [empresaId], references: [id])
@@ -2167,10 +2167,10 @@ model EjemplarBoleta {
   ejemplar     Int              @default(1)
   emitidoEn    DateTime         @default(now())
   emitidoPorId String
-  emitidoPor   User             @relation("EjemplarBoletaEmitidoPor", fields: [emitidoPorId], references: [id])
+  emitidoPor   User             @relation("EjemplarTicketEmitidoPor", fields: [emitidoPorId], references: [id])
   corrigeAId   String?
-  corrigeA     EjemplarBoleta?  @relation("EjemplarBoletaCorreccion", fields: [empresaId, corrigeAId], references: [empresaId, id], onDelete: Restrict)
-  correcciones EjemplarBoleta[] @relation("EjemplarBoletaCorreccion")
+  corrigeA     EjemplarTicket?  @relation("EjemplarTicketCorreccion", fields: [empresaId, corrigeAId], references: [empresaId, id], onDelete: Restrict)
+  correcciones EjemplarTicket[] @relation("EjemplarTicketCorreccion")
   motivo       String?
 
   @@unique([sucursalId, numero, ejemplar])
@@ -2256,7 +2256,7 @@ model Empresa {
   cuentaRel                      Cuenta[]
   promoCuentaRel                 PromoCuenta[]
   cuentaItemRel                  CuentaItem[]
-  ejemplarBoletaRel              EjemplarBoleta[]
+  ejemplarTicketRel              EjemplarTicket[]
 }
 
 model UsuarioEmpresa {

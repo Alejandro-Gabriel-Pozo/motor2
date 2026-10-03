@@ -113,7 +113,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/historial", label: "Historial de un producto", accion: "reporte_historial", panel: "sucursal" },
       { href: "/reportes/trazabilidad", label: "Trazabilidad por ID", accion: "reporte_trazabilidad", panel: "sucursal" },
       { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "reporte_rotacion_mesas", panel: "sucursal" },
-      { href: "/reportes/boletas", label: "Boletas emitidas", accion: "reporte_boletas", panel: "sucursal" },
+      { href: "/reportes/tickets", label: "Tickets emitidos", accion: "reporte_tickets", panel: "sucursal" },
       { href: "/reportes/descuentos-clientes", label: "Descuentos por cliente", accion: "reporte_descuentos_clientes", panel: "sucursal" },
       { href: "/reportes/descuentos-productos", label: "Descuentos de productos", accion: "reporte_descuentos_productos", panel: "sucursal" },
       { href: "/reportes/margen-promociones", label: "Margen de promociones", accion: "reporte_margen_promociones", panel: "sucursal" },

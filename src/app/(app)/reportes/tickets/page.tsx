@@ -2,28 +2,28 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { listarBoletasEmitidas, leerFiltroBoletas, obtenerNumeroDeMesa, serializarFiltroBoletas } from "@/core/reportes/boletas-emitidas";
+import { listarTicketsEmitidos, leerFiltroTickets, obtenerNumeroDeMesa, serializarFiltroTickets } from "@/core/reportes/tickets-emitidos";
 import { formatearMonto, nombreDeMesa } from "@/core/pos/formato";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
-import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
+import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
- * Boletas emitidas (Task #17 del backlog): antes de esta pantalla, «Cuentas cerradas» (al pie de una mesa) mostraba como mucho
- * las 3 últimas boletas (`BOLETAS_RECIENTES_POR_MESA`, boleta.ts) y las más viejas quedaban totalmente inaccesibles — sin ninguna
- * pantalla desde donde verlas, reimprimirlas o corregirlas (probable causa real del pendiente #21: la boleta en cuestión
+ * Tickets emitidos (Task #17 del backlog): antes de esta pantalla, «Cuentas cerradas» (al pie de una mesa) mostraba como mucho
+ * las 3 últimas tickets (`TICKETS_RECIENTES_POR_MESA`, ticket.ts) y las más viejas quedaban totalmente inaccesibles — sin ninguna
+ * pantalla desde donde verlas, reimprimirlas o corregirlas (probable causa real del pendiente #21: el ticket en cuestión
  * simplemente ya no estaba entre las 3 recientes). Este reporte lista TODAS, una fila por EJEMPLAR — la A, la B y sus
  * correcciones por separado — de solo lectura: reimprimir o emitir una corregida sigue haciéndose desde la mesa (`ImpresionProvider`
  * vive en la carpeta de rutas del POS); acá el camino es el link a Trazabilidad de cada línea.
  *
- * Una cuenta cerrada ANTES de la numeración de boletas (sin ningún `EjemplarBoleta`) no aparece: es de esperar, no una falla del
+ * Una cuenta cerrada ANTES de la numeración de tickets (sin ningún `EjemplarTicket`) no aparece: es de esperar, no una falla del
  * filtro — esas cuentas no tienen ejemplar que listar.
  *
  * Filtro de fecha en la zona horaria de la EMPRESA, no UTC como el resto de los reportes (el servicio de la noche cruza la medianoche UTC):
  * sin fechas en la URL, el default es «hoy» en esa zona; vaciar los dos campos y filtrar de nuevo saca el límite de fecha del
  * todo (el cursor de paginación lo aguanta).
  */
-export default async function BoletasEmitidasPage({
+export default async function TicketsEmitidosPage({
   searchParams,
 }: {
   searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "mesaId" | "cursor">>;
@@ -31,28 +31,28 @@ export default async function BoletasEmitidasPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_boletas", ctx.db);
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_tickets", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const { desde, hasta, mesaId, filtro } = leerFiltroBoletas(sp, ctx.empresaZonaHoraria);
+  const { desde, hasta, mesaId, filtro } = leerFiltroTickets(sp, ctx.empresaZonaHoraria);
 
   const [{ items, nextCursor }, mesaNumero] = await Promise.all([
-    listarBoletasEmitidas(ctx.sucursalId, filtro, ctx.db),
+    listarTicketsEmitidos(ctx.sucursalId, filtro, ctx.db),
     mesaId ? obtenerNumeroDeMesa(ctx.sucursalId, mesaId, ctx.db) : Promise.resolve(null),
   ]);
 
-  const paramsSiguiente = serializarFiltroBoletas({ desde, hasta, mesaId, cursor: nextCursor });
-  const paramsSinMesa = serializarFiltroBoletas({ desde, hasta });
+  const paramsSiguiente = serializarFiltroTickets({ desde, hasta, mesaId, cursor: nextCursor });
+  const paramsSinMesa = serializarFiltroTickets({ desde, hasta });
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="mb-1 text-xl font-semibold">Boletas emitidas</h1>
+        <h1 className="mb-1 text-xl font-semibold">Tickets emitidos</h1>
         <p className="text-sm text-neutral-500">
           Una fila por ejemplar impreso (la A, y cada corrección B, C… por separado), más recientes primero. Para reimprimir o
           emitir una corregida, entrá a la mesa: acá es de solo lectura, con link a Trazabilidad. Una cuenta cerrada antes de la
-          numeración de boletas no tiene ejemplar y no aparece.
+          numeración de tickets no tiene ejemplar y no aparece.
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export default async function BoletasEmitidasPage({
         <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
           Filtrar
         </button>
-        <Link href="/reportes/boletas" className="self-center text-sm underline">
+        <Link href="/reportes/tickets" className="self-center text-sm underline">
           Limpiar
         </Link>
       </form>
@@ -77,24 +77,24 @@ export default async function BoletasEmitidasPage({
       {mesaId && (
         <p className="text-xs text-neutral-500">
           Filtrando por {mesaNumero !== null ? nombreDeMesa(mesaNumero) : "una mesa"} ·{" "}
-          <Link href={`/reportes/boletas?${paramsSinMesa.toString()}`} className="underline">
+          <Link href={`/reportes/tickets?${paramsSinMesa.toString()}`} className="underline">
             Quitar filtro de mesa
           </Link>
         </p>
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-neutral-500">No hay boletas emitidas con estos filtros.</p>
+        <p className="text-sm text-neutral-500">No hay tickets emitidos con estos filtros.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {items.map((b) => (
-            <FilaBoleta key={b.ejemplarId} boleta={b} zonaHoraria={ctx.empresaZonaHoraria} />
+            <FilaTicket key={b.ejemplarId} ticket={b} zonaHoraria={ctx.empresaZonaHoraria} />
           ))}
         </div>
       )}
 
       {nextCursor && (
-        <Link href={`/reportes/boletas?${paramsSiguiente.toString()}`} className="text-sm underline">
+        <Link href={`/reportes/tickets?${paramsSiguiente.toString()}`} className="text-sm underline">
           Página siguiente →
         </Link>
       )}
@@ -102,17 +102,17 @@ export default async function BoletasEmitidasPage({
   );
 }
 
-function FilaBoleta({ boleta: b, zonaHoraria }: { boleta: Awaited<ReturnType<typeof listarBoletasEmitidas>>["items"][number]; zonaHoraria: string }) {
-  const numero = formatearNumeroBoleta(b.numero);
+function FilaTicket({ ticket: b, zonaHoraria }: { ticket: Awaited<ReturnType<typeof listarTicketsEmitidos>>["items"][number]; zonaHoraria: string }) {
+  const numero = formatearNumeroTicket(b.numero);
   return (
-    <details className="rounded border" data-boleta={b.ejemplarId}>
+    <details className="rounded border" data-ticket={b.ejemplarId}>
       <summary className="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm">
         <span className="font-medium">N.º {numero}</span>
         <span className="w-36 tabular-nums text-neutral-500">{formatearFechaHora(b.emitidoEn, zonaHoraria)}</span>
         <span className="text-neutral-500">{nombreDeMesa(b.mesaNumero)}</span>
         <span className="text-neutral-500">Emitió {b.emitidoPor}</span>
-        {b.correccionDe && <Marca texto={`Corrección de N.º ${formatearNumeroBoleta(b.correccionDe)}`} tono="neutral" />}
-        {b.reemplazadaPor && <Marca texto={`Reemplazada por N.º ${formatearNumeroBoleta(b.reemplazadaPor)}`} tono="neutral" />}
+        {b.correccionDe && <Marca texto={`Corrección de N.º ${formatearNumeroTicket(b.correccionDe)}`} tono="neutral" />}
+        {b.reemplazadaPor && <Marca texto={`Reemplazada por N.º ${formatearNumeroTicket(b.reemplazadaPor)}`} tono="neutral" />}
         {b.estado === "anulada" && <Marca texto="Venta anulada" tono="rojo" />}
         {b.estado === "desactualizada" && <Marca texto="Desactualizada" tono="ambar" />}
         <span className={`ml-auto font-semibold tabular-nums ${b.estado === "anulada" ? "line-through" : ""}`}>{formatearMonto(b.importe)}</span>

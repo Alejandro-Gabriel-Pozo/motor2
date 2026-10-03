@@ -6,18 +6,18 @@ import type { Prisma } from "@prisma/client";
  * `server/persistencia/movimientos/escribir-anulacion-de-venta.ts`: `tx` OBLIGATORIO, sin reglas de negocio). Son EXACTAMENTE las
  * escrituras que antes hacía en línea `cerrarCuenta` (src/server/actions/pos/cuenta-cierre.ts); el ORDEN lo pone el caso de uso
  * (src/server/actions/pos/casos-de-uso/cerrar-cuenta.ts): venta (`registrarVentaEnTx`, núcleo de core/movimientos) → ejemplar A de la
- * boleta → enlace de cada ítem con su Operacion → cierre de la cuenta → auditoría de stock negativo.
+ * ticket → enlace de cada ítem con su Operacion → cierre de la cuenta → auditoría de stock negativo.
  */
 
 /**
- * El ejemplar A (`ejemplar: 1`) de la boleta, con el número ya calculado por el caso de uso. Dos cierres simultáneos de la misma
+ * El ejemplar A (`ejemplar: 1`) del ticket, con el número ya calculado por el caso de uso. Dos cierres simultáneos de la misma
  * sucursal chocan en el índice único (+ SERIALIZABLE) y uno reintenta: sin huecos ni repetidos.
  */
-export async function escribirEjemplarOriginalDeBoleta(
+export async function escribirEjemplarOriginalDeTicket(
   tx: Prisma.TransactionClient,
   args: { sucursalId: string; cuentaId: string; numero: number; emitidoEn: Date; emitidoPorId: string }
 ): Promise<void> {
-  await tx.ejemplarBoleta.create({
+  await tx.ejemplarTicket.create({
     data: { sucursalId: args.sucursalId, cuentaId: args.cuentaId, numero: args.numero, ejemplar: 1, emitidoEn: args.emitidoEn, emitidoPorId: args.emitidoPorId },
   });
 }

@@ -34,7 +34,7 @@ describe("pantallaTrasCambiarSucursal: la misma pantalla, solo si existe y el ro
     ["una pantalla del menú", "/reportes/costos", "/reportes/costos"],
     ["descarta la consulta (puede traer ids de la sucursal anterior)", "/reportes/costos?desde=2026-09-01", "/reportes/costos"],
     ["descarta el ancla", "/reportes/consolidado#fila-3", "/reportes/consolidado"],
-    ["una consulta con el id de una mesa", "/reportes/boletas?mesaId=cmu123", "/reportes/boletas"],
+    ["una consulta con el id de una mesa", "/reportes/tickets?mesaId=cmu123", "/reportes/tickets"],
     ["recorta el id de la mesa", "/mesas/cmu123", "/mesas"],
     ["recorta una ruta hija de una ficha de empresa", "/catalogo/recetas/cmu123/historial", "/catalogo/recetas"],
     ["la ruta más larga gana", "/reportes/rendimiento-recetas/por-sucursal", "/reportes/rendimiento-recetas/por-sucursal"],

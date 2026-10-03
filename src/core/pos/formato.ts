@@ -1,6 +1,6 @@
 /**
  * Formatos de la pantalla de la mesa (compartidos por la página y sus componentes de cliente). Vive en `core/pos` (y no en la
- * carpeta de rutas del POS, `(pos)/mesas/[mesaId]/`) para que un reporte de `(app)` (el reporte de boletas emitidas, Task #17)
+ * carpeta de rutas del POS, `(pos)/mesas/[mesaId]/`) para que un reporte de `(app)` (el reporte de tickets emitidos, Task #17)
  * también pueda formatear sin duplicar los `Intl.NumberFormat`. Las horas (con la zona de la empresa) viven en `core/tiempo`.
  */
 const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });

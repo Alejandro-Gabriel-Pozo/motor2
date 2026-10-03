@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guardComandoCerrarCuenta, guardComandoEmitirBoletaCorregida, MENSAJE_CUENTA_NO_ENCONTRADA } from "../../../../src/core/features/cuentas/cuenta.guard";
+import { guardComandoCerrarCuenta, guardComandoEmitirTicketCorregido, MENSAJE_CUENTA_NO_ENCONTRADA } from "../../../../src/core/features/cuentas/cuenta.guard";
 
 /** Guard del comando «cerrar la cuenta» (src/core/features/cuentas/cuenta.guard.ts; Task #41, Fase M12a): formato, puro. */
 describe("guardComandoCerrarCuenta", () => {
@@ -17,19 +17,19 @@ describe("guardComandoCerrarCuenta", () => {
   });
 });
 
-/** Guard del comando «emitir boleta corregida» (Task #41, Fase M12b): solo el formato del `cuentaId`; el motivo pasa crudo. */
-describe("guardComandoEmitirBoletaCorregida", () => {
+/** Guard del comando «emitir ticket corregido» (Task #41, Fase M12b): solo el formato del `cuentaId`; el motivo pasa crudo. */
+describe("guardComandoEmitirTicketCorregido", () => {
   it("un cuentaId string pasa, con el motivo TAL CUAL (sin recortar ni validar: eso lo hace el caso de uso, después de las guardas de estado)", () => {
-    expect(guardComandoEmitirBoletaCorregida({ cuentaId: "cta-1", motivo: "  No quiso el flan  " })).toEqual({ ok: true, valor: { cuentaId: "cta-1", motivo: "  No quiso el flan  " } });
-    expect(guardComandoEmitirBoletaCorregida({ cuentaId: "cta-1", motivo: "" })).toEqual({ ok: true, valor: { cuentaId: "cta-1", motivo: "" } });
-    expect(guardComandoEmitirBoletaCorregida({ cuentaId: "cta-1" })).toEqual({ ok: true, valor: { cuentaId: "cta-1", motivo: undefined } });
+    expect(guardComandoEmitirTicketCorregido({ cuentaId: "cta-1", motivo: "  No quiso el flan  " })).toEqual({ ok: true, valor: { cuentaId: "cta-1", motivo: "  No quiso el flan  " } });
+    expect(guardComandoEmitirTicketCorregido({ cuentaId: "cta-1", motivo: "" })).toEqual({ ok: true, valor: { cuentaId: "cta-1", motivo: "" } });
+    expect(guardComandoEmitirTicketCorregido({ cuentaId: "cta-1" })).toEqual({ ok: true, valor: { cuentaId: "cta-1", motivo: undefined } });
   });
 
   it.each([undefined, null, 42, { id: "cta-1" }])("cuentaId %j: el mismo mensaje que «no encontrada», sin llegar a la base", (cuentaId) => {
-    expect(guardComandoEmitirBoletaCorregida({ cuentaId, motivo: "x" })).toEqual({ ok: false, codigo: "formato", mensaje: MENSAJE_CUENTA_NO_ENCONTRADA });
+    expect(guardComandoEmitirTicketCorregido({ cuentaId, motivo: "x" })).toEqual({ ok: false, codigo: "formato", mensaje: MENSAJE_CUENTA_NO_ENCONTRADA });
   });
 
   it("sin entrada: rechaza igual", () => {
-    expect(guardComandoEmitirBoletaCorregida(null)).toMatchObject({ ok: false, codigo: "formato", mensaje: MENSAJE_CUENTA_NO_ENCONTRADA });
+    expect(guardComandoEmitirTicketCorregido(null)).toMatchObject({ ok: false, codigo: "formato", mensaje: MENSAJE_CUENTA_NO_ENCONTRADA });
   });
 });

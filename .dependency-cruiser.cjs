@@ -60,7 +60,7 @@ const { DOMINIOS_DE_NEGOCIO } = require("./.dependency-cruiser-dominios.cjs");
  *  - C3 (con fachada): `reportes` → core/reportes/public.ts + public-servidor.ts.
  */
 const DOMINIOS_SIN_PUBLIC_TODAVIA = {
-  pos: "5 sitios externos importan core/pos/* directo (confirmado con depcruise: core/reportes/boletas-emitidas.ts → boleta.ts/cuenta.ts/mesas.ts/numeracion-boleta.ts, y server/persistencia/pos/cargar-cuenta-para-corregir-boleta.ts → boleta.ts) — candidato C4, sin construir todavía.",
+  pos: "5 sitios externos importan core/pos/* directo (confirmado con depcruise: core/reportes/tickets-emitidos.ts → ticket.ts/cuenta.ts/mesas.ts/numeracion-ticket.ts, y server/persistencia/pos/cargar-cuenta-para-corregir-ticket.ts → ticket.ts) — candidato C4, sin construir todavía.",
   stock: "4 sitios externos (confirmado con depcruise: core/reportes/salud-por-producto.ts → consolidado.ts/alertas.ts, resumen-operativo.ts → alertas.ts, diferencias-ajustes.ts → frecuencia-conteo.ts) — candidato C5, sin construir todavía.",
   compras: "5 sitios externos (confirmado con depcruise: server/persistencia/compras/{escribir-correccion,escribir-anulacion,cargar-compra-para-corregir,cargar-compra-para-anular}.ts y core/features/compras/compra.schema.ts, todos importando core/compras/{anulacion,correccion}.ts) — sin evaluar todavía si necesita fachada.",
 };

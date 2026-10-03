@@ -12,7 +12,7 @@ import { prismaAdmin } from "../setup/cliente-duenio";
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
  * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), la sección habitual de stock, el admin de la carta, su portal de sucursales y su
  * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas», el modal de comensales al abrir cuenta), el reporte de
- * rotación de mesas y el reporte de boletas emitidas (Task #17). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
+ * rotación de mesas y el reporte de tickets emitidos (Task #17). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -1070,14 +1070,14 @@ testAutenticado(
 );
 
 testAutenticado(
-  "pos/mesas/[mesaId]: mesa libre con «Cuentas cerradas» (una boleta reimprimible y una de venta anulada), en modo claro y oscuro, sin violaciones de axe",
+  "pos/mesas/[mesaId]: mesa libre con «Cuentas cerradas» (un ticket reimprimible y una de venta anulada), en modo claro y oscuro, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId }) => {
-    // docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B10: la sección nueva con sus dos estados de fila (botón habilitado; «Venta anulada»
+    // docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B10: la sección nueva con sus dos estados de fila (botón habilitado; «Venta anulada»
     // con el botón deshabilitado). Los documentos impresos no llevan caso propio: en pantalla son display:none.
     const marca = Date.now();
     const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
-    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-BOL-${marca}`, nombre: `E2E A11y Plato Boleta ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-BOL-${marca}`, nombre: `E2E A11y Plato Ticket ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 975 } });
     const operacionIds: string[] = [];
     for (const [horasAtras, anulada] of [[1, false], [2, true]] as const) {
@@ -1185,9 +1185,9 @@ testAutenticado(
 );
 
 testAutenticado(
-  "pos/mesas/[mesaId]: «Cuentas cerradas» con una boleta desactualizada («Emitir boleta corregida» habilitado) y su diálogo abierto con el error, en modo claro y oscuro, sin violaciones de axe",
+  "pos/mesas/[mesaId]: «Cuentas cerradas» con un ticket desactualizada («Emitir ticket corregido» habilitado) y su diálogo abierto con el error, en modo claro y oscuro, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId }) => {
-    // docs/plan-numeracion-boleta-2026-09-25.md, paso 8: la fila con el número de la boleta y el botón nuevo, y el diálogo del motivo.
+    // docs/plan-numeracion-ticket-2026-09-25.md, paso 8: la fila con el número del ticket y el botón nuevo, y el diálogo del motivo.
     const marca = Date.now();
     const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
@@ -1208,9 +1208,9 @@ testAutenticado(
         },
       },
     });
-    const { _max } = await prisma.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
-    await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero: (_max.numero ?? 0) + 1, emitidoEn: cerradaEn, emitidoPorId: admin.id } });
-    const emitir = page.getByRole("button", { name: /^Emitir la boleta corregida de la cuenta cerrada/ });
+    const { _max } = await prisma.ejemplarTicket.aggregate({ where: { sucursalId }, _max: { numero: true } });
+    await prisma.ejemplarTicket.create({ data: { sucursalId, cuentaId: cuenta.id, numero: (_max.numero ?? 0) + 1, emitidoEn: cerradaEn, emitidoPorId: admin.id } });
+    const emitir = page.getByRole("button", { name: /^Emitir el ticket corregido de la cuenta cerrada/ });
     try {
       await page.goto(`/mesas/${mesa.id}`);
       await conTitulo(page, "Mesa 977");
@@ -1219,10 +1219,10 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo claro").toEqual([]);
 
       await emitir.click();
-      const dialogo = page.getByRole("dialog", { name: /^Emitir boleta corregida/ });
+      const dialogo = page.getByRole("dialog", { name: /^Emitir ticket corregido/ });
       await dialogo.getByRole("button", { name: "Emitir e imprimir" }).click();
       await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
-      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo «Emitir boleta corregida» con el error").toEqual([]);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo «Emitir ticket corregido» con el error").toEqual([]);
 
       await page.emulateMedia({ colorScheme: "dark" });
       await page.goto(`/mesas/${mesa.id}`);
@@ -1230,11 +1230,11 @@ testAutenticado(
       await expect(emitir).toBeEnabled();
       expect((await new AxeBuilder({ page }).analyze()).violations, "fila desactualizada en modo oscuro emulado").toEqual([]);
       await emitir.click();
-      await expect(page.getByRole("dialog", { name: /^Emitir boleta corregida/ })).toBeVisible();
+      await expect(page.getByRole("dialog", { name: /^Emitir ticket corregido/ })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo en modo oscuro emulado").toEqual([]);
     } finally {
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.ejemplarTicket.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
+      await prisma.ejemplarTicket.deleteMany({ where: { cuentaId: cuenta.id } });
       await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
       await prisma.operacion.deleteMany({ where: { id: { in: ventas.map((v) => v.id) } } });
       await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });
@@ -1309,13 +1309,13 @@ testAutenticado("reportes/rotacion-mesas: con datos y sin datos, sin violaciones
 });
 
 testAutenticado(
-  "reportes/boletas: el listado con una corrección expandida (marcas «Corrección de»/«Reemplazada por» y el detalle con link a Trazabilidad) sin violaciones de axe",
+  "reportes/tickets: el listado con una corrección expandida (marcas «Corrección de»/«Reemplazada por» y el detalle con link a Trazabilidad) sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId }) => {
-    // Task #17: una fila por EjemplarBoleta — se siembra un A y su corrección B para que aparezcan las dos marcas a la vez.
+    // Task #17: una fila por EjemplarTicket — se siembra un A y su corrección B para que aparezcan las dos marcas a la vez.
     const marca = Date.now();
     const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
-    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RB-${marca}`, nombre: `E2E A11y Boleta ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
+    const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RB-${marca}`, nombre: `E2E A11y Ticket ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1000 } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 978 } });
     const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: admin.id, detalleLibre: "Mesa 978" } });
@@ -1328,22 +1328,22 @@ testAutenticado(
         items: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: admin.id, operacionId: venta.id }] },
       },
     });
-    const { _max } = await prisma.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
+    const { _max } = await prisma.ejemplarTicket.aggregate({ where: { sucursalId }, _max: { numero: true } });
     const numero = (_max.numero ?? 0) + 1;
-    const a = await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero, ejemplar: 1, emitidoPorId: admin.id } });
-    await prisma.ejemplarBoleta.create({ data: { sucursalId, cuentaId: cuenta.id, numero, ejemplar: 2, emitidoPorId: admin.id, corrigeAId: a.id, motivo: "E2E a11y" } });
+    const a = await prisma.ejemplarTicket.create({ data: { sucursalId, cuentaId: cuenta.id, numero, ejemplar: 1, emitidoPorId: admin.id } });
+    await prisma.ejemplarTicket.create({ data: { sucursalId, cuentaId: cuenta.id, numero, ejemplar: 2, emitidoPorId: admin.id, corrigeAId: a.id, motivo: "E2E a11y" } });
     try {
-      await page.goto(`/reportes/boletas?mesaId=${mesa.id}&desde=&hasta=`);
-      await conTitulo(page, "Boletas emitidas");
-      await expect(page.locator("[data-boleta]")).toHaveCount(2);
+      await page.goto(`/reportes/tickets?mesaId=${mesa.id}&desde=&hasta=`);
+      await conTitulo(page, "Tickets emitidos");
+      await expect(page.locator("[data-ticket]")).toHaveCount(2);
       expect((await new AxeBuilder({ page }).analyze()).violations, "listado con marcas de corrección/reemplazo").toEqual([]);
 
-      await page.locator(`[data-boleta="${a.id}"] summary`).click();
+      await page.locator(`[data-ticket="${a.id}"] summary`).click();
       await expect(page.getByRole("link", { name: "Trazabilidad" }).first()).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "detalle expandido con el link a Trazabilidad").toEqual([]);
     } finally {
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.ejemplarTicket.deleteMany({ where: { cuentaId: cuenta.id, corrigeAId: { not: null } } });
+      await prisma.ejemplarTicket.deleteMany({ where: { cuentaId: cuenta.id } });
       await prisma.cuentaItem.deleteMany({ where: { cuentaId: cuenta.id } });
       await prisma.operacion.deleteMany({ where: { id: venta.id } });
       await prisma.cuenta.deleteMany({ where: { id: cuenta.id } });

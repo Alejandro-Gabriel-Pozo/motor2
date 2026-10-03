@@ -50,7 +50,7 @@ export interface LineaDeVenta {
 
 /**
  * La clave con la que se agrupan y se enlazan las líneas de una cuenta (producto, precio congelado, promo y, en un suelto con descuento de
- * producto, su precio de lista): una sola definición para `lineasDeVenta`, la boleta y el reporte de boletas emitidas.
+ * producto, su precio de lista): una sola definición para `lineasDeVenta`, el ticket y el reporte de tickets emitidos.
  */
 export function claveDeLineaDeVenta(l: { productoId: string; precioUnitario: number; promoCuentaId?: string | null; precioCartaUnitario?: number | null }): string {
   const promoCuentaId = l.promoCuentaId ?? "";
@@ -198,7 +198,7 @@ export interface DetalleDeCuenta {
   /** El % YA CONGELADO en la cuenta (`Cuenta.descuentoPorcentaje`), no el actual del `Cliente` — ver `asignarClienteACuenta`. */
   descuentoPorcentaje: number | null;
   /** Σ cantidad × precio COBRADO de TODAS las filas (espejos incluidos, con el descuento de cliente ya aplicado si hay uno): lo que
-   *  se cobraría si se cerrara AHORA. Mismo cálculo que `cerrarCuenta`/la boleta (`precioConDescuento`, src/core/moneda.ts). */
+   *  se cobraría si se cerrara AHORA. Mismo cálculo que `cerrarCuenta`/el ticket (`precioConDescuento`, src/core/moneda.ts). */
   total: number;
   sinEnviar: ItemDeCuenta[];
   envios: { numero: number; items: ItemEnEnvio<ItemDeCuenta>[] }[];
@@ -272,7 +272,7 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
       cliente: fila.cliente?.nombre ?? null,
       descuentoPorcentaje,
       // Σ del importe COBRADO de cada línea (importeDeLinea sobre precioCobradoConDescuentos), no la suma cruda re-redondeada: así el total
-      // en pantalla nunca difiere del que registraría un cierre inmediato (boleta y cerrarCuenta usan el mismo criterio; sin cliente ni
+      // en pantalla nunca difiere del que registraría un cierre inmediato (ticket y cerrarCuenta usan el mismo criterio; sin cliente ni
       // descuento de producto, el precio queda tal cual). Con los dos descuentos rige solo el mayor. redondearMoneda solo limpia el ruido del float.
       total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, precioCobradoConDescuentos(i.precioUnitario, i.precioListaUnitario, descuentoPorcentaje).precio), 0)),
       sinEnviar,

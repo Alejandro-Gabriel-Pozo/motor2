@@ -2,17 +2,17 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { BoletaDeCuenta } from "@/core/pos/boleta";
+import type { TicketDeCuenta } from "@/core/pos/ticket";
 import { documentoDeReimpresion, type ComandaDeEnvio } from "@/core/pos/comanda";
 import { resolverImpresion, type DocumentoImprimible, type PedidoImpresion } from "@/core/pos/impresion";
-import { BoletaCuenta } from "./boleta-cuenta";
+import { TicketCuenta } from "./ticket-cuenta";
 import { BOTON_CHICO } from "./estilos";
 import { TicketCocina } from "./ticket-cocina";
 
 /**
- * Impresión de la pantalla de la mesa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B7/B9): UNA infraestructura para los
- * documentos que se imprimen desde acá (la comanda de cocina y la boleta del cliente), cada uno con su propio componente de
- * presentación (`TicketCocina` sin precios, `BoletaCuenta` con precios): nunca un «ticket genérico» con banderas.
+ * Impresión de la pantalla de la mesa (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B7/B9): UNA infraestructura para los
+ * documentos que se imprimen desde acá (la comanda de cocina y el ticket del cliente), cada uno con su propio componente de
+ * presentación (`TicketCocina` sin precios, `TicketCuenta` con precios): nunca un «ticket genérico» con banderas.
  *
  * - Vive en la CIMA de la página (por encima de «mesa libre» y «cuenta abierta»): así sobrevive a que la acción que pidió imprimir
  *   haga desaparecer su botón después de `router.refresh()` (que conserva el estado de los componentes de cliente).
@@ -28,11 +28,11 @@ interface ApiImpresion {
   anulacionesDe: (itemId: string) => string[];
   pedir: (pedido: PedidoImpresion) => void;
   reimprimirEnvio: (numero: number) => void;
-  /** Copia de la boleta de una cuenta cerrada de «Cuentas cerradas», solo si su último ejemplar sigue vigente (también un 566-B). */
-  reimprimirBoleta: (cuentaId: string) => void;
+  /** Copia del ticket de una cuenta cerrada de «Cuentas cerradas», solo si su último ejemplar sigue vigente (también un 566-B). */
+  reimprimirTicket: (cuentaId: string) => void;
 }
 
-const ImpresionContexto = createContext<ApiImpresion>({ anulacionesDe: () => [], pedir: () => {}, reimprimirEnvio: () => {}, reimprimirBoleta: () => {} });
+const ImpresionContexto = createContext<ApiImpresion>({ anulacionesDe: () => [], pedir: () => {}, reimprimirEnvio: () => {}, reimprimirTicket: () => {} });
 
 export function useImpresion() {
   return useContext(ImpresionContexto);
@@ -49,14 +49,14 @@ export function ImpresionProvider({
   sucursal,
   zonaHoraria,
   comandas,
-  boletas,
+  tickets,
   children,
 }: {
   mesa: string;
   sucursal: string;
   zonaHoraria: string;
   comandas: ComandaDeEnvio[];
-  boletas: BoletaDeCuenta[];
+  tickets: TicketDeCuenta[];
   children: React.ReactNode;
 }) {
   const [pedido, setPedido] = useState<PedidoImpresion | null>(null);
@@ -72,7 +72,7 @@ export function ImpresionProvider({
   // Con cada render (el refresco trae datos nuevos) se vuelve a mirar el pedido pendiente: el estado se ajusta durante el render, sin
   // efecto, igual que «guardar información de renders anteriores» (react.dev). Deja de ser pendiente en cuanto se imprime o se descarta.
   if (pedido) {
-    const resolucion = resolverImpresion({ comandas, boletas }, pedido);
+    const resolucion = resolverImpresion({ comandas, tickets }, pedido);
     if (resolucion.accion !== "esperar") {
       setPedido(null);
       if (resolucion.accion === "imprimir") mostrar(resolucion.documento);
@@ -94,9 +94,9 @@ export function ImpresionProvider({
       const documento = documentoDeReimpresion(comandas, numero);
       if (documento) mostrar(documento);
     },
-    reimprimirBoleta: (cuentaId) => {
-      const boleta = boletas.find((b) => b.cuentaId === cuentaId);
-      if (boleta?.estado === "vigente") mostrar({ tipo: "boleta-reimpresion", boleta });
+    reimprimirTicket: (cuentaId) => {
+      const ticket = tickets.find((b) => b.cuentaId === cuentaId);
+      if (ticket?.estado === "vigente") mostrar({ tipo: "ticket-reimpresion", ticket });
     },
   };
 
@@ -109,7 +109,7 @@ export function ImpresionProvider({
             {"comanda" in enCurso.documento ? (
               <TicketCocina documento={enCurso.documento} mesa={mesa} impresoEn={enCurso.impresoEn} zonaHoraria={zonaHoraria} />
             ) : (
-              <BoletaCuenta documento={enCurso.documento} mesa={mesa} sucursal={sucursal} zonaHoraria={zonaHoraria} />
+              <TicketCuenta documento={enCurso.documento} mesa={mesa} sucursal={sucursal} zonaHoraria={zonaHoraria} />
             )}
           </div>,
           document.body

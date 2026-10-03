@@ -77,8 +77,8 @@ async function sembrarPromoCombo(sucursalId: string) {
       await prisma.movimientoStock.deleteMany({ where: { OR: [{ operacionId: { in: operacionIds } }, { productoId: { in: productoIds } }] } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       await prisma.promoCuenta.deleteMany({ where: { id: { in: promoCuentaIds } } });
-      // Cerrar la cuenta (test D3/D4) emite una boleta: su ejemplar referencia la cuenta (RESTRICT) — se borra antes.
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // Cerrar la cuenta (test D3/D4) emite un ticket: su ejemplar referencia la cuenta (RESTRICT) — se borra antes.
+      await prisma.ejemplarTicket.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.promoCartaCupo.deleteMany({ where: { promoCartaId: promo.id } });

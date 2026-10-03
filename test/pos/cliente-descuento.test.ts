@@ -7,7 +7,7 @@ import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon 
 import { asignarClienteACuenta } from "../../src/server/actions/pos/cuenta-apertura";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
-import { obtenerBoletasRecientes } from "../../src/core/pos/boleta";
+import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
 import { altaCliente, actualizarActivoCliente } from "../../src/server/actions/clientes/cliente";
 
 /**
@@ -176,16 +176,16 @@ describe("Cliente con descuento", () => {
       expect(detalle?.cuenta?.descuentoPorcentaje).toBe(15);
     });
 
-    it("la boleta muestra el precio COBRADO, el de lista tachado (precioListaUnitario) y el cliente con su %", async () => {
+    it("el ticket muestra el precio COBRADO, el de lista tachado (precioListaUnitario) y el cliente con su %", async () => {
       const clienteId = await crearCliente("Fulano", 15);
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.milanesa.id, cantidad: 2, precioUnitario: 1000, numeroEnvio: 1 }]);
       await asignarClienteACuenta(cuenta.id, clienteId);
       expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-      const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
-      expect(boleta.cliente).toEqual({ nombre: "Fulano", descuentoPorcentaje: 15 });
-      expect(boleta.lineas).toEqual([{ producto: "Milanesa", cantidad: 2, precioUnitario: 850, precioListaUnitario: 1000, subtotal: 1700 }]);
-      expect(boleta.total).toBe(1700);
+      const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+      expect(ticket.cliente).toEqual({ nombre: "Fulano", descuentoPorcentaje: 15 });
+      expect(ticket.lineas).toEqual([{ producto: "Milanesa", cantidad: 2, precioUnitario: 850, precioListaUnitario: 1000, subtotal: 1700 }]);
+      expect(ticket.total).toBe(1700);
     });
 
     it("piso de 0,01 (Task #14): un % altísimo nunca deja una venta en $0", async () => {

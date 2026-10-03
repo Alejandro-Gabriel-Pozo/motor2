@@ -40,10 +40,10 @@ async function sembrar(sucursalId: string) {
       await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: { in: todas } } });
       await prisma.movimientoStock.deleteMany({ where: { operacionId: { in: todas } } });
       await prisma.operacion.deleteMany({ where: { id: { in: todas } } });
-      // docs/plan-numeracion-boleta-2026-09-25.md: cerrar la cuenta emite un EjemplarBoleta (FK RESTRICT hacia Cuenta) — hay que
+      // docs/plan-numeracion-ticket-2026-09-25.md: cerrar la cuenta emite un EjemplarTicket (FK RESTRICT hacia Cuenta) — hay que
       // borrarlo antes (las correcciones, con corrigeAId, antes que el original al que apuntan).
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, corrigeAId: { not: null } } });
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      await prisma.ejemplarTicket.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, corrigeAId: { not: null } } });
+      await prisma.ejemplarTicket.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.seccionHabitualProducto.deleteMany({ where: { productoId: { in: productoIds } } });

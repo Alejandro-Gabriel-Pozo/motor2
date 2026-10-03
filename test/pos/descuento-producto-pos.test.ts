@@ -11,7 +11,7 @@ import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuen
 import { altaCliente } from "../../src/server/actions/clientes/cliente";
 import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
 import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
-import { obtenerBoletasRecientes } from "../../src/core/pos/boleta";
+import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
 import { cargarSelectorCartaPos } from "../../src/core/pos/selector-carta-consulta";
 
 /**
@@ -148,27 +148,27 @@ describe("producto con descuento en el POS", () => {
     expect((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma))?.cuenta?.total).toBe(4800);
   });
 
-  it("la boleta muestra el precio cobrado y el de lista tachado cuando rige el descuento del producto, con y sin cliente", async () => {
+  it("el ticket muestra el precio cobrado y el de lista tachado cuando rige el descuento del producto, con y sin cliente", async () => {
     await guardarDescuentoProducto(s.flan.id, 15);
     const cuenta = await abrir();
     await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 2 }]);
     await enviarTodo(cuenta.id);
     await cerrarCuenta(cuenta.id);
-    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
-    expect(boleta.lineas).toEqual([{ producto: "Flan", cantidad: 2, precioUnitario: 2550, precioListaUnitario: 3000, subtotal: 5100 }]);
-    expect(boleta.total).toBe(5100);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    expect(ticket.lineas).toEqual([{ producto: "Flan", cantidad: 2, precioUnitario: 2550, precioListaUnitario: 3000, subtotal: 5100 }]);
+    expect(ticket.total).toBe(5100);
   });
 
-  it("la boleta con un cliente de MAYOR descuento muestra su precio (sobre la lista) y el de lista tachado", async () => {
+  it("el ticket con un cliente de MAYOR descuento muestra su precio (sobre la lista) y el de lista tachado", async () => {
     await guardarDescuentoProducto(s.flan.id, 15);
     const cuenta = await abrir();
     await asignarClienteACuenta(cuenta.id, await crearCliente("Mayor", 20));
     await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }]);
     await enviarTodo(cuenta.id);
     await cerrarCuenta(cuenta.id);
-    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
-    expect(boleta.lineas).toEqual([{ producto: "Flan", cantidad: 1, precioUnitario: 2400, precioListaUnitario: 3000, subtotal: 2400 }]);
-    expect(boleta.total).toBe(2400);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    expect(ticket.lineas).toEqual([{ producto: "Flan", cantidad: 1, precioUnitario: 2400, precioListaUnitario: 3000, subtotal: 2400 }]);
+    expect(ticket.total).toBe(2400);
   });
 
   it("el precio queda CONGELADO: si el descuento cambia o se saca después de pedir, la cuenta cobra el de cuando se pidió", async () => {

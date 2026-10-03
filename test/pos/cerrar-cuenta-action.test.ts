@@ -13,7 +13,7 @@ import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/core
 import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
 import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
 import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
-import { obtenerBoletasRecientes } from "../../src/core/pos/boleta";
+import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
 
 /**
  * Cierre de cuenta (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 6): registra la venta con el núcleo
@@ -243,8 +243,8 @@ describe("cerrarCuenta (server action)", () => {
     });
   });
 
-  describe("numeración de la boleta (docs/plan-numeracion-boleta-2026-09-25.md, paso 3): max + 1 por sucursal, siempre ejemplar A", () => {
-    const ejemplaresDe = (cuentaId: string) => prisma.ejemplarBoleta.findMany({ where: { cuentaId }, orderBy: { ejemplar: "asc" } });
+  describe("numeración del ticket (docs/plan-numeracion-ticket-2026-09-25.md, paso 3): max + 1 por sucursal, siempre ejemplar A", () => {
+    const ejemplaresDe = (cuentaId: string) => prisma.ejemplarTicket.findMany({ where: { cuentaId }, orderBy: { ejemplar: "asc" } });
     const cuentaConFlan = (mesaId = s.mesa.id) => sembrarCuenta(mesaId, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
 
     it("el primer cierre con venta de la sucursal recibe el 1-A, el segundo el 2-A; quién lo emitió y cuándo quedan registrados", async () => {
@@ -261,7 +261,7 @@ describe("cerrarCuenta (server action)", () => {
       expect(a1.emitidoEn).toEqual((await prisma.cuenta.findUniqueOrThrow({ where: { id: primera.id } })).cerradaEn);
     });
 
-    it("la numeración es por sucursal: la primera boleta de otra sucursal arranca en 1", async () => {
+    it("la numeración es por sucursal: el primer ticket de otra sucursal arranca en 1", async () => {
       await cerrarCuenta((await cuentaConFlan()).id);
       await cerrarCuenta((await cuentaConFlan()).id);
 
@@ -277,14 +277,14 @@ describe("cerrarCuenta (server action)", () => {
       expect((await cerrarCuenta(cuentaNorte.id)).ok).toBe(true);
 
       expect(await ejemplaresDe(cuentaNorte.id)).toMatchObject([{ sucursalId: norte.id, numero: 1, ejemplar: 1 }]);
-      expect((await prisma.ejemplarBoleta.findMany({ where: { sucursalId: s.sucursalId }, orderBy: { numero: "asc" } })).map((e) => e.numero)).toEqual([1, 2]);
+      expect((await prisma.ejemplarTicket.findMany({ where: { sucursalId: s.sucursalId }, orderBy: { numero: "asc" } })).map((e) => e.numero)).toEqual([1, 2]);
     });
 
     it("un cierre SIN venta (todo anulado) no consume número: el siguiente con venta recibe el 1", async () => {
       const sinVenta = await cuentaConFlan();
       await anularItemEnviado(sinVenta.items[0].id, 1, "Se fueron", 1);
       expect((await cerrarCuenta(sinVenta.id)).mensaje).toBe("Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar.");
-      expect(await prisma.ejemplarBoleta.count()).toBe(0);
+      expect(await prisma.ejemplarTicket.count()).toBe(0);
 
       const conVenta = await cuentaConFlan();
       expect((await cerrarCuenta(conVenta.id)).ok).toBe(true);
@@ -294,14 +294,14 @@ describe("cerrarCuenta (server action)", () => {
     it("un cierre bloqueado (ítems sin enviar) tampoco consume número", async () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
       expect((await cerrarCuenta(cuenta.id)).ok).toBe(false);
-      expect(await prisma.ejemplarBoleta.count()).toBe(0);
+      expect(await prisma.ejemplarTicket.count()).toBe(0);
     });
 
     it("el segundo cierre (idempotente, «ya estaba cerrada») no emite otro ejemplar ni otro número", async () => {
       const cuenta = await cuentaConFlan();
       expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
       expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: true, mensaje: "La cuenta de la mesa 4 ya estaba cerrada." });
-      expect(await prisma.ejemplarBoleta.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
+      expect(await prisma.ejemplarTicket.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
     });
   });
 
@@ -321,7 +321,7 @@ describe("cerrarCuenta (server action)", () => {
     expect.soft(Number(venta.movimientos.find((m) => m.proceso === "VENTA")!.precioTotal)).toBe(370.37);
   });
 
-  it("el total del mensaje de cierre y de la boleta es la suma de las líneas VENTA registradas, centavo a centavo (Paso 6)", async () => {
+  it("el total del mensaje de cierre y del ticket es la suma de las líneas VENTA registradas, centavo a centavo (Paso 6)", async () => {
     const jamon = await sembrarProductoDisponible({ codigo: "PV_JAMON", nombre: "Jamón crudo por kg", tipo: "PV", unidadStockId: s.kg.id, precioVenta: 1234.55 }, s.sucursalId);
     const queso = await sembrarProductoDisponible({ codigo: "PV_QUESO", nombre: "Queso por kg", tipo: "PV", unidadStockId: s.kg.id, precioVenta: 1234.57 }, s.sucursalId);
     for (const pv of [jamon, queso]) {
@@ -339,7 +339,7 @@ describe("cerrarCuenta (server action)", () => {
     expect(registrado.sort((a, b) => a - b)).toEqual([370.37, 617.29]);
     const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
     expect.soft(r.mensaje).toContain(MONEDA.format(987.66));
-    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id, prisma);
-    expect.soft(boleta.total).toBe(987.66);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    expect.soft(ticket.total).toBe(987.66);
   });
 });
