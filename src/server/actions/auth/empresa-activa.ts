@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { baseDeEmpresa } from "@/core/auth/base";
 import { getUsuarioActual } from "@/core/auth/session";
+import { rutaInternaSegura } from "@/core/navegacion/volver";
 import { COOKIE_EMPRESA_ACTIVA, COOKIE_SUCURSAL_ACTIVA, opcionesCookieActiva } from "@/core/auth/contexto";
 
 /**
@@ -13,8 +14,12 @@ import { COOKIE_EMPRESA_ACTIVA, COOKIE_SUCURSAL_ACTIVA, opcionesCookieActiva } f
  * escalar privilegio (`obtenerContextoUsuario` vuelve a validar la cookie en cada pedido).
  *
  * Se borra la cookie de sucursal: era una sucursal de la empresa anterior y no puede valer en la nueva.
+ *
+ * `volver` (opcional) es la ruta a la que seguir después de elegir —la pantalla de elección de `/login` la recibe por
+ * `.bind`—; solo se acepta una ruta interna. Con un `<form action>` el último argumento que llega es el `FormData`,
+ * por eso se exige que sea un texto.
  */
-export async function cambiarEmpresaActiva(empresaId: string): Promise<void> {
+export async function cambiarEmpresaActiva(empresaId: string, volver?: unknown): Promise<void> {
   const usuario = await getUsuarioActual();
   if (!usuario) return;
 
@@ -36,5 +41,5 @@ export async function cambiarEmpresaActiva(empresaId: string): Promise<void> {
   cookieStore.set(COOKIE_EMPRESA_ACTIVA, empresaId, opcionesCookieActiva());
   cookieStore.delete(COOKIE_SUCURSAL_ACTIVA);
 
-  redirect("/");
+  redirect((typeof volver === "string" ? rutaInternaSegura(volver) : null) ?? "/");
 }

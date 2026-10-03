@@ -56,11 +56,12 @@ async function conGate<T extends ResultadoAccion>(
   fn: (ctx: ContextoUsuario) => Promise<T>
 ): Promise<T> {
   const ctx = await obtenerContextoUsuario();
-  // Sin sesión (venció, o un admin desactivó al usuario con la pestaña abierta) o sin ninguna sucursal activa: a diferencia
+  // Sin sesión (venció, o un admin desactivó al usuario con la pestaña abierta), sin ninguna sucursal activa, con la empresa suspendida o con
+  // la empresa por elegir (dos o más y ninguna elegida): a diferencia
   // de un permiso denegado, que se le explica al usuario, acá no hay nada que corregir en la pantalla. Antes se devolvía
   // «No autenticado…» como un error más y el formulario seguía abierto; quien solo envía formularios nunca llegaba al
   // login. Ahora se lo lleva a /login, igual que hace el layout de (app) en cualquier navegación; esa pantalla ya explica
-  // el caso «iniciaste sesión pero no tenés acceso a ninguna sucursal». Se recuerda la pantalla en la que estaba para volver a
+  // cada uno de esos casos. Se recuerda la pantalla en la que estaba para volver a
   // ella al entrar (`irAlLogin`). La redirección lanza, por eso va antes de todo.
   if (!ctx) return irAlLogin();
 

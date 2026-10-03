@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
-import { __cookiesDeTest, __limpiarCookiesDeTest } from "../setup/next-headers-stub";
+import { __cookiesDeTest, __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa } from "../setup/next-headers-stub";
 import { cambiarEmpresaActiva } from "../../src/server/actions/auth/empresa-activa";
 import { cambiarSucursalActiva } from "../../src/server/actions/auth/sucursal-activa";
 
@@ -35,28 +35,30 @@ describe("cookies de empresa/sucursal activa", () => {
     await crearMembresia({ usuarioId: usuario.id, sucursalId: otraSucursal.id, rolId: base.admin.id });
     await crearMembresia({ usuarioId: usuario.id, sucursalId: sucursalNorte.id, rolId: rolNorte.id });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
-    return { otraSucursal };
+    return { otraSucursal, empresaId: base.sucursal.empresaId };
   }
 
   it("en producción: secure, httpOnly y sameSite lax", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    const { otraSucursal } = await escenario();
+    const { otraSucursal, empresaId } = await escenario();
 
     await expect(cambiarEmpresaActiva("norte")).rejects.toThrow("NEXT_REDIRECT");
     expect(__cookiesDeTest().opciones.get("empresaActivaId")).toMatchObject({ secure: true, httpOnly: true, sameSite: "lax" });
 
     __limpiarCookiesDeTest();
+    __setCookieDeTestParaEmpresa(empresaId); // con dos empresas, sin empresa elegida no hay contexto: la sucursal se cambia dentro de una
     await expect(cambiarSucursalActiva(otraSucursal.id)).rejects.toThrow("NEXT_REDIRECT");
     expect(__cookiesDeTest().opciones.get("sucursalActivaId")).toMatchObject({ secure: true, httpOnly: true, sameSite: "lax" });
   });
 
   it("fuera de producción: sin secure (desarrollo y tests corren en http)", async () => {
     vi.stubEnv("NODE_ENV", "development");
-    const { otraSucursal } = await escenario();
+    const { otraSucursal, empresaId } = await escenario();
 
     await expect(cambiarEmpresaActiva("norte")).rejects.toThrow("NEXT_REDIRECT");
     expect(__cookiesDeTest().opciones.get("empresaActivaId")?.secure).toBe(false);
     __limpiarCookiesDeTest();
+    __setCookieDeTestParaEmpresa(empresaId);
     await expect(cambiarSucursalActiva(otraSucursal.id)).rejects.toThrow("NEXT_REDIRECT");
     expect(__cookiesDeTest().opciones.get("sucursalActivaId")?.secure).toBe(false);
   });

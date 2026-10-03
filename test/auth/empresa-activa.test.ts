@@ -11,19 +11,20 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin }
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __cookiesDeTest, __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
-import { obtenerContextoUsuario } from "../../src/core/auth/contexto";
+import { obtenerContextoUsuario, obtenerSituacionDeAcceso } from "../../src/core/auth/contexto";
 import { cambiarEmpresaActiva } from "../../src/server/actions/auth/empresa-activa";
 
 /**
  * ADR-007, A4: la empresa activa de la sesión y su selector. Un usuario con pertenencia a DOS empresas ("principal", la de
  * siempre, y "norte") trabaja en una por vez; la cookie de empresa nunca se confía a ciegas.
  */
-async function crearEmpresa(id: string, estado: "ACTIVE" | "SUSPENDED" = "ACTIVE") {
+type EstadoDeTest = "ACTIVE" | "SUSPENDED" | "PROVISIONING" | "DELETING";
+async function crearEmpresa(id: string, estado: EstadoDeTest = "ACTIVE") {
   return prismaAdmin.empresa.create({ data: { id, nombre: `Empresa ${id}`, slug: id, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado } });
 }
 
 /** Una empresa nueva con su sucursal y su rol admin (con más de una empresa el `empresaId` de las tablas por empresa va explícito). */
-async function empresaConSucursal(id: string, estado: "ACTIVE" | "SUSPENDED" = "ACTIVE") {
+async function empresaConSucursal(id: string, estado: EstadoDeTest = "ACTIVE") {
   await crearEmpresa(id, estado);
   const sucursal = await prismaAdmin.sucursal.create({ data: { nombre: `Sucursal ${id}`, empresaId: id } });
   const rolAdmin = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: id } });
@@ -48,18 +49,51 @@ describe("obtenerContextoUsuario — empresa activa", () => {
     expect(ctx?.rolEmpresa).toBeNull();
   });
 
-  it("con dos empresas y sin cookie usa la más antigua; sucursal y membresías son solo de esa empresa", async () => {
+  it("con dos empresas y sin cookie NO hay empresa por defecto: hay que elegir, y mientras tanto no hay contexto", async () => {
     const base = await sembrarBase();
     const norte = await empresaConSucursal("norte");
     const usuario = await crearUsuarioConMembresia({ email: "multi@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await crearMembresia({ usuarioId: usuario.id, sucursalId: norte.sucursal.id, rolId: norte.rolAdmin.id });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
+    const situacion = await obtenerSituacionDeAcceso();
+    expect(situacion.estado).toBe("ELEGIR_EMPRESA");
+    if (situacion.estado !== "ELEGIR_EMPRESA") return;
+    expect(situacion.email).toBe("multi@test.com");
+    expect(situacion.empresas.map((e) => e.empresaSlug)).toEqual(["principal", "norte"]); // por antigüedad de la pertenencia
+    expect(await obtenerContextoUsuario()).toBeNull();
+  });
+
+  it("con dos empresas y la cookie de una: sucursal y membresías son solo de esa empresa", async () => {
+    const base = await sembrarBase();
+    const norte = await empresaConSucursal("norte");
+    const usuario = await crearUsuarioConMembresia({ email: "multi@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await crearMembresia({ usuarioId: usuario.id, sucursalId: norte.sucursal.id, rolId: norte.rolAdmin.id });
+    await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+    __setCookieDeTestParaEmpresa(base.sucursal.empresaId);
     const ctx = await obtenerContextoUsuario();
     expect(ctx?.empresaId).toBe(base.sucursal.empresaId);
     expect(ctx?.sucursalId).toBe(base.sucursal.id);
     expect(ctx?.membresias.map((m) => m.sucursalId)).toEqual([base.sucursal.id]);
     expect(ctx?.empresas.map((e) => e.empresaSlug).sort()).toEqual(["norte", "principal"]);
+    expect((await obtenerSituacionDeAcceso()).estado).toBe("CON_EMPRESA");
+  });
+
+  it("con dos empresas, una cookie de una empresa ajena no entra a la ajena: hay que elegir entre las propias", async () => {
+    const base = await sembrarBase();
+    const norte = await empresaConSucursal("norte");
+    await empresaConSucursal("ajena");
+    const usuario = await crearUsuarioConMembresia({ email: "multi@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await crearMembresia({ usuarioId: usuario.id, sucursalId: norte.sucursal.id, rolId: norte.rolAdmin.id });
+    await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+    __setCookieDeTestParaEmpresa("ajena");
+    const situacion = await obtenerSituacionDeAcceso();
+    expect(situacion.estado).toBe("ELEGIR_EMPRESA");
+    if (situacion.estado !== "ELEGIR_EMPRESA") return;
+    expect(situacion.empresas.map((e) => e.empresaSlug).sort()).toEqual(["norte", "principal"]);
+    expect(await obtenerContextoUsuario()).toBeNull();
   });
 
   it("la cookie de empresa cambia la empresa activa y con ella la sucursal (la cookie de sucursal de la otra empresa se ignora)", async () => {
@@ -116,6 +150,82 @@ describe("obtenerContextoUsuario — empresa activa", () => {
     expect(await obtenerContextoUsuario()).toBeNull();
   });
 
+  it("con dos activas y una suspendida, la cookie de la suspendida no vale: hay que elegir entre las activas", async () => {
+    const base = await sembrarBase();
+    const suspendida = await empresaConSucursal("suspendida", "SUSPENDED");
+    const otraActiva = await empresaConSucursal("otra");
+    const usuario = await crearUsuarioConMembresia({ email: "multi@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await crearMembresia({ usuarioId: usuario.id, sucursalId: suspendida.sucursal.id, rolId: suspendida.rolAdmin.id });
+    await crearMembresia({ usuarioId: usuario.id, sucursalId: otraActiva.sucursal.id, rolId: otraActiva.rolAdmin.id });
+    await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+    __setCookieDeTestParaEmpresa("suspendida");
+    const situacion = await obtenerSituacionDeAcceso();
+    expect(situacion.estado).toBe("ELEGIR_EMPRESA"); // dos activas ("principal" y "otra"): la cookie de la suspendida no vale
+    if (situacion.estado !== "ELEGIR_EMPRESA") return;
+    expect(situacion.empresas.map((e) => e.empresaSlug).sort()).toEqual(["otra", "principal"]);
+  });
+
+  describe("empresa suspendida y estados sin acceso", () => {
+    it("quien solo pertenece a empresas suspendidas ve que están suspendidas (con su nombre) y no tiene contexto", async () => {
+      await sembrarBase();
+      const norte = await empresaConSucursal("norte", "SUSPENDED");
+      const sur = await empresaConSucursal("sur", "SUSPENDED");
+      const usuario = await crearUsuarioConMembresia({ email: "susp@test.com", sucursalId: norte.sucursal.id, rolId: norte.rolAdmin.id });
+      await crearMembresia({ usuarioId: usuario.id, sucursalId: sur.sucursal.id, rolId: sur.rolAdmin.id });
+      await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+      const situacion = await obtenerSituacionDeAcceso();
+      expect(situacion.estado).toBe("EMPRESA_SUSPENDIDA");
+      if (situacion.estado !== "EMPRESA_SUSPENDIDA") return;
+      expect(situacion.email).toBe("susp@test.com");
+      expect(situacion.nombres).toEqual(["Empresa norte", "Empresa sur"]);
+      expect(await obtenerContextoUsuario()).toBeNull();
+    });
+
+    it("quien tiene una activa y una suspendida entra a la activa directo, sin elegir", async () => {
+      const base = await sembrarBase();
+      const suspendida = await empresaConSucursal("suspendida", "SUSPENDED");
+      const usuario = await crearUsuarioConMembresia({ email: "mixto@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+      await crearMembresia({ usuarioId: usuario.id, sucursalId: suspendida.sucursal.id, rolId: suspendida.rolAdmin.id });
+      await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+      const situacion = await obtenerSituacionDeAcceso();
+      expect(situacion.estado).toBe("CON_EMPRESA");
+      expect((await obtenerContextoUsuario())?.empresaId).toBe(base.sucursal.empresaId);
+    });
+
+    it("una empresa suspendida cuya pertenencia está inactiva no se menciona: es sin acceso", async () => {
+      await sembrarBase();
+      const norte = await empresaConSucursal("norte", "SUSPENDED");
+      const usuario = await crearUsuarioConMembresia({ email: "susp@test.com", sucursalId: norte.sucursal.id, rolId: norte.rolAdmin.id });
+      await prismaAdmin.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id }, data: { activo: false } });
+      await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+      expect((await obtenerSituacionDeAcceso()).estado).toBe("SIN_ACCESO");
+    });
+
+    it("una empresa en alta (PROVISIONING) o en baja (DELETING) es sin acceso, no suspendida", async () => {
+      await sembrarBase();
+      for (const estado of ["PROVISIONING", "DELETING"] as const) {
+        const empresa = await empresaConSucursal(`e-${estado.toLowerCase()}`, estado);
+        const usuario = await crearUsuarioConMembresia({ email: `${estado.toLowerCase()}@test.com`, sucursalId: empresa.sucursal.id, rolId: empresa.rolAdmin.id });
+        await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+        const situacion = await obtenerSituacionDeAcceso();
+        expect(situacion, estado).toMatchObject({ estado: "SIN_ACCESO", email: usuario.email });
+        expect(await obtenerContextoUsuario()).toBeNull();
+      }
+    });
+
+    it("sin sesión la situación es SIN_SESION", async () => {
+      const { getUsuarioActual } = await import("../../src/core/auth/session");
+      vi.mocked(getUsuarioActual).mockResolvedValue(null);
+
+      expect(await obtenerSituacionDeAcceso()).toEqual({ estado: "SIN_SESION" });
+    });
+  });
+
   it("una empresa donde el usuario no tiene ninguna sucursal activa no se ofrece", async () => {
     const base = await sembrarBase();
     const norte = await empresaConSucursal("norte");
@@ -160,6 +270,16 @@ describe("cambiarEmpresaActiva", () => {
     await expect(cambiarEmpresaActiva("norte")).rejects.toThrow("NEXT_REDIRECT:/");
     expect(__cookiesDeTest().escritas.get("empresaActivaId")).toBe("norte");
     expect(__cookiesDeTest().borradas).toContain("sucursalActivaId");
+  });
+
+  it("con `volver`: sigue a esa ruta interna; si no es una ruta interna segura (o no es un texto, como el FormData de un form), a /", async () => {
+    await usuarioEnDosEmpresas();
+
+    await expect(cambiarEmpresaActiva("norte", "/caja")).rejects.toThrow("NEXT_REDIRECT:/caja");
+    await expect(cambiarEmpresaActiva("norte", "https://malo.example/")).rejects.toThrow("NEXT_REDIRECT:/");
+    await expect(cambiarEmpresaActiva("norte", "//malo.example")).rejects.toThrow("NEXT_REDIRECT:/");
+    await expect(cambiarEmpresaActiva("norte", new FormData())).rejects.toThrow("NEXT_REDIRECT:/");
+    await expect(cambiarEmpresaActiva("norte", null)).rejects.toThrow("NEXT_REDIRECT:/");
   });
 
   it("a una empresa donde NO pertenece: no hace nada (no confía en lo que manda el cliente)", async () => {

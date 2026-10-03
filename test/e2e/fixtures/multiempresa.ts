@@ -17,14 +17,20 @@ import { asegurarBaseSeed } from "./auth";
  */
 export interface EmpresasDeLaPrueba {
   marca: string;
-  a: { empresaId: string; slug: string; sucursalId: string; rolAdminId: string };
+  a: { empresaId: string; slug: string; nombre: string; sucursalId: string; rolAdminId: string };
   b: { empresaId: string; slug: string; nombre: string; sucursalId: string; sucursalNombre: string; rolAdminId: string; adminUsuarioId: string };
 }
 
-export async function activarEmpresaB(): Promise<EmpresasDeLaPrueba> {
+/**
+ * `previa`: una llamada anterior de este mismo spec. Con una empresa B ya activa, `asegurarBaseSeed` (que siembra sin contexto) ya no
+ * puede correr —no hay empresa por defecto—, así que las empresas extra reusan la A de la primera llamada.
+ */
+export async function activarEmpresaB(previa?: EmpresasDeLaPrueba): Promise<EmpresasDeLaPrueba> {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   // Con una sola empresa activa, antes de crear la segunda.
-  const { sucursal, admin } = await asegurarBaseSeed();
+  const { sucursal, admin } = previa
+    ? { sucursal: { id: previa.a.sucursalId, empresaId: previa.a.empresaId }, admin: { id: previa.a.rolAdminId } }
+    : await asegurarBaseSeed();
   const slug = `norte-${marca}`;
   const nombre = `E2E Norte ${marca}`;
   const sucursalNombre = `Sucursal Norte ${marca}`;
@@ -42,7 +48,7 @@ export async function activarEmpresaB(): Promise<EmpresasDeLaPrueba> {
   const empresaA = await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: sucursal.empresaId } });
   return {
     marca,
-    a: { empresaId: empresaA.id, slug: empresaA.slug, sucursalId: sucursal.id, rolAdminId: admin.id },
+    a: { empresaId: empresaA.id, slug: empresaA.slug, nombre: empresaA.nombre, sucursalId: sucursal.id, rolAdminId: admin.id },
     b: { empresaId: creada.empresaId, slug, nombre, sucursalId: creada.sucursalId, sucursalNombre, rolAdminId: rolB.id, adminUsuarioId: creada.usuarioId },
   };
 }

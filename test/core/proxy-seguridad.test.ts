@@ -153,18 +153,18 @@ describe("proxy — host de la aplicación", () => {
     expect(aLaApp(r, "content-security-policy")).not.toContain("script-src *");
   });
 
-  it("sin cookie de sesión recuerda la ruta pedida (menos /login); con cualquiera de las tres cookies, no", () => {
+  it("recuerda la ruta pedida (menos /login), con o sin cookie de sesión: quien tiene dos empresas y ninguna elegida también necesita volver", () => {
     expect(aLaApp(pedir("app.example.com", "/mesas/1?x=2&_rsc=abc"), ENCABEZADO_RUTA_PEDIDA)).toBe("/mesas/1?x=2");
     expect(aLaApp(pedir("app.example.com", "/login"), ENCABEZADO_RUTA_PEDIDA)).toBeNull();
     for (const nombre of ["authjs.session-token", "__Secure-authjs.session-token", "__Host-authjs.session-token"]) {
-      expect(aLaApp(pedir("app.example.com", "/mesas/1", `${nombre}=abc`), ENCABEZADO_RUTA_PEDIDA), nombre).toBeNull();
+      expect(aLaApp(pedir("app.example.com", "/mesas/1", `${nombre}=abc`), ENCABEZADO_RUTA_PEDIDA), nombre).toBe("/mesas/1");
     }
   });
 
-  it("un cliente no puede falsear la ruta a la que vuelve el login: con sesión y en /login se descarta, sin sesión se pisa", () => {
+  it("un cliente no puede falsear la ruta a la que vuelve el login: en /login se descarta, en cualquier otra ruta se pisa", () => {
     const conEncabezado = (path: string, cookie?: string) =>
       proxy(new NextRequest(`http://app.example.com${path}`, { headers: { host: "app.example.com", [ENCABEZADO_RUTA_PEDIDA]: "//evil.example", ...(cookie ? { cookie } : {}) } }));
-    expect(aLaApp(conEncabezado("/mesas/1", "authjs.session-token=abc"), ENCABEZADO_RUTA_PEDIDA)).toBeNull();
+    expect(aLaApp(conEncabezado("/mesas/1", "authjs.session-token=abc"), ENCABEZADO_RUTA_PEDIDA)).toBe("/mesas/1");
     expect(aLaApp(conEncabezado("/login"), ENCABEZADO_RUTA_PEDIDA)).toBeNull();
     expect(aLaApp(conEncabezado("/mesas/1"), ENCABEZADO_RUTA_PEDIDA)).toBe("/mesas/1");
   });

@@ -6,13 +6,14 @@ import { prisma } from "../../src/lib/db";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { crearMembresias, crearMembresia } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { activarEmpresaB, crearUsuarioEn, paginaConSesion, suspenderEmpresaB, type EmpresasDeLaPrueba } from "./fixtures/multiempresa";
 
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
  * insumos-grupos, capacidades por sucursal, precio local, motivos de Merma/Consumo), la sección habitual de stock, el admin de la carta, su portal de sucursales y su
  * tema, el mapa de mesas del salón y la pantalla de una mesa (con «Cuentas cerradas», el modal de comensales al abrir cuenta), el reporte de
- * rotación de mesas y el reporte de tickets emitidos (Task #17). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
+ * rotación de mesas, el reporte de tickets emitidos (Task #17) y las dos pantallas de /login con sesión (elegir empresa, empresa suspendida; E1). No es exhaustivo sobre todas las pantallas: se suma una cuando aparece una necesidad concreta.
  */
 
 base("login: sin violaciones de accesibilidad detectables por axe", async ({ page }) => {
@@ -1401,3 +1402,46 @@ testAutenticado(
     }
   }
 );
+
+// Va al final del archivo: con dos empresas activas la fixture `paginaAutenticada` (siembra sin empresa por defecto) no sirve; la empresa extra se suspende al terminar.
+base.describe("login con sesión: elegir empresa y empresa suspendida", () => {
+  base.describe.configure({ mode: "serial" });
+  let empresas: EmpresasDeLaPrueba;
+  let sesionDoble: string;
+  let sesionSoloSuspendida: string;
+
+  base.beforeAll(async () => {
+    empresas = await activarEmpresaB();
+    ({ sessionToken: sesionDoble } = await crearUsuarioEn(`a11y-doble-${empresas.marca}@local.test`, [
+      { sucursalId: empresas.a.sucursalId, rolId: empresas.a.rolAdminId },
+      { sucursalId: empresas.b.sucursalId, rolId: empresas.b.rolAdminId },
+    ]));
+    ({ sessionToken: sesionSoloSuspendida } = await crearUsuarioEn(`a11y-suspendida-${empresas.marca}@local.test`, [{ sucursalId: empresas.b.sucursalId, rolId: empresas.b.rolAdminId }]));
+  });
+
+  base.afterAll(async () => {
+    await suspenderEmpresaB(empresas.b.empresaId);
+  });
+
+  base("elegir empresa: sin violaciones de axe, en modo claro y oscuro", async ({ browser, baseURL }) => {
+    const page = await paginaConSesion(browser, baseURL, sesionDoble);
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { name: "¿A qué empresa querés entrar?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Entrar a / })).toHaveCount(2);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
+    await page.emulateMedia({ colorScheme: "dark" });
+    expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    await page.context().close();
+  });
+
+  base("empresa suspendida: sin violaciones de axe, en modo claro y oscuro", async ({ browser, baseURL }) => {
+    await suspenderEmpresaB(empresas.b.empresaId);
+    const page = await paginaConSesion(browser, baseURL, sesionSoloSuspendida);
+    await page.goto("/login");
+    await expect(page.getByText(`La empresa «${empresas.b.nombre}» está suspendida.`)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
+    await page.emulateMedia({ colorScheme: "dark" });
+    expect((await new AxeBuilder({ page }).analyze()).violations, "modo oscuro emulado").toEqual([]);
+    await page.context().close();
+  });
+});

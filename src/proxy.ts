@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ENCABEZADO_RUTA_PEDIDA } from "@/core/navegacion/volver";
 import { esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "@/core/carta/host";
 import { esHostDeEmpresaUnica } from "@/core/carta/carta-empresa-unica";
-import { NOMBRES_COOKIE_SESION, sirvePorHttps } from "@/core/auth/cookie-sesion";
+import { sirvePorHttps } from "@/core/auth/cookie-sesion";
 import { cabecerasComunes, cspApp, generarNonce } from "@/core/seguridad/cabeceras";
 
 /**
@@ -14,9 +14,9 @@ import { cabecerasComunes, cspApp, generarNonce } from "@/core/seguridad/cabecer
  *    (el dominio base pelado —salvo con el add-on `CARTA_EMPRESA_UNICA`, donde es la carta de esa empresa—, un subdominio de dos niveles) también es 404. La CSP de la carta es estática (`next.config.ts`) para
  *    que la carta siga siendo ISR: acá no se le pone nonce.
  * 2. CSP con nonce por pedido para las pantallas de la aplicación (no para la carta ni para `/api`): ver `core/seguridad/cabeceras.ts`.
- * 3. Recuerda la pantalla pedida cuando NO hay cookie de sesión, para que el login la devuelva ahí al entrar. Sin esto, con la sesión
- *    vencida, una carga directa (F5, un favorito, la URL tipeada) llegaba al login sin saber a dónde volver: el navegador no manda
- *    `Referer` en esos pedidos. No decide nada de seguridad: solo pone un encabezado (siempre lo pisa, así un cliente no lo puede
+ * 3. Recuerda la pantalla pedida (en todo pedido salvo `/login`), para que el login la devuelva ahí al entrar o al elegir empresa. Sin esto,
+ *    con la sesión vencida —o con acceso a dos empresas y ninguna elegida—, una carga directa (F5, un favorito, la URL tipeada) llegaba al
+ *    login sin saber a dónde volver: el navegador no manda `Referer` en esos pedidos. No decide nada de seguridad: solo pone un encabezado (siempre lo pisa, así un cliente no lo puede
  *    falsear en estos pedidos) con la ruta pedida, y quien lo usa (`irAlLogin`) la valida como ruta interna. El acceso lo siguen
  *    decidiendo el layout y cada acción.
  */
@@ -57,11 +57,10 @@ export function proxy(request: NextRequest) {
   const csp = cspApp({ nonce, desarrollo: process.env.NODE_ENV === "development", https: sirvePorHttps(process.env) });
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", csp);
-  // Siempre se descarta lo que mande el cliente: con sesión (o en /login) el proxy no lo pone, y un valor falseado llegaría tal cual a `irAlLogin`.
+  // Siempre se descarta lo que mande el cliente: en /login el proxy no lo pone, y un valor falseado llegaría tal cual a `irAlLogin`.
   headers.delete(ENCABEZADO_RUTA_PEDIDA);
 
-  const sinSesion = !NOMBRES_COOKIE_SESION.some((nombre) => request.cookies.has(nombre));
-  if (sinSesion && pathname !== "/login") {
+  if (pathname !== "/login") {
     const ruta = rutaPedida(request);
     if (ruta) headers.set(ENCABEZADO_RUTA_PEDIDA, ruta);
   }

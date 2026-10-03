@@ -9,8 +9,8 @@ import {
 } from "./fixtures/multiempresa";
 
 /**
- * ADR-007, A7: un usuario que pertenece a las DOS empresas ve el selector de empresa y, al elegir la otra, pasa a ver sus datos
- * (y deja de ver los de la anterior). La segunda empresa se suspende al terminar.
+ * ADR-007, A7: un usuario que pertenece a las DOS empresas elige una al entrar (pantalla de elección, E1), ve el selector de empresa
+ * y, al elegir la otra, pasa a ver sus datos (y deja de ver los de la anterior). La segunda empresa se suspende al terminar.
  */
 let e: EmpresasDeLaPrueba;
 let sesion: string;
@@ -36,8 +36,10 @@ test.afterAll(async () => {
 test("un usuario en las dos empresas ve el selector y al cambiar de empresa ve los datos de la otra", async ({ browser, baseURL }) => {
   const page = await paginaConSesion(browser, baseURL, sesion);
 
-  // Entra en la empresa más antigua de sus pertenencias: la A.
+  // Sin empresa elegida no hay empresa por defecto: la pantalla de elección lo manda de vuelta a donde iba.
   await page.goto("/catalogo/proveedores");
+  await page.getByRole("button", { name: `Entrar a ${e.a.nombre}` }).click();
+  await page.waitForURL((url) => url.pathname === "/catalogo/proveedores");
   const selector = page.getByLabel("Empresa activa");
   await expect(selector).toBeVisible();
   await expect(selector.locator("option")).toHaveCount(2);

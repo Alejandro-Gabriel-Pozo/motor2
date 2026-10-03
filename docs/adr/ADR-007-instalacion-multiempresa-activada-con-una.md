@@ -10,6 +10,8 @@
 > Corregido por ADR-011 y ADR-012 (2026-10-03): `npm run build` ya no migra por defecto (Tanda 7; ver S-03), `UsuarioEmpresa` tiene RLS desde
 > `20261001250000_rls_usuario_empresa`, `Empresa` ya lleva las columnas de política y el `cuit` pasa a ser obligatorio. El detalle está en su sección
 > «Correcciones a otros ADR».
+>
+> Corregido por ADR-017 (2026-10-03): con acceso a dos o más empresas y sin cookie válida ya no se entra a la primera; `/login` pide elegir.
 
 ## Contexto
 
