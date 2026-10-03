@@ -5,6 +5,9 @@
 > completa con los módulos de soporte. Lo escribió el dueño de producto en sus respuestas D1 y D2 del 2026-10-03; este ADR las registra con su
 > motivo y con las consecuencias que se derivaron de leer el código. No toca la política de empresa, los planes (ADR-013) ni la identidad de
 > plataforma (ADR-012).
+>
+> Ampliado por ADR-015 (2026-10-03): la tabla de dependencias del §3 se reemplaza por una completa (Stock como requisito de Compras, Traspasos y
+> Consignación; Recetas como módulo propio; Clientes básico lo trae Salón).
 
 ## Contexto
 
