@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/core/permisos/gate";
+import { denegado, requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/core/permisos/gate";
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
-import { MENSAJE_PERMISOS_DE_PLATAFORMA, politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
+import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
 import { error, type ResultadoAccion } from "./tipos";
 
@@ -47,7 +47,7 @@ export async function conEdicionDePermisos<T extends ResultadoAccion = Resultado
     const gate = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db);
     if (!gate.ok) return gate;
     const politica = await politicaDeEmpresa(ctx.empresaId, ctx.db);
-    return politica.permisosEditables ? { ok: true } : { ok: false, mensaje: MENSAJE_PERMISOS_DE_PLATAFORMA };
+    return politica.permisosEditables ? { ok: true } : denegado({ motivo: "SIN_PERMISO", caso: "POLITICA_DE_PLATAFORMA" });
   }, fn);
 }
 

@@ -168,10 +168,15 @@ describe("anti-escalada: un rol por debajo del piso no llega a la acción", () =
       const deGerente = ACCIONES.find((a) => (a.nivelMinimo as NivelDeAccion) === "gerente")!.clave as AccionDeEmpresa;
       const editar = await requierePermisoDeEmpresa(adminId, EMPRESA_POR_DEFECTO_ID, deGerente, prisma);
       const ver = await requierePermisoVerDeEmpresa(adminId, EMPRESA_POR_DEFECTO_ID, deGerente, prisma);
-      expect(editar).toEqual({ ok: false, mensaje: expect.stringMatching(/solo la hace el gerente/) });
-      expect(ver).toEqual({ ok: false, mensaje: expect.stringMatching(/solo la ve el gerente/) });
+      expect(editar).toMatchObject({ ok: false, motivo: "SIN_PERMISO", caso: "SOLO_GERENTE", mensaje: expect.stringMatching(/solo la hace el gerente/) });
+      expect(ver).toMatchObject({ ok: false, motivo: "SIN_PERMISO", caso: "SOLO_GERENTE", mensaje: expect.stringMatching(/solo la ve el gerente/) });
       // Un piso administrador sigue explicando la causa por rol.
-      expect(await requierePermisoDeEmpresa(mozoId, EMPRESA_POR_DEFECTO_ID, DE_ADMIN_EMPRESA, prisma)).toEqual({ ok: false, mensaje: expect.stringMatching(/Ninguno de tus roles/) });
+      expect(await requierePermisoDeEmpresa(mozoId, EMPRESA_POR_DEFECTO_ID, DE_ADMIN_EMPRESA, prisma)).toMatchObject({
+        ok: false,
+        motivo: "SIN_PERMISO",
+        caso: "ROLES_SIN_LA_ACCION",
+        mensaje: expect.stringMatching(/Ninguno de tus roles/),
+      });
     });
 
     it("menú: no muestra al rol por debajo del piso lo que la página le negaría", async () => {

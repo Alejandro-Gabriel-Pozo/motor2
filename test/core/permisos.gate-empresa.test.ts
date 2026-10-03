@@ -72,7 +72,10 @@ describe("gate de permisos — acciones de empresa", () => {
     const usuario = await prismaAdmin.user.create({ data: { email: "sin-membresia@test.com" } });
     const r = await requierePermisoDeEmpresa(usuario.id, empresaId, "alta_producto", prismaAdmin);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.mensaje).toMatch(/No tenés acceso a esta empresa/);
+    if (!r.ok) {
+      expect(r.mensaje).toMatch(/No tenés acceso a esta empresa/);
+      expect([r.motivo, "caso" in r ? r.caso : null]).toEqual(["SIN_PERMISO", "SIN_ACCESO_A_EMPRESA"]);
+    }
   });
 
   it("la Central deshabilita la acción en la sucursal que la daba: se niega, y avisa que fue la Central", async () => {
@@ -81,7 +84,10 @@ describe("gate de permisos — acciones de empresa", () => {
 
     const r = await requierePermisoDeEmpresa(admin.id, empresaId, "unidades", prismaAdmin);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.mensaje).toMatch(/La Central no habilitó/);
+    if (!r.ok) {
+      expect(r.mensaje).toMatch(/La Central no habilitó/);
+      expect(r.motivo).toBe("SIN_CAPACIDAD");
+    }
   });
 
   it("la capacidad deshabilitada en UNA sucursal no bloquea si otra membresía sí la tiene habilitada", async () => {

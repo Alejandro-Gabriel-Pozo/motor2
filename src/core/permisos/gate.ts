@@ -1,14 +1,16 @@
 import type { PrismaClient } from "@prisma/client";
 import { capacidadesDeSucursal, sucursalTieneCapacidad } from "./capacidades-sucursal";
 import { contextoDeAccion, nivelMinimoDeAccion, rolAlcanzaLaAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
+import { textoDeDenegacion, type Denegacion } from "./motivos";
 import { esGerenteDeEmpresa } from "./rol-empresa";
 
-export type ResultadoGate = { ok: true } | { ok: false; mensaje: string };
+/** Una denegación lleva su MOTIVO tipado (ver `motivos.ts`) y el `mensaje` ya armado: las pantallas que solo muestran el texto no cambian. */
+export type ResultadoGate = { ok: true } | ({ ok: false; mensaje: string } & Denegacion);
 
 const OK: ResultadoGate = { ok: true };
 
-function denegado(mensaje: string): ResultadoGate {
-  return { ok: false, mensaje };
+export function denegado(d: Denegacion): ResultadoGate {
+  return { ok: false, mensaje: textoDeDenegacion(d), ...d };
 }
 
 /**
@@ -49,18 +51,16 @@ export async function requierePermiso(
   db: PrismaClient
 ): Promise<ResultadoGate> {
   if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
-    return denegado(`La Central no habilitó "${accionClave}" para esta sucursal.`);
+    return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursal" });
   }
 
   const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
   if (!resultado) {
-    return denegado("No tenés acceso a esta sucursal, o tu usuario está inactivo.");
+    return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_SUCURSAL" });
   }
 
   if (!resultado.permiso?.puedeEditar) {
-    return denegado(
-      `No tenés permiso para esta acción. Tu rol ("${resultado.membresia.rol.nombre}") no tiene "${accionClave}" habilitado. Pedile a un admin que te lo habilite.`
-    );
+    return denegado({ motivo: "SIN_PERMISO", caso: "ROL_SIN_LA_ACCION", para: "editar", accion: accionClave, rol: resultado.membresia.rol.nombre });
   }
   return OK;
 }
@@ -79,18 +79,16 @@ export async function requierePermisoVer(
   db: PrismaClient
 ): Promise<ResultadoGate> {
   if (!(await sucursalTieneCapacidad(sucursalId, accionClave, db))) {
-    return denegado(`La Central no habilitó "${accionClave}" para esta sucursal.`);
+    return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursal" });
   }
 
   const resultado = await obtenerMembresiaConPermiso(usuarioId, sucursalId, accionClave, db);
   if (!resultado) {
-    return denegado("No tenés acceso a esta sucursal, o tu usuario está inactivo.");
+    return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_SUCURSAL" });
   }
 
   if (!resultado.permiso?.puedeVer) {
-    return denegado(
-      `No tenés permiso para ver esta sección. Tu rol ("${resultado.membresia.rol.nombre}") no tiene "${accionClave}" habilitado.`
-    );
+    return denegado({ motivo: "SIN_PERMISO", caso: "ROL_SIN_LA_ACCION", para: "ver", accion: accionClave, rol: resultado.membresia.rol.nombre });
   }
   return OK;
 }
@@ -241,15 +239,13 @@ export async function requierePermisoDeEmpresa(
   db: PrismaClient
 ): Promise<ResultadoGate> {
   const { hayMembresia, roles, niveles } = await nivelesEnLaEmpresa(usuarioId, empresaId, [accionClave], db);
-  if (!hayMembresia) return denegado("No tenés acceso a esta empresa, o tu usuario está inactivo.");
+  if (!hayMembresia) return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_EMPRESA" });
 
   const nivel = niveles.get(accionClave)!;
   if (nivel.editar) return OK;
-  if (nivel.bloqueadaPorLaCentral && !nivel.ver) return denegado(`La Central no habilitó "${accionClave}" para tus sucursales.`);
-  if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado("No tenés permiso para esta acción: solo la hace el gerente de la empresa.");
-  return denegado(
-    `No tenés permiso para esta acción. Ninguno de tus roles (${roles.map((r) => `"${r}"`).join(", ")}) tiene "${accionClave}" habilitado. Pedile a un admin que te lo habilite.`
-  );
+  if (nivel.bloqueadaPorLaCentral && !nivel.ver) return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursales_del_usuario" });
+  if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado({ motivo: "SIN_PERMISO", caso: "SOLO_GERENTE", para: "editar" });
+  return denegado({ motivo: "SIN_PERMISO", caso: "ROLES_SIN_LA_ACCION", para: "editar", accion: accionClave, roles });
 }
 
 /** Gate de VER de una acción de empresa: el equivalente de `requierePermisoVer` para el contexto empresa. */
@@ -260,15 +256,13 @@ export async function requierePermisoVerDeEmpresa(
   db: PrismaClient
 ): Promise<ResultadoGate> {
   const { hayMembresia, roles, niveles } = await nivelesEnLaEmpresa(usuarioId, empresaId, [accionClave], db);
-  if (!hayMembresia) return denegado("No tenés acceso a esta empresa, o tu usuario está inactivo.");
+  if (!hayMembresia) return denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_EMPRESA" });
 
   const nivel = niveles.get(accionClave)!;
   if (nivel.ver) return OK;
-  if (nivel.bloqueadaPorLaCentral) return denegado(`La Central no habilitó "${accionClave}" para tus sucursales.`);
-  if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado("No tenés permiso para ver esta sección: solo la ve el gerente de la empresa.");
-  return denegado(
-    `No tenés permiso para ver esta sección. Ninguno de tus roles (${roles.map((r) => `"${r}"`).join(", ")}) tiene "${accionClave}" habilitado.`
-  );
+  if (nivel.bloqueadaPorLaCentral) return denegado({ motivo: "SIN_CAPACIDAD", accion: accionClave, alcance: "sucursales_del_usuario" });
+  if (nivelMinimoDeAccion(accionClave) === "gerente") return denegado({ motivo: "SIN_PERMISO", caso: "SOLO_GERENTE", para: "ver" });
+  return denegado({ motivo: "SIN_PERMISO", caso: "ROLES_SIN_LA_ACCION", para: "ver", accion: accionClave, roles });
 }
 
 /** Como `obtenerMiNivelPermiso` para una acción de empresa: si mostrar los controles de edición o solo la lista. */
