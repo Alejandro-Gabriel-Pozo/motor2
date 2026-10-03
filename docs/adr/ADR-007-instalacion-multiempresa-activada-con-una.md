@@ -6,6 +6,10 @@
 > opciones recomendadas de D1-D6 y D9). Amplía ADR-002 y sustituye su frase
 > "RLS modelo por modelo, Fase B" (ver "Correcciones a otros ADR"). Este
 > documento es el punto de retomada de la Fase F de ADR-006.
+>
+> Corregido por ADR-011 y ADR-012 (2026-10-03): `npm run build` ya no migra por defecto (Tanda 7; ver S-03), `UsuarioEmpresa` tiene RLS desde
+> `20261001250000_rls_usuario_empresa`, `Empresa` ya lleva las columnas de política y el `cuit` pasa a ser obligatorio. El detalle está en su sección
+> «Correcciones a otros ADR».
 
 ## Contexto
 

@@ -7,6 +7,10 @@
 >
 > Actualizado el 2026-10-02 (Tanda 8): el traspaso de gerencia ya tiene pantalla y clave propia (`traspasar_gerencia`), y `conGerenteDeEmpresa` se
 > eliminó. El test `test/arquitectura/adr-al-dia.test.ts` verifica que las claves y las rutas que cita este ADR existan.
+>
+> Corregido por ADR-011 y ADR-012 (2026-10-03): el core no audita el traspaso de gerencia (lo hace la acción de usuarios), el «superadmin de
+> plataforma» queda decidido en ADR-012, la política de empresa ya vive en columnas de `Empresa`, y los módulos se componen con este guard según
+> ADR-011. El detalle está en su sección «Correcciones a otros ADR».
 
 ## Contexto
 

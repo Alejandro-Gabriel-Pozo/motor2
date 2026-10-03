@@ -2180,7 +2180,7 @@ model EjemplarBoleta {
 }
 
 // ===================================================================
-// PLATAFORMA (Fase F) — Empresa y su pertenencia de usuarios. Sin RLS por empresa.
+// PLATAFORMA (Fase F) — Empresa y su pertenencia de usuarios. `Empresa` sin RLS por empresa; `UsuarioEmpresa` con RLS propia.
 // ===================================================================
 
 enum EstadoEmpresa {

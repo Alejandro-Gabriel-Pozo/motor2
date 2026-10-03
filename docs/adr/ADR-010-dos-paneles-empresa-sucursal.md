@@ -2,6 +2,8 @@
 
 > Redactado el 2026-10-01 (Lote 3, tanda B). Sin schema. Complementa ADR-008 (RBAC acción + contexto): el contexto de cada acción
 > (`empresa` / `sucursal`) es lo que decide a qué panel va cada pantalla.
+>
+> Corregido por ADR-011 (2026-10-03): `dosPaneles` ya es una columna de `Empresa` (por defecto `true`), no una constante (§4).
 
 ## Contexto
 

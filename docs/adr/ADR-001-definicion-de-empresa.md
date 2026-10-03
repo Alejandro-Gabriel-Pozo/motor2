@@ -35,7 +35,8 @@ Un usuario con `UsuarioEmpresa.rolEmpresa === "gerente"` gestiona usuarios y
 sus asignaciones a sucursales en toda la empresa; nada más — no da permiso
 sobre precios ni catálogo. (Actualizado 2026-09-29: el diseño original de
 esta fase usaba `esGerente: Boolean`; reemplazado por `rolEmpresa: String?`
-en todas las capas — ver ADR-004.)
+en todas las capas — ver ADR-004.) (Ampliado 2026-10-03 por ADR-012 y por un ADR de datos fiscales, aún sin numerar: el gerente también edita
+los datos fiscales salvo el CUIT y administra los puntos de venta; el CUIT es obligatorio y lo fija solo la plataforma.)
 
 ## Jerarquía
 
