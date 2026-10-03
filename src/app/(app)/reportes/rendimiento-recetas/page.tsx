@@ -9,6 +9,7 @@ import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 const AYUDA_RENDIMIENTO_REAL =
   "«Medido» (con dos Conteos Físicos que cubren el insumo, al principio y al final del tramo): el consumo real, sumado directo del Kardex entre esos dos conteos ÷ lo vendido en ese mismo tramo — una medición, no una estimación. «Estimado» (sin esos dos conteos): total comprado ÷ total vendido en el rango elegido — asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12). El método de esta fila se muestra debajo del número.";
@@ -20,8 +21,7 @@ const AYUDA_IMPACTO = "(consumo observado − lo que la receta hubiera consumido
 
 /** Mismo criterio que `hoyUtcSinHora`/"29 + hoy" de rango-por-defecto.ts — acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
 function fechaUtcIsoHaceNDias(n: number): string {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
+  const d = inicioDelDiaDe(new Date(), ZONA_UTC);
   d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString().slice(0, 10);
 }

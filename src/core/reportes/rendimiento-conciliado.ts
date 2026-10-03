@@ -26,6 +26,7 @@
  * vez de estimado. Sin las dos anclas (D4), se cae al método "COMPRAS" de
  * siempre: nunca se deja la fila sin ningún número.
  */
+import { ZONA_UTC, finDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 /** Redondeo a 3 decimales, para cantidades de stock — duplicado a propósito de `comun.ts`/`rendimiento-recetas-vistas.ts` (ver el docstring de arriba, el motivo es el mismo: nunca importar nada que arrastre Prisma). */
 function redondearCantidad(n: number): number {
@@ -203,9 +204,7 @@ export function anclasValidasEnVentana(candidatos: readonly CandidatoAncla[], de
 
 /** Fin del día calendario (UTC) de `fecha` — 23:59:59.999, mismo criterio que `rangoUtc` de rendimiento-recetas.ts. */
 export function finDelDiaUtc(fecha: Date): Date {
-  const f = new Date(fecha);
-  f.setUTCHours(23, 59, 59, 999);
-  return f;
+  return finDelDiaDe(fecha, ZONA_UTC);
 }
 
 /**

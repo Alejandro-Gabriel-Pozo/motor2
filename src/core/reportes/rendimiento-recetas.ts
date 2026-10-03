@@ -1,4 +1,5 @@
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
+import { ZONA_UTC, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import type { CostoMP, Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { alcanceDeSucursal, cargarRecetasVigentes, rendimientoEfectivo } from "@/core/catalogo/public";
@@ -191,9 +192,7 @@ async function calcularStockAperturaYCierre(sucursalId: string, productoIds: str
 
 /** El día calendario (UTC, D3) de `fecha` — medianoche, para agrupar Conteo Físico por día sin importar la hora exacta a la que se registró. */
 function diaUtc(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
+  return inicioDelDiaDe(fecha, ZONA_UTC);
 }
 
 /**
@@ -306,11 +305,7 @@ function costoUnitarioDePool(productoIds: string[], costos: Map<string, CostoMP>
 }
 
 function rangoUtc(desdeIn: Date, hastaIn: Date): { desde: Date; hasta: Date } {
-  const desde = new Date(desdeIn);
-  desde.setUTCHours(0, 0, 0, 0);
-  const hasta = new Date(hastaIn);
-  hasta.setUTCHours(23, 59, 59, 999);
-  return { desde, hasta };
+  return rangoDeDias(desdeIn, hastaIn, ZONA_UTC);
 }
 
 const MS_POR_SEMANA = 7 * 24 * 60 * 60 * 1000;

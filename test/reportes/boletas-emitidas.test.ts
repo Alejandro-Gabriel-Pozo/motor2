@@ -8,7 +8,7 @@ import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion
 import { cerrarCuenta, emitirBoletaCorregida } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { listarBoletasEmitidas, leerFiltroBoletas, TAMANO_PAGINA_BOLETAS } from "../../src/core/reportes/boletas-emitidas";
-import { inicioDelDiaArgentina, finDelDiaArgentina } from "../../src/core/reportes/rango-dia-argentina";
+import { ZONA_ARGENTINA, finDelDia, inicioDelDia } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * Reporte de boletas emitidas (Task #17): una fila por `EjemplarBoleta`, más recientes primero. Contra Postgres real, con las
@@ -160,13 +160,13 @@ describe("listarBoletasEmitidas", () => {
     const emitidaEn = new Date("2026-09-26T00:30:00.000Z"); // 21:30 ART del 25/09
     await prisma.ejemplarBoleta.updateMany({ where: { cuentaId: cuenta.id }, data: { emitidoEn: emitidaEn } });
 
-    const rango25 = { desde: inicioDelDiaArgentina("2026-09-25"), hasta: finDelDiaArgentina("2026-09-25") };
-    const rango26 = { desde: inicioDelDiaArgentina("2026-09-26"), hasta: finDelDiaArgentina("2026-09-26") };
+    const rango25 = { desde: inicioDelDia("2026-09-25", ZONA_ARGENTINA), hasta: finDelDia("2026-09-25", ZONA_ARGENTINA) };
+    const rango26 = { desde: inicioDelDia("2026-09-26", ZONA_ARGENTINA), hasta: finDelDia("2026-09-26", ZONA_ARGENTINA) };
     expect((await listarBoletasEmitidas(s.sucursalId, rango25, prisma)).items).toHaveLength(1);
     expect((await listarBoletasEmitidas(s.sucursalId, rango26, prisma)).items).toHaveLength(0);
 
     // Y a través de leerFiltroBoletas (lo que hace la página): sp.desde=sp.hasta="2026-09-25" da el mismo resultado.
-    const leido = leerFiltroBoletas({ desde: "2026-09-25", hasta: "2026-09-25" });
+    const leido = leerFiltroBoletas({ desde: "2026-09-25", hasta: "2026-09-25" }, ZONA_ARGENTINA);
     expect((await listarBoletasEmitidas(s.sucursalId, leido.filtro, prisma)).items).toHaveLength(1);
   });
 

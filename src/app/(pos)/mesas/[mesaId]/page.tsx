@@ -123,7 +123,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           )}
         </header>
 
-        <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} comandas={comandas} boletas={boletas}>
+        <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} zonaHoraria={ctx.empresaZonaHoraria} comandas={comandas} boletas={boletas}>
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
               <p className="mb-4 font-semibold">La mesa está libre.</p>
@@ -186,7 +186,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
               </div>
             </div>
           )}
-          <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} />
+          <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
           {verReportesDinero.ver && (
             <p className="mt-3 text-[13px]">
               <Link href={`/reportes/boletas?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">

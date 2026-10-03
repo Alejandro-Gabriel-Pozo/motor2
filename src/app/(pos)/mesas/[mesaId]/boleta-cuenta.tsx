@@ -1,6 +1,7 @@
 import type { DocumentoImprimible } from "@/core/pos/impresion";
 import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
-import { formatearCantidad, formatearFechaHora, formatearMonto } from "@/core/pos/formato";
+import { formatearCantidad, formatearMonto } from "@/core/pos/formato";
+import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 
 type DocumentoDeBoleta = Extract<DocumentoImprimible, { boleta: unknown }>;
 
@@ -22,7 +23,7 @@ type DocumentoDeBoleta = Extract<DocumentoImprimible, { boleta: unknown }>;
  * cobrado por la promo entera; sus componentes van indentados, SIN precio propio impreso (ya está en la cabecera). `key` incluye
  * `promoCuentaId` — dos instancias de la misma promo (o dos promos con el mismo total, por casualidad) no colisionan.
  */
-export function BoletaCuenta({ documento, mesa, sucursal }: { documento: DocumentoDeBoleta; mesa: string; sucursal: string }) {
+export function BoletaCuenta({ documento, mesa, sucursal, zonaHoraria }: { documento: DocumentoDeBoleta; mesa: string; sucursal: string; zonaHoraria: string }) {
   const { boleta } = documento;
   return (
     <div className="ticket">
@@ -36,7 +37,7 @@ export function BoletaCuenta({ documento, mesa, sucursal }: { documento: Documen
         </p>
       )}
       {boleta.corrigeA && <p className="ticket-dato">Reemplaza a N.º {formatearNumeroBoleta(boleta.corrigeA)}</p>}
-      <p className="ticket-dato">Cerrada: {formatearFechaHora(boleta.cerradaEn)}</p>
+      <p className="ticket-dato">Cerrada: {formatearFechaHora(boleta.cerradaEn, zonaHoraria)}</p>
       <p className="ticket-dato">Atendió: {boleta.mesero}</p>
       {boleta.cliente && (
         <p className="ticket-dato">

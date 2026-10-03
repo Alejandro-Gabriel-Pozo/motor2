@@ -115,7 +115,7 @@ describe("pantallaDeInicio (con la base)", () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
+    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", empresaZonaHoraria: "America/Argentina/Buenos_Aires", rolEmpresa: null, empresas: [], ...baseDeTest });
 
     expect(await pantallaDeInicio(ctxDe(admin))).toBe(RUTA_INICIO);
     expect(await pantallaDeInicio(ctxDe(operador))).toBe(RUTA_INICIO);
@@ -128,7 +128,7 @@ describe("pantallaDeInicio (con la base)", () => {
     const usuario = await crearUsuarioConMembresia({ email: "mozo@test.com", sucursalId: base.sucursal.id, rolId: mozo.id });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
-    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
+    const ctxDe = (u: { id: string; email: string }) => ({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", empresaZonaHoraria: "America/Argentina/Buenos_Aires", rolEmpresa: null, empresas: [], ...baseDeTest });
 
     expect(await pantallaDeInicio(ctxDe(usuario))).toBe("/mesas");
     expect(await pantallaDeInicio(ctxDe(admin))).toBe(RUTA_INICIO);
@@ -140,7 +140,7 @@ describe("pantallaDeInicio (con la base)", () => {
     const base = await sembrarBase();
     const vacio = await prisma.rol.create({ data: { nombre: "sin-permisos" } });
     const usuario = await crearUsuarioConMembresia({ email: "vacio@test.com", sucursalId: base.sucursal.id, rolId: vacio.id });
-    const destino = await pantallaDeInicio({ usuarioId: usuario.id, email: usuario.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
+    const destino = await pantallaDeInicio({ usuarioId: usuario.id, email: usuario.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", empresaZonaHoraria: "America/Argentina/Buenos_Aires", rolEmpresa: null, empresas: [], ...baseDeTest });
     expect(destino).toBe(RUTA_INICIO);
   });
 });
@@ -152,7 +152,7 @@ describe("tarjetasDelUsuario (con la matriz real y la base)", () => {
 
   async function tarjetasDe(rolId: string, email: string, base: Awaited<ReturnType<typeof sembrarBase>>) {
     const u = await crearUsuarioConMembresia({ email, sucursalId: base.sucursal.id, rolId });
-    return tarjetasDelUsuario({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", rolEmpresa: null, empresas: [], ...baseDeTest });
+    return tarjetasDelUsuario({ usuarioId: u.id, email: u.email, sucursalId: base.sucursal.id, sucursalNombre: "Central", rolNombre: "x", membresias: [], empresaId: base.sucursal.empresaId, empresaSlug: "principal", empresaNombre: "Empresa principal", empresaZonaHoraria: "America/Argentina/Buenos_Aires", rolEmpresa: null, empresas: [], ...baseDeTest });
   }
 
   it("un admin ve los 8 módulos (el salón incluido) y cada tarjeta lleva a la primera pantalla que puede abrir de su módulo", async () => {

@@ -1,6 +1,7 @@
 import type { Proceso } from "@prisma/client";
 import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 // A propósito NO importa `redondearCantidad` de `./comun`: ese módulo importa
 // `@/lib/db` a nivel de archivo, así que cualquier import de VALOR (no de
@@ -262,8 +263,7 @@ export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; ran
   }
   if (sp.rango === "todo") return { rango: "todo", desde: undefined, hasta: undefined };
 
-  const hoy = new Date(ahora);
-  hoy.setUTCHours(0, 0, 0, 0);
+  const hoy = inicioDelDiaDe(ahora, ZONA_UTC);
   const desde = new Date(hoy);
   if (sp.rango === "90d") {
     desde.setUTCDate(desde.getUTCDate() - 89); // 89 días atrás + hoy = 90 días, inclusive de los dos extremos.

@@ -33,6 +33,8 @@ export interface ContextoUsuario extends BaseDelContexto {
   empresaId: string;
   empresaSlug: string;
   empresaNombre: string;
+  /** Zona horaria IANA de la empresa activa (`Empresa.zonaHoraria`): la de las horas que se muestran y los días que se cortan. */
+  empresaZonaHoraria: string;
   rolEmpresa: string | null;
   /** Empresas activas donde el usuario tiene `UsuarioEmpresa` y al menos una sucursal activa — para el selector de empresa (solo se muestra con más de una). */
   empresas: EmpresaDelUsuario[];
@@ -108,6 +110,7 @@ export const obtenerContextoUsuario = cache(async (): Promise<ContextoUsuario | 
     empresaId: empresaActiva.empresaId,
     empresaSlug: empresaActiva.empresa.slug,
     empresaNombre: empresaActiva.empresa.nombre,
+    empresaZonaHoraria: empresaActiva.empresa.zonaHoraria,
     rolEmpresa: empresaActiva.rolEmpresa,
     empresas: empresasConAcceso.map((p) => ({ empresaId: p.empresaId, empresaSlug: p.empresa.slug, empresaNombre: p.empresa.nombre, rolEmpresa: p.rolEmpresa })),
     sucursalId: activa.sucursalId,

@@ -1,6 +1,7 @@
 import { redondearMoneda } from "@/core/moneda";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
 import { resolverAccionSinCostoReposicion, type AccionFaltante } from "./accion-faltante";
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 export interface FilaDevolucionProducto {
   productoId: string;
@@ -50,9 +51,9 @@ interface AccProducto {
  */
 export async function generarReporteDevoluciones(sucursalId: string, diasAtras: number, db: Db): Promise<ReporteDevoluciones> {
   const dias = diasAtras > 0 ? diasAtras : 30;
-  const desde = new Date();
-  desde.setUTCDate(desde.getUTCDate() - dias);
-  desde.setUTCHours(0, 0, 0, 0);
+  const haceNDias = new Date();
+  haceNDias.setUTCDate(haceNDias.getUTCDate() - dias);
+  const desde = inicioDelDiaDe(haceNDias, ZONA_UTC);
 
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   const movimientos = await db.movimientoStock.findMany({

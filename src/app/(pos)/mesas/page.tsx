@@ -6,9 +6,8 @@ import { esEstadoMesa, filtrarMesas, obtenerMapaDeMesas, type EstadoMesa } from 
 import { MesaCard } from "@/components/mesas/mesa-card";
 import { NuevaMesa } from "./nueva-mesa";
 import { LimiteMesasAbiertas } from "./limite-mesas";
+import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { obtenerLimiteMesasAbiertas } from "@/server/consultas/pos/mesas";
-
-const HORA = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
 
 /** Pestañas de filtro: `null` = todas. El punto de color usa el color de estado (no es texto); el texto va en la tinta del filtro. */
 const FILTROS: { estado: EstadoMesa | null; label: string; punto?: string }[] = [
@@ -69,7 +68,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
         <div>
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
           <p className="text-[13.5px] text-[var(--ink-soft)]">
-            {ctx.sucursalNombre} · actualizado a las {HORA.format(new Date())}
+            {ctx.sucursalNombre} · actualizado a las {formatearHora(new Date(), ctx.empresaZonaHoraria)}
           </p>
           <p className="mt-1">
             <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={limiteMesas.editar} />

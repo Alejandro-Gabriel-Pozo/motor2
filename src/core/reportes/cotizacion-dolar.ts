@@ -1,3 +1,4 @@
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 import type { Db } from "./comun";
 
@@ -37,9 +38,9 @@ export interface UltimaCotizacion {
   fuente: string;
 }
 
-/** Fecha (YYYY-MM-DD) en horario argentino (UTC-3, sin horario de verano) de un instante. */
+/** Fecha (YYYY-MM-DD) en la zona de Argentina (el mercado cambiario) de un instante. */
 export function fechaArgentina(instante: Date): string {
-  return new Date(instante.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return diaDeCalendario(instante, ZONA_ARGENTINA);
 }
 
 const esNumeroPositivo = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;

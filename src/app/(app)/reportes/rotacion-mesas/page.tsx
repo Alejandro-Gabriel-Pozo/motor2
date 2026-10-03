@@ -22,7 +22,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
 
   const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
-  const rep = await generarReporteRotacionMesas(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
+  const rep = await generarReporteRotacionMesas(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria, ctx.db);
 
   return (
     <div className="flex flex-col gap-6">

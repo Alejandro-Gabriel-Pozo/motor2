@@ -3,7 +3,8 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarBoletasEmitidas, leerFiltroBoletas, obtenerNumeroDeMesa, serializarFiltroBoletas } from "@/core/reportes/boletas-emitidas";
-import { formatearFechaHora, formatearMonto, nombreDeMesa } from "@/core/pos/formato";
+import { formatearMonto, nombreDeMesa } from "@/core/pos/formato";
+import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
@@ -18,8 +19,8 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
  * Una cuenta cerrada ANTES de la numeración de boletas (sin ningún `EjemplarBoleta`) no aparece: es de esperar, no una falla del
  * filtro — esas cuentas no tienen ejemplar que listar.
  *
- * Filtro de fecha en hora de ARGENTINA, no UTC como el resto de los reportes (ver el docstring de `rango-dia-argentina.ts`):
- * sin fechas en la URL, el default es «hoy» en Argentina; vaciar los dos campos y filtrar de nuevo saca el límite de fecha del
+ * Filtro de fecha en la zona horaria de la EMPRESA, no UTC como el resto de los reportes (el servicio de la noche cruza la medianoche UTC):
+ * sin fechas en la URL, el default es «hoy» en esa zona; vaciar los dos campos y filtrar de nuevo saca el límite de fecha del
  * todo (el cursor de paginación lo aguanta).
  */
 export default async function BoletasEmitidasPage({
@@ -34,7 +35,7 @@ export default async function BoletasEmitidasPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const { desde, hasta, mesaId, filtro } = leerFiltroBoletas(sp);
+  const { desde, hasta, mesaId, filtro } = leerFiltroBoletas(sp, ctx.empresaZonaHoraria);
 
   const [{ items, nextCursor }, mesaNumero] = await Promise.all([
     listarBoletasEmitidas(ctx.sucursalId, filtro, ctx.db),
@@ -57,11 +58,11 @@ export default async function BoletasEmitidasPage({
 
       <form method="get" className="flex flex-wrap items-end gap-3 text-sm">
         <label className="flex flex-col gap-1">
-          Desde (hora Argentina)
+          Desde (hora de la empresa)
           <input type="date" name="desde" defaultValue={desde} className="rounded border px-2 py-1.5" />
         </label>
         <label className="flex flex-col gap-1">
-          Hasta (hora Argentina)
+          Hasta (hora de la empresa)
           <input type="date" name="hasta" defaultValue={hasta} className="rounded border px-2 py-1.5" />
         </label>
         {mesaId && <input type="hidden" name="mesaId" value={mesaId} />}
@@ -87,7 +88,7 @@ export default async function BoletasEmitidasPage({
       ) : (
         <div className="flex flex-col gap-2">
           {items.map((b) => (
-            <FilaBoleta key={b.ejemplarId} boleta={b} />
+            <FilaBoleta key={b.ejemplarId} boleta={b} zonaHoraria={ctx.empresaZonaHoraria} />
           ))}
         </div>
       )}
@@ -101,13 +102,13 @@ export default async function BoletasEmitidasPage({
   );
 }
 
-function FilaBoleta({ boleta: b }: { boleta: Awaited<ReturnType<typeof listarBoletasEmitidas>>["items"][number] }) {
+function FilaBoleta({ boleta: b, zonaHoraria }: { boleta: Awaited<ReturnType<typeof listarBoletasEmitidas>>["items"][number]; zonaHoraria: string }) {
   const numero = formatearNumeroBoleta(b.numero);
   return (
     <details className="rounded border" data-boleta={b.ejemplarId}>
       <summary className="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm">
         <span className="font-medium">N.º {numero}</span>
-        <span className="w-36 tabular-nums text-neutral-500">{formatearFechaHora(b.emitidoEn)}</span>
+        <span className="w-36 tabular-nums text-neutral-500">{formatearFechaHora(b.emitidoEn, zonaHoraria)}</span>
         <span className="text-neutral-500">{nombreDeMesa(b.mesaNumero)}</span>
         <span className="text-neutral-500">Emitió {b.emitidoPor}</span>
         {b.correccionDe && <Marca texto={`Corrección de N.º ${formatearNumeroBoleta(b.correccionDe)}`} tono="neutral" />}
@@ -118,7 +119,7 @@ function FilaBoleta({ boleta: b }: { boleta: Awaited<ReturnType<typeof listarBol
       </summary>
       <div className="border-t px-3 py-2">
         <p className="mb-2 text-xs text-neutral-500">
-          Atendió {b.detalle.mesero} · Abierta {formatearFechaHora(b.detalle.abiertaEn)} · Cerrada {formatearFechaHora(b.detalle.cerradaEn)}
+          Atendió {b.detalle.mesero} · Abierta {formatearFechaHora(b.detalle.abiertaEn, zonaHoraria)} · Cerrada {formatearFechaHora(b.detalle.cerradaEn, zonaHoraria)}
           {b.detalle.cliente && (
             <>
               {" "}

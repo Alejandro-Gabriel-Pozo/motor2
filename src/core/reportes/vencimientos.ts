@@ -1,4 +1,5 @@
 import { redondearCantidad, type Db } from "./comun";
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 export interface FilaLoteProximoAVencer {
   productoId: string;
@@ -20,8 +21,7 @@ export interface FilaLoteProximoAVencer {
  */
 export async function generarReporteLotesProximosAVencer(sucursalId: string, dias: number, db: Db): Promise<FilaLoteProximoAVencer[]> {
   const limiteDias = dias > 0 ? dias : 7;
-  const hoy = new Date();
-  hoy.setUTCHours(0, 0, 0, 0);
+  const hoy = inicioDelDiaDe(new Date(), ZONA_UTC);
   const fechaLimite = new Date(hoy.getTime() + limiteDias * 86400000);
 
   const grupos = await db.movimientoStock.groupBy({

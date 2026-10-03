@@ -1,3 +1,4 @@
+import { horaDelDia, rangoDeDias, ZONA_UTC } from "../tiempo/zona-horaria";
 import type { Db } from "./comun";
 
 /**
@@ -11,17 +12,10 @@ import type { Db } from "./comun";
  * (abierta antes de este campo, sin backfill) entra en los conteos generales pero no en los promedios por comensal.
  *
  * ZONA HORARIA: a diferencia del resto de los reportes de este proyecto (rango de fechas en UTC, ver rango-por-defecto.ts), la
- * FRANJA HORARIA de cada cuenta usa la hora LOCAL de Argentina (`Intl.DateTimeFormat` con `timeZone: "America/Argentina/Buenos_Aires"`,
- * NUNCA un offset fijo "-03:00": esa zona tiene horario de verano histórico y `Intl` lo resuelve bien para cualquier fecha). El
- * RANGO de fechas (`desde`/`hasta`, con `SelectorRango`) sigue en UTC, igual que todos los demás — solo la franja horaria difiere.
+ * FRANJA HORARIA de cada cuenta usa la hora LOCAL de la empresa (su `zonaHoraria`, resuelta con `Intl` en `core/tiempo`: nunca un offset
+ * fijo, por el horario de verano). El RANGO de fechas (`desde`/`hasta`, con `SelectorRango`) sigue en UTC, igual que todos los demás —
+ * solo la franja horaria difiere.
  */
-
-const HORA_ARGENTINA = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
-
-/** La hora (0-23) de `fecha` en horario de Argentina. */
-export function horaLocalArgentina(fecha: Date): number {
-  return Number(HORA_ARGENTINA.format(fecha));
-}
 
 /** Bucket de tamaño de grupo: "1".."6" individual (mismo rango que los botones rápidos del modal de comensales) y "7+" el resto. */
 export function grupoDeTamano(comensales: number): string {
@@ -81,7 +75,7 @@ export interface ReporteRotacionMesas {
 }
 
 /** Núcleo puro: de las filas ya traídas de la base, todas las métricas del reporte. Ver el docstring del archivo para las reglas. */
-export function calcularRotacionMesas(cuentas: readonly FilaCuentaRotacion[]): ReporteRotacionMesas {
+export function calcularRotacionMesas(cuentas: readonly FilaCuentaRotacion[], zonaHoraria: string): ReporteRotacionMesas {
   const cerradas = cuentas.filter((c) => c.cerradaEn !== null);
   const atendidas = cerradas.filter((c) => c.cantidadItems > 0);
   const liberadasSinConsumo = cerradas.filter((c) => c.cantidadItems === 0);
@@ -92,7 +86,7 @@ export function calcularRotacionMesas(cuentas: readonly FilaCuentaRotacion[]): R
 
   const porHora = new Map<number, { cantidad: number; comensales: number[]; duraciones: number[] }>();
   for (const c of atendidas) {
-    const hora = horaLocalArgentina(c.abiertaEn);
+    const hora = horaDelDia(c.abiertaEn, zonaHoraria);
     const fila = porHora.get(hora) ?? { cantidad: 0, comensales: [], duraciones: [] };
     fila.cantidad += 1;
     if (c.comensales !== null) fila.comensales.push(c.comensales);
@@ -128,27 +122,14 @@ export function calcularRotacionMesas(cuentas: readonly FilaCuentaRotacion[]): R
 }
 
 /**
- * Rango inclusivo [desde 00:00 UTC, hasta 23:59:59.999 UTC] — mismo criterio que `rangoUtc` en periodo.ts: `desde`/`hasta`
- * llegan como Date "de solo día" (`SelectorRango`/`resolverRangoDeReporte`), así que sin extender `hasta` al final del día
- * quedaría en medianoche y el día de "hasta" (típicamente HOY) perdería todas las cuentas abiertas después de las 00:00 UTC.
- */
-function rangoUtc(desde: Date, hasta: Date): { desde: Date; hasta: Date } {
-  const d = new Date(desde);
-  d.setUTCHours(0, 0, 0, 0);
-  const h = new Date(hasta);
-  h.setUTCHours(23, 59, 59, 999);
-  return { desde: d, hasta: h };
-}
-
-/**
  * Todas las cuentas de la sucursal ABIERTAS dentro de `[desde, hasta]` (mismo criterio de rango que el resto de los reportes —
  * `resolverRangoDeReporte`/`SelectorRango`, en UTC), con la lectura de rotación ya calculada.
  */
-export async function generarReporteRotacionMesas(sucursalId: string, desdeParam: Date, hastaParam: Date, db: Db): Promise<ReporteRotacionMesas> {
-  const { desde, hasta } = rangoUtc(desdeParam, hastaParam);
+export async function generarReporteRotacionMesas(sucursalId: string, desdeParam: Date, hastaParam: Date, zonaHoraria: string, db: Db): Promise<ReporteRotacionMesas> {
+  const { desde, hasta } = rangoDeDias(desdeParam, hastaParam, ZONA_UTC);
   const cuentas = await db.cuenta.findMany({
     where: { mesa: { sucursalId }, abiertaEn: { gte: desde, lte: hasta } },
     select: { abiertaEn: true, cerradaEn: true, comensales: true, _count: { select: { items: true } } },
   });
-  return calcularRotacionMesas(cuentas.map((c) => ({ abiertaEn: c.abiertaEn, cerradaEn: c.cerradaEn, comensales: c.comensales, cantidadItems: c._count.items })));
+  return calcularRotacionMesas(cuentas.map((c) => ({ abiertaEn: c.abiertaEn, cerradaEn: c.cerradaEn, comensales: c.comensales, cantidadItems: c._count.items })), zonaHoraria);
 }

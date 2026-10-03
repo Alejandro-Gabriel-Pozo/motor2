@@ -29,6 +29,12 @@ describe("validarFechaOperacion", () => {
     expect(validarFechaOperacion(new Date("2026-10-03T03:00:00Z"), ahora).ok).toBe(false);
   });
 
+  it("con otra zona, el límite futuro es el fin de mañana de ESA zona (Nueva York, UTC-4 en octubre)", () => {
+    // Mañana 23:59 en Nueva York = 2026-10-03T03:59Z: pasa. Pasado mañana 00:00 = 2026-10-03T04:00Z: no.
+    expect(validarFechaOperacion(new Date("2026-10-03T03:59:59Z"), AHORA, "America/New_York").ok).toBe(true);
+    expect(validarFechaOperacion(new Date("2026-10-03T04:00:00Z"), AHORA, "America/New_York").ok).toBe(false);
+  });
+
   it("el piso es de 400 días", () => {
     expect(validarFechaOperacion(new Date(AHORA.getTime() - 400 * DIA), AHORA).ok).toBe(true);
     expect(validarFechaOperacion(new Date(AHORA.getTime() - 400 * DIA - 1), AHORA)).toMatchObject({ ok: false, codigo: "rango" });

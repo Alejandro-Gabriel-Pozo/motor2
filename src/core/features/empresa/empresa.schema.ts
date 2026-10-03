@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { esZonaHorariaValida } from "@/core/tiempo/zona-horaria";
 
 /**
  * Fase 1.4 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): "Provisioning de empresa
@@ -7,7 +8,7 @@ import { z } from "zod";
  * (`crear-empresa.ts`, ADR-007 A7) desde `scripts/crear-empresa.ts`: no hay UI ni circuito de suscripción.
  *
  * Campos tomados EXACTOS del modelo `Empresa` planeado: `nombre` (único global), `slug` (único, minúsculas/dígitos/guiones —
- * usado como prefijo del slug público de la carta, `<empresa>-<sucursal>`), `zonaHoraria`, `moneda` (ISO 4217, 3 letras).
+ * usado como prefijo del slug público de la carta, `<empresa>-<sucursal>`), `zonaHoraria` (IANA, validada), `moneda` (ISO 4217, 3 letras).
  */
 export const crearEmpresaSchema = z.object({
   nombre: z.string().trim().min(1).max(120),
@@ -15,7 +16,7 @@ export const crearEmpresaSchema = z.object({
     .string()
     .max(63, "Hasta 63 caracteres (un subdominio no admite más).")
     .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "Solo minúsculas, dígitos y guiones, sin empezar ni terminar con guion."),
-  zonaHoraria: z.string().min(1),
+  zonaHoraria: z.string().refine(esZonaHorariaValida, "Tiene que ser una zona horaria IANA válida (continente/ciudad)."),
   moneda: z.string().length(3),
 });
 

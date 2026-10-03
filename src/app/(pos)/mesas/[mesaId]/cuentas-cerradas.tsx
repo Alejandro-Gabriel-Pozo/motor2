@@ -3,7 +3,8 @@
 import type { BoletaDeCuenta } from "@/core/pos/boleta";
 import { formatearNumeroBoleta } from "@/core/pos/numeracion-boleta";
 import { BOTON_CHICO } from "./estilos";
-import { formatearHora, formatearMonto } from "@/core/pos/formato";
+import { formatearMonto } from "@/core/pos/formato";
+import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { useImpresion } from "./imprimir";
 import { EmitirBoletaCorregida } from "./emitir-boleta-corregida";
 
@@ -18,7 +19,7 @@ import { EmitirBoletaCorregida } from "./emitir-boleta-corregida";
  * «desactualizada» (se anuló una línea después de imprimirla) no se reimprime y habilita «Emitir boleta corregida»; «anulada», todo
  * deshabilitado.
  */
-export function CuentasCerradas({ boletas, puede, puedeCorregir }: { boletas: BoletaDeCuenta[]; puede: boolean; puedeCorregir: boolean }) {
+export function CuentasCerradas({ boletas, puede, puedeCorregir, zonaHoraria }: { boletas: BoletaDeCuenta[]; puede: boolean; puedeCorregir: boolean; zonaHoraria: string }) {
   const { reimprimirBoleta } = useImpresion();
   if (!boletas.length) return null;
 
@@ -29,7 +30,7 @@ export function CuentasCerradas({ boletas, puede, puedeCorregir }: { boletas: Bo
       </h2>
       <ul className="divide-y divide-[var(--border)]">
         {boletas.map((b) => {
-          const hora = formatearHora(b.cerradaEn);
+          const hora = formatearHora(b.cerradaEn, zonaHoraria);
           const motivo =
             b.estado === "anulada"
               ? "La venta de esta cuenta se anuló: su boleta ya no vale."

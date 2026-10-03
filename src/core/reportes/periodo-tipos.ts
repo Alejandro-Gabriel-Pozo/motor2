@@ -1,4 +1,5 @@
 import type { Proceso } from "@prisma/client";
+import { ZONA_UTC, rangoDeDias } from "@/core/tiempo/zona-horaria";
 
 export interface FiltrosPeriodo {
   proceso?: Proceso;
@@ -48,9 +49,5 @@ export interface ItemPeriodo {
  * usó para construir el valor, sin depender de en qué TZ corra el server.
  */
 export function rangoUtc(desde: Date, hasta: Date): { desde: Date; hasta: Date } {
-  const d = new Date(desde);
-  d.setUTCHours(0, 0, 0, 0);
-  const h = new Date(hasta);
-  h.setUTCHours(23, 59, 59, 999);
-  return { desde: d, hasta: h };
+  return rangoDeDias(desde, hasta, ZONA_UTC);
 }

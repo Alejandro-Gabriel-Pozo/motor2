@@ -3,7 +3,7 @@ import { armarBoletaImpresaEn, estadoDeBoleta, type EstadoDeBoleta, type ItemCon
 import { claveDeLineaDeVenta, lineasDeVenta } from "@/core/pos/cuenta";
 import { nombreDelMesero } from "@/core/pos/mesas";
 import type { NumeroDeBoleta } from "@/core/pos/numeracion-boleta";
-import { finDelDiaArgentina, hoyEnArgentina, inicioDelDiaArgentina } from "./rango-dia-argentina";
+import { diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
 
 /**
  * Reporte de boletas emitidas (Task #17 del backlog): el hallazgo que lo motiva es que `BOLETAS_RECIENTES_POR_MESA` (boleta.ts) ya
@@ -19,9 +19,9 @@ import { finDelDiaArgentina, hoyEnArgentina, inicioDelDiaArgentina } from "./ran
 export const TAMANO_PAGINA_BOLETAS = 30;
 
 export interface FiltroBoletas {
-  /** Instante UTC desde el cual filtrar `emitidoEn` (inclusive) — ya resuelto: la página lo calcula con `inicioDelDiaArgentina`. */
+  /** Instante UTC desde el cual filtrar `emitidoEn` (inclusive) — ya resuelto: `leerFiltroBoletas` lo calcula con `inicioDelDia` en la zona de la empresa. */
   desde?: Date;
-  /** Instante UTC hasta el cual filtrar `emitidoEn` (inclusive) — ya resuelto con `finDelDiaArgentina`. */
+  /** Instante UTC hasta el cual filtrar `emitidoEn` (inclusive) — ya resuelto con `finDelDia` en la zona de la empresa. */
   hasta?: Date;
   mesaId?: string;
   // clienteId?: string; — el modelo Cliente ya existe (Task #14), pero el FILTRO por cliente sigue fuera de alcance de esta v1
@@ -214,21 +214,22 @@ export interface FiltroBoletasLeido {
 }
 
 function fechaValida(valor: string): boolean {
-  return valor !== "" && !Number.isNaN(new Date(valor).getTime());
+  return /^\d{4}-\d{2}-\d{2}$/.test(valor) && !Number.isNaN(new Date(valor).getTime());
 }
 
 /**
  * Lee `desde`/`hasta`/`mesaId`/`cursor` de los `searchParams` de `/reportes/boletas` (Task #17):
- * - SIN PARÁMETROS de fecha en absoluto (primera entrada a la pantalla, o desde el menú) → default «hoy» en hora Argentina.
+ * - SIN PARÁMETROS de fecha en absoluto (primera entrada a la pantalla, o desde el menú) → default «hoy» en la zona horaria de la empresa.
  * - Con el campo presente pero VACÍO (el form se mandó con «Vaciar fechas») → sin límite para ese lado del rango: el cursor de
  *   paginación lo aguanta igual (paso 4 del plan).
  * - Con un valor: se usa tal cual si es una fecha válida, y se descarta (como si estuviera vacío) si no.
  *
- * `ahora` es un parámetro para poder testear el default de «hoy» sin depender del reloj real.
+ * El día se corta en la zona de la empresa (`zonaHoraria`): el servicio de la noche cruza la medianoche UTC. `ahora` es un parámetro para
+ * poder testear el default de «hoy» sin depender del reloj real.
  */
-export function leerFiltroBoletas(sp: { desde?: string; hasta?: string; mesaId?: string; cursor?: string }, ahora: Date = new Date()): FiltroBoletasLeido {
+export function leerFiltroBoletas(sp: { desde?: string; hasta?: string; mesaId?: string; cursor?: string }, zonaHoraria: string, ahora: Date = new Date()): FiltroBoletasLeido {
   const sinParametrosDeFecha = sp.desde === undefined && sp.hasta === undefined;
-  const hoy = hoyEnArgentina(ahora);
+  const hoy = diaDeCalendario(ahora, zonaHoraria);
   const desdeCrudo = sinParametrosDeFecha ? hoy : sp.desde ?? "";
   const hastaCrudo = sinParametrosDeFecha ? hoy : sp.hasta ?? "";
   const desde = fechaValida(desdeCrudo) ? desdeCrudo : "";
@@ -240,8 +241,8 @@ export function leerFiltroBoletas(sp: { desde?: string; hasta?: string; mesaId?:
     hasta,
     mesaId,
     filtro: {
-      desde: desde ? inicioDelDiaArgentina(desde) : undefined,
-      hasta: hasta ? finDelDiaArgentina(hasta) : undefined,
+      desde: desde ? inicioDelDia(desde, zonaHoraria) : undefined,
+      hasta: hasta ? finDelDia(hasta, zonaHoraria) : undefined,
       mesaId: mesaId || undefined,
       cursor: sp.cursor,
     },

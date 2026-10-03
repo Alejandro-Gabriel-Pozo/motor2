@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { ZONA_UTC, finDelDiaDe } from "@/core/tiempo/zona-horaria";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 import { alcanceDeSucursal, cargarRecetaVigente, rendimientoEfectivo } from "@/core/catalogo/public";
@@ -128,8 +129,7 @@ export async function obtenerHistorialProducto(
 
   // Rango [desde 00:00, hasta 23:59:59.999] — mismo criterio UTC que
   // reportes/periodo.ts.
-  const finDia = hasta ? new Date(hasta) : undefined;
-  finDia?.setUTCHours(23, 59, 59, 999);
+  const finDia = hasta ? finDelDiaDe(hasta, ZONA_UTC) : undefined;
   const filtroFechaConteo = desde || finDia ? { fecha: { ...(desde ? { gte: desde } : {}), ...(finDia ? { lte: finDia } : {}) } } : {};
 
   // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md

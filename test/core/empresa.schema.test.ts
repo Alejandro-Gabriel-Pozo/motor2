@@ -27,6 +27,15 @@ describe("crearEmpresaSchema", () => {
     expect(crearEmpresaSchema.safeParse({ ...base, slug: "la-cuadra-2" }).success).toBe(true);
   });
 
+  it("zonaHoraria: tiene que ser una zona IANA que Intl conozca — rechaza vacío, texto libre, offsets y espacios", () => {
+    for (const zona of ["", "Argentina", "Buenos Aires", "-03:00", "UTC-3", " America/Argentina/Buenos_Aires", "America/Inventada"]) {
+      expect(crearEmpresaSchema.safeParse({ ...base, zonaHoraria: zona }).success, zona).toBe(false);
+    }
+    for (const zona of ["America/Argentina/Buenos_Aires", "America/New_York", "Europe/Madrid", "UTC"]) {
+      expect(crearEmpresaSchema.safeParse({ ...base, zonaHoraria: zona }).success, zona).toBe(true);
+    }
+  });
+
   it("moneda: exactamente 3 caracteres (ISO 4217) — rechaza 2 o 4", () => {
     expect(crearEmpresaSchema.safeParse({ ...base, moneda: "AR" }).success).toBe(false);
     expect(crearEmpresaSchema.safeParse({ ...base, moneda: "ARSS" }).success).toBe(false);

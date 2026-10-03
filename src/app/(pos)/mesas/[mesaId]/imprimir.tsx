@@ -47,12 +47,14 @@ interface EnCurso {
 export function ImpresionProvider({
   mesa,
   sucursal,
+  zonaHoraria,
   comandas,
   boletas,
   children,
 }: {
   mesa: string;
   sucursal: string;
+  zonaHoraria: string;
   comandas: ComandaDeEnvio[];
   boletas: BoletaDeCuenta[];
   children: React.ReactNode;
@@ -105,9 +107,9 @@ export function ImpresionProvider({
         createPortal(
           <div data-imprimible data-tipo={enCurso.documento.tipo}>
             {"comanda" in enCurso.documento ? (
-              <TicketCocina documento={enCurso.documento} mesa={mesa} impresoEn={enCurso.impresoEn} />
+              <TicketCocina documento={enCurso.documento} mesa={mesa} impresoEn={enCurso.impresoEn} zonaHoraria={zonaHoraria} />
             ) : (
-              <BoletaCuenta documento={enCurso.documento} mesa={mesa} sucursal={sucursal} />
+              <BoletaCuenta documento={enCurso.documento} mesa={mesa} sucursal={sucursal} zonaHoraria={zonaHoraria} />
             )}
           </div>,
           document.body
