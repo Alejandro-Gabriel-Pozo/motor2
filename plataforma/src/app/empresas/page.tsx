@@ -2,14 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatearCuit } from "@/core/fiscal/cuit";
 import { dbPlataforma } from "../../db";
-import { listarEmpresas } from "../../servidor/empresas";
+import { FILTROS_DE_EMPRESAS, listarEmpresas, type FiltroDeEmpresas } from "../../servidor/empresas";
 import { administradorEnSesion } from "../../servidor/sesion";
-import { ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, fechaCorta } from "./textos";
+import { ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, ETIQUETA_DE_FILTRO, fechaCorta } from "./textos";
 
-export default async function PaginaDeEmpresas() {
+export default async function PaginaDeEmpresas({ searchParams }: { searchParams: Promise<{ filtro?: string | string[] }> }) {
   if (!(await administradorEnSesion())) redirect("/login");
+  const { filtro: pedido } = await searchParams;
+  const crudo = Array.isArray(pedido) ? pedido[0] : pedido;
+  const filtro: FiltroDeEmpresas = FILTROS_DE_EMPRESAS.find((f) => f === crudo) ?? "todas";
   const ahora = new Date();
-  const empresas = await listarEmpresas(dbPlataforma(), ahora);
+  const empresas = await listarEmpresas(dbPlataforma(), ahora, filtro);
   return (
     <section className="tarjeta ancha">
       <div className="barra">
@@ -18,9 +21,16 @@ export default async function PaginaDeEmpresas() {
           Dar de alta una empresa
         </a>
       </div>
+      <nav aria-label="Filtros" className="filtros">
+        {FILTROS_DE_EMPRESAS.map((f) => (
+          <Link key={f} href={f === "todas" ? "/empresas" : `/empresas?filtro=${f}`} aria-current={f === filtro ? "page" : undefined}>
+            {ETIQUETA_DE_FILTRO[f]}
+          </Link>
+        ))}
+      </nav>
       <div className="tabla-envoltorio">
         <table>
-          <caption className="ayuda">Todas las empresas de esta instalación y la última invitación de cada una.</caption>
+          <caption className="ayuda">{ETIQUETA_DE_FILTRO[filtro]}: {empresas.length === 1 ? "1 empresa" : `${empresas.length} empresas`} de esta instalación, con la última invitación de cada una.</caption>
           <thead>
             <tr>
               <th scope="col">Empresa</th>
@@ -39,6 +49,12 @@ export default async function PaginaDeEmpresas() {
                   {e.nombre}
                   <br />
                   <span className="ayuda">{e.slug}</span>
+                  {e.cuitRepetidoCon.length > 0 && (
+                    <>
+                      <br />
+                      <span className="error">CUIT repetido: también «{e.cuitRepetidoCon.join("», «")}»</span>
+                    </>
+                  )}
                 </td>
                 <td>{ESTADO_DE_EMPRESA[e.estado]}</td>
                 <td>{e.cuit ? formatearCuit(e.cuit) : e.invitacion?.cuitDeclarado ? `${formatearCuit(e.invitacion.cuitDeclarado)} (declarado)` : "—"}</td>

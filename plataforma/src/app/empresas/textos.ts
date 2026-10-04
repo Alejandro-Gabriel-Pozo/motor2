@@ -19,3 +19,25 @@ export const ESTADO_DE_INVITACION: Record<EstadoEfectivoDeInvitacion, string> = 
 export function fechaCorta(fecha: Date): string {
   return new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(fecha);
 }
+
+/** Cómo se lee cada acción de la auditoría de plataforma en el historial de una empresa. */
+export const ACCION_DE_AUDITORIA: Record<string, string> = {
+  "alta-de-empresa": "Alta de la empresa",
+  "invitacion-reenviada": "Invitación reenviada",
+  "invitacion-revocada": "Invitación revocada",
+  "invitacion-creada": "Invitación nueva",
+  "empresa-confirmada": "Alta confirmada",
+  "cuit-corregido": "CUIT corregido",
+  "empresa-suspendida": "Empresa suspendida",
+  "empresa-reactivada": "Empresa reactivada",
+  "aviso-de-activacion": "Aviso de activación",
+};
+
+export const ETIQUETA_DE_FILTRO: Record<string, string> = {
+  todas: "Todas",
+  "cuit-pendiente": "CUIT pendiente",
+  "en-alta": "En alta",
+  activas: "Activas",
+  "activas-sin-cuit": "Activas sin CUIT",
+  suspendidas: "Suspendidas",
+};

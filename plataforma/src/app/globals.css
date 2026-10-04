@@ -194,3 +194,59 @@ dd {
   margin: 0;
   color: var(--texto-suave);
 }
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filtros a {
+  padding: 6px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.filtros a[aria-current="page"] {
+  background: var(--acento);
+  color: var(--acento-texto);
+  border-color: var(--acento);
+}
+
+.confirmacion {
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.fila {
+  display: flex;
+  gap: 8px;
+}
+
+.fila button {
+  width: auto;
+}
+
+.casilla {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-weight: 400;
+  margin-bottom: 12px;
+}
+
+.casilla input {
+  width: auto;
+  margin: 4px 0 0;
+}
+
+.historial {
+  padding-left: 18px;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}

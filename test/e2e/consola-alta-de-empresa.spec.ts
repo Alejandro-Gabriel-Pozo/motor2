@@ -54,7 +54,6 @@ test("sin sesión, ni la lista ni el alta ni el detalle se abren: mandan al logi
 
 test("alta completa: valida, da de alta, queda auditada con el administrador como autor, y reenviar, revocar e invitar de nuevo andan", async ({ page }) => {
   const admin = await ingresar(page);
-  page.on("dialog", (d) => void d.accept());
   const m = marca();
   const datos = { nombre: `E2E Alta ${m}`, slug: `e2e-alta-${m}`, email: `duenio-${m}@local.test` };
 
@@ -95,6 +94,9 @@ test("alta completa: valida, da de alta, queda auditada con el administrador com
 
   // Revocar pide confirmación y deja REVOCADA.
   await page.getByRole("button", { name: "Revocar la invitación" }).click();
+  await expect(page.getByRole("button", { name: "Cancelar" })).toBeFocused();
+  await sinViolaciones(page);
+  await page.getByRole("button", { name: "Sí: revocar la invitación" }).click();
   await expect(page.getByText("Invitación revocada: el enlace ya no sirve.")).toBeVisible();
   expect((await leerDeLaBase((db) => db.invitacion.findFirstOrThrow({ where: { empresaId: empresa.id } }))).estado).toBe("REVOCADA");
 

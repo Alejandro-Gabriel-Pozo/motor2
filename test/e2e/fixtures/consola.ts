@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { expect, type Page } from "@playwright/test";
 import { cifrarSecreto } from "../../../src/core/plataforma/cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigo, hashDeCodigoDeRecuperacion } from "../../../src/core/plataforma/codigos";
-import { generarSecretoTotp } from "../../../src/core/plataforma/totp";
+import { codigoTotp, generarSecretoTotp, pasoDeTotp } from "../../../src/core/plataforma/totp";
 import { crearPrismaE2E, resolverUrlE2E } from "./base-e2e";
 
 /**
@@ -60,4 +61,26 @@ export async function leerDeLaBase<T>(consulta: (prisma: ReturnType<typeof crear
   } finally {
     await prisma.$disconnect();
   }
+}
+
+const CODIGO_DE_INGRESO_CONOCIDO = "482915";
+
+/**
+ * Ingresa a la consola como un administrador recién sembrado: email, código del mail (reemplazado por uno conocido) y TOTP. Termina en la pantalla de inicio.
+ * `consola` es la dirección de la consola (`MOTOR2_E2E_URL_PLATAFORMA`).
+ */
+export async function ingresarALaConsola(page: Page, consola: string): Promise<AdminSembrado> {
+  const admin = await sembrarAdminDePlataforma(`admin-${Date.now()}-${Math.floor(Math.random() * 1e6)}@plataforma.test`);
+  await page.goto(`${consola}/login`);
+  await page.locator("#email").fill(admin.email);
+  await page.getByRole("button", { name: "Pedir código" }).click();
+  await expect(page.locator("#codigo")).toBeVisible();
+  expect(await fijarCodigoDeIngreso(admin.id, CODIGO_DE_INGRESO_CONOCIDO)).toBe(1);
+  await page.locator("#codigo").fill(CODIGO_DE_INGRESO_CONOCIDO);
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.locator("#factor")).toBeVisible();
+  await page.locator("#factor").fill(codigoTotp(admin.secretoTotp, pasoDeTotp(Date.now())));
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page).toHaveURL(`${consola}/`);
+  return admin;
 }

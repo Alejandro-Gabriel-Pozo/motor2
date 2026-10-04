@@ -50,6 +50,9 @@ const envSchema = z.object({
   // Add-on (core/carta/carta-empresa-unica.ts): slug de la empresa cuya carta se sirve en el dominio base, sin su slug en la URL. Requiere CARTA_DOMINIO_BASE.
   CARTA_EMPRESA_UNICA: z.string().refine(esSlugPublicoValido, "no es un slug válido").optional(),
 
+  // Email al que escribir cuando una empresa está suspendida (E6, ADR-021, core/auth/contacto-plataforma.ts). Sin configurar, la pantalla no muestra ninguno.
+  CONTACTO_PLATAFORMA_EMAIL: z.email().optional(),
+
   // URL pública de la app para Auth.js: con https decide la cookie de sesión (`sirvePorHttps`, core/auth/cookie-sesion.ts).
   AUTH_URL: z.string().min(1).optional(),
   // "1" se niega a operar con un rol de base que salta el RLS aunque haya una sola empresa (core/auth/rol-de-ejecucion.ts).

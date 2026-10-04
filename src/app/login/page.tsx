@@ -4,6 +4,7 @@ import { obtenerSituacionDeAcceso } from "@/core/auth/contexto";
 import { rutaInternaSegura } from "@/core/navegacion/volver";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { cambiarEmpresaActiva } from "@/server/actions/auth/empresa-activa";
+import { emailDeContactoDePlataforma } from "@/core/auth/contacto-plataforma";
 
 function CerrarSesion() {
   return (
@@ -32,6 +33,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   // Adónde volver después de entrar (la pantalla en la que estaba cuando venció la sesión). Viene de la URL: solo se acepta una ruta interna.
   const volver = rutaInternaSegura(unicosDeUrl(await searchParams).volver);
   const situacion = await obtenerSituacionDeAcceso();
+  const contacto = emailDeContactoDePlataforma(process.env);
 
   // NO redirigir de vuelta a /login desde ninguno de los estados de abajo: el layout de administración exige contexto y rebotaría
   // para acá de nuevo (ERR_TOO_MANY_REDIRECTS). Cada estado tiene una única pantalla final.
@@ -67,7 +69,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             {situacion.nombres.length === 1
               ? `La empresa «${situacion.nombres[0]}» está suspendida.`
               : `Las empresas ${situacion.nombres.map((n) => `«${n}»`).join(", ")} están suspendidas.`}{" "}
-            Comunicate con quien administra Motor2.
+            Para reactivarla, contactá a la plataforma de Motor2
+            {contacto ? (
+              <>
+                {" "}
+                escribiendo a{" "}
+                <a href={`mailto:${contacto}`} className="underline">
+                  {contacto}
+                </a>
+              </>
+            ) : null}
+            .
           </p>
           <CerrarSesion />
         </Pantalla>

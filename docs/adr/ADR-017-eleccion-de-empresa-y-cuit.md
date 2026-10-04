@@ -2,7 +2,7 @@
 
 > Redactado el 2026-10-03 (pasos E1 y E2 del plan de plataforma). **Estado: E1 y E2 completos**; la migración `cuit_unico` (E2 paso 5) se ensayó,
 > se aplicó a ambas bases de producción y se pusheó el 2026-10-03. La parte de `PROVISIONING`/alta de empresas quedó en ADR-020 (E5), que corrige §1: desde E5
-> `/login` explica que la empresa está en alta; el envío de mails (E3) está en ADR-018.
+> `/login` explica que la empresa está en alta y desde E6 (ADR-021) el texto de la empresa suspendida pide contactar a la plataforma, con un email opcional; el envío de mails (E3) está en ADR-018.
 
 ## Contexto
 

@@ -105,3 +105,26 @@ Vuelta atrás: el código se vuelve con Instant Rollback; `down.sql` de la migra
 `SELECT id, "empresaId", email, estado, "cuitDeclarado" FROM "Invitacion"`) y después `prisma migrate resolve --rolled-back 20261010120000_invitaciones`.
 
 El alta por script (`npm run crear-empresa`) se retiró: hasta que la consola esté desplegada, no hay otra forma de crear una empresa que pedirlo en una sesión de desarrollo.
+
+## Confirmar, corregir el CUIT, suspender y reactivar (E6, ADR-021): sin migración
+
+No hay migración ni cambio de permisos: el rol `motor2_plataforma` ya puede actualizar `Empresa` y escribir la auditoría. Lo que hay que hacer, por instalación:
+
+1. En el proyecto de Vercel de la **aplicación de empresas**, la variable opcional `CONTACTO_PLATAFORMA_EMAIL` (el email que ve quien tiene su empresa suspendida). Sin ella la
+   pantalla no muestra ningún contacto. Se carga con `scripts/operaciones/cargar-env-vercel.sh`.
+2. **Antes de confirmar la SEGUNDA empresa activa de una instalación** (la primera confirmación en una instalación con una sola empresa deja dos activas), verificar a mano:
+   - `SELECT estado, count(*) FROM "Empresa" GROUP BY 1;` para saber cuántas hay;
+   - que la aplicación en Producción use `DATABASE_URL` con el rol `motor2_app` (no el dueño) y `MOTOR2_ROL_ESTRICTO=1`;
+   - que se haya corrido `crear-rol-motor2-plataforma.sql` con `restringir=1` (pendiente #10 de `docs/pendientes-sesion-2026-10-02.md`);
+   - que se haya hecho el recorrido con dos empresas reales de ADR-007 (A8).
+   Con dos empresas activas el respaldo de `app_empresa_actual()` («la única empresa activa») deja de existir y el bootstrap del primer admin deja de actuar.
+3. Confirmar un alta: `/empresas?filtro=cuit-pendiente` → detalle → revisar el CUIT contra la constancia de ARCA → tildar → «Confirmar el alta». La empresa pasa a activa
+   y el gerente recibe el aviso; si el mail no sale, «Reenviar el aviso de activación».
+4. Una empresa recién activa tiene solo Administración. Los módulos se activan con `npm run modulos-empresa -- --actor <User existente>` hasta que exista E7.
+5. Suspender: la empresa deja de dar acceso en el pedido siguiente; el portal público de la carta da 404 al instante y la carta de cada sucursal puede verse **hasta unos 5 minutos** más (caché ISR).
+6. Corregir o cargar un CUIT: desde el detalle de una empresa activa o suspendida, con motivo. Hoy no existe el circuito fiscal, así que siempre se puede; cuando exista,
+   se bloquea con la primera factura autorizada por ARCA en producción.
+7. Para empresas anteriores a E2 sin CUIT: filtro «Activas sin CUIT» → «Cargar el CUIT».
+
+Endurecimientos opcionales (cada uno **requiere autorización expresa** y queda fuera de E6): permisos por columna sobre `Empresa` para `motor2_plataforma` (hoy tiene `UPDATE` de toda la tabla) y un
+`CHECK` de formato sobre `Empresa.cuit`, junto con la migración que lo vuelva obligatorio (ADR-012 §6) cuando todas las empresas tengan CUIT.

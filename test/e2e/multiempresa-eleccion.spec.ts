@@ -107,7 +107,8 @@ test.describe("empresa suspendida", () => {
     await page.goto("/");
 
     await expect(page.getByText(`La empresa «${suspendida.b.nombre}» está suspendida.`)).toBeVisible();
-    await expect(page.getByText("Comunicate con quien administra Motor2.")).toBeVisible();
+    await expect(page.getByText(/Para reactivarla, contactá a la plataforma de Motor2/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "plataforma@local.test" })).toHaveAttribute("href", "mailto:plataforma@local.test");
     await expect(page.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Entrar a / })).toHaveCount(0);
     await page.context().close();

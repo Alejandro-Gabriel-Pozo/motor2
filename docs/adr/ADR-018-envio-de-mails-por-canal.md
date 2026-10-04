@@ -1,7 +1,7 @@
 # ADR-018: Envío de mails: interfaz propia, dos canales, configuración por instalación
 
 > Redactado el 2026-10-03 (paso E3 del plan de plataforma). **Estado: implementado; consumidores: el código de ingreso de la consola (E4) y las
-> invitaciones de gerente (E5, ADR-020: el mail sale después del commit y, si falla, se reenvía a mano)**; falta el módulo de hoteles. Sin migración de base.
+> invitaciones de gerente (E5, ADR-020) y el aviso «tu empresa está activa» (E6, ADR-021): el mail sale después del commit y, si falla, se reenvía a mano**; falta el módulo de hoteles. Sin migración de base.
 
 ## Contexto
 

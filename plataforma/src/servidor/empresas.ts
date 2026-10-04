@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import type { MensajeDeCorreo, ResultadoDeEnvio } from "@/core/correo/tipos";
 import { altaDeEmpresaSchema } from "@/core/features/empresa/empresa.schema";
 import { enlaceDeInvitacion, estadoEfectivoDeInvitacion, mensajeDeInvitacion, vencimientoDeInvitacion, type EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
+import { cuitsRepetidos, tieneCuitPendiente } from "@/core/features/empresa/ciclo-de-vida";
 import { sembrarEmpresa } from "@/core/features/empresa/sembrar-empresa";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO, normalizarEmail } from "@/core/plataforma/email-reservado";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
@@ -184,6 +185,9 @@ export async function invitarDeNuevo(db: Db, deps: DependenciasDeEmpresas, autor
   return resultadoDeEnvio(empresaId, enviado, `Invitación enviada a ${email}.`);
 }
 
+export type FiltroDeEmpresas = "todas" | "cuit-pendiente" | "en-alta" | "activas" | "activas-sin-cuit" | "suspendidas";
+export const FILTROS_DE_EMPRESAS: readonly FiltroDeEmpresas[] = ["todas", "cuit-pendiente", "en-alta", "activas", "activas-sin-cuit", "suspendidas"];
+
 export interface FilaDeEmpresa {
   id: string;
   nombre: string;
@@ -197,16 +201,26 @@ export interface FilaDeEmpresa {
     enviada: boolean;
     cuitDeclarado: string | null;
   } | null;
+  /** Nombres de las OTRAS empresas que tienen o declararon el mismo CUIT: la plataforma tiene que decidir cuál es la real. */
+  cuitRepetidoCon: string[];
 }
 
-function filaDe(e: {
+type FilaCruda = {
   id: string;
   nombre: string;
   slug: string;
   estado: FilaDeEmpresa["estado"];
   cuit: string | null;
   invitacionRel: Array<{ email: string; estado: "PENDIENTE" | "ACEPTADA" | "REVOCADA"; venceEn: Date; enviadaEn: Date | null; cuitDeclarado: string | null }>;
-}, ahora: Date): FilaDeEmpresa {
+};
+
+/** El CUIT con el que la empresa compite: el confirmado, o —si está en alta y su gerente aceptó— el que declaró. */
+function cuitEnJuego(f: FilaDeEmpresa): string | null {
+  if (f.cuit) return f.cuit;
+  return f.estado === "PROVISIONING" && f.invitacion?.estado === "ACEPTADA" ? f.invitacion.cuitDeclarado : null;
+}
+
+function filaDe(e: FilaCruda, ahora: Date): FilaDeEmpresa {
   const i = e.invitacionRel[0];
   return {
     id: e.id,
@@ -215,7 +229,19 @@ function filaDe(e: {
     estado: e.estado,
     cuit: e.cuit,
     invitacion: i ? { email: i.email, estado: estadoEfectivoDeInvitacion(i, ahora), venceEn: i.venceEn, enviada: i.enviadaEn !== null, cuitDeclarado: i.cuitDeclarado } : null,
+    cuitRepetidoCon: [],
   };
+}
+
+/** Marca en cada fila cuáles otras empresas comparten su CUIT (confirmado o declarado). */
+function marcarRepetidos(filas: FilaDeEmpresa[]): FilaDeEmpresa[] {
+  const grupos = cuitsRepetidos(filas.map((f) => ({ id: f.id, cuit: cuitEnJuego(f) })));
+  const nombrePorId = new Map(filas.map((f) => [f.id, f.nombre]));
+  return filas.map((f) => {
+    const cuit = cuitEnJuego(f);
+    const ids = cuit ? (grupos.get(cuit) ?? []) : [];
+    return { ...f, cuitRepetidoCon: ids.filter((id) => id !== f.id).map((id) => nombrePorId.get(id) ?? id) };
+  });
 }
 
 const SELECCION = {
@@ -227,13 +253,40 @@ const SELECCION = {
   invitacionRel: { orderBy: { creadaEn: "desc" as const }, take: 1, select: { email: true, estado: true, venceEn: true, enviadaEn: true, cuitDeclarado: true } },
 } satisfies Prisma.EmpresaSelect;
 
-/** Todas las empresas de la instalación con su última invitación (la consola ve la lista completa: el rol de plataforma no tiene RLS sobre `Empresa`). */
-export async function listarEmpresas(db: Db, ahora: Date): Promise<FilaDeEmpresa[]> {
+function coincideConElFiltro(f: FilaDeEmpresa, filtro: FiltroDeEmpresas): boolean {
+  switch (filtro) {
+    case "todas":
+      return true;
+    case "cuit-pendiente":
+      return tieneCuitPendiente(f);
+    case "en-alta":
+      return f.estado === "PROVISIONING";
+    case "activas":
+      return f.estado === "ACTIVE";
+    case "activas-sin-cuit":
+      return f.estado === "ACTIVE" && f.cuit === null;
+    case "suspendidas":
+      return f.estado === "SUSPENDED";
+  }
+}
+
+/** Las empresas de la instalación (el rol de plataforma no tiene RLS sobre `Empresa`) con su última invitación y los CUIT repetidos, filtradas. */
+export async function listarEmpresas(db: Db, ahora: Date, filtro: FiltroDeEmpresas = "todas"): Promise<FilaDeEmpresa[]> {
   const filas = await db.empresa.findMany({ select: SELECCION, orderBy: { creadoEn: "desc" } });
-  return filas.map((f) => filaDe(f, ahora));
+  return marcarRepetidos(filas.map((f) => filaDe(f, ahora))).filter((f) => coincideConElFiltro(f, filtro));
+}
+
+/** Cuántas empresas esperan que la plataforma confirme su CUIT. */
+export async function contarCuitPendiente(db: Db, ahora: Date): Promise<number> {
+  return (await listarEmpresas(db, ahora, "cuit-pendiente")).length;
 }
 
 export async function obtenerEmpresa(db: Db, empresaId: string, ahora: Date): Promise<FilaDeEmpresa | null> {
-  const fila = await db.empresa.findUnique({ where: { id: empresaId }, select: SELECCION });
-  return fila ? filaDe(fila, ahora) : null;
+  const todas = await listarEmpresas(db, ahora);
+  return todas.find((f) => f.id === empresaId) ?? null;
+}
+
+/** La historia de la empresa en la auditoría de plataforma (lo más reciente primero). */
+export async function historialDeEmpresa(db: Db, empresaId: string) {
+  return db.auditoriaPlataforma.findMany({ where: { empresaAfectadaId: empresaId }, orderBy: { creadoEn: "desc" }, take: 50, select: { id: true, accion: true, adminEmail: true, creadoEn: true, detalle: true } });
 }

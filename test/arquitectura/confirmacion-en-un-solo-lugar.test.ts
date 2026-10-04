@@ -58,6 +58,15 @@ describe("confirmación y transición de traspasos en un solo lugar", () => {
     expect(problemas, `window.confirm fuera de un comentario:\n${problemas.join("\n")}`).toEqual([]);
   });
 
+  it("ningún archivo de la consola de plataforma (plataforma/src) usa window.confirm: la confirmación es su propio BotonConConfirmacion", () => {
+    const consola = join(RAIZ, "../plataforma/src");
+    const archivos = archivosDeCodigo(consola);
+    expect(archivos.some((a) => a.includes("confirmacion")), "el detector no ve la confirmación de la consola").toBe(true);
+    const problemas = archivos.flatMap((ruta) => usos(readFileSync(ruta, "utf8"), WINDOW_CONFIRM).map((u) => `${relative(consola, ruta)}:${u}`));
+    expect(problemas, `window.confirm en la consola:${problemas.map((p) => `
+${p}`).join("")}`).toEqual([]);
+  });
+
   it.each(MIGRADOS)("%s no arma a mano un estado `confirmando` (usa BotonConConfirmacion)", (archivo) => {
     const fuente = leer(archivo);
     expect(fuente, `${archivo} ya no usa BotonConConfirmacion`).toContain("BotonConConfirmacion");

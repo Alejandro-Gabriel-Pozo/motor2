@@ -40,7 +40,7 @@ export const ESTADOS_EMPRESA = ["PROVISIONING", "ACTIVE", "SUSPENDED", "DELETING
 export type EstadoEmpresa = (typeof ESTADOS_EMPRESA)[number];
 
 /**
- * Máquina de estados — DISEÑO TENTATIVO (DoD de la Fase 1.4 pide "la máquina de estados documentada", los documentos fuente
+ * Máquina de estados (E6, ADR-021: ACTIVE ↔ SUSPENDED y PROVISIONING → ACTIVE están en uso; una empresa en alta NO se suspende; DELETING sigue sin circuito) — era un DISEÑO TENTATIVO (DoD de la Fase 1.4 pide "la máquina de estados documentada", los documentos fuente
  * no especifican cada arista con una decisión propia del dueño): `DELETING` es terminal (sin vuelta atrás, coherente con que
  * borrar una empresa no es algo de lo que se pueda "reactivar"); `PROVISIONING` puede abortarse hacia `DELETING` sin pasar por
  * `ACTIVE` (un alta a medias que se cancela); `ACTIVE`/`SUSPENDED` se alternan libremente entre sí. Cualquier arista de acá

@@ -119,6 +119,8 @@ export default defineConfig({
         CARTA_DOMINIO_BASE: "carta.localhost",
         // Add-on de la empresa única: `carta.localhost` pelado sirve la carta de la empresa `e2e` sin su slug en la URL (también se lee al compilar); lo usa test/e2e/carta-empresa-unica.spec.ts.
         CARTA_EMPRESA_UNICA: "e2e",
+        // E6: el email de contacto que ve quien tiene su empresa suspendida (lo comprueba test/e2e/multiempresa-eleccion.spec.ts).
+        CONTACTO_PLATAFORMA_EMAIL: "plataforma@local.test",
       },
       url: URL_BASE,
       reuseExistingServer: false,

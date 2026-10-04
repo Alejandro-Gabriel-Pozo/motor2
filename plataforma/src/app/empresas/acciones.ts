@@ -1,10 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { enviarCorreo } from "@/core/correo/enviar";
 import { dbPlataforma } from "../../db";
 import { entornoDePlataforma } from "../../entorno";
 import { administradorEnSesion } from "../../servidor/sesion";
+import { confirmarAltaDeEmpresa, corregirCuitDeEmpresa, reactivarEmpresa, reenviarAvisoDeActivacion, suspenderEmpresa, type ResultadoDeCiclo } from "../../servidor/ciclo-de-vida";
 import { darDeAltaEmpresa, invitarDeNuevo, reenviarInvitacion, revocarInvitacion, type DependenciasDeEmpresas, type ResultadoDeEmpresa } from "../../servidor/empresas";
 
 /**
@@ -51,16 +53,81 @@ export async function darDeAlta(_: EstadoDeFormulario, formData: FormData): Prom
 
 export async function reenviar(empresaId: string): Promise<EstadoDeFormulario> {
   const { autor, deps } = await autorYDependencias();
-  return estadoDe(await reenviarInvitacion(dbPlataforma(), deps, autor, empresaId));
+  const r = estadoDe(await reenviarInvitacion(dbPlataforma(), deps, autor, empresaId));
+  revalidatePath(`/empresas/${empresaId}`);
+  return r;
 }
 
 export async function revocar(empresaId: string): Promise<EstadoDeFormulario> {
   const { autor } = await autorYDependencias();
   const r = await revocarInvitacion(dbPlataforma(), autor, empresaId, new Date());
+  revalidatePath(`/empresas/${empresaId}`);
   return { tipo: r.ok ? "ok" : "error", mensaje: r.mensaje };
 }
 
 export async function invitarOtraVez(empresaId: string, _: EstadoDeFormulario, formData: FormData): Promise<EstadoDeFormulario> {
   const { autor, deps } = await autorYDependencias();
-  return estadoDe(await invitarDeNuevo(dbPlataforma(), deps, autor, empresaId, texto(formData, "email")));
+  const r = estadoDe(await invitarDeNuevo(dbPlataforma(), deps, autor, empresaId, texto(formData, "email")));
+  revalidatePath(`/empresas/${empresaId}`);
+  return r;
+}
+
+function estadoDeCiclo(r: ResultadoDeCiclo): EstadoDeFormulario {
+  if (!r.ok) return { tipo: "error", mensaje: r.mensaje };
+  return { tipo: r.enviado === false ? "aviso" : "ok", mensaje: r.mensaje };
+}
+
+const marcado = (formData: FormData, campo: string): boolean => formData.get(campo) === "on";
+
+/** E6: confirma el alta (PROVISIONING → ACTIVE) con el CUIT del formulario; avisa al gerente después del commit. */
+export async function confirmar(empresaId: string, _: EstadoDeFormulario, formData: FormData): Promise<EstadoDeFormulario> {
+  const { autor, deps } = await autorYDependencias();
+  const r = estadoDeCiclo(
+    await confirmarAltaDeEmpresa(dbPlataforma(), deps, autor, empresaId, {
+      cuit: texto(formData, "cuit"),
+      revisado: marcado(formData, "revisado"),
+      aceptoCuitDistinto: marcado(formData, "aceptoCuitDistinto"),
+    }),
+  );
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/empresas");
+  return r;
+}
+
+export async function corregirCuit(empresaId: string, _: EstadoDeFormulario, formData: FormData): Promise<EstadoDeFormulario> {
+  const { autor, deps } = await autorYDependencias();
+  const r = estadoDeCiclo(await corregirCuitDeEmpresa(dbPlataforma(), deps, autor, empresaId, { cuit: texto(formData, "cuit"), motivo: texto(formData, "motivo") }));
+  revalidatePath(`/empresas/${empresaId}`);
+  return r;
+}
+
+/** Quitar el CUIT (solo de una empresa suspendida): la misma función con el CUIT vacío. */
+export async function quitarCuit(empresaId: string, _: EstadoDeFormulario, formData: FormData): Promise<EstadoDeFormulario> {
+  const { autor, deps } = await autorYDependencias();
+  const r = estadoDeCiclo(await corregirCuitDeEmpresa(dbPlataforma(), deps, autor, empresaId, { cuit: "", motivo: texto(formData, "motivo") }));
+  revalidatePath(`/empresas/${empresaId}`);
+  return r;
+}
+
+export async function suspender(empresaId: string, _: EstadoDeFormulario, formData: FormData): Promise<EstadoDeFormulario> {
+  const { autor } = await autorYDependencias();
+  const r = estadoDeCiclo(await suspenderEmpresa(dbPlataforma(), autor, empresaId, texto(formData, "motivo")));
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/empresas");
+  return r;
+}
+
+export async function reactivar(empresaId: string, _: EstadoDeFormulario, formData: FormData): Promise<EstadoDeFormulario> {
+  const { autor } = await autorYDependencias();
+  const r = estadoDeCiclo(await reactivarEmpresa(dbPlataforma(), autor, empresaId, texto(formData, "motivo")));
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/empresas");
+  return r;
+}
+
+export async function reenviarAviso(empresaId: string): Promise<EstadoDeFormulario> {
+  const { autor, deps } = await autorYDependencias();
+  const r = estadoDeCiclo(await reenviarAvisoDeActivacion(dbPlataforma(), deps, autor, empresaId));
+  revalidatePath(`/empresas/${empresaId}`);
+  return r;
 }

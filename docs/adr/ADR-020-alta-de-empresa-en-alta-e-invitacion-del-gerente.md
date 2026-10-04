@@ -59,7 +59,7 @@ gobierno de ADR-008) y deja la auditoría de la empresa con el nuevo gerente com
 
 La app de empresas (`motor2_app`) no escribe `Empresa` a propósito (ADR-012 §3). Escribir ahí el CUIT del gerente exigiría devolverle ese permiso o abrir una función con
 privilegios elevados, y un CUIT mal cargado ocuparía el único (`Empresa_cuit_key`) de una empresa real. Por eso queda en `Invitacion.cuitDeclarado` y **E6 lo copia a
-`Empresa.cuit`** al confirmar; ahí el índice único decide si dos empresas declararon el mismo.
+`Empresa.cuit`** al confirmar (ADR-021: la invitación conserva lo declarado); ahí el índice único decide si dos empresas declararon el mismo.
 
 ### 6. Cuarta vía del login
 
@@ -101,7 +101,7 @@ el núcleo solo como fixture de pruebas (alta directa `ACTIVE`).
 
 - Una migración aditiva más, por base y con autorización (el Instant Rollback sigue siendo seguro). `down.sql` pierde las invitaciones pendientes y los CUIT declarados.
 - La consola maneja la instalación a la que apunta su conexión (hoy zuluhub); sumar la de hoteles es una variable por instalación (ADR-012 §4), todavía sin implementar.
-- Las altas abandonadas dejan nombre y slug ocupados hasta que exista el estado `DELETING` (E6).
+- Las altas abandonadas dejan nombre y slug ocupados; cancelarlas o darlas de baja queda para una etapa posterior (ver ADR-021, que corrige la atribución a E6).
 - El login de producción gana una vía (cambio autorizado por el dueño); la vinculación automática por email sigue encendida hasta E8.
 
 ## Implementación
