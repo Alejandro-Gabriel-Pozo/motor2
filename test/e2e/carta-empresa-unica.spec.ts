@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Add-on CARTA_EMPRESA_UNICA (core/carta/carta-empresa-unica.ts, ADR-006): el dominio base pelado sirve la carta de UNA empresa sin su slug en la URL.

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import type { Browser, Page } from "@playwright/test";
-import { prisma } from "../../../src/lib/db";
+import { prisma } from "./db";
 import { crearEmpresa } from "../../../src/core/features/empresa/crear-empresa";
 import { prismaAdmin } from "../../setup/cliente-duenio";
 import { crearMembresia } from "../../setup/membresia";

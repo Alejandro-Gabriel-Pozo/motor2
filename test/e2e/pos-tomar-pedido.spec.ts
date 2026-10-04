@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { prismaAdmin } from "../setup/cliente-duenio";

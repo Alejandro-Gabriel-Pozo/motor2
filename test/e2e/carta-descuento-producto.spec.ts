@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { menuCartaPublicado } from "./fixtures/carta-menu";
 import { prismaAdmin } from "../setup/cliente-duenio";
 

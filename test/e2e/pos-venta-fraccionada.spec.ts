@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Venta fraccionada en el POS (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): un producto con `pasoVenta` acepta un

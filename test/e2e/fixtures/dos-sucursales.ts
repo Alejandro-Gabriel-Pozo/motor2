@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Browser } from "@playwright/test";
-import { prisma } from "../../../src/lib/db";
+import { prisma } from "./db";
 import { crearMembresias } from "../../setup/membresia";
 
 /** Un usuario nuevo con membresía en «Central» (rol `rolCentral`) y en una sucursal nueva (rol `rolSegunda`), con su sesión. */

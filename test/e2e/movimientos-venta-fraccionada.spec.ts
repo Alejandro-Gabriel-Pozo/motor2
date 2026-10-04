@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Venta fraccionada en el MOSTRADOR (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): la misma validación de `pasoVenta`

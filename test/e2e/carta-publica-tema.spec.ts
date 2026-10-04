@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import AxeBuilder from "@axe-core/playwright";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Paridad UX de la carta pública con restaurant-menu-design (C1–C9) y las claves de tema que hoy no tenían efecto en la carta.

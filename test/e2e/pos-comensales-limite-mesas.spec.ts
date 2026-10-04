@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Comensales al abrir mesa y límite de mesas abiertas por sucursal (docs/plan-comensales-y-limite-mesas-2026-09-26.md):

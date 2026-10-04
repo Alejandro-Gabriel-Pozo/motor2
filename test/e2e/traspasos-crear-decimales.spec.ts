@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Task #32 (docs/pendientes-*.md): Traspasos usaba `redondearACantidadDeUnidad` (redondea en silencio) en vez de

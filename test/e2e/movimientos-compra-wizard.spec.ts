@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 async function elegirSelectPorOpcion(page: Page, textoOpcion: string) {
   for (const select of await page.locator("select").all()) {

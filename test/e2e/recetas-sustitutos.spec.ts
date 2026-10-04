@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Sustitución de insumos por línea de receta (docs/plan-sustitucion-insumos-receta-2026-09-26.md): declarar un sustituto desde el

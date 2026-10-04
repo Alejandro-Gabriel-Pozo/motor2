@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * «Volver a donde estaba»: cuando la sesión vence con la pestaña abierta, el login recuerda la pantalla (`/login?volver=…`) y, al

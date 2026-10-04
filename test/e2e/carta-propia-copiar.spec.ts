@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Carta PROPIA de cada sucursal (ADR-009, C3/C4), en un navegador real: la sucursal activa sin carta propia ve «Tu sucursal no tiene carta propia

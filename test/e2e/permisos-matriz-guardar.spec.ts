@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Matriz de permisos con «Guardar»: se abre en solo lectura; el modo edición marca los cambios y no aplica nada hasta «Confirmar y guardar»,

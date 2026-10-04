@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * §2 (docs/planes-demo-y-claridad-reportes-2026-09-21.md): la tarjeta de margen de /reportes/periodo muestra como cifra

@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Regresión (hallazgo del dueño, 2026-09-25): Enter en un `<input>` de texto dentro de un `FormConResultado` NO tiene que

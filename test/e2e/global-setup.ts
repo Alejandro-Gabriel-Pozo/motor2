@@ -1,4 +1,4 @@
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { asegurarBaseSeed } from "./fixtures/auth";
 import { crearPrismaE2E, resetearBaseE2E, resolverUrlAppE2E, resolverUrlE2E } from "./fixtures/base-e2e";
 

@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Camino CONTEO (Task #26, Diseño B — docs/plan-rendimiento-recetas-2026-09-22.md, sección nueva): con dos

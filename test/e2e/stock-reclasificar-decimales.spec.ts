@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Task #32 (docs/pendientes-*.md): Reclasificación NO tenía ningún chequeo de decimales en los montos de destino — ni

@@ -1,4 +1,4 @@
-import { prisma } from "../../../src/lib/db";
+import { prisma } from "./db";
 import { resolverMenuCarta } from "../../../src/core/carta/menu-consulta";
 
 /**

@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { resolverEmpresaCarta } from "../../src/core/carta/empresa-carta";
 import { resolverPortalCarta } from "../../src/core/carta/publica-consulta";
 

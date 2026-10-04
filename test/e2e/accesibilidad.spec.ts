@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { crearMembresias, crearMembresia } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";

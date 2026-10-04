@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Receta propia por sucursal (ADR-009, R3/R4): desde el editor de recetas, la sucursal activa crea su receta propia a partir de la central,

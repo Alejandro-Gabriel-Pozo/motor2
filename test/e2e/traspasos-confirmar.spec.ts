@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Confirmación de intención en la Bandeja de traspasos (docs/plan-mutaciones-controladas-2026-09-25.md, Pasos 6a/6b): «Cancelar solicitud»

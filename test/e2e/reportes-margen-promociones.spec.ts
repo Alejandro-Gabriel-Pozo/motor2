@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * `/reportes/margen-promociones` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 12): contra Postgres real, sembrando

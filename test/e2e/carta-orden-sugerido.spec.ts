@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Orden autosugerido en la carta (docs/plan-carta-seccion-directa-2026-09-25.md, DA5/DA6, M8), en un navegador real:

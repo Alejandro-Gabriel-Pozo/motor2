@@ -1,7 +1,7 @@
 import { test, expect } from "./fixtures/auth";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Pendiente #44 (feedback al hacer click): mientras una acción de servidor está en curso, el formulario lo dice (`aria-busy`, «Guardando…» con

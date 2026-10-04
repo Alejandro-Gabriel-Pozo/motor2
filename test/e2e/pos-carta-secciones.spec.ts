@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 
 /**

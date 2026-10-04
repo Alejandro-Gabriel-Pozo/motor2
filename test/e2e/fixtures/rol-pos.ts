@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Browser } from "@playwright/test";
-import { prisma } from "../../../src/lib/db";
+import { prisma } from "./db";
 import type { AccionClave } from "../../../src/core/permisos/acciones";
 import { crearMembresia } from "../../setup/membresia";
 

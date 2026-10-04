@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import type { Browser } from "@playwright/test";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { crearMembresias } from "../setup/membresia";
 
 /**

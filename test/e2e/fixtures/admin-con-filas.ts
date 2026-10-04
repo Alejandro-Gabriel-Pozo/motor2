@@ -1,4 +1,4 @@
-import { prisma } from "../../../src/lib/db";
+import { prisma } from "./db";
 import type { AccionClave } from "../../../src/core/permisos/acciones";
 
 /** El estado de una celda del rol: Ver/Editar, o `null` = sin fila. */

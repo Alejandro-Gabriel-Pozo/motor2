@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { RUTAS_SIN_PARAMETROS } from "./rutas-sin-parametros";
 
 /**

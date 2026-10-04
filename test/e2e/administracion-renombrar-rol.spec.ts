@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Bloque G, G3 — renombrar un rol desde la pantalla de roles. Cambia la etiqueta, nunca la identidad: el rol de sistema renombrado sigue siendo

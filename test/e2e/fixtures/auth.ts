@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { test as base, type Page } from "@playwright/test";
-import { prisma } from "../../../src/lib/db";
+import { prisma } from "./db";
 import { ACCIONES } from "../../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
 import { crearMembresia } from "../../setup/membresia";
