@@ -1,14 +1,22 @@
 import "dotenv/config";
 import type { Prisma } from "@prisma/client";
-import { prisma } from "../../src/lib/db";
-import { baseDelContexto } from "../../src/core/auth/base";
+import { prisma as prismaSinEmpresa } from "../../src/lib/db";
+import { baseDeEmpresa } from "../../src/core/auth/base";
+import { clienteConEmpresaDePrueba, EMPRESA_DE_PRUEBA_ID } from "./empresa-de-prueba";
 import { crearMembresia } from "./membresia";
 import { prismaAdmin } from "./cliente-duenio";
 import { activarTodosLosModulos } from "./modulos";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
-export { prisma };
+/**
+ * El cliente de las pruebas (`motor2_app`) con la empresa de prueba fijada en la conexión (ADR-022): lo que los tests escriben y leen cae en ella sin depender de
+ * «la única empresa activa». Para probar lo que pasa SIN contexto de empresa (login, RLS, lecturas previas) está `prismaSinEmpresa`.
+ */
+export const prisma = clienteConEmpresaDePrueba(process.env.DATABASE_URL ?? "");
+
+/** El cliente del proceso, sin empresa: el que usa `src/` en producción. Solo para tests que prueban explícitamente la ausencia de contexto. */
+export { prismaSinEmpresa };
 
 export { prismaAdmin };
 
@@ -32,10 +40,10 @@ export async function analizarDespuesDeCargaMasiva() {
 }
 
 /** La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. */
-export const baseDeTest = baseDelContexto();
+export const baseDeTest = baseDeEmpresa(EMPRESA_DE_PRUEBA_ID);
 
 /** Id de la empresa por defecto que crea la migración multiempresa_estructura (ADR-007, A2) y que `limpiarBaseDeTest` conserva. */
-export const EMPRESA_POR_DEFECTO_ID = "empresa_principal";
+export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
 
 /**
  * Borra todo (orden respetando FKs) — se llama en beforeEach de cada test file. Va con `prismaAdmin` (el dueño salta el RLS, ADR-007 A6): con el

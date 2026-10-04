@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma, prismaSinEmpresa } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
 import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
@@ -45,7 +45,7 @@ describe("guardarReceta — concurrencia real", () => {
   it("dos guardados simultáneos de la MISMA receta terminan los dos, como versiones distintas y contiguas, sin mezclar ingredientes", async () => {
     // Un intento = una transacción interactiva (`fn` es una función) sobre el cliente base: `ctx.db` ya no es `prisma` (ADR-007, A5), así que
     // espiar `prisma.recetaVersion.findFirst` no vería nada. Las operaciones sueltas del contexto usan la forma de arreglo y no cuentan.
-    const intentos = vi.spyOn(prisma, "$transaction");
+    const intentos = vi.spyOn(prismaSinEmpresa, "$transaction");
     intentos.mockClear();
 
     for (let i = 0; i < ITERACIONES; i++) {

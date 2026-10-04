@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 import { dbDeEmpresa, dbDeUsuario } from "../../src/core/auth/base";
 
 /**
@@ -33,8 +33,8 @@ beforeEach(async () => {
 
 describe("con dos empresas activas y sin contexto no se ve ni se escribe nada", () => {
   it("lectura vacía e INSERT rechazado con el rol de ejecución", async () => {
-    expect(await prisma.usuarioEmpresa.count()).toBe(0);
-    await expect(prisma.usuarioEmpresa.create({ data: { usuarioId: otro, empresaId: A } })).rejects.toThrow();
+    expect(await prismaSinEmpresa.usuarioEmpresa.count()).toBe(0);
+    await expect(prismaSinEmpresa.usuarioEmpresa.create({ data: { usuarioId: otro, empresaId: A } })).rejects.toThrow();
     expect(await prismaAdmin.usuarioEmpresa.count()).toBe(3);
   });
 });

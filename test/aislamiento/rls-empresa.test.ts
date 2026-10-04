@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 import { dbDeEmpresa, dbDeUsuario, transaccionDeEmpresa } from "../../src/core/auth/base";
 
 /**
@@ -191,12 +191,12 @@ describe("aislamiento entre dos empresas ACTIVE (el código corre como motor2_ap
   });
 
   it("sin contexto y con dos empresas activas: no se ve nada y no se puede insertar (el sentido seguro)", async () => {
-    expect(await prisma.unidad.findMany()).toEqual([]);
-    expect(await prisma.unidad.count()).toBe(0);
-    await expect(prisma.unidad.create({ data: { nombre: "huerfana", magnitud: "PESO" } })).rejects.toThrow();
-    await expect(prisma.unidad.create({ data: { empresaId: A, nombre: "huerfana", magnitud: "PESO" } })).rejects.toThrow();
-    expect((await prisma.unidad.updateMany({ data: { activa: false } })).count).toBe(0);
-    expect((await prisma.unidad.deleteMany()).count).toBe(0);
+    expect(await prismaSinEmpresa.unidad.findMany()).toEqual([]);
+    expect(await prismaSinEmpresa.unidad.count()).toBe(0);
+    await expect(prismaSinEmpresa.unidad.create({ data: { nombre: "huerfana", magnitud: "PESO" } })).rejects.toThrow();
+    await expect(prismaSinEmpresa.unidad.create({ data: { empresaId: A, nombre: "huerfana", magnitud: "PESO" } })).rejects.toThrow();
+    expect((await prismaSinEmpresa.unidad.updateMany({ data: { activa: false } })).count).toBe(0);
+    expect((await prismaSinEmpresa.unidad.deleteMany()).count).toBe(0);
     expect(await prismaAdmin.unidad.count()).toBe(3);
   });
 

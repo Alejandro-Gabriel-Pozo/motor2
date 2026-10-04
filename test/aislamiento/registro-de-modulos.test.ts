@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { MODULOS } from "../../src/core/modulos/catalogo";
 import { MODULOS_VENDIBLES, activarTodosLosModulos } from "../setup/modulos";
@@ -110,7 +110,7 @@ describe("registro de módulos por empresa (P4)", () => {
     });
 
     it("sin contexto de empresa (con 2+ ACTIVE) no ve ninguna fila", async () => {
-      expect(await prisma.moduloEmpresa.count()).toBe(0);
+      expect(await prismaSinEmpresa.moduloEmpresa.count()).toBe(0);
     });
 
     it("no puede insertar, actualizar, borrar ni truncar: privilegios denegados", async () => {

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, prisma, prismaAdmin } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 import { baseDeEmpresa, dbDeEmpresa, transaccionDeEmpresa } from "../../src/core/auth/base";
 import { verificarRolDeEjecucion, datosDelRolDeEjecucion } from "../../src/core/auth/rol-de-ejecucion";
 import { reportarErrorUnaVez } from "../../src/lib/reportar-error";
@@ -43,14 +43,14 @@ describe("dbDeEmpresa / transaccionDeEmpresa", () => {
   });
 
   it("sin contexto, con dos empresas activas, un alta sin empresaId falla (el sentido seguro)", async () => {
-    await expect(prisma.sucursal.create({ data: { nombre: "Huerfana" } })).rejects.toThrow();
+    await expect(prismaSinEmpresa.sucursal.create({ data: { nombre: "Huerfana" } })).rejects.toThrow();
   });
 
   it("no filtra el contexto a otros pedidos: ninguna conexión del pool queda con app.empresa_id", async () => {
     const db = dbDeEmpresa("norte");
     await Promise.all(Array.from({ length: 12 }, (_, i) => db.sucursal.create({ data: { nombre: `S${i}` } })));
     await transaccionDeEmpresa("norte", async (tx) => tx.sucursal.create({ data: { nombre: "T" } }));
-    const lecturas = await Promise.all(Array.from({ length: 12 }, () => contextoDeLaConexion(prisma)));
+    const lecturas = await Promise.all(Array.from({ length: 12 }, () => contextoDeLaConexion(prismaSinEmpresa)));
     expect(lecturas.every((valor) => !valor)).toBe(true);
   });
 

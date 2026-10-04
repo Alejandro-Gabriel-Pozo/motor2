@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
-import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 
 /**
  * Estructura que deja la migración `multiempresa_estructura` (ADR-007, paso A2): instalación multiempresa-capable activada con UNA
@@ -114,12 +114,12 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
 
     it("con dos empresas ACTIVE y sin contexto devuelve NULL y crear una fila falla (se equivoca hacia el lado seguro)", async () => {
       await crearEmpresa("empresa_b", "ACTIVE");
-      const [{ e }] = await prisma.$queryRaw<Array<{ e: string | null }>>`SELECT app_empresa_actual() AS e`;
+      const [{ e }] = await prismaSinEmpresa.$queryRaw<Array<{ e: string | null }>>`SELECT app_empresa_actual() AS e`;
       expect(e).toBeNull();
 
-      const error = await prisma.sucursal.create({ data: { nombre: "Sin contexto" } }).catch((err: unknown) => err);
+      const error = await prismaSinEmpresa.sucursal.create({ data: { nombre: "Sin contexto" } }).catch((err: unknown) => err);
       expect(error).toBeInstanceOf(Error);
-      expect(await prisma.sucursal.count()).toBe(0);
+      expect(await prismaSinEmpresa.sucursal.count()).toBe(0);
     });
   });
 
