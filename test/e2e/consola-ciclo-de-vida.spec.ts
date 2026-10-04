@@ -74,7 +74,7 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   await expect(page.getByText(/espera[n]? que confirmes su CUIT/)).toBeVisible();
   await page.goto(`${CONSOLA}/empresas?filtro=cuit-pendiente`);
   await expect(page.getByRole("link", { name: "CUIT pendiente" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText(datos.nombre)).toBeVisible();
+  await expect(page.getByRole("link", { name: `Ver ${datos.nombre}` })).toBeVisible();
   await sinViolaciones(page);
 
   // Detalle: no se puede confirmar sin tildar la revisión; con el aviso de confirmación abierto, también sin violaciones de axe.

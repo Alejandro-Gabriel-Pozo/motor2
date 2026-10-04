@@ -6,12 +6,13 @@ import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fi
 import { dbPlataforma } from "../../../db";
 import { historialDeEmpresa, obtenerEmpresa } from "../../../servidor/empresas";
 import { administradorEnSesion } from "../../../servidor/sesion";
-import { ACCION_DE_AUDITORIA, ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, fechaCorta } from "../textos";
+import { ACCION_DE_AUDITORIA, ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, fechaCorta, textoDeLoQueAcabaDePasar } from "../textos";
 import { AccionesDeInvitacion, ConfirmarAlta, CorregirCuit, InvitarDeNuevo, Reactivar, ReenviarAviso, Suspender } from "./botones";
 
-export default async function PaginaDeLaEmpresa({ params }: { params: Promise<{ id: string }> }) {
+export default async function PaginaDeLaEmpresa({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ hecho?: string | string[] }> }) {
   if (!(await administradorEnSesion())) redirect("/login");
   const { id } = await params;
+  const { hecho } = await searchParams;
   const db = dbPlataforma();
   const empresa = await obtenerEmpresa(db, id, new Date());
   if (!empresa) notFound();
@@ -27,6 +28,11 @@ export default async function PaginaDeLaEmpresa({ params }: { params: Promise<{ 
         <h1>{empresa.nombre}</h1>
         <span className="ayuda">{ESTADO_DE_EMPRESA[empresa.estado]}</span>
       </div>
+      {textoDeLoQueAcabaDePasar(Array.isArray(hecho) ? hecho[0] : hecho, empresa) && (
+        <p className="aviso" role="status">
+          {textoDeLoQueAcabaDePasar(Array.isArray(hecho) ? hecho[0] : hecho, empresa)}
+        </p>
+      )}
       {empresa.cuitRepetidoCon.length > 0 && (
         <p className="error" role="alert">
           CUIT repetido: también lo tienen o lo declararon {empresa.cuitRepetidoCon.map((n) => `«${n}»`).join(", ")}.

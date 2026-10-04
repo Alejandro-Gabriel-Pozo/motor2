@@ -1,4 +1,5 @@
 import type { EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
+import { formatearCuit } from "@/core/fiscal/cuit";
 import type { FilaDeEmpresa } from "../../servidor/empresas";
 
 export const ESTADO_DE_EMPRESA: Record<FilaDeEmpresa["estado"], string> = {
@@ -41,3 +42,25 @@ export const ETIQUETA_DE_FILTRO: Record<string, string> = {
   "activas-sin-cuit": "Activas sin CUIT",
   suspendidas: "Suspendidas",
 };
+
+/**
+ * Lo que acaba de pasar, tras un cambio que hace desaparecer su propio formulario (confirmar, suspender, reactivar, revocar): la acción redirige con `?hecho=<código>` y la
+ * página muestra este texto FIJO. Nunca se refleja texto de la URL: un código desconocido no muestra nada.
+ */
+export function textoDeLoQueAcabaDePasar(codigo: string | undefined, empresa: { nombre: string; cuit: string | null }): string | null {
+  const cuit = empresa.cuit ? formatearCuit(empresa.cuit) : "";
+  switch (codigo) {
+    case "confirmada":
+      return `«${empresa.nombre}» quedó activa con el CUIT ${cuit}. Le avisamos al gerente.`;
+    case "confirmada-sin-aviso":
+      return `«${empresa.nombre}» quedó activa con el CUIT ${cuit}. El aviso por mail no salió: reenvialo desde acá.`;
+    case "suspendida":
+      return `«${empresa.nombre}» quedó suspendida: sus usuarios dejan de entrar en su próximo pedido.`;
+    case "reactivada":
+      return `«${empresa.nombre}» quedó activa de nuevo.`;
+    case "revocada":
+      return "Invitación revocada: el enlace ya no sirve.";
+    default:
+      return null;
+  }
+}
