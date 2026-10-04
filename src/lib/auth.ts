@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
-import { intentarBootstrapAdmin } from "@/core/auth/bootstrap";
 import { cookies } from "next/headers";
 import { inicioDeSesionPermitido } from "@/core/auth/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
@@ -61,13 +60,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = user.id;
       }
       return session;
-    },
-  },
-  events: {
-    async signIn({ user }) {
-      if (user.id && user.email) {
-        await intentarBootstrapAdmin(user.id, user.email);
-      }
     },
   },
 });

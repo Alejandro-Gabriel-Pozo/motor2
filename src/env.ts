@@ -21,8 +21,7 @@ import { esRemitenteValido } from "./core/correo/direcciones";
  * OAuth — único proveedor de login hoy).
  *
  * Opcionales (el proyecto funciona sin ellas, con la feature correspondiente deshabilitada — confirmado en el código real):
- * `ALLOWED_EMAIL_DOMAINS` (`src/core/auth/acceso.ts` — "hoy no hay dominios configurados"), `BOOTSTRAP_ADMIN_EMAILS`
- * (`src/core/auth/bootstrap.ts` — "hoy no hay emails configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
+ * `ALLOWED_EMAIL_DOMAINS` (`src/core/auth/acceso.ts` — "hoy no hay dominios configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
  * `CARTA_DOMINIO_BASE` (subdominio de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional), y las cuatro del envío de mails
  * (`CORREO_AVISOS_*`, `CORREO_OPERATIVO_*`, E3/ADR-018: sin ellas el canal no envía; en local muestra el mail en la terminal).
  *
@@ -40,7 +39,6 @@ const envSchema = z.object({
   AUTH_GOOGLE_SECRET: z.string().min(1),
 
   ALLOWED_EMAIL_DOMAINS: z.string().min(1).optional(),
-  BOOTSTRAP_ADMIN_EMAILS: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(1).optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
 
@@ -55,7 +53,7 @@ const envSchema = z.object({
 
   // URL pública de la app para Auth.js: con https decide la cookie de sesión (`sirvePorHttps`, core/auth/cookie-sesion.ts).
   AUTH_URL: z.string().min(1).optional(),
-  // "1" se niega a operar con un rol de base que salta el RLS aunque haya una sola empresa (core/auth/rol-de-ejecucion.ts).
+  // Desde ADR-022 la app SIEMPRE se niega a operar con un rol de base que salta el RLS; "0" es el escape explícito de las herramientas de demo (core/auth/rol-de-ejecucion.ts).
   MOTOR2_ROL_ESTRICTO: z.string().min(1).optional(),
   // "1" aplica el chequeo de producción fuera de Vercel; "0" lo relaja al esquema común (`validarEntornoAlArrancar`).
   MOTOR2_ENTORNO_ESTRICTO: z.string().min(1).optional(),

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import type { Browser, Page } from "@playwright/test";
-import { prisma } from "./db";
+import { prismaSinEmpresa } from "./db";
 import { crearEmpresa } from "../../../src/core/features/empresa/crear-empresa";
 import { prismaAdmin } from "../../setup/cliente-duenio";
 import { crearMembresia } from "../../setup/membresia";
@@ -34,7 +34,7 @@ export async function activarEmpresaB(previa?: EmpresasDeLaPrueba): Promise<Empr
   const slug = `norte-${marca}`;
   const nombre = `E2E Norte ${marca}`;
   const sucursalNombre = `Sucursal Norte ${marca}`;
-  const creada = await crearEmpresa(prisma, {
+  const creada = await crearEmpresa(prismaSinEmpresa, {
     nombre,
     slug,
     zonaHoraria: "America/Argentina/Buenos_Aires",

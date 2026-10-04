@@ -2,7 +2,6 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
 import { emailPuedeIniciarSesion } from "../../src/core/auth/acceso";
-import { intentarBootstrapAdmin } from "../../src/core/auth/bootstrap";
 
 /**
  * ADR-007, A6: las lecturas que corren ANTES de tener empresa (login, bootstrap) bajo RLS, con DOS empresas ACTIVE. `UsuarioEmpresa` y
@@ -53,15 +52,5 @@ describe("lecturas previas al contexto con dos empresas ACTIVE", () => {
     await empresaNorteConAdmin();
     await prismaAdmin.user.create({ data: { email: "nadie@ext.com" } });
     expect(await emailPuedeIniciarSesion("nadie@ext.com", undefined)).toBe(false);
-  });
-
-  it("el bootstrap con dos empresas activas no adivina empresa: no crea ninguna pertenencia", async () => {
-    await sembrarBase();
-    await empresaNorteConAdmin();
-    process.env.BOOTSTRAP_ADMIN_EMAILS = "dueno@negocio.com";
-    const usuario = await prismaAdmin.user.create({ data: { email: "dueno@negocio.com" } });
-    await intentarBootstrapAdmin(usuario.id, usuario.email);
-    expect(await prismaAdmin.usuarioEmpresa.count({ where: { usuarioId: usuario.id } })).toBe(0);
-    expect(await prisma.usuarioEmpresa.count({ where: { usuarioId: usuario.id } })).toBe(0);
   });
 });

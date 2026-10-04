@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, prismaAdmin, EMPRESA_POR_DEFECTO_ID } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, prismaAdmin, EMPRESA_POR_DEFECTO_ID, prismaSinEmpresa } from "../setup/test-db";
 import { crearEmpresa } from "../../src/core/features/empresa/crear-empresa";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 
@@ -18,7 +18,7 @@ beforeEach(async () => {
   await prismaAdmin.unidad.createMany({ data: [{ empresaId: A, nombre: "kg-a", magnitud: "PESO" }, { empresaId: A, nombre: "kg", magnitud: "PESO" }] });
   await prismaAdmin.sucursal.create({ data: { empresaId: A, nombre: "Sucursal A" } });
   await prismaAdmin.rol.create({ data: { empresaId: A, nombre: "admin", clave: "admin" } });
-  ({ empresaId: B } = await crearEmpresa(prisma, {
+  ({ empresaId: B } = await crearEmpresa(prismaSinEmpresa, {
     nombre: "Pizzería Norte",
     slug: "norte",
     zonaHoraria: "America/Argentina/Buenos_Aires",

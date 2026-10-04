@@ -39,7 +39,7 @@ export interface EmpresaCreada {
  *
  * `db` es un cliente SIN empresa (el del proceso, `DATABASE_URL`): la transacción fija `app.empresa_id` en la empresa nueva (local a la
  * transacción), así que con el rol `motor2_app` el RLS deja escribir solo en ella. Con un rol que salta el RLS (dueño, superusuario, BYPASSRLS)
- * se niega si la empresa nueva deja más de una activa (mismo criterio que `verificarRolDeEjecucion`).
+ * se niega siempre (ADR-022: `verificarRolDeEjecucion`).
  *
  * `emailsReservados` son los emails de los administradores de plataforma (los lee quien llama con el rol de plataforma, que es el único con permiso sobre
  * `AdminPlataforma`: ver `emailsDeAdminsDePlataforma`); si el del primer admin está entre ellos, el alta se rechaza antes de tocar nada.
@@ -51,7 +51,7 @@ export async function crearEmpresa(db: PrismaClient, entrada: ComandoCrearEmpres
   const { nombre, slug, zonaHoraria, moneda, emailPrimerAdmin, nombreSucursal } = crearEmpresaConAdminSchema.parse(entrada);
   if (esEmailReservadoDeAdminPlataforma(emailPrimerAdmin, emailsReservados)) throw new EmailReservadoError();
 
-  await verificarRolDeEjecucion(db, undefined, 1);
+  await verificarRolDeEjecucion(db);
 
   return db.$transaction(
     async (tx) => {

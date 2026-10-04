@@ -2,12 +2,13 @@ import "dotenv/config";
 import { parseArgs } from "node:util";
 import { prisma } from "../src/lib/db";
 import { dbDeEmpresa } from "../src/core/auth/base";
+import { incorporarPrimerGerente } from "../src/core/permisos/gerencia";
 import { ACCIONES } from "../src/core/permisos/acciones";
 
 async function main() {
   // La empresa a sembrar se indica (ADR-022: ya no existe «la única empresa activa» como respaldo): `--empresa <slug>`, o, sin argumento, la empresa por defecto que crea
   // la migración multiempresa_estructura (ADR-007, A2; id `empresa_principal`). `Empresa` no tiene RLS: se la busca con el cliente global.
-  const { values } = parseArgs({ options: { empresa: { type: "string" } }, strict: true });
+  const { values } = parseArgs({ options: { empresa: { type: "string" }, gerente: { type: "string" } }, strict: true });
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: values.empresa ? { slug: values.empresa } : { id: "empresa_principal" } });
   // Todo lo que sigue es de esa empresa: cada operación corre con `app.empresa_id` fijado (el DEFAULT de `empresaId` y el RLS la ven).
   const db = dbDeEmpresa(empresaId);
@@ -68,6 +69,14 @@ async function main() {
   ];
   for (const u of unidadesBase) {
     await db.unidad.upsert({ where: { empresaId_nombre: { empresaId, nombre: u.nombre } }, update: {}, create: u });
+  }
+
+  // Primer gerente de una instalación LOCAL: reemplaza al viejo BOOTSTRAP_ADMIN_EMAILS (ADR-022). En producción el primer gerente llega por la invitación de la consola de plataforma.
+  if (values.gerente) {
+    const email = values.gerente.trim().toLowerCase();
+    const usuario = await prisma.user.upsert({ where: { email }, update: {}, create: { email } });
+    const r = await incorporarPrimerGerente(db, { empresaId, usuarioId: usuario.id });
+    console.log(r.ok ? `Gerente: ${email} (admin de "${r.sucursalNombre}").` : `Gerente NO asignado: ${r.mensaje}`);
   }
 
   console.log(

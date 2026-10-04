@@ -86,11 +86,11 @@ export function baseDeEmpresa(empresaId: string): BaseDelContexto {
 
 let datosDelRolDelProceso: Promise<DatosDelRol> | undefined;
 
-/** `verificarRolDeEjecucion` sobre el cliente del proceso; lee el rol una sola vez y solo cuenta las empresas si el rol no es el sin privilegios. */
+/** `verificarRolDeEjecucion` sobre el cliente del proceso (ADR-022: estricto siempre; `MOTOR2_ROL_ESTRICTO=0` es el escape de las herramientas de demo); lee el rol una sola vez. */
 export async function verificarRolDeEjecucionDelProceso(): Promise<void> {
   datosDelRolDelProceso ??= datosDelRolDeEjecucion(prisma).catch((error) => {
     datosDelRolDelProceso = undefined;
     throw error;
   });
-  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso, 0, process.env.MOTOR2_ROL_ESTRICTO === "1");
+  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso, process.env.MOTOR2_ROL_ESTRICTO === "0");
 }

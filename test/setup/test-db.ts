@@ -20,6 +20,8 @@ export { prismaSinEmpresa };
 
 export { prismaAdmin };
 
+export { prismaDuenioSinEmpresa } from "./cliente-duenio";
+
 /**
  * Vacía las operaciones y sus movimientos de un golpe. Los tests de volumen siembran decenas de miles de filas: borrarlas con el
  * `deleteMany` de `limpiarBaseDeTest` (con el chequeo de FK fila por fila) puede pasar los 10 s del hook y arrastra a los tests siguientes.

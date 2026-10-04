@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, prisma, prismaAdmin, prismaSinEmpresa, prismaDuenioSinEmpresa } from "../setup/test-db";
 import { baseDeEmpresa, dbDeEmpresa, transaccionDeEmpresa } from "../../src/core/auth/base";
 import { verificarRolDeEjecucion, datosDelRolDeEjecucion } from "../../src/core/auth/rol-de-ejecucion";
 import { reportarErrorUnaVez } from "../../src/lib/reportar-error";
@@ -87,58 +87,51 @@ describe("dbDeEmpresa / transaccionDeEmpresa", () => {
   });
 });
 
-describe("verificarRolDeEjecucion", () => {
+describe("verificarRolDeEjecucion (ADR-022: estricto siempre, sin «una sola empresa» que lo disculpe)", () => {
+  const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false, contextoPreseteado: false };
+
   beforeEach(async () => {
     await limpiarBaseDeTest();
     await sembrarBase();
   });
 
-  it("el rol de ejecución real (motor2_app) pasa con una o con dos empresas activas", async () => {
-    await expect(verificarRolDeEjecucion(prisma)).resolves.toBeUndefined();
+  it("el rol de ejecución real (motor2_app, sin contexto) pasa con una o con dos empresas activas", async () => {
+    await expect(verificarRolDeEjecucion(prismaSinEmpresa)).resolves.toBeUndefined();
     await crearEmpresa("norte");
-    await expect(verificarRolDeEjecucion(prisma)).resolves.toBeUndefined();
+    await expect(verificarRolDeEjecucion(prismaSinEmpresa)).resolves.toBeUndefined();
   });
 
-  it("un rol dueño de las tablas se tolera con UNA empresa activa y se niega con más de una", async () => {
-    expect((await datosDelRolDeEjecucion(prismaAdmin)).duenio).toBe(true);
-    await expect(verificarRolDeEjecucion(prismaAdmin)).resolves.toBeUndefined();
+  it("un rol dueño de las tablas se niega SIEMPRE: con una empresa, con dos o con cien", async () => {
+    expect((await datosDelRolDeEjecucion(prismaDuenioSinEmpresa)).duenio).toBe(true);
+    await expect(verificarRolDeEjecucion(prismaDuenioSinEmpresa)).rejects.toThrow(/no queda aislado por empresa/);
     await crearEmpresa("norte");
-    await expect(verificarRolDeEjecucion(prismaAdmin)).rejects.toThrow(/no queda aislado por empresa/);
+    await expect(verificarRolDeEjecucion(prismaDuenioSinEmpresa)).rejects.toThrow(/no queda aislado por empresa/);
   });
 
-  it("superusuario y BYPASSRLS también se niegan con más de una empresa; una suspendida o en baja SÍ cuenta (sus datos siguen en las tablas)", async () => {
-    await crearEmpresa("norte");
-    const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false };
-    await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
-    await expect(verificarRolDeEjecucion(prisma, { ...base, bypassRls: true })).rejects.toThrow(/BYPASSRLS/);
-    await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "SUSPENDED" } });
-    await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
-    await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "DELETING" } });
-    await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true })).rejects.toThrow(/superusuario/);
+  it("superusuario y BYPASSRLS también se niegan, cuente la empresa que cuente (activa, suspendida, en baja o en alta)", async () => {
+    for (const estado of ["ACTIVE", "SUSPENDED", "DELETING", "PROVISIONING"] as const) {
+      await crearEmpresa(`norte-${estado.toLowerCase()}`);
+      await prisma.empresa.update({ where: { id: `norte-${estado.toLowerCase()}` }, data: { estado } });
+      await expect(verificarRolDeEjecucion(prisma, { ...base, superusuario: true }), estado).rejects.toThrow(/superusuario/);
+      await expect(verificarRolDeEjecucion(prisma, { ...base, bypassRls: true }), estado).rejects.toThrow(/BYPASSRLS/);
+    }
   });
 
-  it("tolerar un rol que salta el RLS con una sola empresa se AVISA a Sentry; el rol sin privilegios no avisa nada", async () => {
+  it("MOTOR2_ROL_ESTRICTO=0 (permitirPrivilegiado) es el escape de las herramientas de demo: deja pasar un rol que salta el RLS, AVISA a Sentry, y el rol sin privilegios no avisa nada", async () => {
     vi.mocked(reportarErrorUnaVez).mockClear();
-    const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false };
-    await verificarRolDeEjecucion(prisma, base);
+    await verificarRolDeEjecucion(prisma, base, true);
     expect(reportarErrorUnaVez).not.toHaveBeenCalled();
-    await verificarRolDeEjecucion(prisma, { ...base, bypassRls: true });
+    await verificarRolDeEjecucion(prisma, { ...base, bypassRls: true }, true);
     expect(reportarErrorUnaVez).toHaveBeenCalledTimes(1);
     expect(vi.mocked(reportarErrorUnaVez).mock.calls[0][1]).toMatchObject({ message: expect.stringContaining("BYPASSRLS") });
   });
 
-  it("una empresa que todavía nace (PROVISIONING) no cuenta", async () => {
-    await crearEmpresa("norte");
-    await prisma.empresa.update({ where: { id: "norte" }, data: { estado: "PROVISIONING" } });
-    const base = { usuario: "x", superusuario: true, bypassRls: false, duenio: false };
-    await expect(verificarRolDeEjecucion(prisma, base)).resolves.toBeUndefined();
+  it("una conexión que trae contexto preseteado (app.empresa_id, app.usuario_id o app.invitacion_hash) se niega SIN escape, aunque el rol no tenga privilegios", async () => {
+    // `prisma` de las pruebas abre la conexión con app.empresa_id fijado: justo lo que ADR-022 prohíbe para el proceso real.
+    expect((await datosDelRolDeEjecucion(prisma)).contextoPreseteado).toBe(true);
+    expect((await datosDelRolDeEjecucion(prismaSinEmpresa)).contextoPreseteado).toBe(false);
+    await expect(verificarRolDeEjecucion(prisma)).rejects.toThrow(/trae app\.empresa_id/);
+    await expect(verificarRolDeEjecucion(prisma, undefined, true)).rejects.toThrow(/trae app\.empresa_id/);
+    await expect(verificarRolDeEjecucion(prisma, { ...base, contextoPreseteado: true }, true)).rejects.toThrow(/preset/);
   });
-
-  it("en modo estricto un rol que salta el RLS se niega aunque haya una sola empresa; el rol sin privilegios pasa", async () => {
-    const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false };
-    await expect(verificarRolDeEjecucion(prisma, { ...base, duenio: true })).resolves.toBeUndefined();
-    await expect(verificarRolDeEjecucion(prisma, { ...base, duenio: true }, 0, true)).rejects.toThrow(/MOTOR2_ROL_ESTRICTO/);
-    await expect(verificarRolDeEjecucion(prisma, base, 0, true)).resolves.toBeUndefined();
-  });
-
 });

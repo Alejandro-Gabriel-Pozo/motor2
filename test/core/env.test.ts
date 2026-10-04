@@ -37,7 +37,6 @@ describe("parseEnv", () => {
     const conOpcionales = {
       ...ENV_VALIDO,
       ALLOWED_EMAIL_DOMAINS: "lacuadra.com",
-      BOOTSTRAP_ADMIN_EMAILS: "admin@lacuadra.com",
       CRON_SECRET: "cron-secreto",
       CARTA_DOMINIO_BASE: "motor2carta.com",
       NEXT_PUBLIC_SENTRY_DSN: "https://sentry.example.com/1",

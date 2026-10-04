@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, dbDeUsuario } from "./base";
-import { obtenerEmailsBootstrap } from "./bootstrap";
 import { invitacionHabilitaElIngreso } from "./invitacion";
 
 function obtenerDominiosPermitidos(): string[] {
@@ -16,10 +15,8 @@ function obtenerDominiosPermitidos(): string[] {
  * Sin esto, cualquier cuenta de Google que apriete "Sign in" queda logueada
  * (sin permisos, pero logueada) aunque nadie la haya dado de alta.
  *
- * Tres vías de entrada, en orden:
- *  1. Email en BOOTSTRAP_ADMIN_EMAILS — arranca el primer admin (ver
- *     intentarBootstrapAdmin), independiente del dominio.
- *  2. Dominio de Google Workspace: el claim `hd` del profile matchea
+ * Vías de entrada, en orden:
+ *  1. Dominio de Google Workspace: el claim `hd` del profile matchea
  *     ALLOWED_EMAIL_DOMAINS — cualquiera de la empresa entra, aunque un
  *     admin todavía no lo haya dado de alta a mano en ninguna sucursal.
  *     El claim `hd` es OBLIGATORIO para esta vía: solo Google lo firma para una cuenta
@@ -27,10 +24,10 @@ function obtenerDominiosPermitidos(): string[] {
  *     un `@dominio-de-la-empresa` (sin ser de la empresa) y no trae `hd`; el sufijo del email
  *     no prueba nada. Por eso ALLOWED_EMAIL_DOMAINS solo sirve para dominios de Workspace
  *     (`gmail.com` no tiene `hd`: ese caso entra por la vía 3).
- *  3. Excepción manual: el email ya fue dado de alta por un admin
+ *  2. Excepción manual: el email ya fue dado de alta por un admin
  *     (UsuarioSucursal activo vía agregarOActualizarUsuario) aunque no sea
  *     del dominio de la empresa — para alguien externo con Gmail personal.
- *  4. Invitación (E5, ADR-020): llega con el token de una invitación de gerente PENDIENTE, no vencida, de una empresa en alta, y el email de
+ *  3. Invitación (E5, ADR-020): llega con el token de una invitación de gerente PENDIENTE, no vencida, de una empresa en alta, y el email de
  *     la cuenta de Google es EXACTAMENTE el invitado. Solo deja llegar a la pantalla de aceptación; el kill-switch de arriba sigue mandando.
  */
 export async function emailPuedeIniciarSesion(email: string, hd: string | undefined, tokenDeInvitacion?: string): Promise<boolean> {
@@ -45,8 +42,6 @@ export async function emailPuedeIniciarSesion(email: string, hd: string | undefi
   // nuevo) no tiene fila que consultar acá — no lo bloquea.
   const usuarioExistente = await prisma.user.findUnique({ where: { email: emailNorm } });
   if (usuarioExistente && !usuarioExistente.activoGlobal) return false;
-
-  if (obtenerEmailsBootstrap().includes(emailNorm)) return true;
 
   const dominiosPermitidos = obtenerDominiosPermitidos();
   if (hd && dominiosPermitidos.includes(hd.trim().toLowerCase())) return true;

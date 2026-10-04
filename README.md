@@ -31,7 +31,7 @@ UX no bloqueantes y una modularización de código pendiente — ver
 2. Copiar `.env.example` a `.env` y completar:
    - `DATABASE_URL` (pooled, con `pgbouncer=true` si es Neon) y `DIRECT_URL` (directa, sin pooler) — Prisma 7 las separa: `DIRECT_URL` es la que usan Migrate/CLI (`prisma.config.ts`), `DATABASE_URL` la que usa el runtime vía el driver adapter (`src/lib/db.ts`, ver nota abajo).
    - `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (OAuth de Google Cloud Console — cualquier cuenta del negocio debe poder loguearse).
-   - `BOOTSTRAP_ADMIN_EMAILS` — tu email, para quedar admin automático la primera vez (ver `src/core/auth/bootstrap.ts`).
+   - Para quedar como gerente de la empresa local: después del paso 4, `npm run db:seed -- --gerente tu@email.com` (en producción el primer gerente llega por la invitación de la consola de plataforma).
 3. `npm ci` (instala exactamente lo del `package-lock.json`; `npm install` solo para agregar o actualizar una dependencia)
 4. `npm run db:migrate` — aplica el schema completo (Core + Catálogo + Movimientos + Stock + Reportes + Traspasos, más los índices manuales) y corre el seed (34 acciones + roles admin/operador + sucursal "Central" + unidades base kg/g/l/ml/unidad). Verificado contra Postgres 16 real.
 5. `npm run dev` y entrar a `http://localhost:3000`.

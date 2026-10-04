@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa, prismaDuenioSinEmpresa } from "../setup/test-db";
 import { crearEmpresa, EmailReservadoError, EmpresaYaExisteError } from "../../src/core/features/empresa/crear-empresa";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
@@ -38,7 +38,7 @@ afterEach(limpiarTrampas);
 
 describe("crearEmpresa: lo que deja una empresa recién creada", () => {
   it("crea la empresa ACTIVE con sus roles, permisos, unidades, motivos, destinos, sucursal y primer admin", async () => {
-    const resultado = await crearEmpresa(prisma, COMANDO, []);
+    const resultado = await crearEmpresa(prismaSinEmpresa, COMANDO, []);
 
     const empresa = await prismaAdmin.empresa.findUniqueOrThrow({ where: { slug: "norte" } });
     expect(empresa).toMatchObject({ id: resultado.empresaId, nombre: "Pizzería Norte", estado: "ACTIVE", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS" });
@@ -71,12 +71,12 @@ describe("crearEmpresa: lo que deja una empresa recién creada", () => {
   });
 
   it("la sucursal se llama «Central» si no se indica", async () => {
-    const resultado = await crearEmpresa(prisma, { ...COMANDO, nombreSucursal: undefined }, []);
+    const resultado = await crearEmpresa(prismaSinEmpresa, { ...COMANDO, nombreSucursal: undefined }, []);
     expect((await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id: resultado.sucursalId } })).nombre).toBe("Central");
   });
 
   it("el primer admin es gerente de la empresa y admin de su sucursal (email normalizado a minúsculas)", async () => {
-    const resultado = await crearEmpresa(prisma, COMANDO, []);
+    const resultado = await crearEmpresa(prismaSinEmpresa, COMANDO, []);
 
     const usuario = await prismaAdmin.user.findUniqueOrThrow({ where: { email: "gerente@norte.com" } });
     expect(resultado.usuarioId).toBe(usuario.id);
@@ -90,7 +90,7 @@ describe("crearEmpresa: lo que deja una empresa recién creada", () => {
 
   it("un usuario que ya existe se reusa (queda en las dos empresas) en vez de duplicarse", async () => {
     const existente = await prismaAdmin.user.create({ data: { email: "gerente@norte.com" } });
-    const resultado = await crearEmpresa(prisma, COMANDO, []);
+    const resultado = await crearEmpresa(prismaSinEmpresa, COMANDO, []);
     expect(resultado.usuarioId).toBe(existente.id);
     expect(await prismaAdmin.user.count({ where: { email: "gerente@norte.com" } })).toBe(1);
   });
@@ -111,7 +111,7 @@ describe("crearEmpresa: atomicidad", () => {
       await prismaAdmin.$executeRawUnsafe(`CREATE TRIGGER ${trigger} AFTER INSERT ON "${tabla}" FOR EACH ROW EXECUTE FUNCTION test_a7_registrar_estado()`);
     }
 
-    const resultado = await crearEmpresa(prisma, COMANDO, []);
+    const resultado = await crearEmpresa(prismaSinEmpresa, COMANDO, []);
 
     const vistos = await prismaAdmin.$queryRawUnsafe<Array<{ tabla: string; estado: string }>>('SELECT tabla, estado FROM "test_a7_estado_visto"');
     expect([...new Set(vistos.map((v) => v.tabla))].sort()).toEqual(["Rol", "Unidad", "UsuarioSucursal"]);
@@ -126,7 +126,7 @@ describe("crearEmpresa: atomicidad", () => {
       BEGIN RAISE EXCEPTION 'falla inyectada por el test'; END $f$`);
     await prismaAdmin.$executeRawUnsafe('CREATE TRIGGER test_a7_falla_membresia BEFORE INSERT ON "UsuarioSucursal" FOR EACH ROW EXECUTE FUNCTION test_a7_fallar()');
 
-    await expect(crearEmpresa(prisma, COMANDO, [])).rejects.toThrow(/falla inyectada/);
+    await expect(crearEmpresa(prismaSinEmpresa, COMANDO, [])).rejects.toThrow(/falla inyectada/);
 
     expect(await prismaAdmin.empresa.count({ where: { slug: "norte" } })).toBe(0);
     expect(await prismaAdmin.empresa.count()).toBe(1); // solo la empresa por defecto
@@ -138,10 +138,10 @@ describe("crearEmpresa: atomicidad", () => {
 
 describe("crearEmpresa: entradas rechazadas", () => {
   it("un slug que ya existe falla con un error claro y no toca nada", async () => {
-    await crearEmpresa(prisma, COMANDO, []);
+    await crearEmpresa(prismaSinEmpresa, COMANDO, []);
     const antes = { unidades: await prismaAdmin.unidad.count(), roles: await prismaAdmin.rol.count(), usuarios: await prismaAdmin.user.count() };
 
-    const intento = crearEmpresa(prisma, { ...COMANDO, nombre: "Otro nombre", emailPrimerAdmin: "otro@norte.com" }, []);
+    const intento = crearEmpresa(prismaSinEmpresa, { ...COMANDO, nombre: "Otro nombre", emailPrimerAdmin: "otro@norte.com" }, []);
     await expect(intento).rejects.toBeInstanceOf(EmpresaYaExisteError);
     await expect(intento).rejects.toThrow('Ya existe una empresa con el slug "norte".');
 
@@ -150,27 +150,27 @@ describe("crearEmpresa: entradas rechazadas", () => {
   });
 
   it("un nombre que ya existe también falla con un error claro", async () => {
-    await crearEmpresa(prisma, COMANDO, []);
-    await expect(crearEmpresa(prisma, { ...COMANDO, slug: "norte-2", emailPrimerAdmin: "otro@norte.com" }, [])).rejects.toThrow('Ya existe una empresa con el nombre "Pizzería Norte".');
+    await crearEmpresa(prismaSinEmpresa, COMANDO, []);
+    await expect(crearEmpresa(prismaSinEmpresa, { ...COMANDO, slug: "norte-2", emailPrimerAdmin: "otro@norte.com" }, [])).rejects.toThrow('Ya existe una empresa con el nombre "Pizzería Norte".');
     expect(await prismaAdmin.empresa.count()).toBe(2);
   });
 
   it("datos inválidos (slug con mayúsculas, email mal formado) se rechazan antes de escribir", async () => {
-    await expect(crearEmpresa(prisma, { ...COMANDO, slug: "Norte SA" }, [])).rejects.toBeInstanceOf(ZodError);
-    await expect(crearEmpresa(prisma, { ...COMANDO, emailPrimerAdmin: "no-es-un-email" }, [])).rejects.toBeInstanceOf(ZodError);
+    await expect(crearEmpresa(prismaSinEmpresa, { ...COMANDO, slug: "Norte SA" }, [])).rejects.toBeInstanceOf(ZodError);
+    await expect(crearEmpresa(prismaSinEmpresa, { ...COMANDO, emailPrimerAdmin: "no-es-un-email" }, [])).rejects.toBeInstanceOf(ZodError);
     expect(await prismaAdmin.empresa.count()).toBe(1);
   });
 
   it("el email de un administrador de plataforma no puede ser el del primer gerente: se rechaza antes de escribir (ADR-012 §1)", async () => {
     // Mutación: quitar el `esEmailReservadoDeAdminPlataforma` de crearEmpresa deja crear la empresa y este test falla. Se compara normalizado (mayúsculas y espacios).
-    await expect(crearEmpresa(prisma, COMANDO, ["otro@plataforma.com", "  GERENTE@norte.COM "])).rejects.toBeInstanceOf(EmailReservadoError);
+    await expect(crearEmpresa(prismaSinEmpresa, COMANDO, ["otro@plataforma.com", "  GERENTE@norte.COM "])).rejects.toBeInstanceOf(EmailReservadoError);
     expect(await prismaAdmin.empresa.count({ where: { slug: "norte" } })).toBe(0);
     expect(await prismaAdmin.user.count({ where: { email: "gerente@norte.com" } })).toBe(0);
   });
 
-  it("con un rol que salta el RLS (el dueño) se niega a dar de alta una segunda empresa activa", async () => {
-    // Mutación: quitar el `empresasNuevas = 1` de crearEmpresa (verificarRolDeEjecucion(db)) deja pasar el alta y este test falla.
-    await expect(crearEmpresa(prismaAdmin, COMANDO, [])).rejects.toThrow(/no queda aislado por empresa/);
+  it("con un rol que salta el RLS (el dueño) se niega a dar de alta una empresa (ADR-022: siempre)", async () => {
+    // Mutación: quitar el `verificarRolDeEjecucion(db)` de crearEmpresa deja pasar el alta y este test falla.
+    await expect(crearEmpresa(prismaDuenioSinEmpresa, COMANDO, [])).rejects.toThrow(/no queda aislado por empresa/);
     expect(await prismaAdmin.empresa.count({ where: { slug: "norte" } })).toBe(0);
   });
 });

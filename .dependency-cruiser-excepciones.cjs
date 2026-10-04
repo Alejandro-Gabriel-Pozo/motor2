@@ -58,10 +58,6 @@ const IMPORTADORES_DE_DB = [
     motivo: "Resolución de acceso del usuario de sesión (login/jerarquía de roles): corre antes del contexto, así que lee `user`/`session` con el `prisma` global (la sesión abierta de otra cuenta) y el resto con `dbDeEmpresa`/`dbDeUsuario`.",
   },
   {
-    ruta: "src/core/auth/bootstrap.ts",
-    motivo: "Alta del primer admin al primer login: corre antes de que el usuario tenga contexto.",
-  },
-  {
     ruta: "src/lib/auth.ts",
     motivo: "Auth.js: `PrismaAdapter(prisma)` — el adaptador de sesiones necesita el cliente global; no hay contexto de usuario durante el login.",
   },
@@ -80,7 +76,6 @@ const IMPORTADORES_DE_BASE = [
   { ruta: "src/core/auth/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
   { ruta: "src/core/auth/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
   { ruta: "src/core/auth/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`): ocurre antes de que el invitado tenga empresa ni sesión." },
-  { ruta: "src/core/auth/bootstrap.ts", motivo: "Alta del primer admin al primer login: corre antes de que el usuario tenga contexto." },
   { ruta: "src/core/carta/publica-sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
   { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },
   { ruta: "src/app/api/cron/sincronizar-dolar/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
