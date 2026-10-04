@@ -112,6 +112,24 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       expect((await prisma.sucursal.create({ data: { nombre: "Sucursal A" } })).empresaId).toBe(EMPRESA_POR_DEFECTO_ID);
     });
 
+    it("ADR-022: sin contexto devuelve NULL aunque haya UNA sola empresa ACTIVE (ya no hay respaldo) y la definición de la función no consulta Empresa", async () => {
+      await prismaAdmin.empresa.update({ where: { id: "empresa_testigo" }, data: { estado: "SUSPENDED" } });
+      expect(await prismaAdmin.empresa.count({ where: { estado: "ACTIVE" } })).toBe(1);
+      const [{ e }] = await prismaSinEmpresa.$queryRaw<Array<{ e: string | null }>>`SELECT app_empresa_actual() AS e`;
+      expect(e).toBeNull();
+      expect(await prismaSinEmpresa.sucursal.count()).toBe(0); // el RLS no muestra nada sin contexto
+      const error = await prismaSinEmpresa.sucursal.create({ data: { nombre: "Sin contexto" } }).catch((err: unknown) => err);
+      expect(error).toBeInstanceOf(Error); // el DEFAULT es NULL y la columna es NOT NULL
+      const [{ definicion }] = await prismaAdmin.$queryRaw<Array<{ definicion: string }>>`SELECT pg_get_functiondef('app_empresa_actual'::regproc) AS definicion`;
+      expect(definicion).toContain("app.empresa_id");
+      expect(definicion).not.toContain('"Empresa"');
+      const [{ con }] = await prismaAdmin.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.empresa_id', 'cualquiera', true)`;
+        return tx.$queryRaw<Array<{ con: string | null }>>`SELECT app_empresa_actual() AS con`;
+      });
+      expect(con).toBe("cualquiera");
+    });
+
     it("con dos empresas ACTIVE y sin contexto devuelve NULL y crear una fila falla (se equivoca hacia el lado seguro)", async () => {
       await crearEmpresa("empresa_b", "ACTIVE");
       const [{ e }] = await prismaSinEmpresa.$queryRaw<Array<{ e: string | null }>>`SELECT app_empresa_actual() AS e`;
