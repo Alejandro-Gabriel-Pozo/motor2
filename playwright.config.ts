@@ -135,6 +135,8 @@ export default defineConfig({
               PLATAFORMA_DATABASE_URL: basePlataforma.url,
               PLATAFORMA_SECRETO_CODIGOS: SECRETO_DE_CODIGOS_E2E,
               PLATAFORMA_CLAVE_TOTP: CLAVE_TOTP_E2E,
+              // A dónde apuntan los enlaces de las invitaciones: la app de empresas de este mismo E2E.
+              PLATAFORMA_URL_APP: URL_BASE,
               PORT: String(PUERTO_PLATAFORMA),
             },
             url: `${URL_PLATAFORMA}/login`,

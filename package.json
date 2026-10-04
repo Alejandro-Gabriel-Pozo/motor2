@@ -28,7 +28,6 @@
     "migrar:aprobar": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "crear-empresa": "tsx scripts/crear-empresa.ts",
     "plataforma:crear-admin": "tsx scripts/plataforma/crear-primer-admin.ts",
     "politica-empresa": "tsx scripts/politica-empresa.ts",
     "modulos-empresa": "tsx scripts/modulos-empresa.ts",

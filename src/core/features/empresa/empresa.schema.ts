@@ -5,7 +5,7 @@ import { esZonaHorariaValida } from "@/core/tiempo/zona-horaria";
  * Fase 1.4 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): "Provisioning de empresa
  * (contrato, no automatización completa)". El alta de una empresa real sigue siendo manual/semi-manual en la v1 (aclaración del
  * dueño, 2026-09-28): esto es el contrato de FORMA + la máquina de estados documentada. Lo consume `crearEmpresa`
- * (`crear-empresa.ts`, ADR-007 A7) desde `scripts/crear-empresa.ts`: no hay UI ni circuito de suscripción.
+ * (`crear-empresa.ts`, ADR-007 A7) como fixture de pruebas; el alta real la hace la consola de plataforma (E5, ADR-020: `altaDeEmpresaSchema`, más abajo). No hay circuito de suscripción.
  *
  * Campos tomados EXACTOS del modelo `Empresa` planeado: `nombre` (único global), `slug` (único, minúsculas/dígitos/guiones —
  * usado como prefijo del slug público de la carta, `<empresa>-<sucursal>`), `zonaHoraria` (IANA, validada), `moneda` (ISO 4217, 3 letras).

@@ -1,5 +1,5 @@
 -- Rol de PLATAFORMA (informe de seguridad 2026-10-01, S-13; ADR-012 §3 y ADR-019, E4). REQUIERE AUTORIZACIÓN EXPRESA PARA APLICAR; paso manual, NO es una migración.
---   · `motor2_plataforma` — LOGIN, NOSUPERUSER, NOBYPASSRLS, no dueño: lo usan SOLO `scripts/crear-empresa.ts`, `scripts/politica-empresa.ts`,
+--   · `motor2_plataforma` — LOGIN, NOSUPERUSER, NOBYPASSRLS, no dueño: lo usan SOLO `scripts/politica-empresa.ts`,
 --     `scripts/modulos-empresa.ts`, `scripts/plataforma/crear-primer-admin.ts` y la consola de `plataforma/` (variable PLATAFORMA_DATABASE_URL).
 --     PRIVILEGIO MÍNIMO, tabla por tabla (ADR-012 §3): NO tiene DML sobre todo `public`. Escribe lo que necesita el alta y el gobierno de una empresa y las
 --     tablas de identidad de plataforma; NO lee ni escribe tablas de operación (ventas, stock, compras…); NUNCA tiene DELETE. Sigue sujeto al RLS por empresa.
@@ -26,7 +26,7 @@
 -- Neon: esos roles nacen como `neon_superuser` con BYPASSRLS y se saltarían el aislamiento por empresa. Los roles son POR RAMA de Neon: hay que correrlo en
 -- cada rama (la de producción de cada despliegue; stockhneuquen y zuluhub son proyectos distintos). Idempotente. Reversa: quitar-rol-motor2-plataforma.sql
 -- La URL del rol (PLATAFORMA_DATABASE_URL) vive SOLO en un archivo local gitignored (p. ej. `.env.plataforma.<despliegue>`) y se usa con
--- `DOTENV_CONFIG_PATH=.env.plataforma.<despliegue> npx tsx scripts/crear-empresa.ts ...`. NO se carga en Vercel de la aplicación: la aplicación no debe tener las
+-- `DOTENV_CONFIG_PATH=.env.plataforma.<despliegue> npx tsx scripts/politica-empresa.ts ...`. NO se carga en Vercel de la aplicación: la aplicación no debe tener las
 -- credenciales del rol que escribe `Empresa` (cargar-env-vercel.sh la rechaza). La consola de plataforma sí la lleva, en SU proyecto de Vercel (ADR-019).
 
 \set ON_ERROR_STOP on

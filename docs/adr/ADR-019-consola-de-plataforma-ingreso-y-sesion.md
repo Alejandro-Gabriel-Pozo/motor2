@@ -3,6 +3,8 @@
 > Redactado el 2026-10-03 (paso E4 del plan de plataforma). **Estado: implementado en el código, sin aplicar a ninguna base remota**: las dos migraciones
 > (`20261009120000_admin_de_plataforma`, `20261009130000_auditoria_de_plataforma`) se aplicaron solo a la base local; en cada base de Neon se aplican con
 > autorización expresa, ensayo en una rama y respaldo previo. Concreta ADR-012 §2, §3, §4, §5 y §7; no cambia lo que ese ADR decidió.
+> Actualización (2026-10-04): las migraciones ya están aplicadas en las bases de zuluhub y stockhneuquen (con respaldo y ensayo); la consola sigue sin desplegar. El alta
+> de empresas (E5) está en ADR-020.
 
 ## Contexto
 

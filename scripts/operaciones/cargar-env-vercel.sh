@@ -16,7 +16,7 @@ set -euo pipefail
 
 PROYECTOS_PERMITIDOS=" motor2-demo stockhneuquen "
 SCOPE="${VERCEL_SCOPE:-alepozod}"
-# PLATAFORMA_DATABASE_URL NO va a Vercel: la usan solo scripts locales (crear-empresa, politica-empresa). Cargarla en el entorno de la app le daría
+# PLATAFORMA_DATABASE_URL NO va a Vercel: la usan solo scripts locales (politica-empresa; el alta de empresas la hace la consola). Cargarla en el entorno de la app le daría
 # a la app las credenciales del rol que puede escribir `Empresa`, justo lo que la separación de roles (S-13) quiere evitar.
 SENSIBLES=" DATABASE_URL DIRECT_URL AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET CRON_SECRET BOOTSTRAP_ADMIN_EMAILS ALLOWED_EMAIL_DOMAINS "
 # NEXT_PUBLIC_* viaja al navegador: Vercel no admite que sea sensible.

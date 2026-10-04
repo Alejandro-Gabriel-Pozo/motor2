@@ -39,7 +39,7 @@ function grantsDeEscrituraSobreEmpresa(sql: string): string[] {
 
 describe("el rol de plataforma queda separado de motor2_app", () => {
   it("los scripts de plataforma usan prismaPlataforma y no crean su propio cliente", () => {
-    for (const script of ["crear-empresa.ts", "politica-empresa.ts"]) {
+    for (const script of ["politica-empresa.ts"]) {
       const fuente = leer("scripts", script);
       expect(fuente, `${script} no importa prismaPlataforma`).toMatch(/import \{ prismaPlataforma as prisma \} from "\.\/cliente-plataforma"/);
       expect(fuente, `${script} crea su propio PrismaClient`).not.toMatch(/new PrismaClient\(/);

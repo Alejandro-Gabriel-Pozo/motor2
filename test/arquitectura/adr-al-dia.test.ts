@@ -23,6 +23,8 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-005-acceso-multiempresa-portal-carta.md|src/core/carta/autorizar-servicio.ts": "ADR SUPERADO por ADR-006; el boundary HTTP se eliminó (de2dae8)",
   "ADR-005-acceso-multiempresa-portal-carta.md|docs/setup-sucursal.md": "doc de la app externa restaurant-menu-design, nunca estuvo en este repo",
   "ADR-006-carta-como-modulo-interno.md|docs/setup-sucursal.md": "doc de la app externa restaurant-menu-design, nunca estuvo en este repo",
+  "ADR-007-instalacion-multiempresa-activada-con-una.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
+  "ADR-019-consola-de-plataforma-ingreso-y-sesion.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
 };
 
 /** `adr|clave` → clave o guarda retirada que el ADR nombra a propósito, como historia. */

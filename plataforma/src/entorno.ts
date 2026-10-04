@@ -17,6 +17,17 @@ function usuarioDeLaUrl(url: string): string | null {
   }
 }
 
+/** Dirección pública de la app de empresas: https, o http solo en localhost (desarrollo y E2E). Sin barra final. */
+function esUrlDeLaApp(v: string): boolean {
+  try {
+    const u = new URL(v);
+    if (u.search !== "" || u.hash !== "" || u.pathname.replace(/\/+$/, "") !== "") return false;
+    return u.protocol === "https:" || (u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1"));
+  } catch {
+    return false;
+  }
+}
+
 const claveDe32Bytes = z.string().refine((v) => Buffer.from(v, "base64").length === 32, "tiene que ser una clave de 32 bytes en base64 (openssl rand -base64 32)");
 
 const esquema = z.object({
@@ -25,6 +36,8 @@ const esquema = z.object({
   PLATAFORMA_SECRETO_CODIGOS: z.string().min(32, "tiene que tener al menos 32 caracteres"),
   // Clave con la que se cifra el secreto TOTP de cada administrador en la base.
   PLATAFORMA_CLAVE_TOTP: claveDe32Bytes,
+  // A dónde apuntan los enlaces de las invitaciones (E5): la app de empresas de ESTA instalación.
+  PLATAFORMA_URL_APP: z.string().refine(esUrlDeLaApp, "tiene que ser la dirección de la app de empresas: https://… (o http://localhost…), sin ruta"),
 });
 
 export type EntornoDePlataforma = z.infer<typeof esquema>;

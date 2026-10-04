@@ -29,7 +29,7 @@ export function obtenerEmailsBootstrap(): string[] {
  *
  * Corre en el evento de login, o sea ANTES de tener empresa: sin contexto de usuario y bajo RLS. Solo opera cuando hay EXACTAMENTE una
  * empresa ACTIVE (la instalación de hoy, ADR-007): esa es la empresa del bootstrap y todo lo demás va con `dbDeEmpresa`. Con dos o más
- * no adivina a cuál sumar al usuario y no hace nada (el primer admin de una empresa nueva lo crea `crear-empresa`).
+ * no adivina a cuál sumar al usuario y no hace nada (el primer gerente de una empresa nueva llega por invitación, E5).
  */
 export async function intentarBootstrapAdmin(usuarioId: string, email: string): Promise<void> {
   const emailsBootstrap = obtenerEmailsBootstrap();

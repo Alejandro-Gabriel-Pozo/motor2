@@ -51,6 +51,14 @@ export async function crearAdminDePlataforma(
   const usuario = await db.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } });
   if (usuario) throw new AdminDePlataformaInvalidoError("Ese email ya es de un usuario de una empresa: un administrador de plataforma no puede serlo.");
 
+  // Tampoco si ya lo invitaron a ser gerente de una empresa (E5): al aceptar entraría a ella, y el administrador no entra a ninguna.
+  const invitada = await db.invitacion.findFirst({ where: { email, estado: "PENDIENTE" }, select: { id: true } }).catch((e: unknown) => {
+    // En una base que todavía no tiene la migración de invitaciones (el primer admin se crea ANTES de usar E5) no puede haber ninguna pendiente.
+    if (typeof e === "object" && e !== null && "code" in e && e.code === "P2021") return null;
+    throw e;
+  });
+  if (invitada) throw new AdminDePlataformaInvalidoError("Ese email tiene una invitación pendiente para ser gerente de una empresa: un administrador de plataforma no puede serlo.");
+
   const id = randomUUID();
   const secretoTotp = generarSecretoTotp();
   const codigosDeRecuperacion = generarCodigosDeRecuperacion();

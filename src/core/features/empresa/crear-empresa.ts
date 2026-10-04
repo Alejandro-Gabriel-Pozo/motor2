@@ -31,7 +31,8 @@ export interface EmpresaCreada {
 }
 
 /**
- * Alta de una empresa completa (ADR-007, A7), TODO en una transacción: la `Empresa` nace `PROVISIONING`, se le siembra lo mismo que
+ * Alta DIRECTA de una empresa completa (ADR-007, A7), usada hoy solo como fixture de pruebas: el alta real es la de la consola de plataforma (E5, ADR-020), que
+ * deja la empresa en `PROVISIONING` y al gerente por invitación. Todo en una transacción: la `Empresa` nace `PROVISIONING`, se le siembra lo mismo que
  * `prisma/seed.ts` siembra para la primera (roles admin/operador con su matriz de permisos, unidades base, motivos de merma y destinos
  * de consumo), su primera sucursal y su primer admin (`UsuarioEmpresa.rolEmpresa = 'gerente'` + membresía de sucursal con rol admin), y
  * recién al final pasa a `ACTIVE`. Si algo falla, no queda nada: nunca hay una empresa `ACTIVE` a medias.

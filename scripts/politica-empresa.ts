@@ -7,7 +7,7 @@
  *        [--permisos-editables si|no] [--dos-paneles si|no]
  *
  * `--perfil` (perfil de política, no un plan de módulos) fija las dos perillas de una vez (`lite`: sin edición de permisos y menú único; `completo`: todo activo); las perillas sueltas se
- * aplican después y lo pisan. Conexión: PLATAFORMA_DATABASE_URL o, si no está, DATABASE_URL, igual que en `crear-empresa`.
+ * aplican después y lo pisan. Conexión: PLATAFORMA_DATABASE_URL o, si no está, DATABASE_URL, igual que en los demás scripts de plataforma.
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";

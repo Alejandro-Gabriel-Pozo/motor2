@@ -10,6 +10,7 @@ const VALIDO = {
   PLATAFORMA_DATABASE_URL: `postgresql://${ROL_DE_PLATAFORMA}:contrasenia-secreta@db.ejemplo.test:5432/motor2?sslmode=require`,
   PLATAFORMA_SECRETO_CODIGOS: "x".repeat(32),
   PLATAFORMA_CLAVE_TOTP: randomBytes(32).toString("base64"),
+  PLATAFORMA_URL_APP: "https://app.ejemplo.test",
 };
 
 function mensajeDeError(entorno: Record<string, string | undefined>): string {
@@ -25,6 +26,17 @@ describe("entorno de la consola de plataforma", () => {
   it("un entorno completo y del rol correcto se acepta", () => {
     expect(leerEntornoDePlataforma(VALIDO)).toEqual(VALIDO);
   });
+
+  it.each(["https://app.ejemplo.test", "https://app.ejemplo.test/", "http://localhost:3000", "http://127.0.0.1:56472"])("la dirección de la app %s se acepta", (url) => {
+    expect(leerEntornoDePlataforma({ ...VALIDO, PLATAFORMA_URL_APP: url }).PLATAFORMA_URL_APP).toBe(url);
+  });
+
+  it.each(["http://app.ejemplo.test", "app.ejemplo.test", "https://app.ejemplo.test/invitacion", "https://app.ejemplo.test?x=1", "ftp://localhost", ""])(
+    "la dirección de la app %j se rechaza y el mensaje nombra la variable",
+    (url) => {
+      expect(mensajeDeError({ ...VALIDO, PLATAFORMA_URL_APP: url })).toContain("PLATAFORMA_URL_APP");
+    },
+  );
 
   it("el rol se lee de la URL aunque venga codificado en porcentaje", () => {
     const url = `postgresql://${encodeURIComponent(ROL_DE_PLATAFORMA)}:clave@db.ejemplo.test/motor2`;
@@ -82,7 +94,7 @@ describe("entorno de la consola de plataforma", () => {
     expect(mensaje).not.toContain("clave-mala-secreta");
   });
 
-  it("declara exactamente las tres variables que el despliegue tiene que configurar", () => {
-    expect([...CLAVES_DE_ENTORNO_DE_PLATAFORMA].sort()).toEqual(["PLATAFORMA_CLAVE_TOTP", "PLATAFORMA_DATABASE_URL", "PLATAFORMA_SECRETO_CODIGOS"]);
+  it("declara exactamente las cuatro variables que el despliegue tiene que configurar", () => {
+    expect([...CLAVES_DE_ENTORNO_DE_PLATAFORMA].sort()).toEqual(["PLATAFORMA_CLAVE_TOTP", "PLATAFORMA_DATABASE_URL", "PLATAFORMA_SECRETO_CODIGOS", "PLATAFORMA_URL_APP"]);
   });
 });

@@ -9,7 +9,9 @@ export default async function Inicio() {
     <section className="tarjeta">
       <h1>Consola de plataforma</h1>
       <p className="ayuda">Sesión de {admin.email}.</p>
-      <p className="ayuda">Las funciones de administración de empresas se suman en las etapas siguientes.</p>
+      <p className="ayuda">
+        <a href="/empresas">Empresas e invitaciones</a>
+      </p>
       <form action={salir}>
         <button type="submit" className="secundario">
           Cerrar sesión

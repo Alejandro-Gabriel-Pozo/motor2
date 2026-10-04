@@ -57,7 +57,7 @@ Para volver atrás una migración del bloque, ver `scripts/operaciones/restaurar
 
 Dos migraciones **aditivas** (solo agregan tablas; el código viejo las ignora, así que el Instant Rollback de Vercel sigue siendo seguro):
 `20261009120000_admin_de_plataforma` (administrador, código del mail, códigos de recuperación, sesión) y `20261009130000_auditoria_de_plataforma`. Se aplican **por
-base y con autorización expresa**, con ensayo previo en una rama de Neon y respaldo. Se aplicaron solo a la base local; ninguna base remota las tiene.
+base y con autorización expresa**, con ensayo previo en una rama de Neon y respaldo. Aplicadas el 2026-10-03/04 a las bases de zuluhub y stockhneuquen (con respaldo `respaldo-pre-e4-*`, ensayo en zuluhub y `migrate status` al día).
 Se crean en todas las bases, pero solo se usa la de identidad (zuluhub); en las demás quedan vacías.
 
 Orden por base (el dueño; el asistente de desarrollo no ve credenciales ni corre nada de esto contra Neon):
@@ -79,3 +79,29 @@ Orden por base (el dueño; el asistente de desarrollo no ve credenciales ni corr
    consola no migra. El deploy se hace recién después de los pasos 1 a 5.
 
 Rotar `PLATAFORMA_SECRETO_CODIGOS` o `PLATAFORMA_CLAVE_TOTP` invalida los factores ya enrolados: hay que crear de nuevo a los administradores.
+
+## Alta de empresas e invitaciones (E5, ADR-020): migración y puesta en marcha
+
+Una migración **aditiva**: `20261010120000_invitaciones` (tabla `Invitacion`, un tipo, una función y un trigger; el código viejo la ignora, así que el Instant Rollback de
+Vercel sigue siendo seguro). Se aplicó solo a la base local y a la de E2E. En cada base de Neon se aplica **con autorización expresa**, ensayo en una rama y respaldo previo,
+y **antes del deploy de la aplicación** (el build verifica que no haya migraciones pendientes).
+
+Orden por base (el dueño; primero zuluhub, después stockhneuquen):
+
+1. Rama de respaldo de Neon y rama de ensayo; en la de ensayo: `node scripts/operaciones/con-env.mjs <env de ensayo> -- npx prisma migrate deploy`.
+2. Verificar en la rama: `SELECT policyname FROM pg_policies WHERE tablename = 'Invitacion'` (tres políticas: `aislamiento_empresa`, `escritura_plataforma`, `lectura_por_token`),
+   `has_table_privilege` de `motor2_app` (SELECT sí; INSERT y DELETE no) y de `motor2_plataforma` (SELECT, INSERT, UPDATE; DELETE no), y que existan los dos triggers `Invitacion_proteger_*`.
+3. Aplicar en la base real: `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`.
+4. **Volver a correr** `scripts/operaciones/crear-rol-motor2-plataforma.sql` con psql como dueño (idempotente): ahora también le da a `motor2_plataforma` permiso sobre `Invitacion`.
+5. Borrar la rama de ensayo.
+6. Deploy de la aplicación. Después, en el proyecto de Vercel de la consola: la variable nueva `PLATAFORMA_URL_APP` (la dirección pública de la app de empresas de ESA
+   instalación, `https://…` sin ruta) y el canal `avisos` de mails con el dominio verificado; deploy de la consola.
+7. Prueba de humo, a mano: alta de una empresa de prueba desde `/empresas/nueva` → llega el mail → abrir el enlace, entrar con una cuenta de Google **del email invitado**,
+   cargar el CUIT y aceptar. Esa prueba valida el regreso desde Google con la cookie de la invitación (`SameSite=Lax`), que un E2E no puede recorrer.
+
+La consola administra **la instalación a la que apunta su conexión** (hoy la de zuluhub): sumar la de hoteles es una variable por instalación (ADR-012 §4), pendiente.
+
+Vuelta atrás: el código se vuelve con Instant Rollback; `down.sql` de la migración solo después (pierde las invitaciones pendientes y los CUIT declarados; guardar antes
+`SELECT id, "empresaId", email, estado, "cuitDeclarado" FROM "Invitacion"`) y después `prisma migrate resolve --rolled-back 20261010120000_invitaciones`.
+
+El alta por script (`npm run crear-empresa`) se retiró: hasta que la consola esté desplegada, no hay otra forma de crear una empresa que pedirlo en una sesión de desarrollo.

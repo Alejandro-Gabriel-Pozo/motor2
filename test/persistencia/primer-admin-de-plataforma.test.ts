@@ -26,6 +26,20 @@ afterEach(async () => {
 afterAll(() => prismaAdmin.$disconnect());
 
 describe("crearAdminDePlataforma", () => {
+  it("rechaza un email con una invitación pendiente a gerente (E5), pero no uno cuya invitación ya no está pendiente", async () => {
+    await prismaAdmin.empresa.create({ data: { id: "alta-pa", nombre: "Alta PA", slug: "alta-pa", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "PROVISIONING" } });
+    try {
+      const inv = await prismaAdmin.invitacion.create({ data: { empresaId: "alta-pa", email: "invitado@empresa.test", rolEmpresa: "gerente", hashToken: "a".repeat(64), venceEn: AHORA } });
+      await expect(crearAdminDePlataforma(prismaAdmin, { email: "Invitado@Empresa.test", nombre: "X" }, SECRETOS)).rejects.toThrow(/invitación pendiente/);
+      expect(await prismaAdmin.adminPlataforma.count()).toBe(0);
+      await prismaAdmin.invitacion.update({ where: { id: inv.id }, data: { estado: "REVOCADA", revocadaEn: AHORA } });
+      await expect(crearAdminDePlataforma(prismaAdmin, { email: "invitado@empresa.test", nombre: "X" }, SECRETOS)).resolves.toBeTruthy();
+    } finally {
+      await prismaAdmin.invitacion.deleteMany({ where: { empresaId: "alta-pa" } });
+      await prismaAdmin.empresa.delete({ where: { id: "alta-pa" } });
+    }
+  });
+
   it("guarda el secreto TOTP cifrado y solo el hash de cada código de recuperación; nada en claro", async () => {
     const creado = await crearAdminDePlataforma(prismaAdmin, { email: "  Dueno@Plataforma.TEST ", nombre: " Dueño " }, SECRETOS);
     expect(creado.email).toBe("dueno@plataforma.test");
