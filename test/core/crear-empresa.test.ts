@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa, prismaDuenioSinEmpresa } from "../setup/test-db";
+import { limpiarBaseDeTest, prismaAdmin, prismaSinEmpresa, prismaDuenioSinEmpresa } from "../setup/test-db";
 import { crearEmpresa, EmailReservadoError, EmpresaYaExisteError } from "../../src/core/features/empresa/crear-empresa";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "../../src/core/movimientos/motivos-semilla";

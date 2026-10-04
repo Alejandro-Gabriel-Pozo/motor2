@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
+import { limpiarBaseDeTest, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
 import { emailPuedeIniciarSesion } from "../../src/core/auth/acceso";
 

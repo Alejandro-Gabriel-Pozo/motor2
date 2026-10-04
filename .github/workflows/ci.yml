@@ -54,7 +54,10 @@ jobs:
       - name: Cliente de Prisma de la Fase A (para que knip resuelva su smoke test)
         run: npx prisma generate --config prisma/fase-a/prisma.config.ts
       - run: npx tsc --noEmit
+      # ESLint llegó al tope de memoria por defecto de Node en el runner (OOM, código 134) cuando el repo creció con la consola de plataforma: se le da más.
       - run: npm run lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - run: npm run arquitectura
       - run: npm run analizar:muerto
 

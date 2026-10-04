@@ -23,12 +23,28 @@ export interface Autor {
   adminEmail: string;
 }
 
+type Detalle = Record<string, string | number | boolean>;
+
+/**
+ * Los datos de una fila de auditoría de plataforma. Prisma 7 rechaza un valor `undefined` EXPLÍCITO en `data` (`detalle: undefined` hizo fallar el ingreso de la consola en el primer
+ * CI que la corrió): una clave sin valor simplemente no se incluye.
+ */
+export function datosDeAuditoria(autor: Autor, accion: AccionDePlataforma, empresaAfectadaId?: string, detalle?: Detalle) {
+  return {
+    adminId: autor.adminId,
+    adminEmail: autor.adminEmail,
+    accion,
+    ...(empresaAfectadaId !== undefined ? { empresaAfectadaId } : {}),
+    ...(detalle !== undefined ? { detalle } : {}),
+  };
+}
+
 /**
  * Anota qué hizo un administrador, con él como autor (ADR-012 §7). El `detalle` nunca lleva códigos, tokens ni secretos: solo hechos
  * (por ejemplo, qué factor se usó).
  */
-export async function auditarAccionDePlataforma(autor: Autor, accion: AccionDePlataforma, detalle?: Record<string, string | number | boolean>): Promise<void> {
-  await dbPlataforma().auditoriaPlataforma.create({ data: { adminId: autor.adminId, adminEmail: autor.adminEmail, accion, detalle } });
+export async function auditarAccionDePlataforma(autor: Autor, accion: AccionDePlataforma, detalle?: Detalle): Promise<void> {
+  await dbPlataforma().auditoriaPlataforma.create({ data: datosDeAuditoria(autor, accion, undefined, detalle) });
 }
 
 /**
@@ -40,7 +56,7 @@ export async function auditarEnTransaccion(
   autor: Autor,
   accion: AccionDePlataforma,
   empresaAfectadaId: string,
-  detalle?: Record<string, string | number | boolean>,
+  detalle?: Detalle,
 ): Promise<void> {
-  await tx.auditoriaPlataforma.create({ data: { adminId: autor.adminId, adminEmail: autor.adminEmail, accion, empresaAfectadaId, detalle } });
+  await tx.auditoriaPlataforma.create({ data: datosDeAuditoria(autor, accion, empresaAfectadaId, detalle) });
 }
