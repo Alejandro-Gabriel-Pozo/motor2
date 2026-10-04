@@ -15,7 +15,8 @@ const CONSOLA = process.env.MOTOR2_E2E_URL_PLATAFORMA;
 test.skip(!CONSOLA, "sin MOTOR2_E2E_PLATAFORMA_DATABASE_URL no hay consola que probar");
 test.describe.configure({ mode: "serial" });
 
-const CUIT = "30-71234567-1";
+// Un CUIT PROPIO de este spec: las empresas que confirma quedan ACTIVE con él (aunque después se suspendan) y otro spec que declare el mismo CUIT sería rechazado.
+const CUIT = "30-70308853-4";
 const CUIT_CORREGIDO = "20-12345678-6";
 const marca = () => `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 const empresasActivadas: string[] = [];
@@ -86,10 +87,10 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   await expect(page.getByRole("button", { name: "Cancelar" })).toBeFocused();
   await sinViolaciones(page);
   await page.getByRole("button", { name: /^Sí: confirmar el alta/ }).click();
-  await expect(page.getByText(/quedó activa con el CUIT 30-71234567-1/)).toBeVisible();
+  await expect(page.getByText(/quedó activa con el CUIT 30-70308853-4/)).toBeVisible();
 
   const activa = await leerDeLaBase((db) => db.empresa.findUniqueOrThrow({ where: { id: empresaId } }));
-  expect(activa).toMatchObject({ estado: "ACTIVE", cuit: "30712345671" });
+  expect(activa).toMatchObject({ estado: "ACTIVE", cuit: "30703088534" });
   const acciones = await leerDeLaBase((db) => db.auditoriaPlataforma.findMany({ where: { empresaAfectadaId: empresaId, adminId: admin.id }, orderBy: { creadoEn: "asc" } }));
   expect(acciones.map((a) => a.accion)).toEqual(["alta-de-empresa", "empresa-confirmada", "aviso-de-activacion"]);
 

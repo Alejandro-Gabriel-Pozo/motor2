@@ -115,7 +115,7 @@ test("alta completa: valida, da de alta, queda auditada con el administrador com
 
   // La lista la muestra.
   await page.goto(`${CONSOLA}/empresas`);
-  await expect(page.getByText(datos.nombre)).toBeVisible();
+  await expect(page.getByRole("link", { name: `Ver ${datos.nombre}` })).toBeVisible();
   await sinViolaciones(page);
 });
 
