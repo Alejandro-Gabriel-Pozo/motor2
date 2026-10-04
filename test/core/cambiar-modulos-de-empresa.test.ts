@@ -114,7 +114,7 @@ describe("cambiarModulosDeEmpresa", () => {
   });
 });
 
-// Sin el rol en la base de test no hay nada que ejercitar: se saltea (en CI y en local hoy no existe; lo cubre el ensayo O0 en una rama de Neon).
+// Sin el rol en la base de test no hay nada que ejercitar: se saltea (en local no existe; el job `integracion` de CI lo crea con crear-rol-motor2-plataforma.sql y también lo cubre el ensayo O0 en una rama de Neon).
 describe.skipIf(!process.env.PLATAFORMA_DATABASE_URL)("cambiarModulosDeEmpresa con el rol motor2_plataforma real", () => {
   const plataforma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.PLATAFORMA_DATABASE_URL ?? "" }) });
   afterAll(() => plataforma.$disconnect());

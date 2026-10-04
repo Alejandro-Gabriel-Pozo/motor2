@@ -251,6 +251,32 @@ module.exports = {
       to: { path: "^src/core/features/empresa/cambiar-modulos-de-empresa\\.ts$" },
     },
     {
+      name: "app-sin-consola-de-plataforma",
+      comment:
+        "ADR-012/ADR-019: la consola de plataforma (plataforma/) es otra aplicación, con su propio proyecto de Vercel. Nada de src/ la importa.",
+      severity: "error",
+      from: { path: "^src/" },
+      to: { path: "^plataforma/" },
+    },
+    {
+      name: "consola-sin-lo-interno-de-la-app",
+      comment:
+        "ADR-012/ADR-019: la consola de plataforma solo usa del núcleo lo PURO y lo propio (core/plataforma, core/correo, core/seguridad, la cookie de https y el reporte de errores). Nunca alcanza, ni directa ni transitivamente, la base de la aplicación " +
+        "(lib/db.ts, lib/auth.ts, core/auth/{base,contexto,session}), su validación de entorno (env.ts), ni server/, app/ o components/: " +
+        "su única conexión es la del rol motor2_plataforma (plataforma/src/db.ts), y que la aplicación abra la puerta de una empresa desde la consola es justo lo que el diseño prohíbe.",
+      severity: "error",
+      from: { path: "^plataforma/" },
+      to: { path: ["^src/lib/(db|auth)\\.ts$", "^src/env\\.ts$", "^src/core/auth/(base|contexto|session)\\.ts$", "^src/(server|app|components)/"], reachable: true },
+    },
+    {
+      name: "core-plataforma-solo-desde-la-consola",
+      comment:
+        "ADR-019: el login de la consola (códigos, TOTP, sesión) solo lo importa plataforma/. Única excepción: core/plataforma/email-reservado.ts, que crear-empresa usa para rechazar el alta de un gerente con el email de un administrador de plataforma.",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/core/plataforma/" },
+      to: { path: "^src/core/plataforma/", pathNot: "^src/core/plataforma/email-reservado\\.ts$" },
+    },
+    {
       name: "sin-ciclos",
       comment:
         "Sin dependencias circulares entre archivos (incluye las de solo tipos). Ciclos preexistentes exceptuados: .dependency-cruiser-excepciones.cjs.",
@@ -277,8 +303,9 @@ module.exports = {
     // `src/` más los paquetes de node_modules COMO HOJAS (doNotFollow): si node_modules quedara afuera de includeOnly/exclude,
     // dependency-cruiser descartaría toda dependencia hacia un paquete y las reglas core-sin-react-next, ui-sin-prisma
     // (@prisma/client) y no-non-package-json nunca verían nada (verificado el 2026-09-27).
-    includeOnly: ["^src/", "^node_modules/"],
-    exclude: { path: ["^\\.next/"] },
+    // `plataforma/` (la consola, ADR-019) también se recorre: sus fronteras son las reglas `consola-*` de arriba.
+    includeOnly: ["^src/", "^plataforma/", "^node_modules/"],
+    exclude: { path: ["^\\.next/", "^plataforma/\\.next/", "^plataforma/node_modules/"] },
     doNotFollow: { path: ["^node_modules/"] },
     reporterOptions: { text: { highlightFocused: true } },
   },

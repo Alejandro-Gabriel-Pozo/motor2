@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { defineConfig } from "@playwright/test";
-import { resolverUrlAppE2E, resolverUrlE2E } from "./test/e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlPlataformaE2E } from "./test/e2e/fixtures/base-e2e";
+import { CLAVE_TOTP_E2E, SECRETO_DE_CODIGOS_E2E } from "./test/e2e/fixtures/consola";
 
 /**
  * E2E real: navegador de verdad contra el servidor de producción (`next build` + `next start`, ver `MOTOR2_E2E_SERVIDOR` más abajo) + Postgres real — ver
@@ -52,6 +53,18 @@ const PUERTO = Number(process.env.MOTOR2_E2E_PUERTO ?? 56471);
 const URL_BASE = `http://localhost:${PUERTO}`;
 
 /**
+ * La CONSOLA de plataforma (`plataforma/`, E4, ADR-019) es otra aplicación Next: tiene su propio servidor, en su propio puerto, con SU variable de conexión
+ * (rol `motor2_plataforma` sobre la misma base E2E). El rol solo existe donde alguien lo creó (CI sí; una máquina local, solo si el dueño corrió
+ * `scripts/operaciones/crear-rol-motor2-plataforma.sql` sobre `motor2_e2e`): sin `MOTOR2_E2E_PLATAFORMA_DATABASE_URL` no se levanta y su spec se omite.
+ * El spec se entera de la dirección por `MOTOR2_E2E_URL_PLATAFORMA` (se fija acá, a nivel de módulo, como `DATABASE_URL`: los workers reimportan este archivo).
+ */
+const basePlataforma = resolverUrlPlataformaE2E(process.env);
+const PUERTO_PLATAFORMA = Number(process.env.MOTOR2_E2E_PUERTO_PLATAFORMA ?? 56473);
+const URL_PLATAFORMA = `http://localhost:${PUERTO_PLATAFORMA}`;
+if (basePlataforma) process.env.MOTOR2_E2E_URL_PLATAFORMA = URL_PLATAFORMA;
+else delete process.env.MOTOR2_E2E_URL_PLATAFORMA;
+
+/**
  * QUÉ SERVIDOR levanta el E2E, elegido con `MOTOR2_E2E_SERVIDOR`:
  *  - `build`: compila el artefacto de producción (`npm run build:e2e`, SIN `prisma migrate deploy`) y lo sirve con `next start`. Es lo que se despliega.
  *  - `start`: reusa el último build (`next start`) sin recompilar: ciclo corto para depurar un spec cuando el código no cambió.
@@ -89,27 +102,47 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  webServer: {
-    command: COMANDOS[MODO],
-    env: {
-      DATABASE_URL: baseApp.url,
-      DIRECT_URL: base.url,
-      PORT: String(PUERTO),
-      // Las pruebas no deben pedir el dólar a internet ni depender de él (ver actualizarDolarSiHaceFalta).
-      MOTOR2_SIN_DOLAR_AUTOMATICO: "1",
-      // `next start` deja NODE_ENV=production y Auth.js entonces exige confianza EXPLÍCITA en el host
-      // (@auth/core/lib/utils/env.js: trustHost ??= !!(AUTH_URL ?? AUTH_TRUST_HOST ?? VERCEL ?? NODE_ENV !== "production")). Sin esto cada auth() devuelve
-      // UntrustedHost y se cae toda la suite autenticada. En `dev` no cambia nada. El nombre de la cookie de sesión tampoco cambia (http → sin prefijo __Secure-).
-      AUTH_TRUST_HOST: "1",
-      // ADR-006, Fase 6: con esto next.config.ts arma el rewrite de e2e.carta.localhost (se lee al compilar, por eso está en el env del build); lo usa test/e2e/carta-subdominio.spec.ts.
-      CARTA_DOMINIO_BASE: "carta.localhost",
-      // Add-on de la empresa única: `carta.localhost` pelado sirve la carta de la empresa `e2e` sin su slug en la URL (también se lee al compilar); lo usa test/e2e/carta-empresa-unica.spec.ts.
-      CARTA_EMPRESA_UNICA: "e2e",
+  webServer: [
+    {
+      command: COMANDOS[MODO],
+      env: {
+        DATABASE_URL: baseApp.url,
+        DIRECT_URL: base.url,
+        PORT: String(PUERTO),
+        // Las pruebas no deben pedir el dólar a internet ni depender de él (ver actualizarDolarSiHaceFalta).
+        MOTOR2_SIN_DOLAR_AUTOMATICO: "1",
+        // `next start` deja NODE_ENV=production y Auth.js entonces exige confianza EXPLÍCITA en el host
+        // (@auth/core/lib/utils/env.js: trustHost ??= !!(AUTH_URL ?? AUTH_TRUST_HOST ?? VERCEL ?? NODE_ENV !== "production")). Sin esto cada auth() devuelve
+        // UntrustedHost y se cae toda la suite autenticada. En `dev` no cambia nada. El nombre de la cookie de sesión tampoco cambia (http → sin prefijo __Secure-).
+        AUTH_TRUST_HOST: "1",
+        // ADR-006, Fase 6: con esto next.config.ts arma el rewrite de e2e.carta.localhost (se lee al compilar, por eso está en el env del build); lo usa test/e2e/carta-subdominio.spec.ts.
+        CARTA_DOMINIO_BASE: "carta.localhost",
+        // Add-on de la empresa única: `carta.localhost` pelado sirve la carta de la empresa `e2e` sin su slug en la URL (también se lee al compilar); lo usa test/e2e/carta-empresa-unica.spec.ts.
+        CARTA_EMPRESA_UNICA: "e2e",
+      },
+      url: URL_BASE,
+      reuseExistingServer: false,
+      // En `build` el timeout cubre el build ENTERO + el arranque; `stdout: "pipe"` deja ver avanzar el build (el stderr ya se imprime siempre).
+      timeout: MODO === "build" ? 300_000 : 60_000,
+      stdout: MODO === "build" ? "pipe" : undefined,
     },
-    url: URL_BASE,
-    reuseExistingServer: false,
-    // En `build` el timeout cubre el build ENTERO + el arranque; `stdout: "pipe"` deja ver avanzar el build (el stderr ya se imprime siempre).
-    timeout: MODO === "build" ? 300_000 : 60_000,
-    stdout: MODO === "build" ? "pipe" : undefined,
-  },
+    // La consola de plataforma: siempre el artefacto de producción (es lo que se despliega), sin `dev`. Con `MOTOR2_E2E_SERVIDOR=start` reusa su último build.
+    ...(basePlataforma
+      ? [
+          {
+            command: MODO === "start" ? "npm run plataforma:start" : "npm run plataforma:build && npm run plataforma:start",
+            env: {
+              PLATAFORMA_DATABASE_URL: basePlataforma.url,
+              PLATAFORMA_SECRETO_CODIGOS: SECRETO_DE_CODIGOS_E2E,
+              PLATAFORMA_CLAVE_TOTP: CLAVE_TOTP_E2E,
+              PORT: String(PUERTO_PLATAFORMA),
+            },
+            url: `${URL_PLATAFORMA}/login`,
+            reuseExistingServer: false,
+            timeout: MODO === "start" ? 60_000 : 300_000,
+            stdout: MODO === "start" ? undefined : ("pipe" as const),
+          },
+        ]
+      : []),
+  ],
 });

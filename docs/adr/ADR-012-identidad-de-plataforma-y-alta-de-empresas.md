@@ -1,6 +1,7 @@
 # ADR-012: Identidad de plataforma y alta de empresas
 
-> Redactado el 2026-10-03 (Bloque 0 del plan de plataforma). **Decidido, todavía sin implementar.** Complementa ADR-007 (instalación
+> Redactado el 2026-10-03 (Bloque 0 del plan de plataforma). **Estado: ingreso, sesión, rol y auditoría del ingreso implementados en E4 (ver ADR-019);
+> las acciones sobre empresas, sin implementar.** Complementa ADR-007 (instalación
 > multiempresa) y ADR-008 (el «superadmin de plataforma» que allí figura como inexistente). Enmienda ADR-001 en lo fiscal (ver su sección
 > «Enmiendas»). Cada migración y cada cambio de configuración remota se autoriza por separado.
 

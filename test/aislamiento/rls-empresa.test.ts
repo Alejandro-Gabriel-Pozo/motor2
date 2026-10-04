@@ -17,6 +17,8 @@ const B = "norte";
 
 const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"];
 const PLATAFORMA = ["Empresa"];
+// E4 (ADR-012/019): tablas de la consola de plataforma. Tienen RLS (política `solo_plataforma`, por nombre de rol) pero NO por empresa y no llevan `empresaId`.
+const CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"];
 
 async function unidadesComoDuenio(empresaId: string) {
   return prismaAdmin.unidad.findMany({ where: { empresaId }, orderBy: { nombre: "asc" } });
@@ -43,12 +45,26 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
   it("la política usa `(SELECT app_empresa_actual())` en USING y en WITH CHECK", async () => {
     const politicas = await prismaAdmin.$queryRaw<Array<{ tabla: string; nombre: string; usando: string; con_check: string }>>`
       SELECT tablename::text AS tabla, policyname::text AS nombre, qual AS usando, with_check AS con_check FROM pg_policies WHERE schemaname = 'public'`;
-    expect(politicas).toHaveLength(57);
+    expect(politicas).toHaveLength(57 + CONSOLA.length);
     // ModuloEmpresa (P4): lectura por empresa (solo USING, FOR SELECT) y escritura de plataforma (por nombre de rol); ver registro-de-modulos.test.ts.
-    for (const p of politicas.filter((x) => x.nombre !== "lectura_propia_usuario" && x.tabla !== "ModuloEmpresa")) {
+    for (const p of politicas.filter((x) => x.nombre !== "lectura_propia_usuario" && x.tabla !== "ModuloEmpresa" && !CONSOLA.includes(x.tabla))) {
       expect(p.usando, p.tabla).toContain("app_empresa_actual()");
       expect(p.con_check, p.tabla).toContain("app_empresa_actual()");
     }
+  });
+
+  it("las tablas de la consola de plataforma tienen RLS con UNA política `solo_plataforma` atada al rol, y ninguna lleva `empresaId`", async () => {
+    const politicas = await prismaAdmin.$queryRaw<Array<{ tabla: string; nombre: string; usando: string; con_check: string }>>`
+      SELECT tablename::text AS tabla, policyname::text AS nombre, qual AS usando, with_check AS con_check FROM pg_policies WHERE schemaname = 'public' AND tablename = ANY(${CONSOLA})`;
+    expect(politicas.map((p) => p.tabla).sort()).toEqual([...CONSOLA].sort());
+    for (const p of politicas) {
+      expect(p.nombre, p.tabla).toBe("solo_plataforma");
+      expect(p.usando, p.tabla).toContain("motor2_plataforma");
+      expect(p.con_check, p.tabla).toContain("motor2_plataforma");
+    }
+    const conEmpresa = await prismaAdmin.$queryRaw<Array<{ tabla: string }>>`
+      SELECT table_name::text AS tabla FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'empresaId' AND table_name = ANY(${CONSOLA})`;
+    expect(conEmpresa).toEqual([]);
   });
 
   it("las 7 globales y `Empresa` NO tienen RLS ni políticas", async () => {
@@ -66,7 +82,7 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
   it("no queda ninguna otra tabla de `public` con RLS", async () => {
     const [{ n }] = await prismaAdmin.$queryRaw<Array<{ n: number }>>`
       SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace WHERE ns.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity`;
-    expect(n).toBe(55);
+    expect(n).toBe(55 + CONSOLA.length);
   });
 });
 

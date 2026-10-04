@@ -19,13 +19,15 @@ export interface OpcionesCspApp {
   desarrollo: boolean;
   /** Pedidos servidos por https (producción): suma `upgrade-insecure-requests`. */
   https: boolean;
+  /** Orígenes ajenos a los que un formulario puede enviar o redirigir además del propio. Por defecto Google (el login de la app); la consola de plataforma no tiene ninguno. */
+  destinosDeFormulario?: readonly string[];
 }
 
 function unir(directivas: (string | null)[]): string {
   return directivas.filter((d): d is string => !!d).join("; ");
 }
 
-export function cspApp({ nonce, desarrollo, https }: OpcionesCspApp): string {
+export function cspApp({ nonce, desarrollo, https, destinosDeFormulario = ["https://accounts.google.com"] }: OpcionesCspApp): string {
   return unir([
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${desarrollo ? " 'unsafe-eval'" : ""}`,
@@ -40,7 +42,7 @@ export function cspApp({ nonce, desarrollo, https }: OpcionesCspApp): string {
     "object-src 'none'",
     "base-uri 'self'",
     // El login redirige a Google (Chrome aplica `form-action` también a las redirecciones del envío).
-    "form-action 'self' https://accounts.google.com",
+    ["form-action 'self'", ...destinosDeFormulario].join(" "),
     "frame-ancestors 'none'",
     https ? "upgrade-insecure-requests" : null,
   ]);

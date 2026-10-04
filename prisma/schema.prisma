@@ -2297,3 +2297,87 @@ model UsuarioEmpresa {
 
   @@unique([usuarioId, empresaId])
 }
+
+/// Administrador de la plataforma (ADR-012, ADR-019): identidad APARTE de `User`, sin `empresaId` ni vínculo con ninguna empresa (nunca entra a una). Vive en la
+/// base de identidad (zuluhub). Solo la lee y escribe `motor2_plataforma` (política `solo_plataforma` + REVOKE a motor2_app, a mano en la migración). Sin DELETE:
+/// un administrador se desactiva (`activo`), no se borra. El primero lo crea `scripts/plataforma/crear-primer-admin.ts`, que además genera el secreto TOTP.
+model AdminPlataforma {
+  id                    String                           @id @default(cuid())
+  /// En minúsculas y sin espacios (CHECK en la base).
+  email                 String                           @unique
+  nombre                String
+  activo                Boolean                          @default(true)
+  /// Secreto TOTP cifrado (AES-256-GCM, `core/plataforma/cifrado.ts`), nunca en claro.
+  secretoTotp           String
+  /// Último paso de 30 s aceptado: un código ya usado no sirve de nuevo (anti-replay).
+  ultimoPasoTotp        Int?
+  fallosSegundoFactor   Int                              @default(0)
+  bloqueadoHasta        DateTime?
+  creadoEn              DateTime                         @default(now())
+  actualizadoEn         DateTime                         @default(now()) @updatedAt
+  codigosDeIngreso      CodigoDeIngresoPlataforma[]
+  codigosDeRecuperacion CodigoDeRecuperacionPlataforma[]
+  sesiones              SesionPlataforma[]
+}
+
+/// Código de un solo uso que se manda por mail (primer factor). Solo se guarda su HMAC (`core/plataforma/codigos.ts`); vence a los 10 minutos, se invalida al
+/// usarse o al pedir otro, y se agota a los 5 intentos fallidos.
+model CodigoDeIngresoPlataforma {
+  id               String          @id @default(cuid())
+  adminId          String
+  admin            AdminPlataforma @relation(fields: [adminId], references: [id])
+  hashCodigo       String
+  intentosFallidos Int             @default(0)
+  creadoEn         DateTime        @default(now())
+  venceEn          DateTime
+  usadoEn          DateTime?
+  invalidadoEn     DateTime?
+
+  @@index([adminId, creadoEn])
+}
+
+/// Códigos de recuperación del segundo factor (se muestran una sola vez, al crear el administrador). Solo se guarda el hash; cada uno sirve una vez.
+model CodigoDeRecuperacionPlataforma {
+  id         String          @id @default(cuid())
+  adminId    String
+  admin      AdminPlataforma @relation(fields: [adminId], references: [id])
+  hashCodigo String
+  creadoEn   DateTime        @default(now())
+  usadoEn    DateTime?
+
+  @@unique([adminId, hashCodigo])
+}
+
+/// Sesión de la consola. La cookie lleva un token opaco; acá solo su hash. Nace al verificar el código del mail (`segundoFactorEn` NULL: todavía no vale) y
+/// vale cuando se verifica el TOTP. Máximo 8 horas de vida y 30 minutos de inactividad (`core/plataforma/sesion.ts`).
+model SesionPlataforma {
+  id              String          @id @default(cuid())
+  adminId         String
+  admin           AdminPlataforma @relation(fields: [adminId], references: [id])
+  hashToken       String          @unique
+  creadaEn        DateTime        @default(now())
+  ultimaActividad DateTime        @default(now())
+  segundoFactorEn DateTime?
+  cerradaEn       DateTime?
+
+  @@index([adminId])
+}
+
+/// Auditoría de plataforma (ADR-012 §7, ADR-019): qué hizo un administrador de plataforma y sobre qué empresa. Como el administrador NO es un `User`,
+/// `RegistroAuditoria` (cuyo `actorId` apunta a `User`) no puede registrarlo: esta tabla guarda `adminId` y `adminEmail` como texto, sin FK (el administrador
+/// vive en la base de identidad; la empresa afectada, en la suya). Existe en todas las bases. Append-only (solo SELECT/INSERT, y el trigger de
+/// `rechazar_mutacion_de_auditoria` frena el resto) y sin RLS por empresa: solo la ve `motor2_plataforma`.
+model AuditoriaPlataforma {
+  id                String   @id @default(cuid())
+  adminId           String
+  adminEmail        String
+  /// Clave de la acción, ej. "ingreso", "cierre-de-sesion", "alta-de-empresa".
+  accion            String
+  /// Empresa afectada, si la acción es sobre una. NO se llama `empresaId` a propósito: esa columna implica RLS por empresa y `app_empresa_actual()` (sin FK: la fila vive en la base de esa empresa o en la de identidad).
+  empresaAfectadaId String?
+  detalle           Json?
+  creadoEn          DateTime @default(now())
+
+  @@index([adminId, creadoEn])
+  @@index([empresaAfectadaId, creadoEn])
+}

@@ -29,7 +29,7 @@ const eslintConfig = defineConfig([
   },
   {
     // Las variantes `*Unsafe` de Prisma interpolan SQL crudo: en `src/` solo van `$queryRaw`/`$executeRaw` con plantilla etiquetada.
-    files: ["src/**/*.ts", "src/**/*.tsx"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "plataforma/**/*.ts", "plataforma/**/*.tsx"],
     rules: {
       "no-restricted-properties": [
         "error",
@@ -42,6 +42,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    "plataforma/.next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

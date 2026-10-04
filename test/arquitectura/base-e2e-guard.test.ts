@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolverUrlAppE2E, resolverUrlE2E } from "../e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlPlataformaE2E } from "../e2e/fixtures/base-e2e";
 
 /**
  * Las guardas de la base E2E (test/e2e/fixtures/base-e2e.ts) son lo único que
@@ -73,5 +73,29 @@ describe("resolverUrlAppE2E — el runtime de los E2E es motor2_app, no el dueñ
 
   it("rechaza un host remoto", () => {
     expect(() => resolverUrlAppE2E(entorno("postgresql://motor2_app:x@db.ejemplo.com:5432/motor2_e2e"))).toThrow(/Host rechazado/);
+  });
+});
+
+describe("resolverUrlPlataformaE2E — la consola de plataforma en los E2E (E4, ADR-019)", () => {
+  const PLATAFORMA = "postgresql://motor2_plataforma:x@localhost:5432/motor2_e2e";
+  const entorno = (url: string | undefined) => ({ MOTOR2_E2E_DATABASE_URL: OK, MOTOR2_E2E_PLATAFORMA_DATABASE_URL: url });
+
+  it("sin la variable devuelve null: el E2E de la consola se omite (el rol solo existe donde se creó)", () => {
+    expect(resolverUrlPlataformaE2E(entorno(undefined))).toBeNull();
+    expect(resolverUrlPlataformaE2E(entorno(""))).toBeNull();
+  });
+
+  it("acepta el rol motor2_plataforma sobre la misma base", () => {
+    expect(resolverUrlPlataformaE2E(entorno(PLATAFORMA))).toEqual({ url: PLATAFORMA, host: "localhost", nombre: "motor2_e2e" });
+  });
+
+  it.each([
+    ["el dueño", OK, /rol motor2_plataforma/],
+    ["el rol de la aplicación", "postgresql://motor2_app:x@localhost:5432/motor2_e2e", /rol motor2_plataforma/],
+    ["otra base", "postgresql://motor2_plataforma:x@localhost:5432/otra_e2e", /misma base/],
+    ["la base de desarrollo", "postgresql://motor2_plataforma:x@localhost:5432/motor2_dev", /terminar en "_e2e"/],
+    ["un host remoto", "postgresql://motor2_plataforma:x@db.ejemplo.com:5432/motor2_e2e", /Host rechazado/],
+  ])("rechaza %s", (_nombre, url, mensaje) => {
+    expect(() => resolverUrlPlataformaE2E(entorno(url))).toThrow(mensaje);
   });
 });

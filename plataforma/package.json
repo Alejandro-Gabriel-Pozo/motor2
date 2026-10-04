@@ -1,0 +1,22 @@
+{
+  "name": "@motor2/plataforma",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consola de plataforma de motor2 (ADR-012, ADR-019): app Next.js aparte, con su propio proyecto de Vercel y su propia conexión a la base.",
+  "scripts": {
+    "dev": "next dev --port 3200",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@prisma/adapter-neon": "^7.10.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "7.10.0",
+    "@sentry/nextjs": "^10.74.0",
+    "next": "16.3.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.5"
+  }
+}

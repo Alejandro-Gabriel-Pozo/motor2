@@ -36,6 +36,13 @@ describe("cspApp", () => {
     expect(csp).toContain("upgrade-insecure-requests");
     expect(cspApp({ nonce: "n", desarrollo: false, https: false })).not.toContain("upgrade-insecure-requests");
   });
+
+  it("sin destinos de formulario (la consola de plataforma, que no tiene login con Google) los formularios solo envían al propio sitio", () => {
+    const consola = cspApp({ nonce: "n", desarrollo: false, https: true, destinosDeFormulario: [] });
+    expect(directiva(consola, "form-action")).toBe("form-action 'self'");
+    expect(consola).not.toContain("accounts.google.com");
+    expect(directiva(consola, "script-src")).toContain("'nonce-n'");
+  });
 });
 
 describe("cspCarta", () => {

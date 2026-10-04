@@ -26,6 +26,7 @@ env:
   # Rol dueño de las tablas (el que migra) y rol de ejecución sin privilegios (ADR-007, A0), como en local.
   CLAVE_DUENIO: ci-duenio-descartable
   CLAVE_APP: ci-app-descartable
+  CLAVE_PLATAFORMA: ci-plataforma-descartable
   # Variables que Prisma/Auth.js exigen para arrancar; valores de relleno, nunca reales.
   AUTH_SECRET: ci-auth-secret-de-relleno-0123456789abcdef
   AUTH_GOOGLE_ID: ci-google-id
@@ -94,11 +95,19 @@ jobs:
           psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
       - name: Migrar (como dueño)
         run: npx prisma migrate deploy
+      # Rol de plataforma (E4, ADR-012 §3): DESPUÉS de migrar, para que el script le dé permiso a las tablas de la consola. Lo usan los tests con el rol real.
+      - name: Rol de plataforma
+        run: psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
       # El build verifica el registro de módulos de la base: va ANTES de los tests, que la dejan con empresas y roles de prueba.
       - name: npm run build
         run: npm run build
+      # La consola de plataforma (E4) es otra app Next: su build también tiene que compilar. No toca la base.
+      - name: npm run plataforma:build
+        run: npm run plataforma:build
       - name: npm test
         run: npm test
+        env:
+          PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_dev
 
   e2e:
     name: E2E (Playwright)
@@ -125,6 +134,8 @@ jobs:
       DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
       MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
       MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      # La consola de plataforma (E4): su servidor y su spec solo se activan con esta variable (el rol se crea más abajo).
+      MOTOR2_E2E_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -139,6 +150,9 @@ jobs:
           psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
       - name: Migrar la base E2E (como dueño)
         run: npx prisma migrate deploy
+      # DESPUÉS de migrar (el script da permiso a las tablas de la consola) y sobre la base E2E: el servidor de la consola conecta con este rol.
+      - name: Rol de plataforma (consola)
+        run: psql -d motor2_e2e -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
       - run: npx playwright install --with-deps chromium
       - name: npm run test:e2e
         run: npm run test:e2e

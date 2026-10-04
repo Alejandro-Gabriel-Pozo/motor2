@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { ROL_DE_PLATAFORMA } from "../../../plataforma/src/entorno";
 
 /**
  * Base de datos DEDICADA a los E2E de Playwright, con reset total.
@@ -65,6 +66,26 @@ export function resolverUrlAppE2E(env: Record<string, string | undefined>): Base
     throw new Error("MOTOR2_E2E_APP_DATABASE_URL es idéntica a MOTOR2_E2E_DATABASE_URL: el runtime tiene que usar el rol motor2_app, no el dueño.");
   }
   return app;
+}
+
+/**
+ * La URL de la CONSOLA de plataforma en los E2E (E4, ADR-019): el rol `motor2_plataforma` sobre la MISMA base, o `null` si no se configuró (el rol solo existe
+ * donde alguien lo creó: en CI sí, en una máquina local solo si el dueño corrió `crear-rol-motor2-plataforma.sql`). Sin ella, el E2E de la consola se omite.
+ * Con ella, mismas guardas que el resto y, además, el usuario tiene que ser exactamente `motor2_plataforma`: ni el dueño ni `motor2_app`.
+ */
+export function resolverUrlPlataformaE2E(env: Record<string, string | undefined>): BaseE2E | null {
+  if (!env.MOTOR2_E2E_PLATAFORMA_DATABASE_URL) return null;
+  const dueno = resolverUrlE2E(env);
+  const plataforma = validarUrlE2E(env, "MOTOR2_E2E_PLATAFORMA_DATABASE_URL");
+  if (plataforma.host !== dueno.host || plataforma.nombre !== dueno.nombre) {
+    throw new Error(
+      `MOTOR2_E2E_PLATAFORMA_DATABASE_URL (${plataforma.host}/${plataforma.nombre}) tiene que apuntar a la misma base que MOTOR2_E2E_DATABASE_URL (${dueno.host}/${dueno.nombre}).`,
+    );
+  }
+  if (decodeURIComponent(new URL(plataforma.url).username) !== ROL_DE_PLATAFORMA) {
+    throw new Error(`MOTOR2_E2E_PLATAFORMA_DATABASE_URL tiene que conectar con el rol ${ROL_DE_PLATAFORMA}.`);
+  }
+  return plataforma;
 }
 
 function validarUrlE2E(env: Record<string, string | undefined>, variable: string): BaseE2E {

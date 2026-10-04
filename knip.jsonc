@@ -22,9 +22,15 @@
   //   - prisma/seed.ts (plugin de Prisma, vía `prisma.seed` de package.json y `npm run db:seed`),
   //   - vitest.config.ts y sus tests (plugin de Vitest),
   //   - playwright.config.ts y test/e2e/**/*.spec.ts (plugin de Playwright).
+  // Desde E4 (2026-10-03) el repo es un workspace de npm con una app más (`plataforma/`, la consola de plataforma): las entradas y el
+  // proyecto del raíz van bajo `workspaces["."]` (si se dejan arriba, knip las aplica TAMBIÉN a `plataforma/`, donde no existen, y avisa).
+  "workspaces": {
+    ".": {
   "entry": [
     // Scripts que se corren a mano (con `tsx` o como "test" de una config de Vitest propia): nadie los importa.
     "scripts/*.ts",
+    // Igual, en la subcarpeta de los scripts de la consola de plataforma (`npm run plataforma:crear-admin`).
+    "scripts/plataforma/*.ts",
 
     // Las 4 configs de Vitest que NO son la principal (seed de demo, seed de 6 meses, carta de "La Cuadra", invariantes
     // de la demo) y la config de Playwright de la demo. Se declaran como entradas a secas y NO en la sección `vitest` /
@@ -69,7 +75,18 @@
     "test/**/*.{ts,tsx}",
     "scripts/**/*.ts",
     "prisma/**/*.{ts,prisma}"
-  ],
+  ]
+    },
+
+    // La consola de plataforma: sus entradas (app/, proxy.ts) las descubre el plugin de Next.js. Su código importa del núcleo del raíz por el alias `@/`.
+    "plataforma": {
+      "project": ["src/**/*.{ts,tsx}"],
+      // RESERVADO — la consola no importa `@sentry/nextjs` directamente, pero el envío de correo (`src/core/correo` → `src/lib/reportar-error.ts`)
+      // lo importa de forma dinámica para avisar de un correo que no salió; ese código se compila DENTRO de la consola, así que su paquete
+      // tiene que estar instalado en ese proyecto de Vercel. Sin esta línea, borrar la dependencia rompe el build de la consola en silencio.
+      "ignoreDependencies": ["@sentry/nextjs"]
+    }
+  },
 
 
   // RESERVADO — tipos e interfaces exportados que solo se usan dentro de su propio archivo. Casi todos describen la forma

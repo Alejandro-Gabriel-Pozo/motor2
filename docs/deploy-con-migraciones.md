@@ -52,3 +52,30 @@ Cuatro migraciones llegan juntas a cada base: `20261003120000_extensiones_btree_
 
 Alta y baja de módulos de una empresa: solo `npm run modulos-empresa` con `PLATAFORMA_DATABASE_URL` (rol `motor2_plataforma`); ninguna pantalla lo hace.
 Para volver atrás una migración del bloque, ver `scripts/operaciones/restaurar-registro-de-modulos.md`.
+
+## Consola de plataforma (E4, ADR-019): migraciones y puesta en marcha
+
+Dos migraciones **aditivas** (solo agregan tablas; el código viejo las ignora, así que el Instant Rollback de Vercel sigue siendo seguro):
+`20261009120000_admin_de_plataforma` (administrador, código del mail, códigos de recuperación, sesión) y `20261009130000_auditoria_de_plataforma`. Se aplican **por
+base y con autorización expresa**, con ensayo previo en una rama de Neon y respaldo. Se aplicaron solo a la base local; ninguna base remota las tiene.
+Se crean en todas las bases, pero solo se usa la de identidad (zuluhub); en las demás quedan vacías.
+
+Orden por base (el dueño; el asistente de desarrollo no ve credenciales ni corre nada de esto contra Neon):
+
+1. Snapshot de la rama de Neon destino y ensayo de las dos migraciones en una rama descartable.
+2. Crear el rol `motor2_plataforma` en ESA rama, **con psql como dueño** (`neondb_owner`), nunca desde la consola de Neon (nacería con `BYPASSRLS`):
+   `psql <conexión del dueño> -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql`. Los roles son por rama: la rama de producción de
+   cada despliegue necesita el suyo. Es idempotente.
+3. `... migrate status` y `npm run migrar:aprobar` (ver «Flujo aprobado» arriba). Si el rol ya existía, las migraciones le dan el permiso al crear las tablas.
+4. Archivo local **fuera del repositorio** (`.env.plataforma.<despliegue>`, gitignored) con `PLATAFORMA_DATABASE_URL` (usuario `motor2_plataforma`),
+   `PLATAFORMA_SECRETO_CODIGOS` (`openssl rand -base64 48`) y `PLATAFORMA_CLAVE_TOTP` (`openssl rand -base64 32`). Los mismos tres valores van en el proyecto de
+   Vercel de la consola; **la aplicación de empresas no los lleva**.
+5. Primer administrador, una vez, en la instalación de identidad (zuluhub):
+   `DOTENV_CONFIG_PATH=.env.plataforma.<despliegue> npm run plataforma:crear-admin -- --email <email> --nombre "<nombre>"`.
+   Imprime **una sola vez** el secreto TOTP (cargarlo en la app autenticadora) y 10 códigos de recuperación (guardarlos fuera de línea). No se vuelven a ver.
+   Se niega si el email ya es de un administrador o de un usuario de una empresa.
+6. Proyecto de Vercel de la consola: Root Directory `plataforma/`, mismas variables, subdominio propio, y el canal de mails `avisos` configurado
+   (`CORREO_AVISOS_RESEND_API_KEY`, `CORREO_AVISOS_REMITENTE`; ADR-018) para que llegue el código del primer factor. Como en la aplicación, el build de la
+   consola no migra. El deploy se hace recién después de los pasos 1 a 5.
+
+Rotar `PLATAFORMA_SECRETO_CODIGOS` o `PLATAFORMA_CLAVE_TOTP` invalida los factores ya enrolados: hay que crear de nuevo a los administradores.

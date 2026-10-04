@@ -24,7 +24,7 @@ beforeEach(async () => {
     zonaHoraria: "America/Argentina/Buenos_Aires",
     moneda: "ARS",
     emailPrimerAdmin: "gerente@norte.com",
-  }));
+  }, []));
 });
 
 describe("la empresa creada no ve ni pisa a la existente", () => {

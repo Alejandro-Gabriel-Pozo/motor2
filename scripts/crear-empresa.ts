@@ -7,13 +7,15 @@
  *
  * Usa PLATAFORMA_DATABASE_URL (rol `motor2_plataforma`, ver scripts/operaciones/crear-rol-motor2-plataforma.sql) o, si no está, DATABASE_URL (rol
  * `motor2_app`). Con un rol que salta el RLS se niega si quedan 2+ empresas activas.
+ * Lee los emails de `AdminPlataforma` para rechazar que el primer gerente sea un administrador de plataforma (ADR-012 §1): esa tabla solo la ve el rol
+ * `motor2_plataforma`, así que sin PLATAFORMA_DATABASE_URL el alta falla cerrada (permiso denegado) en vez de omitir el control.
  * No es idempotente: si el slug o el nombre ya existen, falla sin tocar nada.
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";
 import { ZodError } from "zod";
 import { prismaPlataforma as prisma } from "./cliente-plataforma";
-import { crearEmpresa, EmpresaYaExisteError } from "../src/core/features/empresa/crear-empresa";
+import { crearEmpresa, EmailReservadoError, EmpresaYaExisteError } from "../src/core/features/empresa/crear-empresa";
 
 async function main() {
   const { values } = parseArgs({
@@ -28,6 +30,8 @@ async function main() {
     strict: true,
   });
 
+  // Solo el rol de plataforma puede leer `AdminPlataforma` (la base de identidad); en una base sin esa tabla poblada la lista queda vacía.
+  const admins = await prisma.adminPlataforma.findMany({ select: { email: true } });
   const resultado = await crearEmpresa(prisma, {
     nombre: values.nombre ?? "",
     slug: values.slug ?? "",
@@ -35,7 +39,7 @@ async function main() {
     zonaHoraria: values["zona-horaria"] ?? "",
     moneda: values.moneda ?? "",
     ...(values.sucursal ? { nombreSucursal: values.sucursal } : {}),
-  });
+  }, admins.map((a) => a.email));
 
   console.log(`Empresa "${resultado.slug}" creada y ACTIVE (id ${resultado.empresaId}).`);
   console.log(`Primer admin (gerente): ${resultado.emailPrimerAdmin}. Carta pública: /carta-publica/${resultado.slug}/...`);
@@ -43,7 +47,7 @@ async function main() {
 
 main()
   .catch((error: unknown) => {
-    if (error instanceof EmpresaYaExisteError) console.error(`Error: ${error.message}`);
+    if (error instanceof EmpresaYaExisteError || error instanceof EmailReservadoError) console.error(`Error: ${error.message}`);
     else if (error instanceof ZodError) console.error(`Argumentos inválidos:\n${error.issues.map((i) => `  --${String(i.path[0])}: ${i.message}`).join("\n")}`);
     else console.error(error);
     process.exitCode = 1;

@@ -75,6 +75,17 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(crear).toMatch(/CREATE ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS/);
   });
 
+  it("crear-rol-motor2-plataforma.sql da privilegios tabla por tabla: nunca DELETE ni TRUNCATE ni ON ALL TABLES a motor2_plataforma (ADR-012 §3)", () => {
+    const grants = sentencias(leer("scripts/operaciones/crear-rol-motor2-plataforma.sql")).filter((s) => /^GRANT\b/i.test(s) && /\bTO\s+motor2_plataforma\b/i.test(s));
+    expect(grants.length).toBeGreaterThan(0);
+    for (const g of grants) {
+      expect(g.split(/\bON\b/i)[0], "privilegio peligroso").not.toMatch(/\b(DELETE|TRUNCATE|ALL)\b/i);
+      expect(g, "GRANT masivo").not.toMatch(/\bON\s+ALL\s+TABLES\b/i);
+    }
+    // El script parte de cero: revoca lo que una versión anterior (DML sobre todo public + default privileges) haya dado.
+    expect(leer("scripts/operaciones/crear-rol-motor2-plataforma.sql")).toMatch(/REVOKE ALL ON ALL TABLES IN SCHEMA public FROM motor2_plataforma/);
+  });
+
   it("src/ no conoce el cliente ni la variable de plataforma", () => {
     const problemas = archivos(join(RAIZ, "src")).filter((r) => /cliente-plataforma|PLATAFORMA_DATABASE_URL|prismaPlataforma/.test(readFileSync(r, "utf8")));
     expect(problemas).toEqual([]);

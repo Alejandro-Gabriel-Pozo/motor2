@@ -7,9 +7,11 @@ import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "
  * empresa. El catálogo de la base se lee de `pg_catalog` (no del schema.prisma) para que un cambio en la migración o un modelo nuevo
  * sin `empresaId` rompa acá. El RLS (paso A6) se prueba en test/aislamiento; acá las unicidades y FK son propiedades de la estructura y se ejercitan como dueño (`prismaAdmin`).
  */
+const TABLAS_DE_CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"];
 const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"];
 // ModuloEmpresa (P4) lleva `empresaId` pero lo escribe la plataforma indicando la empresa: sin default `app_empresa_actual()` y con FK simple a Empresa.
-const PLATAFORMA = ["Empresa", "ModuloEmpresa", "UsuarioEmpresa"];
+// Las cinco de identidad de la consola de plataforma (E4, ADR-012/019) no tienen empresa: son de plataforma, no de ninguna empresa.
+const PLATAFORMA = ["Empresa", "ModuloEmpresa", "UsuarioEmpresa", ...TABLAS_DE_CONSOLA];
 
 function codigoDeError(e: unknown): string | undefined {
   return e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined;
@@ -50,7 +52,8 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
         expect(c.predeterminado, c.tabla).toContain("app_empresa_actual()");
       }
 
-      const todas = await prisma.$queryRaw<Array<{ tabla: string }>>`
+      // Como dueño: information_schema solo muestra las tablas sobre las que el rol tiene algún privilegio y motor2_app no tiene ninguno sobre las de la consola.
+      const todas = await prismaAdmin.$queryRaw<Array<{ tabla: string }>>`
         SELECT table_name AS tabla FROM information_schema.tables
          WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations'`;
       const sinEmpresa = todas.map((t) => t.tabla).filter((t) => !conEmpresa.includes(t)).sort();

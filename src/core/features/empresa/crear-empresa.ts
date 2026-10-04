@@ -3,6 +3,7 @@ import { verificarRolDeEjecucion } from "@/core/auth/rol-de-ejecucion";
 import { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "@/core/movimientos/public";
 import { ACCIONES } from "@/core/permisos/acciones";
 import { CLAVE_ROL_ADMIN, CLAVE_ROL_OPERADOR } from "@/core/permisos/jerarquia";
+import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO } from "@/core/plataforma/email-reservado";
 import { crearEmpresaConAdminSchema, esTransicionValida, type ComandoCrearEmpresaConAdmin } from "./empresa.schema";
 
 /** Mismas 5 unidades base que `prisma/seed.ts` (decimales por magnitud, como DECIMALES_DEFAULT_POR_CATEGORIA_ de Apps Script). */
@@ -24,6 +25,14 @@ export class EmpresaYaExisteError extends Error {
   }
 }
 
+/** El email del primer admin es el de un administrador de plataforma: ese no entra a ninguna empresa (ADR-012 §1, ADR-019). */
+export class EmailReservadoError extends Error {
+  constructor() {
+    super(MENSAJE_EMAIL_RESERVADO);
+    this.name = "EmailReservadoError";
+  }
+}
+
 export interface EmpresaCreada {
   empresaId: string;
   slug: string;
@@ -42,11 +51,15 @@ export interface EmpresaCreada {
  * transacción), así que con el rol `motor2_app` el RLS deja escribir solo en ella. Con un rol que salta el RLS (dueño, superusuario, BYPASSRLS)
  * se niega si la empresa nueva deja más de una activa (mismo criterio que `verificarRolDeEjecucion`).
  *
+ * `emailsReservados` son los emails de los administradores de plataforma (los lee quien llama con el rol de plataforma, que es el único con permiso sobre
+ * `AdminPlataforma`: ver `emailsDeAdminsDePlataforma`); si el del primer admin está entre ellos, el alta se rechaza antes de tocar nada.
+ *
  * No es idempotente a propósito: si el slug o el nombre ya existen falla con `EmpresaYaExisteError` sin tocar nada (re-correrlo por error no
  * debe «completar» ni pisar una empresa que ya tiene datos).
  */
-export async function crearEmpresa(db: PrismaClient, entrada: ComandoCrearEmpresaConAdmin): Promise<EmpresaCreada> {
+export async function crearEmpresa(db: PrismaClient, entrada: ComandoCrearEmpresaConAdmin, emailsReservados: readonly string[]): Promise<EmpresaCreada> {
   const { nombre, slug, zonaHoraria, moneda, emailPrimerAdmin, nombreSucursal } = crearEmpresaConAdminSchema.parse(entrada);
+  if (esEmailReservadoDeAdminPlataforma(emailPrimerAdmin, emailsReservados)) throw new EmailReservadoError();
 
   await verificarRolDeEjecucion(db, undefined, 1);
 
