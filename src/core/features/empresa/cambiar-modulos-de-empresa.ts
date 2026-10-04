@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
-import { MODULOS } from "@/core/modulos/catalogo";
-import { modulosEfectivos, validarCambioDeModulos, type ErrorDeCambio } from "@/core/modulos/clausura";
+import { modulosEfectivos, validarCambioDeModulos } from "@/core/modulos/clausura";
+import { explicarErrorDeCambio, nombreDeModulo } from "@/core/modulos/vista-de-modulos";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 
 /** Los módulos vendibles que la plataforma quiere activar o desactivar en una empresa. Sin ninguno, no hay nada que hacer. */
@@ -29,20 +29,7 @@ export class ModulosDeEmpresaError extends Error {
   }
 }
 
-const nombreDe = (id: string) => MODULOS.find((m) => m.id === id)?.nombre ?? id;
-
-function explicar(e: ErrorDeCambio): string {
-  switch (e.motivo) {
-    case "DESCONOCIDO":
-      return `«${e.modulo}» no existe en el catálogo de módulos.`;
-    case "NO_ES_VENDIBLE":
-      return `${nombreDe(e.modulo)} no se activa ni se desactiva: es un módulo fijo o de soporte (se calcula solo).`;
-    case "EN_DESARROLLO":
-      return `${nombreDe(e.modulo)} está en desarrollo y todavía no se puede activar.`;
-    case "LO_REQUIEREN_OTROS":
-      return `${nombreDe(e.modulo)} no se puede desactivar mientras estén activos: ${(e.requeridoPor ?? []).map(nombreDe).join(", ")}.`;
-  }
-}
+const nombreDe = (id: string) => nombreDeModulo(id);
 
 /**
  * Activa y desactiva módulos vendibles de una empresa en el registro `ModuloEmpresa` (ADR-011, ADR-014, ADR-015). SOLO la plataforma lo hace: lo llama
@@ -72,7 +59,7 @@ export async function cambiarModulosDeEmpresa(db: PrismaClient, pedido: CambioDe
     const filas = await tx.moduloEmpresa.findMany({ where: { empresaId: empresa.id } });
     const estadoActual = new Map(filas.map((f) => [f.modulo, f.estado]));
     const validacion = validarCambioDeModulos(filas.filter((f) => f.estado === "ACTIVO").map((f) => f.modulo), { activar, desactivar });
-    if (!validacion.ok) throw new ModulosDeEmpresaError(validacion.errores.map(explicar).join(" "));
+    if (!validacion.ok) throw new ModulosDeEmpresaError(validacion.errores.map(explicarErrorDeCambio).join(" "));
 
     const cambiados: CambioDeModulosHecho["cambiados"] = [];
     for (const [modulos, despues] of [[activar, "ACTIVO"], [desactivar, "INACTIVO"]] as const) {
