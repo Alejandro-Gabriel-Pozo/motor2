@@ -59,8 +59,11 @@ export interface VistaDeInvitacion {
 export async function invitacionDelToken(token: string | undefined, ahora: Date = new Date()): Promise<VistaDeInvitacion | null> {
   if (!token || !esTokenConFormaValida(token)) return null;
   await verificarRolDeEjecucionDelProceso();
-  const db = dbDeInvitacion(hashDeToken(token));
+  const hash = hashDeToken(token);
+  const db = dbDeInvitacion(hash);
+  // Por hash y no solo por el RLS: sin `where`, un token bien formado pero inexistente devolvería OTRA fila visible (por ejemplo la de la única empresa activa).
   const invitacion = await db.invitacion.findFirst({
+    where: { hashToken: hash },
     select: { id: true, empresaId: true, email: true, estado: true, venceEn: true },
   });
   if (!invitacion) return null;

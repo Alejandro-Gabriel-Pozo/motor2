@@ -95,6 +95,19 @@ describe("invitacionDelToken", () => {
   });
 });
 
+describe("invitacionDelToken busca por el hash del token, no solo por el RLS", () => {
+  it("con una invitación visible por el respaldo de la única empresa activa, un token inexistente da null y el de otra empresa devuelve la suya", async () => {
+    // La única empresa ACTIVE (principal) tiene una invitación aceptada: con el respaldo de `app_empresa_actual()` el RLS la deja ver sin contexto.
+    const u = await prismaAdmin.user.create({ data: { email: "ya-gerente@gmail.com" } });
+    await prismaAdmin.invitacion.create({
+      data: { empresaId: "empresa_principal", email: "ya-gerente@gmail.com", rolEmpresa: "gerente", hashToken: hashDeToken("T".repeat(43)), venceEn: new Date(Date.now() + 3_600_000), estado: "ACEPTADA", aceptadaEn: new Date(), aceptadaPorId: u.id },
+    });
+    expect(await invitacionDelToken(generarTokenOpaco())).toBeNull();
+    const token = await crearInvitacion();
+    expect(await invitacionDelToken(token)).toMatchObject({ empresaId: EMPRESA, email: EMAIL });
+  });
+});
+
 describe("cookie de invitación", () => {
   it("lleva el prefijo __Host- solo con https, es Lax y httpOnly, y no vive más de una hora ni más que la invitación", () => {
     expect(nombreCookieInvitacion({ NODE_ENV: "production", VERCEL: "1" })).toBe("__Host-motor2.invitacion");
