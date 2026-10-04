@@ -135,7 +135,9 @@ test("recorrido cruzado: lo que la consola da de alta lo acepta el gerente en la
   const app = await paginaConSesion(browser, baseURL, invitado.sessionToken);
   await app.goto(`/invitacion#t=${token}`);
   await app.getByLabel("CUIT de la empresa").fill("30-71234567-1");
-  await app.getByRole("button", { name: "Aceptar y ser gerente" }).click();
+  await app.getByRole("button", { name: "Revisar el CUIT" }).click();
+  await app.getByLabel("Verifiqué que el CUIT y los datos de la empresa son correctos.").check();
+  await app.getByRole("button", { name: "Confirmar y aceptar" }).click();
   await expect(app.getByText(`La empresa «${datos.nombre}» está en alta.`)).toBeVisible();
 
   // La consola la ve aceptada, con el CUIT declarado, y ya no ofrece reenviar.

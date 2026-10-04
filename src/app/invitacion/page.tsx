@@ -102,7 +102,7 @@ export default async function InvitacionPage() {
       <p className={TEXTO_SUAVE}>
         Vas a ser el gerente de «{vista.nombreEmpresa}». Cargá el CUIT de la empresa para aceptar.
       </p>
-      <FormularioDeAceptacion />
+      <FormularioDeAceptacion nombreEmpresa={vista.nombreEmpresa} />
     </Pantalla>
   );
 }
