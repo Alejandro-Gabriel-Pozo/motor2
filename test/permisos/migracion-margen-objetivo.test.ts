@@ -29,7 +29,7 @@ describe("migración 20261001220000_margen_objetivo: estado del schema", () => {
   });
 
   it("el CHECK rechaza un objetivo de 0 % y de 100 % y acepta uno intermedio", async () => {
-    const { id: empresaId } = await prismaAdmin.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
+    const { id: empresaId } = await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: "empresa_principal" } });
     for (const malo of [0, 100, -5]) {
       await expect(prismaAdmin.$executeRawUnsafe(`INSERT INTO "MargenObjetivo" (id, "empresaId", "foodCostObjetivoPct") VALUES ('mo-check-${malo}', '${empresaId}', ${malo})`), String(malo)).rejects.toThrow(/MargenObjetivo_foodCostObjetivoPct_rango_check/);
     }
@@ -38,7 +38,7 @@ describe("migración 20261001220000_margen_objetivo: estado del schema", () => {
   });
 
   it("el índice parcial no deja dos objetivos de empresa (categoriaId nulo), y sí uno por categoría", async () => {
-    const { id: empresaId } = await prismaAdmin.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
+    const { id: empresaId } = await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: "empresa_principal" } });
     const categoria = await prismaAdmin.categoriaProducto.create({ data: { nombre: "Cat índice parcial", empresaId } });
     try {
       await prismaAdmin.$executeRawUnsafe(`INSERT INTO "MargenObjetivo" (id, "empresaId", "foodCostObjetivoPct") VALUES ('mo-emp-1', '${empresaId}', 30)`);

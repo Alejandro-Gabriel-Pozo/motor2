@@ -60,13 +60,13 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   await page.getByLabel("Identificador (slug)").fill(datos.slug);
   await page.getByLabel("Email del dueño (será el gerente)").fill(datos.email);
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/[^/]+$`));
+  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/(?!nueva)[^/]+$`));
   const empresaId = page.url().split("/").at(-1)!;
   empresasActivadas.push(empresaId);
 
   // El token real viaja por mail: se lo reemplaza por uno conocido y el gerente acepta en la app.
   const token = generarTokenOpaco();
-  await leerDeLaBase((db) => db.invitacion.updateMany({ where: { empresaId }, data: { hashToken: hashDeToken(token) } }));
+  expect((await leerDeLaBase((db) => db.invitacion.updateMany({ where: { empresaId }, data: { hashToken: hashDeToken(token) } }))).count, "el detalle de una empresa recién dada de alta").toBe(1);
   const app = await aceptarComoGerente(browser, baseURL, { email: datos.email, token }, CUIT);
 
   // La consola la ve en «CUIT pendiente» y en el inicio.
@@ -141,13 +141,13 @@ test("dos empresas que declararon el mismo CUIT: la primera que se confirma lo c
 
   // Las dos se ven marcadas como repetidas antes de confirmar ninguna.
   await page.goto(`${CONSOLA}/empresas/${b.empresaId}`);
-  await expect(page.getByRole("alert").filter({ hasText: "CUIT repetido" })).toContainText(a.nombre);
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)').filter({ hasText: "CUIT repetido" })).toContainText(a.nombre);
 
   await confirmarEnLaConsola(page, a.empresaId);
   await expect(page.getByText(/quedó activa con el CUIT/)).toBeVisible();
 
   await confirmarEnLaConsola(page, b.empresaId);
-  await expect(page.getByRole("alert").filter({ hasText: a.nombre }).first()).toBeVisible();
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)').filter({ hasText: a.nombre }).first()).toBeVisible();
   const segunda = await leerDeLaBase((db) => db.empresa.findUniqueOrThrow({ where: { id: b.empresaId } }));
   expect(segunda).toMatchObject({ estado: "PROVISIONING", cuit: null });
 });

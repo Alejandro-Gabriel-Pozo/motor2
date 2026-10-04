@@ -11,7 +11,7 @@ export type FilaPermiso = { puedeVer: boolean; puedeEditar: boolean } | null;
  * lee el rol mientras tanto). El rol «admin» NO se borra nunca.
  */
 export async function ajustarCeldasDelAdmin(filas: Partial<Record<AccionClave, FilaPermiso>>) {
-  const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
+  const { id: empresaId } = await prisma.empresa.findUniqueOrThrow({ where: { id: "empresa_principal" } });
   const rol = await prisma.rol.findUniqueOrThrow({ where: { empresaId_clave: { empresaId, clave: "admin" } } });
   const claves = Object.keys(filas) as AccionClave[];
   const originales = new Map<AccionClave, FilaPermiso>();

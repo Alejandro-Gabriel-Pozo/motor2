@@ -61,19 +61,19 @@ test("alta completa: valida, da de alta, queda auditada con el administrador com
   await llenarElAlta(page, { ...datos, zona: "America/Narnia" });
   await sinViolaciones(page);
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page.getByRole("alert")).toContainText(/zona horaria/i);
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(/zona horaria/i);
   expect(await leerDeLaBase((db) => db.empresa.count({ where: { slug: datos.slug } }))).toBe(0);
 
   // El email de un administrador de plataforma no puede ser gerente.
   await llenarElAlta(page, { ...datos, email: admin.email });
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page.getByRole("alert")).toContainText(/administrador de la plataforma/i);
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toContainText(/administrador de la plataforma/i);
   expect(await leerDeLaBase((db) => db.empresa.count({ where: { slug: datos.slug } }))).toBe(0);
 
   // Alta correcta: va al detalle.
   await llenarElAlta(page, datos);
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/[^/]+$`));
+  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/(?!nueva)[^/]+$`));
   await expect(page.getByRole("heading", { level: 1, name: datos.nombre })).toBeVisible();
   await expect(page.getByText(`Pendiente · ${datos.email}`)).toBeVisible();
   await sinViolaciones(page);
@@ -125,12 +125,12 @@ test("recorrido cruzado: lo que la consola da de alta lo acepta el gerente en la
   const datos = { nombre: `E2E Cruzado ${m}`, slug: `e2e-cruzado-${m}`, email: `gerente-${m}@local.test` };
   await llenarElAlta(page, datos);
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/[^/]+$`));
+  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/(?!nueva)[^/]+$`));
   const detalle = page.url();
 
   // El token real viaja por mail: se lo reemplaza por uno conocido.
   const token = generarTokenOpaco();
-  await leerDeLaBase((db) => db.invitacion.updateMany({ where: { empresa: { slug: datos.slug } }, data: { hashToken: hashDeToken(token) } }));
+  expect((await leerDeLaBase((db) => db.invitacion.updateMany({ where: { empresa: { slug: datos.slug } }, data: { hashToken: hashDeToken(token) } }))).count).toBe(1);
 
   // El invitado (que ya tiene su sesión de Google) abre el enlace y acepta.
   const invitado = await crearUsuarioSinEmpresa(datos.email);

@@ -9,7 +9,7 @@ import { prisma } from "./fixtures/db";
 const ACCION = "reporte_salud";
 
 async function operador() {
-  const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" } });
+  const { id: empresaId } = await prisma.empresa.findUniqueOrThrow({ where: { id: "empresa_principal" } });
   return prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
 }
 async function fijar(rolId: string, puedeVer: boolean, puedeEditar: boolean) {

@@ -91,7 +91,7 @@ test("un código del mail equivocado y un TOTP equivocado no entran; un código 
 
   await page.locator("#codigo").fill("000000");
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("alert")).toHaveText("El código no es válido o venció. Pedí uno nuevo.");
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveText("El código no es válido o venció. Pedí uno nuevo.");
   await expect(page.locator("#factor")).toHaveCount(0);
 
   await page.locator("#codigo").fill(CODIGO_CONOCIDO);
@@ -102,7 +102,7 @@ test("un código del mail equivocado y un TOTP equivocado no entran; un código 
   const equivocado = valido.slice(0, 5) + ((Number(valido[5]) + 1) % 10);
   await page.locator("#factor").fill(equivocado);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("alert")).toHaveText("El código no es válido.");
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveText("El código no es válido.");
   await expect(page).toHaveURL(`${CONSOLA}/login`);
 
   await page.locator("#factor").fill(admin.codigosDeRecuperacion[0]);
@@ -116,7 +116,7 @@ test("un código del mail equivocado y un TOTP equivocado no entran; un código 
   await llegarAlSegundoFactor(page, admin);
   await page.locator("#factor").fill(admin.codigosDeRecuperacion[0]);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("alert")).toHaveText("El código no es válido.");
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveText("El código no es válido.");
 });
 
 test("un email que no es de un administrador ve exactamente la misma pantalla, y no puede entrar", async ({ page }) => {
@@ -127,7 +127,7 @@ test("un email que no es de un administrador ve exactamente la misma pantalla, y
   await expect(page.getByText("Si el email corresponde a un administrador, te mandamos un código de 6 dígitos.")).toBeVisible();
   await page.locator("#codigo").fill(CODIGO_CONOCIDO);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("alert")).toHaveText("El código no es válido o venció. Pedí uno nuevo.");
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveText("El código no es válido o venció. Pedí uno nuevo.");
   await expect(page.locator("#factor")).toHaveCount(0);
 });
 
@@ -139,7 +139,7 @@ test("accesibilidad: cada paso del ingreso no tiene violaciones de axe", async (
   expect((await new AxeBuilder({ page }).analyze()).violations, "paso del código").toEqual([]);
   await page.locator("#codigo").fill("000000");
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "paso del código, con el error").toEqual([]);
   await page.locator("#codigo").fill(CODIGO_CONOCIDO);
   await page.getByRole("button", { name: "Continuar" }).click();
