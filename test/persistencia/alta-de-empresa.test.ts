@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { HAY_ROL_DE_PLATAFORMA, plataformaReal } from "../setup/cliente-plataforma-real";
 import type { MensajeDeCorreo, ResultadoDeEnvio } from "../../src/core/correo/tipos";
 import { hashDeToken } from "../../src/core/seguridad/tokens";
 import { darDeAltaEmpresa, invitarDeNuevo, listarEmpresas, reenviarInvitacion, revocarInvitacion, type DependenciasDeEmpresas } from "../../plataforma/src/servidor/empresas";
@@ -50,6 +51,7 @@ afterAll(async () => {
   await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "AuditoriaPlataforma"');
   await limpiarBaseDeTest();
   await prismaAdmin.$disconnect();
+  await plataformaReal.$disconnect();
 });
 
 async function empresaDelAlta() {
@@ -265,5 +267,68 @@ describe("listarEmpresas", () => {
     const despues = (await listarEmpresas(prismaAdmin, new Date(AHORA.getTime() + 8 * 24 * 3600 * 1000))).find((e) => e.slug === ALTA.slug);
     expect(despues?.invitacion?.estado).toBe("VENCIDA");
     expect((await listarEmpresas(prismaAdmin, AHORA)).find((e) => e.id === "empresa_principal")?.invitacion).toBeNull();
+  });
+});
+
+/**
+ * Lo mismo, pero con la conexión REAL del rol `motor2_plataforma` (la de la consola): el dueño salta el RLS y los triggers, así que solo esto prueba que el rol alcanza
+ * para dar de alta una empresa (siembra bajo `app.empresa_id`, INSERT de `Invitacion`, INSERT de `AuditoriaPlataforma`) y que lo que NO debe poder hacer, no puede.
+ * Se omite si no hay `PLATAFORMA_DATABASE_URL` (local sin el rol); en CI corre.
+ */
+describe.skipIf(!HAY_ROL_DE_PLATAFORMA)("con el rol motor2_plataforma real", () => {
+  const SIN_PERMISO = /42501|permission denied|permiso denegado|no permitido|row-level security|política|policy/i;
+
+  it("da de alta una empresa completa: empresa en alta, siembra, invitación y auditoría, y el mail sale después del commit", async () => {
+    let vistaAlEnviar: boolean | undefined;
+    alEnviar = async () => {
+      vistaAlEnviar = (await prisma.empresa.findUnique({ where: { slug: ALTA.slug } })) !== null;
+    };
+    const r = await darDeAltaEmpresa(plataformaReal, dependencias(), AUTOR, ALTA);
+    expect(r).toMatchObject({ ok: true, enviado: true });
+    expect(vistaAlEnviar).toBe(true);
+
+    const empresa = await empresaDelAlta();
+    expect(empresa).toMatchObject({ estado: "PROVISIONING", cuit: null });
+    expect(await prismaAdmin.sucursal.count({ where: { empresaId: empresa.id } })).toBe(1);
+    expect(await prismaAdmin.rol.count({ where: { empresaId: empresa.id } })).toBe(2);
+    expect(await prismaAdmin.permisoRol.count({ where: { empresaId: empresa.id } })).toBeGreaterThan(0);
+    expect(await prismaAdmin.unidad.count({ where: { empresaId: empresa.id } })).toBeGreaterThan(0);
+    const inv = await prismaAdmin.invitacion.findFirstOrThrow({ where: { empresaId: empresa.id } });
+    expect(inv).toMatchObject({ estado: "PENDIENTE", email: "dueno@gmail.com" });
+    expect(inv.enviadaEn).toEqual(AHORA);
+    expect((await prismaAdmin.auditoriaPlataforma.findMany()).map((a) => a.accion)).toEqual(["alta-de-empresa"]);
+  });
+
+  it("reenvía, revoca e invita de nuevo (trigger de Invitacion y auditoría incluidos)", async () => {
+    await darDeAltaEmpresa(plataformaReal, dependencias(), AUTOR, ALTA);
+    const empresa = await empresaDelAlta();
+    expect(await reenviarInvitacion(plataformaReal, dependencias(), AUTOR, empresa.id)).toMatchObject({ ok: true, enviado: true });
+    expect((await revocarInvitacion(plataformaReal, AUTOR, empresa.id, ahora)).ok).toBe(true);
+    expect(await invitarDeNuevo(plataformaReal, dependencias(), AUTOR, empresa.id, "otro@gmail.com")).toMatchObject({ ok: true, enviado: true });
+    const filas = await prismaAdmin.invitacion.findMany({ where: { empresaId: empresa.id }, orderBy: { creadaEn: "asc" } });
+    expect(filas.map((f) => [f.email, f.estado])).toEqual([["dueno@gmail.com", "REVOCADA"], ["otro@gmail.com", "PENDIENTE"]]);
+    expect((await prismaAdmin.auditoriaPlataforma.findMany({ orderBy: { creadoEn: "asc" } })).map((a) => a.accion)).toEqual([
+      "alta-de-empresa",
+      "invitacion-reenviada",
+      "invitacion-revocada",
+      "invitacion-creada",
+    ]);
+  });
+
+  it("el rol ve la lista completa de empresas con su invitación (el dueño y el rol coinciden)", async () => {
+    await darDeAltaEmpresa(plataformaReal, dependencias(), AUTOR, ALTA);
+    const delRol = (await listarEmpresas(plataformaReal, AHORA)).find((e) => e.slug === ALTA.slug);
+    expect(delRol?.invitacion).toMatchObject({ email: "dueno@gmail.com", estado: "PENDIENTE", enviada: true });
+  });
+
+  it("lo que no debe poder, no puede: aceptar por la app, borrar una invitación, reescribir una aceptada, ni leer tablas de operación", async () => {
+    await darDeAltaEmpresa(plataformaReal, dependencias(), AUTOR, ALTA);
+    const empresa = await empresaDelAlta();
+    const inv = await prismaAdmin.invitacion.findFirstOrThrow({ where: { empresaId: empresa.id } });
+    await expect(plataformaReal.invitacion.delete({ where: { id: inv.id } })).rejects.toThrow(SIN_PERMISO);
+    await expect(plataformaReal.invitacion.update({ where: { id: inv.id }, data: { estado: "ACEPTADA", aceptadaEn: AHORA } })).rejects.toThrow(SIN_PERMISO);
+    await expect(plataformaReal.invitacion.update({ where: { id: inv.id }, data: { email: "otro@gmail.com" } })).rejects.toThrow(SIN_PERMISO);
+    await expect(plataformaReal.producto.findMany()).rejects.toThrow(SIN_PERMISO);
+    await expect(plataformaReal.empresa.delete({ where: { id: empresa.id } })).rejects.toThrow(SIN_PERMISO);
   });
 });

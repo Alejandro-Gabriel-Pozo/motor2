@@ -11,7 +11,12 @@ export type AccionDePlataforma =
   | "alta-de-empresa"
   | "invitacion-reenviada"
   | "invitacion-revocada"
-  | "invitacion-creada";
+  | "invitacion-creada"
+  | "empresa-confirmada"
+  | "cuit-corregido"
+  | "empresa-suspendida"
+  | "empresa-reactivada"
+  | "aviso-de-activacion";
 
 export interface Autor {
   adminId: string;
