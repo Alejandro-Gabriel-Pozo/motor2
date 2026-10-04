@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cifrarSecreto } from "../../src/core/plataforma/cifrado";
-import { generarCodigosDeRecuperacion, hashDeCodigoDeRecuperacion, hashDeToken } from "../../src/core/plataforma/codigos";
+import { generarCodigosDeRecuperacion, hashDeCodigoDeRecuperacion } from "../../src/core/plataforma/codigos";
+import { hashDeToken } from "../../src/core/seguridad/tokens";
 import {
   BLOQUEO_POR_FALLOS_MS,
   MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA,

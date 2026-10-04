@@ -61,3 +61,17 @@ export function transicionesValidasDesde(estado: EstadoEmpresa): readonly Estado
 export function esTransicionValida(desde: EstadoEmpresa, hacia: EstadoEmpresa): boolean {
   return TRANSICIONES_VALIDAS[desde].includes(hacia);
 }
+
+/**
+ * Lo que pide el alta de la consola de plataforma (E5, ADR-020): la empresa, su primera sucursal y el email de quien va a ser su gerente. La empresa
+ * nace `PROVISIONING`, sin CUIT ni módulos; el gerente aparece recién al aceptar su invitación. La moneda es ISO 4217 (tres letras mayúsculas).
+ */
+export const altaDeEmpresaSchema = crearEmpresaSchema.extend({
+  moneda: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, "Tres letras, por ejemplo ARS."),
+  nombreSucursal: z.string().trim().min(1, "Ponele nombre a la primera sucursal.").max(120),
+  emailDuenio: z.string().trim().toLowerCase().pipe(z.email("Ese email no es válido.")),
+});

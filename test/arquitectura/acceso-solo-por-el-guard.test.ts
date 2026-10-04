@@ -39,7 +39,7 @@ interface Excepcion {
 const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
   "server/actions/permisos/permisos.ts": { tipo: "permanente", motivo: "administra la matriz de permisos (PermisoRol): es su trabajo.", esperados: 3 },
   "server/actions/permisos/capacidades-sucursal.ts": { tipo: "permanente", motivo: "administra las capacidades por sucursal (CapacidadSucursal): es su trabajo.", esperados: 4 },
-  "core/features/empresa/crear-empresa.ts": { tipo: "permanente", motivo: "siembra los roles de sistema (con su clave técnica) y la matriz de permisos al crear la empresa.", esperados: 5 },
+  "core/features/empresa/sembrar-empresa.ts": { tipo: "permanente", motivo: "siembra los roles de sistema (con su clave técnica) y la matriz de permisos al crear la empresa.", esperados: 5 },
   "core/auth/bootstrap.ts": { tipo: "permanente", motivo: "da el primer admin de una empresa nueva: es quien identifica el rol por su clave al arrancar.", esperados: 2 },
   "core/auth/contexto.ts": { tipo: "permanente", motivo: "arma el contexto de la sesión: marca cada membresía como admin o no por la clave de su rol, una sola vez, para que nadie más lo calcule.", esperados: 2 },
   "app/(app)/administracion/permisos/permisos-matriz.tsx": { tipo: "permanente", motivo: "solo MUESTRA la columna «Piso» de la matriz; no decide acceso.", esperados: 1 },

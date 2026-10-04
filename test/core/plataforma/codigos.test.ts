@@ -4,10 +4,8 @@ import {
   CANTIDAD_DE_CODIGOS_DE_RECUPERACION,
   generarCodigoDeIngreso,
   generarCodigosDeRecuperacion,
-  generarTokenOpaco,
   hashDeCodigo,
   hashDeCodigoDeRecuperacion,
-  hashDeToken,
   hashesIguales,
   normalizarCodigoDeRecuperacion,
 } from "../../../src/core/plataforma/codigos";
@@ -60,17 +58,6 @@ describe("códigos de recuperación", () => {
     expect(hashDeCodigoDeRecuperacion(" abcde fghjk ", SECRETO, "admin-1")).toBe(h);
     expect(hashDeCodigoDeRecuperacion("ABCDE-FGHJK", SECRETO, "admin-2")).not.toBe(h);
     expect(hashDeCodigoDeRecuperacion("ABCDE-FGHJK", "t".repeat(40), "admin-1")).not.toBe(h);
-  });
-});
-
-describe("token opaco", () => {
-  it("son 32 bytes en base64url, distintos cada vez, y el hash es un SHA-256 estable", () => {
-    const t = generarTokenOpaco();
-    expect(t).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(generarTokenOpaco()).not.toBe(t);
-    expect(hashDeToken(t)).toBe(hashDeToken(t));
-    expect(hashDeToken(t)).toMatch(/^[0-9a-f]{64}$/);
-    expect(hashDeToken("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   });
 });
 

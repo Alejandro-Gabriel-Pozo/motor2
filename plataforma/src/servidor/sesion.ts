@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { sirvePorHttps } from "@/core/auth/cookie-sesion";
-import { hashDeToken } from "@/core/plataforma/codigos";
+import { hashDeToken } from "@/core/seguridad/tokens";
 import { VIDA_DE_SESION_PENDIENTE_MS, debeAnotarActividad, sesionVigente } from "@/core/plataforma/sesion";
 import { dbPlataforma } from "../db";
 

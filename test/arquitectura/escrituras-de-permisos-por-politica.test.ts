@@ -11,11 +11,11 @@ import { describe, expect, it } from "vitest";
  * Escrituras: `<algo>.permisoRol.<create|createMany|update|updateMany|upsert|delete|deleteMany>` y lo mismo sobre `<algo>.rol`.
  *
  * Excepciones, cada una con su motivo:
- *  - `core/features/empresa/crear-empresa.ts`: el alta de una empresa siembra sus roles y permisos de fábrica; ahí todavía no existe una
+ *  - `core/features/empresa/sembrar-empresa.ts` (la usan `crearEmpresa` y el alta de la consola): el alta de una empresa siembra sus roles y permisos de fábrica; ahí todavía no existe una
  *    empresa a la que aplicarle una política (la decide la plataforma al crearla). `prisma/seed.ts` queda fuera de `src/`.
  */
 const RAIZ = join(__dirname, "../../src");
-const EXCEPCIONES = ["core/features/empresa/crear-empresa.ts"];
+const EXCEPCIONES = ["core/features/empresa/sembrar-empresa.ts"];
 const MODELOS = new Set(["permisoRol", "rol"]);
 const ESCRITURAS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 const GATE = "conEdicionDePermisos";

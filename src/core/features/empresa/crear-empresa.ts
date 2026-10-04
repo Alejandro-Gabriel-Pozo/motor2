@@ -1,19 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import { verificarRolDeEjecucion } from "@/core/auth/rol-de-ejecucion";
-import { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "@/core/movimientos/public";
-import { ACCIONES } from "@/core/permisos/acciones";
-import { CLAVE_ROL_ADMIN, CLAVE_ROL_OPERADOR } from "@/core/permisos/jerarquia";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO } from "@/core/plataforma/email-reservado";
+import { sembrarEmpresa } from "./sembrar-empresa";
 import { crearEmpresaConAdminSchema, esTransicionValida, type ComandoCrearEmpresaConAdmin } from "./empresa.schema";
-
-/** Mismas 5 unidades base que `prisma/seed.ts` (decimales por magnitud, como DECIMALES_DEFAULT_POR_CATEGORIA_ de Apps Script). */
-const UNIDADES_BASE: ReadonlyArray<{ nombre: string; magnitud: "PESO" | "VOLUMEN" | "CANTIDAD"; decimales: number }> = [
-  { nombre: "kg", magnitud: "PESO", decimales: 2 },
-  { nombre: "g", magnitud: "PESO", decimales: 0 },
-  { nombre: "l", magnitud: "VOLUMEN", decimales: 2 },
-  { nombre: "ml", magnitud: "VOLUMEN", decimales: 0 },
-  { nombre: "unidad", magnitud: "CANTIDAD", decimales: 0 },
-];
 
 /** Regla de negocio (ADR-007): quien crea la empresa —su primer admin— es su «gerente». */
 const ROL_EMPRESA_DEL_PRIMER_ADMIN = "gerente";
@@ -75,27 +64,7 @@ export async function crearEmpresa(db: PrismaClient, entrada: ComandoCrearEmpres
       const { id: empresaId } = await tx.empresa.create({ data: { nombre, slug, zonaHoraria, moneda, estado: "PROVISIONING" } });
       await tx.$executeRaw`SELECT set_config('app.empresa_id', ${empresaId}, true)`;
 
-      // `Accion` es global (una fila por clave para todo el sistema): las de la primera empresa ya están, no se pisan.
-      await tx.accion.createMany({ data: ACCIONES.map((a) => ({ clave: a.clave, descripcion: a.descripcion })), skipDuplicates: true });
-
-      const rolAdmin = await tx.rol.create({ data: { empresaId, nombre: "admin", clave: CLAVE_ROL_ADMIN } });
-      const rolOperador = await tx.rol.create({ data: { empresaId, nombre: "operador", clave: CLAVE_ROL_OPERADOR } });
-      const rolesPorNombre = { admin: rolAdmin, operador: rolOperador } as const;
-      await tx.permisoRol.createMany({
-        data: ACCIONES.flatMap((accion) =>
-          (["admin", "operador"] as const).map((nombreRol) => {
-            const puedeEditar = (accion.rolesEditarSemilla as readonly string[]).includes(nombreRol);
-            // Ver arranca igual a Editar (mismo estado que en el seed).
-            return { empresaId, rolId: rolesPorNombre[nombreRol].id, accionClave: accion.clave, puedeEditar, puedeVer: puedeEditar };
-          }),
-        ),
-      });
-
-      await tx.unidad.createMany({ data: UNIDADES_BASE.map((u) => ({ empresaId, ...u })) });
-      await tx.motivoMerma.createMany({ data: MOTIVOS_MERMA_SEMILLA.map((m) => ({ empresaId, nombre: m.nombre, descripcion: m.descripcion ?? null })) });
-      await tx.destinoConsumo.createMany({ data: DESTINOS_CONSUMO_SEMILLA.map((d) => ({ empresaId, nombre: d.nombre, descripcion: d.descripcion ?? null })) });
-
-      const sucursal = await tx.sucursal.create({ data: { empresaId, nombre: nombreSucursal } });
+      const { rolAdmin, sucursal } = await sembrarEmpresa(tx, empresaId, nombreSucursal);
       // `User` es global: si el primer admin ya existe en otra empresa se reusa (queda en las dos, y ve el selector de empresa).
       const usuario = await tx.user.upsert({ where: { email: emailPrimerAdmin }, update: {}, create: { email: emailPrimerAdmin } });
       await tx.usuarioEmpresa.create({ data: { usuarioId: usuario.id, empresaId, rolEmpresa: ROL_EMPRESA_DEL_PRIMER_ADMIN } });

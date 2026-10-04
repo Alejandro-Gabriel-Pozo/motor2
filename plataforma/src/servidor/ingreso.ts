@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { esDireccionValida } from "@/core/correo/direcciones";
 import type { MensajeDeCorreo } from "@/core/correo/tipos";
-import { generarCodigoDeIngreso, generarTokenOpaco, hashDeCodigo, hashDeCodigoDeRecuperacion, hashDeToken, hashesIguales } from "@/core/plataforma/codigos";
+import { generarCodigoDeIngreso, hashDeCodigo, hashDeCodigoDeRecuperacion, hashesIguales } from "@/core/plataforma/codigos";
+import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
 import { descifrarSecreto } from "@/core/plataforma/cifrado";
 import { normalizarEmail } from "@/core/plataforma/email-reservado";
 import {
