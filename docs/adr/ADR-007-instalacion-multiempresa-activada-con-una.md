@@ -1,5 +1,8 @@
 # ADR-007: Instalación multiempresa-capable, activada con una sola empresa
 
+> **Actualización (2026-10-04, ADR-022):** la decisión D1 = V1 (empresa del contexto o, sin contexto, la única empresa activa) fue reemplazada: `app_empresa_actual()` solo lee el contexto del pedido.
+> Ya no valen el respaldo, el bootstrap del primer admin por email ni la tolerancia del rol privilegiado «con una sola empresa»; ver ADR-022.
+
 > Redactado el 2026-09-29. Plan diseñado por el agente `Plan` (opus, skill
 > `plan-con-verificacion-e2e`) verificando el código real en `5d0f331`, y
 > aprobado por el dueño el mismo día ("te doy el visto bueno": se toman las

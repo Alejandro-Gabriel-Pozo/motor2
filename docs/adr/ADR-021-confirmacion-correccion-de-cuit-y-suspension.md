@@ -75,8 +75,8 @@ prohíbe `window.confirm` en `plataforma/src`.
 ## Consecuencias
 
 - **Sin migración.** El rol de plataforma ya tenía `UPDATE` sobre `Empresa` (a nivel de tabla: ver los endurecimientos opcionales en `docs/deploy-con-migraciones.md`) y `AuditoriaPlataforma` ya existía.
-- **La primera confirmación real deja una instalación con DOS empresas activas.** Eso cambia cosas que hoy se apoyan en que haya una sola (la empresa por defecto de `app_empresa_actual()`, el
-  bootstrap del primer admin, la tolerancia al rol privilegiado): ver el runbook antes de confirmar la segunda.
+- **La primera confirmación real deja una instalación con DOS empresas activas.** Eso afectaba a lo que se apoyaba en que haya una sola (el respaldo de `app_empresa_actual()`, el bootstrap del
+  primer admin, la tolerancia al rol privilegiado): ADR-022 lo retira, y con él el riesgo; sus prerrequisitos de despliegue están en el runbook.
 - Una empresa recién confirmada arranca solo con Administración: los módulos los activa la plataforma (E7); hasta entonces, `npm run modulos-empresa`.
 - La consola sigue administrando solo la instalación a la que apunta su conexión.
 - El circuito fiscal tendrá que: cablear el predicado, tomar `FOR SHARE` sobre `Empresa.cuit` al emitir, copiar el CUIT en cada comprobante, comparar `cuitCertificado` con `Empresa.cuit` al cargar una credencial

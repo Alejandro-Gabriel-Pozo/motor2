@@ -112,12 +112,7 @@ No hay migración ni cambio de permisos: el rol `motor2_plataforma` ya puede act
 
 1. En el proyecto de Vercel de la **aplicación de empresas**, la variable opcional `CONTACTO_PLATAFORMA_EMAIL` (el email que ve quien tiene su empresa suspendida). Sin ella la
    pantalla no muestra ningún contacto. Se carga con `scripts/operaciones/cargar-env-vercel.sh`.
-2. **Antes de confirmar la SEGUNDA empresa activa de una instalación** (la primera confirmación en una instalación con una sola empresa deja dos activas), verificar a mano:
-   - `SELECT estado, count(*) FROM "Empresa" GROUP BY 1;` para saber cuántas hay;
-   - que la aplicación en Producción use `DATABASE_URL` con el rol `motor2_app` (no el dueño) y `MOTOR2_ROL_ESTRICTO=1`;
-   - que se haya corrido `crear-rol-motor2-plataforma.sql` con `restringir=1` (pendiente #10 de `docs/pendientes-sesion-2026-10-02.md`);
-   - que se haya hecho el recorrido con dos empresas reales de ADR-007 (A8).
-   Con dos empresas activas el respaldo de `app_empresa_actual()` («la única empresa activa») deja de existir y el bootstrap del primer admin deja de actuar.
+2. Confirmar la segunda empresa activa de una instalación **ya no cambia nada** (ADR-022). Lo que antes exigía verificar a mano pasó a ser prerrequisito del despliegue de ADR-022 (más abajo).
 3. Confirmar un alta: `/empresas?filtro=cuit-pendiente` → detalle → revisar el CUIT contra la constancia de ARCA → tildar → «Confirmar el alta». La empresa pasa a activa
    y el gerente recibe el aviso; si el mail no sale, «Reenviar el aviso de activación».
 4. Una empresa recién activa tiene solo Administración. Los módulos se activan con `npm run modulos-empresa -- --actor <User existente>` hasta que exista E7.
@@ -128,3 +123,24 @@ No hay migración ni cambio de permisos: el rol `motor2_plataforma` ya puede act
 
 Endurecimientos opcionales (cada uno **requiere autorización expresa** y queda fuera de E6): permisos por columna sobre `Empresa` para `motor2_plataforma` (hoy tiene `UPDATE` de toda la tabla) y un
 `CHECK` de formato sobre `Empresa.cuit`, junto con la migración que lo vuelva obligatorio (ADR-012 §6) cuando todas las empresas tengan CUIT.
+
+## Sin empresa por defecto (ADR-022): despliegue en dos tiempos
+
+Hay una migración, **no aditiva** (`app_empresa_actual_sin_respaldo`, una sola sentencia `CREATE OR REPLACE FUNCTION`), y código. El código ya no depende del respaldo y se despliega primero; la
+migración se aplica después, base por base, **con autorización expresa**. Hasta que no se aplique, la base conserva el respaldo y todo sigue andando (el código nuevo no lo usa).
+
+**Verificaciones del dueño antes de desplegar el código (solo lectura):**
+1. En Vercel de cada app (zuluhub y stockhneuquen): que `DATABASE_URL` conecte con `motor2_app` y no con el dueño (`scripts/operaciones/cargar-env-vercel.sh` imprime el usuario). El rol de ejecución es estricto
+   siempre: con el dueño la app no arranca.
+2. Que no esté `MOTOR2_MIGRAR_EN_BUILD` y que el despliegue actual sea posterior al commit `8f22f96` (`dbDeUsuario`).
+3. `BOOTSTRAP_ADMIN_EMAILS` ya no se usa: se puede borrar de las variables de Vercel.
+4. En cada base de Neon, como dueño: `SELECT estado, count(*) FROM "Empresa" GROUP BY 1;`, `SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('motor2_app','motor2_plataforma');`,
+   `SELECT * FROM pg_db_role_setting;` (no tiene que haber nada `app.*`) y `SELECT pg_get_functiondef('app_empresa_actual'::regproc);`.
+5. En Sentry, los eventos `rol-de-ejecucion-privilegiado` de los últimos 30 días (si hay, la app corrió alguna vez con un rol que salta el RLS).
+
+**Migración, por base (primero zuluhub, después stockhneuquen):** rama de respaldo de Neon; rama de ensayo con `migrate deploy`, comprobar como `motor2_app` que `SELECT app_empresa_actual()` da NULL
+sin contexto, que un `count` sin contexto da 0, que con `set_config('app.empresa_id', …, true)` da lo esperado y que un `INSERT` sin contexto falla con `23502`, y un recorrido real (login, POS, carta, crons, consola);
+borrar la rama de ensayo; `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`; deploy; vigilar Sentry 48 horas (errores `P2011`/`23502` sobre `empresaId` y `42501`).
+Nunca ensayar con el Preview de stockhneuquen: comparte la base de producción. Vuelta atrás: `down.sql` (una sentencia) y `prisma migrate resolve --rolled-back`.
+
+Una instalación local: `npm run db:seed -- --gerente tu@email.com` deja al primer gerente (ya no existe el bootstrap por email).
