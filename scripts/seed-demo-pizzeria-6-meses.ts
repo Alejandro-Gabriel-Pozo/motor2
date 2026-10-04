@@ -27,7 +27,7 @@ vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 // pensado para una persona operando la aplicación, no para un script que repuebla una demo entera.
 vi.mock("../src/core/permisos/limitador-tasa", () => ({ limitadorMutaciones: { excedeLimite: () => false } }));
 
-import { prisma } from "../src/lib/db";
+import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/core/auth/session";
 import { crearSucursalConAdmin } from "../src/server/actions/auth/sucursales";

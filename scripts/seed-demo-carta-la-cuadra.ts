@@ -35,7 +35,7 @@ import { vi, describe, it, expect } from "vitest";
 
 vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { prisma } from "../src/lib/db";
+import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/core/auth/session";
 import { guardarSeccionCarta } from "../src/server/actions/carta/secciones";

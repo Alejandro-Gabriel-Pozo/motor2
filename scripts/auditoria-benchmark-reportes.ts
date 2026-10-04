@@ -18,7 +18,7 @@
  * Uso: npx tsx scripts/auditoria-benchmark-reportes.ts
  */
 import "dotenv/config";
-import { prisma } from "../src/lib/db";
+import { prisma } from "./demo-seed/cliente";
 import { calcularSaldoTotal } from "../src/core/movimientos/stock";
 import { calcularStockConsolidado } from "../src/core/stock/consolidado";
 import { calcularStockPorFamilia } from "../src/core/stock/por-familia";

@@ -354,7 +354,7 @@ async function main() {
   // bench —el real usa el singleton de `src/lib/db.ts`, que apunta a DATABASE_URL—: cada operación pasa a ser una transacción
   // `[set_config('app.empresa_id', $1, true), operación]`. Mismo reporte, sin y con la extensión.
   console.log("=== Sobrecosto de dbDeEmpresa (set_config por operación, ADR-007 A5) ===\n");
-  const { id: empresaId } = await db.empresa.findFirstOrThrow({ where: { estado: "ACTIVE" }, select: { id: true } });
+  const { id: empresaId } = await db.empresa.findFirstOrThrow({ where: { id: process.env.EMPRESA_ID ?? "empresa_principal" }, select: { id: true } });
   const dbConEmpresa = db.$extends({
     query: {
       async $allOperations({ args, query }) {

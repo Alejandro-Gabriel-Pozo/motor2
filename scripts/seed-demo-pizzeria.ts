@@ -25,7 +25,7 @@ import { vi, describe, it, expect } from "vitest";
 // cualquier test de un server action (ver test/catalogo/recetas.test.ts).
 vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { prisma } from "../src/lib/db";
+import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/core/auth/session";
 import { crearSucursalConAdmin } from "../src/server/actions/auth/sucursales";
