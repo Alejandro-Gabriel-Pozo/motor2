@@ -129,7 +129,7 @@ describe("crearEmpresa: atomicidad", () => {
     await expect(crearEmpresa(prismaSinEmpresa, COMANDO, [])).rejects.toThrow(/falla inyectada/);
 
     expect(await prismaAdmin.empresa.count({ where: { slug: "norte" } })).toBe(0);
-    expect(await prismaAdmin.empresa.count()).toBe(1); // solo la empresa por defecto
+    expect(await prismaAdmin.empresa.count()).toBe(2); // solo la empresa por defecto y la testigo (ADR-022)
     for (const modelo of [prismaAdmin.rol, prismaAdmin.permisoRol, prismaAdmin.unidad, prismaAdmin.motivoMerma, prismaAdmin.destinoConsumo, prismaAdmin.sucursal, prismaAdmin.usuarioSucursal, prismaAdmin.usuarioEmpresa, prismaAdmin.user, prismaAdmin.accion]) {
       expect(await (modelo as unknown as { count: () => Promise<number> }).count()).toBe(0);
     }
@@ -145,20 +145,20 @@ describe("crearEmpresa: entradas rechazadas", () => {
     await expect(intento).rejects.toBeInstanceOf(EmpresaYaExisteError);
     await expect(intento).rejects.toThrow('Ya existe una empresa con el slug "norte".');
 
-    expect(await prismaAdmin.empresa.count()).toBe(2);
+    expect(await prismaAdmin.empresa.count()).toBe(3);
     expect({ unidades: await prismaAdmin.unidad.count(), roles: await prismaAdmin.rol.count(), usuarios: await prismaAdmin.user.count() }).toEqual(antes);
   });
 
   it("un nombre que ya existe también falla con un error claro", async () => {
     await crearEmpresa(prismaSinEmpresa, COMANDO, []);
     await expect(crearEmpresa(prismaSinEmpresa, { ...COMANDO, slug: "norte-2", emailPrimerAdmin: "otro@norte.com" }, [])).rejects.toThrow('Ya existe una empresa con el nombre "Pizzería Norte".');
-    expect(await prismaAdmin.empresa.count()).toBe(2);
+    expect(await prismaAdmin.empresa.count()).toBe(3);
   });
 
   it("datos inválidos (slug con mayúsculas, email mal formado) se rechazan antes de escribir", async () => {
     await expect(crearEmpresa(prismaSinEmpresa, { ...COMANDO, slug: "Norte SA" }, [])).rejects.toBeInstanceOf(ZodError);
     await expect(crearEmpresa(prismaSinEmpresa, { ...COMANDO, emailPrimerAdmin: "no-es-un-email" }, [])).rejects.toBeInstanceOf(ZodError);
-    expect(await prismaAdmin.empresa.count()).toBe(1);
+    expect(await prismaAdmin.empresa.count()).toBe(2);
   });
 
   it("el email de un administrador de plataforma no puede ser el del primer gerente: se rechaza antes de escribir (ADR-012 §1)", async () => {

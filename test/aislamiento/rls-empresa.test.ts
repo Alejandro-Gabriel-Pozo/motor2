@@ -203,7 +203,7 @@ describe("aislamiento entre dos empresas ACTIVE (el código corre como motor2_ap
   it("`Empresa` y las globales siguen legibles sin contexto; `UsuarioEmpresa` solo con empresa o con el usuario propio", async () => {
     const usuario = await prismaAdmin.user.create({ data: { email: "plataforma@test.com" } });
     await prismaAdmin.usuarioEmpresa.create({ data: { usuarioId: usuario.id, empresaId: B } });
-    expect((await prisma.empresa.findMany({ where: { estado: "ACTIVE" } })).map((e) => e.id).sort()).toEqual([B, A].sort());
+    expect((await prisma.empresa.findMany({ where: { estado: "ACTIVE" } })).map((e) => e.id).sort()).toEqual([B, A, "empresa_testigo"].sort()); // la testigo (ADR-022) es una tercera ACTIVE
     expect(await prisma.usuarioEmpresa.count({ where: { usuarioId: usuario.id } })).toBe(0);
     expect(await dbDeUsuario(usuario.id).usuarioEmpresa.count({ where: { usuarioId: usuario.id } })).toBe(1);
     expect(await prisma.user.count({ where: { id: usuario.id } })).toBe(1);

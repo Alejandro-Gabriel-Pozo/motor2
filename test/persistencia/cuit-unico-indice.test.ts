@@ -81,7 +81,7 @@ describe("índices únicos de CUIT", () => {
     await prismaAdmin.empresa.update({ where: { id: EMPRESA_POR_DEFECTO_ID }, data: { cuit: "30703088534" } });
     await expect(prismaAdmin.empresa.update({ where: { id: NORTE }, data: { cuit: "30703088534" } })).rejects.toThrow(/Unique constraint|Empresa_cuit_key/);
     await prismaAdmin.empresa.create({ data: { id: "sur", nombre: "Sur", slug: "sur", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
-    expect(await prismaAdmin.empresa.count({ where: { cuit: null } })).toBe(2);
+    expect(await prismaAdmin.empresa.count({ where: { cuit: null } })).toBe(3); // norte, sur y la testigo (ADR-022); la por defecto tiene CUIT
   });
 });
 

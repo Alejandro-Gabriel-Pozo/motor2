@@ -2,7 +2,7 @@ import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import { prisma as prismaSinEmpresa } from "../../src/lib/db";
 import { baseDeEmpresa } from "../../src/core/auth/base";
-import { clienteConEmpresaDePrueba, EMPRESA_DE_PRUEBA_ID } from "./empresa-de-prueba";
+import { clienteConEmpresaDePrueba, DATOS_EMPRESA_TESTIGO, EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "./empresa-de-prueba";
 import { crearMembresia } from "./membresia";
 import { prismaAdmin } from "./cliente-duenio";
 import { activarTodosLosModulos } from "./modulos";
@@ -151,8 +151,10 @@ export async function limpiarBaseDeTest() {
   // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test
   // tiene que terminar con exactamente la empresa por defecto de la migración, en pie y ACTIVE, sea lo que sea que un test haya tocado.
   // El registro de módulos (P4) apunta a la empresa con ON DELETE RESTRICT: las filas de las empresas que se van se borran antes. Las de la empresa por defecto quedan.
-  await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: { not: EMPRESA_POR_DEFECTO_ID } } });
-  await prismaAdmin.empresa.deleteMany({ where: { id: { not: EMPRESA_POR_DEFECTO_ID } } });
+  await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: { notIn: [EMPRESA_POR_DEFECTO_ID, EMPRESA_TESTIGO_ID] } } });
+  await prismaAdmin.empresa.deleteMany({ where: { id: { notIn: [EMPRESA_POR_DEFECTO_ID, EMPRESA_TESTIGO_ID] } } });
+  // La empresa testigo (ADR-022): siempre presente, ACTIVE y vacía — un test que la suspendió la encuentra de nuevo activa.
+  await prismaAdmin.empresa.upsert({ where: { id: EMPRESA_TESTIGO_ID }, update: { estado: "ACTIVE", cuit: null }, create: DATOS_EMPRESA_TESTIGO });
   await prismaAdmin.empresa.upsert({
     where: { id: EMPRESA_POR_DEFECTO_ID },
     update: { estado: "ACTIVE", permisosEditables: true, dosPaneles: true },

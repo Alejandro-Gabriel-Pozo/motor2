@@ -29,6 +29,7 @@ afterAll(async () => {
   await prismaAdmin.$disconnect();
 });
 
+// 4 empresas con módulos en estos tests: la por defecto (A), B, C y la testigo permanente (ADR-022): 4 × 9 = 36 filas tras el backfill.
 const VENDIBLES = MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id as string).sort();
 
 async function filas(empresaId: string) {
@@ -67,7 +68,7 @@ describe("registro de módulos por empresa (P4)", () => {
       await prismaAdmin.$executeRawUnsafe(BACKFILL);
       await prismaAdmin.moduloEmpresa.updateMany({ where: { empresaId: B, modulo: "salon" }, data: { estado: "INACTIVO" } });
       await prismaAdmin.$executeRawUnsafe(BACKFILL);
-      expect(await prismaAdmin.moduloEmpresa.count()).toBe(27);
+      expect(await prismaAdmin.moduloEmpresa.count()).toBe(36);
       expect((await prismaAdmin.moduloEmpresa.findFirstOrThrow({ where: { empresaId: B, modulo: "salon" } })).estado).toBe("INACTIVO");
     });
 
@@ -119,7 +120,7 @@ describe("registro de módulos por empresa (P4)", () => {
       await expect(db.moduloEmpresa.updateMany({ data: { estado: "INACTIVO" } })).rejects.toThrow(/permission denied|permiso denegado/i);
       await expect(db.moduloEmpresa.deleteMany()).rejects.toThrow(/permission denied|permiso denegado/i);
       await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "ModuloEmpresa"')).rejects.toThrow(/permission denied|permiso denegado/i);
-      expect(await prismaAdmin.moduloEmpresa.count()).toBe(27);
+      expect(await prismaAdmin.moduloEmpresa.count()).toBe(36);
     });
 
     it("segundo candado: aunque se le devuelvan los privilegios y se apague el RLS, el trigger frena a motor2_app", async () => {
@@ -132,7 +133,7 @@ describe("registro de módulos por empresa (P4)", () => {
         await expect(db.moduloEmpresa.updateMany({ data: { estado: "INACTIVO" } })).rejects.toThrow(solo);
         await expect(db.moduloEmpresa.deleteMany()).rejects.toThrow(solo);
         await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "ModuloEmpresa"')).rejects.toThrow(solo);
-        expect(await prismaAdmin.moduloEmpresa.count()).toBe(27);
+        expect(await prismaAdmin.moduloEmpresa.count()).toBe(36);
         expect(await prismaAdmin.moduloEmpresa.count({ where: { estado: "INACTIVO" } })).toBe(0);
       } finally {
         await prismaAdmin.$executeRawUnsafe('ALTER TABLE "ModuloEmpresa" ENABLE ROW LEVEL SECURITY');
@@ -144,7 +145,7 @@ describe("registro de módulos por empresa (P4)", () => {
       await prismaAdmin.moduloEmpresa.updateMany({ where: { empresaId: A }, data: { estado: "INACTIVO" } });
       expect(await prismaAdmin.moduloEmpresa.count({ where: { estado: "INACTIVO" } })).toBe(9);
       await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: A } });
-      expect(await prismaAdmin.moduloEmpresa.count()).toBe(18);
+      expect(await prismaAdmin.moduloEmpresa.count()).toBe(27);
     });
   });
 

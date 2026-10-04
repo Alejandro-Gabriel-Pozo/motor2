@@ -6,6 +6,7 @@ import { ACCIONES } from "../../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
 import { crearMembresia } from "../../setup/membresia";
 import { activarTodosLosModulos } from "../../setup/modulos";
+import { DATOS_EMPRESA_TESTIGO } from "../../setup/empresa-de-prueba";
 
 const EMPRESA_E2E_ID = "empresa_principal";
 const SLUG_EMPRESA_E2E = "e2e";
@@ -45,6 +46,8 @@ export async function asegurarBaseSeed() {
     update: { estado: "ACTIVE", slug: SLUG_EMPRESA_E2E, permisosEditables: true, dosPaneles: true },
     create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: SLUG_EMPRESA_E2E, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
   });
+  // La empresa testigo (ADR-022): una segunda empresa ACTIVE y vacía, para que la suite corra como va a correr sin el respaldo «la única empresa activa».
+  await prisma.empresa.upsert({ where: { id: DATOS_EMPRESA_TESTIGO.id }, update: { estado: "ACTIVE" }, create: DATOS_EMPRESA_TESTIGO });
   // resetearBaseE2E también vació el registro de módulos que dejó la migración: la empresa por defecto vuelve a tener los 9 vendibles ACTIVO.
   await activarTodosLosModulos(empresaId);
   const [admin, operador] = await Promise.all([
