@@ -9,9 +9,9 @@ import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "
  */
 const TABLAS_DE_CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"];
 const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"];
-// ModuloEmpresa (P4) lleva `empresaId` pero lo escribe la plataforma indicando la empresa: sin default `app_empresa_actual()` y con FK simple a Empresa.
+// ModuloEmpresa (P4) e Invitacion (E5) llevan `empresaId` pero lo escribe la plataforma indicando la empresa: sin default `app_empresa_actual()` y con FK simple a Empresa.
 // Las cinco de identidad de la consola de plataforma (E4, ADR-012/019) no tienen empresa: son de plataforma, no de ninguna empresa.
-const PLATAFORMA = ["Empresa", "ModuloEmpresa", "UsuarioEmpresa", ...TABLAS_DE_CONSOLA];
+const PLATAFORMA = ["Empresa", "Invitacion", "ModuloEmpresa", "UsuarioEmpresa", ...TABLAS_DE_CONSOLA];
 
 function codigoDeError(e: unknown): string | undefined {
   return e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined;
@@ -22,7 +22,7 @@ async function tablasPorEmpresa(): Promise<string[]> {
     SELECT c.table_name AS tabla
       FROM information_schema.columns c
       JOIN information_schema.tables t ON t.table_schema = c.table_schema AND t.table_name = c.table_name AND t.table_type = 'BASE TABLE'
-     WHERE c.table_schema = 'public' AND c.column_name = 'empresaId' AND c.table_name NOT IN ('UsuarioEmpresa', 'ModuloEmpresa')
+     WHERE c.table_schema = 'public' AND c.column_name = 'empresaId' AND c.table_name NOT IN ('UsuarioEmpresa', 'ModuloEmpresa', 'Invitacion')
      ORDER BY 1`;
   return filas.map((f) => f.tabla);
 }
@@ -46,7 +46,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       const columnas = await prisma.$queryRaw<Array<{ tabla: string; nullable: string; predeterminado: string | null }>>`
         SELECT table_name AS tabla, is_nullable AS nullable, column_default AS predeterminado
           FROM information_schema.columns
-         WHERE table_schema = 'public' AND column_name = 'empresaId' AND table_name NOT IN ('UsuarioEmpresa', 'ModuloEmpresa')`;
+         WHERE table_schema = 'public' AND column_name = 'empresaId' AND table_name NOT IN ('UsuarioEmpresa', 'ModuloEmpresa', 'Invitacion')`;
       for (const c of columnas) {
         expect(c.nullable, c.tabla).toBe("NO");
         expect(c.predeterminado, c.tabla).toContain("app_empresa_actual()");

@@ -81,7 +81,7 @@ describe.skipIf(!process.env.PLATAFORMA_DATABASE_URL)("con el rol motor2_platafo
   afterAll(() => plataforma.$disconnect());
 
   // Lista cerrada: es la misma que documenta scripts/operaciones/crear-rol-motor2-plataforma.sql. Una tabla nueva no entra sola.
-  const LECTURA_Y_ALTA_Y_CAMBIO = ["Empresa", "User", "ModuloEmpresa", "AdminPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"];
+  const LECTURA_Y_ALTA_Y_CAMBIO = ["Empresa", "User", "ModuloEmpresa", "AdminPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma", "Invitacion"];
   const LECTURA_Y_ALTA = ["Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal", "UsuarioEmpresa", "UsuarioSucursal", "RegistroAuditoria", "AuditoriaPlataforma"];
   const PRIVILEGIOS = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"];
 

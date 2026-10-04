@@ -12,6 +12,7 @@
 --                                          SELECT, INSERT           (siembra del alta)
 --   RegistroAuditoria, AuditoriaPlataforma SELECT, INSERT           (append-only)
 --   AdminPlataforma y sus códigos/sesión   SELECT, INSERT, UPDATE   (identidad de la consola; sin DELETE)
+--   Invitacion                             SELECT, INSERT, UPDATE   (alta, reenvío y revocación de la invitación del gerente, E5; sin DELETE)
 -- Las tablas de identidad las crean las migraciones 20261009120000 y 20261009130000; si el rol se crea antes de aplicarlas, ellas mismas le dan el permiso al
 -- crearse (si el rol ya existe) y este script se vuelve a correr después sin riesgo (es idempotente).
 -- ORDEN: primero crear el rol y probar los scripts con PLATAFORMA_DATABASE_URL; recién después correr con restringir=1 (el REVOKE a motor2_app): si no, los
@@ -49,11 +50,11 @@ GRANT USAGE ON SCHEMA public TO motor2_plataforma;
 GRANT SELECT, INSERT, UPDATE ON "Empresa", "User", "ModuloEmpresa" TO motor2_plataforma;
 GRANT SELECT, INSERT ON "Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal", "UsuarioEmpresa", "UsuarioSucursal", "RegistroAuditoria" TO motor2_plataforma;
 
--- Tablas de identidad de plataforma: solo si ya las crearon las migraciones (si no, las migraciones darán el permiso al crearse).
+-- Tablas de identidad de plataforma e invitaciones: solo si ya las crearon las migraciones (si no, las migraciones darán el permiso al crearse).
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma'] LOOP
+  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma', 'Invitacion'] LOOP
     IF to_regclass(format('public.%I', t)) IS NOT NULL THEN
       EXECUTE format('GRANT SELECT, INSERT, UPDATE ON public.%I TO motor2_plataforma', t);
     END IF;

@@ -33,6 +33,7 @@ model User {
   operaciones               Operacion[]
   operacionesAnuladas       Operacion[]         @relation("OperacionAnuladaPor")
   conteosFisicos            ConteoFisico[]
+  invitacionesAceptadas     Invitacion[]
   traspasosCreados          TraspasoSucursal[]  @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen  TraspasoSucursal[]  @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino TraspasoSucursal[]  @relation("TraspasoDecididoDestino")
@@ -2263,6 +2264,7 @@ model Empresa {
   cuentaItemRel                  CuentaItem[]
   ejemplarTicketRel              EjemplarTicket[]
   moduloEmpresaRel               ModuloEmpresa[]
+  invitacionRel                  Invitacion[]
 }
 
 enum EstadoModulo {
@@ -2283,6 +2285,37 @@ model ModuloEmpresa {
   actualizadoEn DateTime     @default(now()) @updatedAt
 
   @@unique([empresaId, modulo])
+}
+
+enum EstadoInvitacion {
+  PENDIENTE
+  ACEPTADA
+  REVOCADA
+}
+
+/// Invitación del primer gerente de una empresa en alta (E5, ADR-012 §6, ADR-020). Guarda SOLO el hash SHA-256 del token (el enlace de un solo uso viaja por mail).
+/// «Vencida» no es un estado guardado: es una PENDIENTE con `venceEn` pasado. Sin default de `empresaId`: la crea la plataforma, siempre indicando la empresa.
+/// RLS (a mano en la migración): `aislamiento_empresa`; `lectura_por_token` (la app, sin empresa todavía, lee por `app.invitacion_hash`); `escritura_plataforma`.
+/// Privilegios: la app solo lee y actualiza las columnas de la aceptación; `motor2_plataforma` crea, reenvía y revoca (sin DELETE). Un trigger impone la máquina de
+/// estados por rol. Índices únicos parciales a mano: una PENDIENTE por (empresa, email) y una PENDIENTE de gerente por empresa.
+model Invitacion {
+  id            String           @id @default(cuid())
+  empresaId     String
+  empresa       Empresa          @relation(fields: [empresaId], references: [id])
+  email         String
+  rolEmpresa    String
+  hashToken     String           @unique
+  estado        EstadoInvitacion @default(PENDIENTE)
+  venceEn       DateTime
+  creadaEn      DateTime         @default(now())
+  enviadaEn     DateTime?
+  aceptadaEn    DateTime?
+  aceptadaPorId String?
+  aceptadaPor   User?            @relation(fields: [aceptadaPorId], references: [id], onDelete: Restrict)
+  cuitDeclarado String?
+  revocadaEn    DateTime?
+
+  @@index([empresaId, creadaEn])
 }
 
 model UsuarioEmpresa {
