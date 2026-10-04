@@ -73,6 +73,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </Pantalla>
       );
 
+    case "EMPRESA_EN_ALTA":
+      return (
+        <Pantalla>
+          <h1 className="text-2xl font-semibold">Motor2</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            {situacion.nombres.length === 1 ? `La empresa «${situacion.nombres[0]}» está en alta.` : `Las empresas ${situacion.nombres.map((n) => `«${n}»`).join(", ")} están en alta.`}{" "}
+            La plataforma está verificando sus datos y te avisa por mail cuando esté lista para usar.
+          </p>
+          <CerrarSesion />
+        </Pantalla>
+      );
+
     case "SIN_ACCESO":
       return (
         <Pantalla>

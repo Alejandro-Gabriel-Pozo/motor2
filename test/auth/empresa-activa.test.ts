@@ -205,17 +205,35 @@ describe("obtenerContextoUsuario — empresa activa", () => {
       expect((await obtenerSituacionDeAcceso()).estado).toBe("SIN_ACCESO");
     });
 
-    it("una empresa en alta (PROVISIONING) o en baja (DELETING) es sin acceso, no suspendida", async () => {
+    it("una empresa en baja (DELETING) es sin acceso: ni suspendida ni en alta", async () => {
       await sembrarBase();
-      for (const estado of ["PROVISIONING", "DELETING"] as const) {
-        const empresa = await empresaConSucursal(`e-${estado.toLowerCase()}`, estado);
-        const usuario = await crearUsuarioConMembresia({ email: `${estado.toLowerCase()}@test.com`, sucursalId: empresa.sucursal.id, rolId: empresa.rolAdmin.id });
-        await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+      const empresa = await empresaConSucursal("e-deleting", "DELETING");
+      const usuario = await crearUsuarioConMembresia({ email: "deleting@test.com", sucursalId: empresa.sucursal.id, rolId: empresa.rolAdmin.id });
+      await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
-        const situacion = await obtenerSituacionDeAcceso();
-        expect(situacion, estado).toMatchObject({ estado: "SIN_ACCESO", email: usuario.email });
-        expect(await obtenerContextoUsuario()).toBeNull();
-      }
+      expect(await obtenerSituacionDeAcceso()).toMatchObject({ estado: "SIN_ACCESO", email: usuario.email });
+      expect(await obtenerContextoUsuario()).toBeNull();
+    });
+
+    it("una empresa en alta (PROVISIONING) se explica como «en alta» (E5, ADR-020) y no da contexto", async () => {
+      await sembrarBase();
+      const empresa = await empresaConSucursal("e-provisioning", "PROVISIONING");
+      const usuario = await crearUsuarioConMembresia({ email: "enalta@test.com", sucursalId: empresa.sucursal.id, rolId: empresa.rolAdmin.id });
+      await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+      expect(await obtenerSituacionDeAcceso()).toEqual({ estado: "EMPRESA_EN_ALTA", email: usuario.email, nombres: ["Empresa e-provisioning"] });
+      expect(await obtenerContextoUsuario()).toBeNull();
+    });
+
+    it("si además tiene una empresa suspendida, manda el aviso de suspendida", async () => {
+      await sembrarBase();
+      const enAlta = await empresaConSucursal("en-alta", "PROVISIONING");
+      const suspendida = await empresaConSucursal("suspendida", "SUSPENDED");
+      const usuario = await crearUsuarioConMembresia({ email: "ambas@test.com", sucursalId: enAlta.sucursal.id, rolId: enAlta.rolAdmin.id });
+      await crearMembresia({ usuarioId: usuario.id, sucursalId: suspendida.sucursal.id, rolId: suspendida.rolAdmin.id });
+      await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
+
+      expect((await obtenerSituacionDeAcceso()).estado).toBe("EMPRESA_SUSPENDIDA");
     });
 
     it("sin sesión la situación es SIN_SESION", async () => {

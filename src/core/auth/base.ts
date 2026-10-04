@@ -54,6 +54,23 @@ export function dbDeUsuario(usuarioId: string): PrismaClient {
   return conUsuario as unknown as PrismaClient;
 }
 
+/**
+ * Cliente cuyas operaciones corren con `app.invitacion_hash` = `hash`: lo único que habilita la política `lectura_por_token` de `Invitacion` (leer UNA
+ * invitación sabiendo el hash de su token, antes de tener empresa). Solo lectura: aceptar escribe dentro de `transaccionDeEmpresa`. Mismo mecanismo que
+ * `dbDeUsuario`: valor local a la transacción.
+ */
+export function dbDeInvitacion(hash: string): PrismaClient {
+  const conHash = prisma.$extends({
+    query: {
+      async $allOperations({ args, query }) {
+        const [, resultado] = await prisma.$transaction([prisma.$executeRaw`SELECT set_config('app.invitacion_hash', ${hash}, true)`, query(args)]);
+        return resultado;
+      },
+    },
+  });
+  return conHash as unknown as PrismaClient;
+}
+
 /** Transacción interactiva con `app.empresa_id` fijado (local a ella) ANTES de cualquier consulta de `fn`; el `tx` que recibe ya está bajo esa empresa. */
 export function transaccionDeEmpresa<T>(empresaId: string, fn: (tx: Prisma.TransactionClient) => Promise<T>, opciones?: OpcionesTransaccion): Promise<T> {
   return prisma.$transaction(async (tx) => {

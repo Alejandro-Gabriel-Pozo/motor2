@@ -18,6 +18,7 @@ const PENDIENTE = "abre una transacción dentro de la acción y se protege del d
 
 const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/empresa-activa.ts": SIN_CASO_DE_USO,
+  "auth/invitacion.ts": SIN_CASO_DE_USO,
   "auth/sucursal-activa.ts": SIN_CASO_DE_USO,
   "auth/sucursales.ts": SIN_CASO_DE_USO,
   "auth/usuarios.ts": SIN_CASO_DE_USO,

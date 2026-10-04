@@ -17,6 +17,7 @@ import { analizarCron, analizarLayoutProtegido } from "./guardas/rutas";
 const RUTAS_PUBLICAS: Record<string, string> = {
   "page.tsx": "raíz `/`: solo redirige (al login sin sesión, a la pantalla de inicio con sesión); no muestra ni lee nada",
   "login/page.tsx": "el formulario de ingreso: tiene que poder abrirse sin sesión",
+  "invitacion/page.tsx": "aceptar la invitación del primer gerente (E5, ADR-020): quien llega aún no tiene sesión ni empresa; el acceso lo dan el token del enlace (cookie httpOnly) y la cuenta de Google del email invitado, y el GET no gasta nada",
   "api/auth/[...nextauth]/route.ts": "Auth.js (login, callback, logout, sesión): su propio protocolo decide qué responde a cada pedido",
   "(carta-publica)/carta-publica/[empresa]/page.tsx": "carta pública de una empresa: lectura aislada, sin sesión (guardas propias en carta-solo-lectura/sin-boundary-http-carta)",
   "(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx": "carta pública de una sucursal: lectura aislada, sin sesión (ídem)",

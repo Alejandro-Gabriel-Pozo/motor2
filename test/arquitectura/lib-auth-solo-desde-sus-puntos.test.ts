@@ -15,8 +15,8 @@ const RAIZ = join(__dirname, "../../src");
 const PERMITIDOS: Record<string, string[]> = {
   auth: ["core/auth/session.ts"],
   handlers: ["app/api/auth/[...nextauth]/route.ts"],
-  signIn: ["app/login/page.tsx"],
-  signOut: ["app/login/page.tsx", "components/app-shell.tsx", "components/pos-shell.tsx"],
+  signIn: ["app/login/page.tsx", "app/invitacion/page.tsx"],
+  signOut: ["app/login/page.tsx", "app/invitacion/page.tsx", "components/app-shell.tsx", "components/pos-shell.tsx"],
 };
 
 function archivos(dir: string, salida: string[] = []): string[] {

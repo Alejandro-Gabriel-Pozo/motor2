@@ -32,7 +32,7 @@ const CARPETAS = ["core/carta", "app/(carta-publica)", "components/carta-publica
 const ENTRADAS = (rel: string) => /^(app\/\(carta-publica\)\/|components\/carta-publica\/|core\/carta\/publica-sin-sesion\.ts$)/.test(rel);
 /** Escrituras toleradas fuera de CARPETAS (archivo → qué línea se acepta y por qué). Lista cerrada: agregar una acá exige un motivo. */
 const ESCRITURAS_TOLERADAS_EN_EL_ALCANCE: Record<string, { patron: RegExp; motivo: string }> = {
-  "core/auth/base.ts": { patron: /\$executeRaw`SELECT set_config\('app\.(empresa|usuario)_id'/, motivo: "fija empresa/usuario de la transacción (RLS, SET LOCAL); no escribe ningún dato" },
+  "core/auth/base.ts": { patron: /\$executeRaw`SELECT set_config\('app\.(empresa_id|usuario_id|invitacion_hash)'/, motivo: "fija empresa/usuario/hash de invitación de la transacción (RLS, SET LOCAL); no escribe ningún dato" },
 };
 /** Captura el modelo de una escritura `cliente.modelo.op(`. */
 const ESCRITURA_POR_MODELO = /\w\s*\.\s*(\w+)\s*\.\s*(?:create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(/;

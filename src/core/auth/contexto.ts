@@ -58,13 +58,16 @@ export interface ContextoUsuario extends BaseDelContexto {
  * - `ELEGIR_EMPRESA`: tiene acceso a DOS o más empresas activas y todavía no eligió una (no hay cookie, o la cookie no
  *   corresponde a ninguna de sus empresas): no se opera en ninguna por defecto.
  * - `EMPRESA_SUSPENDIDA`: no tiene ninguna empresa activa con acceso, pero sí pertenencia a una o más suspendidas.
- * - `SIN_ACCESO`: ninguna pertenencia utilizable (incluye empresas en alta o en baja).
+ * - `EMPRESA_EN_ALTA` (E5, ADR-020): no tiene empresa activa ni suspendida, pero sí pertenencia a una o más que la plataforma todavía está dando de
+ *   alta (`PROVISIONING`): aceptó su invitación y falta que la plataforma confirme el CUIT.
+ * - `SIN_ACCESO`: ninguna pertenencia utilizable (incluye empresas en baja).
  */
 export type SituacionDeAcceso =
   | { estado: "SIN_SESION" }
   | { estado: "CON_EMPRESA"; ctx: ContextoUsuario }
   | { estado: "ELEGIR_EMPRESA"; email: string; empresas: EmpresaDelUsuario[] }
   | { estado: "EMPRESA_SUSPENDIDA"; email: string; nombres: string[] }
+  | { estado: "EMPRESA_EN_ALTA"; email: string; nombres: string[] }
   | { estado: "SIN_ACCESO"; email: string };
 
 /**
@@ -104,9 +107,9 @@ export const obtenerSituacionDeAcceso = cache(async (): Promise<SituacionDeAcces
   const pertenencias = todas.filter((p) => p.empresa.estado === "ACTIVE");
   const sinAcceso = (): SituacionDeAcceso => {
     const suspendidas = todas.filter((p) => p.empresa.estado === "SUSPENDED");
-    return suspendidas.length
-      ? { estado: "EMPRESA_SUSPENDIDA", email: usuario.email, nombres: suspendidas.map((p) => p.empresa.nombre) }
-      : { estado: "SIN_ACCESO", email: usuario.email };
+    if (suspendidas.length) return { estado: "EMPRESA_SUSPENDIDA", email: usuario.email, nombres: suspendidas.map((p) => p.empresa.nombre) };
+    const enAlta = todas.filter((p) => p.empresa.estado === "PROVISIONING");
+    return enAlta.length ? { estado: "EMPRESA_EN_ALTA", email: usuario.email, nombres: enAlta.map((p) => p.empresa.nombre) } : { estado: "SIN_ACCESO", email: usuario.email };
   };
   if (!pertenencias.length) return sinAcceso();
 

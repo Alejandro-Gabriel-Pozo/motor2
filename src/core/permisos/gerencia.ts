@@ -83,3 +83,32 @@ export async function transferirGerenciaDeEmpresa(tx: Db, input: { empresaId: st
 
   return { ok: true, mensaje: `«${destino.usuario.email}» es ahora el gerente de la empresa.`, gerenteAnteriorId: actual?.usuarioId ?? null };
 }
+
+/**
+ * El primer gerente de una empresa que nació en alta (E5, ADR-020): recibe la gerencia y el rol admin en la primera sucursal activa. Es el único camino que
+ * crea un gerente sin que haya uno anterior; si la empresa ya tiene gerente no hace nada y avisa (el índice único parcial lo frenaría igual). Corre DENTRO
+ * de la transacción de la aceptación de la invitación, con la empresa fijada. Devuelve el id de la membresía de sucursal creada, para auditarla.
+ */
+export async function incorporarPrimerGerente(
+  tx: Db,
+  input: { empresaId: string; usuarioId: string },
+): Promise<{ ok: true; sucursalId: string; sucursalNombre: string; membresiaId: string } | { ok: false; mensaje: string }> {
+  const { empresaId, usuarioId } = input;
+  if (await obtenerGerenteDeEmpresa(tx, empresaId)) return { ok: false, mensaje: "Esta empresa ya tiene gerente." };
+  const sucursal = await tx.sucursal.findFirst({ where: { empresaId, activo: true }, orderBy: { creadoEn: "asc" }, select: { id: true, nombre: true } });
+  const rolAdmin = await tx.rol.findFirst({ where: { empresaId, clave: CLAVE_ROL_ADMIN, activo: true }, select: { id: true } });
+  if (!sucursal || !rolAdmin) return { ok: false, mensaje: "La empresa todavía no tiene sucursal o rol de administración: avisá a la plataforma." };
+
+  await tx.usuarioEmpresa.upsert({
+    where: { usuarioId_empresaId: { usuarioId, empresaId } },
+    update: { activo: true, rolEmpresa: ROL_EMPRESA_GERENTE },
+    create: { usuarioId, empresaId, rolEmpresa: ROL_EMPRESA_GERENTE },
+  });
+  const membresia = await tx.usuarioSucursal.upsert({
+    where: { usuarioId_sucursalId: { usuarioId, sucursalId: sucursal.id } },
+    update: { rolId: rolAdmin.id, activo: true },
+    create: { usuarioId, sucursalId: sucursal.id, empresaId, rolId: rolAdmin.id, notas: "Alta por invitación de la plataforma." },
+    select: { id: true },
+  });
+  return { ok: true, sucursalId: sucursal.id, sucursalNombre: sucursal.nombre, membresiaId: membresia.id };
+}

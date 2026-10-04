@@ -28,8 +28,8 @@ const IMPORTADOS_PUROS: Record<string, string> = {
 };
 /** Abrir/cerrar sesión: solo en estos archivos (el login y los dos shells). */
 const SESION: Record<string, string[]> = {
-  signIn: ["app/login/page.tsx"],
-  signOut: ["app/login/page.tsx", "components/app-shell.tsx", "components/pos-shell.tsx"],
+  signIn: ["app/login/page.tsx", "app/invitacion/page.tsx"],
+  signOut: ["app/login/page.tsx", "app/invitacion/page.tsx", "components/app-shell.tsx", "components/pos-shell.tsx"],
 };
 
 function archivos(dir: string, salida: string[] = []): string[] {

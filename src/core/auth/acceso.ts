@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, dbDeUsuario } from "./base";
 import { obtenerEmailsBootstrap } from "./bootstrap";
+import { invitacionHabilitaElIngreso } from "./invitacion";
 
 function obtenerDominiosPermitidos(): string[] {
   return (process.env.ALLOWED_EMAIL_DOMAINS ?? "")
@@ -29,8 +30,10 @@ function obtenerDominiosPermitidos(): string[] {
  *  3. Excepción manual: el email ya fue dado de alta por un admin
  *     (UsuarioSucursal activo vía agregarOActualizarUsuario) aunque no sea
  *     del dominio de la empresa — para alguien externo con Gmail personal.
+ *  4. Invitación (E5, ADR-020): llega con el token de una invitación de gerente PENDIENTE, no vencida, de una empresa en alta, y el email de
+ *     la cuenta de Google es EXACTAMENTE el invitado. Solo deja llegar a la pantalla de aceptación; el kill-switch de arriba sigue mandando.
  */
-export async function emailPuedeIniciarSesion(email: string, hd: string | undefined): Promise<boolean> {
+export async function emailPuedeIniciarSesion(email: string, hd: string | undefined, tokenDeInvitacion?: string): Promise<boolean> {
   const emailNorm = email.trim().toLowerCase();
   if (!emailNorm) return false;
 
@@ -48,7 +51,9 @@ export async function emailPuedeIniciarSesion(email: string, hd: string | undefi
   const dominiosPermitidos = obtenerDominiosPermitidos();
   if (hd && dominiosPermitidos.includes(hd.trim().toLowerCase())) return true;
 
-  return usuarioExistente ? tieneSucursalActiva(usuarioExistente.id) : false;
+  if (usuarioExistente && (await tieneSucursalActiva(usuarioExistente.id))) return true;
+
+  return invitacionHabilitaElIngreso(tokenDeInvitacion, emailNorm);
 }
 
 function normalizar(email: string): string {
@@ -67,6 +72,8 @@ export async function inicioDeSesionPermitido(entrada: {
   emailPerfil: string;
   hd: string | undefined;
   tokenDeSesionAbierta: string | undefined;
+  /** Token de la cookie de invitación (E5), si la hay. */
+  tokenDeInvitacion?: string | undefined;
 }): Promise<boolean> {
   const emailUsuario = normalizar(entrada.emailUsuario);
   if (!emailUsuario || emailUsuario !== normalizar(entrada.emailPerfil)) return false;
@@ -79,7 +86,7 @@ export async function inicioDeSesionPermitido(entrada: {
     if (abierta && abierta.expires > new Date() && normalizar(abierta.user.email) !== emailUsuario) return false;
   }
 
-  return emailPuedeIniciarSesion(emailUsuario, entrada.hd);
+  return emailPuedeIniciarSesion(emailUsuario, entrada.hd, entrada.tokenDeInvitacion);
 }
 
 /**
