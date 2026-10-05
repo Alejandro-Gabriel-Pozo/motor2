@@ -38,12 +38,29 @@ function grantsDeEscrituraSobreEmpresa(sql: string): string[] {
 }
 
 describe("el rol de plataforma queda separado de motor2_app", () => {
-  it("los scripts de plataforma usan prismaPlataforma y no crean su propio cliente", () => {
-    for (const script of ["politica-empresa.ts"]) {
+  it("los scripts de plataforma obtienen su cliente de cliente-plataforma.ts y no crean el propio (ADR-025: --instalacion)", () => {
+    // Mutación: un `new PrismaClient(` en modulos-empresa.ts o politica-empresa.ts pone este test en rojo.
+    for (const script of ["politica-empresa.ts", "modulos-empresa.ts"]) {
       const fuente = leer("scripts", script);
-      expect(fuente, `${script} no importa prismaPlataforma`).toMatch(/import \{ prismaPlataforma as prisma \} from "\.\/cliente-plataforma"/);
+      expect(fuente, `${script} no importa el cliente de cliente-plataforma.ts`).toMatch(/import \{\s*clienteDePlataforma\s*\} from "\.\/cliente-plataforma"/);
       expect(fuente, `${script} crea su propio PrismaClient`).not.toMatch(/new PrismaClient\(/);
+      expect(fuente, `${script} lee process.env de plataforma directo en vez de pasar por el resolutor`).not.toMatch(/process\.env\.(PLATAFORMA_DATABASE_URL|DATABASE_URL)\b/);
     }
+  });
+
+  it("el único script de plataforma que crea un cliente de Prisma o un adaptador es cliente-plataforma.ts", () => {
+    // Mutación: un `new PrismaClient(` o `new PrismaPg(`/`new PrismaNeon(` en modulos-empresa.ts, politica-empresa.ts o scripts/plataforma/** pone este test en rojo.
+    // (Otros scripts del repo, como benchmark-reportes.ts, crean su propio cliente contra la app: no son de plataforma y quedan afuera.)
+    const archivosDePlataforma = [
+      join(RAIZ, "scripts/cliente-plataforma.ts"),
+      join(RAIZ, "scripts/modulos-empresa.ts"),
+      join(RAIZ, "scripts/politica-empresa.ts"),
+      ...archivos(join(RAIZ, "scripts/plataforma")),
+    ];
+    const creadores = archivosDePlataforma
+      .filter((r) => /new\s+(PrismaClient|PrismaPg|PrismaNeon)\b|from\s+["']@prisma\/adapter-/.test(readFileSync(r, "utf8")))
+      .map((r) => r.replace(RAIZ, "").replace(/\\/g, "/").replace(/^\//, ""));
+    expect(creadores).toEqual(["scripts/cliente-plataforma.ts"]);
   });
 
   it("ninguna migración posterior a la inicial le da a motor2_app escritura sobre Empresa", () => {
