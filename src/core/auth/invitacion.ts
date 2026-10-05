@@ -1,10 +1,12 @@
-import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
+import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type AccesoDeInvitacion, type EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
+import { aceptarInvitacionDeUsuario } from "@/core/features/empresa/aceptar-invitacion-de-usuario";
 import { aceptarInvitacion, ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
 import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { requierePermiso } from "@/core/permisos/gate";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
-import { dbDeInvitacion, transaccionDeEmpresa, verificarRolDeEjecucionDelProceso } from "./base";
+import { dbDeEmpresa, dbDeInvitacion, transaccionDeEmpresa, verificarRolDeEjecucionDelProceso } from "./base";
 import { sirvePorHttps } from "./cookie-sesion";
 
 /**
@@ -104,6 +106,17 @@ function abreLaVia3(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): b
   return (vista.tipo === TIPO_INVITACION_GERENTE && vista.estadoEmpresa === "PROVISIONING") || (vista.tipo === TIPO_INVITACION_USUARIO && vista.estadoEmpresa === "ACTIVE");
 }
 
+/**
+ * Qué clase de invitación es, según su tipo y el estado de su empresa: `alta-de-empresa` (la del primer gerente, empresa en alta), `acceso-a-empresa` (la de usuario, empresa activa), `vinculacion` (empresa activa) o `inservible`
+ * (un tipo con una empresa que no corresponde, por ejemplo una de usuario de una empresa suspendida). Lo usa la pantalla `/invitacion` para decidir qué mostrar.
+ */
+export function claseDeInvitacion(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): "alta-de-empresa" | "acceso-a-empresa" | "vinculacion" | "inservible" {
+  if (vista.tipo === TIPO_INVITACION_GERENTE && vista.estadoEmpresa === "PROVISIONING") return "alta-de-empresa";
+  if (vista.tipo === TIPO_INVITACION_USUARIO && vista.estadoEmpresa === "ACTIVE") return "acceso-a-empresa";
+  if (vista.tipo === TIPO_INVITACION_VINCULACION && vista.estadoEmpresa === "ACTIVE") return "vinculacion";
+  return "inservible";
+}
+
 /** Una invitación sirve para VINCULAR la cuenta de Google si es de gerente (en alta), de usuario (activa) o de vinculación (activa). */
 function sirveParaVincular(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): boolean {
   return abreLaVia3(vista) || (vista.tipo === TIPO_INVITACION_VINCULACION && vista.estadoEmpresa === "ACTIVE");
@@ -196,4 +209,38 @@ export async function aceptarInvitacionDelToken(entrada: { token: string; usuari
     if (e instanceof ErrorDeAceptacion) return { ok: false, mensaje: e.message };
     throw e;
   }
+}
+
+/**
+ * Acepta una invitación de USUARIO en nombre de `usuario` (ya autenticado con Google): crea sus membresías, revalidando por cada sucursal el permiso y el techo de quien la otorgó
+ * (E8, ADR-024). Todo o nada, en una transacción serializable bajo la empresa de la invitación. El permiso `gestion_usuarios` de quien otorgó pasa por el guard (módulos y capacidades).
+ */
+export async function aceptarInvitacionDeUsuarioDelToken(entrada: { token: string; usuario: { id: string; email: string }; ahora?: Date }): Promise<ResultadoDeAceptacion> {
+  const ahora = entrada.ahora ?? new Date();
+  const vista = await invitacionDelToken(entrada.token, ahora);
+  if (!vista || vista.estado !== "PENDIENTE" || vista.tipo !== TIPO_INVITACION_USUARIO) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
+  const dbEmpresa = dbDeEmpresa(vista.empresaId);
+  const puedeOtorgar = async (otorganteId: string, sucursalId: string) => (await requierePermiso(otorganteId, sucursalId, "gestion_usuarios", dbEmpresa)).ok;
+  try {
+    return await conTransaccionSerializable(
+      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
+      (tx) => aceptarInvitacionDeUsuario(tx, { token: entrada.token, usuario: entrada.usuario, ahora, puedeOtorgar }),
+    );
+  } catch (e) {
+    if (e instanceof InvarianteViolada) return { ok: false, mensaje: e.mensaje };
+    throw e;
+  }
+}
+
+/**
+ * Las sucursales (con su rol) que da una invitación de USUARIO, para mostrárselas a quien la va a aceptar. `InvitacionSucursal` solo se lee bajo la empresa, no por el hash:
+ * por eso se llama recién DESPUÉS de comprobar que la sesión es del email invitado.
+ */
+export async function accesosDeLaInvitacion(vista: Pick<VistaDeInvitacion, "id" | "empresaId">): Promise<AccesoDeInvitacion[]> {
+  const filas = await dbDeEmpresa(vista.empresaId).invitacionSucursal.findMany({
+    where: { invitacionId: vista.id },
+    orderBy: { creadaEn: "asc" },
+    select: { sucursal: { select: { nombre: true } }, rol: { select: { nombre: true } } },
+  });
+  return filas.map((f) => ({ sucursal: f.sucursal.nombre, rol: f.rol.nombre }));
 }

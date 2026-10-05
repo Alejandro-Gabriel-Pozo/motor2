@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
 import { obtenerSituacionDeAcceso } from "@/core/auth/contexto";
+import { textoDeAvisoDeLogin } from "@/core/auth/avisos-de-login";
 import { rutaInternaSegura } from "@/core/navegacion/volver";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { cambiarEmpresaActiva } from "@/server/actions/auth/empresa-activa";
@@ -29,9 +30,11 @@ function Pantalla({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"volver">> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"volver" | "aviso">> }) {
   // Adónde volver después de entrar (la pantalla en la que estaba cuando venció la sesión). Viene de la URL: solo se acepta una ruta interna.
-  const volver = rutaInternaSegura(unicosDeUrl(await searchParams).volver);
+  const parametros = unicosDeUrl(await searchParams);
+  const volver = rutaInternaSegura(parametros.volver);
+  const aviso = textoDeAvisoDeLogin(parametros.aviso);
   const situacion = await obtenerSituacionDeAcceso();
   const contacto = emailDeContactoDePlataforma(process.env);
 
@@ -115,6 +118,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="w-full max-w-sm space-y-6 text-center">
             <h1 className="text-2xl font-semibold">Motor2</h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Ingresá con tu cuenta de Google del negocio.</p>
+            {aviso && (
+              <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-left text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+                {aviso}
+              </p>
+            )}
             <form
               action={async () => {
                 "use server";

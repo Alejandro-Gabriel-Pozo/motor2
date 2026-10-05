@@ -35,6 +35,12 @@ async function rolEmpresaDe(db: Db, empresaId: string, usuarioId: string | null)
   return fila?.rolEmpresa ?? null;
 }
 
+/** Quien OTORGÓ el acceso a una sucursal, medido desde la base (E8: se revalida su techo al aceptar una invitación, cuando ya no hay sesión suya): administrador si su membresía de esa sucursal lo es. */
+export async function actorDesdeLaBase(db: Db, empresaId: string, usuarioId: string, sucursalId: string): Promise<PersonaParaJerarquia> {
+  const admin = await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, sucursalId, activo: true, rol: { clave: CLAVE_ROL_ADMIN, activo: true } }, select: { id: true } });
+  return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: admin !== null };
+}
+
 /** A quien se toca por su membresía en una sucursal: administrador si el rol de ESA membresía lo es (sin membresía o sin usuario todavía, operario). */
 export async function objetivoEnSucursal(db: Db, empresaId: string, usuarioId: string | null, rolDeLaMembresia: { clave: string | null } | null): Promise<PersonaParaJerarquia> {
   return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: rolDeLaMembresia !== null && esRolAdmin(rolDeLaMembresia) };
