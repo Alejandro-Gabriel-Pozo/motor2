@@ -9,6 +9,7 @@
 # Formato del archivo: NOMBRE=valor, una por línea (sin comillas; el valor es todo lo que sigue al primer «=»). Se ignoran líneas en blanco,
 # comentarios (#) y variables con el valor vacío: se completan solo las que se quieren cambiar.
 # Falla cerrado: un nombre que no esté en las listas de abajo, un duplicado o una regla rota frena TODO antes de cargar nada.
+# E8 (ADR-024): CORREO_AVISOS_RESEND_API_KEY (sensible) y CORREO_AVISOS_REMITENTE (config) son el canal de mails `avisos` que usa la app para mandar las invitaciones.
 # Las variables SENSIBLES quedan cifradas y de solo escritura en Vercel (ni el panel ni la API las muestran de nuevo).
 # Los cambios rigen para los despliegues NUEVOS: hay que redesplegar el proyecto para que la aplicación los lea.
 # Solo Production. Preview/Development no se tocan acá (ADR-007: ningún Preview debe apuntar a la base de producción).
@@ -18,9 +19,9 @@ PROYECTOS_PERMITIDOS=" motor2-demo stockhneuquen "
 SCOPE="${VERCEL_SCOPE:-alepozod}"
 # PLATAFORMA_DATABASE_URL NO va a Vercel: la usan solo scripts locales (politica-empresa; el alta de empresas la hace la consola). Cargarla en el entorno de la app le daría
 # a la app las credenciales del rol que puede escribir `Empresa`, justo lo que la separación de roles (S-13) quiere evitar.
-SENSIBLES=" DATABASE_URL DIRECT_URL AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET CRON_SECRET ALLOWED_EMAIL_DOMAINS "
+SENSIBLES=" DATABASE_URL DIRECT_URL AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET CRON_SECRET ALLOWED_EMAIL_DOMAINS CORREO_AVISOS_RESEND_API_KEY "
 # NEXT_PUBLIC_* viaja al navegador: Vercel no admite que sea sensible.
-PUBLICAS=" AUTH_URL CONTACTO_PLATAFORMA_EMAIL CARTA_DOMINIO_BASE CARTA_EMPRESA_UNICA MOTOR2_ROL_ESTRICTO MOTOR2_MIGRAR_EN_BUILD NEXT_PUBLIC_SENTRY_DSN "
+PUBLICAS=" AUTH_URL CONTACTO_PLATAFORMA_EMAIL CARTA_DOMINIO_BASE CARTA_EMPRESA_UNICA MOTOR2_ROL_ESTRICTO MOTOR2_MIGRAR_EN_BUILD NEXT_PUBLIC_SENTRY_DSN CORREO_AVISOS_REMITENTE "
 
 fallar() { echo "ERROR: $*" >&2; exit 1; }
 
