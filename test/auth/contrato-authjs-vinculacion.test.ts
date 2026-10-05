@@ -24,7 +24,7 @@ const opciones = {
 
 const cuenta = (sub: string) => ({ type: "oidc", provider: "google", providerAccountId: sub, access_token: "a", id_token: "i" });
 const perfil = { id: "ignorado", email: EMAIL, name: "Prueba" };
-const entrar = (sub: string) => handleLoginOrRegister(undefined as never, perfil, cuenta(sub), opciones as never);
+const entrar = (sub: string) => handleLoginOrRegister(undefined as never, perfil, cuenta(sub) as never, opciones as never);
 
 async function limpiar() {
   const u = await prismaAdmin.user.findUnique({ where: { email: EMAIL } });
