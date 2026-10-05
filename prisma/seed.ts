@@ -1,7 +1,9 @@
 import "dotenv/config";
 import { parseArgs } from "node:util";
 import { prisma } from "../src/lib/db";
-import { dbDeEmpresa } from "../src/core/auth/base";
+import { dbDeEmpresa, transaccionDeEmpresa } from "../src/core/auth/base";
+import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "../src/core/features/empresa/invitacion-de-usuario";
+import { enlaceDeInvitacion, urlPublicaDeLaApp } from "../src/core/features/empresa/invitacion";
 import { incorporarPrimerGerente } from "../src/core/permisos/gerencia";
 import { ACCIONES } from "../src/core/permisos/acciones";
 
@@ -77,6 +79,21 @@ async function main() {
     const usuario = await prisma.user.upsert({ where: { email }, update: {}, create: { email } });
     const r = await incorporarPrimerGerente(db, { empresaId, usuarioId: usuario.id });
     console.log(r.ok ? `Gerente: ${email} (admin de "${r.sucursalNombre}").` : `Gerente NO asignado: ${r.mensaje}`);
+
+    // E8 (ADR-024): sin el enlace automático de cuentas por email, un usuario que ya existe solo entra con Google si vincula su cuenta con una invitación. Para poder entrar en local se
+    // crea la invitación de vinculación del gerente (a su propio nombre) y se imprime el enlace. Si ya había una pendiente, se renueva (el token no se puede recuperar de la base).
+    const conGoogle = await prisma.account.count({ where: { userId: usuario.id, provider: "google" } });
+    if (r.ok && conGoogle === 0) {
+      const ahora = new Date();
+      const invitacion = await transaccionDeEmpresa(empresaId, async (tx) => {
+        const previa = await tx.invitacion.findFirst({ where: { empresaId, email, estado: "PENDIENTE", rolEmpresa: "vinculacion" }, select: { id: true } });
+        return previa
+          ? rotarInvitacionPendiente(tx, { empresaId, invitacionId: previa.id, actorId: usuario.id, ahora })
+          : asegurarInvitacionDeVinculacion(tx, { empresaId, email, invitadoPorId: usuario.id, ahora });
+      });
+      const base = urlPublicaDeLaApp(process.env.AUTH_URL) ?? "http://localhost:3000";
+      console.log(invitacion.ok && invitacion.token ? `Para entrar con Google la primera vez, abrí: ${enlaceDeInvitacion(base, invitacion.token)}` : "No se pudo crear la invitación de vinculación del gerente.");
+    }
   }
 
   console.log(

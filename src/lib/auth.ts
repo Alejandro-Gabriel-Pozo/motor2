@@ -11,16 +11,9 @@ import { nombreCookieInvitacion } from "@/core/auth/invitacion";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
-    Google({
-      // Un admin puede pre-cargar el email de alguien en UsuarioSucursal
-      // (agregarOActualizarUsuario/crearSucursalConAdmin) ANTES de que esa
-      // persona haga login por primera vez — sin esto, Auth.js rechazaría
-      // vincular esa cuenta de Google al User ya existente por seguridad
-      // (protección pensada para signup público). Acá es aceptable: todos
-      // los usuarios son cuentas Google del mismo negocio, dadas de alta a
-      // mano por un admin — no hay signup público.
-      allowDangerousEmailAccountLinking: true,
-    }),
+    // Sin `allowDangerousEmailAccountLinking` (E8, ADR-024): Auth.js NO vincula una cuenta de Google a un User que ya existe por tener el mismo email. Un User que ya existe y no
+    // tiene Google (un precargado) entra solo si una invitación vincula su cuenta en el callback `signIn` (ver `decidirInicioDeSesion`); un email nuevo lo crea Auth.js sin conflicto.
+    Google,
   ],
   // Sesión en base de datos (no JWT): coherente con el adapter de Prisma y
   // con que acá SÍ hay tabla de sesión real, a diferencia de Apps Script
