@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
+import { AHORA_DE_LA_CORRIDA, HORA_MS, enElFuturo } from "../setup/tiempo";
 import type { MensajeDeCorreo } from "../../src/core/correo/tipos";
 import { suspenderEmpresa } from "../../plataforma/src/servidor/ciclo-de-vida";
 import { darDeAltaEmpresa, empresasConEseCuit, reenviarInvitacion, type DependenciasDeEmpresas } from "../../plataforma/src/servidor/empresas";
@@ -16,7 +17,7 @@ import { crearAdminDePlataforma, InstalacionNoRevisableError } from "../../src/c
  */
 const AUTOR_A = { adminId: "admin-1", adminEmail: "admin@plataforma.test", instalacionId: "a" };
 const AUTOR_B = { ...AUTOR_A, instalacionId: "b" };
-const AHORA = new Date("2026-10-05T12:00:00.000Z");
+const AHORA = AHORA_DE_LA_CORRIDA;
 
 let temporal: BaseTemporalMigrada;
 let dbB: PrismaClient;
@@ -249,7 +250,7 @@ describe("empresasConEseCuit: aviso de CUIT repetido entre instalaciones (ADR-02
     await aceptarConCuitDeclarado(dbB, altaB.empresaId, "dueno-superada@gmail.com", CUIT_COMPARTIDO);
 
     const otra = await dbB.invitacion.create({
-      data: { empresaId: altaB.empresaId, email: "otra@gmail.com", rolEmpresa: "gerente", hashToken: "b".repeat(64), venceEn: AHORA, creadaEn: new Date(Date.now() + 3_600_000) }, // relativa a la hora REAL: la invitación original se crea con now(), y una fecha fija se vuelve "vieja" con el paso del tiempo
+      data: { empresaId: altaB.empresaId, email: "otra@gmail.com", rolEmpresa: "gerente", hashToken: "b".repeat(64), venceEn: AHORA, creadaEn: enElFuturo(HORA_MS) }, // relativa a la hora REAL: la invitación original se crea con now()
     });
     await dbB.invitacion.update({ where: { id: otra.id }, data: { estado: "REVOCADA", revocadaEn: AHORA } });
 

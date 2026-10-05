@@ -3,13 +3,14 @@ import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { hashDeToken } from "../../src/core/seguridad/tokens";
 import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../src/core/features/empresa/invitacion-de-usuario";
 import { VIDA_DE_LA_INVITACION_MS } from "../../src/core/features/empresa/invitacion";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * E8 (ADR-024): crear, extender, rotar y revocar invitaciones de usuario y de vinculación (helpers de transacción), contra Postgres real. El mail y el permiso de quien invita
  * son de quien llama; acá se prueba el estado: filas, vencimientos, hash y auditoría.
  */
 const E = "empresa_principal";
-const AHORA = new Date("2026-10-05T12:00:00.000Z");
+const AHORA = AHORA_DE_LA_CORRIDA;
 let invitador: string;
 let otro: string;
 let suc1: string;

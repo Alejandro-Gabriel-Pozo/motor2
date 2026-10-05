@@ -98,6 +98,7 @@ Esbozo (a validar con el agente `Plan` antes de escribir código, como pide `AGE
 - Migraciones y escrituras en producción: **solo con autorización expresa**, con rama de respaldo y ensayo. Un clasificador puede bloquear escrituras a producción desde la sesión de Claude:
   en ese caso las corre el dueño con `! comando`.
 - Nunca imprimir credenciales; `git add` por nombre (no `-A` a ciegas); commit y push solo con autorización (a `multitenancy-fase-a`).
+- **Fechas en tests con base de datos** (`test/setup/tiempo.ts` y `test/arquitectura/fechas-fijas-en-tests-con-base.test.ts`): nunca una fecha absoluta reciente o futura escrita a mano (se vuelve falsa con el tiempo frente a `now()` de la base o a `new Date()`): usar `enElFuturo`, `enElPasado` o `AHORA_DE_LA_CORRIDA`. Una fecha pasada desde hace más de un día es segura. Una excepción se declara en ese test, con el motivo.
 - Prisma 7 rechaza `undefined` explícito en `data`. Los tests con el rol real de plataforma (`describe.skipIf(!PLATAFORMA_DATABASE_URL)`) solo corren en CI.
 - En Windows/Git Bash los heredocs con comillas son frágiles: usar el editor de archivos y scripts de Python para ediciones; respetar CRLF/LF del archivo.
 
