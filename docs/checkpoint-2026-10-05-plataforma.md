@@ -108,7 +108,7 @@ Esbozo (a validar con el agente `Plan` antes de escribir código, como pide `AGE
 - Hoy se puede invitar como usuario el email de un administrador de plataforma (ya existía): la app no puede consultar `AdminPlataforma`.
 - Revocar las invitaciones pendientes al apagar una cuenta; `pages.error` para llevar todos los rechazos del login a `/login`.
 - Desactivar el módulo Carta no oculta la carta pública (es previo a E7).
-- Pendientes anteriores: `diagnostico-roles-de-sistema.ts:37`, `huerfanos.cjs`, O0, V6, rama por defecto, ruleset de GitHub, scripts `medir-*`, `allowDangerousEmailAccountLinking` ya resuelto en E8.
+- Pendientes anteriores: todos cerrados o descartados el 2026-10-05. Regla de GitHub que exige el «Gate (requerido)» en `main`: creada (ruleset #24538969). `huerfanos.cjs` (script descartable) y O0 (ensayo en Neon, ya cumplido) no eran pendientes; V6 y `diagnostico-roles-de-sistema.ts:37` se descartaron por no poder identificarse; los scripts `medir-*` se conservan; `allowDangerousEmailAccountLinking` quedó resuelto en E8.
 - Parte 3 (solicitudes de pago): módulo piloto, después del live.
 
 ## 9. Cómo arrancar una sesión nueva
