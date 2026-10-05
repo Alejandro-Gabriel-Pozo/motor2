@@ -128,6 +128,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.session.deleteMany();
   await prismaAdmin.account.deleteMany();
   // Invitacion (E5) apunta a User y a Empresa con ON DELETE RESTRICT: sus filas se borran antes que las de ellos.
+  // InvitacionSucursal (E8) referencia a la invitación, la sucursal, el rol y el User (RESTRICT): antes que ellos.
+  await prismaAdmin.invitacionSucursal.deleteMany();
   await prismaAdmin.invitacion.deleteMany();
   await prismaAdmin.user.deleteMany();
   await prismaAdmin.rol.deleteMany();

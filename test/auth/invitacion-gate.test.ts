@@ -68,6 +68,15 @@ describe("gate de login con invitación", () => {
     expect(await entrar(token)).toBe(false);
   });
 
+  it("una invitación de USUARIO o de VINCULACIÓN no abre esta vía: solo la de gerente (E8, ADR-024)", async () => {
+    const quien = await prismaAdmin.user.create({ data: { email: "quien-invita@gmail.com" } });
+    for (const [rol, email] of [["usuario", "usuario@gmail.com"], ["vinculacion", "vincular@gmail.com"]] as const) {
+      const token = generarTokenOpaco();
+      await prismaAdmin.invitacion.create({ data: { empresaId: EMPRESA, email, rolEmpresa: rol, invitadoPorId: quien.id, hashToken: hashDeToken(token), venceEn: new Date(Date.now() + 3_600_000) } });
+      expect(await entrar(token, email), rol).toBe(false);
+    }
+  });
+
   it("el kill-switch manda: un usuario con la cuenta desactivada no entra ni con invitación válida", async () => {
     const token = await crearInvitacion();
     await prismaAdmin.user.create({ data: { email: EMAIL, activoGlobal: false } });

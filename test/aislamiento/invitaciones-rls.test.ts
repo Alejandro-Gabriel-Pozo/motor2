@@ -100,17 +100,18 @@ describe("lectura como motor2_app", () => {
 });
 
 describe("escritura como motor2_app: solo aceptar una PENDIENTE", () => {
-  it("no puede insertar, borrar ni truncar; tampoco cambiar email, hash, vencimiento ni empresa (privilegios por columna)", async () => {
+  it("no puede borrar ni truncar; tampoco cambiar email ni empresa (privilegios por columna); insertar o tocar una de GERENTE lo frena el trigger (E8: la app ahora tiene INSERT y UPDATE de algunas columnas, solo para usuario y vinculación)", async () => {
     const i = nueva(B);
     await prismaAdmin.invitacion.create({ data: i.datos });
     const db = dbDeEmpresa(B);
-    await expect(db.invitacion.create({ data: nueva(B, "x@ejemplo.com").datos })).rejects.toThrow(NO_PERMISO);
+    const frena = /Invitacion: .* no permitido/;
+    await expect(db.invitacion.create({ data: nueva(B, "x@ejemplo.com").datos })).rejects.toThrow(frena);
     await expect(db.invitacion.deleteMany()).rejects.toThrow(NO_PERMISO);
     await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "Invitacion"')).rejects.toThrow(NO_PERMISO);
     await expect(db.invitacion.updateMany({ data: { email: "otro@ejemplo.com" } })).rejects.toThrow(NO_PERMISO);
-    await expect(db.invitacion.updateMany({ data: { hashToken: hashDeToken("x") } })).rejects.toThrow(NO_PERMISO);
-    await expect(db.invitacion.updateMany({ data: { venceEn: new Date("2099-01-01") } })).rejects.toThrow(NO_PERMISO);
     await expect(db.invitacion.updateMany({ data: { empresaId: A } })).rejects.toThrow(NO_PERMISO);
+    await expect(db.invitacion.updateMany({ data: { hashToken: hashDeToken("x") } })).rejects.toThrow(frena);
+    await expect(db.invitacion.updateMany({ data: { venceEn: new Date("2099-01-01") } })).rejects.toThrow(frena);
     expect(await prismaAdmin.invitacion.count()).toBe(1);
   });
 
@@ -163,7 +164,7 @@ describe("escritura como motor2_app: solo aceptar una PENDIENTE", () => {
       await expect(db.invitacion.updateMany({ data: { estado: "REVOCADA", revocadaEn: new Date() } })).rejects.toThrow(frena);
       await expect(db.invitacion.updateMany({ data: { venceEn: new Date("2099-01-01") } })).rejects.toThrow(frena);
       await expect(db.invitacion.deleteMany()).rejects.toThrow(frena);
-      await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "Invitacion"')).rejects.toThrow(/Invitacion|record|assigned/i);
+      await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "Invitacion"')).rejects.toThrow(/Invitacion|record|assigned|llave for[aá]nea|foreign key/i);
       expect(await prismaAdmin.invitacion.findUniqueOrThrow({ where: { hashToken: i.hash } })).toMatchObject({ estado: "PENDIENTE", email: i.datos.email });
       // Lo único permitido sigue andando.
       const ok = await db.invitacion.updateMany({
@@ -175,19 +176,21 @@ describe("escritura como motor2_app: solo aceptar una PENDIENTE", () => {
       await expect(db.invitacion.updateMany({ data: { cuitDeclarado: "30123456781" } })).rejects.toThrow(frena);
     } finally {
       await prismaAdmin.$executeRawUnsafe('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON "Invitacion" FROM motor2_app');
-      await prismaAdmin.$executeRawUnsafe('GRANT UPDATE ("estado", "aceptadaEn", "aceptadaPorId", "cuitDeclarado") ON "Invitacion" TO motor2_app');
+      await prismaAdmin.$executeRawUnsafe('GRANT INSERT ON "Invitacion" TO motor2_app');
+      await prismaAdmin.$executeRawUnsafe('GRANT UPDATE ("estado", "aceptadaEn", "aceptadaPorId", "cuitDeclarado", "hashToken", "venceEn", "enviadaEn", "revocadaEn", "invitadoPorId") ON "Invitacion" TO motor2_app');
     }
   });
 });
 
 describe("catálogo", () => {
-  it("la tabla tiene sus tres políticas y sus dos triggers, y motor2_app no tiene DELETE ni INSERT", async () => {
+  it("la tabla tiene sus tres políticas y sus dos triggers, y motor2_app tiene INSERT (E8, solo usuario y vinculación) pero no DELETE", async () => {
     const politicas = await prismaAdmin.$queryRaw<Array<{ nombre: string }>>`SELECT policyname::text AS nombre FROM pg_policies WHERE tablename = 'Invitacion' ORDER BY 1`;
     expect(politicas.map((p) => p.nombre)).toEqual(["aislamiento_empresa", "escritura_plataforma", "lectura_por_token"]);
     const triggers = await prismaAdmin.$queryRaw<Array<{ nombre: string }>>`SELECT tgname::text AS nombre FROM pg_trigger WHERE tgrelid = '"Invitacion"'::regclass AND NOT tgisinternal ORDER BY 1`;
     expect(triggers.map((t) => t.nombre)).toEqual(["Invitacion_proteger_fila", "Invitacion_proteger_truncate"]);
     const [p] = await prismaAdmin.$queryRaw<Array<{ ins: boolean; del: boolean; sel: boolean }>>`
       SELECT has_table_privilege('motor2_app', '"Invitacion"', 'INSERT') AS ins, has_table_privilege('motor2_app', '"Invitacion"', 'DELETE') AS del, has_table_privilege('motor2_app', '"Invitacion"', 'SELECT') AS sel`;
-    expect(p).toEqual({ ins: false, del: false, sel: true });
+    // E8 (20261012120000): la app inserta invitaciones de usuario y de vinculación (el trigger rechaza las de gerente); sigue sin DELETE.
+    expect(p).toEqual({ ins: true, del: false, sel: true });
   });
 });

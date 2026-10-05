@@ -27,25 +27,27 @@ model User {
   activoGlobal  Boolean   @default(true)
   creadoEn      DateTime  @default(now())
 
-  accounts                  Account[]
-  sessions                  Session[]
-  sucursales                UsuarioSucursal[]
-  operaciones               Operacion[]
-  operacionesAnuladas       Operacion[]         @relation("OperacionAnuladaPor")
-  conteosFisicos            ConteoFisico[]
-  invitacionesAceptadas     Invitacion[]
-  traspasosCreados          TraspasoSucursal[]  @relation("TraspasoCreadoPor")
-  traspasosDecididosOrigen  TraspasoSucursal[]  @relation("TraspasoDecididoOrigen")
-  traspasosDecididosDestino TraspasoSucursal[]  @relation("TraspasoDecididoDestino")
-  traspasosCerrados         TraspasoSucursal[]  @relation("TraspasoCerradoPor")
-  pagosConsignante          PagoConsignante[]
-  registrosAuditoria        RegistroAuditoria[]
-  cuentasAbiertas           Cuenta[]            @relation("CuentaAbiertaPor")
-  cuentasCerradas           Cuenta[]            @relation("CuentaCerradaPor")
-  cuentaItemsCreados        CuentaItem[]        @relation("CuentaItemCreadoPor")
-  ejemplaresTicketEmitidos  EjemplarTicket[]    @relation("EjemplarTicketEmitidoPor")
-  promosCreadas             PromoCuenta[]
-  empresas                  UsuarioEmpresa[]
+  accounts                   Account[]
+  sessions                   Session[]
+  sucursales                 UsuarioSucursal[]
+  operaciones                Operacion[]
+  operacionesAnuladas        Operacion[]          @relation("OperacionAnuladaPor")
+  conteosFisicos             ConteoFisico[]
+  invitacionesAceptadas      Invitacion[]         @relation("InvitacionAceptadaPor")
+  invitacionesHechas         Invitacion[]         @relation("InvitacionInvitadoPor")
+  invitacionesSucursalHechas InvitacionSucursal[]
+  traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
+  traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
+  traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
+  traspasosCerrados          TraspasoSucursal[]   @relation("TraspasoCerradoPor")
+  pagosConsignante           PagoConsignante[]
+  registrosAuditoria         RegistroAuditoria[]
+  cuentasAbiertas            Cuenta[]             @relation("CuentaAbiertaPor")
+  cuentasCerradas            Cuenta[]             @relation("CuentaCerradaPor")
+  cuentaItemsCreados         CuentaItem[]         @relation("CuentaItemCreadoPor")
+  ejemplaresTicketEmitidos   EjemplarTicket[]     @relation("EjemplarTicketEmitidoPor")
+  promosCreadas              PromoCuenta[]
+  empresas                   UsuarioEmpresa[]
 }
 
 model Account {
@@ -145,6 +147,7 @@ model Sucursal {
   opcionesAgrupadasCarta   OpcionItemAgrupadoCarta[]
   versionesDeRecetaPropia  RecetaVersion[]               @relation("RecetaVersionSucursal")
   ejemplaresTicket         EjemplarTicket[]
+  invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, id])
@@ -164,6 +167,8 @@ model Rol {
 
   usuarios UsuarioSucursal[]
   permisos PermisoRol[]
+
+  invitaciones InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, clave])
@@ -2265,6 +2270,7 @@ model Empresa {
   ejemplarTicketRel              EjemplarTicket[]
   moduloEmpresaRel               ModuloEmpresa[]
   invitacionRel                  Invitacion[]
+  invitacionSucursalRel          InvitacionSucursal[]
 }
 
 enum EstadoModulo {
@@ -2299,23 +2305,50 @@ enum EstadoInvitacion {
 /// Privilegios: la app solo lee y actualiza las columnas de la aceptación; `motor2_plataforma` crea, reenvía y revoca (sin DELETE). Un trigger impone la máquina de
 /// estados por rol. Índices únicos parciales a mano: una PENDIENTE por (empresa, email) y una PENDIENTE de gerente por empresa.
 model Invitacion {
-  id            String           @id @default(cuid())
+  id            String               @id @default(cuid())
   empresaId     String
-  empresa       Empresa          @relation(fields: [empresaId], references: [id])
+  empresa       Empresa              @relation(fields: [empresaId], references: [id])
   email         String
   rolEmpresa    String
-  hashToken     String           @unique
-  estado        EstadoInvitacion @default(PENDIENTE)
+  hashToken     String               @unique
+  estado        EstadoInvitacion     @default(PENDIENTE)
   venceEn       DateTime
-  creadaEn      DateTime         @default(now())
+  creadaEn      DateTime             @default(now())
   enviadaEn     DateTime?
   aceptadaEn    DateTime?
   aceptadaPorId String?
-  aceptadaPor   User?            @relation(fields: [aceptadaPorId], references: [id], onDelete: Restrict)
+  aceptadaPor   User?                @relation("InvitacionAceptadaPor", fields: [aceptadaPorId], references: [id], onDelete: Restrict)
   cuitDeclarado String?
   revocadaEn    DateTime?
+  /// Quién creó o reenvió la invitación (obligatorio en `usuario` y `vinculacion`, NULL en `gerente`; E8, ADR-024).
+  invitadoPorId String?
+  invitadoPor   User?                @relation("InvitacionInvitadoPor", fields: [invitadoPorId], references: [id], onDelete: Restrict)
+  sucursales    InvitacionSucursal[]
 
+  @@unique([empresaId, id])
   @@index([empresaId, creadaEn])
+}
+
+/// Las sucursales y el rol en cada una que da una invitación de tipo `usuario` (E8, ADR-024): una fila por sucursal. Las membresías NO existen hasta que la persona
+/// acepta; al aceptar se revalida el permiso de `invitadoPorId` (quien otorgó ESA sucursal). Las claves foráneas compuestas garantizan que invitación, sucursal y rol son de
+/// la misma empresa. RLS `aislamiento_empresa`; la app inserta y actualiza algunas columnas, sin DELETE; un trigger exige que la invitación madre sea una `usuario` PENDIENTE.
+model InvitacionSucursal {
+  id            String     @id @default(cuid())
+  empresaId     String     @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa    @relation(fields: [empresaId], references: [id])
+  invitacionId  String
+  invitacion    Invitacion @relation(fields: [empresaId, invitacionId], references: [empresaId, id])
+  sucursalId    String
+  sucursal      Sucursal   @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  rolId         String
+  rol           Rol        @relation(fields: [empresaId, rolId], references: [empresaId, id])
+  notas         String?
+  /// Quien otorgó ESTA sucursal con ESTE rol: su permiso se revalida al aceptar.
+  invitadoPorId String
+  invitadoPor   User       @relation(fields: [invitadoPorId], references: [id], onDelete: Restrict)
+  creadaEn      DateTime   @default(now())
+
+  @@unique([invitacionId, sucursalId])
 }
 
 model UsuarioEmpresa {

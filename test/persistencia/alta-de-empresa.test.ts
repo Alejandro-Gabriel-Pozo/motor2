@@ -259,6 +259,32 @@ describe("revocarInvitacion e invitarDeNuevo", () => {
   });
 });
 
+describe("las invitaciones de usuario no se mezclan con la del gerente (E8, ADR-024)", () => {
+  async function altaConUnaDeUsuarioMasNueva() {
+    await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, ALTA);
+    const empresa = await empresaDelAlta();
+    const quien = await prismaAdmin.user.create({ data: { email: "quien-invita@gmail.com" } });
+    const deUsuario = await prismaAdmin.invitacion.create({
+      data: { empresaId: empresa.id, email: "otra-persona@gmail.com", rolEmpresa: "usuario", invitadoPorId: quien.id, hashToken: "f".repeat(64), venceEn: new Date(AHORA.getTime() + 7 * 24 * 3600 * 1000), creadaEn: new Date(Date.now() + 3_600_000) },
+    });
+    return { empresa, deUsuario };
+  }
+
+  it("la lista y el detalle de la consola siguen mostrando la invitación del GERENTE aunque haya una de usuario más nueva", async () => {
+    const { empresa } = await altaConUnaDeUsuarioMasNueva();
+    expect((await listarEmpresas(prismaAdmin, AHORA)).find((e) => e.id === empresa.id)?.invitacion).toMatchObject({ email: "dueno@gmail.com", estado: "PENDIENTE" });
+  });
+
+  it("revocar e invitar de nuevo solo tocan la del gerente: la de usuario queda PENDIENTE", async () => {
+    const { empresa, deUsuario } = await altaConUnaDeUsuarioMasNueva();
+    expect((await invitarDeNuevo(prismaAdmin, dependencias(), AUTOR, empresa.id, "correcto@gmail.com")).ok).toBe(true);
+    expect((await revocarInvitacion(prismaAdmin, AUTOR, empresa.id, AHORA)).ok).toBe(true);
+    expect(await prismaAdmin.invitacion.findUniqueOrThrow({ where: { id: deUsuario.id } })).toMatchObject({ estado: "PENDIENTE" });
+    const gerente = await prismaAdmin.invitacion.findMany({ where: { empresaId: empresa.id, rolEmpresa: "gerente" }, orderBy: { creadaEn: "asc" } });
+    expect(gerente.map((f) => f.estado)).toEqual(["REVOCADA", "REVOCADA"]);
+  });
+});
+
 describe("listarEmpresas", () => {
   it("muestra cada empresa con el estado EFECTIVO de su última invitación (vencida incluida)", async () => {
     await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, ALTA);

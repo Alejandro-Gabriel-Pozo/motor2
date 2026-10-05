@@ -44,6 +44,7 @@ const REGISTRO: Record<string, Entrada> = {
   SeccionHabitualProducto: { familia: "ajuste", embudo: "src/core/stock/seccion-habitual.ts", motivo: "sin fila vigente el producto no tiene sección habitual (whereSeccionHabitualVigente)." },
   CapacidadSucursal: { familia: "optout", embudo: "src/core/permisos/capacidades-sucursal.ts", motivo: "sin fila la capacidad está HABILITADA; solo una fila con habilitado=false la apaga." },
   UsuarioSucursal: { familia: "propio", embudo: null, motivo: "la fila ES la membresía del usuario en la sucursal; no hay valor de empresa que la ausencia reemplace." },
+  InvitacionSucursal: { familia: "propio", embudo: null, motivo: "la fila ES una sucursal (con su rol) que da una invitación de usuario (E8); sin fila la invitación no da esa sucursal, no hay valor de empresa que la ausencia reemplace." },
   RegistroAuditoria: { familia: "propio", embudo: null, motivo: "es historia: cada fila es un hecho ocurrido (sucursalId nulo = hecho de empresa)." },
   PagoConsignante: { familia: "propio", embudo: null, motivo: "cada fila es un pago realizado en la sucursal." },
   Seccion: { familia: "propio", embudo: null, motivo: "las secciones de stock son propias de cada sucursal (no hay catálogo de empresa)." },

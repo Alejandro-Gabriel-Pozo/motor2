@@ -26,6 +26,9 @@
   // proyecto del raíz van bajo `workspaces["."]` (si se dejan arriba, knip las aplica TAMBIÉN a `plataforma/`, donde no existen, y avisa).
   "workspaces": {
     ".": {
+      // RESERVADO — `@auth/core` llega con `next-auth` (no es dependencia directa). Lo importa SOLO `test/auth/contrato-authjs-vinculacion.test.ts`, por ruta de archivo,
+      // para fijar el contrato de Auth.js que E8 necesita (`handleLoginOrRegister`, que el paquete no exporta): si una actualización lo cambia, ese test falla.
+      "ignoreDependencies": ["@auth/core"],
   "entry": [
     // Scripts que se corren a mano (con `tsx` o como "test" de una config de Vitest propia): nadie los importa.
     "scripts/*.ts",
