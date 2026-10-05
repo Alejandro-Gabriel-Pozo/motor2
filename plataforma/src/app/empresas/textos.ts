@@ -1,5 +1,7 @@
 import type { EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { formatearCuit } from "@/core/fiscal/cuit";
+import { esModuloDelCatalogo } from "@/core/modulos/catalogo";
+import { nombreDeModulo } from "@/core/modulos/vista-de-modulos";
 import type { FilaDeEmpresa } from "../../servidor/empresas";
 
 export const ESTADO_DE_EMPRESA: Record<FilaDeEmpresa["estado"], string> = {
@@ -32,6 +34,8 @@ export const ACCION_DE_AUDITORIA: Record<string, string> = {
   "empresa-suspendida": "Empresa suspendida",
   "empresa-reactivada": "Empresa reactivada",
   "aviso-de-activacion": "Aviso de activación",
+  "modulo-activado": "Módulo activado",
+  "modulo-desactivado": "Módulo desactivado",
 };
 
 export const ETIQUETA_DE_FILTRO: Record<string, string> = {
@@ -63,4 +67,14 @@ export function textoDeLoQueAcabaDePasar(codigo: string | undefined, empresa: { 
     default:
       return null;
   }
+}
+
+/** El aviso de la pantalla de módulos tras un cambio: texto FIJO por código; el módulo viene de la URL y solo se usa si es del catálogo. */
+export function textoDeModuloCambiado(codigo: string | undefined, modulo: string | undefined): string | null {
+  if (codigo === "modulos-todos") return "Se activaron todos los módulos disponibles. Rigen en el próximo pedido de los usuarios de la empresa.";
+  if ((codigo !== "modulo-activado" && codigo !== "modulo-desactivado") || !modulo || !esModuloDelCatalogo(modulo)) return null;
+  const nombre = nombreDeModulo(modulo);
+  return codigo === "modulo-activado"
+    ? `${nombre} quedó activado. Rige en el próximo pedido de los usuarios de la empresa.`
+    : `${nombre} quedó desactivado. Sus pantallas dejan de verse en el próximo pedido; los datos quedan.`;
 }

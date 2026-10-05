@@ -75,6 +75,10 @@ export default async function PaginaDeLaEmpresa({ params, searchParams }: { para
       {acciones.reactivar && <Reactivar empresaId={empresa.id} nombre={empresa.nombre} />}
       {acciones.reenviarAviso && <ReenviarAviso empresaId={empresa.id} />}
 
+      <p>
+        <Link href={`/empresas/${empresa.id}/modulos`}>Administrar módulos</Link>
+      </p>
+
       <h2>Historial</h2>
       {historial.length === 0 ? (
         <p className="ayuda">Todavía no hay movimientos.</p>

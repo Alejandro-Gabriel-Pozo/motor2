@@ -76,14 +76,14 @@ export function cuitsRepetidos(filas: ReadonlyArray<{ id: string; cuit: string |
   return porCuit;
 }
 
-/** Mail de activación para el gerente. Por ahora la empresa tiene solo Administración: los módulos los habilita la plataforma. */
+/** Mail de activación para el gerente. Texto neutral: la plataforma puede activar módulos antes o después de confirmar (E7). */
 export function mensajeDeEmpresaActiva(datos: { email: string; nombreEmpresa: string; cuit: string; urlApp: string }): MensajeDeCorreo {
   const texto = [
     `La plataforma confirmó el alta de «${datos.nombreEmpresa}» (CUIT ${formatearCuit(datos.cuit)}) y la empresa ya está activa.`,
     "",
     `Entrá con la cuenta de Google de ${datos.email}: ${datos.urlApp.replace(/\/+$/, "")}/login`,
     "",
-    "Por ahora la empresa tiene Administración (usuarios, roles y sucursales); los módulos los habilita la plataforma.",
+    "La empresa cuenta con Administración (usuarios, roles y sucursales); los demás módulos los habilita la plataforma según lo contratado.",
     "Si no esperabas este mail, avisale a la plataforma.",
   ].join("\n");
   return { para: [datos.email], asunto: `Tu empresa «${datos.nombreEmpresa}» ya está activa en Motor2`, texto };

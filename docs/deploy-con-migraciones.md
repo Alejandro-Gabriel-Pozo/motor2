@@ -50,7 +50,7 @@ Cuatro migraciones llegan juntas a cada base: `20261003120000_extensiones_btree_
    un deploy sobre una base sin registro falla antes de publicar.
 5. Recién ahí el deploy.
 
-Alta y baja de módulos de una empresa: solo `npm run modulos-empresa` con `PLATAFORMA_DATABASE_URL` (rol `motor2_plataforma`); ninguna pantalla lo hace.
+Alta y baja de módulos de una empresa: la vía normal es la consola (`/empresas/[id]/modulos`, ADR-023); `npm run modulos-empresa` con `PLATAFORMA_DATABASE_URL` (rol `motor2_plataforma`) queda como vía de emergencia.
 Para volver atrás una migración del bloque, ver `scripts/operaciones/restaurar-registro-de-modulos.md`.
 
 ## Consola de plataforma (E4, ADR-019): migraciones y puesta en marcha
@@ -115,7 +115,7 @@ No hay migración ni cambio de permisos: el rol `motor2_plataforma` ya puede act
 2. Confirmar la segunda empresa activa de una instalación **ya no cambia nada** (ADR-022). Lo que antes exigía verificar a mano pasó a ser prerrequisito del despliegue de ADR-022 (más abajo).
 3. Confirmar un alta: `/empresas?filtro=cuit-pendiente` → detalle → revisar el CUIT contra la constancia de ARCA → tildar → «Confirmar el alta». La empresa pasa a activa
    y el gerente recibe el aviso; si el mail no sale, «Reenviar el aviso de activación».
-4. Una empresa recién activa tiene solo Administración. Los módulos se activan con `npm run modulos-empresa -- --actor <User existente>` hasta que exista E7.
+4. Una empresa recién activa tiene solo Administración. Los módulos se activan desde la consola, en `/empresas/[id]/modulos` (ADR-023); el script `npm run modulos-empresa -- --actor <User existente>` es la vía de emergencia.
 5. Suspender: la empresa deja de dar acceso en el pedido siguiente; el portal público de la carta da 404 al instante y la carta de cada sucursal puede verse **hasta unos 5 minutos** más (caché ISR).
 6. Corregir o cargar un CUIT: desde el detalle de una empresa activa o suspendida, con motivo. Hoy no existe el circuito fiscal, así que siempre se puede; cuando exista,
    se bloquea con la primera factura autorizada por ARCA en producción.

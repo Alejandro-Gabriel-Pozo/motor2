@@ -7,6 +7,9 @@ import { dbPlataforma } from "../../db";
 import { entornoDePlataforma } from "../../entorno";
 import { administradorEnSesion } from "../../servidor/sesion";
 import { confirmarAltaDeEmpresa, corregirCuitDeEmpresa, reactivarEmpresa, reenviarAvisoDeActivacion, suspenderEmpresa, type ResultadoDeCiclo } from "../../servidor/ciclo-de-vida";
+import { esModuloDelCatalogo } from "@/core/modulos/catalogo";
+import { modulosDisponiblesParaActivar } from "@/core/modulos/vista-de-modulos";
+import { cambiarModulosDesdeLaConsola } from "../../servidor/modulos";
 import { darDeAltaEmpresa, invitarDeNuevo, reenviarInvitacion, revocarInvitacion, type DependenciasDeEmpresas, type ResultadoDeEmpresa } from "../../servidor/empresas";
 
 /**
@@ -125,4 +128,28 @@ export async function reenviarAviso(empresaId: string): Promise<EstadoDeFormular
   const r = estadoDeCiclo(await reenviarAvisoDeActivacion(dbPlataforma(), deps, autor, empresaId));
   revalidatePath(`/empresas/${empresaId}`);
   return r;
+}
+
+/**
+ * Activar o desactivar UN módulo de la empresa (E7, ADR-023). Si sale bien redirige con `?hecho=` y el módulo (validado contra el catálogo): el botón que se usó cambia de
+ * lugar y su formulario no sobrevive, así que el resultado se muestra con texto fijo en la página.
+ */
+export async function cambiarModulo(empresaId: string, modulo: string, operacion: "activar" | "desactivar"): Promise<EstadoDeFormulario> {
+  const { autor } = await autorYDependencias();
+  if (!esModuloDelCatalogo(modulo)) return { tipo: "error", mensaje: "Ese módulo no existe." };
+  const r = await cambiarModulosDesdeLaConsola(dbPlataforma(), autor, empresaId, { [operacion]: [modulo] });
+  if (!r.ok) return { tipo: "error", mensaje: r.mensaje };
+  revalidatePath(`/empresas/${empresaId}`);
+  redirect(`/empresas/${empresaId}/modulos?hecho=${operacion === "activar" ? "modulo-activado" : "modulo-desactivado"}&modulo=${modulo}`);
+}
+
+/** Activar de una vez todos los módulos disponibles que la empresa todavía no tiene. */
+export async function activarTodosLosModulos(empresaId: string): Promise<EstadoDeFormulario> {
+  const { autor } = await autorYDependencias();
+  const db = dbPlataforma();
+  const actuales = await db.moduloEmpresa.findMany({ where: { empresaId, estado: "ACTIVO" }, select: { modulo: true } });
+  const r = await cambiarModulosDesdeLaConsola(db, autor, empresaId, { activar: modulosDisponiblesParaActivar(actuales.map((f) => f.modulo)) });
+  if (!r.ok) return { tipo: "error", mensaje: r.mensaje };
+  revalidatePath(`/empresas/${empresaId}`);
+  redirect(`/empresas/${empresaId}/modulos?hecho=modulos-todos`);
 }
