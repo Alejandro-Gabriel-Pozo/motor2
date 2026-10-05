@@ -139,6 +139,9 @@ jobs:
       MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
       # La consola de plataforma (E4): su servidor y su spec solo se activan con esta variable (el rol se crea más abajo).
       MOTOR2_E2E_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_e2e
+      # ADR-025: la SEGUNDA instalación de la consola (otra base, también `_e2e`): el spec consola-instalaciones prueba que una consola opera dos bases sin mezclarlas.
+      MOTOR2_E2E_B_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_b_e2e
+      MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_b_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -150,12 +153,18 @@ jobs:
         run: |
           createdb motor2_dev
           createdb motor2_e2e
+          createdb motor2_b_e2e
           psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
       - name: Migrar la base E2E (como dueño)
         run: npx prisma migrate deploy
+      - name: Migrar la base E2E B (segunda instalación)
+        run: DIRECT_URL="$MOTOR2_E2E_B_DATABASE_URL" npx prisma migrate deploy
       # DESPUÉS de migrar (el script da permiso a las tablas de la consola) y sobre la base E2E: el servidor de la consola conecta con este rol.
       - name: Rol de plataforma (consola)
         run: psql -d motor2_e2e -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # El rol es del servidor entero (la misma clave); el script es idempotente y le da permiso sobre las tablas de ESTA base.
+      - name: Rol de plataforma en la segunda base
+        run: psql -d motor2_b_e2e -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
       - run: npx playwright install --with-deps chromium
       - name: npm run test:e2e
         run: npm run test:e2e
