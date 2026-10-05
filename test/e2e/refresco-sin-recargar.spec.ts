@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { crearMembresia } from "../setup/membresia";
 import { prisma } from "./fixtures/db";
 
 /**
@@ -64,7 +65,11 @@ test("sucursales: crear y renombrar se ven sin recargar la página", async ({ pa
     await ponerMarca(page);
 
     await page.getByPlaceholder("Nombre de la sucursal").fill(nombre);
-    await page.getByPlaceholder("Email del primer admin").fill(`e2e-refresco-${marca}@local.test`);
+    // E8 (ADR-024): el primer admin de una sucursal nueva tiene que ser alguien que YA es parte de la empresa (a los nuevos se los invita desde Usuarios).
+    const primerAdmin = `e2e-refresco-${marca}@local.test`;
+    const miembro = await prisma.user.create({ data: { email: primerAdmin } });
+    await crearMembresia({ usuarioId: miembro.id, sucursalId: (await prisma.sucursal.findFirstOrThrow({ where: { activo: true } })).id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } })).id });
+    await page.getByPlaceholder("Email del primer admin").fill(primerAdmin);
     await page.getByRole("button", { name: "Crear", exact: true }).click();
     await expect(filaDe(nombre)).toHaveCount(1);
 
