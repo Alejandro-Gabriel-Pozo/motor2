@@ -1,19 +1,18 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { accionesDeCicloDeVida } from "@/core/features/empresa/ciclo-de-vida";
 import { formatearCuit } from "@/core/fiscal/cuit";
 import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/factura-autorizada";
-import { dbPlataforma } from "../../../db";
-import { historialDeEmpresa, obtenerEmpresa } from "../../../servidor/empresas";
-import { administradorEnSesion } from "../../../servidor/sesion";
+import { rutaDeEmpresa, rutaDeEmpresas } from "../../../../../rutas";
+import { contextoDePagina } from "../../../../../servidor/contexto";
+import { historialDeEmpresa, obtenerEmpresa } from "../../../../../servidor/empresas";
 import { ACCION_DE_AUDITORIA, ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, fechaCorta, textoDeLoQueAcabaDePasar } from "../textos";
 import { AccionesDeInvitacion, ConfirmarAlta, CorregirCuit, InvitarDeNuevo, Reactivar, ReenviarAviso, Suspender } from "./botones";
 
-export default async function PaginaDeLaEmpresa({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ hecho?: string | string[] }> }) {
-  if (!(await administradorEnSesion())) redirect("/login");
-  const { id } = await params;
+export default async function PaginaDeLaEmpresa({ params, searchParams }: { params: Promise<{ instalacion: string; id: string }>; searchParams: Promise<{ hecho?: string | string[] }> }) {
+  const { instalacion: instalacionId, id } = await params;
+  const { instalacion, db } = await contextoDePagina(instalacionId);
   const { hecho } = await searchParams;
-  const db = dbPlataforma();
   const empresa = await obtenerEmpresa(db, id, new Date());
   if (!empresa) notFound();
   const inv = empresa.invitacion;
@@ -60,23 +59,23 @@ export default async function PaginaDeLaEmpresa({ params, searchParams }: { para
         )}
       </dl>
 
-      {acciones.confirmar && inv?.cuitDeclarado && <ConfirmarAlta empresaId={empresa.id} nombre={empresa.nombre} cuitDeclarado={inv.cuitDeclarado} repetidoCon={empresa.cuitRepetidoCon} />}
+      {acciones.confirmar && inv?.cuitDeclarado && <ConfirmarAlta instalacion={instalacion.id} empresaId={empresa.id} nombre={empresa.nombre} cuitDeclarado={inv.cuitDeclarado} repetidoCon={empresa.cuitRepetidoCon} />}
 
       {empresa.estado === "PROVISIONING" && inv?.estado !== "ACEPTADA" && (
         <>
-          <AccionesDeInvitacion empresaId={empresa.id} hayPendiente={hayPendiente} />
-          <InvitarDeNuevo empresaId={empresa.id} />
+          <AccionesDeInvitacion instalacion={instalacion.id} empresaId={empresa.id} hayPendiente={hayPendiente} />
+          <InvitarDeNuevo instalacion={instalacion.id} empresaId={empresa.id} />
         </>
       )}
 
-      {operativa && acciones.corregirCuit && <CorregirCuit empresaId={empresa.id} cuitActual={empresa.cuit} puedeQuitar={acciones.vaciarCuit} />}
+      {operativa && acciones.corregirCuit && <CorregirCuit instalacion={instalacion.id} empresaId={empresa.id} cuitActual={empresa.cuit} puedeQuitar={acciones.vaciarCuit} />}
       {operativa && !acciones.corregirCuit && tieneFactura && <p className="ayuda">{MENSAJE_CUIT_INMUTABLE}</p>}
-      {acciones.suspender && <Suspender empresaId={empresa.id} nombre={empresa.nombre} />}
-      {acciones.reactivar && <Reactivar empresaId={empresa.id} nombre={empresa.nombre} />}
-      {acciones.reenviarAviso && <ReenviarAviso empresaId={empresa.id} />}
+      {acciones.suspender && <Suspender instalacion={instalacion.id} empresaId={empresa.id} nombre={empresa.nombre} />}
+      {acciones.reactivar && <Reactivar instalacion={instalacion.id} empresaId={empresa.id} nombre={empresa.nombre} />}
+      {acciones.reenviarAviso && <ReenviarAviso instalacion={instalacion.id} empresaId={empresa.id} />}
 
       <p>
-        <Link href={`/empresas/${empresa.id}/modulos`}>Administrar módulos</Link>
+        <Link href={rutaDeEmpresa(instalacion.id, empresa.id, "modulos")}>Administrar módulos</Link>
       </p>
 
       <h2>Historial</h2>
@@ -92,7 +91,7 @@ export default async function PaginaDeLaEmpresa({ params, searchParams }: { para
         </ul>
       )}
       <p className="ayuda">
-        <Link href="/empresas">Volver a las empresas</Link>
+        <Link href={rutaDeEmpresas(instalacion.id)}>Volver a las empresas</Link>
       </p>
     </section>
   );

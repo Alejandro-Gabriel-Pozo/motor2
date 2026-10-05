@@ -10,7 +10,7 @@ import { darDeAltaEmpresa, invitarDeNuevo, listarEmpresas, reenviarInvitacion, r
  * `motor2_plataforma`): se prueba la lógica, la atomicidad con la auditoría y el orden «el mail sale después del commit»; los privilegios del rol real los
  * cubre `invitaciones-rls.test.ts` y el job de integración de CI.
  */
-const AUTOR = { adminId: "admin-1", adminEmail: "admin@plataforma.test" };
+const AUTOR = { adminId: "admin-1", adminEmail: "admin@plataforma.test", instalacionId: "prueba" };
 const AHORA = new Date("2026-10-04T12:00:00.000Z");
 const ALTA = { nombre: "Hostería Sur", slug: "hosteria-sur", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ars", nombreSucursal: "Central", emailDuenio: "Dueno@Gmail.com" };
 
@@ -24,6 +24,8 @@ function dependencias(): DependenciasDeEmpresas {
   return {
     ahora: () => ahora,
     urlApp: "https://app.ejemplo.com",
+    // ADR-025: los administradores viven en la base de identidad y la consola los lee aparte; acá, de la misma base de prueba.
+    emailsDeAdmins: async () => (await prismaAdmin.adminPlataforma.findMany({ select: { email: true } })).map((a) => a.email),
     // 43 caracteres base64url, distintos en cada llamada.
     generarToken: () => `T${String(++contadorDeTokens).padStart(2, "0")}${"x".repeat(40)}`,
     enviar: async (m) => {

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { modulosDisponiblesParaActivar, nombreDeModulo, type FilaDeModulo } from "@/core/modulos/vista-de-modulos";
-import { dbPlataforma } from "../../../../db";
-import { leerModulosDeEmpresa } from "../../../../servidor/modulos";
-import { administradorEnSesion } from "../../../../servidor/sesion";
+import { rutaDeEmpresa } from "../../../../../../rutas";
+import { contextoDePagina } from "../../../../../../servidor/contexto";
+import { leerModulosDeEmpresa } from "../../../../../../servidor/modulos";
 import { textoDeModuloCambiado } from "../../textos";
 import { ActivarTodos, CambiarModulo } from "./botones";
 
@@ -34,11 +34,11 @@ function avisoDeDesactivar(f: FilaDeModulo): string {
   return `¿Desactivar ${f.nombre}?${f.alDesactivarSePierden.length ? ` La empresa deja de contar con: ${lista(f.alDesactivarSePierden)}.` : ""} Sus usuarios dejan de ver las pantallas internas en su próximo pedido; los datos quedan.`;
 }
 
-export default async function PaginaDeModulos({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ hecho?: string | string[]; modulo?: string | string[] }> }) {
-  if (!(await administradorEnSesion())) redirect("/login");
-  const { id } = await params;
+export default async function PaginaDeModulos({ params, searchParams }: { params: Promise<{ instalacion: string; id: string }>; searchParams: Promise<{ hecho?: string | string[]; modulo?: string | string[] }> }) {
+  const { instalacion: instalacionId, id } = await params;
+  const { instalacion, db } = await contextoDePagina(instalacionId);
   const { hecho, modulo } = await searchParams;
-  const datos = await leerModulosDeEmpresa(dbPlataforma(), id);
+  const datos = await leerModulosDeEmpresa(db, id);
   if (!datos) notFound();
   const { empresa, vista, activos } = datos;
   const aviso = textoDeModuloCambiado(Array.isArray(hecho) ? hecho[0] : hecho, Array.isArray(modulo) ? modulo[0] : modulo);
@@ -70,16 +70,16 @@ export default async function PaginaDeModulos({ params, searchParams }: { params
               <td>{estadoDe(f)}</td>
               <td>{porQue(f)}</td>
               <td>
-                {editable && f.puedeActivar && <CambiarModulo empresaId={empresa.id} modulo={f.id} operacion="activar" etiqueta={`Activar ${f.nombre}`} aviso={avisoDeActivar(f)} />}
-                {editable && f.puedeDesactivar && <CambiarModulo empresaId={empresa.id} modulo={f.id} operacion="desactivar" etiqueta={`Desactivar ${f.nombre}`} aviso={avisoDeDesactivar(f)} />}
+                {editable && f.puedeActivar && <CambiarModulo instalacion={instalacion.id} empresaId={empresa.id} modulo={f.id} operacion="activar" etiqueta={`Activar ${f.nombre}`} aviso={avisoDeActivar(f)} />}
+                {editable && f.puedeDesactivar && <CambiarModulo instalacion={instalacion.id} empresaId={empresa.id} modulo={f.id} operacion="desactivar" etiqueta={`Desactivar ${f.nombre}`} aviso={avisoDeDesactivar(f)} />}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {editable && faltan.length > 0 && <ActivarTodos empresaId={empresa.id} aviso={`¿Activar todos los módulos disponibles? Se suman: ${lista(faltan)}.`} />}
+      {editable && faltan.length > 0 && <ActivarTodos instalacion={instalacion.id} empresaId={empresa.id} aviso={`¿Activar todos los módulos disponibles? Se suman: ${lista(faltan)}.`} />}
       <p className="ayuda">
-        <Link href={`/empresas/${empresa.id}`}>Volver a la empresa</Link>
+        <Link href={rutaDeEmpresa(instalacion.id, empresa.id)}>Volver a la empresa</Link>
       </p>
     </section>
   );

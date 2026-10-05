@@ -2,7 +2,7 @@ import type { EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitac
 import { formatearCuit } from "@/core/fiscal/cuit";
 import { esModuloDelCatalogo } from "@/core/modulos/catalogo";
 import { nombreDeModulo } from "@/core/modulos/vista-de-modulos";
-import type { FilaDeEmpresa } from "../../servidor/empresas";
+import type { FilaDeEmpresa } from "../../../../servidor/empresas";
 
 export const ESTADO_DE_EMPRESA: Record<FilaDeEmpresa["estado"], string> = {
   PROVISIONING: "En alta",

@@ -6,7 +6,7 @@ import { formatearCuit, validarCuit } from "@/core/fiscal/cuit";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/con-reintento";
 import { obtenerGerenteDeEmpresa } from "@/core/permisos/gerencia";
 import type { Db } from "@/lib/db-tipos";
-import { auditarEnTransaccion, type Autor } from "./auditoria";
+import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
 import type { DependenciasDeEmpresas } from "./empresas";
 
 /**
@@ -59,7 +59,7 @@ async function traducirChoqueDeCuit(db: Cliente, e: unknown, cuit: string, empre
 async function enviarAvisoDeActivacion(
   db: Cliente,
   deps: DependenciasDeEmpresas,
-  autor: Autor,
+  autor: AutorEnInstalacion,
   d: { empresaId: string; nombreEmpresa: string; cuit: string; email: string },
   reenvio: boolean,
 ): Promise<boolean> {
@@ -71,7 +71,7 @@ async function enviarAvisoDeActivacion(
     enviado = false;
   }
   try {
-    await db.auditoriaPlataforma.create({ data: { adminId: autor.adminId, adminEmail: autor.adminEmail, accion: "aviso-de-activacion", empresaAfectadaId: d.empresaId, detalle: { enviado, reenvio } } });
+    await db.auditoriaPlataforma.create({ data: { adminId: autor.adminId, adminEmail: autor.adminEmail, accion: "aviso-de-activacion", empresaAfectadaId: d.empresaId, detalle: { enviado, reenvio, instalacion: autor.instalacionId } } });
   } catch {
     // El aviso salió (o no) igual; solo falló anotarlo. Reenviar es inofensivo.
   }
@@ -87,7 +87,7 @@ async function gerenteConEmail(tx: Prisma.TransactionClient, empresaId: string):
   return usuario ? { email: usuario.email, cuentaActiva: usuario.activoGlobal } : null;
 }
 
-export async function confirmarAltaDeEmpresa(db: Cliente, deps: DependenciasDeEmpresas, autor: Autor, empresaId: string, entrada: unknown): Promise<ResultadoDeCiclo> {
+export async function confirmarAltaDeEmpresa(db: Cliente, deps: DependenciasDeEmpresas, autor: AutorEnInstalacion, empresaId: string, entrada: unknown): Promise<ResultadoDeCiclo> {
   const parseo = confirmarAltaSchema.safeParse(entrada);
   if (!parseo.success) return { ok: false, mensaje: parseo.error.issues.map((i) => i.message).join(" ") };
   const cuitValidado = validarCuit(parseo.data.cuit);
@@ -138,7 +138,7 @@ export async function confirmarAltaDeEmpresa(db: Cliente, deps: DependenciasDeEm
   return { ok: true, enviado, mensaje: enviado ? `${base} Le avisamos a ${hecho.email}.${cuenta}` : `${base} El aviso por mail no salió: reenvialo desde el detalle.${cuenta}` };
 }
 
-export async function reenviarAvisoDeActivacion(db: Cliente, deps: DependenciasDeEmpresas, autor: Autor, empresaId: string): Promise<ResultadoDeCiclo> {
+export async function reenviarAvisoDeActivacion(db: Cliente, deps: DependenciasDeEmpresas, autor: AutorEnInstalacion, empresaId: string): Promise<ResultadoDeCiclo> {
   type Datos = { ok: true; nombre: string; cuit: string; email: string } | { ok: false; mensaje: string };
   const datos: Datos = await db.$transaction(async (tx): Promise<Datos> => {
     const empresa = await bloquearEmpresa(tx, empresaId);
@@ -157,7 +157,7 @@ export async function reenviarAvisoDeActivacion(db: Cliente, deps: DependenciasD
  * Corrige (o carga, o quita) el CUIT de una empresa activa o suspendida. Mientras no haya una factura autorizada en producción (`core/fiscal/factura-autorizada`).
  * `cuit` vacío = quitarlo, y eso solo se permite en una empresa SUSPENDIDA. `Invitacion.cuitDeclarado` NO se toca: queda como lo que declaró el gerente.
  */
-export async function corregirCuitDeEmpresa(db: Cliente, deps: DependenciasDeCicloDeVida, autor: Autor, empresaId: string, entrada: unknown): Promise<ResultadoDeCiclo> {
+export async function corregirCuitDeEmpresa(db: Cliente, deps: DependenciasDeCicloDeVida, autor: AutorEnInstalacion, empresaId: string, entrada: unknown): Promise<ResultadoDeCiclo> {
   const parseo = corregirCuitSchema.safeParse(entrada);
   if (!parseo.success) return { ok: false, mensaje: parseo.error.issues.map((i) => i.message).join(" ") };
   let nuevo: string | null = null;
@@ -197,7 +197,7 @@ export async function corregirCuitDeEmpresa(db: Cliente, deps: DependenciasDeCic
 
 async function cambiarEstado(
   db: Cliente,
-  autor: Autor,
+  autor: AutorEnInstalacion,
   empresaId: string,
   desde: EstadoEmpresa,
   hacia: EstadoEmpresa,
@@ -224,10 +224,10 @@ async function cambiarEstado(
   });
 }
 
-export function suspenderEmpresa(db: Cliente, autor: Autor, empresaId: string, motivo: unknown): Promise<ResultadoDeCiclo> {
+export function suspenderEmpresa(db: Cliente, autor: AutorEnInstalacion, empresaId: string, motivo: unknown): Promise<ResultadoDeCiclo> {
   return cambiarEstado(db, autor, empresaId, "ACTIVE", "SUSPENDED", "empresa-suspendida", motivo, true);
 }
 
-export function reactivarEmpresa(db: Cliente, autor: Autor, empresaId: string, motivo: unknown): Promise<ResultadoDeCiclo> {
+export function reactivarEmpresa(db: Cliente, autor: AutorEnInstalacion, empresaId: string, motivo: unknown): Promise<ResultadoDeCiclo> {
   return cambiarEstado(db, autor, empresaId, "SUSPENDED", "ACTIVE", "empresa-reactivada", motivo, false);
 }

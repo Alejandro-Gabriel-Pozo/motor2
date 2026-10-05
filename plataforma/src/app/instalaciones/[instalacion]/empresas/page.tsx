@@ -1,29 +1,28 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { formatearCuit } from "@/core/fiscal/cuit";
-import { dbPlataforma } from "../../db";
-import { FILTROS_DE_EMPRESAS, listarEmpresas, type FiltroDeEmpresas } from "../../servidor/empresas";
-import { administradorEnSesion } from "../../servidor/sesion";
+import { rutaDeAlta, rutaDeEmpresa, rutaDeEmpresas } from "../../../../rutas";
+import { contextoDePagina } from "../../../../servidor/contexto";
+import { FILTROS_DE_EMPRESAS, listarEmpresas, type FiltroDeEmpresas } from "../../../../servidor/empresas";
 import { ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, ETIQUETA_DE_FILTRO, fechaCorta } from "./textos";
 
-export default async function PaginaDeEmpresas({ searchParams }: { searchParams: Promise<{ filtro?: string | string[] }> }) {
-  if (!(await administradorEnSesion())) redirect("/login");
+export default async function PaginaDeEmpresas({ params, searchParams }: { params: Promise<{ instalacion: string }>; searchParams: Promise<{ filtro?: string | string[] }> }) {
+  const { instalacion, db } = await contextoDePagina((await params).instalacion);
   const { filtro: pedido } = await searchParams;
   const crudo = Array.isArray(pedido) ? pedido[0] : pedido;
   const filtro: FiltroDeEmpresas = FILTROS_DE_EMPRESAS.find((f) => f === crudo) ?? "todas";
   const ahora = new Date();
-  const empresas = await listarEmpresas(dbPlataforma(), ahora, filtro);
+  const empresas = await listarEmpresas(db, ahora, filtro);
   return (
     <section className="tarjeta ancha">
       <div className="barra">
-        <h1>Empresas</h1>
-        <a className="boton" href="/empresas/nueva">
+        <h1>Empresas · {instalacion.nombre}</h1>
+        <a className="boton" href={rutaDeAlta(instalacion.id)}>
           Dar de alta una empresa
         </a>
       </div>
       <nav aria-label="Filtros" className="filtros">
         {FILTROS_DE_EMPRESAS.map((f) => (
-          <Link key={f} href={f === "todas" ? "/empresas" : `/empresas?filtro=${f}`} aria-current={f === filtro ? "page" : undefined}>
+          <Link key={f} href={rutaDeEmpresas(instalacion.id, f)} aria-current={f === filtro ? "page" : undefined}>
             {ETIQUETA_DE_FILTRO[f]}
           </Link>
         ))}
@@ -72,7 +71,7 @@ export default async function PaginaDeEmpresas({ searchParams }: { searchParams:
                   )}
                 </td>
                 <td>
-                  <a href={`/empresas/${e.id}`}>Ver {e.nombre}</a>
+                  <a href={rutaDeEmpresa(instalacion.id, e.id)}>Ver {e.nombre}</a>
                 </td>
               </tr>
             ))}

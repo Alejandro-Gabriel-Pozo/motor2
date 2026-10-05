@@ -18,7 +18,7 @@ import {
  * Confirmar el alta, corregir el CUIT, suspender y reactivar (E6, ADR-021) contra Postgres real. El primer bloque corre con la conexión del DUEÑO (la base de test local
  * no tiene el rol `motor2_plataforma`); el segundo, con el rol REAL, solo si hay `PLATAFORMA_DATABASE_URL` (en CI corre).
  */
-const AUTOR = { adminId: "admin-1", adminEmail: "admin@plataforma.test" };
+const AUTOR = { adminId: "admin-1", adminEmail: "admin@plataforma.test", instalacionId: "prueba" };
 const AHORA = new Date("2026-10-04T12:00:00.000Z");
 const CUIT_A = "30712345671";
 const CUIT_A_CON_GUIONES = "30-71234567-1";
@@ -34,6 +34,8 @@ function deps(): DependenciasDeCicloDeVida {
   return {
     ahora: () => AHORA,
     urlApp: "https://app.ejemplo.com",
+    // ADR-025: los administradores viven en la base de identidad y la consola los lee aparte; acá, de la misma base de prueba.
+    emailsDeAdmins: async () => (await prismaAdmin.adminPlataforma.findMany({ select: { email: true } })).map((a) => a.email),
     generarToken: () => `T${String(++tokens).padStart(2, "0")}${"y".repeat(40)}`,
     enviar: async (m) => {
       await alEnviar?.(m);
@@ -193,11 +195,11 @@ function pruebas(nombre: string, via: () => PrismaClient) {
         expect(await confirmarAltaDeEmpresa(via(), deps(), AUTOR, e.id, { cuit: CUIT_A, ...confirmar })).toMatchObject({ ok: true, enviado: false });
         expect((await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: e.id } })).estado).toBe("ACTIVE");
         const aviso = () => prismaAdmin.auditoriaPlataforma.findMany({ where: { accion: "aviso-de-activacion" }, orderBy: { creadoEn: "asc" } });
-        expect((await aviso()).map((a) => a.detalle)).toEqual([{ enviado: false, reenvio: false }]);
+        expect((await aviso()).map((a) => a.detalle)).toEqual([{ enviado: false, reenvio: false, instalacion: "prueba" }]);
 
         resultadoDelEnvio = { ok: true, idExterno: null };
         expect(await reenviarAvisoDeActivacion(via(), deps(), AUTOR, e.id)).toMatchObject({ ok: true, enviado: true });
-        expect((await aviso()).map((a) => a.detalle)).toEqual([{ enviado: false, reenvio: false }, { enviado: true, reenvio: true }]);
+        expect((await aviso()).map((a) => a.detalle)).toEqual([{ enviado: false, reenvio: false, instalacion: "prueba" }, { enviado: true, reenvio: true, instalacion: "prueba" }]);
       });
 
       it("reenviar el aviso solo sirve para una empresa activa", async () => {
@@ -221,7 +223,7 @@ function pruebas(nombre: string, via: () => PrismaClient) {
         expect((await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: e.id } })).cuit).toBe(CUIT_B);
         expect((await prismaAdmin.invitacion.findFirstOrThrow({ where: { empresaId: e.id } })).cuitDeclarado).toBe(CUIT_A);
         const aud = await prismaAdmin.auditoriaPlataforma.findFirstOrThrow({ where: { accion: "cuit-corregido" } });
-        expect(aud.detalle).toEqual({ cuitAnterior: CUIT_A, cuitNuevo: CUIT_B, motivo: "Constancia de ARCA" });
+        expect(aud.detalle).toEqual({ cuitAnterior: CUIT_A, cuitNuevo: CUIT_B, motivo: "Constancia de ARCA", instalacion: "prueba" });
       });
 
       it("carga el CUIT de una empresa que no lo tenía (anterior vacío)", async () => {
@@ -287,7 +289,7 @@ function pruebas(nombre: string, via: () => PrismaClient) {
         expect((await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: e.id } })).estado).toBe("ACTIVE");
         expect((await reactivarEmpresa(via(), AUTOR, e.id, undefined)).ok).toBe(false);
         const filas = await prismaAdmin.auditoriaPlataforma.findMany({ where: { accion: { in: ["empresa-suspendida", "empresa-reactivada"] } }, orderBy: { creadoEn: "asc" } });
-        expect(filas.map((f) => [f.accion, f.detalle])).toEqual([["empresa-suspendida", { motivo: "Falta de pago" }], ["empresa-reactivada", {}]]);
+        expect(filas.map((f) => [f.accion, f.detalle])).toEqual([["empresa-suspendida", { motivo: "Falta de pago", instalacion: "prueba" }], ["empresa-reactivada", { instalacion: "prueba" }]]);
       });
 
       it("una empresa en alta no se suspende, y una que no existe tampoco", async () => {

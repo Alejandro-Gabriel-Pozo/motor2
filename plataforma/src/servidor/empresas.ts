@@ -6,7 +6,7 @@ import { cuitsRepetidos, tieneCuitPendiente } from "@/core/features/empresa/cicl
 import { sembrarEmpresa } from "@/core/features/empresa/sembrar-empresa";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO, normalizarEmail } from "@/core/plataforma/email-reservado";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
-import { auditarEnTransaccion, type Autor } from "./auditoria";
+import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
 
 /**
  * Alta de empresas e invitaciones desde la consola (E5, ADR-012 §6, ADR-020). Cada función recibe la base, el autor y sus dependencias: la consola les pasa
@@ -21,8 +21,13 @@ import { auditarEnTransaccion, type Autor } from "./auditoria";
  */
 export interface DependenciasDeEmpresas {
   ahora: () => Date;
-  /** Dirección pública de la app de empresas (`PLATAFORMA_URL_APP`), a la que apunta el enlace del mail. */
+  /** Dirección pública de la app de empresas de ESTA instalación (ADR-025), a la que apunta el enlace del mail. */
   urlApp: string;
+  /**
+   * Los emails de los administradores de plataforma. Viven en la base de IDENTIDAD (la de la instalación principal), no en la de la instalación operada, así que se leen
+   * AFUERA de la transacción de operación: dentro, en otra instalación, esa tabla está vacía y el control «un administrador no puede ser gerente» se apagaría en silencio.
+   */
+  emailsDeAdmins: () => Promise<readonly string[]>;
   generarToken?: () => string;
   enviar: (mensaje: MensajeDeCorreo) => Promise<ResultadoDeEnvio>;
 }
@@ -32,13 +37,9 @@ export type ResultadoDeEmpresa = { ok: true; empresaId: string; enviado: boolean
 
 const MENSAJE_SIN_ENVIO = "La invitación quedó creada pero el mail no salió. Reenviala desde el detalle de la empresa.";
 
-async function emailsDeAdmins(tx: Pick<Prisma.TransactionClient, "adminPlataforma">): Promise<string[]> {
-  return (await tx.adminPlataforma.findMany({ select: { email: true } })).map((a) => a.email);
-}
-
 /** `null` si el email puede ser invitado; si no, el motivo. Una cuenta desactivada a nivel global no entraría igual (kill-switch): se avisa antes. */
-async function problemaDelEmail(tx: Pick<Prisma.TransactionClient, "adminPlataforma" | "user">, email: string): Promise<string | null> {
-  if (esEmailReservadoDeAdminPlataforma(email, await emailsDeAdmins(tx))) return MENSAJE_EMAIL_RESERVADO;
+async function problemaDelEmail(tx: Pick<Prisma.TransactionClient, "user">, reservados: readonly string[], email: string): Promise<string | null> {
+  if (esEmailReservadoDeAdminPlataforma(email, reservados)) return MENSAJE_EMAIL_RESERVADO;
   const usuario = await tx.user.findUnique({ where: { email }, select: { activoGlobal: true } });
   if (usuario && !usuario.activoGlobal) return "Esa persona tiene la cuenta desactivada en toda la plataforma: no podría entrar aunque la inviten.";
   return null;
@@ -69,7 +70,7 @@ function resultadoDeEnvio(empresaId: string, enviado: boolean, mensajeOk: string
   return { ok: true, empresaId, enviado, mensaje: enviado ? mensajeOk : MENSAJE_SIN_ENVIO };
 }
 
-export async function darDeAltaEmpresa(db: Db, deps: DependenciasDeEmpresas, autor: Autor, entrada: unknown): Promise<ResultadoDeEmpresa> {
+export async function darDeAltaEmpresa(db: Db, deps: DependenciasDeEmpresas, autor: AutorEnInstalacion, entrada: unknown): Promise<ResultadoDeEmpresa> {
   const parseo = altaDeEmpresaSchema.safeParse(entrada);
   if (!parseo.success) return { ok: false, mensaje: parseo.error.issues.map((i) => i.message).join(" ") };
   const { nombre, slug, zonaHoraria, moneda, nombreSucursal, emailDuenio } = parseo.data;
@@ -77,11 +78,12 @@ export async function darDeAltaEmpresa(db: Db, deps: DependenciasDeEmpresas, aut
   const ahora = deps.ahora();
   const token = (deps.generarToken ?? generarTokenOpaco)();
   const venceEn = vencimientoDeInvitacion(ahora);
+  const reservados = await deps.emailsDeAdmins();
 
   type Hecho = { ok: true; empresaId: string; invitacionId: string } | { ok: false; mensaje: string };
   const hecho: Hecho = await db.$transaction(
     async (tx): Promise<Hecho> => {
-      const problema = await problemaDelEmail(tx, emailDuenio);
+      const problema = await problemaDelEmail(tx, reservados, emailDuenio);
       if (problema) return { ok: false, mensaje: problema };
       const existente = await tx.empresa.findFirst({ where: { OR: [{ slug }, { nombre }] }, select: { slug: true } });
       if (existente) return { ok: false, mensaje: existente.slug === slug ? `Ya existe una empresa con el slug «${slug}».` : `Ya existe una empresa con el nombre «${nombre}».` };
@@ -116,17 +118,18 @@ async function empresaEnAltaConInvitacion(tx: Prisma.TransactionClient, empresaI
  * Reenvía la invitación pendiente: genera un token NUEVO (el enlace anterior deja de servir), renueva el vencimiento y manda el mail. Sirve también para una
  * vencida, que sigue «pendiente» en la base.
  */
-export async function reenviarInvitacion(db: Db, deps: DependenciasDeEmpresas, autor: Autor, empresaId: string): Promise<ResultadoDeEmpresa> {
+export async function reenviarInvitacion(db: Db, deps: DependenciasDeEmpresas, autor: AutorEnInstalacion, empresaId: string): Promise<ResultadoDeEmpresa> {
   const ahora = deps.ahora();
   const token = (deps.generarToken ?? generarTokenOpaco)();
   const venceEn = vencimientoDeInvitacion(ahora);
+  const reservados = await deps.emailsDeAdmins();
 
   type Hecho = { ok: true; invitacionId: string; email: string; empresa: { nombre: string; zonaHoraria: string } } | { ok: false; mensaje: string };
   const hecho: Hecho = await db.$transaction(async (tx): Promise<Hecho> => {
     const datos = await empresaEnAltaConInvitacion(tx, empresaId);
     if (!datos) return { ok: false, mensaje: "La empresa no existe." };
     if (!datos.invitacion || datos.invitacion.estado !== "PENDIENTE") return { ok: false, mensaje: "No hay una invitación pendiente para reenviar. Invitá de nuevo." };
-    const problema = await problemaDelEmail(tx, datos.invitacion.email);
+    const problema = await problemaDelEmail(tx, reservados, datos.invitacion.email);
     if (problema) return { ok: false, mensaje: problema };
     const cambio = await tx.invitacion.updateMany({
       where: { id: datos.invitacion.id, estado: "PENDIENTE" },
@@ -143,7 +146,7 @@ export async function reenviarInvitacion(db: Db, deps: DependenciasDeEmpresas, a
 }
 
 /** Revoca la invitación pendiente: el enlace deja de servir. La empresa queda en alta, sin gerente, hasta que se invite de nuevo. */
-export async function revocarInvitacion(db: Db, autor: Autor, empresaId: string, ahora: Date): Promise<{ ok: boolean; mensaje: string }> {
+export async function revocarInvitacion(db: Db, autor: AutorEnInstalacion, empresaId: string, ahora: Date): Promise<{ ok: boolean; mensaje: string }> {
   return db.$transaction(async (tx) => {
     const datos = await empresaEnAltaConInvitacion(tx, empresaId);
     if (!datos?.invitacion || datos.invitacion.estado !== "PENDIENTE") return { ok: false, mensaje: "No hay una invitación pendiente para revocar." };
@@ -158,13 +161,14 @@ export async function revocarInvitacion(db: Db, autor: Autor, empresaId: string,
  * Invita a otro email (o al mismo, si la anterior se perdió): revoca la pendiente que hubiera y crea una nueva, en una sola transacción. Solo para una empresa que
  * sigue en alta y todavía no tiene gerente: es la salida cuando el email se escribió mal.
  */
-export async function invitarDeNuevo(db: Db, deps: DependenciasDeEmpresas, autor: Autor, empresaId: string, emailCrudo: string): Promise<ResultadoDeEmpresa> {
+export async function invitarDeNuevo(db: Db, deps: DependenciasDeEmpresas, autor: AutorEnInstalacion, empresaId: string, emailCrudo: string): Promise<ResultadoDeEmpresa> {
   const parseo = altaDeEmpresaSchema.shape.emailDuenio.safeParse(emailCrudo);
   if (!parseo.success) return { ok: false, mensaje: "Ese email no es válido." };
   const email = normalizarEmail(parseo.data);
   const ahora = deps.ahora();
   const token = (deps.generarToken ?? generarTokenOpaco)();
   const venceEn = vencimientoDeInvitacion(ahora);
+  const reservados = await deps.emailsDeAdmins();
 
   type Hecho = { ok: true; invitacionId: string; empresa: { nombre: string; zonaHoraria: string } } | { ok: false; mensaje: string };
   const hecho: Hecho = await db.$transaction(async (tx): Promise<Hecho> => {
@@ -172,7 +176,7 @@ export async function invitarDeNuevo(db: Db, deps: DependenciasDeEmpresas, autor
     if (!datos) return { ok: false, mensaje: "La empresa no existe." };
     if (datos.empresa.estado !== "PROVISIONING") return { ok: false, mensaje: "Solo se puede invitar de nuevo a una empresa que sigue en alta." };
     if (datos.invitacion?.estado === "ACEPTADA") return { ok: false, mensaje: "La invitación ya fue aceptada: la empresa tiene gerente." };
-    const problema = await problemaDelEmail(tx, email);
+    const problema = await problemaDelEmail(tx, reservados, email);
     if (problema) return { ok: false, mensaje: problema };
     await tx.invitacion.updateMany({ where: { empresaId, rolEmpresa: "gerente", estado: "PENDIENTE" }, data: { estado: "REVOCADA", revocadaEn: ahora } });
     const nueva = await tx.invitacion.create({ data: { empresaId, email, rolEmpresa: "gerente", hashToken: hashDeToken(token), venceEn }, select: { id: true } });

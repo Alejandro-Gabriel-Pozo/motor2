@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { enviarCorreo } from "@/core/correo/enviar";
-import { dbPlataforma } from "../../db";
+import { dbDeIdentidad } from "../../db";
 import { entornoDePlataforma } from "../../entorno";
 import { auditarAccionDePlataforma } from "../../servidor/auditoria";
 import { prepararCodigoDeIngreso, verificarCodigoDeIngreso, verificarSegundoFactor, type DependenciasDeIngreso } from "../../servidor/ingreso";
@@ -28,7 +28,7 @@ const CODIGO_INVALIDO = "El código no es válido o venció. Pedí uno nuevo.";
 export async function pedirCodigo(_: EstadoDeIngreso, formData: FormData): Promise<EstadoDeIngreso> {
   const email = texto(formData, "email").trim();
   if (email === "") return { paso: "email", email, error: "Ingresá tu email." };
-  const mensaje = await prepararCodigoDeIngreso(dbPlataforma(), dependencias(), email);
+  const mensaje = await prepararCodigoDeIngreso(dbDeIdentidad(), dependencias(), email);
   if (mensaje) after(() => enviarCorreo("avisos", mensaje));
   return { paso: "codigo", email, error: null };
 }
@@ -37,7 +37,7 @@ export async function pedirCodigo(_: EstadoDeIngreso, formData: FormData): Promi
 export async function enviarCodigoDelMail(estado: EstadoDeIngreso, formData: FormData): Promise<EstadoDeIngreso> {
   const email = texto(formData, "email").trim();
   const deps = dependencias();
-  const resultado = await verificarCodigoDeIngreso(dbPlataforma(), deps, email, texto(formData, "codigo"));
+  const resultado = await verificarCodigoDeIngreso(dbDeIdentidad(), deps, email, texto(formData, "codigo"));
   if (!resultado.ok) return { paso: "codigo", email: estado.email || email, error: CODIGO_INVALIDO };
   await ponerCookieDePendiente(resultado.token, deps.ahora());
   return { paso: "segundo-factor", email, error: null };
@@ -47,7 +47,7 @@ export async function enviarCodigoDelMail(estado: EstadoDeIngreso, formData: For
 export async function enviarSegundoFactor(estado: EstadoDeIngreso, formData: FormData): Promise<EstadoDeIngreso> {
   const token = await tokenDeLaCookie();
   if (!token) return { paso: "email", email: "", error: "La sesión venció. Empezá de nuevo." };
-  const resultado = await verificarSegundoFactor(dbPlataforma(), dependencias(), token, texto(formData, "factor"));
+  const resultado = await verificarSegundoFactor(dbDeIdentidad(), dependencias(), token, texto(formData, "factor"));
   if (!resultado.ok) {
     if (resultado.motivo === "SESION_INVALIDA") {
       await borrarCookieDeSesion();

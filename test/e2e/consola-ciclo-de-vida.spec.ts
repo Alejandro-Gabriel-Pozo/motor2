@@ -44,7 +44,7 @@ async function aceptarComoGerente(browser: Browser, baseURL: string | undefined,
 }
 
 async function confirmarEnLaConsola(page: Page, empresaId: string) {
-  await page.goto(`${CONSOLA}/empresas/${empresaId}`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${empresaId}`);
   await page.getByLabel("Revisé el CUIT contra la constancia de ARCA").check();
   await page.getByRole("button", { name: "Confirmar el alta" }).click();
   await page.getByRole("button", { name: /^Sí: confirmar el alta/ }).click();
@@ -56,12 +56,12 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   const datos = { nombre: `E2E Ciclo ${m}`, slug: `e2e-ciclo-${m}`, email: `gerente-ciclo-${m}@local.test` };
 
   // Alta desde la consola (formulario de E5).
-  await page.goto(`${CONSOLA}/empresas/nueva`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/nueva`);
   await page.getByLabel("Nombre", { exact: true }).fill(datos.nombre);
   await page.getByLabel("Identificador (slug)").fill(datos.slug);
   await page.getByLabel("Email del dueño (será el gerente)").fill(datos.email);
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/(?!nueva)[^/]+$`));
+  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/instalaciones/e2ea/empresas/(?!nueva)[^/]+$`));
   const empresaId = page.url().split("/").at(-1)!;
   empresasActivadas.push(empresaId);
 
@@ -73,13 +73,13 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   // La consola la ve en «CUIT pendiente» y en el inicio.
   await page.goto(`${CONSOLA}/`);
   await expect(page.getByText(/espera[n]? que confirmes su CUIT/)).toBeVisible();
-  await page.goto(`${CONSOLA}/empresas?filtro=cuit-pendiente`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas?filtro=cuit-pendiente`);
   await expect(page.getByRole("link", { name: "CUIT pendiente" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("link", { name: `Ver ${datos.nombre}` })).toBeVisible();
   await sinViolaciones(page);
 
   // Detalle: no se puede confirmar sin tildar la revisión; con el aviso de confirmación abierto, también sin violaciones de axe.
-  await page.goto(`${CONSOLA}/empresas/${empresaId}`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${empresaId}`);
   await expect(page.getByRole("button", { name: "Confirmar el alta" })).toBeDisabled();
   await sinViolaciones(page);
   await page.getByLabel("Revisé el CUIT contra la constancia de ARCA").check();
@@ -99,7 +99,7 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   await expect(app.getByText("está en alta.")).toHaveCount(0);
 
   // Corregir el CUIT: pide motivo y confirmación, y queda en el historial.
-  await page.goto(`${CONSOLA}/empresas/${empresaId}`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${empresaId}`);
   await sinViolaciones(page);
   await page.getByLabel("CUIT nuevo").fill(CUIT_CORREGIDO);
   await page.locator("#motivo-cuit").fill("Constancia de ARCA");
@@ -109,7 +109,7 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   expect((await leerDeLaBase((db) => db.empresa.findUniqueOrThrow({ where: { id: empresaId } }))).cuit).toBe("20123456786");
 
   // Suspender: el gerente ve que su empresa está suspendida y a quién escribir.
-  await page.goto(`${CONSOLA}/empresas/${empresaId}`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${empresaId}`);
   await page.locator("#motivo-suspender").fill("Prueba de suspensión");
   await page.getByRole("button", { name: "Suspender la empresa" }).click();
   await page.getByRole("button", { name: /^Sí: suspender la empresa/ }).click();
@@ -120,7 +120,7 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   expect((await new AxeBuilder({ page: app }).analyze()).violations).toEqual([]);
 
   // Reactivar: el gerente vuelve a entrar.
-  await page.goto(`${CONSOLA}/empresas/${empresaId}`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${empresaId}`);
   await page.getByRole("button", { name: "Reactivar la empresa" }).click();
   await page.getByRole("button", { name: /^Sí: reactivar la empresa/ }).click();
   await expect(page.getByText(/quedó activa de nuevo/)).toBeVisible();
@@ -128,7 +128,7 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   await expect(app.getByText("está suspendida.")).toHaveCount(0);
 
   // El historial lo cuenta todo.
-  await page.goto(`${CONSOLA}/empresas/${empresaId}`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${empresaId}`);
   for (const texto of ["Alta confirmada", "CUIT corregido", "Empresa suspendida", "Empresa reactivada"]) await expect(page.getByText(texto).first()).toBeVisible();
 });
 
@@ -141,7 +141,7 @@ test("dos empresas que declararon el mismo CUIT: la primera que se confirma lo c
   await aceptarComoGerente(browser, baseURL, b, CUIT);
 
   // Las dos se ven marcadas como repetidas antes de confirmar ninguna.
-  await page.goto(`${CONSOLA}/empresas/${b.empresaId}`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${b.empresaId}`);
   await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)').filter({ hasText: "CUIT repetido" })).toContainText(a.nombre);
 
   await confirmarEnLaConsola(page, a.empresaId);

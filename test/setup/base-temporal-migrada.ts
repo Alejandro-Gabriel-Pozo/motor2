@@ -43,6 +43,8 @@ function procesoVivo(pid: number): boolean {
 }
 
 export interface BaseTemporalMigrada {
+  /** La URL (del dueño) de la base temporal: para armar un cliente de Prisma contra ella. */
+  url: string;
   /** Cliente (como dueño) de la base temporal. */
   cliente: Client;
   /** Aplica, en orden, las migraciones pendientes ANTERIORES a `migracion` (ella no). */
@@ -88,6 +90,7 @@ export async function crearBaseTemporalMigrada(): Promise<BaseTemporalMigrada> {
   };
 
   return {
+    url: urlTemporal.toString(),
     cliente,
     async aplicarAntesDe(migracion) {
       if (!pendientes.includes(migracion)) throw new Error(`base-temporal-migrada: la migración "${migracion}" no existe (o ya se aplicó).`);

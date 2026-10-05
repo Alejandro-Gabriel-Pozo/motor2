@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { CLAVES_DE_ENTORNO_DE_PLATAFORMA, ROL_DE_PLATAFORMA, leerEntornoDePlataforma } from "../../plataforma/src/entorno";
+import { CLAVES_DE_ENTORNO_DE_PLATAFORMA, CLAVES_OPCIONALES_DE_ENTORNO_DE_PLATAFORMA, ROL_DE_PLATAFORMA, leerEntornoDePlataforma } from "../../plataforma/src/entorno";
 
 /**
  * La configuración de la consola (E4, ADR-019): cerrada por defecto. Sin su propia variable de conexión no hay base, y la conexión tiene que ser la
@@ -96,5 +96,11 @@ describe("entorno de la consola de plataforma", () => {
 
   it("declara exactamente las cuatro variables que el despliegue tiene que configurar", () => {
     expect([...CLAVES_DE_ENTORNO_DE_PLATAFORMA].sort()).toEqual(["PLATAFORMA_CLAVE_TOTP", "PLATAFORMA_DATABASE_URL", "PLATAFORMA_SECRETO_CODIGOS", "PLATAFORMA_URL_APP"]);
+  });
+
+  it("las variables de instalaciones son opcionales: sin ellas el entorno es válido, y se declaran aparte (ADR-025)", () => {
+    expect([...CLAVES_OPCIONALES_DE_ENTORNO_DE_PLATAFORMA].sort()).toEqual(["PLATAFORMA_INSTALACIONES_ADICIONALES", "PLATAFORMA_INSTALACION_ID", "PLATAFORMA_INSTALACION_NOMBRE"]);
+    for (const clave of CLAVES_OPCIONALES_DE_ENTORNO_DE_PLATAFORMA) expect(CLAVES_DE_ENTORNO_DE_PLATAFORMA).not.toContain(clave);
+    expect(leerEntornoDePlataforma(VALIDO)).toEqual(VALIDO);
   });
 });

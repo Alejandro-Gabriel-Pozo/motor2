@@ -87,7 +87,7 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
   });
 
   it("src/ no conoce el cliente ni la variable de plataforma", () => {
-    const problemas = archivos(join(RAIZ, "src")).filter((r) => /cliente-plataforma|PLATAFORMA_DATABASE_URL|prismaPlataforma/.test(readFileSync(r, "utf8")));
+    const problemas = archivos(join(RAIZ, "src")).filter((r) => /cliente-plataforma|PLATAFORMA_DATABASE_URL|PLATAFORMA_INSTALACION|prismaPlataforma/.test(readFileSync(r, "utf8")));
     expect(problemas).toEqual([]);
   });
 
@@ -97,6 +97,7 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
       const linea = fuente.split("\n").find((l) => l.startsWith(`${lista}="`));
       expect(linea, `no encuentro la lista ${lista}`).toBeDefined();
       expect(linea).not.toContain("PLATAFORMA_DATABASE_URL");
+      expect(linea, "ninguna variable de la consola va a la app").not.toMatch(/\sPLATAFORMA_/);
     }
     expect(fuente).toMatch(/PLATAFORMA_DATABASE_URL" \]\]; then\s+\[\[ -z "\$valor" \]\] \|\| fallar/);
   });

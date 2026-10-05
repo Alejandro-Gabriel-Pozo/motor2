@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { sirvePorHttps } from "@/core/auth/cookie-sesion";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { VIDA_DE_SESION_PENDIENTE_MS, debeAnotarActividad, sesionVigente } from "@/core/plataforma/sesion";
-import { dbPlataforma } from "../db";
+import { dbDeIdentidad } from "../db";
 
 /**
  * Cookie de sesión de la consola (ADR-012 §2). Propia: no es la de Auth.js ni se parece a ella. En https lleva el prefijo `__Host-` (el navegador la
@@ -49,7 +49,7 @@ export interface AdministradorEnSesion {
 export async function administradorEnSesion(ahora: Date = new Date()): Promise<AdministradorEnSesion | null> {
   const token = await tokenDeLaCookie();
   if (!token) return null;
-  const db = dbPlataforma();
+  const db = dbDeIdentidad();
   const sesion = await db.sesionPlataforma.findUnique({ where: { hashToken: hashDeToken(token) }, include: { admin: true } });
   if (!sesion || sesion.segundoFactorEn === null || !sesion.admin.activo || !sesionVigente(sesion, ahora)) return null;
   if (debeAnotarActividad(sesion, ahora)) await db.sesionPlataforma.update({ where: { id: sesion.id }, data: { ultimaActividad: ahora } });
@@ -58,5 +58,5 @@ export async function administradorEnSesion(ahora: Date = new Date()): Promise<A
 
 /** Cierra la sesión del token (vigente o pendiente) en la base. Idempotente. */
 export async function cerrarSesionDelToken(token: string, ahora: Date = new Date()): Promise<void> {
-  await dbPlataforma().sesionPlataforma.updateMany({ where: { hashToken: hashDeToken(token), cerradaEn: null }, data: { cerradaEn: ahora } });
+  await dbDeIdentidad().sesionPlataforma.updateMany({ where: { hashToken: hashDeToken(token), cerradaEn: null }, data: { cerradaEn: ahora } });
 }

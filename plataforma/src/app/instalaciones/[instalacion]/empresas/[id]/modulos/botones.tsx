@@ -14,8 +14,8 @@ function Mensaje({ estado }: { estado: EstadoDeFormulario }) {
 }
 
 /** Un botón por módulo y operación. El aviso de confirmación lo arma el servidor (qué se suma o se pierde). */
-export function CambiarModulo({ empresaId, modulo, operacion, etiqueta, aviso }: { empresaId: string; modulo: string; operacion: "activar" | "desactivar"; etiqueta: string; aviso: string }) {
-  const [estado, accion, enCurso] = useActionState(cambiarModulo.bind(null, empresaId, modulo, operacion), null);
+export function CambiarModulo({ instalacion, empresaId, modulo, operacion, etiqueta, aviso }: { instalacion: string; empresaId: string; modulo: string; operacion: "activar" | "desactivar"; etiqueta: string; aviso: string }) {
+  const [estado, accion, enCurso] = useActionState(cambiarModulo.bind(null, instalacion, empresaId, modulo, operacion), null);
   return (
     <form action={accion}>
       <BotonConConfirmacion etiqueta={etiqueta} aviso={aviso} enCurso={enCurso} secundario={operacion === "desactivar"} />
@@ -24,8 +24,8 @@ export function CambiarModulo({ empresaId, modulo, operacion, etiqueta, aviso }:
   );
 }
 
-export function ActivarTodos({ empresaId, aviso }: { empresaId: string; aviso: string }) {
-  const [estado, accion, enCurso] = useActionState(activarTodosLosModulos.bind(null, empresaId), null);
+export function ActivarTodos({ instalacion, empresaId, aviso }: { instalacion: string; empresaId: string; aviso: string }) {
+  const [estado, accion, enCurso] = useActionState(activarTodosLosModulos.bind(null, instalacion, empresaId), null);
   return (
     <form action={accion}>
       <BotonConConfirmacion etiqueta="Activar todos los disponibles" aviso={aviso} enCurso={enCurso} />

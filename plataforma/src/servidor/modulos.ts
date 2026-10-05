@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { validarCambioDeModulos } from "@/core/modulos/clausura";
 import { explicarErrorDeCambio, nombreDeModulo, vistaDeModulos, type FilaDeModulo } from "@/core/modulos/vista-de-modulos";
-import { auditarEnTransaccion, type Autor } from "./auditoria";
+import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
 import { bloquearEmpresa } from "./ciclo-de-vida";
 
 /**
@@ -34,7 +34,7 @@ export async function leerModulosDeEmpresa(db: Db, empresaId: string): Promise<M
 
 const entradaSchema = z.object({ activar: z.array(z.string().min(1).max(60)).max(20).default([]), desactivar: z.array(z.string().min(1).max(60)).max(20).default([]) });
 
-export async function cambiarModulosDesdeLaConsola(db: Db, autor: Autor, empresaId: string, entrada: unknown): Promise<ResultadoDeModulos> {
+export async function cambiarModulosDesdeLaConsola(db: Db, autor: AutorEnInstalacion, empresaId: string, entrada: unknown): Promise<ResultadoDeModulos> {
   const parseo = entradaSchema.safeParse(entrada);
   if (!parseo.success) return { ok: false, mensaje: "El pedido de módulos no es válido." };
   const { activar, desactivar } = parseo.data;

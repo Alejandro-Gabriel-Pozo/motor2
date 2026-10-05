@@ -1,8 +1,10 @@
-# Guion de producción (para correr desde otra PC), 2026-10-05
+# Guion de producción (para correr desde otra PC), actualizado a la consola única (ADR-025)
 
 > Autocontenido: usa solo archivos de esta carpeta (`.env`, `.env.vercel.zuluhub`, `.env.vercel.empresa`) y comandos de PowerShell. Se corre parado en la raíz del repo (`motor2`).
 > **Qué pegarle de vuelta a Claude:** solo las salidas que dicen «PEGAR». **Nunca** pegues URLs de conexión, claves, secretos TOTP ni códigos de recuperación.
-> Cada bloque tiene su motivo en `docs/deploy-con-migraciones.md` (sección ADR-024) y en `docs/checkpoint-2026-10-05-plataforma.md`.
+> Cada bloque tiene su motivo en `docs/deploy-con-migraciones.md` y en `docs/checkpoint-2026-10-05-plataforma.md`.
+>
+> **Estado al 2026-10-05:** la migración de E8 **ya está aplicada en las dos bases de producción** (respaldadas: `respaldo-pre-e8-zuluhub-2026-10-05` y `respaldo-pre-e8-stockhneuquen-2026-10-05`). Lo que falta es lo de abajo.
 
 ## 0. Preparación (una vez)
 
@@ -12,65 +14,85 @@ npm install
 psql --version                # tiene que existir (cliente de Postgres); si no, instalarlo
 ```
 
-## 1. Solo lectura (seguro, sin cambios)
+## 1. Solo lectura (seguro)
 
 ```powershell
 node scripts/operaciones/con-env.mjs .env.vercel.zuluhub -- npx prisma migrate status
 node scripts/operaciones/con-env.mjs .env.vercel.empresa -- npx prisma migrate status
-node scripts/operaciones/con-env.mjs .env.vercel.zuluhub -- npm run medir-precargados
-node scripts/operaciones/con-env.mjs .env.vercel.empresa -- npm run medir-precargados
 ```
-PEGAR las cuatro salidas. Esperado: en cada base **una** migración pendiente (`20261012120000_invitacion_de_usuario`); zuluhub 0 precargados sin Google y stockhneuquen 1.
+PEGAR las dos salidas. Esperado: «Database schema is up to date!» en ambas.
 
 ## 2. Rol `motor2_plataforma` (una vez por base: zuluhub y después stockhneuquen)
 
-Conectarse **como dueño** (la `DIRECT_URL` de cada archivo; en Neon no hace falta superusuario y **nunca** crear el rol desde la consola de Neon). Elegí una clave nueva y fuerte por base y guardala.
+Conectarse **como dueño** (la `DIRECT_URL` de cada archivo). En Neon no hace falta superusuario y **nunca** crear el rol desde la consola de Neon (nacería con BYPASSRLS). Elegí una clave nueva y fuerte **por base** y guardala.
 
 ```powershell
 $u = ((Get-Content .env.vercel.zuluhub | Where-Object { $_ -like 'DIRECT_URL=*' }) -replace '^DIRECT_URL=','').Trim()
 psql $u -v clave="LA-CLAVE-NUEVA-DE-ZULUHUB" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+
+$u = ((Get-Content .env.vercel.empresa | Where-Object { $_ -like 'DIRECT_URL=*' }) -replace '^DIRECT_URL=','').Trim()
+psql $u -v clave="LA-CLAVE-NUEVA-DE-STOCKHNEUQUEN" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
 ```
-Repetir con `.env.vercel.empresa` y otra clave. **No** usar `-v restringir=1` todavía. PEGAR si hay algún error (si termina sin error, avisar «ok»). El script es idempotente.
+**No** usar `-v restringir=1` todavía. PEGAR si hay algún error (si termina sin error, avisar «ok»). El script es idempotente.
 
-## 3. Archivo de entorno de la consola (por instalación)
+## 3. Las variables de la consola (un solo proyecto para las dos instalaciones)
 
-Crear `.env.plataforma.zuluhub` (gitignored; repetir con `.empresa` si querés una consola por instalación hasta que exista la consola única). La URL del rol es la misma que la `DIRECT_URL` pero con el usuario `motor2_plataforma` y su clave:
+Los nombres son estos, exactos. **Vos reemplazás los valores entre `<…>`** (claves reales y direcciones). Los hosts de Neon que se ven abajo no son secretos.
+
+| Variable | Valor |
+|---|---|
+| `PLATAFORMA_DATABASE_URL` | `postgresql://motor2_plataforma:<CLAVE_ZULUHUB>@ep-noisy-truth-b41up2et.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require` |
+| `PLATAFORMA_URL_APP` | `https://<dirección pública de la app de zuluhub>` (https, sin ruta) |
+| `PLATAFORMA_INSTALACION_ID` | `zuluhub` |
+| `PLATAFORMA_INSTALACION_NOMBRE` | `Zuluhub` |
+| `PLATAFORMA_INSTALACIONES_ADICIONALES` | `[{"id":"stockhneuquen","nombre":"Stock Neuquén","urlApp":"https://<dirección pública de la app de stockhneuquen>"}]` |
+| `PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN` | `postgresql://motor2_plataforma:<CLAVE_STOCKHNEUQUEN>@ep-lingering-morning-afg7n33y.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require` |
+| `PLATAFORMA_SECRETO_CODIGOS` | un secreto de **32 caracteres o más** (ver el comando de abajo) |
+| `PLATAFORMA_CLAVE_TOTP` | una clave de **32 bytes en base64** (ver el comando de abajo) |
+| `CORREO_AVISOS_RESEND_API_KEY` | `<clave de Resend>` |
+| `CORREO_AVISOS_REMITENTE` | `Avisos <no-responder@<tu dominio verificado en Resend>>` |
+
+Reglas: la clave de cada URL tiene que estar **codificada en porcentaje** si lleva caracteres especiales; el JSON de instalaciones **no lleva claves**; cada URL de conexión conecta con el usuario `motor2_plataforma`.
+Los dos secretos aleatorios se generan sin mostrarse en pantalla, directo a un archivo local (después los copiás a Vercel desde el archivo):
 
 ```powershell
-$clave = "LA-CLAVE-NUEVA-DE-ZULUHUB"
-$uri = [Uri]$u
-"PLATAFORMA_DATABASE_URL=postgresql://motor2_plataforma:$([Uri]::EscapeDataString($clave))@$($uri.Host)$($uri.PathAndQuery)" | Out-File -Encoding ascii .env.plataforma.zuluhub
-"PLATAFORMA_URL_APP=https://LA-DIRECCION-PUBLICA-DE-LA-APP-DE-ZULUHUB" | Add-Content -Encoding ascii .env.plataforma.zuluhub
-node -e "const c=require('crypto'),f=require('fs');f.appendFileSync('.env.plataforma.zuluhub','PLATAFORMA_SECRETO_CODIGOS='+c.randomBytes(32).toString('base64')+'\n'+'PLATAFORMA_CLAVE_TOTP='+c.randomBytes(32).toString('base64')+'\n')"
+node -e "const c=require('crypto'),f=require('fs');f.appendFileSync('.env.plataforma.consola','PLATAFORMA_SECRETO_CODIGOS='+c.randomBytes(32).toString('base64')+'\n'+'PLATAFORMA_CLAVE_TOTP='+c.randomBytes(32).toString('base64')+'\n')"
 ```
-Probar que conecta (PEGAR la salida; no imprime valores): `$env:DOTENV_CONFIG_PATH=".env.plataforma.zuluhub"; npx tsx -e "import('./scripts/cliente-plataforma').then(async m=>{console.log(await m.prismaPlataforma.empresa.count());process.exit(0)})"`
 
-## 4. Proyecto de Vercel de la consola (panel web, sin terminal)
+**Comprobar la configuración antes de subirla a Vercel** (arma un archivo `.env.plataforma.consola` con las variables de la tabla y corre esto; imprime solo ids y hosts, nunca claves):
+```powershell
+$env:DOTENV_CONFIG_PATH=".env.plataforma.consola"
+npx tsx -e "import 'dotenv/config'; import('./plataforma/src/entorno').then(m => console.log(m.leerInstalaciones(process.env).map(i => i.id + ' -> ' + new URL(i.databaseUrl).hostname + ' (' + i.urlApp + ')')))"
+```
+PEGAR la salida. Si algo está mal, el mensaje nombra la variable (nunca el valor).
+
+## 4. Proyecto de Vercel de la consola (panel web, sin terminal). UNO solo.
 
 1. New Project → importar `Alejandro-Gabriel-Pozo/motor2` → **Root Directory `plataforma`**, framework Next.js.
-2. **Production Branch:** poner `multitenancy-fase-a` (el código de la consola solo está ahí; `main` no lo tiene).
-3. Variables de entorno (Production), copiando los valores de `.env.plataforma.zuluhub`: `PLATAFORMA_DATABASE_URL`, `PLATAFORMA_SECRETO_CODIGOS`, `PLATAFORMA_CLAVE_TOTP`, `PLATAFORMA_URL_APP`; y las del canal de mails: `CORREO_AVISOS_RESEND_API_KEY`, `CORREO_AVISOS_REMITENTE`.
+2. **Production Branch:** `multitenancy-fase-a` (el código de la consola solo está ahí; `main` no lo tiene).
+3. Variables de entorno (Production): las 10 de la tabla del §3, copiadas del archivo `.env.plataforma.consola`.
 4. Deploy. PEGAR la dirección que te da Vercel (no es secreta).
 
 ## 5. Primer administrador de la consola
 
+El administrador vive en la base de la instalación **principal** (zuluhub):
 ```powershell
-$env:DOTENV_CONFIG_PATH=".env.plataforma.zuluhub"
+$env:DOTENV_CONFIG_PATH=".env.plataforma.consola"
 npm run plataforma:crear-admin -- --email tu-email@dominio.com --nombre "Tu Nombre"
 ```
-Imprime **una sola vez** el secreto TOTP y los códigos de recuperación: escanear/guardar al instante. Después borrar `.env.plataforma.*` si no los vas a usar más. Probar el ingreso a la consola desplegada.
+Imprime **una sola vez** el secreto TOTP y los códigos de recuperación: escanear/guardar al instante. Después borrar `.env.plataforma.consola`. Probar el ingreso a la consola desplegada: tienen que verse las dos instalaciones en el inicio.
 
-## 6. E8 en producción (después de que la consola ande)
+## 6. E8 (invitación por usuario) en producción
 
-1. Variables de **la app** de cada instalación (sin pasar valores por pantalla): `bash scripts/operaciones/cargar-env-zuluhub.sh --plantilla` crea `.env.vercel.zuluhub` si no existe; con el archivo ya existente, agregar `AUTH_URL=` (https, sin ruta), `CORREO_AVISOS_RESEND_API_KEY=` y `CORREO_AVISOS_REMITENTE=`; luego `bash scripts/operaciones/cargar-env-zuluhub.sh` (ensayo: muestra qué haría) y `bash scripts/operaciones/cargar-env-zuluhub.sh --ejecutar`. Lo mismo con `cargar-env-empresa.sh` para stockhneuquen. Hay que **redesplegar** la app para que las lea.
-2. Migración, base por base (zuluhub primero): en Neon crear la rama de respaldo `respaldo-pre-e8-<despliegue>-2026-10-05` y una rama de ensayo; correr `migrate deploy` contra el ensayo (con un archivo propio que apunte a esa rama), comprobar con `psql` que `has_table_privilege('motor2_app','"Invitacion"','INSERT')` es `t` y `'DELETE'` es `f`, que `InvitacionSucursal` existe con 2 triggers, y borrar el ensayo. **Pedirle a Claude la autorización expresa antes del paso siguiente.** Luego:
-   `node scripts/operaciones/con-env.mjs .env.vercel.zuluhub -- npm run migrar:aprobar` (y lo mismo con `.env.vercel.empresa`). Después volver a correr el §2 (idempotente).
-3. Desplegar la app. En Administración → Usuarios, «Invitar a vincular» a la persona precargada de stockhneuquen. Prueba de humo: alta de una persona nueva → mail → enlace → Google → Aceptar.
-4. Vigilar Sentry 48 horas.
+La migración ya está aplicada (ver el estado arriba). Falta:
+1. Variables de **la app** de cada instalación (sin pasar valores por pantalla): `AUTH_URL` (https, fija, sin ruta), `CORREO_AVISOS_RESEND_API_KEY` y `CORREO_AVISOS_REMITENTE`. Con `bash scripts/operaciones/cargar-env-zuluhub.sh --plantilla` se crea `.env.vercel.zuluhub` si no existe; agregá esas tres líneas, probá con `bash scripts/operaciones/cargar-env-zuluhub.sh` (ensayo: muestra qué haría) y cargá con `--ejecutar`. Lo mismo con `cargar-env-empresa.sh` para stockhneuquen. También se pueden cargar a mano en el panel de Vercel. Hay que **redesplegar** la app para que las lea.
+2. Desplegar la app (rama `multitenancy-fase-a`). En Administración → Usuarios, «Invitar a vincular» a la persona precargada de stockhneuquen. Prueba de humo: alta de una persona nueva → mail → enlace → Google → Aceptar.
+3. Vigilar Sentry 48 horas.
 
 ## Dónde se traba y qué hacer
 
 - `psql` pide contraseña o falla el SSL: la `DIRECT_URL` ya trae `sslmode=require`; si no, agregarlo.
-- `migrate status` dice que hay migraciones que no conoce: falta `git pull`.
+- La consola no arranca y dice «Configuración de la consola de plataforma inválida»: el mensaje nombra la variable que falta o está mal (revisar la tabla del §3).
 - El ingreso a la consola no manda el código: revisar `CORREO_AVISOS_*` en el proyecto de la consola.
+- Una instalación aparece como «No pudimos leer…»: revisar su `PLATAFORMA_DATABASE_URL_<ID>` y que el rol exista en esa base (§2).
 - Cualquier error: pegarlo a Claude (sin URLs ni claves).

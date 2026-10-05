@@ -3,7 +3,7 @@ import { expect, type Page } from "@playwright/test";
 import { cifrarSecreto } from "../../../src/core/plataforma/cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigo, hashDeCodigoDeRecuperacion } from "../../../src/core/plataforma/codigos";
 import { codigoTotp, generarSecretoTotp, pasoDeTotp } from "../../../src/core/plataforma/totp";
-import { crearPrismaE2E, resolverUrlE2E } from "./base-e2e";
+import { crearPrismaE2E, resolverUrlE2E, resolverUrlE2EB } from "./base-e2e";
 
 /**
  * La consola de plataforma en los E2E (E4, ADR-019): sus dos secretos son valores FIJOS y descartables (la base E2E se vacía en cada corrida), compartidos entre
@@ -83,4 +83,20 @@ export async function ingresarALaConsola(page: Page, consola: string): Promise<A
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page).toHaveURL(`${consola}/`);
   return admin;
+}
+
+/** Los ids de las dos instalaciones de la consola en los E2E (ADR-025): A es la principal (la base de siempre) y B la segunda base. */
+export const INSTALACION_A = "e2ea";
+export const INSTALACION_B = "e2eb";
+
+/** Lo mismo que `leerDeLaBase`, pero sobre la base de la SEGUNDA instalación (como dueño). */
+export async function leerDeLaBaseB<T>(consulta: (prisma: ReturnType<typeof crearPrismaE2E>) => Promise<T>): Promise<T> {
+  const base = resolverUrlE2EB(process.env);
+  if (!base) throw new Error("No hay segunda base E2E (MOTOR2_E2E_B_DATABASE_URL).");
+  const prisma = crearPrismaE2E(base);
+  try {
+    return await consulta(prisma);
+  } finally {
+    await prisma.$disconnect();
+  }
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
+import { rutaDeEmpresas } from "../../../../../rutas";
 import { darDeAlta } from "../acciones";
 
 /** Alta de una empresa: nace en alta (sin CUIT ni módulos) y le manda la invitación de gerente al email del dueño. */
-export function FormularioDeAlta() {
-  const [estado, accion, pendiente] = useActionState(darDeAlta, null);
+export function FormularioDeAlta({ instalacion }: { instalacion: string }) {
+  const [estado, accion, pendiente] = useActionState(darDeAlta.bind(null, instalacion), null);
   return (
     <form action={accion} className="tarjeta" noValidate>
       <h1>Dar de alta una empresa</h1>
@@ -31,7 +32,7 @@ export function FormularioDeAlta() {
         {pendiente ? "Creando…" : "Dar de alta"}
       </button>
       <p className="ayuda">
-        <a href="/empresas">Volver a las empresas</a>
+        <a href={rutaDeEmpresas(instalacion)}>Volver a las empresas</a>
       </p>
     </form>
   );

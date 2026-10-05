@@ -34,7 +34,7 @@ async function ingresar(page: Page): Promise<AdminSembrado> {
 }
 
 async function llenarElAlta(page: Page, datos: { nombre: string; slug: string; email: string; zona?: string }) {
-  await page.goto(`${CONSOLA}/empresas/nueva`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/nueva`);
   await page.getByLabel("Nombre", { exact: true }).fill(datos.nombre);
   await page.getByLabel("Identificador (slug)").fill(datos.slug);
   await page.getByLabel("Zona horaria").fill(datos.zona ?? "America/Argentina/Buenos_Aires");
@@ -46,7 +46,7 @@ async function sinViolaciones(page: Page) {
 }
 
 test("sin sesión, ni la lista ni el alta ni el detalle se abren: mandan al login", async ({ page }) => {
-  for (const ruta of ["/empresas", "/empresas/nueva", "/empresas/cualquiera"]) {
+  for (const ruta of ["/instalaciones/e2ea/empresas", "/instalaciones/e2ea/empresas/nueva", "/instalaciones/e2ea/empresas/cualquiera", "/instalaciones/noexiste/empresas"]) {
     await page.goto(`${CONSOLA}${ruta}`);
     await expect(page, ruta).toHaveURL(`${CONSOLA}/login`);
   }
@@ -73,7 +73,7 @@ test("alta completa: valida, da de alta, queda auditada con el administrador com
   // Alta correcta: va al detalle.
   await llenarElAlta(page, datos);
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/(?!nueva)[^/]+$`));
+  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/instalaciones/e2ea/empresas/(?!nueva)[^/]+$`));
   await expect(page.getByRole("heading", { level: 1, name: datos.nombre })).toBeVisible();
   await expect(page.getByText(`Pendiente · ${datos.email}`)).toBeVisible();
   await sinViolaciones(page);
@@ -114,7 +114,7 @@ test("alta completa: valida, da de alta, queda auditada con el administrador com
   expect(acciones.map((a) => a.accion)).toEqual(["alta-de-empresa", "invitacion-reenviada", "invitacion-revocada", "invitacion-creada"]);
 
   // La lista la muestra.
-  await page.goto(`${CONSOLA}/empresas`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas`);
   await expect(page.getByRole("link", { name: `Ver ${datos.nombre}` })).toBeVisible();
   await sinViolaciones(page);
 });
@@ -125,7 +125,7 @@ test("recorrido cruzado: lo que la consola da de alta lo acepta el gerente en la
   const datos = { nombre: `E2E Cruzado ${m}`, slug: `e2e-cruzado-${m}`, email: `gerente-${m}@local.test` };
   await llenarElAlta(page, datos);
   await page.getByRole("button", { name: "Dar de alta" }).click();
-  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/empresas/(?!nueva)[^/]+$`));
+  await expect(page).toHaveURL(new RegExp(`${CONSOLA}/instalaciones/e2ea/empresas/(?!nueva)[^/]+$`));
   const detalle = page.url();
 
   // El token real viaja por mail: se lo reemplaza por uno conocido.

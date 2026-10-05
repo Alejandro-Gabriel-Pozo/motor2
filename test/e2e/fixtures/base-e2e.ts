@@ -88,6 +88,34 @@ export function resolverUrlPlataformaE2E(env: Record<string, string | undefined>
   return plataforma;
 }
 
+/**
+ * La SEGUNDA instalación de los E2E (ADR-025): otra base local cuyo nombre también termina en `_e2e` (p. ej. `motor2_b_e2e`), migrada, para probar que UNA consola opera dos bases sin
+ * mezclarlas. `null` si no se configuró (el spec multi-instalación se omite). Tiene que ser OTRA base que la de siempre: operar «las dos» contra la misma no probaría nada.
+ */
+export function resolverUrlE2EB(env: Record<string, string | undefined>): BaseE2E | null {
+  if (!env.MOTOR2_E2E_B_DATABASE_URL) return null;
+  const a = resolverUrlE2E(env);
+  const b = validarUrlE2E(env, "MOTOR2_E2E_B_DATABASE_URL");
+  if (b.host === a.host && b.nombre === a.nombre) {
+    throw new Error("MOTOR2_E2E_B_DATABASE_URL apunta a la misma base que MOTOR2_E2E_DATABASE_URL: la segunda instalación tiene que ser OTRA base.");
+  }
+  return b;
+}
+
+/** La conexión de la consola a la segunda base: el rol `motor2_plataforma` sobre ESA misma base. Solo tiene sentido si hay segunda base. */
+export function resolverUrlPlataformaE2EB(env: Record<string, string | undefined>): BaseE2E | null {
+  const b = resolverUrlE2EB(env);
+  if (!b) return null;
+  const plataforma = validarUrlE2E(env, "MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL");
+  if (plataforma.host !== b.host || plataforma.nombre !== b.nombre) {
+    throw new Error(`MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL (${plataforma.host}/${plataforma.nombre}) tiene que apuntar a la misma base que MOTOR2_E2E_B_DATABASE_URL (${b.host}/${b.nombre}).`);
+  }
+  if (decodeURIComponent(new URL(plataforma.url).username) !== ROL_DE_PLATAFORMA) {
+    throw new Error(`MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL tiene que conectar con el rol ${ROL_DE_PLATAFORMA}.`);
+  }
+  return plataforma;
+}
+
 function validarUrlE2E(env: Record<string, string | undefined>, variable: string): BaseE2E {
   const url = env[variable];
   if (!url) {

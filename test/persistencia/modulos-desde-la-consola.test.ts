@@ -8,7 +8,7 @@ import { cambiarModulosDesdeLaConsola, leerModulosDeEmpresa } from "../../plataf
  * Módulos de una empresa desde la consola (E7, ADR-023) contra Postgres real. El primer bloque usa la conexión del DUEÑO; el segundo, el rol REAL `motor2_plataforma`,
  * solo si hay `PLATAFORMA_DATABASE_URL` (en CI corre).
  */
-const AUTOR = { adminId: "admin-modulos", adminEmail: "admin@plataforma.test" };
+const AUTOR = { adminId: "admin-modulos", adminEmail: "admin@plataforma.test", instalacionId: "prueba" };
 const SLUG = "empresa-modulos-consola";
 let empresaId: string;
 let otraId: string;
@@ -47,7 +47,7 @@ function pruebas(nombre: string, via: () => PrismaClient) {
       expect(await activosDe(empresaId)).toEqual(["salon"]);
       const [a, ...resto] = await auditorias();
       expect(resto).toHaveLength(0);
-      expect(a).toMatchObject({ accion: "modulo-activado", adminId: AUTOR.adminId, adminEmail: AUTOR.adminEmail, empresaAfectadaId: empresaId, detalle: { modulo: "salon", antes: "sin fila" } });
+      expect(a).toMatchObject({ accion: "modulo-activado", adminId: AUTOR.adminId, adminEmail: AUTOR.adminEmail, empresaAfectadaId: empresaId, detalle: { modulo: "salon", antes: "sin fila", instalacion: "prueba" } });
       expect(await prismaAdmin.registroAuditoria.count()).toBe(antes);
     });
 

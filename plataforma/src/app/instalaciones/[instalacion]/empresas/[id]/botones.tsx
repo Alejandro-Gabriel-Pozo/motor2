@@ -15,9 +15,9 @@ function Mensaje({ estado }: { estado: EstadoDeFormulario }) {
 }
 
 /** Reenviar y revocar la invitación pendiente. Revocar pide confirmación: el enlace deja de servir y no hay vuelta atrás (se invita de nuevo). */
-export function AccionesDeInvitacion({ empresaId, hayPendiente }: { empresaId: string; hayPendiente: boolean }) {
-  const [estadoReenvio, accionReenvio, reenviando] = useActionState(reenviar.bind(null, empresaId), null);
-  const [estadoRevocar, accionRevocar, revocando] = useActionState(revocar.bind(null, empresaId), null);
+export function AccionesDeInvitacion({ instalacion, empresaId, hayPendiente }: { instalacion: string; empresaId: string; hayPendiente: boolean }) {
+  const [estadoReenvio, accionReenvio, reenviando] = useActionState(reenviar.bind(null, instalacion, empresaId), null);
+  const [estadoRevocar, accionRevocar, revocando] = useActionState(revocar.bind(null, instalacion, empresaId), null);
   if (!hayPendiente) return null;
   return (
     <div className="acciones">
@@ -37,8 +37,8 @@ export function AccionesDeInvitacion({ empresaId, hayPendiente }: { empresaId: s
 }
 
 /** Invitar a otro email (por ejemplo si el primero estaba mal escrito): revoca la pendiente y crea una nueva. */
-export function InvitarDeNuevo({ empresaId }: { empresaId: string }) {
-  const [estado, accion, pendiente] = useActionState(invitarOtraVez.bind(null, empresaId), null);
+export function InvitarDeNuevo({ instalacion, empresaId }: { instalacion: string; empresaId: string }) {
+  const [estado, accion, pendiente] = useActionState(invitarOtraVez.bind(null, instalacion, empresaId), null);
   return (
     <form action={accion} className="acciones" noValidate>
       <div>
@@ -57,8 +57,8 @@ export function InvitarDeNuevo({ empresaId }: { empresaId: string }) {
  * Confirmar el alta: el CUIT viene precargado con el que declaró el gerente. Hay que tildar que se revisó contra la constancia de ARCA; si se cambia el CUIT, además
  * hay que aceptar expresamente que se confirma uno distinto del declarado (queda auditado).
  */
-export function ConfirmarAlta({ empresaId, nombre, cuitDeclarado, repetidoCon }: { empresaId: string; nombre: string; cuitDeclarado: string; repetidoCon: string[] }) {
-  const [estado, accion, pendiente] = useActionState(confirmar.bind(null, empresaId), null);
+export function ConfirmarAlta({ instalacion, empresaId, nombre, cuitDeclarado, repetidoCon }: { instalacion: string; empresaId: string; nombre: string; cuitDeclarado: string; repetidoCon: string[] }) {
+  const [estado, accion, pendiente] = useActionState(confirmar.bind(null, instalacion, empresaId), null);
   const [cuit, setCuit] = useState(formatearCuit(cuitDeclarado));
   const [revisado, setRevisado] = useState(false);
   const [distinto, setDistinto] = useState(false);
@@ -100,9 +100,9 @@ export function ConfirmarAlta({ empresaId, nombre, cuitDeclarado, repetidoCon }:
 }
 
 /** Corregir (o cargar) el CUIT de una empresa activa o suspendida; con motivo. Quitarlo solo si está suspendida. */
-export function CorregirCuit({ empresaId, cuitActual, puedeQuitar }: { empresaId: string; cuitActual: string | null; puedeQuitar: boolean }) {
-  const [estado, accion, pendiente] = useActionState(corregirCuit.bind(null, empresaId), null);
-  const [estadoQuitar, accionQuitar, quitando] = useActionState(quitarCuit.bind(null, empresaId), null);
+export function CorregirCuit({ instalacion, empresaId, cuitActual, puedeQuitar }: { instalacion: string; empresaId: string; cuitActual: string | null; puedeQuitar: boolean }) {
+  const [estado, accion, pendiente] = useActionState(corregirCuit.bind(null, instalacion, empresaId), null);
+  const [estadoQuitar, accionQuitar, quitando] = useActionState(quitarCuit.bind(null, instalacion, empresaId), null);
   return (
     <div className="acciones">
       <form action={accion} noValidate>
@@ -127,8 +127,8 @@ export function CorregirCuit({ empresaId, cuitActual, puedeQuitar }: { empresaId
   );
 }
 
-export function Suspender({ empresaId, nombre }: { empresaId: string; nombre: string }) {
-  const [estado, accion, pendiente] = useActionState(suspender.bind(null, empresaId), null);
+export function Suspender({ instalacion, empresaId, nombre }: { instalacion: string; empresaId: string; nombre: string }) {
+  const [estado, accion, pendiente] = useActionState(suspender.bind(null, instalacion, empresaId), null);
   return (
     <form action={accion} className="acciones" noValidate>
       <h2>Suspender</h2>
@@ -141,8 +141,8 @@ export function Suspender({ empresaId, nombre }: { empresaId: string; nombre: st
   );
 }
 
-export function Reactivar({ empresaId, nombre }: { empresaId: string; nombre: string }) {
-  const [estado, accion, pendiente] = useActionState(reactivar.bind(null, empresaId), null);
+export function Reactivar({ instalacion, empresaId, nombre }: { instalacion: string; empresaId: string; nombre: string }) {
+  const [estado, accion, pendiente] = useActionState(reactivar.bind(null, instalacion, empresaId), null);
   return (
     <form action={accion} className="acciones" noValidate>
       <h2>Reactivar</h2>
@@ -154,8 +154,8 @@ export function Reactivar({ empresaId, nombre }: { empresaId: string; nombre: st
   );
 }
 
-export function ReenviarAviso({ empresaId }: { empresaId: string }) {
-  const [estado, accion, pendiente] = useActionState(reenviarAviso.bind(null, empresaId), null);
+export function ReenviarAviso({ instalacion, empresaId }: { instalacion: string; empresaId: string }) {
+  const [estado, accion, pendiente] = useActionState(reenviarAviso.bind(null, instalacion, empresaId), null);
   return (
     <form action={accion} className="acciones">
       <button type="submit" className="secundario" disabled={pendiente}>

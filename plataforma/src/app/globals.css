@@ -250,3 +250,22 @@ dd {
   color: var(--texto-suave);
   font-size: 0.9rem;
 }
+
+/* Inicio: una tarjeta por instalación (ADR-025). */
+.instalaciones {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.instalaciones li {
+  border: 1px solid var(--borde, #d4d4d8);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.instalaciones li p {
+  margin: 0.25rem 0;
+}

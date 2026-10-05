@@ -3,6 +3,16 @@
 > Para retomar desde otra terminal o sesión sin la conversación anterior. No contiene credenciales. El detalle fino de cada decisión vive en los ADR (012, 019 a 024) y en
 > `docs/deploy-con-migraciones.md`; la memoria de Claude (`motor2-plan-plataforma-e1-e8-y-solicitudes-de-pago.md`) tiene el historial completo.
 
+## 0. ACTUALIZACIÓN (2026-10-05, tarde): esto reemplaza lo viejo de §4, §5 y §6
+
+- **La migración de E8 ya está aplicada en las dos bases de producción**, con respaldo, ensayo y verificación (zuluhub: rama `vercel-dev`, no `main`; stockhneuquen: `main`). Respaldos: `respaldo-pre-e8-zuluhub-2026-10-05` y
+  `respaldo-pre-e8-stockhneuquen-2026-10-05`. La app desplegada sigue con el código anterior, que no usa las tablas nuevas. En zuluhub se borró la rama de preview `preview/ccr-32ed95d2-vsvc5a` para liberar el límite de ramas de Neon.
+- **La consola única para las dos instalaciones está implementada** (ADR-025): la instalación va en la ruta (`/instalaciones/<id>/empresas…`), una base por instalación, identidad aparte y cada fila de auditoría lleva la instalación.
+  Hay **un solo proyecto de Vercel** de la consola; sus variables y su configuración están en `docs/guion-produccion-2026-10-05.md` (§3 y §4, con los nombres exactos). Sin migraciones. El CI crea una segunda base (`motor2_b_e2e`).
+- **Lo que sigue siendo del dueño** (necesita terminal o panel): crear el rol `motor2_plataforma` en cada base de Neon (guion §2), el proyecto de Vercel de la consola con sus variables (guion §3–§4), el primer administrador (guion §5),
+  y las variables `AUTH_URL` + `CORREO_AVISOS_*` en los proyectos de la **app** de cada instalación y su redeploy (guion §6), más «Invitar a vincular» a la persona precargada de stockhneuquen.
+- Pendientes menores de la consola única (en ADR-025): `crear-primer-admin` que revise también las bases adicionales, aviso de CUIT repetido entre instalaciones, `--instalacion` en los scripts `modulos-empresa` y `politica-empresa`.
+
 ## 1. En una línea
 
 El código de la plataforma (consola, alta de empresas, ciclo de vida, módulos, invitación por usuario) está **terminado y pusheado**. **Nada de esto está desplegado en producción

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { defineConfig } from "@playwright/test";
-import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlPlataformaE2E } from "./test/e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlPlataformaE2E, resolverUrlPlataformaE2EB } from "./test/e2e/fixtures/base-e2e";
 import { CLAVE_TOTP_E2E, SECRETO_DE_CODIGOS_E2E } from "./test/e2e/fixtures/consola";
 
 /**
@@ -61,6 +61,10 @@ const URL_BASE = `http://localhost:${PUERTO}`;
 const basePlataforma = resolverUrlPlataformaE2E(process.env);
 const PUERTO_PLATAFORMA = Number(process.env.MOTOR2_E2E_PUERTO_PLATAFORMA ?? 56473);
 const URL_PLATAFORMA = `http://localhost:${PUERTO_PLATAFORMA}`;
+// ADR-025: con una SEGUNDA base (y la consola), la consola administra dos instalaciones reales más una «caída» (conexión rechazada al instante). El spec se entera por esta variable.
+const basePlataformaB = basePlataforma ? resolverUrlPlataformaE2EB(process.env) : null;
+if (basePlataformaB) process.env.MOTOR2_E2E_INSTALACION_B = "1";
+else delete process.env.MOTOR2_E2E_INSTALACION_B;
 if (basePlataforma) process.env.MOTOR2_E2E_URL_PLATAFORMA = URL_PLATAFORMA;
 else delete process.env.MOTOR2_E2E_URL_PLATAFORMA;
 
@@ -141,6 +145,19 @@ export default defineConfig({
               PLATAFORMA_CLAVE_TOTP: CLAVE_TOTP_E2E,
               // A dónde apuntan los enlaces de las invitaciones: la app de empresas de este mismo E2E.
               PLATAFORMA_URL_APP: URL_BASE,
+              PLATAFORMA_INSTALACION_ID: "e2ea",
+              PLATAFORMA_INSTALACION_NOMBRE: "E2E A",
+              ...(basePlataformaB
+                ? {
+                    PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify([
+                      { id: "e2eb", nombre: "E2E B", urlApp: "http://localhost:56475" },
+                      { id: "caida", nombre: "E2E caída", urlApp: "http://localhost:56476" },
+                    ]),
+                    PLATAFORMA_DATABASE_URL_E2EB: basePlataformaB.url,
+                    // Puerto 1: la conexión se rechaza al instante. Es la instalación «caída».
+                    PLATAFORMA_DATABASE_URL_CAIDA: "postgresql://motor2_plataforma:x@127.0.0.1:1/motor2_caida_e2e",
+                  }
+                : {}),
               PORT: String(PUERTO_PLATAFORMA),
             },
             url: `${URL_PLATAFORMA}/login`,

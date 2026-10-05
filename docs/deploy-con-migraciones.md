@@ -50,7 +50,7 @@ Cuatro migraciones llegan juntas a cada base: `20261003120000_extensiones_btree_
    un deploy sobre una base sin registro falla antes de publicar.
 5. Recién ahí el deploy.
 
-Alta y baja de módulos de una empresa: la vía normal es la consola (`/empresas/[id]/modulos`, ADR-023); `npm run modulos-empresa` con `PLATAFORMA_DATABASE_URL` (rol `motor2_plataforma`) queda como vía de emergencia.
+Alta y baja de módulos de una empresa: la vía normal es la consola (`/instalaciones/<id>/empresas/<empresa>/modulos`, ADR-023 y ADR-025); `npm run modulos-empresa` con `PLATAFORMA_DATABASE_URL` (rol `motor2_plataforma`) queda como vía de emergencia.
 Para volver atrás una migración del bloque, ver `scripts/operaciones/restaurar-registro-de-modulos.md`.
 
 ## Consola de plataforma (E4, ADR-019): migraciones y puesta en marcha

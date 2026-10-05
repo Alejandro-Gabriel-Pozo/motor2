@@ -1,4 +1,4 @@
-import { crearPrismaE2E, resetearBaseE2E, resolverUrlE2E } from "./fixtures/base-e2e";
+import { crearPrismaE2E, resetearBaseE2E, resolverUrlE2E, resolverUrlE2EB } from "./fixtures/base-e2e";
 
 /**
  * Después de cada corrida de Playwright: la base E2E queda VACÍA. Es lo que
@@ -14,5 +14,14 @@ export default async function globalTeardown() {
     console.log(`[e2e] Reset final: ${filasAntes} filas generadas por la corrida, borradas. Base ${base.nombre} vacía.`);
   } finally {
     await prismaE2E.$disconnect();
+  }
+  const baseB = resolverUrlE2EB(process.env);
+  if (baseB) {
+    const prismaB = crearPrismaE2E(baseB);
+    try {
+      await resetearBaseE2E(prismaB);
+    } finally {
+      await prismaB.$disconnect();
+    }
   }
 }

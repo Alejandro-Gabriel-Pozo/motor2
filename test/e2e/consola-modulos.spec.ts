@@ -28,7 +28,7 @@ test.afterAll(async () => {
 
 test("activar Salón trae Stock, bloquea desactivarlo y la empresa lo ve; desactivar lo quita", async ({ page, browser, baseURL }) => {
   await ingresarALaConsola(page, CONSOLA!);
-  await page.goto(`${CONSOLA}/empresas/${e.b.empresaId}/modulos`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${e.b.empresaId}/modulos`);
   await expect(page.getByRole("heading", { name: /^Módulos de / })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
@@ -64,7 +64,7 @@ test("activar Salón trae Stock, bloquea desactivarlo y la empresa lo ve; desact
 
 test("un código desconocido en la URL no muestra texto ajeno", async ({ page }) => {
   await ingresarALaConsola(page, CONSOLA!);
-  await page.goto(`${CONSOLA}/empresas/${e.b.empresaId}/modulos?hecho=modulo-activado&modulo=<b>falso</b>`);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${e.b.empresaId}/modulos?hecho=modulo-activado&modulo=<b>falso</b>`);
   await expect(page.getByRole("heading", { name: /^Módulos de / })).toBeVisible();
   await expect(page.getByText("falso")).toHaveCount(0);
   await expect(page.getByText("quedó activado")).toHaveCount(0);
