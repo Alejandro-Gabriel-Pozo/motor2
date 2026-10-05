@@ -1,10 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
+import type { PrismaClient } from "@prisma/client";
 import { ROL_DE_PLATAFORMA, instalacionPorId, leerInstalaciones, variableDeConexionDe } from "../../plataforma/src/entorno";
+import { migracionesAplicadas } from "../../plataforma/src/servidor/migraciones";
 import { crearRegistroDeClientes } from "../../plataforma/src/registro-de-clientes";
 import { rutaDeAlta, rutaDeEmpresa, rutaDeEmpresas, rutaDeInstalacion } from "../../plataforma/src/rutas";
 import { dependenciasParaInstalacion } from "../../plataforma/src/servidor/dependencias";
-import { conTiempoLimite, resumenDeInstalaciones } from "../../plataforma/src/servidor/resumen";
+import { marcarAtrasos, resumenDeInstalaciones } from "../../plataforma/src/servidor/resumen";
+import { conTiempoLimite } from "../../plataforma/src/servidor/tiempo-limite";
 
 /**
  * Una consola, varias instalaciones (ADR-025). La configuración falla cerrada y sus mensajes nombran la variable, nunca el valor; el registro de clientes, las dependencias por
@@ -162,21 +165,90 @@ describe("resumen del inicio", () => {
   it("una base que falla o no responde no afecta a las demás: solo su tarjeta dice «caída»", async () => {
     const r = await resumenDeInstalaciones([zulu, stock], async (i) => {
       if (i.id === "stockhneuquen") throw new Error("la base no responde");
-      return 3;
+      return { pendientes: 3, migraciones: null };
     });
-    expect(r).toEqual([{ instalacion: zulu, estado: "ok", pendientes: 3 }, { instalacion: stock, estado: "caida" }]);
+    expect(r).toEqual([{ instalacion: zulu, estado: "ok", pendientes: 3, atraso: null }, { instalacion: stock, estado: "caida" }]);
   });
 
   it("una base que NO responde nunca se da por caída recién al tope de tiempo, sin colgar el inicio", async () => {
     // Mutación: sacar el tope (conTiempoLimite) cuelga este test.
-    const colgada = new Promise<number>(() => {});
-    const r = await resumenDeInstalaciones([zulu, stock], async (i) => (i.id === "stockhneuquen" ? colgada : 1), 30);
+    const colgada = new Promise<{ pendientes: number; migraciones: null }>(() => {});
+    const r = await resumenDeInstalaciones([zulu, stock], async (i) => (i.id === "stockhneuquen" ? colgada : { pendientes: 1, migraciones: null }), 30);
     expect(r.map((x) => x.estado)).toEqual(["ok", "caida"]);
   });
 
   it("conTiempoLimite deja pasar lo que termina a tiempo y rechaza lo que no", async () => {
     await expect(conTiempoLimite(Promise.resolve(7), 50)).resolves.toBe(7);
     await expect(conTiempoLimite(new Promise<number>(() => {}), 10)).rejects.toThrow("tiempo agotado");
+  });
+});
+
+describe("marcarAtrasos (ADR-025: aviso de instalación atrasada en migraciones)", () => {
+  const [zulu, stock] = leerInstalaciones(CON_ADICIONAL);
+  const caida = instalacionPorId(leerInstalaciones({ ...CON_ADICIONAL, PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify([...ADICIONAL, { id: "caida", nombre: "Caída", urlApp: "https://caida.ejemplo.test" }]), PLATAFORMA_DATABASE_URL_CAIDA: url("ep-caida.neon.tech") }), "caida")!;
+
+  it("B le falta una migración que A ya tiene: queda atrasada respecto de A, con el nombre de la más nueva que falta", () => {
+    const r = marcarAtrasos([{ instalacion: zulu, migraciones: ["m1", "m2"] }, { instalacion: stock, migraciones: ["m1"] }]);
+    expect(r.get(zulu.id)).toBeNull();
+    expect(r.get(stock.id)).toEqual({ respectoDe: zulu.nombre, faltan: 1, masNueva: "m2" });
+  });
+
+  it("las mismas migraciones en las dos: ninguna atrasada", () => {
+    const r = marcarAtrasos([{ instalacion: zulu, migraciones: ["m1", "m2"] }, { instalacion: stock, migraciones: ["m1", "m2"] }]);
+    expect(r.get(zulu.id)).toBeNull();
+    expect(r.get(stock.id)).toBeNull();
+  });
+
+  it("divergencia (cada una tiene algo que la otra no): a cada una se le informa lo que le falta", () => {
+    const r = marcarAtrasos([{ instalacion: zulu, migraciones: ["m1", "m2"] }, { instalacion: stock, migraciones: ["m1", "m3"] }]);
+    expect(r.get(zulu.id)).toEqual({ respectoDe: stock.nombre, faltan: 1, masNueva: "m3" });
+    expect(r.get(stock.id)).toEqual({ respectoDe: zulu.nombre, faltan: 1, masNueva: "m2" });
+  });
+
+  it("una instalación caída (sin lectura) no participa: ni de referencia, ni recibe aviso", () => {
+    const r = marcarAtrasos([{ instalacion: zulu, migraciones: ["m1", "m2"] }, { instalacion: stock, migraciones: ["m1"] }, { instalacion: caida, migraciones: null }]);
+    expect(r.get(caida.id)).toBeNull();
+    expect(r.get(stock.id)).toEqual({ respectoDe: zulu.nombre, faltan: 1, masNueva: "m2" });
+  });
+
+  it("sin permiso para leer (null) en TODAS: nadie queda marcado atrasado", () => {
+    const r = marcarAtrasos([{ instalacion: zulu, migraciones: null }, { instalacion: stock, migraciones: null }]);
+    expect(r.get(zulu.id)).toBeNull();
+    expect(r.get(stock.id)).toBeNull();
+  });
+
+  it("una sola instalación: nunca hay con qué compararla", () => {
+    const r = marcarAtrasos([{ instalacion: zulu, migraciones: ["m1"] }]);
+    expect(r.get(zulu.id)).toBeNull();
+  });
+});
+
+describe("migracionesAplicadas (ADR-025)", () => {
+  const prismaFalso = (ejecutar: () => Promise<Array<{ migration_name: string }>>) => ({ $queryRaw: ejecutar }) as unknown as PrismaClient;
+
+  it("devuelve los nombres de las migraciones aplicadas, ordenados", async () => {
+    const db = prismaFalso(async () => [{ migration_name: "m1" }, { migration_name: "m2" }]);
+    await expect(migracionesAplicadas(db)).resolves.toEqual(["m1", "m2"]);
+  });
+
+  it("sin el GRANT todavía (42501) o sin la tabla (42P01), no lanza: devuelve null", async () => {
+    const sinPermiso = prismaFalso(async () => {
+      throw new Error("Raw query failed. Code: `42501`. Message: permission denied for table _prisma_migrations");
+    });
+    await expect(migracionesAplicadas(sinPermiso)).resolves.toBeNull();
+
+    const sinTabla = prismaFalso(async () => {
+      throw new Error('Raw query failed. Code: `42P01`. Message: relation "_prisma_migrations" does not exist');
+    });
+    await expect(migracionesAplicadas(sinTabla)).resolves.toBeNull();
+  });
+
+  it("cualquier otro error se propaga (no se traga en silencio)", async () => {
+    // Mutación: atrapar CUALQUIER error (sin mirar el código) pone este test en rojo.
+    const otraFalla = prismaFalso(async () => {
+      throw new Error("connection terminated unexpectedly");
+    });
+    await expect(migracionesAplicadas(otraFalla)).rejects.toThrow("connection terminated unexpectedly");
   });
 });
 

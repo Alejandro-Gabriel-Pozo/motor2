@@ -83,11 +83,13 @@ describe.skipIf(!process.env.PLATAFORMA_DATABASE_URL)("con el rol motor2_platafo
   // Lista cerrada: es la misma que documenta scripts/operaciones/crear-rol-motor2-plataforma.sql. Una tabla nueva no entra sola.
   const LECTURA_Y_ALTA_Y_CAMBIO = ["Empresa", "User", "ModuloEmpresa", "AdminPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma", "Invitacion"];
   const LECTURA_Y_ALTA = ["Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal", "UsuarioEmpresa", "UsuarioSucursal", "RegistroAuditoria", "AuditoriaPlataforma"];
+  // Solo lectura de metadatos (ADR-025, aviso de instalación atrasada en migraciones): NUNCA datos de negocio, nunca escritura.
+  const SOLO_LECTURA = ["_prisma_migrations"];
   const PRIVILEGIOS = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"];
 
   it("tiene los privilegios mínimos, tabla por tabla: nunca DELETE, nada sobre las tablas de operación", async () => {
     const tablas = await prismaAdmin.$queryRaw<Array<{ tabla: string }>>`
-      SELECT tablename::text AS tabla FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations' ORDER BY 1`;
+      SELECT tablename::text AS tabla FROM pg_tables WHERE schemaname = 'public' ORDER BY 1`;
     const reales: Record<string, string[]> = {};
     for (const { tabla } of tablas) {
       const [{ privilegios }] = await prismaAdmin.$queryRawUnsafe<Array<{ privilegios: string[] }>>(
@@ -98,7 +100,13 @@ describe.skipIf(!process.env.PLATAFORMA_DATABASE_URL)("con el rol motor2_platafo
     }
     const esperados: Record<string, string[]> = {};
     for (const { tabla } of tablas) {
-      esperados[tabla] = LECTURA_Y_ALTA_Y_CAMBIO.includes(tabla) ? ["SELECT", "INSERT", "UPDATE"] : LECTURA_Y_ALTA.includes(tabla) ? ["SELECT", "INSERT"] : [];
+      esperados[tabla] = LECTURA_Y_ALTA_Y_CAMBIO.includes(tabla)
+        ? ["SELECT", "INSERT", "UPDATE"]
+        : LECTURA_Y_ALTA.includes(tabla)
+          ? ["SELECT", "INSERT"]
+          : SOLO_LECTURA.includes(tabla)
+            ? ["SELECT"]
+            : [];
     }
     expect(reales).toEqual(esperados);
   });

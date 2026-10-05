@@ -4,6 +4,7 @@ import { dbDeInstalacion } from "../db";
 import { instalacionesConfiguradas } from "../entorno";
 import { rutaDeEmpresas } from "../rutas";
 import { contarCuitPendiente } from "../servidor/empresas";
+import { migracionesAplicadas } from "../servidor/migraciones";
 import { resumenDeInstalaciones } from "../servidor/resumen";
 import { administradorEnSesion } from "../servidor/sesion";
 import { salir } from "./login/acciones";
@@ -13,7 +14,11 @@ export default async function Inicio() {
   const admin = await administradorEnSesion();
   if (!admin) redirect("/login");
   const ahora = new Date();
-  const resumen = await resumenDeInstalaciones(instalacionesConfiguradas(), (instalacion) => contarCuitPendiente(dbDeInstalacion(instalacion), ahora));
+  const resumen = await resumenDeInstalaciones(instalacionesConfiguradas(), async (instalacion) => {
+    const db = dbDeInstalacion(instalacion);
+    const [pendientes, migraciones] = await Promise.all([contarCuitPendiente(db, ahora), migracionesAplicadas(db)]);
+    return { pendientes, migraciones };
+  });
   return (
     <section className="tarjeta">
       <h1>Consola de plataforma</h1>
@@ -37,6 +42,11 @@ export default async function Inicio() {
               </p>
             ) : (
               <p className="ayuda">Nada pendiente.</p>
+            )}
+            {r.estado === "ok" && r.atraso && (
+              <p className="aviso" role="status">
+                Atrasada en migraciones: le faltan {r.atraso.faltan} que {r.atraso.respectoDe} ya tiene (la más nueva, {r.atraso.masNueva}). Aplicalas en esa base antes de operarla: algunas pantallas podrían no andar.
+              </p>
             )}
           </li>
         ))}

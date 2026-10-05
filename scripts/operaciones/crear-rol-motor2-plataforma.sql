@@ -13,6 +13,8 @@
 --   RegistroAuditoria, AuditoriaPlataforma SELECT, INSERT           (append-only)
 --   AdminPlataforma y sus códigos/sesión   SELECT, INSERT, UPDATE   (identidad de la consola; sin DELETE)
 --   Invitacion                             SELECT, INSERT, UPDATE   (alta, reenvío y revocación de la invitación del gerente, E5; sin DELETE)
+--   _prisma_migrations                     SELECT                   (solo lectura de metadatos —nombre y fecha de cada migración—, nunca datos de negocio:
+--                                                                     avisa en el inicio si una instalación quedó atrasada en migraciones respecto de otra, ADR-025)
 -- Las tablas de identidad las crean las migraciones 20261009120000 y 20261009130000; si el rol se crea antes de aplicarlas, ellas mismas le dan el permiso al
 -- crearse (si el rol ya existe) y este script se vuelve a correr después sin riesgo (es idempotente).
 -- ORDEN: primero crear el rol y probar los scripts con PLATAFORMA_DATABASE_URL; recién después correr con restringir=1 (el REVOKE a motor2_app): si no, los
@@ -49,6 +51,16 @@ GRANT USAGE ON SCHEMA public TO motor2_plataforma;
 
 GRANT SELECT, INSERT, UPDATE ON "Empresa", "User", "ModuloEmpresa" TO motor2_plataforma;
 GRANT SELECT, INSERT ON "Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal", "UsuarioEmpresa", "UsuarioSucursal", "RegistroAuditoria" TO motor2_plataforma;
+
+-- Solo lectura de metadatos de Prisma (nombre y fecha de cada migración aplicada; CERO datos de negocio): aviso de «instalación atrasada en migraciones»
+-- (ADR-025). Siempre existe en una base con al menos una migración aplicada; si no (una base recién creada, antes de migrar), este GRANT no hace nada.
+DO $$
+BEGIN
+  IF to_regclass('public._prisma_migrations') IS NOT NULL THEN
+    GRANT SELECT ON public._prisma_migrations TO motor2_plataforma;
+  END IF;
+END
+$$;
 
 -- Tablas de identidad de plataforma e invitaciones: solo si ya las crearon las migraciones (si no, las migraciones darán el permiso al crearse).
 DO $$
