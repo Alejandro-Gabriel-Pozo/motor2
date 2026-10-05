@@ -32,13 +32,70 @@ export interface AdminDePlataformaCreado {
   codigosDeRecuperacion: string[];
 }
 
+/**
+ * Otra instalación donde también hay que comprobar el email antes de crear un administrador (ADR-025): un administrador de plataforma no entra a
+ * ninguna empresa, de NINGUNA instalación. Solo `id`, `nombre` y un cliente ya abierto: ninguna `databaseUrl` entra a este módulo (el nombre de su
+ * variable se arma solo en `plataforma/src/entorno.ts`, y un mensaje de error acá nunca podría filtrar una).
+ */
+export interface InstalacionARevisar {
+  id: string;
+  nombre: string;
+  db: PrismaClient;
+}
+
+/**
+ * No se pudo revisar una instalación adicional (su base no respondió). A diferencia de las pantallas de la consola (ADR-025 §4: una instalación caída
+ * no las tumba), acá se falla cerrado: el alta es irreversible en la práctica (imprime el TOTP y los códigos una sola vez) y crea un sujeto con poder
+ * sobre TODAS las instalaciones, así que sin poder revisar una no hay forma de saber si el email ya es de un usuario ahí. El mensaje nunca incluye el
+ * error original (podría traer host o usuario de la conexión): queda solo como `cause`, sin imprimirse.
+ */
+export class InstalacionNoRevisableError extends Error {
+  readonly instalacionId: string;
+
+  constructor(instalacionId: string, nombre: string, causa: unknown) {
+    super(`No pudimos revisar la instalación «${nombre}» (${instalacionId}): su base no respondió.`, { cause: causa });
+    this.name = "InstalacionNoRevisableError";
+    this.instalacionId = instalacionId;
+  }
+}
+
+export interface OpcionesDeAltaDeAdmin {
+  emisor?: string;
+  /** Las instalaciones adicionales a revisar, además de la propia (ADR-025). Ninguna se escribe: solo se lee. */
+  otrasBases?: readonly InstalacionARevisar[];
+}
+
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type ConflictoDeEmail = "usuario" | "invitacion" | null;
+
+/** `null` si el email está libre en esta base; si no, por qué no puede ser administrador de plataforma. */
+async function conflictoDeEmail(db: PrismaClient, email: string): Promise<ConflictoDeEmail> {
+  // El administrador no entra a ninguna empresa (ADR-012 §1): el mismo email no puede ser, además, usuario de una.
+  const usuario = await db.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } });
+  if (usuario) return "usuario";
+
+  // Tampoco si ya lo invitaron a ser gerente de una empresa (E5): al aceptar entraría a ella, y el administrador no entra a ninguna.
+  const invitada = await db.invitacion.findFirst({ where: { email, estado: "PENDIENTE" }, select: { id: true } }).catch((e: unknown) => {
+    // Una base un paso atrás en la migración de invitaciones (ADR-024/025) no puede tener ninguna pendiente.
+    if (typeof e === "object" && e !== null && "code" in e && e.code === "P2021") return null;
+    throw e;
+  });
+  return invitada ? "invitacion" : null;
+}
+
+function mensajeDeConflicto(conflicto: "usuario" | "invitacion", nombreDeInstalacion?: string): string {
+  const donde = nombreDeInstalacion ? ` en la instalación «${nombreDeInstalacion}»` : "";
+  return conflicto === "usuario"
+    ? `Ese email ya es de un usuario de una empresa${donde}: un administrador de plataforma no puede serlo.`
+    : `Ese email tiene una invitación pendiente para ser gerente de una empresa${donde}: un administrador de plataforma no puede serlo.`;
+}
 
 export async function crearAdminDePlataforma(
   db: PrismaClient,
   entrada: { email: string; nombre: string },
   secretos: SecretosDeLaConsola,
-  emisor = "Motor 2 plataforma",
+  opciones: OpcionesDeAltaDeAdmin = {},
 ): Promise<AdminDePlataformaCreado> {
   const email = normalizarEmail(entrada.email);
   const nombre = entrada.nombre.trim();
@@ -47,17 +104,20 @@ export async function crearAdminDePlataforma(
 
   const existente = await db.adminPlataforma.findUnique({ where: { email }, select: { id: true } });
   if (existente) throw new AdminDePlataformaInvalidoError("Ya existe un administrador de plataforma con ese email.");
-  // El administrador no entra a ninguna empresa (ADR-012 §1): el mismo email no puede ser, además, usuario de una.
-  const usuario = await db.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } });
-  if (usuario) throw new AdminDePlataformaInvalidoError("Ese email ya es de un usuario de una empresa: un administrador de plataforma no puede serlo.");
 
-  // Tampoco si ya lo invitaron a ser gerente de una empresa (E5): al aceptar entraría a ella, y el administrador no entra a ninguna.
-  const invitada = await db.invitacion.findFirst({ where: { email, estado: "PENDIENTE" }, select: { id: true } }).catch((e: unknown) => {
-    // En una base que todavía no tiene la migración de invitaciones (el primer admin se crea ANTES de usar E5) no puede haber ninguna pendiente.
-    if (typeof e === "object" && e !== null && "code" in e && e.code === "P2021") return null;
-    throw e;
-  });
-  if (invitada) throw new AdminDePlataformaInvalidoError("Ese email tiene una invitación pendiente para ser gerente de una empresa: un administrador de plataforma no puede serlo.");
+  const conflictoPropio = await conflictoDeEmail(db, email);
+  if (conflictoPropio) throw new AdminDePlataformaInvalidoError(mensajeDeConflicto(conflictoPropio));
+
+  // Las instalaciones adicionales (ADR-025): nada se escribe todavía, así que un rechazo acá no deja nada a medias.
+  for (const instalacion of opciones.otrasBases ?? []) {
+    let conflicto: ConflictoDeEmail;
+    try {
+      conflicto = await conflictoDeEmail(instalacion.db, email);
+    } catch (causa) {
+      throw new InstalacionNoRevisableError(instalacion.id, instalacion.nombre, causa);
+    }
+    if (conflicto) throw new AdminDePlataformaInvalidoError(mensajeDeConflicto(conflicto, instalacion.nombre));
+  }
 
   const id = randomUUID();
   const secretoTotp = generarSecretoTotp();
@@ -68,5 +128,5 @@ export async function crearAdminDePlataforma(
       data: codigosDeRecuperacion.map((codigo) => ({ adminId: id, hashCodigo: hashDeCodigoDeRecuperacion(codigo, secretos.secretoCodigos, id) })),
     });
   });
-  return { id, email, secretoTotp, uriOtpauth: uriOtpauth(secretoTotp, email, emisor), codigosDeRecuperacion };
+  return { id, email, secretoTotp, uriOtpauth: uriOtpauth(secretoTotp, email, opciones.emisor ?? "Motor 2 plataforma"), codigosDeRecuperacion };
 }
