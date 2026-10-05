@@ -16,7 +16,9 @@ export type AccionDePlataforma =
   | "cuit-corregido"
   | "empresa-suspendida"
   | "empresa-reactivada"
-  | "aviso-de-activacion";
+  | "aviso-de-activacion"
+  | "modulo-activado"
+  | "modulo-desactivado";
 
 export interface Autor {
   adminId: string;

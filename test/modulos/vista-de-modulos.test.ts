@@ -22,8 +22,8 @@ describe("vistaDeModulos: los casos de ADR-015", () => {
   });
 
   it("qué se suma al activar y qué se pierde al desactivar", () => {
-    expect(fila([], "salon").alActivarSeSuman.sort()).toEqual(["catalogo_basico", "clientes_basico", "stock"]);
-    expect(fila(["salon"], "salon").alDesactivarSePierden.sort()).toEqual(["catalogo_basico", "clientes_basico", "stock"]);
+    expect([...fila([], "salon").alActivarSeSuman].sort()).toEqual(["catalogo_basico", "clientes_basico", "stock"]);
+    expect([...fila(["salon"], "salon").alDesactivarSePierden].sort()).toEqual(["catalogo_basico", "clientes_basico", "stock"]);
   });
 
   it("desactivar Salón no pierde Stock si Stock está activo por su cuenta... salvo que otro lo siga trayendo", () => {

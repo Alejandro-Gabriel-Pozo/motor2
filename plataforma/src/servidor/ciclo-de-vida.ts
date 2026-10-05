@@ -25,7 +25,7 @@ export interface DependenciasDeCicloDeVida extends DependenciasDeEmpresas {
 type Cliente = PrismaClient;
 export type ResultadoDeCiclo = { ok: true; mensaje: string; enviado?: boolean } | { ok: false; mensaje: string };
 
-interface FilaBloqueada {
+export interface FilaBloqueada {
   id: string;
   estado: EstadoEmpresa;
   cuit: string | null;
@@ -33,7 +33,7 @@ interface FilaBloqueada {
 }
 
 /** Toma el cerrojo de la fila de la empresa y la devuelve; `null` si no existe. */
-async function bloquearEmpresa(tx: Prisma.TransactionClient, empresaId: string): Promise<FilaBloqueada | null> {
+export async function bloquearEmpresa(tx: Prisma.TransactionClient, empresaId: string): Promise<FilaBloqueada | null> {
   const filas = await tx.$queryRaw<FilaBloqueada[]>`SELECT "id", "estado"::text AS "estado", "cuit", "nombre" FROM "Empresa" WHERE "id" = ${empresaId} FOR UPDATE`;
   return filas[0] ?? null;
 }
