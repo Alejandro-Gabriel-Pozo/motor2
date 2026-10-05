@@ -96,6 +96,36 @@ describe("consola de plataforma: identidad y operación no se mezclan (ADR-025)"
     const aMano = codigoDeLaConsola.filter((f) => f.archivo.startsWith("plataforma/src/app/") && /["'`]\/empresas/.test(sinComentarios(f.texto))).map((f) => f.archivo);
     expect(aMano).toEqual([]);
   });
+
+  it("servidor/*.ts siempre pide select (o include con su propio select): sin eso, una instalación un paso atrás en migraciones (ADR-025) rompe la consulta entera", () => {
+    // Mutación: sacar `select:` de cualquier `findUnique`/`findFirst`/`findMany` de plataforma/src/servidor/*.ts pone este test en rojo.
+    const infractores: string[] = [];
+    for (const f of delGrupo(["servidor/"])) {
+      const texto = sinComentarios(f.texto);
+      for (const llamada of texto.matchAll(/\.(findUnique|findFirst|findMany)\(\{/g)) {
+        const inicio = llamada.index! + llamada[0].length - 1;
+        let profundidad = 0;
+        let fin = inicio;
+        for (let i = inicio; i < texto.length; i++) {
+          if (texto[i] === "{") profundidad++;
+          else if (texto[i] === "}") {
+            profundidad--;
+            if (profundidad === 0) {
+              fin = i;
+              break;
+            }
+          }
+        }
+        const argumentos = texto.slice(inicio, fin + 1);
+        if (!/\bselect\s*:/.test(argumentos)) infractores.push(`${f.archivo}: ${llamada[0]}`);
+        // `include` sin su propio `select` anidado trae TODAS las columnas de la relación: mismo riesgo.
+        for (const include of argumentos.matchAll(/include\s*:\s*\{([^}]*)\}/g)) {
+          if (!/\bselect\s*:/.test(include[1])) infractores.push(`${f.archivo}: include sin select anidado`);
+        }
+      }
+    }
+    expect(infractores).toEqual([]);
+  });
 });
 
 describe("consola de plataforma: las reglas de dependency-cruiser que la aíslan", () => {

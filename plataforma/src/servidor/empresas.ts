@@ -110,7 +110,11 @@ export async function darDeAltaEmpresa(db: Db, deps: DependenciasDeEmpresas, aut
 async function empresaEnAltaConInvitacion(tx: Prisma.TransactionClient, empresaId: string) {
   const empresa = await tx.empresa.findUnique({ where: { id: empresaId }, select: { id: true, nombre: true, zonaHoraria: true, estado: true } });
   if (!empresa) return null;
-  const invitacion = await tx.invitacion.findFirst({ where: { empresaId, rolEmpresa: "gerente" }, orderBy: { creadaEn: "desc" } });
+  const invitacion = await tx.invitacion.findFirst({
+    where: { empresaId, rolEmpresa: "gerente" },
+    orderBy: { creadaEn: "desc" },
+    select: { id: true, email: true, estado: true, venceEn: true },
+  });
   return { empresa, invitacion };
 }
 

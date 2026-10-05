@@ -48,7 +48,7 @@ const contextoDeIngreso = (adminId: string, codigoId: string) => `ingreso:${admi
 export async function prepararCodigoDeIngreso(db: Db, deps: DependenciasDeIngreso, emailCrudo: string): Promise<MensajeDeCorreo | null> {
   const email = normalizarEmail(emailCrudo);
   if (!esDireccionValida(email)) return null;
-  const admin = await db.adminPlataforma.findUnique({ where: { email } });
+  const admin = await db.adminPlataforma.findUnique({ where: { email }, select: { id: true, email: true, activo: true } });
   if (!admin || !admin.activo) return null;
 
   const ahora = deps.ahora();
@@ -79,11 +79,15 @@ export type ResultadoPrimerFactor = { ok: true; token: string } | { ok: false };
 export async function verificarCodigoDeIngreso(db: Db, deps: DependenciasDeIngreso, emailCrudo: string, codigoCrudo: string): Promise<ResultadoPrimerFactor> {
   const email = normalizarEmail(emailCrudo);
   const codigo = codigoCrudo.replace(/\s/g, "");
-  const admin = await db.adminPlataforma.findUnique({ where: { email } });
+  const admin = await db.adminPlataforma.findUnique({ where: { email }, select: { id: true, activo: true } });
   if (!admin || !admin.activo) return { ok: false };
 
   const ahora = deps.ahora();
-  const vigente = await db.codigoDeIngresoPlataforma.findFirst({ where: { adminId: admin.id, usadoEn: null, invalidadoEn: null }, orderBy: { creadoEn: "desc" } });
+  const vigente = await db.codigoDeIngresoPlataforma.findFirst({
+    where: { adminId: admin.id, usadoEn: null, invalidadoEn: null },
+    orderBy: { creadoEn: "desc" },
+    select: { id: true, creadoEn: true, hashCodigo: true },
+  });
   if (!vigente || codigoVencido(vigente.creadoEn, ahora)) return { ok: false };
 
   // Se reserva un intento (atómico: cuenta solo si quedaba alguno) y recién después se compara.
@@ -119,14 +123,23 @@ const PARECE_CODIGO_DE_RECUPERACION = /^[A-Za-z2-9]{5}[\s-]?[A-Za-z2-9]{5}$/;
  * fallos, ni el anti-replay del TOTP, ni el consumo de un código de recuperación tienen carrera.
  */
 export async function verificarSegundoFactor(db: Db, deps: DependenciasDeIngreso, tokenPendiente: string, codigoCrudo: string): Promise<ResultadoSegundoFactor> {
-  const sesion = await db.sesionPlataforma.findUnique({ where: { hashToken: hashDeToken(tokenPendiente) } });
+  const sesion = await db.sesionPlataforma.findUnique({
+    where: { hashToken: hashDeToken(tokenPendiente) },
+    select: { id: true, adminId: true, segundoFactorEn: true },
+  });
   if (!sesion || sesion.segundoFactorEn !== null) return { ok: false, motivo: "SESION_INVALIDA" };
 
   return db.$transaction(async (tx): Promise<ResultadoSegundoFactor> => {
     await tx.$queryRaw`SELECT id FROM "AdminPlataforma" WHERE id = ${sesion.adminId} FOR UPDATE`;
-    const admin = await tx.adminPlataforma.findUnique({ where: { id: sesion.adminId } });
+    const admin = await tx.adminPlataforma.findUnique({
+      where: { id: sesion.adminId },
+      select: { id: true, email: true, activo: true, bloqueadoHasta: true, secretoTotp: true, ultimoPasoTotp: true, fallosSegundoFactor: true },
+    });
     // Se vuelve a leer la sesión ya con el cerrojo: otro pedido pudo haberla promovido o cerrado mientras tanto.
-    const actual = await tx.sesionPlataforma.findUnique({ where: { id: sesion.id } });
+    const actual = await tx.sesionPlataforma.findUnique({
+      where: { id: sesion.id },
+      select: { segundoFactorEn: true, creadaEn: true, cerradaEn: true },
+    });
     const ahora = deps.ahora();
     if (!admin || !admin.activo || !actual || actual.segundoFactorEn !== null || !sesionPendienteVigente(actual, ahora)) return { ok: false, motivo: "SESION_INVALIDA" };
     const quien = { adminId: admin.id, adminEmail: admin.email };

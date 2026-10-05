@@ -50,7 +50,17 @@ export async function administradorEnSesion(ahora: Date = new Date()): Promise<A
   const token = await tokenDeLaCookie();
   if (!token) return null;
   const db = dbDeIdentidad();
-  const sesion = await db.sesionPlataforma.findUnique({ where: { hashToken: hashDeToken(token) }, include: { admin: true } });
+  const sesion = await db.sesionPlataforma.findUnique({
+    where: { hashToken: hashDeToken(token) },
+    select: {
+      id: true,
+      segundoFactorEn: true,
+      creadaEn: true,
+      ultimaActividad: true,
+      cerradaEn: true,
+      admin: { select: { id: true, email: true, nombre: true, activo: true } },
+    },
+  });
   if (!sesion || sesion.segundoFactorEn === null || !sesion.admin.activo || !sesionVigente(sesion, ahora)) return null;
   if (debeAnotarActividad(sesion, ahora)) await db.sesionPlataforma.update({ where: { id: sesion.id }, data: { ultimaActividad: ahora } });
   return { sesionId: sesion.id, adminId: sesion.admin.id, email: sesion.admin.email, nombre: sesion.admin.nombre };
