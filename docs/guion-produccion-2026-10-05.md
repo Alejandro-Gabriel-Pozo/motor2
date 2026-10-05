@@ -71,6 +71,7 @@ PEGAR la salida. Si algo está mal, el mensaje nombra la variable (nunca el valo
 
 1. New Project → importar `Alejandro-Gabriel-Pozo/motor2` → **Root Directory `plataforma`**, framework Next.js.
 2. **Production Branch:** `multitenancy-fase-a` (el código de la consola solo está ahí; `main` no lo tiene).
+   Además, en Settings → Build and Deployment, desactivá «Skip deployments when there are no changes» (la consola usa código de `src/`). `plataforma/vercel.json` fija `ignoreCommand: exit 1`: sin él, Vercel aplica el comando de omisión del `vercel.json` de la raíz (hecho para la app) y cancela el despliegue de la consola.
 3. Variables de entorno (Production): las 10 de la tabla del §3, copiadas del archivo `.env.plataforma.consola`.
 4. Deploy. PEGAR la dirección que te da Vercel (no es secreta).
 
