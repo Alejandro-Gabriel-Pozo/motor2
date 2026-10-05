@@ -16,7 +16,7 @@
  *
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio.
  */
-export { conTransaccionSerializable, esConflictoDeEscritura } from "./con-reintento";
+export { conTransaccionSerializable, esChoqueDeIndiceUnico, esConflictoDeEscritura } from "./con-reintento";
 export { conReintento } from "./reintentar";
 export { MENSAJE_CONFLICTO_IDEMPOTENCIA, calcularPayloadHash, chequearIdempotencia, registrarResultadoIdempotente } from "./idempotencia";
 export { MENSAJE_FACTURA_DUPLICADA, esChoqueDeFacturaUnica } from "./factura-unica";

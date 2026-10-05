@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, dbDeUsuario } from "./base";
-import { invitacionHabilitaElIngreso } from "./invitacion";
+import { invitacionHabilitaElIngreso, vincularCuentaConInvitacion, type CuentaDeGoogle } from "./invitacion";
 
 function obtenerDominiosPermitidos(): string[] {
   return (process.env.ALLOWED_EMAIL_DOMAINS ?? "")
@@ -95,4 +95,40 @@ async function tieneSucursalActiva(usuarioId: string): Promise<boolean> {
     pertenencias.map(async ({ empresaId }) => Boolean(await dbDeEmpresa(empresaId).usuarioSucursal.findFirst({ where: { usuarioId, activo: true }, select: { id: true } })))
   );
   return conSucursal.some(Boolean);
+}
+
+/**
+ * Lo que el callback `signIn` de Auth.js hace con el resultado: `true` entra, `false` rechaza y una ruta relativa redirige (por ejemplo a `/login` con un aviso).
+ */
+export type DecisionDeInicio = boolean | string;
+
+/**
+ * Decisión completa de `signIn` con el enlace automático de cuentas por email APAGADO (E8, ADR-024). Primero el gate de siempre (`inicioDeSesionPermitido`: email verificado,
+ * kill-switch, sesión abierta de otro email, vías 1 a 3). Después, según el usuario que Auth.js va a usar:
+ *  - no existe: entra (Auth.js lo crea junto con su cuenta, sin conflicto);
+ *  - ya tiene esa cuenta de Google: entra;
+ *  - tiene otra cuenta de Google (mismo email, otro identificador): NO entra (`cuenta-distinta`, lo resuelve soporte);
+ *  - existe y no tiene Google: solo entra si el token de una invitación sirve para vincular la cuenta, y la vincula acá (`falta-invitacion` si no).
+ */
+export async function decidirInicioDeSesion(entrada: {
+  emailUsuario: string;
+  emailPerfil: string;
+  emailVerificado: boolean;
+  hd: string | undefined;
+  tokenDeSesionAbierta: string | undefined;
+  tokenDeInvitacion: string | undefined;
+  cuenta: CuentaDeGoogle | null | undefined;
+}): Promise<DecisionDeInicio> {
+  if (!entrada.emailVerificado || !entrada.cuenta) return false;
+  const permitido = await inicioDeSesionPermitido({
+    emailUsuario: entrada.emailUsuario, emailPerfil: entrada.emailPerfil, hd: entrada.hd, tokenDeSesionAbierta: entrada.tokenDeSesionAbierta, tokenDeInvitacion: entrada.tokenDeInvitacion,
+  });
+  if (!permitido) return false;
+
+  const usuario = await prisma.user.findUnique({ where: { email: normalizar(entrada.emailUsuario) }, select: { id: true, email: true, accounts: { where: { provider: "google" }, select: { providerAccountId: true } } } });
+  if (!usuario) return true;
+  if (usuario.accounts.some((a) => a.providerAccountId === entrada.cuenta!.providerAccountId)) return true;
+  if (usuario.accounts.length > 0) return "/login?aviso=cuenta-distinta";
+  const vinculada = await vincularCuentaConInvitacion({ token: entrada.tokenDeInvitacion, usuario: { id: usuario.id, email: usuario.email }, cuenta: entrada.cuenta });
+  return vinculada ? true : "/login?aviso=falta-invitacion";
 }

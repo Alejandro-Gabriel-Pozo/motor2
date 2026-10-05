@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
-import { inicioDeSesionPermitido } from "@/core/auth/acceso";
+import { decidirInicioDeSesion } from "@/core/auth/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
 import { nombreCookieSesion, sirvePorHttps, tokenDeSesionAbierta } from "@/core/auth/cookie-sesion";
 import { nombreCookieInvitacion } from "@/core/auth/invitacion";
@@ -40,13 +40,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // User/Account, para que una cuenta de Google fuera de la empresa (y
     // no dada de alta a mano) ni siquiera llegue a tener sesión. Detalle
     // de las reglas en inicioDeSesionPermitido (incluye no dejar vincular una cuenta de Google ajena a una sesión abierta).
-    async signIn({ user, profile }) {
-      if (!user.email || !profile?.email || profile.email_verified !== true) return false;
+    async signIn({ user, profile, account }) {
+      if (!user.email || !profile?.email) return false;
       const hd = typeof profile.hd === "string" ? profile.hd : undefined;
       const cookieStore = await cookies();
       const tokenAbierto = tokenDeSesionAbierta((n) => cookieStore.get(n)?.value);
       const tokenDeInvitacion = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
-      return inicioDeSesionPermitido({ emailUsuario: user.email, emailPerfil: profile.email, hd, tokenDeSesionAbierta: tokenAbierto, tokenDeInvitacion });
+      // E8 (ADR-024): además del gate, decide si el usuario existente puede vincular su cuenta de Google (con una invitación) o si la cuenta es otra.
+      return decidirInicioDeSesion({
+        emailUsuario: user.email,
+        emailPerfil: profile.email,
+        emailVerificado: profile.email_verified === true,
+        hd,
+        tokenDeSesionAbierta: tokenAbierto,
+        tokenDeInvitacion,
+        cuenta: account ? { ...account, providerAccountId: account.providerAccountId } : null,
+      });
     },
     // Kill-switch en vivo: con estrategia 'database', esto corre en CADA
     // request con sesión (auth() lo llama), no solo al loguearse — así que

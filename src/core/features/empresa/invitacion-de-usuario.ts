@@ -11,6 +11,9 @@ import { vencimientoDeInvitacion, type TipoDeInvitacion } from "./invitacion";
  */
 type Tx = Prisma.TransactionClient;
 
+const TIPO_USUARIO: TipoDeInvitacion = "usuario";
+const TIPO_VINCULACION: TipoDeInvitacion = "vinculacion";
+
 export interface AccesoPedido {
   sucursalId: string;
   rolId: string;
@@ -61,7 +64,8 @@ export async function asegurarInvitacionDeUsuario(tx: Tx, entrada: { empresaId: 
   const generar = entrada.generarToken ?? generarTokenOpaco;
   const pendiente = await tx.invitacion.findFirst({ where: { empresaId: entrada.empresaId, email, estado: "PENDIENTE" } });
 
-  if (pendiente && pendiente.rolEmpresa !== "usuario") {
+  const tipoPendiente = pendiente?.rolEmpresa;
+  if (pendiente && tipoPendiente !== TIPO_USUARIO) {
     return { ok: false, mensaje: `Ya hay una invitación pendiente para ${email} que no es de usuario. Revocala o esperá a que se acepte.` };
   }
 
@@ -81,7 +85,7 @@ export async function asegurarInvitacionDeUsuario(tx: Tx, entrada: { empresaId: 
 
   const token = generar();
   const creada = await tx.invitacion.create({
-    data: { empresaId: entrada.empresaId, email, rolEmpresa: "usuario" satisfies TipoDeInvitacion, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId },
+    data: { empresaId: entrada.empresaId, email, rolEmpresa: TIPO_USUARIO, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId },
   });
   await sumarAcceso(tx, entrada.empresaId, creada.id, entrada.acceso, entrada.invitadoPorId);
   await auditar(tx, { invitacionId: creada.id, email, actorId: entrada.invitadoPorId, anterior: null, nuevo: "pendiente" });
@@ -97,7 +101,8 @@ export async function asegurarInvitacionDeVinculacion(tx: Tx, entrada: { empresa
   const generar = entrada.generarToken ?? generarTokenOpaco;
   const pendiente = await tx.invitacion.findFirst({ where: { empresaId: entrada.empresaId, email, estado: "PENDIENTE" } });
 
-  if (pendiente && pendiente.rolEmpresa !== "vinculacion") {
+  const tipoPendiente = pendiente?.rolEmpresa;
+  if (pendiente && tipoPendiente !== TIPO_VINCULACION) {
     return { ok: false, mensaje: `Ya hay una invitación pendiente para ${email} que no es de vinculación.` };
   }
   if (pendiente && pendiente.venceEn.getTime() > entrada.ahora.getTime()) return { ok: true, invitacionId: pendiente.id, accion: "extendida", token: null };
@@ -111,7 +116,7 @@ export async function asegurarInvitacionDeVinculacion(tx: Tx, entrada: { empresa
 
   const token = generar();
   const creada = await tx.invitacion.create({
-    data: { empresaId: entrada.empresaId, email, rolEmpresa: "vinculacion" satisfies TipoDeInvitacion, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId },
+    data: { empresaId: entrada.empresaId, email, rolEmpresa: TIPO_VINCULACION, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId },
   });
   await auditar(tx, { invitacionId: creada.id, email, actorId: entrada.invitadoPorId, anterior: null, nuevo: "pendiente" });
   return { ok: true, invitacionId: creada.id, accion: "creada", token };

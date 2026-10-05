@@ -1,6 +1,7 @@
 import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { aceptarInvitacion, ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { dbDeInvitacion, transaccionDeEmpresa, verificarRolDeEjecucionDelProceso } from "./base";
@@ -44,6 +45,8 @@ export function opcionesCookieInvitacion(env: EntornoCookie, venceEn: Date, ahor
 /** Lo que la pantalla y el gate necesitan saber de una invitación. Nunca incluye el hash. */
 /** El tipo de la invitación de E5 (primer gerente de una empresa en alta). Es un tipo de invitación, no una decisión de acceso. */
 const TIPO_INVITACION_GERENTE = "gerente";
+const TIPO_INVITACION_USUARIO = "usuario";
+const TIPO_INVITACION_VINCULACION = "vinculacion";
 
 export interface VistaDeInvitacion {
   id: string;
@@ -92,8 +95,87 @@ export async function invitacionDelToken(token: string | undefined, ahora: Date 
  */
 export async function invitacionHabilitaElIngreso(token: string | undefined, emailPerfil: string, ahora: Date = new Date()): Promise<boolean> {
   const vista = await invitacionDelToken(token, ahora);
-  if (!vista || vista.tipo !== TIPO_INVITACION_GERENTE || vista.estado !== "PENDIENTE" || vista.estadoEmpresa !== "PROVISIONING") return false;
+  if (!vista || vista.estado !== "PENDIENTE" || !abreLaVia3(vista)) return false;
   return vista.email === emailPerfil.trim().toLowerCase();
+}
+
+/** La vía 3 la abren la invitación de gerente (empresa en alta) y la de usuario (empresa activa). La de vinculación NO abre nada: el ingreso lo decide la vía 2. */
+function abreLaVia3(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): boolean {
+  return (vista.tipo === TIPO_INVITACION_GERENTE && vista.estadoEmpresa === "PROVISIONING") || (vista.tipo === TIPO_INVITACION_USUARIO && vista.estadoEmpresa === "ACTIVE");
+}
+
+/** Una invitación sirve para VINCULAR la cuenta de Google si es de gerente (en alta), de usuario (activa) o de vinculación (activa). */
+function sirveParaVincular(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): boolean {
+  return abreLaVia3(vista) || (vista.tipo === TIPO_INVITACION_VINCULACION && vista.estadoEmpresa === "ACTIVE");
+}
+
+/** Los campos que Auth.js guardaría de la cuenta de Google (`defaultAccount`): el `id_token` en particular lo lee el detector de cuentas ajenas (S-01). */
+export interface CuentaDeGoogle {
+  providerAccountId: string;
+  type?: string | undefined;
+  access_token?: string | null | undefined;
+  refresh_token?: string | null | undefined;
+  id_token?: string | null | undefined;
+  expires_at?: number | null | undefined;
+  scope?: string | null | undefined;
+  token_type?: string | null | undefined;
+  session_state?: string | null | undefined;
+}
+
+/**
+ * Vincula la cuenta de Google al `User` EXISTENTE, con el token de una invitación (E8, ADR-024). Auth.js no lo hace solo (el enlace automático por email está apagado):
+ * el callback `signIn` corre ANTES de que Auth.js busque o cree nada, así que si acá queda creada la `Account`, Auth.js la encuentra y abre la sesión.
+ *
+ * Condiciones (todas): invitación pendiente y no vencida de un tipo y una empresa que sirvan; el email de la invitación es EXACTAMENTE el del usuario; el usuario no tiene
+ * otra cuenta de Google (con otro identificador NO se vincula nada: lo resuelve soporte, D2). La de vinculación se consume al vincular; las de gerente y de usuario no (las
+ * consume la aceptación después). Idempotente si la cuenta ya es la de ese usuario. Devuelve `false` ante cualquier condición que falle.
+ */
+export async function vincularCuentaConInvitacion(entrada: { token: string | undefined; usuario: { id: string; email: string }; cuenta: CuentaDeGoogle; ahora?: Date }): Promise<boolean> {
+  const ahora = entrada.ahora ?? new Date();
+  const vista = await invitacionDelToken(entrada.token, ahora);
+  if (!vista || vista.estado !== "PENDIENTE" || !sirveParaVincular(vista)) return false;
+  if (vista.email !== entrada.usuario.email.trim().toLowerCase()) return false;
+  const { cuenta, usuario } = entrada;
+  try {
+    return await conTransaccionSerializable(
+      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
+      async (tx) => {
+        const previa = await tx.account.findFirst({ where: { userId: usuario.id, provider: "google" }, select: { providerAccountId: true } });
+        if (previa) return previa.providerAccountId === cuenta.providerAccountId;
+        if (vista.tipo === TIPO_INVITACION_VINCULACION) {
+          const consumida = await tx.invitacion.updateMany({
+            where: { id: vista.id, estado: "PENDIENTE", rolEmpresa: TIPO_INVITACION_VINCULACION },
+            data: { estado: "ACEPTADA", aceptadaEn: ahora, aceptadaPorId: usuario.id },
+          });
+          if (consumida.count !== 1) return false;
+          await registrarCambioAuditado(tx, {
+            entidad: "UsuarioEmpresa", entidadId: usuario.id, campo: "cuentaGoogle", descripcion: `Cuenta de Google de "${vista.email}"`,
+            valorAnterior: null, valorNuevo: "vinculada", actorId: usuario.id, sucursalId: null,
+          });
+        }
+        await tx.account.create({
+          data: {
+            userId: usuario.id, type: cuenta.type ?? "oidc", provider: "google", providerAccountId: cuenta.providerAccountId,
+            ...(cuenta.access_token != null && { access_token: cuenta.access_token }),
+            ...(cuenta.refresh_token != null && { refresh_token: cuenta.refresh_token }),
+            ...(cuenta.id_token != null && { id_token: cuenta.id_token }),
+            ...(cuenta.expires_at != null && { expires_at: cuenta.expires_at }),
+            ...(cuenta.scope != null && { scope: cuenta.scope }),
+            ...(cuenta.token_type != null && { token_type: cuenta.token_type }),
+            ...(cuenta.session_state != null && { session_state: cuenta.session_state }),
+          },
+        });
+        return true;
+      },
+      undefined,
+      undefined,
+      true,
+    );
+  } catch (e) {
+    if (e instanceof InvarianteViolada) return false;
+    if (esChoqueDeIndiceUnico(e)) return false;
+    throw e;
+  }
 }
 
 /**
