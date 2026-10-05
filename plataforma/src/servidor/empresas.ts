@@ -108,7 +108,7 @@ export async function darDeAltaEmpresa(db: Db, deps: DependenciasDeEmpresas, aut
 async function empresaEnAltaConInvitacion(tx: Prisma.TransactionClient, empresaId: string) {
   const empresa = await tx.empresa.findUnique({ where: { id: empresaId }, select: { id: true, nombre: true, zonaHoraria: true, estado: true } });
   if (!empresa) return null;
-  const invitacion = await tx.invitacion.findFirst({ where: { empresaId }, orderBy: { creadaEn: "desc" } });
+  const invitacion = await tx.invitacion.findFirst({ where: { empresaId, rolEmpresa: "gerente" }, orderBy: { creadaEn: "desc" } });
   return { empresa, invitacion };
 }
 
@@ -174,7 +174,7 @@ export async function invitarDeNuevo(db: Db, deps: DependenciasDeEmpresas, autor
     if (datos.invitacion?.estado === "ACEPTADA") return { ok: false, mensaje: "La invitación ya fue aceptada: la empresa tiene gerente." };
     const problema = await problemaDelEmail(tx, email);
     if (problema) return { ok: false, mensaje: problema };
-    await tx.invitacion.updateMany({ where: { empresaId, estado: "PENDIENTE" }, data: { estado: "REVOCADA", revocadaEn: ahora } });
+    await tx.invitacion.updateMany({ where: { empresaId, rolEmpresa: "gerente", estado: "PENDIENTE" }, data: { estado: "REVOCADA", revocadaEn: ahora } });
     const nueva = await tx.invitacion.create({ data: { empresaId, email, rolEmpresa: "gerente", hashToken: hashDeToken(token), venceEn }, select: { id: true } });
     await auditarEnTransaccion(tx, autor, "invitacion-creada", empresaId, { revocoLaAnterior: datos.invitacion?.estado === "PENDIENTE" });
     return { ok: true, invitacionId: nueva.id, empresa: datos.empresa };
@@ -250,7 +250,7 @@ const SELECCION = {
   slug: true,
   estado: true,
   cuit: true,
-  invitacionRel: { orderBy: { creadaEn: "desc" as const }, take: 1, select: { email: true, estado: true, venceEn: true, enviadaEn: true, cuitDeclarado: true } },
+  invitacionRel: { where: { rolEmpresa: "gerente" }, orderBy: { creadaEn: "desc" as const }, take: 1, select: { email: true, estado: true, venceEn: true, enviadaEn: true, cuitDeclarado: true } },
 } satisfies Prisma.EmpresaSelect;
 
 function coincideConElFiltro(f: FilaDeEmpresa, filtro: FiltroDeEmpresas): boolean {

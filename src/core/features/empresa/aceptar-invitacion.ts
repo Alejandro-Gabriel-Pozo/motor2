@@ -36,7 +36,7 @@ export async function aceptarInvitacion(tx: Prisma.TransactionClient, entrada: E
   if (!esTokenConFormaValida(token)) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
   const hashToken = hashDeToken(token);
 
-  const invitacion = await tx.invitacion.findFirst({ where: { hashToken, estado: "PENDIENTE" } });
+  const invitacion = await tx.invitacion.findFirst({ where: { hashToken, rolEmpresa: "gerente", estado: "PENDIENTE" } });
   if (!invitacion || invitacion.venceEn.getTime() <= ahora.getTime()) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
   if (invitacion.email !== usuario.email.trim().toLowerCase()) {
     return { ok: false, mensaje: `Esta invitación es para ${invitacion.email}. Entrá con esa cuenta de Google.` };

@@ -42,12 +42,17 @@ export function opcionesCookieInvitacion(env: EntornoCookie, venceEn: Date, ahor
 }
 
 /** Lo que la pantalla y el gate necesitan saber de una invitación. Nunca incluye el hash. */
+/** El tipo de la invitación de E5 (primer gerente de una empresa en alta). Es un tipo de invitación, no una decisión de acceso. */
+const TIPO_INVITACION_GERENTE = "gerente";
+
 export interface VistaDeInvitacion {
   id: string;
   empresaId: string;
   nombreEmpresa: string;
   estadoEmpresa: "PROVISIONING" | "ACTIVE" | "SUSPENDED" | "DELETING";
   email: string;
+  /** El tipo de invitación (columna `rolEmpresa`): hoy solo `gerente`; E8 suma `usuario` y `vinculacion`. */
+  tipo: string;
   estado: EstadoEfectivoDeInvitacion;
   venceEn: Date;
 }
@@ -64,7 +69,7 @@ export async function invitacionDelToken(token: string | undefined, ahora: Date 
   // Por hash y no solo por el RLS: sin `where`, un token bien formado pero inexistente devolvería OTRA fila visible (por ejemplo la de la única empresa activa).
   const invitacion = await db.invitacion.findFirst({
     where: { hashToken: hash },
-    select: { id: true, empresaId: true, email: true, estado: true, venceEn: true },
+    select: { id: true, empresaId: true, email: true, rolEmpresa: true, estado: true, venceEn: true },
   });
   if (!invitacion) return null;
   const empresa = await db.empresa.findUnique({ where: { id: invitacion.empresaId }, select: { nombre: true, estado: true } });
@@ -75,6 +80,7 @@ export async function invitacionDelToken(token: string | undefined, ahora: Date 
     nombreEmpresa: empresa.nombre,
     estadoEmpresa: empresa.estado,
     email: invitacion.email,
+    tipo: invitacion.rolEmpresa,
     estado: estadoEfectivoDeInvitacion(invitacion, ahora),
     venceEn: invitacion.venceEn,
   };
@@ -86,7 +92,7 @@ export async function invitacionDelToken(token: string | undefined, ahora: Date 
  */
 export async function invitacionHabilitaElIngreso(token: string | undefined, emailPerfil: string, ahora: Date = new Date()): Promise<boolean> {
   const vista = await invitacionDelToken(token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE" || vista.estadoEmpresa !== "PROVISIONING") return false;
+  if (!vista || vista.tipo !== TIPO_INVITACION_GERENTE || vista.estado !== "PENDIENTE" || vista.estadoEmpresa !== "PROVISIONING") return false;
   return vista.email === emailPerfil.trim().toLowerCase();
 }
 

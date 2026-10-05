@@ -104,7 +104,7 @@ export async function confirmarAltaDeEmpresa(db: Cliente, deps: DependenciasDeEm
         if (!empresa) return { ok: false, mensaje: "La empresa no existe." };
         if (!esTransicionValida(empresa.estado, "ACTIVE") || empresa.estado !== "PROVISIONING") return { ok: false, mensaje: "Esta empresa ya no está en alta." };
 
-        const invitacion = await tx.invitacion.findFirst({ where: { empresaId, estado: "ACEPTADA" }, orderBy: { creadaEn: "desc" }, select: { cuitDeclarado: true } });
+        const invitacion = await tx.invitacion.findFirst({ where: { empresaId, rolEmpresa: "gerente", estado: "ACEPTADA" }, orderBy: { creadaEn: "desc" }, select: { cuitDeclarado: true } });
         if (!invitacion?.cuitDeclarado) return { ok: false, mensaje: "El gerente todavía no aceptó la invitación ni declaró el CUIT." };
         if (cuit !== invitacion.cuitDeclarado && !parseo.data.aceptoCuitDistinto) {
           return { ok: false, mensaje: `El gerente declaró el CUIT ${formatearCuit(invitacion.cuitDeclarado)}. Para confirmar otro, tildá que aceptás confirmar un CUIT distinto del declarado.` };
