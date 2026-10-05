@@ -144,3 +144,26 @@ borrar la rama de ensayo; `node scripts/operaciones/con-env.mjs .env.vercel.<des
 Nunca ensayar con el Preview de stockhneuquen: comparte la base de producción. Vuelta atrás: `down.sql` (una sentencia) y `prisma migrate resolve --rolled-back`.
 
 Una instalación local: `npm run db:seed -- --gerente tu@email.com` deja al primer gerente (ya no existe el bootstrap por email).
+
+## Invitación por usuario y sin enlace automático de cuentas (ADR-024): despliegue en tres tiempos
+
+Hay una migración (`20261012120000_invitacion_de_usuario`, aditiva en lo funcional, con `down.sql`) y código que apaga `allowDangerousEmailAccountLinking`. **Cada paso con autorización expresa del dueño.**
+
+**Antes (solo lectura):**
+1. En cada app de Vercel (zuluhub y stockhneuquen): configurar `CORREO_AVISOS_*` (el canal `avisos` de Resend) y `AUTH_URL` (la dirección pública fija de esa app, https, sin ruta). Sin ellas, las invitaciones quedan «sin enviar».
+2. Estado de migraciones de cada base: `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npx prisma migrate status` (las de E5 y ADR-022 tienen que estar aplicadas).
+3. `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run medir-precargados` (sin `--detalle` en chats): cuántos precargados activos no entraron nunca con Google.
+
+**Orden:** (1) desplegar la **consola** (ya filtra las invitaciones por `rolEmpresa = 'gerente'`; sirve antes y después de la migración); (2) la migración en cada base, primero zuluhub y después stockhneuquen:
+rama de respaldo de Neon; rama de ensayo con `migrate deploy`; en el ensayo comprobar con `has_table_privilege('motor2_app', '"Invitacion"', 'INSERT')` (sí) y `'DELETE'` (no), que `InvitacionSucursal` tiene
+sus 2 triggers y su política, y que `motor2_plataforma` no tiene ningún privilegio sobre `InvitacionSucursal`; borrar la rama de ensayo; `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`;
+(3) desplegar la **app**. Nunca ensayar con el Preview de stockhneuquen: comparte la base de producción.
+
+**Después:** «Invitar a vincular» a cada precargado que `medir-precargados` haya contado (Administración → Usuarios), prueba de humo con una cuenta real (alta de una persona nueva → mail → enlace → Google → Aceptar → entra),
+y vigilar Sentry 48 horas (errores de `signIn`, `invitacion-sin-auth-url`, correos `avisos` no enviados).
+
+**Vuelta atrás:** Instant Rollback de la app (vuelve a encender el enlace automático; las invitaciones nuevas quedan inútiles pero no rompen nada). La migración, solo si hace falta: `down.sql` como dueño
+(borra las invitaciones de usuario y de vinculación) y `prisma migrate resolve --rolled-back 20261012120000_invitacion_de_usuario`.
+
+**Soporte — cuenta de Google rehecha (`/login?aviso=cuenta-distinta`):** la persona recuperó su email con otra cuenta de Google (otro identificador). Verificar su identidad por un canal propio; como dueño, borrar su `Account` vieja
+(`DELETE FROM "Account" WHERE "userId" = '…' AND provider = 'google'`) y mandarle «Invitar a vincular» desde Administración → Usuarios.
