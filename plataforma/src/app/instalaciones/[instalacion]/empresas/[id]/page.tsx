@@ -3,23 +3,31 @@ import { notFound } from "next/navigation";
 import { accionesDeCicloDeVida } from "@/core/features/empresa/ciclo-de-vida";
 import { formatearCuit } from "@/core/fiscal/cuit";
 import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/factura-autorizada";
+import { dbDeInstalacion } from "../../../../../db";
 import { rutaDeEmpresa, rutaDeEmpresas } from "../../../../../rutas";
 import { contextoDePagina } from "../../../../../servidor/contexto";
-import { historialDeEmpresa, obtenerEmpresa } from "../../../../../servidor/empresas";
-import { ACCION_DE_AUDITORIA, ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, fechaCorta, textoDeLoQueAcabaDePasar } from "../textos";
+import { cuitEnOtrasInstalaciones } from "../../../../../servidor/cuit-en-instalaciones";
+import { cuitEnJuego, empresasConEseCuit, historialDeEmpresa, obtenerEmpresa } from "../../../../../servidor/empresas";
+import { ACCION_DE_AUDITORIA, ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, fechaCorta, textoDeLoQueAcabaDePasar, textosDeCuitEnOtrasInstalaciones } from "../textos";
 import { AccionesDeInvitacion, ConfirmarAlta, CorregirCuit, InvitarDeNuevo, Reactivar, ReenviarAviso, Suspender } from "./botones";
 
 export default async function PaginaDeLaEmpresa({ params, searchParams }: { params: Promise<{ instalacion: string; id: string }>; searchParams: Promise<{ hecho?: string | string[] }> }) {
   const { instalacion: instalacionId, id } = await params;
-  const { instalacion, db } = await contextoDePagina(instalacionId);
+  const { instalacion, instalaciones, db } = await contextoDePagina(instalacionId);
   const { hecho } = await searchParams;
-  const empresa = await obtenerEmpresa(db, id, new Date());
+  const ahora = new Date();
+  const empresa = await obtenerEmpresa(db, id, ahora);
   if (!empresa) notFound();
   const inv = empresa.invitacion;
   const hayPendiente = inv?.estado === "PENDIENTE" || inv?.estado === "VENCIDA";
   const tieneFactura = await empresaTieneFacturaAutorizada(db, empresa.id);
   const acciones = accionesDeCicloDeVida(empresa, { tieneFacturaAutorizada: tieneFactura });
+  // Lanzada ANTES del historial para que se solape con él (ADR-025: nunca lanza, tolera una instalación caída o lenta).
+  const otras = instalaciones.filter((i) => i.id !== instalacion.id);
+  const cuitEnOtras = cuitEnOtrasInstalaciones(otras, cuitEnJuego(empresa), (i, cuit) => empresasConEseCuit(dbDeInstalacion(i), cuit, ahora));
   const historial = await historialDeEmpresa(db, empresa.id);
+  const { coincidencias, sinLeer } = await cuitEnOtras;
+  const avisosDeCuitEnOtras = textosDeCuitEnOtrasInstalaciones(coincidencias, sinLeer);
   const operativa = empresa.estado === "ACTIVE" || empresa.estado === "SUSPENDED";
   return (
     <section className="tarjeta ancha">
@@ -37,6 +45,11 @@ export default async function PaginaDeLaEmpresa({ params, searchParams }: { para
           CUIT repetido: también lo tienen o lo declararon {empresa.cuitRepetidoCon.map((n) => `«${n}»`).join(", ")}.
         </p>
       )}
+      {avisosDeCuitEnOtras.map((texto) => (
+        <p className="aviso" role="status" key={texto}>
+          {texto}
+        </p>
+      ))}
       <dl>
         <dt>Identificador</dt>
         <dd>{empresa.slug}</dd>
@@ -59,7 +72,16 @@ export default async function PaginaDeLaEmpresa({ params, searchParams }: { para
         )}
       </dl>
 
-      {acciones.confirmar && inv?.cuitDeclarado && <ConfirmarAlta instalacion={instalacion.id} empresaId={empresa.id} nombre={empresa.nombre} cuitDeclarado={inv.cuitDeclarado} repetidoCon={empresa.cuitRepetidoCon} />}
+      {acciones.confirmar && inv?.cuitDeclarado && (
+        <ConfirmarAlta
+          instalacion={instalacion.id}
+          empresaId={empresa.id}
+          nombre={empresa.nombre}
+          cuitDeclarado={inv.cuitDeclarado}
+          repetidoCon={empresa.cuitRepetidoCon}
+          enOtrasInstalaciones={avisosDeCuitEnOtras}
+        />
+      )}
 
       {empresa.estado === "PROVISIONING" && inv?.estado !== "ACEPTADA" && (
         <>

@@ -3,6 +3,8 @@ import { formatearCuit } from "@/core/fiscal/cuit";
 import { esModuloDelCatalogo } from "@/core/modulos/catalogo";
 import { nombreDeModulo } from "@/core/modulos/vista-de-modulos";
 import type { FilaDeEmpresa } from "../../../../servidor/empresas";
+import type { CoincidenciaDeCuit } from "../../../../servidor/cuit-en-instalaciones";
+import type { Instalacion } from "../../../../entorno";
 
 export const ESTADO_DE_EMPRESA: Record<FilaDeEmpresa["estado"], string> = {
   PROVISIONING: "En alta",
@@ -67,6 +69,27 @@ export function textoDeLoQueAcabaDePasar(codigo: string | undefined, empresa: { 
     default:
       return null;
   }
+}
+
+const TOPE_DE_NOMBRES_POR_INSTALACION = 5;
+
+function listaConTope(nombres: readonly string[]): string {
+  if (nombres.length <= TOPE_DE_NOMBRES_POR_INSTALACION) return nombres.join(", ");
+  const resto = nombres.length - TOPE_DE_NOMBRES_POR_INSTALACION;
+  return `${nombres.slice(0, TOPE_DE_NOMBRES_POR_INSTALACION).join(", ")} y ${resto} más`;
+}
+
+/**
+ * Aviso informativo de CUIT repetido ENTRE instalaciones (ADR-025): una línea por instalación con coincidencias y una por cada que no se pudo revisar.
+ * A propósito NO dice «CUIT repetido» ni usa alguna palabra que lo confunda con el aviso de la MISMA base (ese es `role="alert"`; este, `role="status"`).
+ */
+export function textosDeCuitEnOtrasInstalaciones(coincidencias: readonly CoincidenciaDeCuit[], sinLeer: readonly Pick<Instalacion, "nombre">[]): string[] {
+  const porCoincidencia = coincidencias.map((c) => {
+    const nombres = c.empresas.map((e) => `«${e.nombre}» (CUIT ${e.origen === "confirmado" ? "confirmado" : "declarado"})`);
+    return `También existe en «${c.instalacion.nombre}»: ${listaConTope(nombres)}.`;
+  });
+  const porCaida = sinLeer.map((i) => `No pudimos revisar «${i.nombre}» ahora.`);
+  return [...porCoincidencia, ...porCaida];
 }
 
 /** El aviso de la pantalla de módulos tras un cambio: texto FIJO por código; el módulo viene de la URL y solo se usa si es del catálogo. */

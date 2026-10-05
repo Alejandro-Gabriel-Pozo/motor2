@@ -57,7 +57,22 @@ export function InvitarDeNuevo({ instalacion, empresaId }: { instalacion: string
  * Confirmar el alta: el CUIT viene precargado con el que declaró el gerente. Hay que tildar que se revisó contra la constancia de ARCA; si se cambia el CUIT, además
  * hay que aceptar expresamente que se confirma uno distinto del declarado (queda auditado).
  */
-export function ConfirmarAlta({ instalacion, empresaId, nombre, cuitDeclarado, repetidoCon }: { instalacion: string; empresaId: string; nombre: string; cuitDeclarado: string; repetidoCon: string[] }) {
+export function ConfirmarAlta({
+  instalacion,
+  empresaId,
+  nombre,
+  cuitDeclarado,
+  repetidoCon,
+  enOtrasInstalaciones,
+}: {
+  instalacion: string;
+  empresaId: string;
+  nombre: string;
+  cuitDeclarado: string;
+  repetidoCon: string[];
+  /** Aviso informativo de CUIT repetido en OTRA instalación (ADR-025): nunca bloquea, solo se muestra. */
+  enOtrasInstalaciones: string[];
+}) {
   const [estado, accion, pendiente] = useActionState(confirmar.bind(null, instalacion, empresaId), null);
   const [cuit, setCuit] = useState(formatearCuit(cuitDeclarado));
   const [revisado, setRevisado] = useState(false);
@@ -73,6 +88,11 @@ export function ConfirmarAlta({ instalacion, empresaId, nombre, cuitDeclarado, r
           Atención: {repetidoCon.map((n) => `«${n}»`).join(", ")} {repetidoCon.length === 1 ? "tiene o declaró" : "tienen o declararon"} el mismo CUIT. Solo una puede quedar con él.
         </p>
       )}
+      {enOtrasInstalaciones.map((texto) => (
+        <p className="aviso" role="status" key={texto}>
+          {texto}
+        </p>
+      ))}
       <div>
         <label htmlFor="cuit-confirmar">CUIT de la empresa</label>
         <input id="cuit-confirmar" name="cuit" inputMode="numeric" autoComplete="off" value={cuit} onChange={(e) => setCuit(e.target.value)} />

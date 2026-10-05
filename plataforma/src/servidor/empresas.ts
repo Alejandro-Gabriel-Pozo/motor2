@@ -7,6 +7,7 @@ import { sembrarEmpresa } from "@/core/features/empresa/sembrar-empresa";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO, normalizarEmail } from "@/core/plataforma/email-reservado";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
 import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
+import type { EmpresaConEseCuit } from "./cuit-en-instalaciones";
 
 /**
  * Alta de empresas e invitaciones desde la consola (E5, ADR-012 §6, ADR-020). Cada función recibe la base, el autor y sus dependencias: la consola les pasa
@@ -223,7 +224,7 @@ type FilaCruda = {
 };
 
 /** El CUIT con el que la empresa compite: el confirmado, o —si está en alta y su gerente aceptó— el que declaró. */
-function cuitEnJuego(f: FilaDeEmpresa): string | null {
+export function cuitEnJuego(f: FilaDeEmpresa): string | null {
   if (f.cuit) return f.cuit;
   return f.estado === "PROVISIONING" && f.invitacion?.estado === "ACEPTADA" ? f.invitacion.cuitDeclarado : null;
 }
@@ -297,4 +298,20 @@ export async function obtenerEmpresa(db: Db, empresaId: string, ahora: Date): Pr
 /** La historia de la empresa en la auditoría de plataforma (lo más reciente primero). */
 export async function historialDeEmpresa(db: Db, empresaId: string) {
   return db.auditoriaPlataforma.findMany({ where: { empresaAfectadaId: empresaId }, orderBy: { creadoEn: "desc" }, take: 50, select: { id: true, accion: true, adminEmail: true, creadoEn: true, detalle: true } });
+}
+
+/**
+ * Las empresas de ESTA base cuyo CUIT en juego es ese (ADR-025: aviso informativo de CUIT repetido entre instalaciones). Prefiltra en SQL (confirmado
+ * o declarado en una invitación de gerente aceptada) y recién después aplica `cuitEnJuego` para descartar un declarado viejo superado por otra
+ * invitación más nueva, o un declarado que coincide pero ya tiene otro CUIT confirmado.
+ */
+export async function empresasConEseCuit(db: Db, cuit: string, ahora: Date): Promise<EmpresaConEseCuit[]> {
+  const filas = await db.empresa.findMany({
+    where: { OR: [{ cuit }, { invitacionRel: { some: { rolEmpresa: "gerente", estado: "ACEPTADA", cuitDeclarado: cuit } } }] },
+    select: SELECCION,
+  });
+  return filas
+    .map((f) => filaDe(f, ahora))
+    .filter((f) => cuitEnJuego(f) === cuit)
+    .map((f) => ({ empresaId: f.id, nombre: f.nombre, origen: f.cuit === cuit ? ("confirmado" as const) : ("declarado" as const) }));
 }
