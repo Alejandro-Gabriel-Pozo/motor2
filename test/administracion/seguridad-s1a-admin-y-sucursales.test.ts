@@ -214,16 +214,21 @@ describe("S-10: auditoría de altas, bajas y reactivaciones", () => {
     return { base, empresaId, gerente };
   }
 
-  it("agregarOActualizarUsuario: un alta nueva deja la cuenta de empresa, el rol y el activo de la membresía en la sucursal", async () => {
-    const { base, gerente } = await armar();
+  // E8 (ADR-024): a quien YA es parte de la empresa se le suma la sucursal directo (a quien no, se lo invita). Estas pruebas parten de un miembro de otra sucursal.
+  async function miembroDeOtraSucursal(base: Awaited<ReturnType<typeof armar>>["base"], email = "nuevo@test.com") {
+    const otra = await prismaAdmin.sucursal.create({ data: { nombre: "Otra", empresaId: base.sucursal.empresaId } });
+    return crearUsuarioConMembresia({ email, sucursalId: otra.id, rolId: base.operador.id });
+  }
+
+  it("agregarOActualizarUsuario: sumar a un miembro a una sucursal deja la cuenta de empresa, el rol y el activo de la membresía", async () => {
+    const { base } = await armar();
+    await miembroDeOtraSucursal(base);
 
     const r = await agregarOActualizarUsuario({ email: "nuevo@test.com", rolId: base.operador.id, sucursalId: base.sucursal.id });
     expect(r.ok, r.mensaje).toBe(true);
-    const nuevo = await prismaAdmin.user.findUniqueOrThrow({ where: { email: "nuevo@test.com" } });
 
-    const cuentas = await auditoria("UsuarioEmpresa");
-    expect(cuentas).toHaveLength(1);
-    expect(cuentas[0]).toMatchObject({ entidadId: nuevo.id, campo: "activo", valorAnterior: null, valorNuevo: "true", sucursalId: null, actorId: gerente.id });
+    // Su cuenta en la empresa ya estaba activa: no hay cambio que anotar (la auditoría no guarda un true → true).
+    expect((await auditoria("UsuarioEmpresa")).filter((f) => f.campo === "activo")).toHaveLength(0);
 
     const membresias = await auditoria("UsuarioSucursal");
     expect(membresias.map((f) => [f.campo, f.valorAnterior, f.valorNuevo, f.sucursalId])).toEqual([
@@ -234,6 +239,7 @@ describe("S-10: auditoría de altas, bajas y reactivaciones", () => {
 
   it("agregarOActualizarUsuario: el cambio de rol de un usuario existente deja anterior y nuevo; sin cambios no escribe nada", async () => {
     const { base } = await armar();
+    await miembroDeOtraSucursal(base);
     await agregarOActualizarUsuario({ email: "nuevo@test.com", rolId: base.operador.id, sucursalId: base.sucursal.id });
     const antes = await prismaAdmin.registroAuditoria.count();
 
@@ -267,15 +273,16 @@ describe("S-10: auditoría de altas, bajas y reactivaciones", () => {
   });
 
   it("crearSucursalConAdmin: deja el alta de la sucursal, de la cuenta del primer admin y de su membresía", async () => {
-    const { gerente } = await armar();
+    const { base, gerente } = await armar();
+    // E8: el primer admin tiene que ser alguien que ya es parte de la empresa.
+    await crearUsuarioConMembresia({ email: "primer@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
 
     const r = await crearSucursalConAdmin({ nombre: "Nueva", emailPrimerAdmin: "primer@test.com" });
     expect(r.ok, r.mensaje).toBe(true);
     const sucursal = await prismaAdmin.sucursal.findFirstOrThrow({ where: { nombre: "Nueva" } });
-    const primer = await prismaAdmin.user.findUniqueOrThrow({ where: { email: "primer@test.com" } });
 
     expect(await auditoria("Sucursal")).toMatchObject([{ entidadId: sucursal.id, campo: "activo", valorAnterior: null, valorNuevo: "true", actorId: gerente.id }]);
-    expect(await auditoria("UsuarioEmpresa")).toMatchObject([{ entidadId: primer.id, valorNuevo: "true" }]);
+    expect(await auditoria("UsuarioEmpresa")).toEqual([]); // el primer admin ya era parte de la empresa: su cuenta no cambia
     expect(await auditoria("UsuarioSucursal")).toMatchObject([{ campo: "rol", valorNuevo: "admin", sucursalId: sucursal.id }]);
   });
 

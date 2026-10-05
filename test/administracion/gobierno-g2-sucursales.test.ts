@@ -59,6 +59,7 @@ describe("G2: sucursales", () => {
   it("el rol admin se busca por clave: si le cambian el nombre, crear una sucursal con su primer admin sigue andando", async () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await crearUsuarioConMembresia({ email: "nuevo-admin@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id }); // E8: el primer admin ya es parte de la empresa
     await prismaAdmin.rol.update({ where: { id: base.admin.id }, data: { nombre: "Encargado" } });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 

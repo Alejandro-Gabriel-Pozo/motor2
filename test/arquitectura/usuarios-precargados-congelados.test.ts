@@ -4,17 +4,15 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 /**
- * Congelado de usuarios precargados: un usuario precargado (alta por email ANTES de que entre con Google) es uno más a migrar a invitaciones
- * cuando se apague `allowDangerousEmailAccountLinking` (src/lib/auth.ts). Hoy hay exactamente tres lugares que crean un `User` a mano; ninguno
- * nuevo hasta que exista el flujo de invitaciones. Cuando exista, estas excepciones se borran junto con la vinculación automática.
+ * Congelado de usuarios precargados: un usuario precargado (alta por email ANTES de que entre con Google) es uno más a migrar a invitaciones. Hasta E8 (ADR-024) había tres
+ * lugares que creaban un `User` a mano; desde E8, `agregarOActualizarUsuario` y `crearSucursalConAdmin` ya NO precargan (invitan, o piden un miembro que ya existe) y el único
+ * que queda es `crearEmpresa`, una fixture de pruebas que vive en `src/` (pendiente: mudarla a `test/setup`). Ninguno nuevo.
  */
 const RAIZ = join(__dirname, "../../src");
 const ESCRITURAS = new Set(["create", "createMany", "createManyAndReturn", "upsert"]);
 
 const PRECARGAN: Record<string, { cantidad: number; motivo: string }> = {
-  "core/features/empresa/crear-empresa.ts": { cantidad: 1, motivo: "crearEmpresa precarga al primer admin por email (emailPrimerAdmin)." },
-  "server/actions/auth/usuarios.ts": { cantidad: 1, motivo: "un admin agrega o actualiza un usuario por email desde Administración (ya existía)." },
-  "server/actions/auth/sucursales.ts": { cantidad: 1, motivo: "crearSucursalConAdmin precarga al admin de la sucursal nueva (ya existía)." },
+  "core/features/empresa/crear-empresa.ts": { cantidad: 1, motivo: "crearEmpresa precarga al primer admin por email (emailPrimerAdmin): fixture de pruebas, a mudar a test/setup." },
 };
 
 function archivos(dir: string): string[] {
@@ -46,7 +44,7 @@ describe("usuarios precargados: no se crean más lugares que precarguen", () => 
       .filter(([, n]) => n > 0)
   );
 
-  it("solo los tres lugares conocidos crean un User, con la cantidad declarada", () => {
+  it("solo los lugares conocidos crean un User, con la cantidad declarada", () => {
     const esperados = Object.fromEntries(Object.entries(PRECARGAN).map(([archivo, e]) => [archivo, e.cantidad]));
     expect(encontrados, "Hay un lugar NUEVO que crea usuarios por email: pasalo por el flujo de invitaciones (o hablalo con el dueño) antes de agregarlo.").toEqual(esperados);
   });

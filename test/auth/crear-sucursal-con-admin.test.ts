@@ -9,6 +9,7 @@ import { crearSucursalConAdmin } from "../../src/server/actions/auth/sucursales"
 describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal nueva (decisión 4, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10)", () => {
   let kgId: string;
   let central: string;
+  let rolAdminId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -16,9 +17,13 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
     const catalogo = await sembrarCatalogoBase();
     kgId = catalogo.kg.id;
     central = base.sucursal.id;
+    rolAdminId = base.admin.id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: central, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
+
+  /** E8 (ADR-024): el primer admin de la sucursal nueva tiene que ser alguien que YA es parte de la empresa (a los nuevos se los invita desde Usuarios). */
+  const miembro = (email: string) => crearUsuarioConMembresia({ email, sucursalId: central, rolId: rolAdminId });
 
   async function producto(nombre: string) {
     return (await prisma.producto.create({ data: { codigo: `MP_${nombre}`, nombre, tipo: "MP", unidadStockId: kgId } })).id;
@@ -40,6 +45,7 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
       data: [central, sucursalB, sucursalC].map((sucursalId) => ({ sucursalId, productoId: universal, disponible: true })),
     });
 
+    await miembro("admin-d@test.com");
     const r = await crearSucursalConAdmin({ nombre: "D", emailPrimerAdmin: "admin-d@test.com" });
     expect(r.ok).toBe(true);
     const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "D" } });
@@ -58,6 +64,7 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
       ],
     });
 
+    await miembro("admin-d2@test.com");
     const r = await crearSucursalConAdmin({ nombre: "D", emailPrimerAdmin: "admin-d2@test.com" });
     expect(r.ok).toBe(true);
     const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "D" } });
@@ -77,6 +84,7 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
     });
     void sucursalInactiva;
 
+    await miembro("admin-e@test.com");
     const r = await crearSucursalConAdmin({ nombre: "Nueva", emailPrimerAdmin: "admin-e@test.com" });
     expect(r.ok).toBe(true);
     const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Nueva" } });
@@ -84,6 +92,7 @@ describe("crearSucursalConAdmin — disponibilidad de productos en la sucursal n
   });
 
   it("sigue creando la sucursal y su primer admin, sin ningún producto de por medio", async () => {
+    await miembro("solo-admin@test.com");
     const r = await crearSucursalConAdmin({ nombre: "Sin catálogo", emailPrimerAdmin: "solo-admin@test.com" });
     expect(r.ok).toBe(true);
     const nueva = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Sin catálogo" } });

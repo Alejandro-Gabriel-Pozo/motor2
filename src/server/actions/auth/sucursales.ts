@@ -70,26 +70,20 @@ export async function crearSucursalConAdmin(input: {
       const pertenenciaPrevia = usuarioPrevio
         ? await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, select: { activo: true } })
         : null;
-      if (usuarioPrevio) {
-        const reactivaAdmin = await reactivaAUnAdmin(tx, ctx.empresaId, usuarioPrevio.id, { cuentaDeEmpresa: pertenenciaPrevia });
-        const rechazo = mensajeSiReactivaAdminSinSerGerente(actorEnLaEmpresa(ctx), reactivaAdmin);
-        if (rechazo) return error(rechazo);
+      // E8 (ADR-024): la sucursal nace con un admin que YA es parte de la empresa. A alguien nuevo no se lo da de alta acá (no hay User ni membresía hasta que acepte una invitación):
+      // primero se lo invita desde Usuarios. Así tampoco existe nunca una sucursal sin administrador.
+      if (!usuarioPrevio || !pertenenciaPrevia) {
+        return error(`"${email}" todavía no forma parte de la empresa. Creá la sucursal con vos o con un administrador que ya esté en la empresa y después invitá a "${email}" desde Usuarios.`);
       }
+      const reactivaAdmin = await reactivaAUnAdmin(tx, ctx.empresaId, usuarioPrevio.id, { cuentaDeEmpresa: pertenenciaPrevia });
+      const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(actorEnLaEmpresa(ctx), reactivaAdmin);
+      if (rechazoReactivar) return error(rechazoReactivar);
 
       const sucursal = await tx.sucursal.create({ data: { nombre, empresaId: ctx.empresaId } });
-      const usuario = await tx.user.upsert({
-        where: { email },
-        update: {},
-        create: { email },
-      });
-      await tx.usuarioEmpresa.upsert({
-        where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: ctx.empresaId } },
-        update: { activo: true },
-        create: { usuarioId: usuario.id, empresaId: ctx.empresaId },
-      });
+      await tx.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, data: { activo: true } });
       const membresia = await tx.usuarioSucursal.create({
         data: {
-          usuarioId: usuario.id,
+          usuarioId: usuarioPrevio.id,
           sucursalId: sucursal.id,
           empresaId: ctx.empresaId,
           rolId: rolAdmin.id,
@@ -101,8 +95,8 @@ export async function crearSucursalConAdmin(input: {
         valorAnterior: null, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
       });
       await registrarCambioAuditado(tx, {
-        entidad: "UsuarioEmpresa", entidadId: usuario.id, campo: "activo", descripcion: `Cuenta de "${email}" en la empresa`,
-        valorAnterior: pertenenciaPrevia ? pertenenciaPrevia.activo : null, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
+        entidad: "UsuarioEmpresa", entidadId: usuarioPrevio.id, campo: "activo", descripcion: `Cuenta de "${email}" en la empresa`,
+        valorAnterior: pertenenciaPrevia.activo, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
       });
       await registrarCambioAuditado(tx, {
         entidad: "UsuarioSucursal", entidadId: membresia.id, campo: "rol", descripcion: `Usuario "${email}" en la sucursal "${nombre}": rol`,

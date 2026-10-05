@@ -130,9 +130,12 @@ describe("agregarOActualizarUsuario: alcance de sucursal y de rol", () => {
     await crearMembresia({ usuarioId: actor.id, sucursalId: sucursalB.id, rolId: base.admin.id });
     await mockearUsuarioActual({ id: actor.id, email: actor.email, nombre: null });
 
+    // E8 (ADR-024): un email que todavía no es parte de la empresa recibe una INVITACIÓN que da esa sucursal; la membresía nace recién cuando la acepta.
     const resultado = await agregarOActualizarUsuario({ email: "nuevo@test.com", sucursalId: sucursalB.id, rolId: base.operador.id });
     expect(resultado.ok, resultado.mensaje).toBe(true);
-    expect(await prisma.usuarioSucursal.count({ where: { sucursalId: sucursalB.id, usuario: { email: "nuevo@test.com" } } })).toBe(1);
+    expect(await prisma.usuarioSucursal.count({ where: { sucursalId: sucursalB.id, usuario: { email: "nuevo@test.com" } } })).toBe(0);
+    const invitacion = await prismaAdmin.invitacion.findFirstOrThrow({ where: { email: "nuevo@test.com", rolEmpresa: "usuario", estado: "PENDIENTE" }, include: { sucursales: true } });
+    expect(invitacion.sucursales.map((s) => [s.sucursalId, s.rolId])).toEqual([[sucursalB.id, base.operador.id]]);
   });
 
   it("quien no es admin ni gerente de empresa no puede dar el rol admin (escalada de privilegios), ni a otro ni a sí mismo", async () => {
