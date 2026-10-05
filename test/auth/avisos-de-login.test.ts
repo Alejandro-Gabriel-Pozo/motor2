@@ -3,7 +3,8 @@ import { textoDeAvisoDeLogin } from "../../src/core/auth/avisos-de-login";
 
 /** E8 (ADR-024): el aviso del login sale de un código de la URL, con texto fijo. */
 describe("textoDeAvisoDeLogin", () => {
-  it("muestra el texto de los dos códigos que usa signIn", () => {
+  it("muestra el texto de los códigos que usa signIn", () => {
+    expect(textoDeAvisoDeLogin("cuenta-desactivada")).toContain("desactivada");
     expect(textoDeAvisoDeLogin("falta-invitacion")).toContain("invitación");
     expect(textoDeAvisoDeLogin("cuenta-distinta")).toContain("plataforma");
   });

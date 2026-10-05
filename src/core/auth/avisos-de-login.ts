@@ -5,6 +5,8 @@
 const AVISOS: Readonly<Record<string, string>> = {
   "falta-invitacion":
     "Tu usuario existe, pero esta cuenta de Google todavía no está vinculada. Abrí el enlace de tu invitación (te lo mandó un administrador de tu empresa por mail) o pedí que te lo reenvíen.",
+  "cuenta-desactivada":
+    "Tu cuenta está desactivada. Si creés que es un error, contactá a la plataforma.",
   "cuenta-distinta":
     "Esta cuenta de Google no es la que tenías vinculada a tu usuario. Por seguridad no se puede vincular otra: avisale a la plataforma para que lo resuelva.",
 };

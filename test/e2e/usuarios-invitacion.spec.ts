@@ -173,6 +173,8 @@ test("/login muestra los avisos de vinculación con texto fijo y no refleja cód
   await sinViolaciones(page);
   await page.goto("/login?aviso=cuenta-distinta");
   await expect(page.getByRole("alert").filter({ hasText: "Por seguridad no se puede vincular otra" })).toBeVisible();
+  await page.goto("/login?aviso=cuenta-desactivada");
+  await expect(page.getByRole("alert").filter({ hasText: "Tu cuenta está desactivada" })).toBeVisible();
   await page.goto("/login?aviso=%3Cb%3Efalso%3C/b%3E");
   await expect(page.getByText("falso")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Ingresar con Google" })).toBeVisible();

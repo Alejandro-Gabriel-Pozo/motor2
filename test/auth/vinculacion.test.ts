@@ -81,9 +81,9 @@ describe("el gate de siempre sigue mandando", () => {
     expect(await entrar(await invitacion("vinculacion", { email: "desconocido@ejemplo.com" }), { email: "desconocido@ejemplo.com" })).toBe(false);
   });
 
-  it("el kill-switch va antes de vincular: con la cuenta apagada no se crea ninguna Account", async () => {
+  it("el kill-switch va antes de vincular: con la cuenta apagada no se crea ninguna Account y se explica por qué", async () => {
     await precargado(EMAIL, { activoGlobal: false });
-    expect(await entrar(await invitacion("vinculacion"))).toBe(false);
+    expect(await entrar(await invitacion("vinculacion"))).toBe("/login?aviso=cuenta-desactivada");
     expect(await cuentasDe()).toHaveLength(0);
   });
 

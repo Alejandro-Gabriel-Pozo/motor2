@@ -120,6 +120,9 @@ export async function decidirInicioDeSesion(entrada: {
   cuenta: CuentaDeGoogle | null | undefined;
 }): Promise<DecisionDeInicio> {
   if (!entrada.emailVerificado || !entrada.cuenta) return false;
+  // Cuenta desactivada en toda la plataforma (kill-switch): se explica en vez de mostrar el «acceso denegado» genérico. Quien llega probó que controla ese email con Google.
+  const desactivada = await prisma.user.findUnique({ where: { email: normalizar(entrada.emailUsuario) }, select: { activoGlobal: true } });
+  if (desactivada && !desactivada.activoGlobal) return "/login?aviso=cuenta-desactivada";
   const permitido = await inicioDeSesionPermitido({
     emailUsuario: entrada.emailUsuario, emailPerfil: entrada.emailPerfil, hd: entrada.hd, tokenDeSesionAbierta: entrada.tokenDeSesionAbierta, tokenDeInvitacion: entrada.tokenDeInvitacion,
   });
