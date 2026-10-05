@@ -87,7 +87,10 @@
       // RESERVADO — la consola no importa `@sentry/nextjs` directamente, pero el envío de correo (`src/core/correo` → `src/lib/reportar-error.ts`)
       // lo importa de forma dinámica para avisar de un correo que no salió; ese código se compila DENTRO de la consola, así que su paquete
       // tiene que estar instalado en ese proyecto de Vercel. Sin esta línea, borrar la dependencia rompe el build de la consola en silencio.
-      "ignoreDependencies": ["@sentry/nextjs"]
+      // RESERVADO — `tailwindcss` y `@tailwindcss/postcss`: los usa el `postcss.config.mjs` de la RAÍZ (que Next toma para la consola, ver `turbopack.root`) y el
+      // `@import "tailwindcss"` de su globals.css; knip no sigue ninguno de los dos. Tienen que estar declaradas en `plataforma/package.json` porque Vercel instala SOLO las de
+      // ese proyecto: sin ellas el build de la consola falla con «Cannot find module '@tailwindcss/postcss'» (verificado clonando limpio, 2026-10-05).
+      "ignoreDependencies": ["@sentry/nextjs", "tailwindcss", "@tailwindcss/postcss"]
     }
   },
 
