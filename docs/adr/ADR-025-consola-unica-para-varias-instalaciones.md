@@ -75,12 +75,24 @@ Las invitaciones, los reenvíos y el aviso de activación arman el enlace con la
 ## Consecuencias
 
 - Agregar una instalación = una entrada del JSON + su variable de conexión + el rol `motor2_plataforma` creado en su base, **sin código ni migración**.
-- Pendientes explícitos: que `crear-primer-admin` revise también las bases adicionales (hoy solo la principal: un usuario de otra instalación podría quedar como administrador); aviso informativo de CUIT repetido **entre**
-  instalaciones (hoy se permite sin control cruzado); `--instalacion` en los scripts `modulos-empresa` y `politica-empresa` (operan sobre la base del archivo de entorno que se use); aviso de «instalación atrasada en migraciones».
-- Los E2E levantan la consola con dos instalaciones reales (la base de siempre y una segunda, `motor2_b_e2e`) más una «caída»; el spec `consola-instalaciones` corre en CI.
+- Los cuatro pendientes explícitos de la primera versión de este ADR quedaron resueltos (2026-10-05, mismo día):
+  - `crear-primer-admin` revisa también las bases adicionales (antes solo la principal): la regla vive en `crearAdminDePlataforma` (4º parámetro `otrasBases`), nunca se puede olvidar de llamarla. Si una adicional no responde,
+    el alta se aborta sin crear nada (`InstalacionNoRevisableError`) — a diferencia de las pantallas, que toleran una instalación caída: el alta es irreversible en la práctica y crea un sujeto con poder sobre todas.
+  - Aviso informativo de CUIT repetido entre instalaciones: solo en el detalle de una empresa (`empresasConEseCuit` + `cuit-en-instalaciones.ts`), con `role="status"` (nunca `"alert"` ni el texto «CUIT repetido», que el detalle
+    ya usa para el aviso DENTRO de la misma base). No bloquea nada.
+  - `--instalacion` en `modulos-empresa` y `politica-empresa` (`scripts/conexion-de-plataforma.ts`): sin el flag, si el archivo de entorno administra varias instalaciones, el script pide elegir una en vez de operar la principal
+    en silencio.
+  - Aviso de «instalación atrasada en migraciones» (variante M: lee `_prisma_migrations`, el registro oficial de Prisma, con un `GRANT SELECT` adicional —solo metadatos— en `crear-rol-motor2-plataforma.sql`; requiere
+    autorización expresa para correrlo en cada base de producción. Sin el grant, el aviso simplemente no aparece: nunca lanza).
+  - Al revisar el código real para estos cuatro pendientes se corrigió, de paso, un riesgo que no era menor: varias consultas de `servidor/{empresas,ingreso,sesion}.ts` no tenían `select` explícito, lo que contra una base
+    un paso atrás en migraciones (el escenario normal durante un deploy en dos pasos) rompía el ingreso o el reenvío de invitaciones, no solo un aviso — ver `test/arquitectura/consola-de-plataforma.test.ts`.
+- Los E2E levantan la consola con dos instalaciones reales (la base de siempre y una segunda, `motor2_b_e2e`) más una «caída», y el spec `consola-instalaciones` las cubre — **pero hoy NO corre en CI** (`.github/workflows/ci.yml`
+  no crea `motor2_b_e2e` ni define las variables `MOTOR2_E2E_B_*`): se omite por falta de la segunda base, igual que en una corrida local sin esas variables. Sumar eso a CI queda pendiente, aparte (infraestructura del job, no
+  código de la consola).
 
 ## Implementación
 
-`plataforma/src/{entorno,db,rutas,registro-de-clientes}.ts`, `plataforma/src/servidor/{contexto,dependencias,identidad,resumen,auditoria}.ts`, `plataforma/src/app/page.tsx` y `plataforma/src/app/instalaciones/[instalacion]/**`.
-Pruebas: `test/plataforma/{entorno,instalaciones}.test.ts`, `test/persistencia/consola-varias-instalaciones.test.ts` (dos bases reales con el mismo id de empresa),
-`test/arquitectura/{consola-de-plataforma,consola-acciones-con-sesion,rol-plataforma-separado,base-e2e-guard}.test.ts` y `test/e2e/consola-instalaciones.spec.ts`.
+`plataforma/src/{entorno,db,rutas,registro-de-clientes}.ts`, `plataforma/src/servidor/{contexto,dependencias,identidad,resumen,auditoria,tiempo-limite,cuit-en-instalaciones,migraciones}.ts`, `plataforma/src/app/page.tsx` y
+`plataforma/src/app/instalaciones/[instalacion]/**`. Scripts: `scripts/conexion-de-plataforma.ts`, `scripts/cliente-plataforma.ts`, `scripts/plataforma/crear-primer-admin.ts`.
+Pruebas: `test/plataforma/{entorno,instalaciones,conexion-de-plataforma,cuit-entre-instalaciones}.test.ts`, `test/persistencia/consola-varias-instalaciones.test.ts` (dos bases reales con el mismo id de empresa),
+`test/arquitectura/{consola-de-plataforma,consola-acciones-con-sesion,rol-plataforma-separado,base-e2e-guard,alta-de-admin-revisa-todas-las-instalaciones}.test.ts` y `test/e2e/consola-instalaciones.spec.ts`.

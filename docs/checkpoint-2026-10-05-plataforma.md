@@ -11,7 +11,13 @@
   Hay **un solo proyecto de Vercel** de la consola; sus variables y su configuración están en `docs/guion-produccion-2026-10-05.md` (§3 y §4, con los nombres exactos). Sin migraciones. El CI crea una segunda base (`motor2_b_e2e`).
 - **Lo que sigue siendo del dueño** (necesita terminal o panel): crear el rol `motor2_plataforma` en cada base de Neon (guion §2), el proyecto de Vercel de la consola con sus variables (guion §3–§4), el primer administrador (guion §5),
   y las variables `AUTH_URL` + `CORREO_AVISOS_*` en los proyectos de la **app** de cada instalación y su redeploy (guion §6), más «Invitar a vincular» a la persona precargada de stockhneuquen.
-- Pendientes menores de la consola única (en ADR-025): `crear-primer-admin` que revise también las bases adicionales, aviso de CUIT repetido entre instalaciones, `--instalacion` en los scripts `modulos-empresa` y `politica-empresa`.
+- Los 4 pendientes menores de la consola única (ADR-025) quedaron resueltos (mismo día, sesión aparte): `crear-primer-admin` revisa también las bases adicionales, aviso de CUIT repetido entre instalaciones, `--instalacion` en
+  `modulos-empresa`/`politica-empresa`, y el aviso de instalación atrasada en migraciones (variante M: lee `_prisma_migrations`, necesita un `GRANT SELECT` adicional —requiere autorización expresa— en cada base de
+  producción; sin él, el código queda inerte y el aviso no aparece). De paso se corrigió un riesgo real: varias consultas de la consola sin `select` explícito que, contra una base un paso atrás en migraciones, rompían el
+  ingreso o el reenvío de invitaciones (no solo un aviso) — ver ADR-025 §Consecuencias.
+  **Sin verificar con el gate completo en esa sesión**: el Postgres local de esa máquina no podía cargar `plpgsql.dll` (bloqueo de infraestructura, no de código); sí se verificaron `tsc`, `lint`, `arquitectura`,
+  `analizar:muerto` y toda la suite de tests PUROS de `test/plataforma/**` y `test/arquitectura/**` (776 tests, sin base). Faltan correr contra Postgres real: los tests nuevos de `test/persistencia/consola-varias-instalaciones.test.ts`,
+  `npm run build` y `npm run test:e2e` completos. Tampoco se agregó ningún spec E2E nuevo para estos 4 pendientes (y `consola-instalaciones.spec.ts` hoy **no corre en CI**: falta la segunda base `motor2_b_e2e`, ver ADR-025).
 
 ## 1. En una línea
 

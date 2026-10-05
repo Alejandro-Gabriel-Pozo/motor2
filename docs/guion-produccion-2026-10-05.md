@@ -33,7 +33,8 @@ psql $u -v clave="LA-CLAVE-NUEVA-DE-ZULUHUB" -f scripts/operaciones/crear-rol-mo
 $u = ((Get-Content .env.vercel.empresa | Where-Object { $_ -like 'DIRECT_URL=*' }) -replace '^DIRECT_URL=','').Trim()
 psql $u -v clave="LA-CLAVE-NUEVA-DE-STOCKHNEUQUEN" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
 ```
-**No** usar `-v restringir=1` todavía. PEGAR si hay algún error (si termina sin error, avisar «ok»). El script es idempotente.
+**No** usar `-v restringir=1` todavía. PEGAR si hay algún error (si termina sin error, avisar «ok»). El script es idempotente: si ya lo corriste antes de que agregara el `GRANT SELECT` sobre `_prisma_migrations` (ADR-025, aviso de
+«instalación atrasada en migraciones»), volver a correrlo en cada base agrega solo ese permiso nuevo, sin tocar el resto.
 
 ## 3. Las variables de la consola (un solo proyecto para las dos instalaciones)
 
@@ -75,12 +76,14 @@ PEGAR la salida. Si algo está mal, el mensaje nombra la variable (nunca el valo
 
 ## 5. Primer administrador de la consola
 
-El administrador vive en la base de la instalación **principal** (zuluhub):
+El administrador vive en la base de la instalación **principal** (zuluhub), pero el alta revisa TAMBIÉN las bases adicionales (stockhneuquen): como `.env.plataforma.consola` ya trae `PLATAFORMA_INSTALACIONES_ADICIONALES` y
+`PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN` (del §3), no hace falta nada extra para que esa revisión cruzada funcione — si ese archivo NO tuviera esas variables, el alta revisaría solo la principal.
 ```powershell
 $env:DOTENV_CONFIG_PATH=".env.plataforma.consola"
 npm run plataforma:crear-admin -- --email tu-email@dominio.com --nombre "Tu Nombre"
 ```
-Imprime **una sola vez** el secreto TOTP y los códigos de recuperación: escanear/guardar al instante. Después borrar `.env.plataforma.consola`. Probar el ingreso a la consola desplegada: tienen que verse las dos instalaciones en el inicio.
+Primero imprime qué instalaciones revisó (solo ids, nunca una URL): confirmá que diga `zuluhub (principal), stockhneuquen`. Si alguna no respondió, el mensaje lo dice y **no crea nada** (reintentar es gratis). Después imprime
+**una sola vez** el secreto TOTP y los códigos de recuperación: escanear/guardar al instante. Después borrar `.env.plataforma.consola`. Probar el ingreso a la consola desplegada: tienen que verse las dos instalaciones en el inicio.
 
 ## 6. E8 (invitación por usuario) en producción
 

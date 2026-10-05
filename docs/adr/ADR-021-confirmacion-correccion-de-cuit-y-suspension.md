@@ -23,7 +23,8 @@ el `UPDATE` condicional, y la única regla entre filas —el CUIT es único— l
 - **Revisión humana:** hay que tildar «revisé el CUIT contra la constancia de ARCA». Si el CUIT que se confirma difiere del declarado, además se acepta expresamente (queda auditado).
 - **CUIT repetido:** dos empresas pueden DECLARAR el mismo CUIT mientras ninguna esté confirmada (el gerente declara sin ver a las demás). Gana la primera que se confirma; a la
   segunda se le dice a cuál empresa pertenece ya el CUIT (la plataforma sí puede ver nombres). La lista y el detalle marcan los repetidos antes de confirmar. Un choque del índice
-  que escape a la comprobación previa (carrera) se traduce al mismo mensaje; un test lo provoca de forma determinista.
+  que escape a la comprobación previa (carrera) se traduce al mismo mensaje; un test lo provoca de forma determinista. Esto es **dentro de una instalación**: el índice único es por
+  base. Entre instalaciones hay, además, un aviso informativo que no bloquea nada (ADR-025).
 - **Aviso al gerente:** «tu empresa está activa», por el canal `avisos` (ADR-018), **después** del commit. Si no sale, la empresa queda confirmada y la auditoría registra
   `aviso-de-activacion` con `enviado: false`; el detalle ofrece «Reenviar el aviso de activación».
 - **`Invitacion.cuitDeclarado` no se reescribe:** queda como lo que declaró el gerente. La verdad pasa a ser `Empresa.cuit` más la auditoría.

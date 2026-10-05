@@ -82,7 +82,8 @@ invalida los factores ya enrolados: hay que volver a crear los administradores.
 `npm run plataforma:crear-admin -- --email … --nombre …` (`scripts/plataforma/crear-primer-admin.ts`) lo corre el dueño una vez, con un archivo
 `DOTENV_CONFIG_PATH` **fuera del repositorio** que lleva las tres variables de arriba. Imprime una única vez el secreto TOTP (y su enlace `otpauth`) y los
 códigos de recuperación; la base guarda solo el secreto cifrado y los hash. Se niega si el email ya es de un administrador **o de un usuario de una
-empresa** (el administrador no entra a ninguna).
+empresa de CUALQUIERA de las instalaciones configuradas** (ADR-025: el administrador no entra a ninguna empresa, de ninguna instalación). Si una
+instalación adicional no responde, el alta se aborta sin crear nada en vez de asumir que está libre.
 
 La regla inversa vale en el alta de empresas: `crearEmpresa` rechaza como primer gerente el email de un administrador (comparado en minúsculas y sin
 espacios) con `EmailReservadoError`, antes de crear nada. `scripts/crear-empresa.ts` lee los emails de `AdminPlataforma` con el rol de plataforma; sin esa
