@@ -24,6 +24,7 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-005-acceso-multiempresa-portal-carta.md|docs/setup-sucursal.md": "doc de la app externa restaurant-menu-design, nunca estuvo en este repo",
   "ADR-006-carta-como-modulo-interno.md|docs/setup-sucursal.md": "doc de la app externa restaurant-menu-design, nunca estuvo en este repo",
   "ADR-007-instalacion-multiempresa-activada-con-una.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
+  "ADR-007-instalacion-multiempresa-activada-con-una.md|src/core/features/empresa/crear-empresa.ts": "mudada a test/setup/crear-empresa.ts en E8 (2026-10-05): es una fixture de pruebas, ver ADR-024",
   "ADR-019-consola-de-plataforma-ingreso-y-sesion.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
 };
 

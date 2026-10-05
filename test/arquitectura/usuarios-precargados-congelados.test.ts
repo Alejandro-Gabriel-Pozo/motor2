@@ -5,15 +5,13 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Congelado de usuarios precargados: un usuario precargado (alta por email ANTES de que entre con Google) es uno más a migrar a invitaciones. Hasta E8 (ADR-024) había tres
- * lugares que creaban un `User` a mano; desde E8, `agregarOActualizarUsuario` y `crearSucursalConAdmin` ya NO precargan (invitan, o piden un miembro que ya existe) y el único
- * que queda es `crearEmpresa`, una fixture de pruebas que vive en `src/` (pendiente: mudarla a `test/setup`). Ninguno nuevo.
+ * lugares que creaban un `User` a mano; desde E8, `agregarOActualizarUsuario` y `crearSucursalConAdmin` ya NO precargan (invitan, o piden un miembro que ya existe) y `crearEmpresa`
+ * (fixture de pruebas) se mudó a `test/setup`: en `src/` no queda ningún lugar que precargue. Ninguno nuevo.
  */
 const RAIZ = join(__dirname, "../../src");
 const ESCRITURAS = new Set(["create", "createMany", "createManyAndReturn", "upsert"]);
 
-const PRECARGAN: Record<string, { cantidad: number; motivo: string }> = {
-  "core/features/empresa/crear-empresa.ts": { cantidad: 1, motivo: "crearEmpresa precarga al primer admin por email (emailPrimerAdmin): fixture de pruebas, a mudar a test/setup." },
-};
+const PRECARGAN: Record<string, { cantidad: number; motivo: string }> = {};
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

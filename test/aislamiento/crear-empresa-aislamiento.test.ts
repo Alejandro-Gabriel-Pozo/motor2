@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin, EMPRESA_POR_DEFECTO_ID, prismaSinEmpresa } from "../setup/test-db";
-import { crearEmpresa } from "../../src/core/features/empresa/crear-empresa";
+import { crearEmpresa } from "../setup/crear-empresa";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 
 /**

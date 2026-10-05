@@ -14,13 +14,12 @@ import { describe, expect, it } from "vitest";
  * En `src/`:
  *  1. Ninguna escritura (`create|createMany|update|updateMany|upsert|delete|deleteMany`) sobre `<algo>.empresa` fuera de las EXCEPCIONES.
  *  2. Las excepciones: `cambiar-politica-empresa.ts` (el único que escribe la política; lo llama `scripts/politica-empresa.ts`) y
- *     `crear-empresa.ts` (alta/activación de una empresa: NO toca las perillas, el default de la base la deja «completa»).
+ *     (`crearEmpresa`, que antes era la segunda excepción, se mudó a `test/setup` en E8: ya no está en `src/`).
  *  3. Ningún otro archivo menciona las perillas dentro de SQL crudo (`$executeRaw*`/`$queryRaw*`).
  */
 const RAIZ = join(__dirname, "../../src");
 const POLITICA = "core/features/empresa/cambiar-politica-empresa.ts";
-const ALTA = "core/features/empresa/crear-empresa.ts";
-const EXCEPCIONES = [POLITICA, ALTA];
+const EXCEPCIONES = [POLITICA];
 const ESCRITURAS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 const PERILLAS = ["permisosEditables", "dosPaneles"];
 const SQL_CRUDO = new Set(["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"]);
@@ -87,8 +86,8 @@ describe("la política de empresa solo la cambia la plataforma", () => {
   });
 
   it("el alta de empresa no toca las perillas de política (queda con el default «completa»)", () => {
-    const fuente = readFileSync(join(RAIZ, ALTA), "utf8");
-    for (const perilla of PERILLAS) expect(fuente, `${ALTA} menciona ${perilla}`).not.toContain(perilla);
+    const fuente = readFileSync(join(RAIZ, "../test/setup/crear-empresa.ts"), "utf8");
+    for (const perilla of PERILLAS) expect(fuente, `crear-empresa.ts menciona ${perilla}`).not.toContain(perilla);
   });
 
   it("ningún SQL crudo de src/ nombra las perillas", () => {

@@ -1,8 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import { verificarRolDeEjecucion } from "@/core/auth/rol-de-ejecucion";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO } from "@/core/plataforma/email-reservado";
-import { sembrarEmpresa } from "./sembrar-empresa";
-import { crearEmpresaConAdminSchema, esTransicionValida, type ComandoCrearEmpresaConAdmin } from "./empresa.schema";
+import { sembrarEmpresa } from "@/core/features/empresa/sembrar-empresa";
+import { crearEmpresaConAdminSchema, esTransicionValida, type ComandoCrearEmpresaConAdmin } from "@/core/features/empresa/empresa.schema";
 
 /** Regla de negocio (ADR-007): quien crea la empresa —su primer admin— es su «gerente». */
 const ROL_EMPRESA_DEL_PRIMER_ADMIN = "gerente";
@@ -31,7 +31,7 @@ export interface EmpresaCreada {
 }
 
 /**
- * Alta DIRECTA de una empresa completa (ADR-007, A7), usada hoy solo como fixture de pruebas: el alta real es la de la consola de plataforma (E5, ADR-020), que
+ * Alta DIRECTA de una empresa completa (ADR-007, A7), FIXTURE de pruebas (E8, ADR-024: vive en `test/setup`, ya no en `src/`, porque precarga al primer admin por email): el alta real es la de la consola de plataforma (E5, ADR-020), que
  * deja la empresa en `PROVISIONING` y al gerente por invitación. Todo en una transacción: la `Empresa` nace `PROVISIONING`, se le siembra lo mismo que
  * `prisma/seed.ts` siembra para la primera (roles admin/operador con su matriz de permisos, unidades base, motivos de merma y destinos
  * de consumo), su primera sucursal y su primer admin (`UsuarioEmpresa.rolEmpresa = 'gerente'` + membresía de sucursal con rol admin), y
