@@ -121,6 +121,8 @@ export default defineConfig({
         CARTA_EMPRESA_UNICA: "e2e",
         // E6: el email de contacto que ve quien tiene su empresa suspendida (lo comprueba test/e2e/multiempresa-eleccion.spec.ts).
         CONTACTO_PLATAFORMA_EMAIL: "plataforma@local.test",
+        // E8 (ADR-024): la dirección pública con la que se arman los enlaces de las invitaciones (nunca desde el encabezado Host). El mail sale por la consola del servidor.
+        AUTH_URL: URL_BASE,
       },
       url: URL_BASE,
       reuseExistingServer: false,

@@ -49,3 +49,17 @@ export async function leerInvitacion(token: string) {
 export async function pertenenciasDe(email: string) {
   return prismaAdmin.usuarioEmpresa.findMany({ where: { usuario: { email } }, select: { empresaId: true, rolEmpresa: true } });
 }
+
+/**
+ * Una invitación de USUARIO (E8, ADR-024) a `empresaId` con una sucursal y un rol, firmada por `invitadoPorId`, con un token CONOCIDO. Como dueño (salta el RLS y los triggers).
+ */
+export async function sembrarInvitacionDeUsuario(entrada: { empresaId: string; sucursalId: string; rolId: string; invitadoPorId: string; email?: string; venceEn?: Date }) {
+  const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const email = entrada.email ?? `invitada-${marca}@local.test`;
+  const token = generarTokenOpaco();
+  const inv = await prismaAdmin.invitacion.create({
+    data: { empresaId: entrada.empresaId, email, rolEmpresa: "usuario", invitadoPorId: entrada.invitadoPorId, hashToken: hashDeToken(token), venceEn: entrada.venceEn ?? new Date(Date.now() + 3_600_000) },
+  });
+  await prismaAdmin.invitacionSucursal.create({ data: { empresaId: entrada.empresaId, invitacionId: inv.id, sucursalId: entrada.sucursalId, rolId: entrada.rolId, invitadoPorId: entrada.invitadoPorId } });
+  return { id: inv.id, email, token };
+}
