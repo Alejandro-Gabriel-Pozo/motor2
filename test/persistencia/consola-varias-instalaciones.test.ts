@@ -54,6 +54,10 @@ beforeEach(async () => {
   enviados = [];
   await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "AuditoriaPlataforma"');
   await dbB.$executeRawUnsafe('TRUNCATE TABLE "AuditoriaPlataforma"');
+  // La base B también arranca cada test limpia: sin esto, lo que crea un test (empresas con un CUIT, usuarios, invitaciones) lo ve el siguiente. Se vuelve a crear la `empresa_principal` que la migración dejó.
+  await dbB.$executeRawUnsafe('TRUNCATE TABLE "Empresa" CASCADE');
+  await dbB.user.deleteMany();
+  await dbB.empresa.create({ data: { id: "empresa_principal", nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
   await prismaAdmin.empresa.update({ where: { id: "empresa_principal" }, data: { estado: "ACTIVE" } });
   await dbB.empresa.update({ where: { id: "empresa_principal" }, data: { estado: "ACTIVE" } });
 });
@@ -115,7 +119,8 @@ describe("el enlace del mail apunta a la app de la instalación operada", () => 
 
 describe("alta de administrador de plataforma: se revisan TODAS las bases (ADR-025)", () => {
   const SECRETOS = { claveTotp: randomBytes(32).toString("base64"), secretoCodigos: "c".repeat(40) };
-  const otraBaseB = { id: "b", nombre: "B", db: dbB };
+  // `dbB` se crea en el `beforeAll`: se lee al usarla (un getter), no al definir el `describe`, cuando todavía es `undefined`.
+  const otraBaseB = { id: "b", nombre: "B", get db() { return dbB; } };
 
   afterEach(async () => {
     await prismaAdmin.$executeRawUnsafe('DELETE FROM "CodigoDeRecuperacionPlataforma"');
@@ -244,7 +249,7 @@ describe("empresasConEseCuit: aviso de CUIT repetido entre instalaciones (ADR-02
     await aceptarConCuitDeclarado(dbB, altaB.empresaId, "dueno-superada@gmail.com", CUIT_COMPARTIDO);
 
     const otra = await dbB.invitacion.create({
-      data: { empresaId: altaB.empresaId, email: "otra@gmail.com", rolEmpresa: "gerente", hashToken: "b".repeat(64), venceEn: AHORA, creadaEn: new Date(AHORA.getTime() + 3_600_000) },
+      data: { empresaId: altaB.empresaId, email: "otra@gmail.com", rolEmpresa: "gerente", hashToken: "b".repeat(64), venceEn: AHORA, creadaEn: new Date(Date.now() + 3_600_000) }, // relativa a la hora REAL: la invitación original se crea con now(), y una fecha fija se vuelve "vieja" con el paso del tiempo
     });
     await dbB.invitacion.update({ where: { id: otra.id }, data: { estado: "REVOCADA", revocadaEn: AHORA } });
 

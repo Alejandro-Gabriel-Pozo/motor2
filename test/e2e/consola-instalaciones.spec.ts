@@ -22,8 +22,15 @@ const datosDeLaEmpresa = (nombre: string) => ({ id: GEMELA, nombre, slug: GEMELA
 
 test.beforeAll(async () => {
   // La MISMA empresa (mismo id) en las dos bases, con nombres distintos: lo que haría peligroso confiar en un estado «ambiental».
-  await leerDeLaBase((db) => db.empresa.create({ data: datosDeLaEmpresa("Gemela de A") }));
-  await leerDeLaBaseB((db) => db.empresa.create({ data: datosDeLaEmpresa("Gemela de B") }));
+  // Idempotente: con `retries` de CI el `beforeAll` corre otra vez y la empresa ya existe.
+  await leerDeLaBase(async (db) => {
+    await db.empresa.deleteMany({ where: { id: GEMELA } });
+    await db.empresa.create({ data: datosDeLaEmpresa("Gemela de A") });
+  });
+  await leerDeLaBaseB(async (db) => {
+    await db.empresa.deleteMany({ where: { id: GEMELA } });
+    await db.empresa.create({ data: datosDeLaEmpresa("Gemela de B") });
+  });
 });
 
 test("el inicio muestra una tarjeta por instalación y la caída solo rompe la suya", async ({ page }) => {
@@ -41,15 +48,15 @@ test("el selector marca la instalación actual y lleva a la otra con SUS empresa
   await page.goto(rutaA("/empresas"));
   const selector = page.getByRole("navigation", { name: "Instalaciones" });
   await expect(selector.getByRole("link", { name: "E2E A" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("cell", { name: /Gemela de A/ })).toBeVisible();
-  await expect(page.getByRole("cell", { name: /Gemela de B/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Ver Gemela de A" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ver Gemela de B" })).toHaveCount(0);
   await sinViolaciones(page);
 
   await selector.getByRole("link", { name: "E2E B" }).click();
   await expect(page).toHaveURL(rutaB("/empresas"));
   await expect(page.getByRole("heading", { name: /Empresas · E2E B/ })).toBeVisible();
-  await expect(page.getByRole("cell", { name: /Gemela de B/ })).toBeVisible();
-  await expect(page.getByRole("cell", { name: /Gemela de A/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Ver Gemela de B" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ver Gemela de A" })).toHaveCount(0);
   await sinViolaciones(page);
 });
 
