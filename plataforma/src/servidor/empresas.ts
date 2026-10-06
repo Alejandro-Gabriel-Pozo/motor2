@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { azarDelProceso } from "@/lib/azar";
 import type { MensajeDeCorreo, ResultadoDeEnvio } from "@/core/correo/tipos";
 import { altaDeEmpresaSchema } from "@/core/features/empresa/empresa.schema";
 import { enlaceDeInvitacion, estadoEfectivoDeInvitacion, mensajeDeInvitacion, vencimientoDeInvitacion, type EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
@@ -77,7 +78,7 @@ export async function darDeAltaEmpresa(db: Db, deps: DependenciasDeEmpresas, aut
   const { nombre, slug, zonaHoraria, moneda, nombreSucursal, emailDuenio } = parseo.data;
 
   const ahora = deps.ahora();
-  const token = (deps.generarToken ?? generarTokenOpaco)();
+  const token = (deps.generarToken ?? (() => generarTokenOpaco(azarDelProceso)))();
   const venceEn = vencimientoDeInvitacion(ahora);
   const reservados = await deps.emailsDeAdmins();
 
@@ -125,7 +126,7 @@ async function empresaEnAltaConInvitacion(tx: Prisma.TransactionClient, empresaI
  */
 export async function reenviarInvitacion(db: Db, deps: DependenciasDeEmpresas, autor: AutorEnInstalacion, empresaId: string): Promise<ResultadoDeEmpresa> {
   const ahora = deps.ahora();
-  const token = (deps.generarToken ?? generarTokenOpaco)();
+  const token = (deps.generarToken ?? (() => generarTokenOpaco(azarDelProceso)))();
   const venceEn = vencimientoDeInvitacion(ahora);
   const reservados = await deps.emailsDeAdmins();
 
@@ -171,7 +172,7 @@ export async function invitarDeNuevo(db: Db, deps: DependenciasDeEmpresas, autor
   if (!parseo.success) return { ok: false, mensaje: "Ese email no es válido." };
   const email = normalizarEmail(parseo.data);
   const ahora = deps.ahora();
-  const token = (deps.generarToken ?? generarTokenOpaco)();
+  const token = (deps.generarToken ?? (() => generarTokenOpaco(azarDelProceso)))();
   const venceEn = vencimientoDeInvitacion(ahora);
   const reservados = await deps.emailsDeAdmins();
 

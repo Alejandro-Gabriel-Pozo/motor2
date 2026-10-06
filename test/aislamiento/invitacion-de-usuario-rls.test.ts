@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E8 (ADR-024): invitaciones de USUARIO y de VINCULACIÓN y la tabla hija `InvitacionSucursal` (migración 20261012120000), contra Postgres real y como `motor2_app`:
@@ -33,7 +34,7 @@ beforeEach(async () => {
 });
 
 function datos(rol: "usuario" | "vinculacion" | "gerente", empresaId = B, email = "nuevo@ejemplo.com") {
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   return {
     token,
     hash: hashDeToken(token),

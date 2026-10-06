@@ -4,6 +4,7 @@ import { aceptarInvitacionDelToken } from "../../src/core/auth/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
 import { sembrarEmpresa } from "../../src/core/features/empresa/sembrar-empresa";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E5 (ADR-020), aceptar la invitación del primer gerente contra Postgres real, como `motor2_app` (el rol de ejecución) bajo la empresa de la invitación.
@@ -22,7 +23,7 @@ async function prepararEmpresaEnAlta(id = EMPRESA, slug = "nueva-en-alta") {
 }
 
 async function invitar(empresaId = EMPRESA, email = EMAIL, venceEn = new Date(Date.now() + 3_600_000)) {
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   await prismaAdmin.invitacion.create({ data: { empresaId, email, rolEmpresa: "gerente", hashToken: hashDeToken(token), venceEn } });
   return token;
 }
@@ -125,7 +126,7 @@ describe("aceptar la invitación", () => {
 
   it("un token inventado o mal formado no acepta", async () => {
     await invitar();
-    expect(await aceptar(generarTokenOpaco())).toEqual({ ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO });
+    expect(await aceptar(generarTokenOpaco(azarDelProceso))).toEqual({ ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO });
     expect(await aceptar("corto")).toEqual({ ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO });
   });
 

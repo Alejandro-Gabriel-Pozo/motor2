@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { crearConCodigoAutogenerado } from "../../src/core/catalogo/generar-codigo";
+import { azarDelProceso } from "../../src/lib/azar";
 
 // No necesita Postgres: `intentar` simula el comportamiento de un UNIQUE
 // constraint con un Set en memoria.
@@ -14,7 +15,7 @@ function errorDeColision() {
 
 describe("crearConCodigoAutogenerado", () => {
   it("usa el código manual tal cual, sin reintentar", async () => {
-    const resultado = await crearConCodigoAutogenerado("MP", "MP_manual", async (codigo) => codigo);
+    const resultado = await crearConCodigoAutogenerado("MP", "MP_manual", async (codigo) => codigo, azarDelProceso);
     expect(resultado).toBe("MP_manual");
   });
 
@@ -24,7 +25,7 @@ describe("crearConCodigoAutogenerado", () => {
       crearConCodigoAutogenerado("MP", "MP_repetido", async () => {
         llamadas++;
         throw errorDeColision();
-      })
+      }, azarDelProceso)
     ).rejects.toThrow();
     expect(llamadas).toBe(1);
   });
@@ -39,7 +40,7 @@ describe("crearConCodigoAutogenerado", () => {
       const sufijo = codigo.replace("MP_", "").toUpperCase();
       if (ocupados.has(sufijo)) throw errorDeColision();
       return codigo;
-    });
+    }, azarDelProceso);
 
     expect(resultado).toBe("MP_bbb222");
     vi.restoreAllMocks();

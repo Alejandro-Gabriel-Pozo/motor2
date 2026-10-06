@@ -1,4 +1,5 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
+import type { FuenteDeAzar } from "./azar";
 
 /**
  * Tokens opacos de alta entropía (sesión de la consola, enlace de invitación). Viven fuera de `core/plataforma` porque también los usa la app
@@ -6,8 +7,8 @@ import { createHash, randomBytes } from "node:crypto";
  */
 
 /** Token opaco: 32 bytes aleatorios (256 bits) en base64url. La base guarda solo `hashDeToken`. */
-export function generarTokenOpaco(): string {
-  return randomBytes(32).toString("base64url");
+export function generarTokenOpaco(azar: FuenteDeAzar): string {
+  return Buffer.from(azar.bytes(32)).toString("base64url");
 }
 
 /** SHA-256 de un token de alta entropía (no hace falta HMAC: no se adivina por fuerza bruta). */

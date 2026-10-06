@@ -3,6 +3,7 @@ import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { inicioDeSesionPermitido } from "../../src/core/auth/acceso";
 import { invitacionDelToken, nombreCookieInvitacion, opcionesCookieInvitacion } from "../../src/core/auth/invitacion";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E5 (ADR-020), cuarta vía del gate de login: una invitación de gerente pendiente, no vencida, de una empresa en alta, con la cuenta de Google del MISMO
@@ -12,7 +13,7 @@ const EMPRESA = "nueva-en-alta";
 const EMAIL = "dueno@gmail.com";
 
 async function crearInvitacion(parcial: { email?: string; venceEn?: Date; estado?: "PENDIENTE" | "REVOCADA" } = {}) {
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   await prismaAdmin.invitacion.create({
     data: {
       empresaId: EMPRESA,
@@ -37,7 +38,7 @@ beforeEach(async () => {
 describe("gate de login con invitación", () => {
   it("sin invitación, un desconocido no entra (la vía nueva no abre nada por sí sola)", async () => {
     expect(await entrar(undefined)).toBe(false);
-    expect(await entrar(generarTokenOpaco())).toBe(false);
+    expect(await entrar(generarTokenOpaco(azarDelProceso))).toBe(false);
     expect(await entrar("corto")).toBe(false);
   });
 
@@ -71,7 +72,7 @@ describe("gate de login con invitación", () => {
   it("una invitación de USUARIO o de VINCULACIÓN no abre esta vía: solo la de gerente (E8, ADR-024)", async () => {
     const quien = await prismaAdmin.user.create({ data: { email: "quien-invita@gmail.com" } });
     for (const [rol, email] of [["usuario", "usuario@gmail.com"], ["vinculacion", "vincular@gmail.com"]] as const) {
-      const token = generarTokenOpaco();
+      const token = generarTokenOpaco(azarDelProceso);
       await prismaAdmin.invitacion.create({ data: { empresaId: EMPRESA, email, rolEmpresa: rol, invitadoPorId: quien.id, hashToken: hashDeToken(token), venceEn: new Date(Date.now() + 3_600_000) } });
       expect(await entrar(token, email), rol).toBe(false);
     }
@@ -98,7 +99,7 @@ describe("invitacionDelToken", () => {
     expect(vista).toMatchObject({ empresaId: EMPRESA, nombreEmpresa: "Nueva en alta", estadoEmpresa: "PROVISIONING", email: EMAIL, estado: "PENDIENTE" });
     expect(JSON.stringify(vista)).not.toContain(hashDeToken(token));
     expect((await invitacionDelToken(token, new Date(Date.now() + 2 * 3_600_000)))?.estado).toBe("VENCIDA");
-    expect(await invitacionDelToken(generarTokenOpaco())).toBeNull();
+    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso))).toBeNull();
     expect(await invitacionDelToken("no-es-un-token")).toBeNull();
     expect(await invitacionDelToken(undefined)).toBeNull();
   });
@@ -111,7 +112,7 @@ describe("invitacionDelToken busca por el hash del token, no solo por el RLS", (
     await prismaAdmin.invitacion.create({
       data: { empresaId: "empresa_principal", email: "ya-gerente@gmail.com", rolEmpresa: "gerente", hashToken: hashDeToken("T".repeat(43)), venceEn: new Date(Date.now() + 3_600_000), estado: "ACEPTADA", aceptadaEn: new Date(), aceptadaPorId: u.id },
     });
-    expect(await invitacionDelToken(generarTokenOpaco())).toBeNull();
+    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso))).toBeNull();
     const token = await crearInvitacion();
     expect(await invitacionDelToken(token)).toMatchObject({ empresaId: EMPRESA, email: EMAIL });
   });

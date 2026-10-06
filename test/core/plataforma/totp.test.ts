@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { codificarBase32, codigoTotp, decodificarBase32, generarSecretoTotp, pasoDeTotp, uriOtpauth, verificarTotp } from "../../../src/core/plataforma/totp";
+import { azarDelProceso } from "../../../src/lib/azar";
 
 /** RFC 6238, Apéndice B (SHA-1, secreto ASCII "12345678901234567890"): los valores de 8 dígitos truncados a los 6 últimos. */
 const SECRETO_RFC = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
@@ -46,9 +47,9 @@ describe("codigoTotp", () => {
   });
 
   it("el secreto generado son 32 caracteres base32 y no se repite", () => {
-    const a = generarSecretoTotp();
+    const a = generarSecretoTotp(azarDelProceso);
     expect(a).toMatch(/^[A-Z2-7]{32}$/);
-    expect(generarSecretoTotp()).not.toBe(a);
+    expect(generarSecretoTotp(azarDelProceso)).not.toBe(a);
   });
 });
 
@@ -81,7 +82,7 @@ describe("verificarTotp", () => {
   });
 
   it("un código de otro secreto no sirve", () => {
-    expect(verificarTotp(generarSecretoTotp(), codigo(paso), AHORA, null)).toEqual({ ok: false });
+    expect(verificarTotp(generarSecretoTotp(azarDelProceso), codigo(paso), AHORA, null)).toEqual({ ok: false });
   });
 });
 

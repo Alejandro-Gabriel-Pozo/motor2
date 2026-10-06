@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 
 /**
  * Genera un código optimista (`${prefijo}_<uuid6>`) y deja que el UNIQUE
@@ -19,12 +20,13 @@ export async function crearConCodigoAutogenerado<T>(
   prefijo: string,
   codigoManual: string | undefined,
   intentar: (codigo: string) => Promise<T>,
+  azar: FuenteDeAzar,
   maxIntentos = 5
 ): Promise<T> {
   if (codigoManual) return intentar(codigoManual);
 
   for (let intento = 0; intento < maxIntentos; intento++) {
-    const codigo = `${prefijo}_${crypto.randomUUID().slice(0, 6)}`;
+    const codigo = `${prefijo}_${azar.uuid().slice(0, 6)}`;
     try {
       return await intentar(codigo);
     } catch (e) {

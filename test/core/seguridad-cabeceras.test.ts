@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cabecerasCarta, cabecerasComunes, cspApp, cspCarta, generarNonce } from "@/core/seguridad/cabeceras";
+import { azarDelProceso } from "../../src/lib/azar";
 
 const directiva = (csp: string, nombre: string) => csp.split("; ").find((d) => d.startsWith(`${nombre} `) || d === nombre);
 
@@ -79,7 +80,7 @@ describe("cabeceras", () => {
 
 describe("generarNonce", () => {
   it("es base64, de 16 bytes y distinto en cada llamada", () => {
-    const nonces = new Set(Array.from({ length: 50 }, () => generarNonce()));
+    const nonces = new Set(Array.from({ length: 50 }, () => generarNonce(azarDelProceso)));
     expect(nonces.size).toBe(50);
     for (const n of nonces) {
       expect(n).toMatch(/^[A-Za-z0-9+/]{22}==$/);

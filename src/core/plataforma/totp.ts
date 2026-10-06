@@ -1,4 +1,5 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 
 /**
  * TOTP (RFC 6238, HMAC-SHA1, 6 dígitos, paso de 30 s) y base32 (RFC 4648) con `node:crypto`: sin dependencia nueva (ADR-019).
@@ -47,8 +48,8 @@ export function decodificarBase32(texto: string): Uint8Array | null {
 }
 
 /** 20 bytes aleatorios (el largo de la clave SHA-1) en base32: 32 caracteres. */
-export function generarSecretoTotp(): string {
-  return codificarBase32(randomBytes(20));
+export function generarSecretoTotp(azar: FuenteDeAzar): string {
+  return codificarBase32(azar.bytes(20));
 }
 
 export function pasoDeTotp(ahoraMs: number): number {

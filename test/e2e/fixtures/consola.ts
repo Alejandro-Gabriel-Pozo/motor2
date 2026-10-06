@@ -4,6 +4,7 @@ import { cifrarSecreto } from "../../../src/core/plataforma/cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigo, hashDeCodigoDeRecuperacion } from "../../../src/core/plataforma/codigos";
 import { codigoTotp, generarSecretoTotp, pasoDeTotp } from "../../../src/core/plataforma/totp";
 import { crearPrismaE2E, resolverUrlE2E, resolverUrlE2EB } from "./base-e2e";
+import { azarDelProceso } from "../../../src/lib/azar";
 
 /**
  * La consola de plataforma en los E2E (E4, ADR-019): sus dos secretos son valores FIJOS y descartables (la base E2E se vacía en cada corrida), compartidos entre
@@ -25,9 +26,9 @@ export async function sembrarAdminDePlataforma(email: string): Promise<AdminSemb
   const prisma = crearPrismaE2E(resolverUrlE2E(process.env));
   try {
     const id = randomUUID();
-    const secretoTotp = generarSecretoTotp();
-    await prisma.adminPlataforma.create({ data: { id, email, nombre: "Admin E2E", secretoTotp: cifrarSecreto(secretoTotp, CLAVE_TOTP_E2E, id) } });
-    const codigosDeRecuperacion = generarCodigosDeRecuperacion(3);
+    const secretoTotp = generarSecretoTotp(azarDelProceso);
+    await prisma.adminPlataforma.create({ data: { id, email, nombre: "Admin E2E", secretoTotp: cifrarSecreto(secretoTotp, CLAVE_TOTP_E2E, id, azarDelProceso) } });
+    const codigosDeRecuperacion = generarCodigosDeRecuperacion(azarDelProceso, 3);
     await prisma.codigoDeRecuperacionPlataforma.createMany({
       data: codigosDeRecuperacion.map((codigo) => ({ adminId: id, hashCodigo: hashDeCodigoDeRecuperacion(codigo, SECRETO_DE_CODIGOS_E2E, id) })),
     });
