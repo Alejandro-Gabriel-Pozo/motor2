@@ -10,9 +10,9 @@
  */
 export type { EstadoStockConsolidado } from "./consolidado";
 export { armarStockEnTransito } from "./en-transito";
-export type { FilaStockEnTransito, TraspasoEnTransito } from "./en-transito";
+export type { FilaStockEnTransito } from "./en-transito";
 export { seleccionarClaseA } from "./sugerencia-clase-a";
-export type { CompraDeProducto, InsumoClaseA } from "./sugerencia-clase-a";
+export type { InsumoClaseA } from "./sugerencia-clase-a";
 export { elegirMinimo } from "./stock-minimo";
 export { resolverProximoConteo } from "./frecuencia-conteo";
 export { whereSeccionHabitualVigente } from "./seccion-habitual";
