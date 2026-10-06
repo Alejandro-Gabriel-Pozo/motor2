@@ -15,7 +15,7 @@ const SECRETO = "s".repeat(40);
 
 describe("código de ingreso", () => {
   it("son 6 dígitos, con ceros a la izquierda, y salen distintos", () => {
-    const codigos = Array.from({ length: 200 }, generarCodigoDeIngreso);
+    const codigos = Array.from({ length: 200 }, () => generarCodigoDeIngreso(azarDelProceso));
     for (const c of codigos) expect(c).toMatch(/^\d{6}$/);
     expect(new Set(codigos).size).toBeGreaterThan(150);
   });
