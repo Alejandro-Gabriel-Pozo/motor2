@@ -5,7 +5,7 @@ import { redondearMoneda } from "@/core/moneda";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { resolverPrecioVenta, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
-import { descuentosDeProductoEnSucursal } from "@/core/carta/public-servidor";
+import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";

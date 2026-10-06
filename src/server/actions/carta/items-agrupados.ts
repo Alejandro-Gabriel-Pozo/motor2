@@ -3,7 +3,7 @@
 import type { Db } from "@/lib/db-tipos";
 import { esErrorDeUnicidad, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "@/core/carta/armar-menu";
-import { productoTieneDescuentoEnAlgunaSucursal } from "@/core/carta/descuento-producto-consulta";
+import { productoTieneDescuentoEnAlgunaSucursal } from "@/server/lecturas/carta/descuentos";
 import {
   normalizarTagsCarta,
   validarNombreItemAgrupadoCarta,

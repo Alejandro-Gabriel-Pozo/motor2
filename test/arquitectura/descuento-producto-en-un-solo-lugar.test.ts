@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Regla de arquitectura: "¿qué porcentaje de descuento tiene este producto en esta sucursal?" se decide en UN solo lugar —
- * `descuentosDeProductoEnSucursal` (`core/carta/descuento-producto-consulta.ts`). Un lector que consulte `DescuentoProductoSucursal` por su
+ * `descuentosDeProductoEnSucursal` (`server/lecturas/carta/descuentos.ts`). Un lector que consulte `DescuentoProductoSucursal` por su
  * cuenta puede mostrar (o cobrar) otro precio que el resto de las pantallas: la carta pública, el selector del POS, el cobro al agregar el
  * ítem y el cierre salen todos del mismo embudo, y TypeScript no detecta una lectura paralela (todas tipan igual).
  *
@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
  * un comentario.
  */
 const RAIZ = join(__dirname, "../../src");
-const ARCHIVOS_PERMITIDOS = ["core/carta/descuento-producto-consulta.ts", "server/actions/carta/descuento-producto.ts"];
+const ARCHIVOS_PERMITIDOS = ["server/lecturas/carta/descuentos.ts", "server/actions/carta/descuento-producto.ts"];
 const LECTURA = /descuentoProductoSucursal\s*\.\s*(find|count|aggregate|groupBy)/;
 
 function archivos(dir: string): string[] {

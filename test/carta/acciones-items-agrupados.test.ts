@@ -12,7 +12,7 @@ import {
   quitarOpcionItemAgrupadoCarta,
 } from "../../src/server/actions/carta/items-agrupados";
 import { cargarAdminItemsAgrupados } from "../../src/server/consultas/carta/admin";
-import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { validarNombreItemAgrupadoCarta } from "../../src/core/carta/validaciones";
 
 /**

@@ -25,6 +25,7 @@ const DELEGADOS = delegadosDeModelos(readFileSync(join(RAIZ, "prisma/schema.pris
 
 /** Carpetas de `src/core/` que ya no consultan. Crece al final de cada PR de la Fase 3; no se achica. */
 const CARPETAS_SIN_CONSULTAS: readonly string[] = [
+  "src/core/carta",
   "src/core/compras",
   "src/core/correo",
   "src/core/datos",

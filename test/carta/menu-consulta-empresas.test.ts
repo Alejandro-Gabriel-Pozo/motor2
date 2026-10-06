@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
-import { resolverMenuCartaConDiagnostico } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 
 afterAll(() => prismaAdmin.$disconnect());
 

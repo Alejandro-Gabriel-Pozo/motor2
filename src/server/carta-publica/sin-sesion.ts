@@ -1,7 +1,8 @@
+import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
-import { resolverEmpresaCarta, type EmpresaCarta } from "./empresa-carta";
-import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "./publica-consulta";
+import { resolverEmpresaCarta, type EmpresaCarta } from "@/server/lecturas/carta/empresa";
+import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "@/server/lecturas/carta/publica";
 
 /**
  * Resolución de la carta para los consumidores SIN sesión (páginas `(carta-publica)`): no hay `ContextoUsuario` de donde sacar

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { cartaPublica, empresaCartaPublica } from "@/core/carta/publica-sin-sesion";
+import { cartaPublica, empresaCartaPublica } from "@/server/carta-publica/sin-sesion";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 
 // ISR: se cachea 5 minutos, y las acciones del módulo carta la invalidan al instante (`revalidarCartasPublicas`). Sin

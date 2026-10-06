@@ -1,7 +1,8 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
-import { descuentosDeProductoEnSucursal, resolverMenuCarta } from "@/core/carta/public-servidor";
+import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
+import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";

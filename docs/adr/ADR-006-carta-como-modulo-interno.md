@@ -355,3 +355,17 @@ cada una — no reinventarlas de memoria):**
   a único por empresa (corregir también en el schema experimental,
   `prisma/fase-a/schema.prisma`, que hoy lo tiene como único global), DNS
   wildcard real, y e2e multiempresa.
+
+## Actualización 2026-10-06 (Pureza, Fase 3): las lecturas de la carta pública salieron de `core/carta`
+
+Las lecturas de la carta pública pasaron de `src/core/carta/` a `src/server/`, sin cambiar qué alcanza la carta pública (la lista cerrada `ALCANCE_CARTA_PUBLICA` sigue cerrada: solo cambiaron las rutas de los cinco archivos):
+
+| Antes | Ahora |
+|---|---|
+| `core/carta/menu-consulta.ts` | `server/lecturas/carta/menu.ts` |
+| `core/carta/descuento-producto-consulta.ts` | `server/lecturas/carta/descuentos.ts` |
+| `core/carta/empresa-carta.ts` | `server/lecturas/carta/empresa.ts` |
+| `core/carta/publica-consulta.ts` | `server/lecturas/carta/publica.ts` |
+| `core/carta/publica-sin-sesion.ts` (elige el cliente de base SIN sesión) | `server/carta-publica/sin-sesion.ts` |
+
+`core/carta` queda puro: sin consultas ni acceso al cliente de base (lo exige `core-sin-consultas`). Las reglas de aislamiento (`carta-publica-alcance`, `carta-publica-aislada`, `publica-sin-sesion-solo-desde-carta-publica`) siguen vigentes sobre las rutas nuevas, y las páginas de la carta pública importan `server/carta-publica/sin-sesion.ts` directo (ya no es un interno de dominio, así que las dos excepciones permanentes de la UI desaparecieron). Las lecturas que usa un e2e (`menu`, `empresa`, `publica`) no llevan `import "server-only"`, porque Playwright no puede cargar ese módulo; el archivo que elige el cliente sí lo lleva.

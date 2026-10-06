@@ -62,7 +62,7 @@ const IMPORTADORES_DE_DB = [
     motivo: "Auth.js: `PrismaAdapter(prisma)` — el adaptador de sesiones necesita el cliente global; no hay contexto de usuario durante el login.",
   },
   {
-    ruta: "src/core/carta/publica-sin-sesion.ts",
+    ruta: "src/server/carta-publica/sin-sesion.ts",
     motivo: "Resolución PÚBLICA de la carta (empresa, portal, carta de una sucursal): sin sesión no hay contexto que dé la base. Único punto de entrada de las páginas públicas.",
   },
 ];
@@ -76,7 +76,7 @@ const IMPORTADORES_DE_BASE = [
   { ruta: "src/core/auth/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
   { ruta: "src/core/auth/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
   { ruta: "src/core/auth/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`): ocurre antes de que el invitado tenga empresa ni sesión." },
-  { ruta: "src/core/carta/publica-sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
+  { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
   { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },
   { ruta: "src/app/api/cron/sincronizar-dolar/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
   { ruta: "src/app/api/cron/sincronizar-ipc/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
@@ -130,15 +130,6 @@ const CICLOS_CONOCIDOS = [
  * (`core/<dominio>/public.ts` o `public-servidor.ts`). Estas son las que todavía importan un archivo interno. La lista solo se achica.
  */
 const UI_CON_INTERNALS_DE_DOMINIO = [
-  {
-    ruta: "src/app/(carta-publica)/carta-publica/[empresa]/page.tsx",
-    motivo:
-      "PERMANENTE: la carta pública elige su cliente de base SIN sesión importando `core/carta/publica-sin-sesion.ts` DIRECTO; las reglas `carta-publica-aislada` y `publica-sin-sesion-solo-desde-carta-publica` exigen justamente que ese archivo no salga por ninguna fachada.",
-  },
-  {
-    ruta: "src/app/(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx",
-    motivo: "PERMANENTE: ídem, importa `core/carta/publica-sin-sesion.ts` directo por el aislamiento de la carta pública.",
-  },
   {
     ruta: "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx",
     motivo:

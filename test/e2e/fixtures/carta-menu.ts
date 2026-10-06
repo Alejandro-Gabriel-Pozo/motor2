@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { resolverMenuCarta } from "../../../src/core/carta/menu-consulta";
+import { resolverMenuCarta } from "../../../src/server/lecturas/carta/menu";
 
 /**
  * El menú de la carta pública de una sucursal, leído directo de la base con el `prisma` de la suite (el rol de la app, bajo RLS: con la

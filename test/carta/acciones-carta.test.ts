@@ -13,7 +13,7 @@ import {
   guardarPrecioLocalPromoCarta,
   guardarPromoCarta,
 } from "../../src/server/actions/carta/promos";
-import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { normalizarTagsCarta, validarImagenUrlCarta, validarOrdenCarta, validarPrecioCarta } from "../../src/core/carta/validaciones";
 
 /**

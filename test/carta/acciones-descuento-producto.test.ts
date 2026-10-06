@@ -6,8 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProduc
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
 import { agregarOpcionItemAgrupadoCarta, guardarItemAgrupadoCarta } from "../../src/server/actions/carta/items-agrupados";
-import { descuentosDeProductoEnSucursal, productoTieneDescuentoEnAlgunaSucursal } from "../../src/core/carta/descuento-producto-consulta";
-import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { descuentosDeProductoEnSucursal, productoTieneDescuentoEnAlgunaSucursal } from "../../src/server/lecturas/carta/descuentos";
+import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 
 /**
  * Producto con descuento (Fase 2): `guardarDescuentoProducto` pone, cambia o saca el % de UN PV EN LA SUCURSAL ACTIVA. Exige `carta_producto_descuento`,
