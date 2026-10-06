@@ -14,7 +14,8 @@ import {
 } from "../../src/core/permisos/gate";
 import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
 import { accionesDeNavegacion } from "../../src/core/navegacion/estructura";
-import { denegacionDeModulo, modulosEfectivosDeEmpresa } from "../../src/core/permisos/modulos-de-empresa";
+import { modulosEfectivosDeEmpresa } from "../../src/core/permisos/modulos-de-empresa";
+import { denegacionDeModulo } from "../../src/core/permisos/modulo-de-la-accion";
 
 /**
  * P7 (bloque 5A): el guard y el menú miran el registro de módulos de la empresa. Orden: membresía → módulo → capacidad → rol. Administración
