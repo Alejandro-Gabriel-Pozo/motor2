@@ -25,6 +25,7 @@ import { escribirRechazoDeSolicitud } from "@/server/persistencia/traspasos/escr
  * @idempotency No aplica — sin Operación donde guardarla; el aislamiento SERIALIZABLE evita la carrera de "stock perdido en tránsito" (una aprobación concurrente que pisara el rechazo).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno — solo el cambio de estado del traspaso.
+ * @ficha permiso=traspaso_rechazar_solicitud transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
  */
 export async function rechazarSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

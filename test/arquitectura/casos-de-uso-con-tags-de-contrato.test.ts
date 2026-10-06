@@ -1,6 +1,5 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
+import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
 
 /**
  * Guardián de arquitectura (backlog post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §7): todo caso de uso
@@ -17,56 +16,10 @@ import { describe, expect, it } from "vitest";
  * `casos-de-uso/`, nunca por la Server Action) de los casos de uso reales. Un caso de uso nuevo que nadie se acuerde de tagear hace
  * FALLAR este test por default, no al revés.
  */
-const SRC = join(__dirname, "../../src");
-
 /** Casos de uso reales sin los 4 tags todavía — cada entrada exige motivo. Vacía: los 23 casos de uso reales descubiertos hoy ya los tienen. */
 const SIN_TAGS_TODAVIA: Record<string, string> = {};
 
 const TAGS_OBLIGATORIOS = ["@contract", "@idempotency", "@transaction", "@sideEffects"];
-
-function archivosFuente(dir: string): string[] {
-  return readdirSync(dir).flatMap((nombre) => {
-    const ruta = join(dir, nombre);
-    return statSync(ruta).isDirectory() ? archivosFuente(ruta) : /\.tsx?$/.test(nombre) ? [ruta] : [];
-  });
-}
-
-function rutaRelativa(base: string, ruta: string): string {
-  return relative(base, ruta).split(sep).join("/");
-}
-
-interface CasoDeUsoReal {
-  ruta: string; // relativa a src/, ej. "server/actions/stock/casos-de-uso/reclasificar-stock.ts"
-  fuente: string;
-}
-
-/**
- * Descubre TODO archivo bajo `server/actions/<dominio>/casos-de-uso/<archivo>.ts` cuya Server Action (un archivo UN nivel arriba) lo importa —
- * mismo criterio "es un caso de uso real, no un helper interno" que separa `armar-linea-de-movimiento.ts`/`producto-transferible.ts`
- * (nunca importados por su Server Action, solo por archivos hermanos dentro de `casos-de-uso/`) de los 23 casos de uso reales.
- */
-function descubrirCasosDeUsoReales(): CasoDeUsoReal[] {
-  const archivos = archivosFuente(SRC).filter((r) => /[\\/]server[\\/]actions[\\/][^\\/]+[\\/]casos-de-uso[\\/][^\\/]+\.tsx?$/.test(r));
-  const resultado: CasoDeUsoReal[] = [];
-
-  for (const archivo of archivos) {
-    const basename = archivo.replace(/\.tsx?$/, "").split(/[\\/]/).pop()!;
-    const carpetaAccion = dirname(dirname(archivo)); // un nivel arriba de casos-de-uso/
-    const archivosDeCarpeta = readdirSync(carpetaAccion).filter((n) => /\.tsx?$/.test(n));
-
-    const esCasoDeUsoReal = archivosDeCarpeta.some((nombreArchivo) => {
-      const rutaHermano = join(carpetaAccion, nombreArchivo);
-      if (statSync(rutaHermano).isDirectory()) return false;
-      const fuenteHermano = readFileSync(rutaHermano, "utf8");
-      return new RegExp(`from\\s+["']\\./casos-de-uso/${basename}["']`).test(fuenteHermano);
-    });
-    if (!esCasoDeUsoReal) continue;
-
-    resultado.push({ ruta: rutaRelativa(SRC, archivo), fuente: readFileSync(archivo, "utf8") });
-  }
-
-  return resultado;
-}
 
 function tagsFaltantes(fuente: string): string[] {
   return TAGS_OBLIGATORIOS.filter((tag) => !fuente.includes(tag));

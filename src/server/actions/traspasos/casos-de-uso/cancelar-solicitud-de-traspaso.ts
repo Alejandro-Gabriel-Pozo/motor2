@@ -25,6 +25,7 @@ import { escribirCancelacionDeSolicitud } from "@/server/persistencia/traspasos/
  * @idempotency No aplica — sin Operación donde guardar una clave; el aislamiento SERIALIZABLE arbitra la carrera de estado.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno — solo el cambio de estado del traspaso (nunca tocó Kardex).
+ * @ficha permiso=traspaso_cancelar_solicitud transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
  */
 export async function cancelarSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

@@ -31,6 +31,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @idempotency Por estado — exige estado PENDIENTE; un reintento sobre un conteo ya RESUELTO se rechaza con CONTEO_NO_PENDIENTE, no I3.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Escritura del Kardex SOLO si la diferencia contra el saldo de hoy es != 0 y la rama es "ajustar"; sin auditoría de permisos propia.
+ * @ficha permiso=conteo_resolver_pendiente transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
  */
 export async function resolverConteoPendienteCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

@@ -29,6 +29,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @idempotency Por estado — un conteo ya CANCELADO se rechaza explícitamente; sin claveIdempotencia/I3.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la reversión de Kardex (fila conteoFisicoId) y el cambio de estado del ConteoFisico.
+ * @ficha permiso=cancelar_conteo transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
  */
 export async function cancelarConteoFisicoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
