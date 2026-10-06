@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
-import { medirPrecargadosSinGoogle } from "../../src/core/auth/precargados";
+import { medirPrecargadosSinGoogle } from "../../scripts/lecturas-de-auth";
 
 /** Cuántos precargados faltan migrar a invitaciones antes de apagar `allowDangerousEmailAccountLinking`. */
 describe("medirPrecargadosSinGoogle", () => {

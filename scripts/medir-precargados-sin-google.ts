@@ -7,7 +7,7 @@
  */
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
-import { medirPrecargadosSinGoogle } from "../src/core/auth/precargados";
+import { medirPrecargadosSinGoogle } from "./lecturas-de-auth";
 
 async function main() {
   const m = await medirPrecargadosSinGoogle(prisma);

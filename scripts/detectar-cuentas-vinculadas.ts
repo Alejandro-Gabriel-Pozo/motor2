@@ -1,12 +1,12 @@
 /**
  * Detección retroactiva del hallazgo S-01 (solo lectura, no modifica nada): lista los usuarios con más de una cuenta de Google vinculada o
- * con una cuenta cuyo email no es el suyo, en la base que apunte DATABASE_URL. La lógica vive en `src/core/auth/cuentas-vinculadas.ts` (testeada).
+ * con una cuenta cuyo email no es el suyo, en la base que apunte DATABASE_URL. La lectura vive en `scripts/lecturas-de-auth.ts` y la clasificación en `src/core/auth/cuentas-vinculadas.ts` (testeadas).
  *
  * Uso: npm run detectar-cuentas-vinculadas
  */
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
-import { detectarCuentasDeGoogleSospechosas } from "../src/core/auth/cuentas-vinculadas";
+import { detectarCuentasDeGoogleSospechosas } from "./lecturas-de-auth";
 
 async function main() {
   const sospechosos = await detectarCuentasDeGoogleSospechosas(prisma);

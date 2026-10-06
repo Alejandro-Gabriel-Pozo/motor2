@@ -15,14 +15,12 @@ export interface EntradaDePurezaHeredada {
 }
 
 export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada> = {
-  "src/core/auth/acceso.ts": { nivel: "P3", senales: ["importaCliente", "leeLaBase", "reloj", "entorno"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
+  "src/core/auth/acceso.ts": { nivel: "P3", senales: ["importaCliente", "leeLaBase", "reloj", "entorno"], pendiente: "Fase 6: es login, base e infraestructura de sesión (lo usa solo lib/auth.ts): se muda entero a server/sesion con auth/base y auth/contexto" },
   "src/core/auth/base.ts": { nivel: "P3", senales: ["prismaDeTipo", "importaCliente", "escribeEnLaBase", "entorno"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
   "src/core/auth/contexto.ts": { nivel: "P4", senales: ["serverOnly", "reactONext", "leeLaBase", "entorno"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
-  "src/core/auth/cuentas-vinculadas.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/auth/invitacion.ts": { nivel: "P3", senales: ["leeLaBase", "escribeEnLaBase", "reloj"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
   "src/core/auth/ir-al-login.ts": { nivel: "P4", senales: ["reactONext"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
-  "src/core/auth/precargados.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
-  "src/core/auth/rol-de-ejecucion.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
+  "src/core/auth/rol-de-ejecucion.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 6: lo importa solo auth/base.ts (infraestructura de sesión): no puede salir antes que él, se muda con server/sesion" },
   "src/core/auth/session.ts": { nivel: "P4", senales: ["serverOnly", "reactONext"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
   "src/core/carta/descuento-producto-consulta.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/carta/empresa-carta.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
