@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteVentasPorSeccion } from "@/core/carta/reporte-secciones";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
@@ -13,7 +14,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
  */
 export default async function VentasPorSeccionPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_ventas_por_seccion", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

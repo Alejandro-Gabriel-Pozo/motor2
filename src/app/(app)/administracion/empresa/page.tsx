@@ -1,11 +1,12 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { formatearCuit } from "@/core/fiscal/cuit";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { obtenerPerfilDeEmpresa } from "@/server/consultas/empresa/perfil";
 
 export default async function PerfilDeLaEmpresaPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   // Se abre con la clave de la gerencia (piso gerente, sin migración): es la única de contexto empresa que ya existe y que solo tiene quien es gerente. Si más adelante
   // el perfil se abre a los administradores, va con una clave propia (y la migración que eso pide).

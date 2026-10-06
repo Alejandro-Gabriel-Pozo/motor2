@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteConsignacion } from "@/core/reportes/consignacion";
 import { TablaDebidoConsignante, TablaStockSinVenderConsignacion } from "./tabla-consignacion";
@@ -7,7 +8,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 
 export default async function ConsignacionPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta">> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

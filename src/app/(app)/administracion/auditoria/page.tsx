@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
 import { ENTIDADES_AUDITABLES, descripcionParaMostrar, listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
@@ -11,7 +12,7 @@ export default async function AuditoriaPage({
   searchParams: Promise<ParametrosDeUrl<"entidad" | "cursor">>;
 }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_auditoria", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

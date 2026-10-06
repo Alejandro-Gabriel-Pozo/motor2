@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { OpcionesTransaccion, Transaccion } from "@/lib/db-tipos";
-import { datosDelRolDeEjecucion, verificarRolDeEjecucion, type DatosDelRol } from "./rol-de-ejecucion";
+import { datosDelRolDeEjecucion, permitirRolPrivilegiado, verificarRolDeEjecucion, type DatosDelRol } from "./rol-de-ejecucion";
 
 export interface BaseDelContexto {
   /** Base con la que opera el pedido. En el contexto de un usuario es la de su empresa activa (`dbDeEmpresa`): cada operación fija `app.empresa_id` en su transacción. */
@@ -92,5 +92,5 @@ export async function verificarRolDeEjecucionDelProceso(): Promise<void> {
     datosDelRolDelProceso = undefined;
     throw error;
   });
-  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso, process.env.MOTOR2_ROL_ESTRICTO === "0");
+  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso, permitirRolPrivilegiado(process.env));
 }

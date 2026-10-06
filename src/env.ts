@@ -54,8 +54,9 @@ const envSchema = z.object({
   // URL pública de la app para Auth.js: con https decide la cookie de sesión (`sirvePorHttps`, core/auth/cookie-sesion.ts).
   AUTH_URL: z.string().min(1).optional(),
   // Desde ADR-022 la app SIEMPRE se niega a operar con un rol de base que salta el RLS; "0" es el escape explícito de las herramientas de demo (core/auth/rol-de-ejecucion.ts).
+  // En Producción de Vercel el "0" está PROHIBIDO: el arranque se niega (`escapesProhibidosEnProduccion`) y, aunque llegara, `permitirRolPrivilegiado` lo ignora.
   MOTOR2_ROL_ESTRICTO: z.string().min(1).optional(),
-  // "1" aplica el chequeo de producción fuera de Vercel; "0" lo relaja al esquema común (`validarEntornoAlArrancar`).
+  // "1" aplica el chequeo de producción fuera de Vercel. El "0" (que relajaba el esquema) se eliminó (Pureza 0.4): en Producción de Vercel el arranque se niega si está.
   MOTOR2_ENTORNO_ESTRICTO: z.string().min(1).optional(),
 
   // Envío de mails (core/correo, ADR-018): dos canales con cuenta, clave y dominio propios. Clave y remitente de cada canal van juntas (el arranque
@@ -87,14 +88,32 @@ export function parseEnv(source: Record<string, string | undefined>, produccion 
 const entornoEstricto = (source: Record<string, string | undefined>) => source.VERCEL_ENV === "production" || source.MOTOR2_ENTORNO_ESTRICTO === "1";
 
 /**
+ * Los dos escapes que apagan una garantía de seguridad NO pueden existir en Producción de Vercel (Pureza 0.4, hallazgo H1 de la auditoría):
+ *  - `MOTOR2_ROL_ESTRICTO=0` deja operar con un rol de base que salta el RLS: sin aislamiento entre empresas.
+ *  - `MOTOR2_ENTORNO_ESTRICTO=0` relajaba esta misma validación (dejaba arrancar sin `CRON_SECRET` ni `AUTH_SECRET` largo).
+ * Ambos siguen valiendo fuera de Producción (herramientas de demo, local). Devuelve los problemas por NOMBRE de variable, nunca por valor.
+ */
+export function escapesProhibidosEnProduccion(source: Record<string, string | undefined>): string[] {
+  if (source.VERCEL_ENV !== "production") return [];
+  const problemas: string[] = [];
+  if (source.MOTOR2_ROL_ESTRICTO === "0") problemas.push("MOTOR2_ROL_ESTRICTO=0 (apaga el aislamiento por empresa: está prohibido en Producción)");
+  if (source.MOTOR2_ENTORNO_ESTRICTO === "0") problemas.push("MOTOR2_ENTORNO_ESTRICTO=0 (relaja esta validación: está prohibido en Producción)");
+  return problemas;
+}
+
+/**
  * Fail-fast del arranque (`instrumentation.ts`): en un despliegue de Producción de Vercel (`VERCEL_ENV=production`) o con
  * `MOTOR2_ENTORNO_ESTRICTO=1`, el proceso no arranca con una variable requerida ausente. Fuera de eso (local, `next start` del e2e,
  * Preview) no hace nada. El error lista solo los nombres de las variables, nunca sus valores.
  */
 export function validarEntornoAlArrancar(source: Record<string, string | undefined> = process.env): void {
   if (!entornoEstricto(source)) return;
-  const resultado = (source.MOTOR2_ENTORNO_ESTRICTO === "0" ? envSchema : schemaDeProduccion).safeParse(source);
-  const problemas = [...(resultado.success ? [] : resultado.error.issues.map((i) => `${i.path.join(".")} (${i.message})`)), ...problemasDeConfiguracionDeCorreo(source)];
+  const resultado = schemaDeProduccion.safeParse(source);
+  const problemas = [
+    ...escapesProhibidosEnProduccion(source),
+    ...(resultado.success ? [] : resultado.error.issues.map((i) => `${i.path.join(".")} (${i.message})`)),
+    ...problemasDeConfiguracionDeCorreo(source),
+  ];
   if (problemas.length === 0) return;
   throw new Error(`Configuración inválida: ${problemas.join(", ")}. El proceso no arranca.`);
 }

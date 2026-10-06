@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularCostosYMargenes, calcularImpactoInsumos } from "@/core/reportes/costos";
 import { cargarObjetivosDeMargen } from "@/core/reportes/margen-objetivo-consulta";
@@ -6,7 +7,7 @@ import { TablaCostosProductos, TablaImpactoInsumos } from "./tabla-costos";
 
 export default async function CostosPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

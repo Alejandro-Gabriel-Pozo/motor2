@@ -1,11 +1,12 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { ReclasificarForm } from "./reclasificar-form";
 
 export default async function ReclasificarPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   // Clave propia `stock_reclasificar` (antes compartía `proceso_control` con Conteo Físico), ver src/server/actions/stock/reclasificacion.ts.
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_reclasificar", ctx.db);

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarComprasRegistradas, SIN_PROVEEDOR } from "@/core/reportes/compras-registradas";
@@ -23,7 +24,7 @@ export default async function ComprasRegistradasPage({
   searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "proveedorId" | "factura" | "cursor">>;
 }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

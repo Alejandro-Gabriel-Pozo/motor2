@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
@@ -10,7 +11,7 @@ import { cargarOpcionesFormularioProducto } from "../../opciones-formulario";
 /** Edición de un producto. Al guardar, vuelve a su ficha, que muestra el aviso de que se guardó. */
 export default async function EditarProductoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

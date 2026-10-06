@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
@@ -32,7 +33,7 @@ export default async function FichaProveedorPage({
   searchParams: Promise<ParametrosDeUrl<"guardado">>;
 }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

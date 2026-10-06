@@ -4,6 +4,7 @@ import type { MagnitudUnidad } from "@prisma/client";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoDeEmpresa } from "@/core/permisos/gate";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 import { decimalesDelPaso } from "@/core/catalogo/public";
 import { conPermisoDeEmpresa } from "../con-permiso";
@@ -81,7 +82,23 @@ export async function actualizarDecimalesUnidad(unidadId: string, decimales: num
       );
     }
 
-    await ctx.db.unidad.update({ where: { id: unidadId }, data: { decimales } });
+    const unidad = await ctx.db.unidad.findUnique({ where: { id: unidadId }, select: { nombre: true, decimales: true } });
+    if (!unidad) return error("No se encontró la unidad.");
+    // El cambio y su rastro van en UNA transacción (Pureza 0.7): los decimales fijan la precisión de toda cantidad que use esta unidad.
+    await ctx.transaccion(async (tx) => {
+      await tx.unidad.update({ where: { id: unidadId }, data: { decimales } });
+      if (unidad.decimales !== decimales) {
+        await registrarCambioAuditado(tx, {
+          entidad: "Unidad",
+          entidadId: unidadId,
+          campo: "decimales",
+          descripcion: `Unidad "${unidad.nombre}": decimales`,
+          valorAnterior: unidad.decimales,
+          valorNuevo: decimales,
+          actorId: ctx.usuarioId,
+        });
+      }
+    });
     refrescarVistaSiHaceFalta(); // ver crearUnidad
     return ok("Decimales actualizados.");
   });

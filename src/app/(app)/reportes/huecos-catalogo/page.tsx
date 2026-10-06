@@ -1,10 +1,11 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "@/core/reportes/huecos-catalogo";
 
 export default async function HuecosCatalogoPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "reporte_huecos_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

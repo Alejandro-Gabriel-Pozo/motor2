@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteVentasPorCategoria } from "@/core/reportes/periodo";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
@@ -8,7 +9,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 
 export default async function CategoriasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_categorias", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

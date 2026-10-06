@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, obtenerMiNivelPermiso } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/core/reportes/rendimiento-recetas";
@@ -49,7 +50,7 @@ export default async function RendimientoRecetasPage({
   searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango" | "productoId">>;
 }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_recetas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

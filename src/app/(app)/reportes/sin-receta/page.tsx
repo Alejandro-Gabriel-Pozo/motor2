@@ -1,11 +1,12 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteVentasSinReceta } from "@/core/reportes/ventas-sin-receta";
 import { TablaVentasSinReceta } from "./tabla-sin-receta";
 
 export default async function VentasSinRecetaPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_sin_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

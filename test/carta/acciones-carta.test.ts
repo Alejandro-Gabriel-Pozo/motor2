@@ -184,6 +184,41 @@ describe("Server Actions de la carta", () => {
       expect((await prisma.promoCarta.findUniqueOrThrow({ where: { id: promo.id } })).activa).toBe(false);
     });
 
+    it("audita el precio de la promo: el alta (anterior null), el cambio y NO un guardado sin cambio de precio (Pureza 0.7)", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Promos" });
+      const seccionCartaId = s.ok ? s.id : "";
+      expect((await guardarPromoCarta({ seccionCartaId, titulo: "Promo auditada", precio: 1000 })).ok).toBe(true);
+      const promo = await prisma.promoCarta.findFirstOrThrow({ where: { titulo: "Promo auditada" } });
+      expect((await guardarPromoCarta({ id: promo.id, seccionCartaId, titulo: "Promo auditada", precio: 1200 })).ok).toBe(true);
+      // Mismo precio, otro título: no cambió el dinero, no hay fila nueva.
+      expect((await guardarPromoCarta({ id: promo.id, seccionCartaId, titulo: "Promo auditada v2", precio: 1200 })).ok).toBe(true);
+
+      const registros = await prisma.registroAuditoria.findMany({ where: { entidad: "PromoCarta", entidadId: promo.id }, orderBy: { creadoEn: "asc" } });
+      expect(registros.map((r) => [r.campo, r.valorAnterior, r.valorNuevo])).toEqual([
+        ["precio", null, "1000"],
+        ["precio", "1000", "1200"],
+      ]);
+      expect(registros[0]).toMatchObject({ sucursalId: null, descripcion: 'Promo "Promo auditada": precio' });
+    });
+
+    it("audita el precio local de la promo en la sucursal: alta, cambio y vuelta al de la empresa (Pureza 0.7)", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Promos" });
+      const seccionCartaId = s.ok ? s.id : "";
+      const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId, titulo: "Local auditada", precio: 1000 } });
+      expect((await guardarPrecioLocalPromoCarta(promo.id, "1100")).ok).toBe(true);
+      expect((await guardarPrecioLocalPromoCarta(promo.id, "1100")).ok).toBe(true); // sin cambio: sin fila
+      expect((await guardarPrecioLocalPromoCarta(promo.id, "900")).ok).toBe(true);
+      expect((await guardarPrecioLocalPromoCarta(promo.id, null)).ok).toBe(true);
+
+      const registros = await prisma.registroAuditoria.findMany({ where: { entidad: "PromoCartaSucursal", entidadId: `${promo.id}:${sucursalId}` }, orderBy: { creadoEn: "asc" } });
+      expect(registros.map((r) => [r.campo, r.valorAnterior, r.valorNuevo])).toEqual([
+        ["precioLocal", null, "1100"],
+        ["precioLocal", "1100", "900"],
+        ["precioLocal", "900", null],
+      ]);
+      expect(registros[0]).toMatchObject({ sucursalId });
+    });
+
     it("una promo creada desde otra sucursal es de la empresa: se edita igual, pero NO se ofrece acá hasta prenderla", async () => {
       const s = await guardarSeccionCarta({ nombre: "Promos" });
       const seccionCartaId = s.ok ? s.id : "";
