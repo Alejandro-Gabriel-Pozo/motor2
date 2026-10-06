@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { causaDeErrorDeDriver, errorConocidoDeBase } from "@/core/datos/errores-de-base";
 
 /**
  * Índice único parcial que arbitra la condición de carrera de factura de
@@ -38,21 +38,20 @@ function nombreDeIndiceViolado(e: unknown): string | undefined {
   // un P2002 de PrismaClientKnownRequestError trae el DriverAdapterError original anidado en `meta.driverAdapterError`, no en
   // `meta.target` (que en esta versión viene vacío para un choque de índice parcial). Se revisan las dos formas por las
   // dudas — `esConflictoDeEscritura` en con-reintento.ts ya documenta que Prisma no es consistente en cómo expone esto.
-  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-    const target = e.meta?.target;
+  const conocido = errorConocidoDeBase(e);
+  if (conocido?.code === "P2002") {
+    const target = conocido.meta?.target;
     if (typeof target === "string" && target) return target;
     if (Array.isArray(target) && target.length) return String(target[0]);
-    const anidado = nombreDeIndiceViolado(e.meta?.driverAdapterError);
+    const anidado = nombreDeIndiceViolado(conocido.meta?.driverAdapterError);
     if (anidado) return anidado;
   }
-  if (e && typeof e === "object" && "name" in e && (e as { name?: unknown }).name === "DriverAdapterError") {
-    const cause = (e as { cause?: unknown }).cause;
-    if (cause && typeof cause === "object" && "kind" in cause && (cause as { kind?: unknown }).kind === "UniqueConstraintViolation") {
-      const constraint = (cause as { constraint?: unknown }).constraint;
-      if (constraint && typeof constraint === "object" && "index" in constraint) {
-        const index = (constraint as { index?: unknown }).index;
-        if (typeof index === "string") return index;
-      }
+  const causa = causaDeErrorDeDriver(e);
+  if (causa?.kind === "UniqueConstraintViolation") {
+    const constraint = causa.constraint;
+    if (constraint && typeof constraint === "object" && "index" in constraint) {
+      const index = (constraint as { index?: unknown }).index;
+      if (typeof index === "string") return index;
     }
   }
   return undefined;

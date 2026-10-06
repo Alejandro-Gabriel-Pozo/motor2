@@ -5,6 +5,7 @@ import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/acepta
 import { asegurarInvitacionDeUsuario, rotarInvitacionPendiente } from "../../src/core/features/empresa/invitacion-de-usuario";
 import { sembrarEmpresa } from "../../src/core/features/empresa/sembrar-empresa";
 import { incorporarPrimerGerente } from "../../src/core/permisos/gerencia";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E8 (ADR-024): aceptar una invitación de USUARIO contra Postgres real, como `motor2_app` bajo la empresa de la invitación. Las membresías nacen recién acá y se REVALIDA, por cada
@@ -58,7 +59,7 @@ async function segundoAdmin() {
 async function invitar(accesos: Array<{ sucursalId: string; rolId: string }>, invitador = gerenteId, email = EMAIL) {
   let resultado: Awaited<ReturnType<typeof asegurarInvitacionDeUsuario>> | undefined;
   for (const acceso of accesos) {
-    resultado = await prismaAdmin.$transaction((tx) => asegurarInvitacionDeUsuario(tx, { empresaId: E, email, invitadoPorId: invitador, acceso, ahora: AHORA, generarToken: token }));
+    resultado = await prismaAdmin.$transaction((tx) => asegurarInvitacionDeUsuario(tx, { azar: azarDelProceso, empresaId: E, email, invitadoPorId: invitador, acceso, ahora: AHORA, generarToken: token }));
   }
   const primero = await prismaAdmin.invitacion.findFirstOrThrow({ where: { email, estado: "PENDIENTE" } });
   const ultimoToken = resultado && resultado.ok && resultado.token ? resultado.token : null;
@@ -178,7 +179,7 @@ describe("se revalida al aceptar lo que valía al invitar: todo o nada", () => {
     const inv = await invitar([{ sucursalId: sucursal1, rolId: rolOperador }], admin2);
     await prismaAdmin.usuarioSucursal.updateMany({ where: { usuarioId: admin2 }, data: { activo: false } });
     expect((await aceptar(inv.token)).ok).toBe(false);
-    const nuevo = await prismaAdmin.$transaction((tx) => rotarInvitacionPendiente(tx, { empresaId: E, invitacionId: inv.invitacionId, actorId: gerenteId, ahora: AHORA, generarToken: token }));
+    const nuevo = await prismaAdmin.$transaction((tx) => rotarInvitacionPendiente(tx, { azar: azarDelProceso, empresaId: E, invitacionId: inv.invitacionId, actorId: gerenteId, ahora: AHORA, generarToken: token }));
     if (!nuevo.ok || !nuevo.token) throw new Error("esperaba token");
     expect((await aceptar(nuevo.token)).ok).toBe(true);
     expect(await membresias()).toHaveLength(1);

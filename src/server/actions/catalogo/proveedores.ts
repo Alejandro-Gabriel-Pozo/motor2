@@ -1,6 +1,7 @@
 "use server";
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
+import { azarDelProceso } from "@/lib/azar";
 import {
   LARGO_MAXIMO_CONTACTO,
   LARGO_MAXIMO_DETALLE,
@@ -90,7 +91,7 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
             ...campos.valores,
           },
         })
-      );
+      , azarDelProceso);
       return okConId(`Proveedor "${proveedor.nombre}" creado.`, proveedor.id, proveedor.nombre);
     } catch (e) {
       // Carrera: dos altas con el mismo CUIT a la vez pasan el chequeo de arriba y las frena el índice único (empresaId, cuit).

@@ -10,6 +10,7 @@ import {
   vencimientoDeInvitacion,
 } from "../../src/core/features/empresa/invitacion";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
+import { azarDelProceso } from "../../src/lib/azar";
 
 const AHORA = new Date("2026-10-04T12:00:00Z");
 
@@ -30,12 +31,12 @@ describe("vida y estado efectivo de la invitación", () => {
 
 describe("token y enlace", () => {
   it("solo se acepta la forma de un token generado (43 caracteres base64url)", () => {
-    expect(esTokenConFormaValida(generarTokenOpaco())).toBe(true);
+    expect(esTokenConFormaValida(generarTokenOpaco(azarDelProceso))).toBe(true);
     for (const malo of ["", "abc", "a".repeat(42), "a".repeat(44), `${"a".repeat(42)}=`, `${"a".repeat(42)} `]) expect(esTokenConFormaValida(malo), malo).toBe(false);
   });
 
   it("el enlace lleva el token en el fragmento y se lee de vuelta", () => {
-    const token = generarTokenOpaco();
+    const token = generarTokenOpaco(azarDelProceso);
     const enlace = enlaceDeInvitacion("https://app.ejemplo.com/", token);
     expect(enlace).toBe(`https://app.ejemplo.com/invitacion#t=${token}`);
     expect(new URL(enlace).search).toBe("");
@@ -47,7 +48,7 @@ describe("token y enlace", () => {
 
 describe("mensaje de la invitación", () => {
   it("el token está solo en el enlace; el hash no aparece; se dirige al invitado y dice cuándo vence en la zona de la empresa", () => {
-    const token = generarTokenOpaco();
+    const token = generarTokenOpaco(azarDelProceso);
     const m = mensajeDeInvitacion({
       email: "dueno@ejemplo.com",
       nombreEmpresa: "Hostería Sur",

@@ -4,6 +4,7 @@ import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens"
 import { ingresarALaConsola, leerDeLaBase } from "./fixtures/consola";
 import { crearUsuarioSinEmpresa, sembrarInvitacion } from "./fixtures/invitacion";
 import { paginaConSesion } from "./fixtures/multiempresa";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * Confirmar el alta, corregir el CUIT, suspender y reactivar (E6, ADR-021) en un navegador real, de punta a punta: la consola da de alta, el gerente acepta en la app,
@@ -66,7 +67,7 @@ test("recorrido completo: alta, aceptación, confirmación, corrección del CUIT
   empresasActivadas.push(empresaId);
 
   // El token real viaja por mail: se lo reemplaza por uno conocido y el gerente acepta en la app.
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   expect((await leerDeLaBase((db) => db.invitacion.updateMany({ where: { empresaId }, data: { hashToken: hashDeToken(token) } }))).count, "el detalle de una empresa recién dada de alta").toBe(1);
   const app = await aceptarComoGerente(browser, baseURL, { email: datos.email, token }, CUIT);
 

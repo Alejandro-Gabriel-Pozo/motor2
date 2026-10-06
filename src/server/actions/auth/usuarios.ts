@@ -23,6 +23,7 @@ import { conGobierno } from "../con-gobierno";
 import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "../../invitaciones-de-usuario";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
+import { azarDelProceso } from "@/lib/azar";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -125,7 +126,7 @@ export async function agregarOActualizarUsuario(input: {
         const objetivo = await objetivoEnSucursal(tx, ctx.empresaId, usuarioPrevio?.id ?? null, null);
         const rechazo = mensajeSiNoPuedeAsignarRol(actor, rol) ?? mensajeSiNoPuedeGestionar(actor, objetivo);
         if (rechazo) return error(rechazo);
-        const invitada = await asegurarInvitacionDeUsuario(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, acceso: { sucursalId: input.sucursalId, rolId: rol.id, ...(input.notas !== undefined && { notas: input.notas }) }, ahora });
+        const invitada = await asegurarInvitacionDeUsuario(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, acceso: { sucursalId: input.sucursalId, rolId: rol.id, ...(input.notas !== undefined && { notas: input.notas }) }, ahora, azar: azarDelProceso });
         if (!invitada.ok) return error(invitada.mensaje);
         if (invitada.token) {
           porEnviar = { invitacionId: invitada.invitacionId, token: invitada.token, tipo: "usuario" };
@@ -169,7 +170,7 @@ export async function agregarOActualizarUsuario(input: {
 
         // Si todavía no vinculó su cuenta de Google, necesita la invitación de vinculación para poder entrar.
         if (usuarioPrevio.accounts.length === 0) {
-          const vinculacion = await asegurarInvitacionDeVinculacion(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, ahora });
+          const vinculacion = await asegurarInvitacionDeVinculacion(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, ahora, azar: azarDelProceso });
           if (vinculacion.ok && vinculacion.token) {
             porEnviar = { invitacionId: vinculacion.invitacionId, token: vinculacion.token, tipo: "vinculacion" };
             return ok(`Usuario "${email}" guardado en la sucursal. Todavía no entró con Google: le mandamos una invitación para que vincule su cuenta.`);
@@ -384,7 +385,7 @@ export async function reenviarInvitacionPendiente(invitacionId: string): Promise
       const g = await invitacionGestionable(ctx, tx, invitacionId);
       if (!g.ok) return error(g.mensaje);
       if (g.invitacion.enviadaEn && ahora.getTime() - g.invitacion.enviadaEn.getTime() < ESPERA_ENTRE_REENVIOS_MS) return error(MENSAJE_ESPERAR);
-      const rotada = await rotarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId, actorId: ctx.usuarioId, ahora });
+      const rotada = await rotarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId, actorId: ctx.usuarioId, ahora, azar: azarDelProceso });
       if (!rotada.ok || !rotada.token) return error(rotada.ok ? "No se pudo reenviar la invitación." : rotada.mensaje);
       porEnviar = { invitacionId, token: rotada.token, tipo: g.invitacion.tipo };
       return ok(`Invitación reenviada a "${g.invitacion.email}". El enlace anterior ya no sirve.`);
@@ -425,8 +426,8 @@ export async function invitarAVincular(membresiaId: string): Promise<ResultadoAc
       const previa = await tx.invitacion.findFirst({ where: { empresaId: ctx.empresaId, email, estado: "PENDIENTE", rolEmpresa: "vinculacion" }, select: { id: true, enviadaEn: true } });
       if (previa?.enviadaEn && ahora.getTime() - previa.enviadaEn.getTime() < ESPERA_ENTRE_REENVIOS_MS) return error(MENSAJE_ESPERAR);
       const v = previa
-        ? await rotarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId: previa.id, actorId: ctx.usuarioId, ahora })
-        : await asegurarInvitacionDeVinculacion(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, ahora });
+        ? await rotarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId: previa.id, actorId: ctx.usuarioId, ahora, azar: azarDelProceso })
+        : await asegurarInvitacionDeVinculacion(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, ahora, azar: azarDelProceso });
       if (!v.ok) return error(v.mensaje);
       if (!v.token) return error("No se pudo generar la invitación.");
       porEnviar = { invitacionId: v.invitacionId, token: v.token, tipo: "vinculacion" };

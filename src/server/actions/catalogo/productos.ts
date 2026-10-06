@@ -1,6 +1,7 @@
 "use server";
 
 import type { TipoProducto } from "@prisma/client";
+import { azarDelProceso } from "@/lib/azar";
 import type { Db } from "@/lib/db-tipos";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroEstricto } from "@/core/numero";
@@ -325,7 +326,7 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
     try {
       const producto = await crearConCodigoAutogenerado("MP", undefined, (codigo) =>
         ctx.db.producto.create({ data: { codigo, tipo: "MP", nombre: n, unidadStockId, factorConversion: 1 } })
-      );
+      , azarDelProceso);
       // Sin formulario donde poner el tilde de §4.1 — sigue su mismo default: activo en todas las sucursales que existen hoy.
       const sucursalIds = (await ctx.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
       await ctx.db.disponibilidadProducto.createMany({ data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })) });
@@ -355,7 +356,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
     try {
       const producto = await crearConCodigoAutogenerado(datos.tipo, datos.codigo, (codigo) =>
         ctx.db.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos, validado.numeros) } })
-      );
+      , azarDelProceso);
       const sucursalIds =
         datos.activoEnTodasLasSucursales !== false ? (await ctx.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [ctx.sucursalId];
       await ctx.db.disponibilidadProducto.createMany({

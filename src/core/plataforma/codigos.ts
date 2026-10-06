@@ -1,4 +1,5 @@
-import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 
 /**
  * Códigos de un solo uso y tokens de la consola de plataforma (ADR-012 §2, ADR-019). Nada acá guarda ni muestra un código: devuelve el valor para
@@ -6,8 +7,8 @@ import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
  */
 
 /** Los códigos de ingreso son de 6 dígitos: un SHA-256 solo se rompe por fuerza bruta en milisegundos, por eso llevan HMAC con un secreto del servidor. */
-export function generarCodigoDeIngreso(): string {
-  return String(randomInt(0, 1_000_000)).padStart(6, "0");
+export function generarCodigoDeIngreso(azar: FuenteDeAzar): string {
+  return String(azar.entero(0, 1_000_000)).padStart(6, "0");
 }
 
 /** HMAC-SHA256 en hexadecimal. `contexto` ata el hash a quien lo recibe (p. ej. `ingreso:<adminId>:<codigoId>`): el mismo código en otro contexto da otro hash. */
@@ -28,9 +29,9 @@ const ALFABETO_DE_RECUPERACION = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const CANTIDAD_DE_CODIGOS_DE_RECUPERACION = 10;
 
 /** `XXXXX-XXXXX`: 10 caracteres de un alfabeto de 31 (≈ 49 bits). Se muestran una sola vez al enrolar el segundo factor. */
-export function generarCodigosDeRecuperacion(cantidad = CANTIDAD_DE_CODIGOS_DE_RECUPERACION): string[] {
+export function generarCodigosDeRecuperacion(azar: FuenteDeAzar, cantidad = CANTIDAD_DE_CODIGOS_DE_RECUPERACION): string[] {
   return Array.from({ length: cantidad }, () => {
-    const letras = Array.from({ length: 10 }, () => ALFABETO_DE_RECUPERACION[randomInt(0, ALFABETO_DE_RECUPERACION.length)]).join("");
+    const letras = Array.from({ length: 10 }, () => ALFABETO_DE_RECUPERACION[azar.entero(0, ALFABETO_DE_RECUPERACION.length)]).join("");
     return `${letras.slice(0, 5)}-${letras.slice(5)}`;
   });
 }

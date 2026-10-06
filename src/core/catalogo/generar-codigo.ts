@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import { esErrorDeBaseConCodigo } from "@/core/datos/errores-de-base";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 
 /**
  * Genera un código optimista (`${prefijo}_<uuid6>`) y deja que el UNIQUE
@@ -19,16 +20,17 @@ export async function crearConCodigoAutogenerado<T>(
   prefijo: string,
   codigoManual: string | undefined,
   intentar: (codigo: string) => Promise<T>,
+  azar: FuenteDeAzar,
   maxIntentos = 5
 ): Promise<T> {
   if (codigoManual) return intentar(codigoManual);
 
   for (let intento = 0; intento < maxIntentos; intento++) {
-    const codigo = `${prefijo}_${crypto.randomUUID().slice(0, 6)}`;
+    const codigo = `${prefijo}_${azar.uuid().slice(0, 6)}`;
     try {
       return await intentar(codigo);
     } catch (e) {
-      const esColision = e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+      const esColision = esErrorDeBaseConCodigo(e, "P2002");
       if (esColision && intento < maxIntentos - 1) continue;
       throw e;
     }
@@ -38,5 +40,5 @@ export async function crearConCodigoAutogenerado<T>(
 
 /** true si `e` es un choque de UNIQUE constraint de Postgres (P2002) — sirve tanto para código duplicado como para una versión de receta chocada en carrera. */
 export function esErrorDeUnicidad(e: unknown): boolean {
-  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+  return esErrorDeBaseConCodigo(e, "P2002");
 }

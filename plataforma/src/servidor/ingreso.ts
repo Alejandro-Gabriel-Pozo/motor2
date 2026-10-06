@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { azarDelProceso } from "@/lib/azar";
 import type { PrismaClient } from "@prisma/client";
 import { esDireccionValida } from "@/core/correo/direcciones";
 import type { MensajeDeCorreo } from "@/core/correo/tipos";
@@ -55,7 +56,7 @@ export async function prepararCodigoDeIngreso(db: Db, deps: DependenciasDeIngres
   const pedidos = await db.codigoDeIngresoPlataforma.count({ where: { adminId: admin.id, creadoEn: { gt: new Date(ahora.getTime() - VENTANA_DE_PEDIDOS_MS) } } });
   if (pedidos >= MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA) return null;
 
-  const codigo = generarCodigoDeIngreso();
+  const codigo = generarCodigoDeIngreso(azarDelProceso);
   const id = randomUUID();
   await db.$transaction([
     // Un código nuevo invalida los anteriores que siguieran sin usarse.
@@ -104,7 +105,7 @@ export async function verificarCodigoDeIngreso(db: Db, deps: DependenciasDeIngre
   const usado = await db.codigoDeIngresoPlataforma.updateMany({ where: { id: vigente.id, usadoEn: null, invalidadoEn: null }, data: { usadoEn: ahora } });
   if (usado.count !== 1) return { ok: false };
 
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   await db.sesionPlataforma.create({ data: { adminId: admin.id, hashToken: hashDeToken(token), creadaEn: ahora, ultimaActividad: ahora } });
   return { ok: true, token };
 }
@@ -172,7 +173,7 @@ export async function verificarSegundoFactor(db: Db, deps: DependenciasDeIngreso
 
     const limpio = despuesDeUnAcierto();
     await tx.adminPlataforma.update({ where: { id: admin.id }, data: { fallosSegundoFactor: limpio.fallos, bloqueadoHasta: limpio.bloqueadoHasta } });
-    const token = generarTokenOpaco();
+    const token = generarTokenOpaco(azarDelProceso);
     await tx.sesionPlataforma.update({ where: { id: sesion.id }, data: { hashToken: hashDeToken(token), creadaEn: ahora, ultimaActividad: ahora, segundoFactorEn: ahora } });
     return { ok: true, token, ...quien, vencimiento: vencimientoDeSesion(ahora) };
   });

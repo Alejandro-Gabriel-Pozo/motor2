@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E5 (ADR-020): la tabla `Invitacion` (migración 20261010120000). Se prueba contra Postgres real:
@@ -22,7 +23,7 @@ afterAll(async () => {
 });
 
 function nueva(empresaId: string, email = "dueno@ejemplo.com") {
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   return { token, hash: hashDeToken(token), datos: { empresaId, email, rolEmpresa: "gerente", hashToken: hashDeToken(token), venceEn: new Date(Date.now() + 7 * 24 * 3600 * 1000) } };
 }
 

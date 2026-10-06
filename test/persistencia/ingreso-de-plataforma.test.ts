@@ -19,6 +19,7 @@ import {
   type DependenciasDeIngreso,
 } from "../../plataforma/src/servidor/ingreso";
 import { prismaAdmin } from "../setup/test-db";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * Los dos factores de ingreso de la consola contra Postgres real (E4, ADR-012 §2, ADR-019), con la conexión del dueño (el rol `motor2_plataforma`
@@ -42,9 +43,9 @@ let codigosDeRecuperacion: string[];
 
 async function sembrarAdmin(email = EMAIL, activo = true) {
   const id = randomUUID();
-  const secreto = generarSecretoTotp();
-  await prismaAdmin.adminPlataforma.create({ data: { id, email, nombre: "Admin", activo, secretoTotp: cifrarSecreto(secreto, CLAVE_TOTP, id) } });
-  const recuperacion = generarCodigosDeRecuperacion(3);
+  const secreto = generarSecretoTotp(azarDelProceso);
+  await prismaAdmin.adminPlataforma.create({ data: { id, email, nombre: "Admin", activo, secretoTotp: cifrarSecreto(secreto, CLAVE_TOTP, id, azarDelProceso) } });
+  const recuperacion = generarCodigosDeRecuperacion(azarDelProceso, 3);
   await prismaAdmin.codigoDeRecuperacionPlataforma.createMany({
     data: recuperacion.map((codigo) => ({ adminId: id, hashCodigo: hashDeCodigoDeRecuperacion(codigo, SECRETO_DE_CODIGOS, id) })),
   });

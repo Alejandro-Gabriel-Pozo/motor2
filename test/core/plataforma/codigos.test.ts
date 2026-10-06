@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cifrarSecreto, descifrarSecreto } from "../../../src/core/plataforma/cifrado";
+import { azarDelProceso } from "../../../src/lib/azar";
 import {
   CANTIDAD_DE_CODIGOS_DE_RECUPERACION,
   generarCodigoDeIngreso,
@@ -14,7 +15,7 @@ const SECRETO = "s".repeat(40);
 
 describe("código de ingreso", () => {
   it("son 6 dígitos, con ceros a la izquierda, y salen distintos", () => {
-    const codigos = Array.from({ length: 200 }, generarCodigoDeIngreso);
+    const codigos = Array.from({ length: 200 }, () => generarCodigoDeIngreso(azarDelProceso));
     for (const c of codigos) expect(c).toMatch(/^\d{6}$/);
     expect(new Set(codigos).size).toBeGreaterThan(150);
   });
@@ -42,7 +43,7 @@ describe("código de ingreso", () => {
 
 describe("códigos de recuperación", () => {
   it("son 10, con formato XXXXX-XXXXX sin caracteres ambiguos y todos distintos", () => {
-    const codigos = generarCodigosDeRecuperacion();
+    const codigos = generarCodigosDeRecuperacion(azarDelProceso);
     expect(codigos).toHaveLength(CANTIDAD_DE_CODIGOS_DE_RECUPERACION);
     for (const c of codigos) expect(c).toMatch(/^[A-HJKMNP-Z2-9]{5}-[A-HJKMNP-Z2-9]{5}$/);
     expect(new Set(codigos).size).toBe(codigos.length);
@@ -65,15 +66,15 @@ describe("cifrado del secreto TOTP", () => {
   const CLAVE = Buffer.alloc(32, 7).toString("base64");
 
   it("ida y vuelta; el valor guardado no contiene el secreto y cada cifrado es distinto", () => {
-    const a = cifrarSecreto("JBSWY3DPEHPK3PXP", CLAVE, "admin-1");
+    const a = cifrarSecreto("JBSWY3DPEHPK3PXP", CLAVE, "admin-1", azarDelProceso);
     expect(a).toMatch(/^v1\.[\w-]+\.[\w-]+\.[\w-]+$/);
     expect(a).not.toContain("JBSWY3DPEHPK3PXP");
-    expect(cifrarSecreto("JBSWY3DPEHPK3PXP", CLAVE, "admin-1")).not.toBe(a);
+    expect(cifrarSecreto("JBSWY3DPEHPK3PXP", CLAVE, "admin-1", azarDelProceso)).not.toBe(a);
     expect(descifrarSecreto(a, CLAVE, "admin-1")).toBe("JBSWY3DPEHPK3PXP");
   });
 
   it("no descifra con otra clave, otro contexto, un valor alterado o un formato ajeno (devuelve null, no lanza)", () => {
-    const guardado = cifrarSecreto("JBSWY3DPEHPK3PXP", CLAVE, "admin-1");
+    const guardado = cifrarSecreto("JBSWY3DPEHPK3PXP", CLAVE, "admin-1", azarDelProceso);
     expect(descifrarSecreto(guardado, Buffer.alloc(32, 8).toString("base64"), "admin-1")).toBeNull();
     expect(descifrarSecreto(guardado, CLAVE, "admin-2")).toBeNull();
     const [v, iv, tag, ct] = guardado.split(".");
@@ -82,6 +83,6 @@ describe("cifrado del secreto TOTP", () => {
   });
 
   it("una clave que no son 32 bytes lanza al cifrar", () => {
-    expect(() => cifrarSecreto("x", Buffer.alloc(16).toString("base64"), "c")).toThrow("32 bytes");
+    expect(() => cifrarSecreto("x", Buffer.alloc(16).toString("base64"), "c", azarDelProceso)).toThrow("32 bytes");
   });
 });

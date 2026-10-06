@@ -8,6 +8,7 @@ import { crearMembresia } from "../setup/membresia";
 import { enviadorEnMemoriaDelCanal } from "../../src/core/correo/enviar";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { agregarOActualizarUsuario, invitarAVincular, listarInvitacionesPendientes, listarUsuariosDeSucursal, reenviarInvitacionPendiente, revocarInvitacion } from "../../src/server/actions/auth/usuarios";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E8 (ADR-024): las acciones de invitación de usuario y de vinculación desde Administración → Usuarios, contra Postgres real: el mail sale después del commit, reenviar rota el
@@ -176,7 +177,7 @@ describe("reenviar, revocar e invitar a vincular", () => {
 
   it("no se gestiona una invitación de otra empresa ni una de gerente", async () => {
     await prismaAdmin.empresa.create({ data: { id: "otra", nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
-    const ajena = await prismaAdmin.invitacion.create({ data: { empresaId: "otra", email: "x@test.com", rolEmpresa: "gerente", hashToken: hashDeToken(generarTokenOpaco()), venceEn: new Date(Date.now() + 1e9) } });
+    const ajena = await prismaAdmin.invitacion.create({ data: { empresaId: "otra", email: "x@test.com", rolEmpresa: "gerente", hashToken: hashDeToken(generarTokenOpaco(azarDelProceso)), venceEn: new Date(Date.now() + 1e9) } });
     expect((await reenviarInvitacionPendiente(ajena.id)).ok).toBe(false);
     expect((await revocarInvitacion(ajena.id)).ok).toBe(false);
     expect((await prismaAdmin.invitacion.findUniqueOrThrow({ where: { id: ajena.id } })).estado).toBe("PENDIENTE");

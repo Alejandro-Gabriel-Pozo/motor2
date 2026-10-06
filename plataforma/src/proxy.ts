@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { azarDelProceso } from "@/lib/azar";
 import { sirvePorHttps } from "@/core/auth/cookie-sesion";
 import { cspApp, generarNonce } from "@/core/seguridad/cabeceras";
 
@@ -8,7 +9,7 @@ import { cspApp, generarNonce } from "@/core/seguridad/cabeceras";
  */
 export function proxy(request: NextRequest) {
   const headers = new Headers(request.headers);
-  const nonce = generarNonce();
+  const nonce = generarNonce(azarDelProceso);
   const csp = cspApp({ nonce, desarrollo: process.env.NODE_ENV === "development", https: sirvePorHttps(process.env), destinosDeFormulario: [] });
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", csp);

@@ -1,4 +1,5 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv } from "node:crypto";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 
 /**
  * Cifra el secreto TOTP de un administrador antes de guardarlo (AES-256-GCM): la base sola no alcanza para generar sus códigos.
@@ -13,8 +14,8 @@ function claveDeBytes(claveBase64: string): Buffer {
 }
 
 /** `contexto` (p. ej. el id del administrador) va como dato autenticado: un secreto copiado a la fila de otro administrador no descifra. */
-export function cifrarSecreto(secreto: string, claveBase64: string, contexto: string): string {
-  const iv = randomBytes(12);
+export function cifrarSecreto(secreto: string, claveBase64: string, contexto: string, azar: FuenteDeAzar): string {
+  const iv = Buffer.from(azar.bytes(12));
   const cifrador = createCipheriv("aes-256-gcm", claveDeBytes(claveBase64), iv);
   cifrador.setAAD(Buffer.from(contexto));
   const cifrado = Buffer.concat([cifrador.update(secreto, "utf8"), cifrador.final()]);

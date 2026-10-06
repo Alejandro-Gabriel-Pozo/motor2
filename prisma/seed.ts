@@ -6,6 +6,7 @@ import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "../sr
 import { enlaceDeInvitacion, urlPublicaDeLaApp } from "../src/core/features/empresa/invitacion";
 import { incorporarPrimerGerente } from "../src/core/permisos/gerencia";
 import { ACCIONES } from "../src/core/permisos/acciones";
+import { azarDelProceso } from "../src/lib/azar";
 
 async function main() {
   // La empresa a sembrar se indica (ADR-022: ya no existe «la única empresa activa» como respaldo): `--empresa <slug>`, o, sin argumento, la empresa por defecto que crea
@@ -88,8 +89,8 @@ async function main() {
       const invitacion = await transaccionDeEmpresa(empresaId, async (tx) => {
         const previa = await tx.invitacion.findFirst({ where: { empresaId, email, estado: "PENDIENTE", rolEmpresa: "vinculacion" }, select: { id: true } });
         return previa
-          ? rotarInvitacionPendiente(tx, { empresaId, invitacionId: previa.id, actorId: usuario.id, ahora })
-          : asegurarInvitacionDeVinculacion(tx, { empresaId, email, invitadoPorId: usuario.id, ahora });
+          ? rotarInvitacionPendiente(tx, { empresaId, invitacionId: previa.id, actorId: usuario.id, ahora, azar: azarDelProceso })
+          : asegurarInvitacionDeVinculacion(tx, { empresaId, email, invitadoPorId: usuario.id, ahora, azar: azarDelProceso });
       });
       const base = urlPublicaDeLaApp(process.env.AUTH_URL) ?? "http://localhost:3000";
       console.log(invitacion.ok && invitacion.token ? `Para entrar con Google la primera vez, abrí: ${enlaceDeInvitacion(base, invitacion.token)}` : "No se pudo crear la invitación de vinculación del gerente.");

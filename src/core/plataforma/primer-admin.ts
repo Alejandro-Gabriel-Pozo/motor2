@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { cifrarSecreto } from "./cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigoDeRecuperacion } from "./codigos";
 import { normalizarEmail } from "./email-reservado";
 import { generarSecretoTotp, uriOtpauth } from "./totp";
+import { azarDelProceso } from "@/lib/azar";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 
 /**
  * Alta de un administrador de plataforma (ADR-012 §2, ADR-019). No hay pantalla ni API para esto a propósito: la corre una persona, una vez, con la conexión del
@@ -63,6 +64,8 @@ export interface OpcionesDeAltaDeAdmin {
   emisor?: string;
   /** Las instalaciones adicionales a revisar, además de la propia (ADR-025). Ninguna se escribe: solo se lee. */
   otrasBases?: readonly InstalacionARevisar[];
+  /** Fuente de azar del id, el secreto TOTP y los códigos de recuperación (Pureza 1.5); por defecto la del proceso. Un test pasa una fija. */
+  azar?: FuenteDeAzar;
 }
 
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -119,11 +122,12 @@ export async function crearAdminDePlataforma(
     if (conflicto) throw new AdminDePlataformaInvalidoError(mensajeDeConflicto(conflicto, instalacion.nombre));
   }
 
-  const id = randomUUID();
-  const secretoTotp = generarSecretoTotp();
-  const codigosDeRecuperacion = generarCodigosDeRecuperacion();
+  const azar = opciones.azar ?? azarDelProceso;
+  const id = azar.uuid();
+  const secretoTotp = generarSecretoTotp(azar);
+  const codigosDeRecuperacion = generarCodigosDeRecuperacion(azar);
   await db.$transaction(async (tx) => {
-    await tx.adminPlataforma.create({ data: { id, email, nombre, secretoTotp: cifrarSecreto(secretoTotp, secretos.claveTotp, id) } });
+    await tx.adminPlataforma.create({ data: { id, email, nombre, secretoTotp: cifrarSecreto(secretoTotp, secretos.claveTotp, id, azar) } });
     await tx.codigoDeRecuperacionPlataforma.createMany({
       data: codigosDeRecuperacion.map((codigo) => ({ adminId: id, hashCodigo: hashDeCodigoDeRecuperacion(codigo, secretos.secretoCodigos, id) })),
     });
