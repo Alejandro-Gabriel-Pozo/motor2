@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { CabeceraCompra } from "@/core/compras/correccion";
+import type { CabeceraCompra } from "@/core/compras/public";
 
 /**
  * Escritura de la CORRECCIÓN de la cabecera de una compra (Task #41, Fase M; `tx` obligatorio, sin reglas de negocio). Es EXACTAMENTE

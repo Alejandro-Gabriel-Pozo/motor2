@@ -14,6 +14,7 @@
  * de ESE lote —no del total del producto: con el total, una compra cuyo lote ya se vendió pasaría si hay stock de otro lote y dejaría el lote en negativo—.
  * Con stock consumido la salida es otra (una Devolución a proveedor, y más adelante una nota de crédito), no anular.
  */
+import type { MotivoAnulacionRechazada } from "@/core/features/compras/compra.schema";
 
 export interface LineaComprada {
   productoId: string;
@@ -58,7 +59,7 @@ export interface LineaDeReversion {
 
 export type ResultadoAnulacion =
   | { ok: true; reversion: LineaDeReversion[] }
-  | { ok: false; motivo: "NO_ES_COMPRA" | "YA_ANULADA" | "SIN_LINEAS" | "STOCK_CONSUMIDO"; mensaje: string; faltantes: LineaFaltante[] };
+  | { ok: false; motivo: MotivoAnulacionRechazada; mensaje: string; faltantes: LineaFaltante[] };
 
 /** La clave de un bucket de stock: el mismo producto en la misma sección y con el mismo lote (o sin lote). */
 export function claveDeLote(productoId: string, seccionId: string, loteVencimiento: Date | null): string {

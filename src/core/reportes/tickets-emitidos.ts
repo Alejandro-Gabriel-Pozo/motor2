@@ -1,8 +1,5 @@
 import type { Db } from "./comun";
-import { armarTicketImpresoEn, estadoDeTicket, type EstadoDeTicket, type ItemConVenta, type LineaDeTicket } from "@/core/pos/ticket";
-import { claveDeLineaDeVenta, lineasDeVenta } from "@/core/pos/cuenta";
-import { nombreDelMesero } from "@/core/pos/mesas";
-import type { NumeroDeTicket } from "@/core/pos/numeracion-ticket";
+import { armarTicketImpresoEn, estadoDeTicket, claveDeLineaDeVenta, lineasDeVenta, nombreDelMesero, type EstadoDeTicket, type ItemConVenta, type LineaDeTicket, type NumeroDeTicket } from "@/core/pos/public";
 import { diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
 
 /**

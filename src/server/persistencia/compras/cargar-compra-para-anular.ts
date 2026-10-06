@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { claveDeLote, type LineaComprada, type SaldosPorLote } from "@/core/compras/anulacion";
+import { claveDeLote, type LineaComprada, type SaldosPorLote } from "@/core/compras/public";
 
 /**
  * Carga de una compra para ANULARLA (Task #41, Fase M — primer archivo de `src/server/persistencia/`, ver

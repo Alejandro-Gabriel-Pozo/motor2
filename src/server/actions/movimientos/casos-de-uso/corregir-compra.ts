@@ -1,14 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import {
-  cabeceraCoincide,
-  clavesDeFactura,
-  descripcionAuditoriaCorreccion,
-  diferenciasDeCabecera,
-  mensajeCompraCorregida,
-  normalizarCorreccion,
-  validarCorreccion,
-} from "@/core/compras/correccion";
+import { cabeceraCoincide, clavesDeFactura, descripcionAuditoriaCorreccion, diferenciasDeCabecera, mensajeCompraCorregida, normalizarCorreccion, validarCorreccion } from "@/core/compras/public";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoCorregirCompra, ResultadoCorregirCompra } from "@/core/features/compras/compra.schema";
 import { conTransaccionSerializable, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";

@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { whereSeccionHabitualVigente } from "@/core/stock/seccion-habitual";
+import { whereSeccionHabitualVigente } from "@/core/stock/public";
 
 /**
  * Lecturas de Catálogo › Productos para los Server Components (Task #41, Fase D — piloto de `src/server/consultas/`).

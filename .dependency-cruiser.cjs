@@ -53,17 +53,10 @@ const { DOMINIOS_DE_NEGOCIO } = require("./.dependency-cruiser-dominios.cjs");
  * `DOMINIOS_DE_NEGOCIO` y no tenga fachada todavía HACE FALLAR el gate hasta que se decida explícitamente construirle la fachada
  * o sumarlo acá con motivo — no al revés.
  *
- * Ningún comportamiento cambia hoy para estos 4 (0 arquitectura roto, 0 import nuevo bloqueado): es la MISMA situación de
- * desprotección que ya tenían, ahora documentada y con default fail-closed para el próximo dominio.
- *  - C1 (piloto, con fachada): `catalogo` → core/catalogo/public.ts (puro) + core/catalogo/public-servidor.ts (toca la base).
- *  - C2 (con fachada): `movimientos` → core/movimientos/public.ts + public-servidor.ts.
- *  - C3 (con fachada): `reportes` → core/reportes/public.ts + public-servidor.ts.
+ * Desde la Fase 2 de pureza (2026-10-06) la lista está VACÍA: todos los dominios de negocio tienen su fachada (`catalogo`, `movimientos`, `reportes`, `pos`,
+ * `stock`, `compras`; `carta` y `fiscal` desde antes). Se conserva como el lugar donde se declara, con motivo, un dominio nuevo que todavía no la tiene.
  */
-const DOMINIOS_SIN_PUBLIC_TODAVIA = {
-  pos: "5 sitios externos importan core/pos/* directo (confirmado con depcruise: core/reportes/tickets-emitidos.ts → ticket.ts/cuenta.ts/mesas.ts/numeracion-ticket.ts, y server/persistencia/pos/cargar-cuenta-para-corregir-ticket.ts → ticket.ts) — candidato C4, sin construir todavía.",
-  stock: "4 sitios externos (confirmado con depcruise: core/reportes/salud-por-producto.ts → consolidado.ts/alertas.ts, resumen-operativo.ts → alertas.ts, diferencias-ajustes.ts → frecuencia-conteo.ts) — candidato C5, sin construir todavía.",
-  compras: "5 sitios externos (confirmado con depcruise: server/persistencia/compras/{escribir-correccion,escribir-anulacion,cargar-compra-para-corregir,cargar-compra-para-anular}.ts y core/features/compras/compra.schema.ts, todos importando core/compras/{anulacion,correccion}.ts) — sin evaluar todavía si necesita fachada.",
-};
+const DOMINIOS_SIN_PUBLIC_TODAVIA = {};
 
 const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => !(dominio in DOMINIOS_SIN_PUBLIC_TODAVIA)).map((dominio) => ({
   name: "sin-internals-de-otro-dominio",

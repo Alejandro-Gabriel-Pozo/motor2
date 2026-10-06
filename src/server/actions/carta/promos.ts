@@ -1,6 +1,6 @@
 "use server";
 
-import { precioMinimoPromo } from "@/core/pos/promo-combo";
+import { precioMinimoPromo } from "@/core/pos/public";
 import { seleccionDeSucursalDePromo } from "@/core/carta/promo-sucursal";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import {
