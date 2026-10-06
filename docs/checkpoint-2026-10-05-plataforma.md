@@ -26,9 +26,9 @@ todavía**: faltan pasos que solo se hacen con terminal/paneles (rol de base, pr
 
 ## 2. Dónde está el código
 
-- Rama: `multitenancy-fase-a` (a ella se pushea siempre; `main` no se toca sin decirlo). HEAD al escribir esto: `f53776e`. Remoto: `Alejandro-Gabriel-Pozo/motor2`.
+- Rama: **`main`** (desde el 2026-10-06, pull request #51; la rama `multitenancy-fase-a` se retiró y no existe más). `main` está protegida: los cambios entran por una rama nueva y un pull request con «Gate (requerido)» en verde. Remoto: `Alejandro-Gabriel-Pozo/motor2`.
 - CI (`.github/workflows/ci.yml`): verde hasta `6b826db` (incluye las pruebas con el rol real de plataforma y los e2e de la consola). El run de `f53776e` estaba en curso.
-- Verificar el estado real al arrancar: `git status --short`, `git log --oneline -5`, `gh run list --branch multitenancy-fase-a --limit 3`.
+- Verificar el estado real al arrancar: `git status --short`, `git log --oneline -5`, `gh run list --branch main --limit 3`.
 
 ## 3. Qué está hecho (resumen)
 
@@ -97,7 +97,7 @@ Esbozo (a validar con el agente `Plan` antes de escribir código, como pide `AGE
   `npx tsc --noEmit`, `npm run lint`, `npm run arquitectura`, `npm run analizar:muerto`, `npm test`, `npm run build`, `npm run plataforma:build`, `npm run test:e2e`.
 - Migraciones y escrituras en producción: **solo con autorización expresa**, con rama de respaldo y ensayo. Un clasificador puede bloquear escrituras a producción desde la sesión de Claude:
   en ese caso las corre el dueño con `! comando`.
-- Nunca imprimir credenciales; `git add` por nombre (no `-A` a ciegas); commit y push solo con autorización (a `multitenancy-fase-a`).
+- Nunca imprimir credenciales; `git add` por nombre (no `-A` a ciegas); commit y push solo con autorización (a una rama nueva; `main` solo por pull request).
 - **Fechas en tests con base de datos** (`test/setup/tiempo.ts` y `test/arquitectura/fechas-fijas-en-tests-con-base.test.ts`): nunca una fecha absoluta reciente o futura escrita a mano (se vuelve falsa con el tiempo frente a `now()` de la base o a `new Date()`): usar `enElFuturo`, `enElPasado` o `AHORA_DE_LA_CORRIDA`. Una fecha pasada desde hace más de un día es segura. Una excepción se declara en ese test, con el motivo.
 - Prisma 7 rechaza `undefined` explícito en `data`. Los tests con el rol real de plataforma (`describe.skipIf(!PLATAFORMA_DATABASE_URL)`) solo corren en CI.
 - En Windows/Git Bash los heredocs con comillas son frágiles: usar el editor de archivos y scripts de Python para ediciones; respetar CRLF/LF del archivo.
