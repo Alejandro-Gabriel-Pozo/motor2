@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
 import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
@@ -58,27 +59,44 @@ function diaDe(f: Date): string {
   return f.toISOString().slice(0, 10);
 }
 
-/**
- * Port de sumarVentasYConsumosDeProducto_ (Reportes.js:595-618) — suma
- * cuánto se vendió/consumió (Venta + Consumo, ambas signoStock −1) de un
- * producto entre dos días (inclusive). `cantidad` ya viene con signo
- * aplicado (ver MovimientoStock), así que la magnitud es `Math.abs(SUM)`.
- */
-async function sumarVentasYConsumosDeProducto(sucursalId: string, productoId: string, diaInicio: string, diaFin: string, db: Db): Promise<number> {
-  const desde = new Date(`${diaInicio}T00:00:00.000Z`);
-  const hasta = new Date(`${diaFin}T23:59:59.999Z`);
+/** Una ventana de la conciliación: cuánto salió (venta + consumo) de un producto entre dos días (inclusive). */
+interface VentanaDeVentas {
+  productoId: string;
+  diaInicio: string;
+  diaFin: string;
+}
 
-  const suma = await db.movimientoStock.aggregate({
+/**
+ * Port de sumarVentasYConsumosDeProducto_ (Reportes.js:595-618) — suma cuánto se vendió/consumió (Venta + Consumo, ambas signoStock −1) de un producto entre dos
+ * días (inclusive). `cantidad` ya viene con signo aplicado (ver MovimientoStock), así que la magnitud es `Math.abs(SUM)`.
+ *
+ * Para TODAS las ventanas de la conciliación a la vez: una sola lectura de las ventas y consumos de los productos involucrados (antes: un `aggregate` por cada lote que
+ * desaparecía). La suma se hace en decimal exacto, como la hace la base: con coma flotante, 0,1 + 0,7 daría 0,7999… y un lote consistente figuraría «a revisar».
+ */
+async function sumarVentasYConsumosPorVentana(sucursalId: string, ventanas: readonly VentanaDeVentas[], db: Db): Promise<number[]> {
+  if (!ventanas.length) return [];
+  const rangos = ventanas.map((v) => ({ productoId: v.productoId, desde: new Date(`${v.diaInicio}T00:00:00.000Z`), hasta: new Date(`${v.diaFin}T23:59:59.999Z`) }));
+  const desde = new Date(Math.min(...rangos.map((r) => r.desde.getTime())));
+  const hasta = new Date(Math.max(...rangos.map((r) => r.hasta.getTime())));
+
+  const movimientos = await db.movimientoStock.findMany({
     where: {
-      productoId,
+      productoId: { in: [...new Set(rangos.map((r) => r.productoId))] },
       seccion: { sucursalId },
       proceso: { in: ["VENTA", "CONSUMO"] },
       // Una venta anulada ya quedó neta en cero en el stock (su contra-asiento es un AJUSTE): sus líneas originales no son volumen que salió.
       operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null },
     },
-    _sum: { cantidad: true },
+    select: { productoId: true, cantidad: true, operacion: { select: { fecha: true } } },
   });
-  return Math.abs(Number(suma._sum.cantidad ?? 0));
+
+  return rangos.map((r) => {
+    let suma = new Prisma.Decimal(0);
+    for (const m of movimientos) {
+      if (m.productoId === r.productoId && m.operacion.fecha >= r.desde && m.operacion.fecha <= r.hasta) suma = suma.plus(m.cantidad);
+    }
+    return Math.abs(Number(suma));
+  });
 }
 
 /**
@@ -113,8 +131,8 @@ export async function generarConciliacionVencimientos(sucursalId: string, db: Db
     sesionesDia.get(dia)!.set(lotKey, c); // si se contó 2 veces ese día, se queda con la última (orden asc de fecha, luego creadoEn ya viene en orden natural)
   }
 
-  const resultados: FilaConciliacionVencimiento[] = [];
-
+  // Primero se juntan los lotes que desaparecen entre dos conteos consecutivos (sin consultar); sus ventas se resuelven DESPUÉS, todas juntas.
+  const desaparecidos: { seccion: string; diaAnterior: string; diaActual: string; infoAnterior: Registro }[] = [];
   for (const [seccion, sesionesPorDia] of porSeccion) {
     const dias = Array.from(sesionesPorDia.keys()).sort();
 
@@ -130,24 +148,28 @@ export async function generarConciliacionVencimientos(sucursalId: string, db: Db
         const infoActual = lotesActual.get(lotKey);
         const desaparecio = !infoActual || Number(infoActual.conteoReal) === 0;
         if (!desaparecio) continue;
-
-        const ventasPeriodo = await sumarVentasYConsumosDeProducto(sucursalId, infoAnterior.productoId, diaAnterior, diaActual, db);
-        const conteoReal = Number(infoAnterior.conteoReal);
-        const estado: "consistente" | "revisar" = ventasPeriodo >= conteoReal ? "consistente" : "revisar";
-
-        resultados.push({
-          productoNombre: infoAnterior.producto.nombre,
-          seccionNombre: seccion,
-          loteVencimiento: infoAnterior.loteVencimiento!,
-          cantidadDesaparecida: redondearCantidad(conteoReal),
-          conteoAnteriorFecha: diaAnterior,
-          conteoActualFecha: diaActual,
-          ventasPeriodo: redondearCantidad(ventasPeriodo),
-          estado,
-        });
+        desaparecidos.push({ seccion, diaAnterior, diaActual, infoAnterior });
       }
     }
   }
+
+  const ventas = await sumarVentasYConsumosPorVentana(sucursalId, desaparecidos.map((d) => ({ productoId: d.infoAnterior.productoId, diaInicio: d.diaAnterior, diaFin: d.diaActual })), db);
+
+  const resultados: FilaConciliacionVencimiento[] = desaparecidos.map(({ seccion, diaAnterior, diaActual, infoAnterior }, i) => {
+    const ventasPeriodo = ventas[i]!;
+    const conteoReal = Number(infoAnterior.conteoReal);
+    const estado: "consistente" | "revisar" = ventasPeriodo >= conteoReal ? "consistente" : "revisar";
+    return {
+      productoNombre: infoAnterior.producto.nombre,
+      seccionNombre: seccion,
+      loteVencimiento: infoAnterior.loteVencimiento!,
+      cantidadDesaparecida: redondearCantidad(conteoReal),
+      conteoAnteriorFecha: diaAnterior,
+      conteoActualFecha: diaActual,
+      ventasPeriodo: redondearCantidad(ventasPeriodo),
+      estado,
+    };
+  });
 
   return resultados.sort((a, b) => (a.estado === "revisar" ? -1 : 1) - (b.estado === "revisar" ? -1 : 1));
 }
