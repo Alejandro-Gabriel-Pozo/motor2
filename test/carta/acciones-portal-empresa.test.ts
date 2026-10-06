@@ -6,7 +6,9 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prism
 import { activarTodosLosModulos } from "../setup/modulos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarPortalEmpresa } from "../../src/server/actions/carta/portal-empresa";
-import { cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "../../src/core/carta/admin-consulta";
+import { type SucursalPortalAdmin } from "../../src/core/carta/public";
+import { cargarPortalEmpresaAdmin } from "../../src/server/consultas/carta/admin";
+import { entradasVistaPreviaPortal } from "../../src/core/carta/public";
 import { CLAVES_PORTAL_V1, type DefinicionClavePortal } from "../../src/core/carta/portal";
 
 /**

@@ -64,12 +64,12 @@ describe("armarTicketImpresoEn / armarTicketVigente: el % viaja como tercer argu
   });
 
   it("armarTicketVigente (ahora) también lo aplica", () => {
-    const { lineas } = armarTicketVigente(items, 20);
+    const { lineas } = armarTicketVigente(items, new Date(), 20);
     expect(lineas[0]).toMatchObject({ precioUnitario: 800, precioListaUnitario: 1000 });
   });
 
   it("sin el argumento: ninguna de las dos rompe (default null, sin descuento)", () => {
     expect(armarTicketImpresoEn(items, new Date("2026-01-01")).lineas[0]).not.toHaveProperty("precioListaUnitario");
-    expect(armarTicketVigente(items).lineas[0]).not.toHaveProperty("precioListaUnitario");
+    expect(armarTicketVigente(items, new Date()).lineas[0]).not.toHaveProperty("precioListaUnitario");
   });
 });

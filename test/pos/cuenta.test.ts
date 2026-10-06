@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
-import {
-  agruparPorEnvio,
-  lineasDeVenta,
-  obtenerDetalleDeMesa,
-  restanteDe,
-  validarCantidadPedido,
-  validarComensales,
-  validarMotivoAnulacion,
-} from "../../src/core/pos/cuenta";
+import { agruparPorEnvio, lineasDeVenta, restanteDe, validarCantidadPedido, validarComensales, validarMotivoAnulacion } from "../../src/core/pos/cuenta";
+import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 
 /** Núcleo de la cuenta de una mesa (src/core/pos/cuenta.ts): funciones puras y la consulta del detalle. */
 

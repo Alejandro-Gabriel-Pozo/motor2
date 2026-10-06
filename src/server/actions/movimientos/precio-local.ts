@@ -3,7 +3,8 @@
 import type { Prisma } from "@prisma/client";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { validarImporte } from "@/core/datos/importe";
-import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/public-servidor";
+import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoConSincronizable } from "../tipos";

@@ -16,7 +16,7 @@ import {
   guardarItemAgrupadoCarta,
   quitarOpcionItemAgrupadoCarta,
 } from "../../src/server/actions/carta/items-agrupados";
-import { cargarAdminCarta } from "../../src/core/carta/admin-consulta";
+import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 
 /**

@@ -2,7 +2,8 @@
 
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
-import { ALCANCE_CENTRAL, cargarHistorialDeVersiones, cargarRecetaVigente, INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL, cargarHistorialDeVersiones, cargarRecetaVigente, INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput } from "@/core/catalogo/public-servidor";
+import { type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";

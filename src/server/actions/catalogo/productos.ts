@@ -8,20 +8,14 @@ import { esNumeroEstricto } from "@/core/numero";
 import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
-import {
-  crearConCodigoAutogenerado,
-  esErrorDeUnicidad,
-  validarUnidadInsumo,
-  dependenciasParaDesactivar,
-  disponibilidadDeProductos,
-  productoDisponibleEn,
-  whereDisponibleEn,
-  whereDisponibleEnAlguna,
-} from "@/core/catalogo/public-servidor";
+import { crearConCodigoAutogenerado, esErrorDeUnicidad, disponibilidadDeProductos, productoDisponibleEn, whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { validarUnidadInsumo } from "@/server/lecturas/catalogo/unidad-de-insumo";
+import { dependenciasParaDesactivar } from "@/server/lecturas/catalogo/dependencias-para-desactivar";
 import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/public-servidor";
+import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";

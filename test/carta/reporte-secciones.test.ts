@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponib
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteVentasPorCategoria } from "../../src/core/reportes/periodo";
-import { generarReporteVentasPorSeccion, reagruparPorSeccion, SIN_SECCION, type VentasParaSeccion } from "../../src/core/carta/reporte-secciones";
+import { generarReporteVentasPorSeccion, reagruparPorSeccion, SIN_SECCION, type VentasParaSeccion } from "../../src/server/consultas/carta/ventas-por-seccion";
 import type { Db } from "../../src/core/reportes/comun";
 
 /**

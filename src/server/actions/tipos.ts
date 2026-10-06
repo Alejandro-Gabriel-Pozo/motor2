@@ -1,5 +1,5 @@
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import type { SincronizablePrecioGrupo } from "@/core/carta/public-servidor";
+import type { SincronizablePrecioGrupo } from "@/core/carta/public";
 
 /**
  * El contexto con el que corre una acción (`conPermiso`, `conPermisoDeEmpresa`, `conEdicionDePermisos`): el del usuario MÁS `ahora`, la hora del pedido (Pureza 1.2).

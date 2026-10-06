@@ -1,5 +1,3 @@
-import type { PrismaClient } from "@prisma/client";
-
 export interface CuentaDeGoogleSospechosa {
   usuarioId: string;
   usuarioEmail: string;
@@ -19,19 +17,20 @@ function emailDelIdToken(idToken: string | null): string | null {
   }
 }
 
-/**
- * Detección retroactiva del hallazgo S-01 (solo lectura): hasta el arreglo de `signIn`, con una sesión abierta cualquier otra cuenta de
- * Google se vinculaba al usuario de esa sesión y desde entonces entraba como él. Lista a los usuarios con más de una cuenta de Google, o con
- * una cuenta cuyo email firmado por Google no es el del usuario. El que revisa decide: quitar la cuenta ajena (`Account`) o, si es legítima
- * (la misma persona con dos cuentas), dejarla — el gate de `signIn` ya no la deja entrar mientras el email no coincida.
- */
-export async function detectarCuentasDeGoogleSospechosas(db: Pick<PrismaClient, "user">): Promise<CuentaDeGoogleSospechosa[]> {
-  const usuarios = await db.user.findMany({
-    where: { accounts: { some: { provider: "google" } } },
-    select: { id: true, email: true, accounts: { where: { provider: "google" }, select: { providerAccountId: true, id_token: true } } },
-    orderBy: { email: "asc" },
-  });
+/** Un usuario con sus cuentas de Google vinculadas, tal como lo lee `scripts/lecturas-de-auth.ts`. */
+export interface UsuarioConCuentasDeGoogle {
+  id: string;
+  email: string;
+  accounts: { providerAccountId: string; id_token: string | null }[];
+}
 
+/**
+ * Detección retroactiva del hallazgo S-01: hasta el arreglo de `signIn`, con una sesión abierta cualquier otra cuenta de
+ * Google se vinculaba al usuario de esa sesión y desde entonces entraba como él. Dado cada usuario con sus cuentas de Google, lista a los que tienen más de una,
+ * o una cuya email firmada por Google no es la del usuario. El que revisa decide: quitar la cuenta ajena (`Account`) o, si es legítima (la misma persona con dos
+ * cuentas), dejarla — el gate de `signIn` ya no la deja entrar mientras el email no coincida. Puro: la lectura (solo lectura) es `scripts/lecturas-de-auth.ts`.
+ */
+export function clasificarCuentasDeGoogle(usuarios: readonly UsuarioConCuentasDeGoogle[]): CuentaDeGoogleSospechosa[] {
   const sospechosos: CuentaDeGoogleSospechosa[] = [];
   for (const u of usuarios) {
     const cuentas = u.accounts.map((a) => ({ providerAccountId: a.providerAccountId, emailEnLaCuenta: emailDelIdToken(a.id_token) }));

@@ -8,7 +8,8 @@ import { liberarMesa } from "../../src/server/actions/pos/cuenta-apertura";
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
-import { TICKETS_RECIENTES_POR_MESA, armarTicket, armarTicketImpresoEn, obtenerTicketsRecientes } from "../../src/core/pos/ticket";
+import { TICKETS_RECIENTES_POR_MESA, armarTicket, armarTicketImpresoEn } from "../../src/core/pos/ticket";
+import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 
 /**
  * Ticket de cierre (src/core/pos/ticket.ts, docs/plan-imprimir-comanda-y-ticket-2026-09-25.md B5/B8): derivada de la cuenta cerrada con

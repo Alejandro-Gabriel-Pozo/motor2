@@ -1,9 +1,9 @@
+import "server-only";
+import { ALCANCE_CENTRAL, INCLUDE_RECETA_COMPLETA, alcanceDeSucursal, cargarHistorialDeVersiones, cargarRecetaVigente } from "@/core/catalogo/public-servidor";
 import type { Db } from "@/lib/db-tipos";
-import { ALCANCE_CENTRAL, alcanceDeSucursal, cargarHistorialDeVersiones, cargarRecetaVigente } from "./recetas-vigentes";
-import { INCLUDE_RECETA_COMPLETA } from "./receta-a-input";
 
 /**
- * Estado de la receta propia de una sucursal (ADR-009, R3/R4). Vive en `core/catalogo` y no en `consultas/` porque lo leen tanto la pantalla del
+ * Estado de la receta propia de una sucursal (ADR-009, R3/R4). Vive en `server/lecturas` (ADR-026) y no en `consultas/` porque lo leen tanto la pantalla del
  * editor como las acciones de la receta propia (que no pueden importar de `consultas/`). Lee las DOS series por separado, siempre por el embudo.
  */
 /** La receta propia de `sucursalId` para el producto (la serie propia, aunque hoy esté deshabilitada) y cómo está respecto de la central. */

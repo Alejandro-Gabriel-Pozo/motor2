@@ -1,5 +1,6 @@
+import "server-only";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 import type { Db } from "@/lib/db-tipos";
-import { whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
 
 /**
  * Todos los productos DISPONIBLES (en alguna sucursal — §5.6, catálogo

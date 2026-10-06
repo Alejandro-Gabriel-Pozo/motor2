@@ -10,7 +10,7 @@ import {
   versionVigentePorProducto,
   whereConReceta,
 } from "../../src/core/catalogo/recetas-vigentes";
-import { dependenciasParaDesactivar } from "../../src/core/catalogo/desactivar-producto";
+import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
 import { compararRendimientosPorSucursal } from "../../src/core/reportes/rendimiento-por-sucursal";
 import { limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";

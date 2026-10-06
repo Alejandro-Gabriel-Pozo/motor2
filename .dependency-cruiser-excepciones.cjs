@@ -140,11 +140,6 @@ const UI_CON_INTERNALS_DE_DOMINIO = [
     motivo: "PERMANENTE: ídem, importa `core/carta/publica-sin-sesion.ts` directo por el aislamiento de la carta pública.",
   },
   {
-    ruta: "src/app/(app)/reportes/ventas-por-seccion/page.tsx",
-    motivo:
-      "DEUDA (Fase 3): importa `generarReporteVentasPorSeccion` de `core/carta/reporte-secciones.ts`. Exponerlo por la fachada de carta cerraría un ciclo de fachadas carta → reportes → pos → carta (el reporte de secciones de carta vive en carta pero consume reportes). Se resuelve al mover los reportes de la Fase 3.",
-  },
-  {
     ruta: "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx",
     motivo:
       "DEUDA (Fase 3): componente de cliente que importa `desvioEsNotable` de `core/reportes/rendimiento-por-sucursal.ts`, un archivo que además hace consultas; por la fachada de servidor arrastraría ese código al navegador. Se resuelve al separar el cálculo de la consulta en la Fase 3 (reportes).",

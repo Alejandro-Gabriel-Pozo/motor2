@@ -1,4 +1,4 @@
-import type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "@/core/catalogo/public-servidor";
+import type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "@/core/catalogo/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**

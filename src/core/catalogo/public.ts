@@ -11,7 +11,7 @@
  */
 export { cumplePaso, decimalesDelPaso, mensajeCantidadNoCumplePaso, validarPasoVenta } from "./venta-fraccionada";
 export { rendimientoEfectivo } from "./rendimiento-local";
-export { textoCadenaDeGruposEn } from "./cadena-de-grupos";
+export { creariaCicloEnArbol, textoCadenaDeGruposEn } from "./cadena-de-grupos";
 export type { NodoDeGrupo } from "./cadena-de-grupos";
 export { clasificarGruposNoComestibles } from "./no-comestibles";
 export type { ClasificacionNoComestibles } from "./no-comestibles";
@@ -23,3 +23,5 @@ export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
 export { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirRecetaPropiaGuardada, describirVueltaALaRecetaCentral } from "./describir-cambio-receta";
 export { describirCalibracion, describirDescarteArrastre, describirVueltaAlCentral, normalizarOrigen } from "./origen-cambio-receta";
 export type { OrigenCalibracionInput } from "./origen-cambio-receta";
+export { claveDeUnidadDeSustituto, validarCabecera, validarIngredientes, validarPasos } from "./receta-validacion";
+export type { CabeceraRecetaInput, DatosParaValidarReceta, IngredienteInput, PasoInput } from "./receta-validacion";

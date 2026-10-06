@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/t
 import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { abrirCuenta, corregirComensales, liberarMesa } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
-import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
+import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 import { crearMembresia } from "../setup/membresia";
 

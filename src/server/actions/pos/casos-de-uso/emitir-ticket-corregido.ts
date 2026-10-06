@@ -52,7 +52,7 @@ export async function emitirTicketCorregidoCasoDeUso(
     }
 
     const estado = estadoDeTicket(cuenta.items, ultimo.emitidoEn);
-    if (estado === "anulada" || !armarTicketVigente(cuenta.items).lineas.length) return fracaso("VENTA_ANULADA", "La venta se anuló entera: no hay ticket que corregir.");
+    if (estado === "anulada" || !armarTicketVigente(cuenta.items, actor.ahora).lineas.length) return fracaso("VENTA_ANULADA", "La venta se anuló entera: no hay ticket que corregir.");
     if (estado === "vigente") return fracaso("TICKET_VIGENTE", `El ticket N.º ${formatearNumeroTicket(ultimo)} ya refleja las anulaciones.`);
 
     const motivoValidado = validarMotivoAnulacion(comando.motivo);

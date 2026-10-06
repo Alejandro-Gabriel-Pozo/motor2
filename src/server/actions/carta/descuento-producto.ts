@@ -1,6 +1,6 @@
 "use server";
 
-import { resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
+import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";

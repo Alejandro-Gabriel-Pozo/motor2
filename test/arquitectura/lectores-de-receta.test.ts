@@ -94,7 +94,7 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
       "listarProductosConReceta (lista /catalogo/recetas, Task #41 D3 — antes vivía en la página): filtra que el producto TENGA alguna receta (whereConReceta) y trae la última versión con el CONTEO de ingredientes — no lee cantidad ni merma.",
   },
   {
-    ruta: "core/catalogo/desactivar-producto.ts",
+    ruta: "server/lecturas/catalogo/dependencias-para-desactivar.ts",
     clase: "efectivo",
     motivo:
       "Chequea si algún RecetaIngrediente referencia el producto a desactivar (dependencias): cuenta como referencia solo la versión VIGENTE de cada plato EN LA SUCURSAL del actor (la propia si la tiene habilitada, si no la central) — no resuelve ningún rendimiento.",
@@ -106,7 +106,7 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
       "R3/R4: las acciones de la receta PROPIA de la sucursal activa. De la receta central solo lee la vigente para partir de ella (crear desde la central); el estado de la propia lo resuelve receta-propia-estado.ts (series) y la escritura el caso de uso — nunca resuelve una receta efectiva.",
   },
   {
-    ruta: "core/catalogo/receta-propia-estado.ts",
+    ruta: "server/lecturas/catalogo/receta-propia.ts",
     clase: "series",
     motivo:
       "R3/R4 (obtenerEstadoDeRecetaPropia): lee la serie PROPIA de la sucursal (alcanceDeSucursal) y la central vigente (ALCANCE_CENTRAL) por separado, para decidir 'habilitada' y 'la central cambió' — compara las series, no resuelve una efectiva.",

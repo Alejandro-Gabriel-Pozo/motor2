@@ -9,7 +9,7 @@ import { descuentosDeProductoEnSucursal } from "@/core/carta/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
-import { cargarPromoCartaParaAgregar } from "@/core/pos/promo-combo-consulta";
+import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
 import { cuentaAbiertaDeSucursal } from "./cuenta-comun";

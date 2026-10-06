@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { generarReporteVentasPorSeccion } from "@/core/carta/reporte-secciones";
-import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
+import { generarReporteVentasPorSeccion } from "@/server/consultas/carta/ventas-por-seccion";
+import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { TablaCategoriasDeSeccion } from "./tabla-seccion";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

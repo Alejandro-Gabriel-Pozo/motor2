@@ -1,18 +1,12 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
-import { precioDeCarta } from "./armar-menu";
-import { whereCartaDeSucursal } from "./carta-de-sucursal";
-
-type Db = PrismaClient | Prisma.TransactionClient;
-
 /**
  * "¿Este producto está en un ítem agrupado de la carta, y con quiénes?" (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8).
  * La usan las acciones de Catálogo (`actualizarProducto`) y de Precio Local (`setPrecioLocalProducto`) para OFRECER aplicar el mismo
  * precio a los hermanos del grupo después de guardar. Es el ÚNICO lugar fuera de la carta que lee sus tablas: así Catálogo no
  * reparte consultas a `opcionItemAgrupadoCarta` por varios archivos.
  *
- * Solo lectura (lo fija test/arquitectura/carta-solo-lectura.test.ts). No cambia quién escribe qué: el precio lo sigue escribiendo
- * la acción de Catálogo/Precio Local, con su propio permiso.
+ * Los TIPOS y la decisión de qué ofrecer (`ofrecerSincronizarPrecio`) son puros y viven acá; la lectura (`resolverGrupoDeProducto`) vive en
+ * `server/lecturas/carta/grupo-de-producto.ts` (Pureza Fase 3, ADR-026: la usan las acciones de Catálogo y de Precio Local). No cambia quién escribe qué: el precio
+ * lo sigue escribiendo la acción de Catálogo/Precio Local, con su propio permiso.
  */
 
 export interface HermanoDeGrupo {
@@ -29,41 +23,6 @@ export interface GrupoDeProducto {
   nombreItem: string;
   /** Las demás opciones del mismo ítem agrupado (sin el producto pedido), por orden y nombre. Vacío si está solo en su grupo. */
   hermanos: HermanoDeGrupo[];
-}
-
-/** `null` si el producto no está en ningún ítem agrupado. */
-export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db): Promise<GrupoDeProducto | null> {
-  const opcion = await db.opcionItemAgrupadoCarta.findFirst({
-    where: { productoId, ...whereCartaDeSucursal(sucursalId) },
-    select: {
-      itemAgrupadoCarta: {
-        select: {
-          id: true,
-          nombre: true,
-          opciones: {
-            where: { productoId: { not: productoId } },
-            select: { orden: true, producto: { select: { id: true, nombre: true, precioVenta: true } } },
-          },
-        },
-      },
-    },
-  });
-  if (!opcion) return null;
-
-  const item = opcion.itemAgrupadoCarta;
-  const ids = item.opciones.map((o) => o.producto.id);
-  const localPorProducto = await preciosLocalesVigentes(sucursalId, db, ids);
-
-  return {
-    itemAgrupadoCartaId: item.id,
-    nombreItem: item.nombre,
-    hermanos: [...item.opciones]
-      .sort((a, b) => a.orden - b.orden || a.producto.nombre.localeCompare(b.producto.nombre, "es"))
-      .map((o) => {
-        const precioVenta = Number(o.producto.precioVenta);
-        return { productoId: o.producto.id, nombre: o.producto.nombre, precioVenta, precioActual: precioDeCarta(precioVenta, localPorProducto.get(o.producto.id)) };
-      }),
-  };
 }
 
 /**

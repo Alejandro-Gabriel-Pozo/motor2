@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
 import type { ProductoCartaAdmin } from "@/core/carta/public";
-import { cargarAdminCarta } from "@/core/carta/public-servidor";
+import { cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";

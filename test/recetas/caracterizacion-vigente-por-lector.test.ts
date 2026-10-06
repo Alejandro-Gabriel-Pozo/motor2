@@ -11,7 +11,7 @@ import { obtenerIngredientesRecetaVigente } from "../../src/core/reportes/histor
 import { compararRendimientosPorSucursal } from "../../src/core/reportes/rendimiento-por-sucursal";
 import { calcularRendimientoRecetasSimples } from "../../src/core/reportes/rendimiento-recetas";
 import { listarProductosConReceta } from "../../src/server/consultas/catalogo/recetas";
-import { dependenciasParaDesactivar } from "../../src/core/catalogo/desactivar-producto";
+import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
 import { guardarReceta, listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
 import { fijarRendimientoLocal } from "../../src/server/actions/catalogo/rendimiento-local";
 

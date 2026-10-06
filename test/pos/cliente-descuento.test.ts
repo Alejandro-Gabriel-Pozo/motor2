@@ -6,8 +6,8 @@ import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/t
 import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { asignarClienteACuenta } from "../../src/server/actions/pos/cuenta-apertura";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
-import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
-import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
+import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
+import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 import { altaCliente, actualizarActivoCliente } from "../../src/server/actions/clientes/cliente";
 
 /**

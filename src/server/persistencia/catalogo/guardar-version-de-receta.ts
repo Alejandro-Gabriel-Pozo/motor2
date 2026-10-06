@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { ALCANCE_CENTRAL, alcanceDeSucursal, cargarHistorialDeVersiones, cargarRecetaVigente, type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL, alcanceDeSucursal, cargarHistorialDeVersiones, cargarRecetaVigente } from "@/core/catalogo/public-servidor";
+import { type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
 import { texto } from "@/core/texto";
 
 /**

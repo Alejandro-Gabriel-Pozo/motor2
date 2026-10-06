@@ -22,7 +22,7 @@ Estado verificado en el código el 2026-10-03 (etiquetas: VERIFICADO EN CÓDIGO 
 |---|---|---|
 | El cierre de cuenta del Salón descuenta stock con el mismo motor que la venta de mostrador (`registrarVentaEnTx`) | `src/core/movimientos/registrar-venta.ts` (función `registrarVentaEnTx`), llamada desde `src/server/actions/pos/casos-de-uso/cerrar-cuenta.ts` | VERIFICADO EN CÓDIGO |
 | El cierre de cuenta pasa `permitirStockNegativo: true`; el mostrador sigue rechazando la venta sin stock | `cerrar-cuenta.ts` (opción), `src/server/actions/movimientos/casos-de-uso/registrar-venta.ts` (comentario de cabecera) | VERIFICADO EN CÓDIGO |
-| El POS sin carta cae a «Fuera de carta»: el Salón no necesita una carta armada para vender | `src/core/pos/selector-carta-consulta.ts` | VERIFICADO EN CÓDIGO |
+| El POS sin carta cae a «Fuera de carta»: el Salón no necesita una carta armada para vender | `src/server/lecturas/pos/selector-carta.ts` | VERIFICADO EN CÓDIGO |
 | El mostrador permite fechar una venta hasta 400 días atrás; esa ventana es genérica (también la usan inventarios y pagos) | `src/core/datos/fecha-operacion.ts` (`DIAS_HACIA_ATRAS`) | VERIFICADO EN CÓDIGO |
 | Una promoción de carta apunta por clave foránea a secciones de la carta | modelos `PromoCarta` y `PromoCartaCupo` en `prisma/schema.prisma` | VERIFICADO EN CÓDIGO |
 | Hoy no existe ningún módulo, ni la tabla, ni el campo `modulo` en `ACCIONES` | `src/core/permisos/` (catálogo sin ese campo) | AUSENTE (es lo que implementa el 5A) |

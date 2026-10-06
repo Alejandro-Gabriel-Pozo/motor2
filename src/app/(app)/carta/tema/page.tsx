@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { type TemaAdmin, CLAVES_TEMA_V1 } from "@/core/carta/public";
-import { cargarTemaAdmin } from "@/core/carta/public-servidor";
+import { cargarTemaAdmin } from "@/server/consultas/carta/admin";
 import { cambiarAplicacionTema, guardarTemaCarta } from "@/server/actions/carta/tema";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";

@@ -1,5 +1,3 @@
-import type { PrismaClient } from "@prisma/client";
-
 export interface MedicionDePrecargados {
   totalDeUsuarios: number;
   /** Usuarios con al menos una cuenta de Google vinculada: ya entraron alguna vez. */
@@ -12,16 +10,19 @@ export interface MedicionDePrecargados {
   emailsPendientes: string[];
 }
 
+/** Un usuario con la cantidad de cuentas de Google vinculadas, tal como lo lee `scripts/lecturas-de-auth.ts` (ordenados por email). */
+export interface UsuarioParaMedirPrecargados {
+  email: string;
+  activoGlobal: boolean;
+  cuentasDeGoogle: number;
+}
+
 /**
- * Mide cuántos usuarios precargados todavía no entraron con Google (solo lectura). Es el número que dice cuánto cuesta apagar
- * `allowDangerousEmailAccountLinking`: cada uno es un usuario más a pasar a invitaciones antes de apagarlo.
+ * Mide cuántos usuarios precargados todavía no entraron con Google. Es el número que dice cuánto cuesta apagar
+ * `allowDangerousEmailAccountLinking`: cada uno es un usuario más a pasar a invitaciones antes de apagarlo. Puro: la lectura (solo lectura) es `scripts/lecturas-de-auth.ts`.
  */
-export async function medirPrecargadosSinGoogle(db: Pick<PrismaClient, "user">): Promise<MedicionDePrecargados> {
-  const usuarios = await db.user.findMany({
-    select: { email: true, activoGlobal: true, _count: { select: { accounts: { where: { provider: "google" } } } } },
-    orderBy: { email: "asc" },
-  });
-  const sinGoogle = usuarios.filter((u) => u._count.accounts === 0);
+export function medirPrecargados(usuarios: readonly UsuarioParaMedirPrecargados[]): MedicionDePrecargados {
+  const sinGoogle = usuarios.filter((u) => u.cuentasDeGoogle === 0);
   const activos = sinGoogle.filter((u) => u.activoGlobal);
   return {
     totalDeUsuarios: usuarios.length,

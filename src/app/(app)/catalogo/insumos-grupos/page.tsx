@@ -12,7 +12,8 @@ import {
   listarGrupos,
 } from "@/server/actions/catalogo/insumos";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
-import { textoCadenaDeGrupos } from "@/core/catalogo/public-servidor";
+import { textoCadenaDeGruposEn } from "@/core/catalogo/public";
+import { cargarArbolDeGrupos } from "@/server/lecturas/catalogo/grupos";
 import { FormRenombrarInsumo } from "@/components/catalogo/form-renombrar-insumo";
 import { FormConResultado } from "@/components/form-con-resultado";
 
@@ -24,7 +25,9 @@ export default async function InsumosGruposPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [insumos, grupos] = await Promise.all([listarInsumos(), listarGrupos()]);
-  const cadenas = await Promise.all(grupos.map((g) => textoCadenaDeGrupos(g.id, ctx.db)));
+  // El árbol se lee UNA vez (antes: una lectura por nivel y por grupo).
+  const arbol = await cargarArbolDeGrupos(ctx.db);
+  const cadenas = grupos.map((g) => textoCadenaDeGruposEn(arbol, g.id));
 
   return (
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">

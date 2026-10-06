@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
+import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 
 /**
  * Estado derivado del ticket (docs/plan-numeracion-ticket-2026-09-25.md, paso 6): `cerrarCuenta` registra una Operacion VENTA por

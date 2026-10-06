@@ -12,12 +12,6 @@
  */
 export { resolverMenuCarta } from "./menu-consulta";
 export { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
-export { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "./grupo-producto-consulta";
-export type { SincronizablePrecioGrupo } from "./grupo-producto-consulta";
 export type { EntradaPortalCarta } from "./publica-consulta";
-export { cargarAdminItemsAgrupados } from "./admin-consulta";
-export { cargarAdminCarta } from "./admin-consulta";
-export { cargarAdminPortal } from "./admin-consulta";
-export { cargarPortalEmpresaAdmin } from "./admin-consulta";
-export { entradasVistaPreviaPortal } from "./admin-consulta";
-export { cargarTemaAdmin } from "./admin-consulta";
+export { descuentosConfiguradosEnSucursal } from "./descuento-producto-consulta";
+export { resolverMenuCartaConDiagnostico } from "./menu-consulta";

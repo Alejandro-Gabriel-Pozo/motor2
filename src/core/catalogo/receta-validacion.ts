@@ -1,4 +1,3 @@
-import type { Db } from "@/lib/db-tipos";
 import { texto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { CANTIDAD_MAXIMA, validarCantidad } from "@/core/datos/cantidad";
@@ -14,16 +13,14 @@ import {
   validarTextoLibre,
   validarTopeDeLista,
 } from "@/core/datos/limites";
-import { whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
-import { validarUnidadInsumo } from "./producto";
 
 /**
  * Tipos de entrada y validación de datos de `guardarReceta` (server/actions/catalogo/recetas.ts, Task #41 Fase B3).
  *
- * Solo valida los datos que llegan para una versión nueva de la receta — consulta catálogo (Producto/Insumo/Unidad) para
- * eso, pero nunca lee la receta en sí (RecetaVersion/RecetaIngrediente): por eso no figura en `ARCHIVOS_CLASIFICADOS` de
- * `test/arquitectura/lectores-de-receta.test.ts`. La autorización NO vive acá: la pone `guardarReceta` (`conPermiso`)
- * antes de llamar a cualquiera de estas funciones.
+ * Solo valida los datos que llegan para una versión nueva de la receta. PURO (Pureza Fase 3): necesita saber cosas del catálogo (si el ingrediente es una MP, si está
+ * disponible, si el sustituto existe, qué unidades existen) y las recibe ya leídas en `DatosParaValidarReceta`, que arma `cargarDatosParaValidarReceta`
+ * (`server/persistencia/catalogo/`) con CUATRO consultas en lote (antes: dos consultas por ingrediente y una por cada sustituto). El ORDEN de las validaciones y sus
+ * mensajes son los de siempre. Nunca lee la receta en sí (RecetaVersion/RecetaIngrediente). La autorización NO vive acá: la pone `guardarReceta` (`conPermiso`).
  */
 
 export interface IngredienteInput {
@@ -70,26 +67,57 @@ export interface CabeceraRecetaInput {
   equipamientoNecesario?: string;
 }
 
+/** Un producto leído del catálogo, con lo que la validación necesita de él. */
+export interface ProductoParaValidar {
+  id: string;
+  nombre: string;
+  tipo: string;
+  insumoId: string | null;
+  unidadStockId: string;
+}
+
+/**
+ * Lo que la validación necesita saber del catálogo, ya leído (`cargarDatosParaValidarReceta`). Un ingrediente o un sustituto que no figura en estos mapas es
+ * porque no existe.
+ */
+export interface DatosParaValidarReceta {
+  /** Los productos de los ingredientes, por id. */
+  productos: ReadonlyMap<string, ProductoParaValidar>;
+  /** Los ids de esos productos que están disponibles en ALGUNA sucursal. */
+  disponiblesEnAlguna: ReadonlySet<string>;
+  /** Los insumos sustitutos declarados, por id. */
+  insumos: ReadonlyMap<string, { nombre: string; activo: boolean }>;
+  /** Para cada par (insumo sustituto, unidad de stock del ingrediente), el resultado de `validarUnidadInsumo`: el mensaje, o `null` si no hay problema. Clave: `claveDeUnidadDeSustituto`. */
+  mensajeDeUnidadDeSustituto: ReadonlyMap<string, string | null>;
+  /** Las unidades de la cabecera (rendimiento y ración), por id. */
+  unidades: ReadonlyMap<string, { nombre: string; decimales: number }>;
+}
+
+/** Clave del par (insumo sustituto, unidad de stock) en `mensajeDeUnidadDeSustituto`. */
+export function claveDeUnidadDeSustituto(insumoSustitutoId: string, unidadStockId: string): string {
+  return `${insumoSustitutoId}||${unidadStockId}`;
+}
+
 /**
  * D8 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): al guardar, cada sustituto declarado tiene que ser un Insumo que
  * existe y está activo, distinto del propio Insumo del ingrediente principal, sin duplicados dentro de la misma línea, y con
  * TODAS sus MP disponibles compartiendo la unidad de stock del ingrediente principal (mismo criterio que `validarUnidadInsumo`,
  * ya usado para un producto suelto y para la fusión de Insumos).
  */
-async function validarSustitutosDeIngrediente(db: Db, insumoSustitutoIds: string[], mp: { insumoId: string | null; unidadStockId: string }): Promise<string | null> {
+function validarSustitutosDeIngrediente(datos: DatosParaValidarReceta, insumoSustitutoIds: string[], mp: { insumoId: string | null; unidadStockId: string }): string | null {
   if (new Set(insumoSustitutoIds).size !== insumoSustitutoIds.length) return "Un ingrediente no puede tener el mismo sustituto declarado dos veces.";
   for (const insumoSustitutoId of insumoSustitutoIds) {
     if (mp.insumoId && insumoSustitutoId === mp.insumoId) return "Un sustituto no puede ser el mismo Insumo que el ingrediente principal.";
-    const insumo = await db.insumo.findUnique({ where: { id: insumoSustitutoId } });
+    const insumo = datos.insumos.get(insumoSustitutoId);
     if (!insumo) return "No se encontró uno de los insumos sustitutos.";
     if (!insumo.activo) return `El insumo sustituto "${insumo.nombre}" está inactivo.`;
-    const invalidoUnidad = await validarUnidadInsumo(insumoSustitutoId, mp.unidadStockId, undefined, db);
+    const invalidoUnidad = datos.mensajeDeUnidadDeSustituto.get(claveDeUnidadDeSustituto(insumoSustitutoId, mp.unidadStockId)) ?? null;
     if (invalidoUnidad) return invalidoUnidad;
   }
   return null;
 }
 
-export async function validarIngredientes(db: Db, items: IngredienteInput[], producto: { seProduce: boolean }) {
+export function validarIngredientes(items: IngredienteInput[], producto: { seProduce: boolean }, datos: DatosParaValidarReceta): string | null {
   if (!items.length) return "La receta necesita al menos un ingrediente.";
   const excedeIngredientes = validarTopeDeLista(items, "Los ingredientes", MAXIMO_INGREDIENTES_RECETA);
   if (excedeIngredientes) return excedeIngredientes;
@@ -110,19 +138,18 @@ export async function validarIngredientes(db: Db, items: IngredienteInput[], pro
     if (!observaciones.ok) return observaciones.mensaje;
     const excedeSustitutos = validarTopeDeLista(item.insumoSustitutoIds ?? [], "Los sustitutos de un ingrediente", MAXIMO_SUSTITUTOS_POR_INGREDIENTE);
     if (excedeSustitutos) return excedeSustitutos;
-    const mp = await db.producto.findUnique({ where: { id: item.insumoProductoId } });
+    const mp = datos.productos.get(item.insumoProductoId);
     if (!mp || mp.tipo !== "MP") {
       return `Cada ingrediente tiene que ser una materia prima (MP) (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
     }
     // Global, no por sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6): la receta es del Catálogo
     // Central, compartida entre sucursales — bloquear el editor porque UNA sucursal desactivó esta MP impediría editar
     // una receta de todas. Basta con que esté disponible EN ALGUNA; la aplicación local ya la bloquea en venta.ts/movimientos.ts.
-    const disponibleEnAlguna = await db.producto.findFirst({ where: { id: mp.id, ...whereDisponibleEnAlguna() } });
-    if (!disponibleEnAlguna) {
+    if (!datos.disponiblesEnAlguna.has(mp.id)) {
       return `Cada ingrediente tiene que ser una materia prima (MP) disponible en alguna sucursal (${mp.nombre} no lo está en ninguna).`;
     }
     if (item.insumoSustitutoIds?.length) {
-      const invalidoSustitutos = await validarSustitutosDeIngrediente(db, item.insumoSustitutoIds, mp);
+      const invalidoSustitutos = validarSustitutosDeIngrediente(datos, item.insumoSustitutoIds, mp);
       if (invalidoSustitutos) return invalidoSustitutos;
     }
   }
@@ -164,7 +191,7 @@ export function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): str
  * admite, así que se rechaza). Las tres restantes son enteros >= 0 sin unidad — mismo criterio que ya usaba `validarPasos`
  * más arriba para los minutos de un paso.
  */
-export async function validarCabecera(db: Db, cabecera: CabeceraRecetaInput): Promise<string | null> {
+export function validarCabecera(cabecera: CabeceraRecetaInput, datos: DatosParaValidarReceta): string | null {
   const textos: [unknown, string][] = [
     [cabecera.comentarios, "Los comentarios"],
     [cabecera.presentacionEmplatado, "La presentación o emplatado"],
@@ -183,14 +210,14 @@ export async function validarCabecera(db: Db, cabecera: CabeceraRecetaInput): Pr
   }
   if (cabecera.rendimientoCantidad !== undefined) {
     if (!cabecera.rendimientoUnidadId) return "Falta la unidad del rendimiento.";
-    const unidad = await db.unidad.findUnique({ where: { id: cabecera.rendimientoUnidadId }, select: { nombre: true, decimales: true } });
+    const unidad = datos.unidades.get(cabecera.rendimientoUnidadId);
     if (!unidad) return "No se encontró la unidad del rendimiento.";
     const resultado = validarCantidad(cabecera.rendimientoCantidad, unidad, { etiqueta: "El rendimiento" });
     if (!resultado.ok) return resultado.mensaje;
   }
   if (cabecera.racionTamano !== undefined) {
     if (!cabecera.racionUnidadId) return "Falta la unidad del tamaño de ración.";
-    const unidad = await db.unidad.findUnique({ where: { id: cabecera.racionUnidadId }, select: { nombre: true, decimales: true } });
+    const unidad = datos.unidades.get(cabecera.racionUnidadId);
     if (!unidad) return "No se encontró la unidad del tamaño de ración.";
     const resultado = validarCantidad(cabecera.racionTamano, unidad, { etiqueta: "El tamaño de ración" });
     if (!resultado.ok) return resultado.mensaje;

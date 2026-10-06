@@ -2,7 +2,8 @@
 
 import type { Prisma } from "@prisma/client";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { creariaCiclo, validarFusionInsumos } from "@/core/catalogo/public-servidor";
+import { validarFusionInsumos } from "@/server/lecturas/catalogo/unidad-de-insumo";
+import { creariaCiclo } from "@/server/lecturas/catalogo/grupos";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";

@@ -1,6 +1,6 @@
 import "server-only";
 import { armarStockPorFamilia, type FilaStockPorFamilia } from "@/core/stock/public";
-import { cargarArbolDeGrupos } from "@/server/consultas/catalogo/grupos";
+import { cargarArbolDeGrupos } from "@/server/lecturas/catalogo/grupos";
 import type { Db } from "@/lib/db-tipos";
 
 /**

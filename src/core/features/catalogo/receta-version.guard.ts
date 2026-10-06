@@ -1,4 +1,4 @@
-import type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "@/core/catalogo/public-servidor";
+import type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "@/core/catalogo/public";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoGuardarVersionDeReceta } from "./receta-version.schema";
 
