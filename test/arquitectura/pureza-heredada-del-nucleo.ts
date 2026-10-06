@@ -16,7 +16,7 @@ export interface EntradaDePurezaHeredada {
 
 export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada> = {
   "src/core/auth/acceso.ts": { nivel: "P3", senales: ["importaCliente", "leeLaBase", "reloj", "entorno"], pendiente: "Fase 6: es login, base e infraestructura de sesión (lo usa solo lib/auth.ts): se muda entero a server/sesion con auth/base y auth/contexto" },
-  "src/core/auth/base.ts": { nivel: "P3", senales: ["prismaDeTipo", "importaCliente", "escribeEnLaBase", "entorno"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
+  "src/core/auth/base.ts": { nivel: "P3", senales: ["prismaDeTipo", "importaCliente", "escribeEnLaBase", "entorno"], pendiente: "Fase 6: no escribe datos (el único $executeRaw es el set_config local a la transacción): es infraestructura de la base por empresa; sale UNA vez a server/sesion junto con contexto y rol-de-ejecucion, sin tocar su código (todas las listas de seguridad que la nombran cambian en el mismo commit)" },
   "src/core/auth/contexto.ts": { nivel: "P4", senales: ["serverOnly", "reactONext", "leeLaBase", "entorno"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
   "src/core/auth/invitacion.ts": { nivel: "P3", senales: ["leeLaBase", "escribeEnLaBase", "reloj"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
   "src/core/auth/ir-al-login.ts": { nivel: "P4", senales: ["reactONext"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
