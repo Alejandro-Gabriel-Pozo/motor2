@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularStockConsolidado } from "@/core/stock/consolidado";
 import { calcularStockEnTransito } from "@/core/stock/en-transito";
@@ -6,7 +7,7 @@ import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDAD
 
 export default async function StockConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

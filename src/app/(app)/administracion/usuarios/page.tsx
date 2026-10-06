@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarInvitacionesPendientes, listarUsuariosDeSucursal } from "@/server/actions/auth/usuarios";
 import { listarSucursales } from "@/server/actions/auth/sucursales";
@@ -7,7 +8,7 @@ import { UsuariosTabla } from "./usuarios-tabla";
 
 export default async function UsuariosPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null; // el layout ya redirige
+  if (!ctx) return irAlLogin(); // el layout ya redirige
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "gestion_usuarios", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

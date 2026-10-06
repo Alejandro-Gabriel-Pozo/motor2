@@ -1,5 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { crearDestinoConsumo, actualizarActivoDestinoConsumo, listarDestinosConsumoParaPanel } from "@/server/actions/movimientos/motivos";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -11,7 +12,7 @@ import { FormConResultado } from "@/components/form-con-resultado";
  */
 export default async function DestinosConsumoPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "motivos_destino_consumo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

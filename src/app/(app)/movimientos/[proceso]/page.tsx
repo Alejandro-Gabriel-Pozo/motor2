@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { ACCION_POR_PROCESO, obtenerConfigProceso } from "@/core/movimientos/public";
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
@@ -22,7 +23,7 @@ export default async function MovimientoPage({
   if (!config) notFound();
 
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const accionClave = ACCION_POR_PROCESO[config.proceso];
   if (!accionClave) notFound();

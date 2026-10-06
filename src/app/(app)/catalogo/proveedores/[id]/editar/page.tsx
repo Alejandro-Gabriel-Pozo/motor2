@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { formatearCuit } from "@/core/fiscal/cuit";
 import { obtenerProveedorPorId } from "@/server/consultas/catalogo/proveedores";
@@ -9,7 +10,7 @@ import { ProveedorForm, type ProveedorExistente } from "../../proveedor-form";
 /** Edición de un proveedor. Al guardar, vuelve a su ficha, que muestra el aviso de que se guardó. */
 export default async function EditarProveedorPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
