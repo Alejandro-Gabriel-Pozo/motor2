@@ -30,6 +30,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "administracion",
     label: "Administración",
     items: [
+      // Solo la ve el gerente: comparte la clave de la gerencia (sin migración); ver la nota de la página.
+      { href: "/administracion/empresa", label: "Perfil de la empresa", accion: "traspasar_gerencia", panel: "empresa" },
       { href: "/administracion/usuarios", label: "Usuarios", accion: "gestion_usuarios", panel: "sucursal" },
       { href: "/administracion/roles", label: "Roles", accion: "gestion_roles", panel: "empresa" },
       { href: "/administracion/permisos", label: "Permisos", accion: "gestion_permisos", panel: "empresa" },

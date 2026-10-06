@@ -76,6 +76,7 @@
         "ver_stock"
       ],
       "menu": [
+        "administracion|/administracion/empresa",
         "administracion|/administracion/usuarios",
         "administracion|/administracion/roles",
         "administracion|/administracion/permisos",
@@ -150,6 +151,7 @@
         "pos|/mesas"
       ],
       "panelEmpresa": [
+        "administracion|/administracion/empresa",
         "administracion|/administracion/roles",
         "administracion|/administracion/permisos",
         "administracion|/administracion/capacidades-sucursal",
@@ -329,6 +331,7 @@
     }
   },
   "menuCompleto": [
+    "/administracion/empresa",
     "/administracion/usuarios",
     "/administracion/roles",
     "/administracion/permisos",
