@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo } from "@/core/datos/errores-de-base";
 import type { Transaccion } from "@/lib/db-tipos";
 import { conReintento, type OpcionesEspera } from "./reintentar";
 
@@ -42,12 +43,8 @@ import { conReintento, type OpcionesEspera } from "./reintentar";
  * ej. una conexión caída, reintentándolo como si fuera un conflicto).
  */
 export function esConflictoDeEscritura(e: unknown): boolean {
-  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return true;
-  if (e instanceof Error && e.name === "DriverAdapterError") {
-    const cause = (e as Error & { cause?: unknown }).cause;
-    if (cause && typeof cause === "object" && "kind" in cause && cause.kind === "TransactionWriteConflict") return true;
-  }
-  return false;
+  if (esErrorDeBaseConCodigo(e, "P2034")) return true;
+  return causaDeErrorDeDriver(e)?.kind === "TransactionWriteConflict";
 }
 
 /**
@@ -58,12 +55,8 @@ export function esConflictoDeEscritura(e: unknown): boolean {
  * de negocio que corresponde. Ver el parámetro `tambienChoqueDeUnico` de `conTransaccionSerializable`.
  */
 export function esChoqueDeIndiceUnico(e: unknown): boolean {
-  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return true;
-  if (e instanceof Error && e.name === "DriverAdapterError") {
-    const cause = (e as Error & { cause?: unknown }).cause;
-    if (cause && typeof cause === "object" && "kind" in cause && cause.kind === "UniqueConstraintViolation") return true;
-  }
-  return false;
+  if (esErrorDeBaseConCodigo(e, "P2002")) return true;
+  return causaDeErrorDeDriver(e)?.kind === "UniqueConstraintViolation";
 }
 
 /**
@@ -94,7 +87,7 @@ export async function conTransaccionSerializable<T>(
   return conReintento(
     () =>
       transaccion(fn, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        isolationLevel: "Serializable",
         // Default de Prisma (maxWait 2s / timeout 5s) es corto para el caso
         // de latencia de red más alta de lo normal — esto da más margen sin
         // dejar una transacción SERIALIZABLE colgada minutos si algo se
@@ -121,7 +114,7 @@ export async function conTransaccionSerializable<T>(
         console.error("[con-reintento][investigacion] conflicto de escritura agotó los reintentos", {
           maxIntentos,
           esperaTotalMs: Math.round(esperaTotalMs),
-          code: e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined,
+          code: errorConocidoDeBase(e)?.code,
         }),
     }
   );
