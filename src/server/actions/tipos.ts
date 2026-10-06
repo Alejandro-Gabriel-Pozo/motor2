@@ -1,4 +1,12 @@
+import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { SincronizablePrecioGrupo } from "@/core/carta/public-servidor";
+
+/**
+ * El contexto con el que corre una acción (`conPermiso`, `conPermisoDeEmpresa`, `conEdicionDePermisos`): el del usuario MÁS `ahora`, la hora del pedido (Pureza 1.2).
+ * Se fija UNA vez, acá en el borde, y los casos de uso la reciben en lugar de leer el reloj: el dominio es determinista (un test fija la hora) y toda marca de
+ * tiempo de una misma operación coincide. Los casos de uso piden solo lo que usan: `Pick<ContextoDeAccion, "usuarioId" | "ahora" | …>`.
+ */
+export type ContextoDeAccion = ContextoUsuario & { ahora: Date };
 
 export type ResultadoAccion = { ok: true; mensaje: string } | { ok: false; mensaje: string };
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
@@ -33,7 +34,7 @@ describe("obtenerResumenOperativo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 50 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
 
-    const resumen = await obtenerResumenOperativo(sucursalId, prisma);
+    const resumen = await obtenerResumenOperativo(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     expect(resumen.stock.totalItems).toBeGreaterThanOrEqual(2); // mp y pv, al menos
     expect(resumen.movimientos.total).toBeGreaterThan(0);
     expect(resumen.financiero.ventasTotal).toBe(200);
@@ -51,7 +52,7 @@ describe("obtenerResumenOperativo", () => {
 
     const haceUnAño = new Date();
     haceUnAño.setUTCFullYear(haceUnAño.getUTCFullYear() - 1);
-    const resumen = await obtenerResumenOperativo(sucursalId, prisma, { desde: haceUnAño, hasta: haceUnAño });
+    const resumen = await obtenerResumenOperativo(sucursalId, prisma, AHORA_DE_LA_CORRIDA, { desde: haceUnAño, hasta: haceUnAño });
     expect(resumen.financiero.ventasTotal).toBe(0);
     // El stock/movimientos no dependen del rango del financiero: siguen viendo el libro mayor completo.
     expect(resumen.movimientos.total).toBeGreaterThan(0);

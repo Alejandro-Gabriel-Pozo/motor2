@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { sembrarEmpresa } from "../../../src/core/features/empresa/sembrar-empresa";
 import { generarTokenOpaco, hashDeToken } from "../../../src/core/seguridad/tokens";
 import { prismaAdmin } from "../../setup/cliente-duenio";
+import { azarDelProceso } from "../../../src/lib/azar";
 
 /**
  * Fixtures de `invitacion-aceptar.spec.ts` (E5, ADR-020): una empresa en alta —sembrada con la misma función que usa el alta de la consola— y una
@@ -22,7 +23,7 @@ export async function sembrarInvitacion(opciones: { venceEn?: Date } = {}): Prom
   const empresaId = `alta-${marca}`;
   const nombre = `E2E En alta ${marca}`;
   const email = `invitado-${marca}@local.test`;
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   await prismaAdmin.empresa.create({ data: { id: empresaId, nombre, slug: empresaId, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "PROVISIONING" } });
   await prismaAdmin.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.empresa_id', ${empresaId}, true)`;
@@ -56,7 +57,7 @@ export async function pertenenciasDe(email: string) {
 export async function sembrarInvitacionDeUsuario(entrada: { empresaId: string; sucursalId: string; rolId: string; invitadoPorId: string; email?: string; venceEn?: Date }) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const email = entrada.email ?? `invitada-${marca}@local.test`;
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   const inv = await prismaAdmin.invitacion.create({
     data: { empresaId: entrada.empresaId, email, rolEmpresa: "usuario", invitadoPorId: entrada.invitadoPorId, hashToken: hashDeToken(token), venceEn: entrada.venceEn ?? new Date(Date.now() + 3_600_000) },
   });

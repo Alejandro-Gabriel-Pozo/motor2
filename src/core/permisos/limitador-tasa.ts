@@ -21,8 +21,8 @@ export function crearLimitadorDeTasa(limite: number, ventanaMs: number) {
   const ventanas = new Map<string, { conteo: number; venceEn: number }>();
 
   return {
-    excedeLimite(clave: string): boolean {
-      const ahora = Date.now();
+    /** `ahora` es el instante en milisegundos (Pureza 1.3): el limitador no lee el reloj, se lo pasa quien lo usa (`conPermiso`, que fija la hora del pedido). */
+    excedeLimite(clave: string, ahora: number): boolean {
       const ventana = ventanas.get(clave);
       if (!ventana || ahora > ventana.venceEn) {
         ventanas.set(clave, { conteo: 1, venceEn: ahora + ventanaMs });

@@ -1,3 +1,4 @@
+import type { FuenteDeAzar } from "./azar";
 /**
  * Cabeceras de seguridad HTTP (informe de seguridad 2026-10-01, S-04). PURO: arma textos, no lee `process.env` ni toca Next.
  *
@@ -91,8 +92,6 @@ export function cabecerasCarta({ https }: { https: boolean }): Cabecera[] {
 }
 
 /** Nonce criptográficamente aleatorio y distinto en cada pedido (base64 de 16 bytes). */
-export function generarNonce(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes));
+export function generarNonce(azar: FuenteDeAzar): string {
+  return btoa(String.fromCharCode(...azar.bytes(16)));
 }

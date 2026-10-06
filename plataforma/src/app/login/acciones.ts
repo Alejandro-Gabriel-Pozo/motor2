@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { redirect } from "next/navigation";
-import { enviarCorreo } from "@/core/correo/enviar";
+import { enviarCorreo } from "@/lib/enviar-correo";
 import { dbDeIdentidad } from "../../db";
 import { entornoDePlataforma } from "../../entorno";
 import { auditarAccionDePlataforma } from "../../servidor/auditoria";

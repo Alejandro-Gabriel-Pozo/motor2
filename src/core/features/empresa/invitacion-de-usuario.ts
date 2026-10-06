@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
 import { vencimientoDeInvitacion, type TipoDeInvitacion } from "./invitacion";
 
@@ -24,8 +25,11 @@ export type ResultadoDeInvitacion =
   | { ok: true; invitacionId: string; accion: "creada" | "extendida" | "rotada"; token: string | null }
   | { ok: false; mensaje: string };
 
+/** La hora del pedido y la fuente de azar con la que se generan los tokens (Pureza 1.2 y 1.5): el dominio no lee el reloj ni el generador criptográfico. */
 interface Reloj {
   ahora: Date;
+  azar: FuenteDeAzar;
+  /** Solo para los tests que necesitan un token conocido. */
   generarToken?: () => string;
 }
 
@@ -61,7 +65,7 @@ async function sumarAcceso(tx: Tx, empresaId: string, invitacionId: string, acce
  */
 export async function asegurarInvitacionDeUsuario(tx: Tx, entrada: { empresaId: string; email: string; invitadoPorId: string; acceso: AccesoPedido } & Reloj): Promise<ResultadoDeInvitacion> {
   const email = minuscula(entrada.email);
-  const generar = entrada.generarToken ?? generarTokenOpaco;
+  const generar = entrada.generarToken ?? (() => generarTokenOpaco(entrada.azar));
   const pendiente = await tx.invitacion.findFirst({ where: { empresaId: entrada.empresaId, email, estado: "PENDIENTE" } });
 
   const tipoPendiente = pendiente?.rolEmpresa;
@@ -98,7 +102,7 @@ export async function asegurarInvitacionDeUsuario(tx: Tx, entrada: { empresaId: 
  */
 export async function asegurarInvitacionDeVinculacion(tx: Tx, entrada: { empresaId: string; email: string; invitadoPorId: string } & Reloj): Promise<ResultadoDeInvitacion> {
   const email = minuscula(entrada.email);
-  const generar = entrada.generarToken ?? generarTokenOpaco;
+  const generar = entrada.generarToken ?? (() => generarTokenOpaco(entrada.azar));
   const pendiente = await tx.invitacion.findFirst({ where: { empresaId: entrada.empresaId, email, estado: "PENDIENTE" } });
 
   const tipoPendiente = pendiente?.rolEmpresa;
@@ -127,7 +131,7 @@ export async function asegurarInvitacionDeVinculacion(tx: Tx, entrada: { empresa
  * verificó que `actorId` puede otorgar TODAS esas sucursales con sus roles: es la salida cuando quien invitó perdió el permiso.
  */
 export async function rotarInvitacionPendiente(tx: Tx, entrada: { empresaId: string; invitacionId: string; actorId: string } & Reloj): Promise<ResultadoDeInvitacion> {
-  const generar = entrada.generarToken ?? generarTokenOpaco;
+  const generar = entrada.generarToken ?? (() => generarTokenOpaco(entrada.azar));
   const inv = await tx.invitacion.findFirst({ where: { id: entrada.invitacionId, empresaId: entrada.empresaId, estado: "PENDIENTE", rolEmpresa: { in: ["usuario", "vinculacion"] } } });
   if (!inv) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
   const token = generar();

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ResultadoCancelarConteo } from "@/core/features/movimientos/cancelar-conteo.schema";
@@ -29,10 +29,10 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @idempotency Por estado — un conteo ya CANCELADO se rechaza explícitamente; sin claveIdempotencia/I3.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la reversión de Kardex (fila conteoFisicoId) y el cambio de estado del ConteoFisico.
- * @ficha permiso=cancelar_conteo transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
+ * @ficha permiso=cancelar_conteo transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function cancelarConteoFisicoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   conteoId: string
 ): Promise<ResultadoCancelarConteo> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCancelarConteo> => {
@@ -51,7 +51,7 @@ export async function cancelarConteoFisicoCasoDeUso(
       const operacion = await escribirOperacionDeStock(tx, {
         sucursalId: actor.sucursalId,
         proceso: "CONTROL",
-        fecha: new Date(),
+        fecha: actor.ahora,
         proveedorId: null,
         nroFactura: null,
         seccionDestinoId: null,

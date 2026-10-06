@@ -4,6 +4,7 @@ import { hashDeToken } from "../../src/core/seguridad/tokens";
 import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../src/core/features/empresa/invitacion-de-usuario";
 import { VIDA_DE_LA_INVITACION_MS } from "../../src/core/features/empresa/invitacion";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E8 (ADR-024): crear, extender, rotar y revocar invitaciones de usuario y de vinculación (helpers de transacción), contra Postgres real. El mail y el permiso de quien invita
@@ -34,7 +35,7 @@ afterAll(async () => {
   await prismaAdmin.$disconnect();
 });
 
-const base = (email = "Nueva@Ejemplo.com") => ({ empresaId: E, email, invitadoPorId: invitador, acceso: { sucursalId: suc1, rolId: rol }, ahora: AHORA, generarToken: token });
+const base = (email = "Nueva@Ejemplo.com") => ({ empresaId: E, email, invitadoPorId: invitador, acceso: { sucursalId: suc1, rolId: rol }, ahora: AHORA, azar: azarDelProceso, generarToken: token });
 const enTx = <T>(fn: (tx: Parameters<Parameters<typeof prismaAdmin.$transaction>[0]>[0]) => Promise<T>) => prismaAdmin.$transaction(fn);
 const auditoria = () => prismaAdmin.registroAuditoria.findMany({ where: { entidad: "UsuarioEmpresa", campo: "invitacion" }, orderBy: { creadoEn: "asc" } });
 
@@ -87,7 +88,7 @@ describe("asegurarInvitacionDeUsuario", () => {
   it("no se pisa una invitación de gerente ni de vinculación pendiente", async () => {
     await prismaAdmin.invitacion.create({ data: { empresaId: E, email: "g@ejemplo.com", rolEmpresa: "gerente", hashToken: hashDeToken("g"), venceEn: new Date(AHORA.getTime() + 1e9) } });
     expect((await enTx((tx) => asegurarInvitacionDeUsuario(tx, base("g@ejemplo.com")))).ok).toBe(false);
-    await enTx((tx) => asegurarInvitacionDeVinculacion(tx, { empresaId: E, email: "v@ejemplo.com", invitadoPorId: invitador, ahora: AHORA, generarToken: token }));
+    await enTx((tx) => asegurarInvitacionDeVinculacion(tx, { azar: azarDelProceso, empresaId: E, email: "v@ejemplo.com", invitadoPorId: invitador, ahora: AHORA, generarToken: token }));
     expect((await enTx((tx) => asegurarInvitacionDeUsuario(tx, base("v@ejemplo.com")))).ok).toBe(false);
   });
 
@@ -102,7 +103,7 @@ describe("asegurarInvitacionDeUsuario", () => {
 });
 
 describe("asegurarInvitacionDeVinculacion", () => {
-  const datos = { empresaId: E, email: "Precargado@Ejemplo.com", invitadoPorId: "", ahora: AHORA, generarToken: token };
+  const datos = { empresaId: E, email: "Precargado@Ejemplo.com", invitadoPorId: "", ahora: AHORA, azar: azarDelProceso, generarToken: token };
 
   it("sin pendiente la crea con token; vigente no devuelve token; vencida rota", async () => {
     const d = { ...datos, invitadoPorId: invitador };
@@ -121,7 +122,7 @@ describe("rotarInvitacionPendiente y revocarInvitacionPendiente", () => {
     const a = await enTx((tx) => asegurarInvitacionDeUsuario(tx, base()));
     await enTx((tx) => asegurarInvitacionDeUsuario(tx, { ...base(), acceso: { sucursalId: suc2, rolId: rol } }));
     if (!a.ok || !a.token) throw new Error("esperaba token");
-    const r = await enTx((tx) => rotarInvitacionPendiente(tx, { empresaId: E, invitacionId: a.invitacionId, actorId: otro, ahora: AHORA, generarToken: token }));
+    const r = await enTx((tx) => rotarInvitacionPendiente(tx, { azar: azarDelProceso, empresaId: E, invitacionId: a.invitacionId, actorId: otro, ahora: AHORA, generarToken: token }));
     expect(r).toMatchObject({ ok: true, accion: "rotada" });
     expect(await prismaAdmin.invitacion.count({ where: { hashToken: hashDeToken(a.token) } })).toBe(0);
     expect(await prismaAdmin.invitacion.findUniqueOrThrow({ where: { id: a.invitacionId } })).toMatchObject({ invitadoPorId: otro, enviadaEn: null });
@@ -131,11 +132,11 @@ describe("rotarInvitacionPendiente y revocarInvitacionPendiente", () => {
   it("no rota ni revoca una aceptada, una revocada, una de gerente ni una de otra empresa", async () => {
     const a = await enTx((tx) => asegurarInvitacionDeUsuario(tx, base()));
     if (!a.ok) throw new Error("ok");
-    expect((await enTx((tx) => rotarInvitacionPendiente(tx, { empresaId: "otra-empresa", invitacionId: a.invitacionId, actorId: otro, ahora: AHORA }))).ok).toBe(false);
+    expect((await enTx((tx) => rotarInvitacionPendiente(tx, { azar: azarDelProceso, empresaId: "otra-empresa", invitacionId: a.invitacionId, actorId: otro, ahora: AHORA }))).ok).toBe(false);
     expect(await enTx((tx) => revocarInvitacionPendiente(tx, { empresaId: "otra-empresa", invitacionId: a.invitacionId, actorId: otro, ahora: AHORA }))).toBe(false);
     expect(await enTx((tx) => revocarInvitacionPendiente(tx, { empresaId: E, invitacionId: a.invitacionId, actorId: otro, ahora: AHORA }))).toBe(true);
     expect(await enTx((tx) => revocarInvitacionPendiente(tx, { empresaId: E, invitacionId: a.invitacionId, actorId: otro, ahora: AHORA }))).toBe(false);
-    expect((await enTx((tx) => rotarInvitacionPendiente(tx, { empresaId: E, invitacionId: a.invitacionId, actorId: otro, ahora: AHORA }))).ok).toBe(false);
+    expect((await enTx((tx) => rotarInvitacionPendiente(tx, { azar: azarDelProceso, empresaId: E, invitacionId: a.invitacionId, actorId: otro, ahora: AHORA }))).ok).toBe(false);
     const g = await prismaAdmin.invitacion.create({ data: { empresaId: E, email: "g2@ejemplo.com", rolEmpresa: "gerente", hashToken: hashDeToken("g2"), venceEn: new Date(AHORA.getTime() + 1e9) } });
     expect(await enTx((tx) => revocarInvitacionPendiente(tx, { empresaId: E, invitacionId: g.id, actorId: otro, ahora: AHORA }))).toBe(false);
   });

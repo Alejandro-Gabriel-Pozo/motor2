@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AHORA_DE_LA_CORRIDA } from "../../../setup/tiempo";
 import { guardComandoCancelarConteo } from "../../../../src/core/features/movimientos/cancelar-conteo.guard";
 import { guardComandoConteoFisico } from "../../../../src/core/features/movimientos/conteo-fisico.guard";
 import { guardComandoResolverConteo } from "../../../../src/core/features/movimientos/resolver-conteo.guard";
@@ -43,10 +44,10 @@ describe("guardComandoConteoFisico: la acción", () => {
   const base = { productoId: "p-1", seccionId: "s-1", conteoReal: 1, fechaConteo: new Date() };
 
   it.each(["AJUSTAR", "FALTA_MOVIMIENTO", "DESCARTAR"])("«%s» pasa", (accion) => {
-    expect(guardComandoConteoFisico({ ...base, accion }).ok).toBe(true);
+    expect(guardComandoConteoFisico({ ...base, accion }, AHORA_DE_LA_CORRIDA).ok).toBe(true);
   });
 
   it.each(["BORRAR", "", null, undefined, 3, "constructor"])("acción %j rechaza (antes era un error crudo al buscarla en el mapa de acciones)", (accion) => {
-    expect(guardComandoConteoFisico({ ...base, accion })).toMatchObject({ ok: false, codigo: "formato" });
+    expect(guardComandoConteoFisico({ ...base, accion }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "formato" });
   });
 });

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoRechazarEnvioTraspaso, ResultadoRechazarEnvioTraspaso } from "@/core/features/traspasos/traspaso.schema";
@@ -25,10 +25,10 @@ import { escribirRechazoDeEnvio } from "@/server/persistencia/traspasos/escribir
  * @idempotency No aplica — sin Operación donde guardarla; el aislamiento SERIALIZABLE evita que dos rechazos concurrentes con motivo distinto se pisen en silencio.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno — solo el cambio de estado del traspaso (motivo incluido).
- * @ficha permiso=traspaso_rechazar_envio transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
+ * @ficha permiso=traspaso_rechazar_envio transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function rechazarEnvioDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoRechazarEnvioTraspaso
 ): Promise<ResultadoRechazarEnvioTraspaso> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRechazarEnvioTraspaso> => {
@@ -42,7 +42,7 @@ export async function rechazarEnvioDeTraspasoCasoDeUso(
       estadoNuevo: transicion.estadoNuevo,
       usuarioId: actor.usuarioId,
       motivo: comando.motivo,
-      ahora: new Date(),
+      ahora: actor.ahora,
     });
 
     return exito("Transferencia rechazada — queda pendiente que el origen confirme el reingreso a su stock.", {

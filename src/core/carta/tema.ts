@@ -402,7 +402,7 @@ export interface FilaTemaCarta {
  * Actions): emite siempre las 64 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
  * ajenas al catálogo se ignoran (incluidas las `precio_*`, si alguien las cargara a mano).
  */
-export function armarTemaCarta(fila: FilaTemaCarta, ahora: Date = new Date()): TemaCartaV1 {
+export function armarTemaCarta(fila: FilaTemaCarta, ahora: Date): TemaCartaV1 {
   const json = fila.valores;
   const obj: Record<string, unknown> = typeof json === "object" && json !== null && !Array.isArray(json) ? (json as Record<string, unknown>) : {};
   const valores = {} as Record<ClaveTema, string | null>;

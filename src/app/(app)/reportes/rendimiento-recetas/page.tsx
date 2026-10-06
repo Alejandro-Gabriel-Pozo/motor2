@@ -56,7 +56,7 @@ export default async function RendimientoRecetasPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp);
+  const rango = resolverRangoDeReporte(sp, new Date());
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const desde = new Date(desdeStr);

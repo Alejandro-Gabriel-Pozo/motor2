@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { DIA_MS, enElPasado } from "../setup/tiempo";
 import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-venta";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
@@ -19,7 +20,7 @@ describe("anularVentaCasoDeUso", () => {
   let adminId: string;
   let harinaId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDeTest });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDeTest });
 
   type Linea = { proceso?: "VENTA" | "CONSUMO" | "LIQUIDACION_CONSIGNACION"; cantidad: number; cantidadExacta?: number | null; precioTotal: number; precioPorUnidadStock: number; detalle: string };
 
@@ -112,6 +113,16 @@ describe("anularVentaCasoDeUso", () => {
     });
   });
 
+  it("la hora de la anulación es la que entra por actor.ahora, no la del reloj (Pureza 1.2)", async () => {
+    const venta = await operacion({ lineas: [{ cantidad: -2, precioTotal: 200, precioPorUnidadStock: 100, detalle: "Venta de Harina" }] });
+    const fija = enElPasado(3 * DIA_MS); // otra hora que la del reloj: tres días atrás
+
+    const r = await anularVentaCasoDeUso({ ...actor(), ahora: fija }, { operacionId: venta.id });
+
+    expect(r.ok).toBe(true);
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toEqual(fija);
+  });
+
   it("éxito con Liquidación de consignación: se revierte con su mismo Proceso y el mensaje lo dice (texto exacto de antes)", async () => {
     const venta = await operacion({
       lineas: [
@@ -167,7 +178,7 @@ describe("anularVentaCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDeTest }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
+    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDeTest }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });

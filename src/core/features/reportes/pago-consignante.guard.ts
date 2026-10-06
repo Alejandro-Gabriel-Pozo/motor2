@@ -18,7 +18,7 @@ import type { ComandoRegistrarPagoConsignante } from "./pago-consignante.schema"
  * normalizado al valor que devolvió `validarImporte` — el hash I3 (`calcularPayloadHash`, en el caso de uso) se calcula sobre el
  * comando YA VALIDADO por este guard, así que normalizarlo acá no cambia qué payload se hashea ni rompe ningún reintento.
  */
-export function guardComandoRegistrarPagoConsignante(entrada: unknown): ResultadoDato<ComandoRegistrarPagoConsignante> {
+export function guardComandoRegistrarPagoConsignante(entrada: unknown, ahora: Date): ResultadoDato<ComandoRegistrarPagoConsignante> {
   const { proveedorId, importe, fecha, notas, claveIdempotencia } = (entrada ?? {}) as {
     proveedorId?: unknown;
     importe?: unknown;
@@ -33,7 +33,7 @@ export function guardComandoRegistrarPagoConsignante(entrada: unknown): Resultad
   const validado = validarImporte(importe, { etiqueta: "El importe", obligatorio: true, permitirCero: false });
   if (!validado.ok) return rechazar(validado.codigo, validado.mensaje);
 
-  const fechaValida = validarFechaOperacion(fecha);
+  const fechaValida = validarFechaOperacion(fecha, ahora);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
   const notasValidas = validarTextoLibre(notas, "Las notas", LARGO_MAXIMO_NOTAS);
   if (!notasValidas.ok) return rechazar(notasValidas.codigo, notasValidas.mensaje);

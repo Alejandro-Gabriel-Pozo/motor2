@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_SIN_SECCION_ORIGEN, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoConfirmarReingresoTraspaso, ResultadoConfirmarReingresoTraspaso } from "@/core/features/traspasos/traspaso.schema";
@@ -35,10 +35,10 @@ import { escribirReingresoDeTraspaso } from "@/server/persistencia/traspasos/esc
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura del reingreso de Kardex y el cierre del traspaso.
- * @ficha permiso=traspaso_confirmar_reingreso transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
+ * @ficha permiso=traspaso_confirmar_reingreso transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function confirmarReingresoDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoConfirmarReingresoTraspaso
 ): Promise<ResultadoConfirmarReingresoTraspaso> {
   const { traspasoId, claveIdempotencia } = comando;
@@ -67,7 +67,7 @@ export async function confirmarReingresoDeTraspasoCasoDeUso(
       cantidad,
       detalle: `Reingreso — rechazado por sucursal "${destino.nombre}".`,
       estadoNuevo: transicion.estadoNuevo,
-      ahora: new Date(),
+      ahora: actor.ahora,
       idempotencia: claveIdempotencia ? { claveIdempotencia, payloadHash } : null,
     });
 

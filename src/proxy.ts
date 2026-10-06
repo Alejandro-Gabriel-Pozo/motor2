@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { azarDelProceso } from "@/lib/azar";
 import { ENCABEZADO_RUTA_PEDIDA } from "@/core/navegacion/volver";
 import { esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "@/core/carta/host";
 import { esHostDeEmpresaUnica } from "@/core/carta/carta-empresa-unica";
@@ -53,7 +54,7 @@ export function proxy(request: NextRequest) {
   if (pathname === "/carta-publica" || pathname.startsWith("/carta-publica/") || pathname.startsWith("/api/")) return NextResponse.next();
 
   const headers = new Headers(request.headers);
-  const nonce = generarNonce();
+  const nonce = generarNonce(azarDelProceso);
   const csp = cspApp({ nonce, desarrollo: process.env.NODE_ENV === "development", https: sirvePorHttps(process.env) });
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", csp);

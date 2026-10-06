@@ -37,7 +37,7 @@ export type DatosReclasificacion = ComandoReclasificarStockSchema;
  */
 export async function reclasificarStock(datos: DatosReclasificacion): Promise<ResultadoAccion> {
   return conPermiso("stock_reclasificar", async (ctx) => {
-    const comando = guardComandoReclasificarStock(datos);
+    const comando = guardComandoReclasificarStock(datos, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await reclasificarStockCasoDeUso(ctx, comando.valor));
   });

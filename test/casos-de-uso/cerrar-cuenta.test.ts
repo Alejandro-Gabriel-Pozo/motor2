@@ -15,7 +15,7 @@ import { aResultadoAccion } from "../../src/core/resultado-caso";
  */
 describe("cerrarCuentaCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", ...baseDeTest });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", ahora: new Date(), ...baseDeTest });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();

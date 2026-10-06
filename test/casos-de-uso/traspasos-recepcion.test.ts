@@ -26,8 +26,8 @@ describe("casos de uso de la recepción de un traspaso", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ...baseDeTest });
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ...baseDeTest });
+  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDeTest });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();

@@ -5,6 +5,7 @@ import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens"
 import { fijarCodigoDeIngreso, leerDeLaBase, sembrarAdminDePlataforma, type AdminSembrado } from "./fixtures/consola";
 import { crearUsuarioSinEmpresa } from "./fixtures/invitacion";
 import { paginaConSesion } from "./fixtures/multiempresa";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * Alta de una empresa e invitación desde la consola (E5, ADR-020) en un navegador real, y el recorrido cruzado: lo que la consola crea lo acepta la app de
@@ -129,7 +130,7 @@ test("recorrido cruzado: lo que la consola da de alta lo acepta el gerente en la
   const detalle = page.url();
 
   // El token real viaja por mail: se lo reemplaza por uno conocido.
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   expect((await leerDeLaBase((db) => db.invitacion.updateMany({ where: { empresa: { slug: datos.slug } }, data: { hashToken: hashDeToken(token) } }))).count).toBe(1);
 
   // El invitado (que ya tiene su sesión de Google) abre el enlace y acepta.

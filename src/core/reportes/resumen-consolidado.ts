@@ -20,9 +20,10 @@ export interface FilaResumenConsolidado {
  */
 export async function obtenerResumenConsolidado(
   sucursales: { id: string; nombre: string }[],
-  db: Db
+  db: Db,
+  ahora: Date
 ): Promise<FilaResumenConsolidado[]> {
-  const resumenes = await Promise.all(sucursales.map((s) => obtenerResumenOperativo(s.id, db)));
+  const resumenes = await Promise.all(sucursales.map((s) => obtenerResumenOperativo(s.id, db, ahora)));
   return sucursales.map((s, i) => {
     const r = resumenes[i];
     return {

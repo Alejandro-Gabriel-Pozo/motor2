@@ -29,7 +29,7 @@ function hoyUtcSinHora(ahora: Date): Date {
 }
 
 /** `ahora` es inyectable para que el cálculo sea testeable sin congelar `new Date()` globalmente. */
-export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: Date = new Date()): RangoPorDefecto {
+export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: Date): RangoPorDefecto {
   const opcion: "30d" | "mes" = opcionParam === "mes" ? "mes" : "30d";
   const hasta = hoyUtcSinHora(ahora);
   const hastaISO = hasta.toISOString().slice(0, 10);
@@ -57,7 +57,7 @@ export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: 
  * se muestran cuando la opción vigente ya es "personalizado" — ver SelectorRango). Ese primer submit se prellena con la ventana
  * de 30 días como punto de partida razonable para editar, no porque sea significativo.
  */
-export function resolverRangoDeReporte(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date = new Date()): RangoDeReporte {
+export function resolverRangoDeReporte(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date): RangoDeReporte {
   if (sp.desde || sp.rango === "personalizado") {
     const base = resolverRangoPorDefecto("30d", ahora);
     return { opcion: "personalizado", desdeISO: sp.desde || base.desdeISO, hastaISO: sp.hasta || base.hastaISO };

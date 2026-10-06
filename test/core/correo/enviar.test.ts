@@ -9,7 +9,8 @@ vi.mock("../../../src/lib/reportar-error", () => ({
 }));
 
 import { configuracionDelCanal, problemasDeConfiguracionDeCorreo } from "../../../src/core/correo/configuracion";
-import { crearEnviadorDelCanal, enviadorEnMemoriaDelCanal, enviarCorreo, olvidarEnviadoresDelProceso } from "../../../src/core/correo/enviar";
+import { crearEnviadorDelCanal, enviadorEnMemoriaDelCanal } from "../../../src/core/correo/enviar";
+import { enviarCorreo, olvidarEnviadoresDelProceso } from "../../../src/lib/enviar-correo";
 
 /**
  * Qué implementación elige cada canal según el entorno, que el mail inválido ni se intenta, y que un fallo se reporta sin contenido (E3).

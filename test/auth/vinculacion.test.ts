@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { decidirInicioDeSesion } from "../../src/core/auth/acceso";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
+import { azarDelProceso } from "../../src/lib/azar";
 
 /**
  * E8 (ADR-024): la decisión de `signIn` con el enlace automático de cuentas por email apagado. Un User que ya existe y no tiene cuenta de Google solo entra si una invitación
@@ -28,7 +29,7 @@ const entrar = (token: string | undefined, o: { email?: string; perfil?: string;
   });
 
 async function invitacion(tipo: "usuario" | "vinculacion" | "gerente", parcial: { email?: string; empresaId?: string; venceEn?: Date; estado?: "REVOCADA" } = {}) {
-  const token = generarTokenOpaco();
+  const token = generarTokenOpaco(azarDelProceso);
   await prismaAdmin.invitacion.create({
     data: {
       empresaId: parcial.empresaId ?? EMPRESA,

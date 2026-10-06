@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { DIA_MS, enElPasado } from "../setup/tiempo";
 import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { emitirTicketCorregidoCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/emitir-ticket-corregido";
@@ -15,7 +16,7 @@ import { emitirTicketCorregidoCasoDeUso } from "../../src/server/actions/pos/cas
  */
 describe("emitirTicketCorregidoCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ...baseDeTest });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ahora: new Date(), ...baseDeTest });
   const haceUnaHora = () => new Date(Date.now() - 60 * 60 * 1000);
   const haceUnMinuto = () => new Date(Date.now() - 60 * 1000);
 
@@ -70,6 +71,18 @@ describe("emitirTicketCorregidoCasoDeUso", () => {
     });
   });
 
+  it("la hora de emisión del ejemplar corregido es la que entra por actor.ahora, no la del reloj (Pureza 1.2)", async () => {
+    const { cuenta, ventaFlan } = await cuentaCerradaConTicket(9);
+    await anular(ventaFlan.id);
+    const fija = enElPasado(3 * DIA_MS); // otra hora que la del reloj: tres días atrás
+
+    const r = await emitirTicketCorregidoCasoDeUso({ ...actor(), ahora: fija }, { cuentaId: cuenta.id, motivo: "Hora fija" });
+
+    expect(r.ok).toBe(true);
+    const b = await prisma.ejemplarTicket.findFirstOrThrow({ where: { cuentaId: cuenta.id, ejemplar: 2 } });
+    expect(b.emitidoEn).toEqual(fija);
+  });
+
   it("el C (otra anulación después del B) corrige también al A, nunca al B; la auditoría va de B a C", async () => {
     const { cuenta, a, ventaFlan } = await cuentaCerradaConTicket(7);
     await anular(ventaFlan.id);
@@ -90,7 +103,7 @@ describe("emitirTicketCorregidoCasoDeUso", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
 
     expect(await emitirTicketCorregidoCasoDeUso(actor(), { cuentaId: "no-existe", motivo: "x" })).toEqual({ ok: false, codigo: "NO_ENCONTRADA", mensaje: "No se encontró esa cuenta en esta sucursal." });
-    expect(await emitirTicketCorregidoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ...baseDeTest }, { cuentaId: cuenta.id, motivo: "x" })).toEqual({
+    expect(await emitirTicketCorregidoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ahora: new Date(), ...baseDeTest }, { cuentaId: cuenta.id, motivo: "x" })).toEqual({
       ok: false,
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa cuenta en esta sucursal.",
