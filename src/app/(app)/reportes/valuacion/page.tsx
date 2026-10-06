@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularValuacionInventario } from "@/core/reportes/valuacion";
 import { EnDolares } from "@/components/en-dolares";
@@ -7,7 +8,7 @@ import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacio
 
 export default async function ValuacionPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_valuacion", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

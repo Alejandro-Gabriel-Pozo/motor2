@@ -25,6 +25,20 @@ describe("actualizarDecimalesUnidad", () => {
     expect((await prisma.unidad.findUniqueOrThrow({ where: { id: r1.id } })).decimales).toBe(0);
   });
 
+  it("audita el cambio de decimales (anterior y nuevo), y no un reenvío sin cambio; una unidad inexistente se rechaza (Pureza 0.7)", async () => {
+    const unidad = await crearUnidad({ nombre: "kilo", magnitud: "PESO", decimales: 2 });
+    expect(unidad.ok).toBe(true);
+    if (!unidad.ok) return;
+    expect((await actualizarDecimalesUnidad(unidad.id, 3)).ok).toBe(true);
+    expect((await actualizarDecimalesUnidad(unidad.id, 3)).ok).toBe(true);
+
+    const registros = await prisma.registroAuditoria.findMany({ where: { entidad: "Unidad", entidadId: unidad.id } });
+    expect(registros.map((r) => [r.campo, r.valorAnterior, r.valorNuevo])).toEqual([["decimales", "2", "3"]]);
+    expect(registros[0]).toMatchObject({ sucursalId: null, descripcion: 'Unidad "kilo": decimales' });
+
+    expect(await actualizarDecimalesUnidad("no-existe", 1)).toEqual({ ok: false, mensaje: "No se encontró la unidad." });
+  });
+
   it("baja libremente si el producto con paso NO 'se produce' (sin stock real, R3 no aplica)", async () => {
     const unidad = await crearUnidad({ nombre: "unidad", magnitud: "CANTIDAD", decimales: 2 });
     if (!unidad.ok) return;

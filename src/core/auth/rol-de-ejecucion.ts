@@ -24,6 +24,15 @@ export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {
 }
 
 /**
+ * ¿Se deja operar con un rol que salta el RLS? Solo con `MOTOR2_ROL_ESTRICTO=0` Y fuera de Producción de Vercel (Pureza 0.4, hallazgo H1): en Producción el escape
+ * se IGNORA aunque la variable llegara a estar puesta (el arranque, además, se niega: `escapesProhibidosEnProduccion` de `src/env.ts`). Defensa en profundidad:
+ * una variable mal puesta no puede apagar el aislamiento entre empresas.
+ */
+export function permitirRolPrivilegiado(source: Record<string, string | undefined>): boolean {
+  return source.MOTOR2_ROL_ESTRICTO === "0" && source.VERCEL_ENV !== "production";
+}
+
+/**
  * Autochequeo del rol de ejecución (ADR-007 A5, endurecido por ADR-022). Dos negativas:
  *  1. Si el rol salta el RLS (superusuario, BYPASSRLS o dueño de las tablas), el aislamiento por empresa no existe y NO se opera. Desde ADR-022 es siempre así, haya una empresa o
  *     cien: ya no hay «una sola empresa» que lo disculpe. `permitirPrivilegiado` (`MOTOR2_ROL_ESTRICTO=0`) es el escape explícito para herramientas de demo que corren como

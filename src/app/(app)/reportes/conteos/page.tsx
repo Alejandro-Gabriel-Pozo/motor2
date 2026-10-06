@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
@@ -21,7 +22,7 @@ export default async function ConteosPage({
   searchParams: Promise<ParametrosDeUrl<"cursor" | "seccionId" | "productoId" | "desde" | "hasta">>;
 }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_conteos", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

@@ -2,6 +2,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import { IconoDeModulo } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { tarjetasDelUsuario } from "@/core/navegacion/inicio";
 
 /**
@@ -11,7 +12,7 @@ import { tarjetasDelUsuario } from "@/core/navegacion/inicio";
  */
 export default async function InicioPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
   const tarjetas = await tarjetasDelUsuario(ctx);
 
   if (tarjetas.length === 0) {

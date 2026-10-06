@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteRotacionMesas } from "@/core/reportes/rotacion-mesas";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
@@ -15,7 +16,7 @@ const UNO = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
  */
 export default async function RotacionMesasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rotacion_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { MENSAJE_PERMISOS_DE_PLATAFORMA, politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import { listarMatrizPermisos } from "@/server/actions/permisos/permisos";
@@ -6,7 +7,7 @@ import { PermisosMatriz } from "./permisos-matriz";
 
 export default async function PermisosPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "gestion_permisos", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

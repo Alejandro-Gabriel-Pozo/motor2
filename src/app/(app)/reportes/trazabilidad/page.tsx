@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/core/reportes/trazabilidad";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
@@ -7,7 +8,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"producto" | "idOperacion">> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_trazabilidad", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

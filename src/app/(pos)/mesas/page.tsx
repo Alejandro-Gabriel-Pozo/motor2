@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { esEstadoMesa, filtrarMesas, obtenerMapaDeMesas, type EstadoMesa } from "@/core/pos/mesas";
 import { MesaCard } from "@/components/mesas/mesa-card";
@@ -42,7 +43,7 @@ function hrefMapa(estado: EstadoMesa | null, q: string): string {
  */
 export default async function MapaDeMesasPage({ searchParams }: { searchParams: Promise<{ estado?: string | string[]; q?: string | string[] }> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;

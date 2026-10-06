@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarTicketsEmitidos, leerFiltroTickets, obtenerNumeroDeMesa, serializarFiltroTickets } from "@/core/reportes/tickets-emitidos";
@@ -29,7 +30,7 @@ export default async function TicketsEmitidosPage({
   searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "mesaId" | "cursor">>;
 }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_tickets", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

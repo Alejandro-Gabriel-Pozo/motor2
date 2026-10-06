@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/core/permisos/gate";
 import { compararRendimientosDeSucursales } from "@/server/consultas/reportes/rendimiento-por-sucursal";
 import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursal";
@@ -15,7 +16,7 @@ export default async function RendimientoPorSucursalPage({
   searchParams: Promise<ParametrosDeUrl<"productoId" | "todas">>;
 }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_sucursal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
