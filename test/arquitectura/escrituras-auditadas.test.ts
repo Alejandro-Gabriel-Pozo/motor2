@@ -8,9 +8,11 @@ import { describe, expect, it } from "vitest";
  * administrativa (`RegistroAuditoria`), en la MISMA función que lo escribe. Reescrita en Pureza 0.7 (hallazgo H4 de la auditoría): antes era una
  * lista fija de 5 modelos y miraba el ARCHIVO entero (una función auditada dejaba pasar a las demás del archivo); ahora está INVERTIDA y es por FUNCIÓN.
  *
- * Qué exige. En `src/server/actions/**` y `src/core/**` (la persistencia, `server/persistencia/`, solo escribe lo que le pide un caso de uso, que es
- * quien audita): toda función que ESCRIBA (`create`, `createMany`, `update`, `updateMany`, `upsert`) una columna de dinero de un modelo, tiene que llamar
- * a `registrarCambioAuditado` (o a una función del mismo archivo que lo llame). «Columna de dinero» es TODA columna `Decimal` de `prisma/schema.prisma`
+ * Qué exige. En `src/server/actions/**`, `src/core/**` y `src/server/persistencia/**`: toda función que ESCRIBA (`create`, `createMany`, `update`,
+ * `updateMany`, `upsert`) una columna de dinero de un modelo, tiene que llamar a `registrarCambioAuditado` (o a una función del mismo archivo que lo llame).
+ * La persistencia (`server/persistencia/`) no audita por sí misma: escribe lo que le pide un caso de uso, que es quien audita. Por eso, para una escritura
+ * de dinero en persistencia se exige la CADENA: TODA función que la llama (directa o por un ayudante, en el mismo archivo o importándola de otro) tiene
+ * que auditar, y tiene que haber al menos una que la llame. Así, al mover una escritura de dinero de una acción a la persistencia, el control no se pierde. «Columna de dinero» es TODA columna `Decimal` de `prisma/schema.prisma`
  * (sale del esquema: un modelo o una columna nueva queda cubierta sin tocar este test) más las «columnas de significado» de abajo. Si el `data` no se
  * puede leer (un spread o una variable), se supone que toca dinero: falla cerrado.
  *
@@ -22,7 +24,10 @@ import { describe, expect, it } from "vitest";
  * Cómo se controla: AST de TypeScript (no texto plano). Que la auditoría se escriba de verdad lo prueban los tests de cada acción.
  */
 const RAIZ = join(__dirname, "../..");
-const CARPETAS = ["src/server/actions", "src/core"];
+const CARPETAS = ["src/server/actions", "src/core", "src/server/persistencia"];
+/** Donde buscar a quienes llaman a una escritura de la persistencia (la cadena caso de uso → persistencia). */
+const CARPETAS_DE_LLAMADORES = ["src/server", "src/core"];
+const ZONA_PERSISTENCIA = "src/server/persistencia/";
 const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "update", "updateMany", "upsert"]);
 
 /** Columnas que no son `Decimal` pero cambian el significado de una cantidad: modelo → columnas (`"*"` = cualquier escritura del modelo). */
@@ -57,6 +62,12 @@ const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
     "Alta rápida de una MP con factor 1 (sin precio): misma razón que `darDeAltaProducto` (creación sin transacción por el reintento del código).",
   "src/server/actions/catalogo/unidades.ts|crearUnidad":
     "Alta de una unidad nueva: todavía nada la usa, así que no hay un valor anterior ni cantidades cuyo significado cambie. Cada cambio posterior de sus decimales lo audita `actualizarDecimalesUnidad`.",
+  "src/server/persistencia/movimientos/escribir-conteo-fisico.ts|escribirConteoFisico":
+    "Alta de un conteo físico: es un DOCUMENTO nuevo que lleva su propio usuario, fecha y estado (`usuarioId`, `fecha`, `creadoEn`); no hay un valor anterior que se pierda, y el efecto sobre el stock queda en el Kardex como un AJUSTE (que solo agrega). Hallado al extender esta regla a server/persistencia (Fase 4): se exceptúa la función y no el modelo, así un `update` de dinero sobre `ConteoFisico` seguiría exigiendo auditoría.",
+  "src/server/persistencia/traspasos/escribir-creacion-de-traspaso.ts|escribirSolicitudDeTraspaso":
+    "Alta de una solicitud de traspaso: es un DOCUMENTO nuevo con su propio creador y fecha (`creadoPorId`, `creadoEn`) y su máquina de estados; la cantidad es la pedida, no hay un valor anterior que se pierda, y el movimiento real queda en el Kardex al aprobarse. Hallado al extender esta regla a server/persistencia (Fase 4); se exceptúa la función y no el modelo.",
+  "src/server/persistencia/traspasos/escribir-creacion-de-traspaso.ts|escribirEnvioDirectoDeTraspaso":
+    "Alta de un envío directo de traspaso (PUSH): mismo documento que la solicitud, ya con la decisión de origen tomada; lleva su creador y fecha, no hay un valor anterior que se pierda y el movimiento real queda en el Kardex. Hallado al extender esta regla a server/persistencia (Fase 4); se exceptúa la función y no el modelo.",
   "src/core/features/empresa/sembrar-empresa.ts|sembrarEmpresa":
     "Alta de una empresa por la plataforma: siembra el catálogo base (unidades, roles, sucursal) de una empresa recién creada, DENTRO de la misma transacción que deja el rastro «alta-de-empresa» en la auditoría de plataforma (`plataforma/src/servidor/empresas.ts`).",
 };
@@ -102,12 +113,16 @@ function clavesDeData(llamada: ts.CallExpression): string[] | null {
   return encontroData ? claves : null;
 }
 
-/** Las escrituras de dinero (o de significado) de un archivo, con su función y si esa función audita. */
-export function leerEscrituras(codigo: string, archivo: string, decimales: ReadonlyMap<string, ReadonlySet<string>>): Escritura[] {
-  const fuente = ts.createSourceFile(archivo, codigo, ts.ScriptTarget.Latest, true, archivo.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+/** Una función de primer nivel de un archivo, con lo que llama y si audita directamente. */
+export interface Unidad {
+  nodo: ts.Node;
+  llama: Set<string>;
+  auditaDirecto: boolean;
+}
 
-  // 1) Las funciones de primer nivel, con lo que llaman (para resolver «llama a un helper del archivo que audita»).
-  const unidades = new Map<string, { nodo: ts.Node; llama: Set<string>; auditaDirecto: boolean }>();
+/** Las funciones de primer nivel de un archivo (declaradas o asignadas a una constante), con lo que llaman. */
+function extraerUnidades(fuente: ts.SourceFile): Map<string, Unidad> {
+  const unidades = new Map<string, Unidad>();
   const registrar = (nombre: string, nodo: ts.Node) => {
     const llama = new Set<string>();
     let auditaDirecto = false;
@@ -129,13 +144,25 @@ export function leerEscrituras(codigo: string, archivo: string, decimales: Reado
       }
     }
   }
-  const audita = (nombre: string, visitadas = new Set<string>()): boolean => {
-    if (visitadas.has(nombre)) return false;
-    visitadas.add(nombre);
-    const u = unidades.get(nombre);
-    if (!u) return false;
-    return u.auditaDirecto || [...u.llama].some((otra) => unidades.has(otra) && audita(otra, visitadas));
-  };
+  return unidades;
+}
+
+/** `true` si la función audita ella misma o por un ayudante del mismo archivo. */
+function auditaEnElArchivo(unidades: ReadonlyMap<string, Unidad>, nombre: string, visitadas = new Set<string>()): boolean {
+  if (visitadas.has(nombre)) return false;
+  visitadas.add(nombre);
+  const u = unidades.get(nombre);
+  if (!u) return false;
+  return u.auditaDirecto || [...u.llama].some((otra) => unidades.has(otra) && auditaEnElArchivo(unidades, otra, visitadas));
+}
+
+/** Las escrituras de dinero (o de significado) de un archivo, con su función y si esa función audita. */
+export function leerEscrituras(codigo: string, archivo: string, decimales: ReadonlyMap<string, ReadonlySet<string>>): Escritura[] {
+  const fuente = ts.createSourceFile(archivo, codigo, ts.ScriptTarget.Latest, true, archivo.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+
+  // 1) Las funciones de primer nivel, con lo que llaman (para resolver «llama a un helper del archivo que audita»).
+  const unidades = extraerUnidades(fuente);
+  const audita = (nombre: string) => auditaEnElArchivo(unidades, nombre);
 
   // 2) Las escrituras, cada una atribuida a la función de primer nivel que la contiene.
   const escrituras: Escritura[] = [];
@@ -198,6 +225,60 @@ export function violaciones(escrituras: Escritura[], usadas: Set<string> = new S
     }
     return true;
   });
+}
+
+/** Un archivo para armar la cadena: sus funciones de primer nivel y lo que importa (nombre local → módulo y nombre original). */
+export interface FuenteDeCadena {
+  archivo: string;
+  unidades: Map<string, Unidad>;
+  importes: Map<string, { modulo: string; original: string }>;
+}
+
+export function leerFuenteDeCadena(codigo: string, archivo: string): FuenteDeCadena {
+  const fuente = ts.createSourceFile(archivo, codigo, ts.ScriptTarget.Latest, true, archivo.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const importes = new Map<string, { modulo: string; original: string }>();
+  for (const s of fuente.statements) {
+    if (!ts.isImportDeclaration(s) || !ts.isStringLiteral(s.moduleSpecifier)) continue;
+    const enlaces = s.importClause?.namedBindings;
+    if (!enlaces || !ts.isNamedImports(enlaces)) continue;
+    for (const e of enlaces.elements) importes.set(e.name.text, { modulo: s.moduleSpecifier.text, original: (e.propertyName ?? e.name).text });
+  }
+  return { archivo, unidades: extraerUnidades(fuente), importes };
+}
+
+const nombreDeModulo = (archivo: string) => (archivo.split("/").pop() ?? archivo).replace(/\.tsx?$/, "");
+const moduloApuntaA = (modulo: string, archivo: string) => modulo === nombreDeModulo(archivo) || modulo.endsWith(`/${nombreDeModulo(archivo)}`);
+
+/** Las funciones que llaman a `nombre` de `archivo`: las del mismo archivo y las de quienes la importan de ese módulo. */
+function llamadoresDe(archivo: string, nombre: string, fuentes: readonly FuenteDeCadena[]): { archivo: string; nombre: string }[] {
+  const llamadores: { archivo: string; nombre: string }[] = [];
+  for (const f of fuentes) {
+    const nombreLocal = f.archivo === archivo ? nombre : [...f.importes].find(([, i]) => i.original === nombre && moduloApuntaA(i.modulo, archivo))?.[0];
+    if (!nombreLocal) continue;
+    for (const [otra, u] of f.unidades) if (u.llama.has(nombreLocal) && !(f.archivo === archivo && otra === nombre)) llamadores.push({ archivo: f.archivo, nombre: otra });
+  }
+  return llamadores;
+}
+
+/**
+ * `true` si hay al menos un llamador de la función y TODOS sus llamadores auditan (ellos mismos o por un ayudante de su archivo), o a su vez están cubiertos
+ * por la cadena hacia arriba (un llamador de la propia persistencia). Una función que nadie llama no está cubierta: no hay quién audite.
+ */
+export function cubiertaPorLaCadena(archivo: string, nombre: string, fuentes: readonly FuenteDeCadena[], visitadas = new Set<string>()): boolean {
+  const clave = `${archivo}|${nombre}`;
+  if (visitadas.has(clave)) return false;
+  visitadas.add(clave);
+  const llamadores = llamadoresDe(archivo, nombre, fuentes);
+  if (llamadores.length === 0) return false;
+  return llamadores.every((c) => {
+    const fuente = fuentes.find((f) => f.archivo === c.archivo)!;
+    return auditaEnElArchivo(fuente.unidades, c.nombre) || (c.archivo.startsWith(ZONA_PERSISTENCIA) && cubiertaPorLaCadena(c.archivo, c.nombre, fuentes, visitadas));
+  });
+}
+
+/** `violaciones` más la cadena: una escritura de dinero en la persistencia que cubren sus llamadores no es una violación. */
+export function violacionesConCadena(escrituras: Escritura[], fuentes: readonly FuenteDeCadena[], usadas: Set<string> = new Set()): Escritura[] {
+  return violaciones(escrituras, usadas).filter((e) => !(e.archivo.startsWith(ZONA_PERSISTENCIA) && cubiertaPorLaCadena(e.archivo, e.funcion, fuentes)));
 }
 
 function archivosDe(dir: string): string[] {
@@ -267,6 +348,58 @@ describe("escrituras auditadas: el detector ve lo que tiene que ver (la regla no
   });
 });
 
+describe("escrituras auditadas: la cadena caso de uso → persistencia", () => {
+  const PERSISTENCIA = "src/server/persistencia/pos/escribir-promo.ts";
+  const ESCRIBE = "export async function escribirPromo(tx: any) { await tx.promoCarta.update({ data: { precio: 5 } }); }";
+  const caso = (cuerpo: string, ruta = "src/server/actions/carta/casos-de-uso/guardar-promo.ts") =>
+    leerFuenteDeCadena(`import { escribirPromo } from "@/server/persistencia/pos/escribir-promo";\n${cuerpo}`, ruta);
+  const juzgarCadena = (...llamadores: FuenteDeCadena[]) => {
+    const fuentes = [leerFuenteDeCadena(ESCRIBE, PERSISTENCIA), ...llamadores];
+    return violacionesConCadena(leerEscrituras(ESCRIBE, PERSISTENCIA, DECIMALES), fuentes);
+  };
+
+  it("una escritura de dinero en persistencia cuyo único llamador audita está cubierta", () => {
+    expect(juzgarCadena(caso("export async function guardar(tx: any) { await escribirPromo(tx); await registrarCambioAuditado(tx, {}); }"))).toEqual([]);
+  });
+
+  it("también si el llamador audita por un ayudante de su archivo", () => {
+    expect(juzgarCadena(caso("async function auditar(tx: any) { await registrarCambioAuditado(tx, {}); }\nexport async function guardar(tx: any) { await escribirPromo(tx); await auditar(tx); }"))).toEqual([]);
+  });
+
+  it("si el llamador NO audita, es una violación (la escritura quedó sin rastro)", () => {
+    const v = juzgarCadena(caso("export async function guardar(tx: any) { await escribirPromo(tx); }"));
+    expect(v).toHaveLength(1);
+    expect(v[0].archivo).toBe(PERSISTENCIA);
+  });
+
+  it("con dos llamadores alcanza con que UNO no audite", () => {
+    const bueno = caso("export async function guardar(tx: any) { await escribirPromo(tx); await registrarCambioAuditado(tx, {}); }");
+    const malo = caso("export async function otra(tx: any) { await escribirPromo(tx); }", "src/server/actions/carta/casos-de-uso/otra.ts");
+    expect(juzgarCadena(bueno, malo)).toHaveLength(1);
+  });
+
+  it("si nadie la llama, es una violación (no hay quién audite)", () => {
+    expect(juzgarCadena()).toHaveLength(1);
+  });
+
+  it("un llamador que importa OTRA función del mismo nombre de otro módulo no la cubre", () => {
+    const ajeno = leerFuenteDeCadena('import { escribirPromo } from "@/server/persistencia/otro/ajeno";\nexport async function g(tx: any) { await escribirPromo(tx); await registrarCambioAuditado(tx, {}); }', "src/server/actions/x/casos-de-uso/g.ts");
+    expect(juzgarCadena(ajeno)).toHaveLength(1);
+  });
+
+  it("la cadena sube por la propia persistencia (una función de persistencia que llama a otra)", () => {
+    const intermedia = leerFuenteDeCadena('import { escribirPromo } from "./escribir-promo";\nexport async function escribirTodo(tx: any) { await escribirPromo(tx); }', "src/server/persistencia/pos/escribir-todo.ts");
+    const casoDeUso = leerFuenteDeCadena('import { escribirTodo } from "@/server/persistencia/pos/escribir-todo";\nexport async function g(tx: any) { await escribirTodo(tx); await registrarCambioAuditado(tx, {}); }', "src/server/actions/x/casos-de-uso/g.ts");
+    expect(juzgarCadena(intermedia, casoDeUso)).toEqual([]);
+    expect(juzgarCadena(intermedia)).toHaveLength(1);
+  });
+
+  it("un modelo que es su propia historia no necesita la cadena", () => {
+    const codigo = "export async function agregar(tx: any) { await tx.movimientoStock.createMany({ data: [] }); }";
+    expect(violacionesConCadena(leerEscrituras(codigo, PERSISTENCIA, DECIMALES), [leerFuenteDeCadena(codigo, PERSISTENCIA)])).toEqual([]);
+  });
+});
+
 describe("escrituras auditadas: el código del repositorio", () => {
   const rutas = CARPETAS.flatMap((c) => archivosDe(join(RAIZ, c)));
   const escrituras = rutas.flatMap((absoluta) => {
@@ -274,7 +407,10 @@ describe("escrituras auditadas: el código del repositorio", () => {
     return leerEscrituras(readFileSync(absoluta, "utf8"), archivo, DECIMALES);
   });
   const usadas = new Set<string>();
-  const pendientes = violaciones(escrituras, usadas);
+  const fuentes = CARPETAS_DE_LLAMADORES.flatMap((c) => archivosDe(join(RAIZ, c))).map((absoluta) =>
+    leerFuenteDeCadena(readFileSync(absoluta, "utf8"), relative(RAIZ, absoluta).split(sep).join("/")),
+  );
+  const pendientes = violacionesConCadena(escrituras, fuentes, usadas);
 
   it("encuentra los archivos y las escrituras de dinero (si dejan de encontrarse, la regla quedó vacía)", () => {
     expect(rutas.length).toBeGreaterThan(300);

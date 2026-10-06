@@ -1,0 +1,293 @@
+/**
+ * Las escrituras a la base que HOY siguen fuera de `src/server/persistencia/` (Fase 4 del plan de pureza). La regla es
+ * `escrituras-solo-en-persistencia.test.ts`; esta lista solo puede ACHICARSE: cada archivo que se migra a un caso de uso con su
+ * persistencia sale de acá en el mismo commit, y `TOPE_DE_ENTRADAS` baja con él.
+ *
+ * `escrituras` es el multiconjunto `modelo.operación` del archivo (más `$executeRaw*` para el SQL crudo de escritura): si crece, la regla
+ * falla («no puede empeorar»); si baja, falla pidiendo fijar la mejora; si llega a cero, pide sacar la entrada. Se usa el multiconjunto y
+ * no los números de línea porque las líneas se mueven con cualquier edición.
+ */
+export type FaseDeEscritura = "Fase 4" | "Fase 6" | "Consola" | "Permanente";
+
+export interface EscrituraHeredada {
+  /** `modelo.operación` de cada escritura del archivo, ordenado y con repeticiones. */
+  escrituras: readonly string[];
+  fase: FaseDeEscritura;
+  motivo: string;
+}
+
+/** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
+export const TOPE_DE_ENTRADAS = 54;
+
+export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
+  "plataforma/src/servidor/auditoria.ts": {
+    escrituras: ["auditoriaPlataforma.create", "auditoriaPlataforma.create"],
+    fase: "Consola",
+    motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
+  },
+  "plataforma/src/servidor/ciclo-de-vida.ts": {
+    escrituras: ["$executeRaw", "auditoriaPlataforma.create", "empresa.updateMany", "empresa.updateMany", "empresa.updateMany"],
+    fase: "Consola",
+    motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
+  },
+  "plataforma/src/servidor/empresas.ts": {
+    escrituras: ["$executeRaw", "empresa.create", "invitacion.create", "invitacion.create", "invitacion.update", "invitacion.updateMany", "invitacion.updateMany", "invitacion.updateMany"],
+    fase: "Consola",
+    motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
+  },
+  "plataforma/src/servidor/ingreso.ts": {
+    escrituras: ["adminPlataforma.update", "adminPlataforma.update", "adminPlataforma.update", "codigoDeIngresoPlataforma.create", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeRecuperacionPlataforma.updateMany", "sesionPlataforma.create", "sesionPlataforma.update", "sesionPlataforma.update"],
+    fase: "Consola",
+    motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
+  },
+  "plataforma/src/servidor/modulos.ts": {
+    escrituras: ["moduloEmpresa.upsert"],
+    fase: "Consola",
+    motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
+  },
+  "plataforma/src/servidor/sesion.ts": {
+    escrituras: ["sesionPlataforma.update", "sesionPlataforma.updateMany"],
+    fase: "Consola",
+    motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
+  },
+  "src/core/auth/base.ts": {
+    escrituras: ["$executeRaw", "$executeRaw", "$executeRaw", "$executeRaw"],
+    fase: "Fase 6",
+    motivo: "No escribe datos: es el set_config local a la transacción (infraestructura de la base por empresa); sale UNA vez a server/sesion junto con contexto y rol-de-ejecucion.",
+  },
+  "src/core/auth/invitacion.ts": {
+    escrituras: ["account.create", "invitacion.updateMany"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B3): vincular la cuenta con una invitación (login) pasa a server/sesion como escritor de infraestructura de login.",
+  },
+  "src/core/features/empresa/aceptar-invitacion-de-usuario.ts": {
+    escrituras: ["invitacion.updateMany", "usuarioEmpresa.upsert", "usuarioSucursal.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B3): la aceptación de invitación de usuario pasa a caso de uso + persistencia.",
+  },
+  "src/core/features/empresa/aceptar-invitacion.ts": {
+    escrituras: ["invitacion.updateMany"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B3): la aceptación de invitación de gerente pasa a caso de uso + persistencia.",
+  },
+  "src/core/features/empresa/cambiar-modulos-de-empresa.ts": {
+    escrituras: ["$executeRaw", "moduloEmpresa.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B2): operación de plataforma por script; pasa a src/server/operaciones-de-plataforma.",
+  },
+  "src/core/features/empresa/cambiar-politica-empresa.ts": {
+    escrituras: ["$executeRaw", "empresa.update"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B2): operación de plataforma por script; pasa a src/server/operaciones-de-plataforma.",
+  },
+  "src/core/features/empresa/invitacion-de-usuario.ts": {
+    escrituras: ["invitacion.create", "invitacion.create", "invitacion.update", "invitacion.update", "invitacion.update", "invitacion.updateMany", "invitacionSucursal.updateMany", "invitacionSucursal.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B4b): las invitaciones de usuario pasan a casos de uso + persistencia.",
+  },
+  "src/core/features/empresa/sembrar-empresa.ts": {
+    escrituras: ["accion.createMany", "destinoConsumo.createMany", "motivoMerma.createMany", "permisoRol.createMany", "rol.create", "rol.create", "sucursal.create", "unidad.createMany"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B1): el escritor de la siembra pasa a plataforma/src/servidor; el plan queda puro en core.",
+  },
+  "src/core/movimientos/registrar-venta.ts": {
+    escrituras: ["movimientoStock.createMany", "operacion.create", "operacion.update"],
+    fase: "Fase 4",
+    motivo: "Tramo A (PR 4A-1): la venta (única escritura del Kardex que sigue en core) pasa a caso de uso + persistencia.",
+  },
+  "src/core/permisos/auditoria.ts": {
+    escrituras: ["registroAuditoria.create"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B5): registrarCambioAuditado pasa a src/server/auditoria; lo puro (filaDeAuditoria) queda en core. Va al final: 26 archivos lo importan.",
+  },
+  "src/core/permisos/gerencia.ts": {
+    escrituras: ["usuarioEmpresa.update", "usuarioEmpresa.updateMany", "usuarioEmpresa.upsert", "usuarioSucursal.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B4a): el traspaso de gerencia pasa a caso de uso + persistencia.",
+  },
+  "src/core/plataforma/primer-admin.ts": {
+    escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B1): el alta del primer administrador pasa a plataforma/src/servidor/alta-de-admin.ts.",
+  },
+  "src/core/reportes/cotizacion-dolar.ts": {
+    escrituras: ["cotizacionDolar.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-C): la escritura de la cotización pasa a persistencia, orquestada por el caso de uso sincronizar-dolar.",
+  },
+  "src/core/reportes/indices-economicos.ts": {
+    escrituras: ["indicePrecio.create"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-C): la escritura del IPC pasa a persistencia, orquestada por el caso de uso sincronizar-ipc.",
+  },
+  "src/server/actions/auth/sucursales.ts": {
+    escrituras: ["disponibilidadProducto.createMany", "sucursal.create", "sucursal.update", "sucursal.update", "usuarioEmpresa.update", "usuarioSucursal.create"],
+    fase: "Fase 4",
+    motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
+  },
+  "src/server/actions/auth/usuarios.ts": {
+    escrituras: ["usuarioEmpresa.update", "usuarioEmpresa.upsert", "usuarioSucursal.update", "usuarioSucursal.update", "usuarioSucursal.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
+  },
+  "src/server/actions/carta/contenido-producto.ts": {
+    escrituras: ["contenidoCartaProducto.upsert", "contenidoCartaProducto.upsert"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/carta/copiar-carta.ts": {
+    escrituras: ["contenidoCartaProducto.createMany", "generoCarta.create", "itemAgrupadoCarta.create", "opcionItemAgrupadoCarta.createMany"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/carta/descuento-producto.ts": {
+    escrituras: ["descuentoProductoSucursal.delete", "descuentoProductoSucursal.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-E): dinero de carta (promos, descuentos, precio local); pasa a caso de uso + persistencia con auditoría.",
+  },
+  "src/server/actions/carta/generos.ts": {
+    escrituras: ["generoCarta.create", "generoCarta.update", "generoCarta.update"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/carta/items-agrupados.ts": {
+    escrituras: ["itemAgrupadoCarta.create", "itemAgrupadoCarta.update", "itemAgrupadoCarta.update", "opcionItemAgrupadoCarta.create", "opcionItemAgrupadoCarta.deleteMany", "opcionItemAgrupadoCarta.update"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/carta/portal-empresa.ts": {
+    escrituras: ["portalCartaEmpresa.upsert"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/carta/promos.ts": {
+    escrituras: ["promoCarta.create", "promoCarta.update", "promoCarta.update", "promoCartaCupo.createMany", "promoCartaCupo.deleteMany", "promoCartaSucursal.upsert", "promoCartaSucursal.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-E): dinero de carta (promos, descuentos, precio local); pasa a caso de uso + persistencia con auditoría.",
+  },
+  "src/server/actions/carta/registro-publico.ts": {
+    escrituras: ["sucursalPublica.create", "sucursalPublica.deleteMany", "sucursalPublica.update", "sucursalPublica.update"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/carta/secciones.ts": {
+    escrituras: ["seccionCarta.create", "seccionCarta.update", "seccionCarta.update"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/carta/tema.ts": {
+    escrituras: ["temaCartaSucursal.update", "temaCartaSucursal.update", "temaCartaSucursal.upsert"],
+    fase: "Fase 4",
+    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
+  },
+  "src/server/actions/catalogo/categorias-producto.ts": {
+    escrituras: ["categoriaProducto.create", "categoriaProducto.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/catalogo/insumos.ts": {
+    escrituras: ["grupo.create", "grupo.update", "grupo.update", "insumo.create", "insumo.delete", "insumo.update", "insumo.update", "insumo.update", "producto.updateMany", "sustitutoRecetaIngrediente.delete", "sustitutoRecetaIngrediente.deleteMany", "sustitutoRecetaIngrediente.update", "sustitutoRecetaIngrediente.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/catalogo/productos.ts": {
+    escrituras: ["disponibilidadProducto.createMany", "disponibilidadProducto.createMany", "disponibilidadProducto.upsert", "presentacion.update", "presentacion.upsert", "producto.create", "producto.create", "producto.update", "producto.update", "producto.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/catalogo/proveedores.ts": {
+    escrituras: ["proveedor.create", "proveedor.update", "proveedor.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/catalogo/receta-sucursal.ts": {
+    escrituras: ["recetaSucursal.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/catalogo/rendimiento-local.ts": {
+    escrituras: ["rendimientoLocalIngrediente.update", "rendimientoLocalIngrediente.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/catalogo/unidades.ts": {
+    escrituras: ["unidad.create", "unidad.update", "unidad.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/clientes/cliente.ts": {
+    escrituras: ["cliente.create", "cliente.update", "cliente.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/movimientos/motivos.ts": {
+    escrituras: ["destinoConsumo.create", "destinoConsumo.update", "motivoMerma.create", "motivoMerma.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/movimientos/precio-local.ts": {
+    escrituras: ["precioLocalProducto.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-E): dinero de carta (promos, descuentos, precio local); pasa a caso de uso + persistencia con auditoría.",
+  },
+  "src/server/actions/movimientos/secciones.ts": {
+    escrituras: ["seccion.create", "seccion.update", "seccion.update", "seccion.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/permisos/capacidades-sucursal.ts": {
+    escrituras: ["capacidadSucursal.create", "capacidadSucursal.update"],
+    fase: "Fase 4",
+    motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
+  },
+  "src/server/actions/permisos/permisos.ts": {
+    escrituras: ["permisoRol.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
+  },
+  "src/server/actions/permisos/roles.ts": {
+    escrituras: ["rol.create", "rol.update", "rol.update"],
+    fase: "Fase 4",
+    motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
+  },
+  "src/server/actions/pos/cuenta-apertura.ts": {
+    escrituras: ["cuenta.create", "cuenta.update", "cuenta.update", "cuenta.update", "cuenta.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/pos/cuenta-pedido.ts": {
+    escrituras: ["cuentaItem.createMany", "cuentaItem.deleteMany", "cuentaItem.deleteMany", "cuentaItem.updateMany", "promoCuenta.create", "promoCuenta.delete"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/pos/mesas.ts": {
+    escrituras: ["mesa.create", "sucursal.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/reportes/margen-objetivo.ts": {
+    escrituras: ["margenObjetivo.create", "margenObjetivo.delete", "margenObjetivo.update"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/stock/frecuencia-conteo.ts": {
+    escrituras: ["frecuenciaConteoProducto.delete", "frecuenciaConteoProducto.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/stock/seccion-habitual.ts": {
+    escrituras: ["seccionHabitualProducto.delete", "seccionHabitualProducto.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
+  },
+  "src/server/actions/stock/stock-minimo.ts": {
+    escrituras: ["stockMinimoProducto.create", "stockMinimoProducto.delete", "stockMinimoProducto.update", "stockMinimoProducto.upsert"],
+    fase: "Fase 4",
+    motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
+  },
+  "src/server/invitaciones-de-usuario.ts": {
+    escrituras: ["invitacion.updateMany"],
+    fase: "Fase 4",
+    motivo: "Tramo B (PR B3/B4b): escritura de invitaciones de usuario; pasa a persistencia con sus casos de uso.",
+  },
+};

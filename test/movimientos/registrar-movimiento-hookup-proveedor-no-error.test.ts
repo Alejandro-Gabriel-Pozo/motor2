@@ -7,7 +7,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 // para sus propios tests de ProveedorPorProducto) para forzar un rechazo con un valor NO-Error — algo que un `catch`
 // nunca puede descartar de antemano (una excepción real de Prisma siempre es `instanceof Error`, así que esta carrera
 // solo se puede ejercitar inyectando el rechazo, no esperando a que ocurra sola).
-vi.mock("../../src/server/actions/catalogo/upsert-proveedor-por-producto", () => ({
+vi.mock("../../src/server/persistencia/catalogo/upsert-proveedor-por-producto", () => ({
   upsertProveedorPorProducto: vi.fn().mockRejectedValue(null),
 }));
 
