@@ -92,7 +92,10 @@
       // RESERVADO — `tailwindcss` y `@tailwindcss/postcss`: los usa el `postcss.config.mjs` de la RAÍZ (que Next toma para la consola, ver `turbopack.root`) y el
       // `@import "tailwindcss"` de su globals.css; knip no sigue ninguno de los dos. Tienen que estar declaradas en `plataforma/package.json` porque Vercel instala SOLO las de
       // ese proyecto: sin ellas el build de la consola falla con «Cannot find module '@tailwindcss/postcss'» (verificado clonando limpio, 2026-10-05).
-      "ignoreDependencies": ["@sentry/nextjs", "tailwindcss", "@tailwindcss/postcss"]
+      // RESERVADO — `decimal.js`: lo importa `src/core/moneda.ts` (el dinero de todo el repo), que se compila DENTRO de la consola; knip solo mira las importaciones
+      // de `plataforma/src`. Tiene que estar declarada acá porque Vercel instala SOLO las de ese proyecto: sin ella el despliegue falla con «Can't resolve 'decimal.js'»
+      // (pasó el 2026-10-06 tras el paso 1.1). Lo vigila `test/arquitectura/plataforma-declara-sus-dependencias.test.ts`, que recorre el grafo real.
+      "ignoreDependencies": ["@sentry/nextjs", "tailwindcss", "@tailwindcss/postcss", "decimal.js"]
     }
   },
 
