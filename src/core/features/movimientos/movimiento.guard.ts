@@ -18,7 +18,7 @@ import type { DatosMovimientoInput, ProcesoGenerico } from "./movimiento.schema"
  * Devuelve `aceptar(entrada)` SIN transformar nada: el hash I3 (`calcularPayloadHash`, dentro de la transacción) depende del payload
  * tal cual llegó, no de una versión normalizada acá.
  */
-export function guardComandoRegistrarMovimiento(entrada: unknown): ResultadoDato<DatosMovimientoInput> {
+export function guardComandoRegistrarMovimiento(entrada: unknown, ahora: Date): ResultadoDato<DatosMovimientoInput> {
   const { proceso, items, seccionId, claveIdempotencia, seccionDestinoId, fecha, detalleLibre } = (entrada ?? {}) as {
     proceso?: unknown;
     fecha?: unknown;
@@ -46,7 +46,7 @@ export function guardComandoRegistrarMovimiento(entrada: unknown): ResultadoDato
     if (!referencia.ok) return rechazar(referencia.codigo, referencia.mensaje);
   }
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección.");
-  const fechaValida = validarFechaOperacion(fecha);
+  const fechaValida = validarFechaOperacion(fecha, ahora);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
     return rechazar("formato", "Clave de reintento inválida.");

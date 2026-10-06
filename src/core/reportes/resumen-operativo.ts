@@ -89,9 +89,9 @@ export interface ResumenOperativo {
  * El financiero usa el rango recibido; sin uno explícito cae al default del selector (últimos 30 días) para que `financiero`
  * nunca quede vacío por casualidad de calendario (ver rango-por-defecto.ts).
  */
-export async function obtenerResumenOperativo(sucursalId: string, db: Db, rango?: { desde: Date; hasta: Date }): Promise<ResumenOperativo> {
+export async function obtenerResumenOperativo(sucursalId: string, db: Db, ahora: Date, rango?: { desde: Date; hasta: Date }): Promise<ResumenOperativo> {
   const { desde: desdeFinanciero, hasta: hastaFinanciero } = rango ?? (() => {
-    const r = resolverRangoPorDefecto(undefined);
+    const r = resolverRangoPorDefecto(undefined, ahora);
     return { desde: new Date(r.desdeISO), hasta: new Date(r.hastaISO) };
   })();
   const [saldos, movimientosPorProceso, alertas, financiero] = await Promise.all([

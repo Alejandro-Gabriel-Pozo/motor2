@@ -65,13 +65,14 @@ async function conGate<T extends ResultadoAccion>(
   // ella al entrar (`irAlLogin`). La redirección lanza, por eso va antes de todo.
   if (!ctx) return irAlLogin();
 
-  if (limitadorMutaciones.excedeLimite(ctx.usuarioId)) {
+  // La hora del pedido se fija ACÁ, una sola vez (Pureza 1.2): el limitador, el dominio y los casos de uso la reciben, no leen el reloj.
+  const ahora = new Date();
+  if (limitadorMutaciones.excedeLimite(ctx.usuarioId, ahora.getTime())) {
     return error("Demasiadas acciones seguidas — esperá un minuto e intentá de nuevo.") as T;
   }
 
   const gate = await gatear(ctx);
   if (!gate.ok) return error(gate.mensaje) as T;
 
-  // La hora del pedido se fija ACÁ, una sola vez (Pureza 1.2): el dominio y los casos de uso la reciben, no leen el reloj.
-  return fn({ ...ctx, ahora: new Date() });
+  return fn({ ...ctx, ahora });
 }

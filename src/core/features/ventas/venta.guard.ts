@@ -35,11 +35,11 @@ const DECIMALES_DE_CANTIDAD_GUARDADOS = 4;
  * cantidad en 0 sigue siendo «sin cantidad» (el núcleo la saltea); una cantidad inválida (NaN, negativa, texto) ahora RECHAZA el lote
  * entero: antes se descartaba en silencio y el resto del lote se registraba igual. Devuelve `aceptar(entrada)` SIN transformar nada.
  */
-export function guardComandoRegistrarVenta(entrada: unknown): ResultadoDato<DatosVentaInput> {
+export function guardComandoRegistrarVenta(entrada: unknown, ahora: Date): ResultadoDato<DatosVentaInput> {
   const datos = (entrada ?? {}) as Partial<Record<keyof DatosVentaInput, unknown>>;
   if (!Array.isArray(datos.ventas) || datos.ventas.length === 0) return rechazar("vacio", "Cargá al menos un producto con cantidad.");
   if (!texto(datos.seccionId)) return rechazar("vacio", "Elegí una sección.");
-  const fecha = validarFechaOperacion(datos.fecha);
+  const fecha = validarFechaOperacion(datos.fecha, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
   if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
     return rechazar("formato", "Clave de reintento inválida.");

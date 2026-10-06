@@ -27,7 +27,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
-  const rango = resolverRangoPorDefecto(undefined);
+  const rango = resolverRangoPorDefecto(undefined, new Date());
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
     sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db),

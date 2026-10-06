@@ -19,9 +19,9 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp);
+  const rango = resolverRangoDeReporte(sp, new Date());
   const [r, cotizacion] = await Promise.all([
-    obtenerResumenOperativo(ctx.sucursalId, ctx.db, { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }),
+    obtenerResumenOperativo(ctx.sucursalId, ctx.db, new Date(), { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }),
     obtenerUltimaCotizacionSinRomper(ctx.db),
   ]);
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
@@ -112,9 +113,9 @@ describe("reportes con la serie del IPC vencida", () => {
 
   it("resumen operativo (tarjeta de /reportes): ipcVencido sube con la serie vencida, y «provisorio» sigue siendo independiente", async () => {
     await serieConMeses([2, 1]);
-    const alDia = (await obtenerResumenOperativo(sucursalId, prisma)).financiero;
+    const alDia = (await obtenerResumenOperativo(sucursalId, prisma, AHORA_DE_LA_CORRIDA)).financiero;
     await serieConMeses([9, 8]);
-    const vencida = (await obtenerResumenOperativo(sucursalId, prisma)).financiero;
+    const vencida = (await obtenerResumenOperativo(sucursalId, prisma, AHORA_DE_LA_CORRIDA)).financiero;
 
     expect(alDia.ipcVencido).toBe(false);
     expect(alDia.margenIPCProvisorio).toBe(true);

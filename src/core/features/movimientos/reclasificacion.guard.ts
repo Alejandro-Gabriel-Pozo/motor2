@@ -19,7 +19,7 @@ import type { ComandoReclasificarStock } from "./reclasificacion.schema";
  * Devuelve `aceptar(entrada)` SIN transformar nada: el hash I3 (`calcularPayloadHash`, dentro de la transacción) depende del payload
  * tal cual llegó, no de una versión normalizada acá.
  */
-export function guardComandoReclasificarStock(entrada: unknown): ResultadoDato<ComandoReclasificarStock> {
+export function guardComandoReclasificarStock(entrada: unknown, ahora: Date): ResultadoDato<ComandoReclasificarStock> {
   const { productoId, seccionOrigenId, destinos, claveIdempotencia, fecha, detalle } = (entrada ?? {}) as {
     detalle?: unknown;
     productoId?: unknown;
@@ -34,7 +34,7 @@ export function guardComandoReclasificarStock(entrada: unknown): ResultadoDato<C
   if (!Array.isArray(destinos) || !destinos.length) return rechazar("vacio", "Agregá al menos un destino.");
   const excedeDestinos = validarTopeDeLista(destinos, "Los destinos", MAXIMO_DESTINOS_RECLASIFICACION);
   if (excedeDestinos) return rechazar("rango", excedeDestinos);
-  const fechaValida = validarFechaOperacion(fecha);
+  const fechaValida = validarFechaOperacion(fecha, ahora);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
   const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
   if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);

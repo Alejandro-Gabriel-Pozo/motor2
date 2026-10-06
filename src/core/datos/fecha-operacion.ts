@@ -11,7 +11,7 @@ const DIAS_HACIA_ATRAS = 400;
  * no pasan la zona de la empresa: usan la de Argentina por defecto (las empresas de hoy son argentinas). Un `Invalid Date` o un valor que
  * no es `Date` se rechaza acá: llegando a Prisma sería un error crudo (500) en vez de un mensaje.
  */
-export function validarFechaOperacion(valor: unknown, ahora: Date = new Date(), zona: string = ZONA_ARGENTINA): ResultadoDato<Date> {
+export function validarFechaOperacion(valor: unknown, ahora: Date, zona: string = ZONA_ARGENTINA): ResultadoDato<Date> {
   if (!(valor instanceof Date) || Number.isNaN(valor.getTime())) return rechazar("formato", "La fecha no es válida.");
 
   const inicioDePasadoManana = inicioDelDia(sumarDias(diaDeCalendario(ahora, zona), 2), zona);

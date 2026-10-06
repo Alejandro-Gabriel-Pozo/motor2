@@ -30,7 +30,7 @@ export default async function ConsolidadoPage() {
     );
   }
 
-  const filas = await obtenerResumenConsolidado(sucursales, ctx.db);
+  const filas = await obtenerResumenConsolidado(sucursales, ctx.db, new Date());
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,

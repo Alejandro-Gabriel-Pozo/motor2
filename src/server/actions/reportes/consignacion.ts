@@ -28,7 +28,7 @@ export async function registrarPagoConsignante(
   claveIdempotencia?: string
 ): Promise<ResultadoAccion> {
   return conPermiso("pagar_consignante", async (ctx) => {
-    const comando = guardComandoRegistrarPagoConsignante({ proveedorId, importe, fecha, notas, claveIdempotencia });
+    const comando = guardComandoRegistrarPagoConsignante({ proveedorId, importe, fecha, notas, claveIdempotencia }, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await registrarPagoConsignanteCasoDeUso(ctx, comando.valor));
   });

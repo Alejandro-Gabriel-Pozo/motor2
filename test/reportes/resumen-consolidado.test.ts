@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
@@ -40,7 +41,7 @@ describe("obtenerResumenConsolidado", () => {
     const filas = await obtenerResumenConsolidado([
       { id: base.sucursal.id, nombre: base.sucursal.nombre },
       { id: sucursal2.id, nombre: sucursal2.nombre },
-    ], prisma);
+    ], prisma, AHORA_DE_LA_CORRIDA);
 
     expect(filas).toHaveLength(2);
     const central = filas.find((f) => f.sucursalId === base.sucursal.id)!;
@@ -54,7 +55,7 @@ describe("obtenerResumenConsolidado", () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    const filas = await obtenerResumenConsolidado([{ id: base.sucursal.id, nombre: base.sucursal.nombre }], prisma);
+    const filas = await obtenerResumenConsolidado([{ id: base.sucursal.id, nombre: base.sucursal.nombre }], prisma, AHORA_DE_LA_CORRIDA);
     expect(filas).toEqual([
       expect.objectContaining({ sucursalId: base.sucursal.id, ventasTotal: 0, margenTotal: 0, gastadoTotal: 0, alertasCriticas: 0, alertasBajas: 0 }),
     ]);

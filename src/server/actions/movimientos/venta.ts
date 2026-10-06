@@ -35,7 +35,7 @@ export type DatosVentaInput = DatosVentaInputSchema;
  */
 export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoAccion> {
   return conPermiso("proceso_venta", async (ctx) => {
-    const comando = guardComandoRegistrarVenta(datos);
+    const comando = guardComandoRegistrarVenta(datos, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await registrarVentaCasoDeUso(ctx, comando.valor));
   });
