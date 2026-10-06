@@ -3,7 +3,8 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { listarTicketsEmitidos, leerFiltroTickets, obtenerNumeroDeMesa, serializarFiltroTickets } from "@/core/reportes/public-servidor";
+import { leerFiltroTickets, serializarFiltroTickets } from "@/core/reportes/public-servidor";
+import { listarTicketsEmitidos, obtenerNumeroDeMesa } from "@/server/consultas/reportes/tickets-emitidos";
 import { formatearMonto, nombreDeMesa, formatearNumeroTicket } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -35,7 +36,7 @@ export default async function TicketsEmitidosPage({
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const { desde, hasta, mesaId, filtro } = leerFiltroTickets(sp, ctx.empresaZonaHoraria);
+  const { desde, hasta, mesaId, filtro } = leerFiltroTickets(sp, ctx.empresaZonaHoraria, new Date());
 
   const [{ items, nextCursor }, mesaNumero] = await Promise.all([
     listarTicketsEmitidos(ctx.sucursalId, filtro, ctx.db),

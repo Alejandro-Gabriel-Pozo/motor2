@@ -7,9 +7,10 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
-import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../../src/core/reportes/rendimiento-recetas";
-import { generarReporteDiferenciasAjustes } from "../../src/core/reportes/diferencias-ajustes";
-import { reconstruirCostosDeVenta, claveCostoHistorico } from "../../src/core/reportes/costo-historico";
+import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../../src/server/consultas/reportes/rendimiento-recetas";
+import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
+import { claveCostoHistorico } from "../../src/core/reportes/costo-historico";
+import { reconstruirCostosDeVenta } from "../../src/server/consultas/reportes/costo-historico";
 
 /**
  * Test de caracterización (plan docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 1) — capturado EXACTO del

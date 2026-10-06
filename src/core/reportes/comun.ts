@@ -253,8 +253,3 @@ export async function obtenerCostoActualPorMP(sucursalId: string, db: Db, antesD
   }
   return map;
 }
-
-/** Redondeo a 3 decimales, para cantidades de stock (no plata). */
-export function redondearCantidad(n: number): number {
-  return Math.round(Number(n || 0) * 1000) / 1000;
-}

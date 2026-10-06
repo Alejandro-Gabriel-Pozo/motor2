@@ -7,7 +7,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerResumenConsolidado } from "../../src/core/reportes/resumen-consolidado";
+import { obtenerResumenConsolidado } from "../../src/server/consultas/reportes/resumen-consolidado";
 import { crearMembresia } from "../setup/membresia";
 
 describe("obtenerResumenConsolidado", () => {

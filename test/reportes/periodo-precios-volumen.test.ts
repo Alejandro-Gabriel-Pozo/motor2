@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
 import { construirMapaProductos } from "../../src/core/reportes/comun";
-import { calcularTendenciaPreciosDelPeriodo } from "../../src/core/reportes/periodo-precios";
+import { calcularTendenciaPreciosDelPeriodo } from "../../src/server/consultas/reportes/periodo-precios";
 import type { ItemPeriodo } from "../../src/core/reportes/periodo-tipos";
 
 /**

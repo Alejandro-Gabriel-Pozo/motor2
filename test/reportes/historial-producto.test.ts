@@ -8,7 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente, buscarProductoParaHistorial } from "../../src/core/reportes/historial-producto";
+import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente, buscarProductoParaHistorial } from "../../src/server/consultas/reportes/historial-producto";
 
 describe("obtenerHistorialProducto", () => {
   let sucursalId: string;

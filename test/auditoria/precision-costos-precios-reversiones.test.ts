@@ -24,7 +24,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
-import { calcularValuacionInventario } from "../../src/core/reportes/valuacion";
+import { calcularValuacionInventario } from "../../src/server/consultas/reportes/valuacion";
 
 /** Aritmética exacta en centavos (BigInt) — la referencia contra la que se compara redondearMoneda. */
 function centavosExactos(pesos: number): bigint {

@@ -1,5 +1,4 @@
-import { horaDelDia, rangoDeDias, ZONA_UTC } from "../tiempo/zona-horaria";
-import type { Db } from "./comun";
+import { horaDelDia } from "../tiempo/zona-horaria";
 
 /**
  * Reporte de rotación de mesas (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md): comensales/cuenta promedio,
@@ -119,17 +118,4 @@ export function calcularRotacionMesas(cuentas: readonly FilaCuentaRotacion[], zo
       return { grupo, cantidad: f.cantidad, duracionPromedioMin: promedio(f.duraciones) };
     }),
   };
-}
-
-/**
- * Todas las cuentas de la sucursal ABIERTAS dentro de `[desde, hasta]` (mismo criterio de rango que el resto de los reportes —
- * `resolverRangoDeReporte`/`SelectorRango`, en UTC), con la lectura de rotación ya calculada.
- */
-export async function generarReporteRotacionMesas(sucursalId: string, desdeParam: Date, hastaParam: Date, zonaHoraria: string, db: Db): Promise<ReporteRotacionMesas> {
-  const { desde, hasta } = rangoDeDias(desdeParam, hastaParam, ZONA_UTC);
-  const cuentas = await db.cuenta.findMany({
-    where: { mesa: { sucursalId }, abiertaEn: { gte: desde, lte: hasta } },
-    select: { abiertaEn: true, cerradaEn: true, comensales: true, _count: { select: { items: true } } },
-  });
-  return calcularRotacionMesas(cuentas.map((c) => ({ abiertaEn: c.abiertaEn, cerradaEn: c.cerradaEn, comensales: c.comensales, cantidadItems: c._count.items })), zonaHoraria);
 }

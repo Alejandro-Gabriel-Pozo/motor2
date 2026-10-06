@@ -7,7 +7,7 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 
 /**
  * El cierre del POS PREFIERE la sección habitual del PV (`SeccionHabitualProducto`, docs/plan-seccion-habitual-stock-2026-09-25.md

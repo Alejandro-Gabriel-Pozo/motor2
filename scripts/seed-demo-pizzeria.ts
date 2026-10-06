@@ -39,7 +39,7 @@ import { guardarReceta } from "../src/server/actions/catalogo/recetas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
 import { registrarConteoFisico } from "../src/server/actions/movimientos/conteo-fisico";
-import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../src/core/reportes/rendimiento-recetas";
+import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../src/server/consultas/reportes/rendimiento-recetas";
 import { PROVEEDORES, PRODUCTOS, PRECIOS_REFERENCIA, RECETAS } from "./seed-demo-pizzeria-data";
 
 const EMAIL_ADMIN = "alepogabriel@gmail.com";

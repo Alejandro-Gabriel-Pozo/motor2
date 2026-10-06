@@ -12,7 +12,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarPagoConsignante } from "../../src/server/actions/reportes/consignacion";
-import { generarReporteConsignacion } from "../../src/core/reportes/consignacion";
+import { generarReporteConsignacion } from "../../src/server/consultas/reportes/consignacion";
 import { cargarPagoConsignantePorClave } from "../../src/server/persistencia/reportes/pago-consignante";
 
 describe("generarReporteConsignacion", () => {

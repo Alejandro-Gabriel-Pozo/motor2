@@ -4,7 +4,7 @@ import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { agruparVentasPorDia, filtrarEventosKardex, quitarDineroDeEventos, resolverRangoHistorial, resumirCompras, type QueMostrar, type RangoHistorial } from "@/core/reportes/public";
-import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/core/reportes/public-servidor";
+import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/server/consultas/reportes/historial-producto";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";

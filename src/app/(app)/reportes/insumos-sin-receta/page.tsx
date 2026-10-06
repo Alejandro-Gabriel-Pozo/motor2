@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
-import { generarReporteInsumosSinRecetaVinculada } from "@/core/reportes/public-servidor";
+import { generarReporteInsumosSinRecetaVinculada } from "@/server/consultas/reportes/insumos-sin-receta";
 import { TablaInsumosSinReceta } from "./tabla-insumos-sin-receta";
 
 export default async function InsumosSinRecetaPage() {

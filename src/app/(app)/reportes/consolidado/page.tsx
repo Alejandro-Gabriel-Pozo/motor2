@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/server/acceso/gate";
-import { obtenerResumenConsolidado } from "@/core/reportes/public-servidor";
+import { obtenerResumenConsolidado } from "@/server/consultas/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
 import { EnlaceInterno } from "@/components/enlace-interno";
 

@@ -1,7 +1,4 @@
-import type { Proceso } from "@prisma/client";
-import { redondearMoneda } from "@/core/moneda";
-import { claveCostoHistorico, diaUtc, reconstruirCostosDeVenta } from "./costo-historico";
-import type { Db, IndiceRecetas, InfoProductoReporte } from "./comun";
+import { type Proceso } from "@prisma/client";
 
 /**
  * Motor de costeo "real" línea a línea — extraído de `calcularMargenDelPeriodo` (src/core/reportes/periodo.ts), donde vivía sin
@@ -65,65 +62,4 @@ export interface MargenRealDelPeriodo {
    *  línea que quedó fuera (no es VENTA, anulada, sin precio, o sin costo real ni reconstruido). SIN redondear, mismo criterio
    *  que `porProducto`. */
   costoPorItem: (number | null)[];
-}
-
-/**
- * Costea `items` (ya filtrados al proceso/rango/sucursal que corresponda por quien llama) con el criterio de arriba. NO filtra por
- * sucursal ni por rango: eso es responsabilidad de quien arma `items` — esta función solo decide, línea a línea, con qué costo
- * comparar cada una.
- */
-export async function calcularMargenRealDelPeriodo(
-  sucursalId: string,
-  items: readonly ItemParaMargenReal[],
-  db: Db,
-  /** El catálogo ya cargado de la misma sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
-  productos?: Map<string, InfoProductoReporte>,
-  /** El índice de recetas ya cargado, mismo motivo (ver `obtenerReportePorPeriodoConCatalogo`). */
-  indiceRecetas?: IndiceRecetas
-): Promise<MargenRealDelPeriodo> {
-  let ingresoConCostoReal = 0;
-  let costoRealTotal = 0;
-  let ingresoSinCostoReal = 0;
-  let ingresoRealReconstruido = 0;
-
-  const ventasSinPrecioExcluidas = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal <= 0).length;
-  const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal > 0 && it.costoUnitarioVenta === null);
-  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos, indiceRecetas);
-
-  const porProducto = new Map<string, FilaMargenRealProducto>();
-  const costoPorItem: (number | null)[] = new Array(items.length).fill(null);
-  items.forEach((it, i) => {
-    if (it.proceso !== "VENTA" || it.anulada || it.precioTotal <= 0) return;
-    const acc = porProducto.get(it.productoId) ?? { ingresoConCostoReal: 0, costoRealTotal: 0, ingresoRealReconstruido: 0 };
-    porProducto.set(it.productoId, acc);
-    if (it.costoUnitarioVenta !== null) {
-      const costo = it.cantidad * it.costoUnitarioVenta;
-      ingresoConCostoReal += it.precioTotal;
-      costoRealTotal += costo;
-      acc.ingresoConCostoReal += it.precioTotal;
-      acc.costoRealTotal += costo;
-      costoPorItem[i] = costo;
-      return;
-    }
-    const reconstruido = costosReconstruidos.get(claveCostoHistorico(it.productoId, diaUtc(it.fecha))) ?? null;
-    if (reconstruido !== null) {
-      const costo = it.cantidad * reconstruido;
-      ingresoConCostoReal += it.precioTotal;
-      ingresoRealReconstruido += it.precioTotal;
-      costoRealTotal += costo;
-      acc.ingresoConCostoReal += it.precioTotal;
-      acc.ingresoRealReconstruido += it.precioTotal;
-      acc.costoRealTotal += costo;
-      costoPorItem[i] = costo;
-    } else {
-      ingresoSinCostoReal += it.precioTotal;
-    }
-  });
-
-  const hayCostoReal = ingresoConCostoReal > 0;
-  const margenRealTotal = hayCostoReal ? redondearMoneda(ingresoConCostoReal - costoRealTotal) : null;
-  const baseCobertura = ingresoConCostoReal + ingresoSinCostoReal;
-  const coberturaCostoRealPct = baseCobertura > 0 ? Math.round((ingresoConCostoReal / baseCobertura) * 1000) / 10 : null;
-
-  return { ingresoConCostoReal, costoRealTotal, ingresoSinCostoReal, ingresoRealReconstruido, ventasSinPrecioExcluidas, hayCostoReal, margenRealTotal, coberturaCostoRealPct, porProducto, costoPorItem };
 }

@@ -16,7 +16,7 @@ vi.mock("@/server/acceso/gate", () => ({
   obtenerMiNivelPermiso: async () => ({ ver: mocks.ver, editar: false }),
 }));
 vi.mock("@/server/actions/movimientos/secciones", () => ({ listarSeccionesActivas: async () => [] }));
-vi.mock("@/core/reportes/historial-producto", () => ({
+vi.mock("@/server/consultas/reportes/historial-producto", () => ({
   obtenerHistorialProducto: async () => mocks.historial,
   obtenerIngredientesRecetaVigente: async () => [],
 }));

@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { costosDeInsumosPorDia } from "../../src/core/reportes/costo-historico";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 
 /**
  * «Margen real» con datos que no guardaron el costo al venderse: se reconstruye al día de la venta con el historial de compras

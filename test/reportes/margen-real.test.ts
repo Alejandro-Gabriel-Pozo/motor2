@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { calcularMargenRealDelPeriodo, type ItemParaMargenReal } from "../../src/core/reportes/margen-real";
+import { type ItemParaMargenReal } from "../../src/core/reportes/margen-real";
+import { calcularMargenRealDelPeriodo } from "../../src/server/consultas/reportes/margen-real";
 import type { Db } from "../../src/core/reportes/comun";
 
 /**

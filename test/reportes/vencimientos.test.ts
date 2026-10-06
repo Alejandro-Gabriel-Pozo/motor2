@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { generarReporteLotesProximosAVencer, generarConciliacionVencimientos } from "../../src/core/reportes/vencimientos";
+import { generarReporteLotesProximosAVencer, generarConciliacionVencimientos } from "../../src/server/consultas/reportes/vencimientos";
 import { prisma } from "../setup/test-db";
 
 describe("Reporte de vencimientos", () => {

@@ -7,7 +7,7 @@ import { entrarComo, sembrarSalon } from "../pos/salon-fixture";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { obtenerReporteMargenPromociones } from "../../src/core/reportes/margen-promociones";
+import { obtenerReporteMargenPromociones } from "../../src/server/consultas/reportes/margen-promociones";
 
 /**
  * Reporte de margen real de promos armables (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 12): contra Postgres real,

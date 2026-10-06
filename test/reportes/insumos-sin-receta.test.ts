@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, prisma } from "../setup/test-db";
-import { generarReporteInsumosSinRecetaVinculada } from "../../src/core/reportes/insumos-sin-receta";
+import { generarReporteInsumosSinRecetaVinculada } from "../../src/server/consultas/reportes/insumos-sin-receta";
 
 describe("generarReporteInsumosSinRecetaVinculada", () => {
   it("detecta la MP huérfana (sin ninguna receta) y excluye la que sí está vinculada", async () => {

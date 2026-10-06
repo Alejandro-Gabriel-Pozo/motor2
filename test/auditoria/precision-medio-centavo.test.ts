@@ -17,8 +17,8 @@ import { redondearMoneda } from "../../src/core/movimientos/transiciones";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
-import { calcularValuacionInventario } from "../../src/core/reportes/valuacion";
-import { generarReporteConsignacion } from "../../src/core/reportes/consignacion";
+import { calcularValuacionInventario } from "../../src/server/consultas/reportes/valuacion";
+import { generarReporteConsignacion } from "../../src/server/consultas/reportes/consignacion";
 
 /** Generador determinista (LCG) — la muestra es siempre la misma, así una diferencia se puede reproducir. */
 function* centavosAlAzar(cuantos: number, semilla: number): Generator<number> {

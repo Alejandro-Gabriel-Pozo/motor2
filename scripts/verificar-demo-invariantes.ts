@@ -14,9 +14,9 @@
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { prisma } from "../src/lib/db";
-import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../src/core/reportes/periodo";
+import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../src/server/consultas/reportes/periodo";
 import { calcularStockConsolidado } from "../src/server/consultas/stock/consolidado";
-import { calcularValuacionInventario } from "../src/core/reportes/valuacion";
+import { calcularValuacionInventario } from "../src/server/consultas/reportes/valuacion";
 import { calcularAlertasStock } from "../src/server/consultas/stock/alertas";
 import { tieneStockReal } from "../src/core/movimientos/transiciones";
 

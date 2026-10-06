@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, prisma } from "../../setup/test-db";
-import { compararRendimientosPorSucursal } from "../../../src/core/reportes/rendimiento-por-sucursal";
+import { compararRendimientosPorSucursal } from "../../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import { compararRendimientosDeSucursales } from "../../../src/server/consultas/reportes/rendimiento-por-sucursal";
 
 /**

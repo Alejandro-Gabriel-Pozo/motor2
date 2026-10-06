@@ -125,11 +125,6 @@ const CICLOS_CONOCIDOS = [
  * (`core/<dominio>/public.ts` o `public-servidor.ts`). Estas son las que todavía importan un archivo interno. La lista solo se achica.
  */
 const UI_CON_INTERNALS_DE_DOMINIO = [
-  {
-    ruta: "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx",
-    motivo:
-      "DEUDA (Fase 3): componente de cliente que importa `desvioEsNotable` de `core/reportes/rendimiento-por-sucursal.ts`, un archivo que además hace consultas; por la fachada de servidor arrastraría ese código al navegador. Se resuelve al separar el cálculo de la consulta en la Fase 3 (reportes).",
-  },
 ];
 
 /**

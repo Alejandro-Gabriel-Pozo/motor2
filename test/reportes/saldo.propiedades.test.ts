@@ -7,7 +7,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
-import { obtenerHistorialProducto } from "../../src/core/reportes/historial-producto";
+import { obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
 import { limitadorMutaciones } from "../../src/core/permisos/limitador-tasa";
 import { prisma } from "../setup/test-db";
 

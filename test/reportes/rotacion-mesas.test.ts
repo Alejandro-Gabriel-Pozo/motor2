@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { ZONA_ARGENTINA as AR } from "../../src/core/tiempo/zona-horaria";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
-import { calcularRotacionMesas, generarReporteRotacionMesas, grupoDeTamano, type FilaCuentaRotacion } from "../../src/core/reportes/rotacion-mesas";
+import { calcularRotacionMesas, grupoDeTamano, type FilaCuentaRotacion } from "../../src/core/reportes/rotacion-mesas";
+import { generarReporteRotacionMesas } from "../../src/server/consultas/reportes/rotacion-mesas";
 
 /**
  * Rotación de mesas (docs/plan-comensales-y-limite-mesas-2026-09-26.md): núcleo puro (`calcularRotacionMesas`, con filas

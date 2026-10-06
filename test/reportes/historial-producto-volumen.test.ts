@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
-import { obtenerHistorialProducto } from "../../src/core/reportes/historial-producto";
+import { obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
 
 /**
  * El historial de un producto sin rango de fechas devuelve todos sus eventos: con ~60k movimientos la versión anterior (`findMany` con

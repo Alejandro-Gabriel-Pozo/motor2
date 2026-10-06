@@ -7,7 +7,8 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
 import { cerrarCuenta, emitirTicketCorregido } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
-import { listarTicketsEmitidos, leerFiltroTickets, TAMANO_PAGINA_TICKETS } from "../../src/core/reportes/tickets-emitidos";
+import { leerFiltroTickets, TAMANO_PAGINA_TICKETS } from "../../src/core/reportes/tickets-emitidos";
+import { listarTicketsEmitidos } from "../../src/server/consultas/reportes/tickets-emitidos";
 import { ZONA_ARGENTINA, finDelDia, inicioDelDia } from "../../src/core/tiempo/zona-horaria";
 
 /**
@@ -166,7 +167,7 @@ describe("listarTicketsEmitidos", () => {
     expect((await listarTicketsEmitidos(s.sucursalId, rango26, prisma)).items).toHaveLength(0);
 
     // Y a través de leerFiltroTickets (lo que hace la página): sp.desde=sp.hasta="2026-09-25" da el mismo resultado.
-    const leido = leerFiltroTickets({ desde: "2026-09-25", hasta: "2026-09-25" }, ZONA_ARGENTINA);
+    const leido = leerFiltroTickets({ desde: "2026-09-25", hasta: "2026-09-25" }, ZONA_ARGENTINA, new Date());
     expect((await listarTicketsEmitidos(s.sucursalId, leido.filtro, prisma)).items).toHaveLength(1);
   });
 

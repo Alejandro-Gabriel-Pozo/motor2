@@ -22,7 +22,7 @@ const RAIZ = join(__dirname, "../../src");
 const ARCHIVOS_PERMITIDOS = [
   "core/catalogo/precio-local-consulta.ts",
   "server/actions/movimientos/precio-local.ts",
-  "core/reportes/periodo-precios.ts",
+  "server/consultas/reportes/periodo-precios.ts",
 ];
 
 function archivos(dir: string): string[] {

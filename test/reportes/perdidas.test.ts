@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { generarReportePerdidas } from "../../src/core/reportes/perdidas";
+import { generarReportePerdidas } from "../../src/server/consultas/reportes/perdidas";
 
 describe("generarReportePerdidas", () => {
   let sucursalId: string;

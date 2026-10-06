@@ -23,8 +23,8 @@ import { calcularSaldoTotal } from "../src/core/movimientos/stock";
 import { calcularStockConsolidado } from "../src/server/consultas/stock/consolidado";
 import { calcularStockPorFamilia } from "../src/server/consultas/stock/por-familia";
 import { calcularAlertasStock } from "../src/server/consultas/stock/alertas";
-import { obtenerHistorialProducto } from "../src/core/reportes/historial-producto";
-import { obtenerReportePorPeriodo } from "../src/core/reportes/periodo";
+import { obtenerHistorialProducto } from "../src/server/consultas/reportes/historial-producto";
+import { obtenerReportePorPeriodo } from "../src/server/consultas/reportes/periodo";
 
 const N_SUCURSALES = 8;
 const N_SECCIONES_POR_SUCURSAL = 5;
