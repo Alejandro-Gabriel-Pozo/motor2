@@ -1,6 +1,7 @@
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { construirIndiceRecetas, construirMapaProductos } from "@/core/reportes/public-servidor";
 import type { Db } from "@/lib/db-tipos";
+import { reconstruirCostosDeVenta } from "@/server/consultas/reportes/costo-historico";
 import { calcularMargenRealDelPeriodo } from "@/server/consultas/reportes/margen-real";
 import type { ItemParaMargenReal } from "@/core/reportes/public";
 import type { FilaDescuentoCliente, ReporteDescuentosClientes } from "@/core/reportes/public";
@@ -33,6 +34,16 @@ export async function obtenerReporteDescuentosClientes(sucursalId: string, desde
   // El catálogo y el índice de recetas se cargan UNA sola vez para todos los clientes (mismo criterio que
   // obtenerReportePorPeriodoConCatalogo): cada pasada de calcularMargenRealDelPeriodo abajo los recibe ya armados.
   const [productos, indiceRecetas] = await Promise.all([construirMapaProductos(sucursalId, db), construirIndiceRecetas(db, sucursalId)]);
+
+  // El costo de las ventas sin costo guardado se reconstruye UNA vez para TODOS los clientes (antes: dos lecturas del historial de compras por cada cliente, una por
+  // pasada). El costo de un (producto, día) no depende de qué otras ventas se reconstruyan juntas (lo fija el test «guardián de semántica» de costo-historico).
+  const costosReconstruidos = await reconstruirCostosDeVenta(
+    sucursalId,
+    filas.filter((f) => f.costoUnitarioVenta === null).map((f) => ({ productoId: f.productoId, fecha: f.operacion.fecha })),
+    db,
+    productos,
+    indiceRecetas,
+  );
 
   const porCliente = new Map<string, { nombre: string; filas: typeof filas }>();
   for (const f of filas) {
@@ -70,8 +81,8 @@ export async function obtenerReporteDescuentosClientes(sucursalId: string, desde
     // `precioTotal` de cada línea, así que el costo real que resuelve cada una es idéntico — la diferencia entre los dos
     // márgenes es, centavo a centavo, lo que el descuento le sacó al margen (ver el docstring del módulo).
     const [margenCobrado, margenALista] = await Promise.all([
-      calcularMargenRealDelPeriodo(sucursalId, itemsCobrado, db, productos, indiceRecetas),
-      calcularMargenRealDelPeriodo(sucursalId, itemsALista, db, productos, indiceRecetas),
+      calcularMargenRealDelPeriodo(sucursalId, itemsCobrado, db, productos, indiceRecetas, costosReconstruidos),
+      calcularMargenRealDelPeriodo(sucursalId, itemsALista, db, productos, indiceRecetas, costosReconstruidos),
     ]);
 
     const totalDescontadoCliente = redondearMoneda(ingresoAListaCliente - ingresoCobradoCliente);
