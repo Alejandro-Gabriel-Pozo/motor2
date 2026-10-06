@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv, validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
+import { escapesProhibidosEnProduccion, parseEnv, validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
 
 /**
  * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): confirma que el schema de
@@ -78,10 +78,43 @@ describe("validarEntornoAlArrancar (S-20)", () => {
     expect(() => validarEntornoAlArrancar({ ...ENV_PRODUCCION, VERCEL_ENV: "production" })).not.toThrow();
   });
 
-  it("MOTOR2_ENTORNO_ESTRICTO=1 lo exige fuera de Vercel; =0 relaja solo CRON_SECRET y el largo de AUTH_SECRET", () => {
+  it("MOTOR2_ENTORNO_ESTRICTO=1 lo exige fuera de Vercel", () => {
     expect(() => validarEntornoAlArrancar({ ...ENV_VALIDO, MOTOR2_ENTORNO_ESTRICTO: "1" })).toThrow();
-    expect(() => validarEntornoAlArrancar({ ...ENV_VALIDO, VERCEL_ENV: "production", MOTOR2_ENTORNO_ESTRICTO: "0" })).not.toThrow();
-    expect(() => validarEntornoAlArrancar({ VERCEL_ENV: "production", MOTOR2_ENTORNO_ESTRICTO: "0" })).toThrow(/DATABASE_URL/);
+    expect(() => validarEntornoAlArrancar({ ...ENV_PRODUCCION, MOTOR2_ENTORNO_ESTRICTO: "1" })).not.toThrow();
+  });
+
+  it("Pureza 0.4 (H1): en Producción NO arranca con un escape que apaga una garantía (MOTOR2_ROL_ESTRICTO=0 o MOTOR2_ENTORNO_ESTRICTO=0), aunque el resto esté bien", () => {
+    const produccion = { ...ENV_PRODUCCION, VERCEL_ENV: "production" };
+    expect(() => validarEntornoAlArrancar(produccion)).not.toThrow();
+    expect(() => validarEntornoAlArrancar({ ...produccion, MOTOR2_ROL_ESTRICTO: "0" })).toThrow(/MOTOR2_ROL_ESTRICTO=0/);
+    expect(() => validarEntornoAlArrancar({ ...produccion, MOTOR2_ENTORNO_ESTRICTO: "0" })).toThrow(/MOTOR2_ENTORNO_ESTRICTO=0/);
+    // El «0» ya no relaja la validación: sin CRON_SECRET sigue sin arrancar, y el error nombra las dos cosas.
+    const sinCron = { ...produccion, MOTOR2_ENTORNO_ESTRICTO: "0" } as Record<string, string | undefined>;
+    delete sinCron.CRON_SECRET;
+    expect(() => validarEntornoAlArrancar(sinCron)).toThrow(/MOTOR2_ENTORNO_ESTRICTO=0.*CRON_SECRET/);
+    // El valor «1» del rol estricto (el que usa motor2-demo) y cualquier otro valor no son un escape.
+    expect(() => validarEntornoAlArrancar({ ...produccion, MOTOR2_ROL_ESTRICTO: "1" })).not.toThrow();
+  });
+
+  it("los escapes siguen valiendo fuera de Producción (herramientas de demo, local, Preview): no hay nada que prohibir ahí", () => {
+    expect(escapesProhibidosEnProduccion({ MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).toEqual([]);
+    expect(escapesProhibidosEnProduccion({ VERCEL_ENV: "preview", MOTOR2_ROL_ESTRICTO: "0" })).toEqual([]);
+    expect(() => validarEntornoAlArrancar({ VERCEL_ENV: "preview", MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).not.toThrow();
+    expect(escapesProhibidosEnProduccion({ VERCEL_ENV: "production", MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).toHaveLength(2);
+  });
+
+  it("el error de los escapes nombra las variables, nunca sus valores ni otros secretos", () => {
+    const mensaje = (() => {
+      try {
+        validarEntornoAlArrancar({ ...ENV_PRODUCCION, VERCEL_ENV: "production", MOTOR2_ROL_ESTRICTO: "0", AUTH_SECRET: "x".repeat(40) });
+        return "";
+      } catch (e) {
+        return String((e as Error).message);
+      }
+    })();
+    expect(mensaje).toMatch(/MOTOR2_ROL_ESTRICTO=0/);
+    expect(mensaje).not.toContain("x".repeat(40));
+    expect(mensaje).not.toContain("pass");
   });
 
   it("local, e2e (NODE_ENV=production sin VERCEL_ENV) y Preview no validan nada, aunque falte todo", () => {

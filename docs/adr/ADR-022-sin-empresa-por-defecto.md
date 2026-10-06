@@ -44,6 +44,10 @@ primer gerente (ADR-020). En una instalación local, `npm run db:seed -- --geren
 `MOTOR2_ROL_ESTRICTO=0` es el escape explícito para herramientas de demo que corren como dueño sobre una base descartable: no cuenta nada y avisa a Sentry. Además, una conexión que trae
 `app.empresa_id`, `app.usuario_id` o `app.invitacion_hash` ya fijados se niega **sin escape**: dejaría a todos los pedidos en una misma empresa.
 
+**Enmienda 2026-10-06 (Pureza 0.4, hallazgo H1 de la auditoría de pureza):** el escape `MOTOR2_ROL_ESTRICTO=0` **no existe en Producción de Vercel** (`VERCEL_ENV=production`). El arranque se niega
+si está puesto (`escapesProhibidosEnProduccion`, `src/env.ts`) y, aunque llegara a estarlo, `permitirRolPrivilegiado` (`src/core/auth/rol-de-ejecucion.ts`) lo ignora: una variable mal puesta no puede apagar
+el aislamiento entre empresas. Vale solo fuera de Producción (herramientas de demo, local, Preview).
+
 ### 5. Seed y herramientas
 
 `prisma/seed.ts` recibe `--empresa <slug>` (por defecto la empresa `empresa_principal`) y escribe con `dbDeEmpresa`; las herramientas de demo y benchmark usan `scripts/demo-seed/cliente.ts`
