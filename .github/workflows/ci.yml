@@ -1,4 +1,4 @@
-# Gate de verificación en CI: los mismos 7 comandos que AGENTS.md exige correr limpios en la misma corrida.
+# Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida.
 #   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip)
 #   integración → npm test (Vitest contra Postgres real) + npm run build
 #   e2e         → npm run test:e2e (Playwright, servidor de producción)
@@ -9,9 +9,10 @@ name: CI
 
 on:
   push:
-    branches: [multitenancy-fase-a, "ci/**"]
+    branches: [main, multitenancy-fase-a, "ci/**"]
+  # `main` tiene una regla que exige el job `gate`: sin este disparador un pull request hacia `main` nunca lo ejecutaría y no se podría integrar.
   pull_request:
-    branches: [multitenancy-fase-a]
+    branches: [main, multitenancy-fase-a]
   workflow_dispatch:
 
 permissions:
