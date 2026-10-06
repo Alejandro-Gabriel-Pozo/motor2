@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUsuarioActual } from "@/core/auth/session";
+import { requierePermiso } from "@/core/permisos/gate";
 import { aceptarInvitacionDelToken, aceptarInvitacionDeUsuarioDelToken, invitacionDelToken, nombreCookieInvitacion, opcionesCookieInvitacion } from "@/core/auth/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
@@ -52,7 +53,7 @@ export async function aceptarMiInvitacionDeUsuario(): Promise<ResultadoAccion> {
   const cookieStore = await cookies();
   const token = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
   if (!token) return error(MENSAJE_ENLACE_NO_VALIDO);
-  const resultado = await aceptarInvitacionDeUsuarioDelToken({ token, usuario: { id: usuario.id, email: usuario.email } });
+  const resultado = await aceptarInvitacionDeUsuarioDelToken({ token, usuario: { id: usuario.id, email: usuario.email } }, requierePermiso);
   if (!resultado.ok) return error(resultado.mensaje);
   cookieStore.delete(nombreCookieInvitacion(process.env));
   redirect("/login");

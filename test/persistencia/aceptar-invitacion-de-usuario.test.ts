@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { aceptarInvitacionDeUsuarioDelToken } from "../../src/core/auth/invitacion";
+import { requierePermiso } from "../../src/core/permisos/gate";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
 import { asegurarInvitacionDeUsuario, rotarInvitacionPendiente } from "../../src/core/features/empresa/invitacion-de-usuario";
 import { sembrarEmpresa } from "../../src/core/features/empresa/sembrar-empresa";
@@ -68,7 +69,7 @@ async function invitar(accesos: Array<{ sucursalId: string; rolId: string }>, in
 
 const aceptar = async (t: string, email = EMAIL) => {
   const u = await prismaAdmin.user.upsert({ where: { email }, update: {}, create: { email } });
-  return aceptarInvitacionDeUsuarioDelToken({ token: t, usuario: { id: u.id, email } });
+  return aceptarInvitacionDeUsuarioDelToken({ token: t, usuario: { id: u.id, email } }, requierePermiso);
 };
 
 const membresias = (email = EMAIL) => prismaAdmin.usuarioSucursal.findMany({ where: { usuario: { email } }, orderBy: { creadoEn: "asc" } });
@@ -101,7 +102,7 @@ describe("aceptar una invitación de usuario", () => {
   it("dos aceptaciones a la vez: una sola gana y las membresías se crean una vez", async () => {
     const inv = await invitar([{ sucursalId: sucursal1, rolId: rolOperador }]);
     const u = await prismaAdmin.user.create({ data: { email: EMAIL } });
-    const una = () => aceptarInvitacionDeUsuarioDelToken({ token: inv.token, usuario: { id: u.id, email: EMAIL } });
+    const una = () => aceptarInvitacionDeUsuarioDelToken({ token: inv.token, usuario: { id: u.id, email: EMAIL } }, requierePermiso);
     const resultados = await Promise.all([una(), una()]);
     expect(resultados.filter((r) => r.ok)).toHaveLength(1);
     expect(await membresias()).toHaveLength(1);
