@@ -12,8 +12,8 @@ import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/a
  * alcanza cada `public.ts` por imports de valor y se exige que ningún archivo lea o escriba la base, importe el cliente, use red o disco, ni dependa de
  * servidor o de React/Next.
  *
- * Los imports de solo tipo no cuentan: se borran al compilar. Lo que sí queda permitido es lo de nivel P2 (valores de Prisma, reloj, azar): eso lo vigila
- * `pureza-del-nucleo.test.ts` archivo por archivo.
+ * También se exige que no llegue al runtime de Prisma (C15): una fachada pública que lo arrastra lo lleva al bundle del cliente. Los imports de solo tipo no
+ * cuentan: se borran al compilar. El reloj y el azar (P2) los vigila `pureza-del-nucleo.test.ts` archivo por archivo.
  */
 const RAIZ = join(__dirname, "../..");
 const SRC = join(RAIZ, "src");
@@ -51,6 +51,7 @@ function hallazgosDe(fachada: string): Hallazgo[] {
     const { archivo, via } = cola.shift()!;
     const senales = analizarFuente(readFileSync(archivo, "utf8"), archivo, DELEGADOS);
     const motivos = [
+      senales.prismaDeValor && "importa el runtime de Prisma (C15)",
       senales.leeLaBase && "lee la base",
       senales.escribeEnLaBase && "escribe en la base",
       senales.importaCliente && "importa el cliente de base",
@@ -78,7 +79,7 @@ describe("las fachadas public.ts no hacen entrada/salida (C16)", () => {
     expect(fachadas.length).toBeGreaterThanOrEqual(8);
   });
 
-  it("ninguna alcanza una lectura/escritura de base, red, disco, servidor o React (lo que toca la base va en public-servidor.ts)", () => {
+  it("ninguna alcanza Prisma, una lectura/escritura de base, red, disco, servidor o React (lo que toca la base va en public-servidor.ts)", () => {
     const hallazgos = fachadas.flatMap(hallazgosDe).map((h) => `${h.fachada}: ${h.archivo} ${h.motivo} — llega por ${h.via}`);
     expect(hallazgos).toEqual([]);
   });
