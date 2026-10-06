@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
-import { cargarAdminCarta, cargarAdminItemsAgrupados } from "../../src/core/carta/admin-consulta";
+import { cargarAdminCarta, cargarAdminItemsAgrupados } from "../../src/server/consultas/carta/admin";
 
 /**
  * Lectura del admin de los ítems agrupados (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), contra Postgres real:

@@ -12,7 +12,6 @@
  * real entre dominios de `core`, ya exceptuado en `dependencias.test.ts`).
  */
 export { redondearCantidad } from "./comun";
-export type { Db } from "./comun";
 export {
   agruparVentasPorCategoria,
   obtenerReportePorPeriodoConCatalogo,

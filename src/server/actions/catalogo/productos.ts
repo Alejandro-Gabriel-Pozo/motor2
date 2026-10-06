@@ -21,7 +21,8 @@ import {
 import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/public-servidor";
+import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";

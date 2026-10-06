@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, replicarCartaDeSucursal, prisma, sembrarProductoDisponible } from "../setup/test-db";
-import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "../../src/core/carta/grupo-producto-consulta";
+import { ofrecerSincronizarPrecio } from "../../src/core/carta/grupo-de-producto";
+import { resolverGrupoDeProducto } from "../../src/server/lecturas/carta/grupo-de-producto";
 
 /**
  * `resolverGrupoDeProducto` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8), contra Postgres real: la única lectura de las

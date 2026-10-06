@@ -1,8 +1,9 @@
+import "server-only";
+import { whereCartaDeSucursal } from "@/core/carta/public";
 import { redondearMoneda } from "@/core/moneda";
-import { whereCartaDeSucursal } from "./carta-de-sucursal";
+import type { Db } from "@/lib/db-tipos";
 import {
   redondearCantidad,
-  type Db,
   agruparVentasPorCategoria,
   obtenerReportePorPeriodoConCatalogo,
   pvSinCategoriaDe,

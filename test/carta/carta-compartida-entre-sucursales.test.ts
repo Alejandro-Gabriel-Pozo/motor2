@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
-import { cargarAdminCarta } from "../../src/core/carta/admin-consulta";
+import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 
 /**

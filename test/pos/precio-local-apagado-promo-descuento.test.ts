@@ -8,7 +8,7 @@ import { abrirCuenta } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
-import { cargarAdminCarta } from "../../src/core/carta/admin-consulta";
+import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
 import { descuentosConfiguradosEnSucursal } from "../../src/core/carta/descuento-producto-consulta";
