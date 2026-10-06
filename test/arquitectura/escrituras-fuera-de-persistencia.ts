@@ -90,10 +90,10 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Fase 4",
     motivo: "Tramo B (PR B1): el escritor de la siembra pasa a plataforma/src/servidor; el plan queda puro en core.",
   },
-  "src/core/movimientos/registrar-venta.ts": {
+  "src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts": {
     escrituras: ["movimientoStock.createMany", "operacion.create", "operacion.update"],
     fase: "Fase 4",
-    motivo: "Tramo A (PR 4A-1): la venta (única escritura del Kardex que sigue en core) pasa a caso de uso + persistencia.",
+    motivo: "Tramo A (PR 4A-1): la venta ya salió de core (paso 4A.3, mudada tal cual); sus escrituras (Operacion y Kardex) pasan a server/persistencia en el paso siguiente (4A.4).",
   },
   "src/core/permisos/auditoria.ts": {
     escrituras: ["registroAuditoria.create"],

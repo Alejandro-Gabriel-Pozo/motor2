@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularVenta, registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
-import { registrarVentaEnTx } from "../../src/core/movimientos/registrar-venta";
+import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 
 /** `anularVenta` deja rastro en la auditoría administrativa, igual que `anularCompra`. */
 describe("anularVenta: auditoría", () => {

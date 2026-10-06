@@ -6,7 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponib
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { registrarVentaEnTx, type ActorVenta } from "../../src/core/movimientos/registrar-venta";
+import { type ActorVenta } from "../../src/core/movimientos/registrar-venta";
+import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 
 /**
  * CARACTERIZACIÓN — congela cómo se comporta HOY el consumo de una venta, ANTES de la sustitución de insumos

@@ -32,6 +32,5 @@ export {
   validarStockSuficiente,
 } from "./stock";
 export { crearCacheProducto } from "./producto-cache";
-export { registrarVentaEnTx } from "./registrar-venta";
 export type { AvisoStockNegativo } from "./registrar-venta";
 export { resolverPrecioVenta } from "./precio-venta";

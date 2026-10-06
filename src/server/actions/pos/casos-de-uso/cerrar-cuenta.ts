@@ -4,7 +4,8 @@ import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.gua
 import type { ComandoCerrarCuenta, ResultadoCerrarCuenta } from "@/core/features/cuentas/cuenta.schema";
 import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
-import { conTransaccionSerializable, registrarVentaEnTx } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { registrarVentaEnTx } from "@/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { lineasDeVenta } from "@/core/pos/cuenta";
 import { siguienteNumeroTicket } from "@/core/pos/numeracion-ticket";

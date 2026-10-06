@@ -45,7 +45,7 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     motivo: "construirIndiceRecetas: la fuente única (R1) — efectivo cuando recibe sucursalId, central sin ella (quien solo usa la estructura).",
   },
   {
-    ruta: "core/movimientos/registrar-venta.ts",
+    ruta: "server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts",
     clase: "efectivo",
     motivo: "C1: el consumo de receta al vender se resuelve con rendimientoEfectivo de la sucursal del actor.",
   },
