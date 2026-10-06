@@ -1,12 +1,13 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { crearSeccion, actualizarActivaSeccion, actualizarRespaldoSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/movimientos/secciones";
 import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function SeccionesPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "secciones", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

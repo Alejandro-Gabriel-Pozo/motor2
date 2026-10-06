@@ -1,5 +1,6 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { cargarTemaAdmin, type TemaAdmin } from "@/core/carta/admin-consulta";
 import { CLAVES_TEMA_V1 } from "@/core/carta/tema";
@@ -33,7 +34,7 @@ function estadoDelTema(d: TemaAdmin): string {
 
 export default async function TemaCartaPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_tema", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

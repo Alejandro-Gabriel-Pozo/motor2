@@ -1,11 +1,12 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { listarCandidatosAGerente } from "@/core/permisos/gerencia";
 import { TraspasoGerencia } from "./traspaso-gerencia";
 
 export default async function GerenciaPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "traspasar_gerencia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

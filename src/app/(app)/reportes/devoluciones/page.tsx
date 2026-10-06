@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { diasAtrasDeUrl } from "@/core/reportes/dias-atras";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteDevoluciones } from "@/core/reportes/devoluciones";
@@ -7,7 +8,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 
 export default async function DevolucionesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_devoluciones", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

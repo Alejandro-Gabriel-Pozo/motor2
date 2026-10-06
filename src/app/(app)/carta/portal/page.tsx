@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { cargarAdminPortal, cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
 import { CLAVES_PORTAL_V1 } from "@/core/carta/portal";
@@ -33,7 +34,7 @@ const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
 
 export default async function PortalSucursalesPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

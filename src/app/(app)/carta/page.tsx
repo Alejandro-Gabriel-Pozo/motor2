@@ -1,5 +1,6 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
 import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
@@ -53,7 +54,7 @@ type UbicacionEnCarta = { secciones: OpcionSeccion[]; cantidadPorSeccion: Record
 
 export default async function CartaPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

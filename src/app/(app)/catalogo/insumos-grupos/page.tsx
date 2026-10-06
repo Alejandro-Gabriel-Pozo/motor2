@@ -1,5 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
   crearInsumo,
@@ -17,7 +18,7 @@ import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function InsumosGruposPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "grupos_familia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

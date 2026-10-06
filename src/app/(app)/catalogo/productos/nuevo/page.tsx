@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarSucursales } from "@/server/actions/auth/sucursales";
@@ -8,7 +9,7 @@ import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
 /** Alta de un producto nuevo. Al guardar, lleva a la ficha del producto creado. */
 export default async function NuevoProductoPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

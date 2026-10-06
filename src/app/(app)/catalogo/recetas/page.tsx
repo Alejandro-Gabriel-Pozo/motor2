@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { listarProductosConReceta } from "@/server/consultas/catalogo/recetas";
 import { NuevaReceta } from "./nueva-receta";
@@ -14,7 +15,7 @@ import { NuevaReceta } from "./nueva-receta";
  */
 export default async function RecetasPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

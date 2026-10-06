@@ -1,10 +1,11 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularStockPorFamilia } from "@/core/stock/por-familia";
 
 export default async function StockPorFamiliaPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

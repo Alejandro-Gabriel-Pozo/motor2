@@ -1,10 +1,11 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { obtenerComparativaPreciosPorInsumo } from "@/server/actions/catalogo/proveedor-por-producto";
 
 export default async function ComparativaPreciosPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "comparar_precios", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarPreciosLocales, setPrecioLocalProducto } from "@/server/actions/movimientos/precio-local";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -7,7 +8,7 @@ import { PrecioLocalForm } from "./precio-local-form";
 
 export default async function PrecioLocalPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

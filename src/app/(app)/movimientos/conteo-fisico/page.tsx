@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/lecturas-conteo-fisico";
@@ -20,7 +21,7 @@ export const maxDuration = 60;
 
 export default async function ConteoFisicoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"seccionId">> }) {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

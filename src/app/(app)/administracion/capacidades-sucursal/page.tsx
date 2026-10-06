@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { actualizarCapacidad, listarCapacidades } from "@/server/actions/permisos/capacidades-sucursal";
 import type { AccionClave } from "@/core/permisos/acciones";
@@ -7,7 +8,7 @@ import { AvisosDeAccion, FormConAviso } from "@/components/avisos-de-accion";
 
 export default async function CapacidadesSucursalPage() {
   const ctx = await obtenerContextoUsuario();
-  if (!ctx) return null;
+  if (!ctx) return irAlLogin();
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "capacidades_sucursal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
