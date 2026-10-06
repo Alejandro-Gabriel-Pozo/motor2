@@ -1,4 +1,4 @@
-import { obtenerResumenAlertasStock } from "@/core/stock/public";
+import { obtenerResumenAlertasStock } from "@/core/stock/public-servidor";
 import { redondearCantidad, type Db } from "./comun";
 import { obtenerReportePorPeriodo } from "./periodo";
 import { resolverRangoPorDefecto } from "./rango-por-defecto";

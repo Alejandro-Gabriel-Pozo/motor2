@@ -1,8 +1,8 @@
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
 import { ZONA_UTC, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import type { CostoMP, Db } from "./comun";
-import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { alcanceDeSucursal, cargarRecetasVigentes, rendimientoEfectivo } from "@/core/catalogo/public";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { whereDisponibleEn, alcanceDeSucursal, cargarRecetasVigentes } from "@/core/catalogo/public-servidor";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import {

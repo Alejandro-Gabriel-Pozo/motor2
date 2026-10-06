@@ -30,7 +30,7 @@ import { describe, expect, it } from "vitest";
  */
 const SRC = join(__dirname, "../../src");
 const EMBUDO = "core/catalogo/recetas-vigentes.ts";
-const FACHADA = "core/catalogo/public.ts";
+const FACHADA = "core/catalogo/public-servidor.ts";
 
 interface ArchivoClasificado {
   ruta: string;
@@ -228,7 +228,7 @@ describe("lectores de receta: todo archivo que consume el embudo o lee RecetaIng
     expect(yaNoLeen, `Estos ya no consumen el embudo ni leen RecetaIngrediente: sacalos de ARCHIVOS_CLASIFICADOS:\n${yaNoLeen.join("\n")}`).toEqual([]);
   });
 
-  it("la fachada del dominio reexporta el embudo sin consumirlo (no entra en la clasificación)", () => {
+  it("la fachada de servidor del dominio reexporta el embudo sin consumirlo (no entra en la clasificación)", () => {
     expect(fuentes.get(FACHADA)).toMatch(/recetas-vigentes/);
   });
 });

@@ -6,7 +6,8 @@
  * runtime de Prisma, ni directa ni transitivamente (regla `publico-puro`). Lo que sí toca la base va en
  * `public-servidor.ts`.
  *
+ * Solo TIPOS (se borran al compilar): la función `compararRendimientosPorSucursal` hace consultas y va en `public-servidor.ts` (Pureza Fase 2, paso 2.2).
+ *
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio.
  */
-export { compararRendimientosPorSucursal } from "./rendimiento-por-sucursal";
 export type { FiltroComparacionRendimiento, FilaComparacionRendimiento } from "./rendimiento-por-sucursal";

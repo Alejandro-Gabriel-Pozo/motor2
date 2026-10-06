@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { ALCANCE_CENTRAL, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes, rendimientoEfectivo } from "@/core/catalogo/public";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes } from "@/core/catalogo/public-servidor";
 import { calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, desvioEsNotable } from "./rendimiento-recetas-vistas";
 
 /**

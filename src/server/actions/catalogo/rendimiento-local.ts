@@ -3,7 +3,8 @@
 import { esNumeroEstricto } from "@/core/numero";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import { ALCANCE_CENTRAL, cargarRecetaVigente, describirCalibracion, describirVueltaAlCentral, normalizarOrigen, type OrigenCalibracionInput } from "@/core/catalogo/public";
+import { describirCalibracion, describirVueltaAlCentral, normalizarOrigen, type OrigenCalibracionInput } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, cargarRecetaVigente } from "@/core/catalogo/public-servidor";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";

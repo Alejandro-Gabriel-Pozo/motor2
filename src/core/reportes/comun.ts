@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { alcanceDeSucursal, cargarRecetasVigentes, clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { disponibilidadDeProductos, disponibilidadEnAlgunaSucursal, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
+import { alcanceDeSucursal, cargarRecetasVigentes, disponibilidadDeProductos, disponibilidadEnAlgunaSucursal, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 
 export type Db = PrismaClient | Prisma.TransactionClient;
 

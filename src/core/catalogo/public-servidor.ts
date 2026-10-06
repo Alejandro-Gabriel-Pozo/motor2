@@ -27,3 +27,4 @@ export { validarCabecera, validarIngredientes, validarPasos } from "./receta-val
 export type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "./receta-validacion";
 export { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput } from "./receta-a-input";
 export type { RecetaCompleta } from "./receta-a-input";
+export { ALCANCE_CENTRAL, alcanceDeSucursal, cargarHistorialDeVersiones, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes, cargarRecetaVigente, incluirRecetaVigente, whereConReceta } from "./recetas-vigentes";

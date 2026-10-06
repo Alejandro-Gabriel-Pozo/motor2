@@ -1,7 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { ALCANCE_CENTRAL, incluirRecetaVigente, whereConReceta } from "@/core/catalogo/public";
-import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL, incluirRecetaVigente, whereConReceta, whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 
 /**
  * Lecturas de Catálogo › Recetas para los Server Components (Task #41, Fase D3/D4). Mismo contrato que

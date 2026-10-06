@@ -21,3 +21,4 @@ export {
 } from "./periodo";
 export type { FilaCategoriaVenta } from "./periodo";
 export { calcularCostosYMargenes } from "./costos";
+export { compararRendimientosPorSucursal } from "./rendimiento-por-sucursal";
