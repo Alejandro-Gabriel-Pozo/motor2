@@ -11,3 +11,5 @@
 export type { EstadoStockConsolidado } from "./consolidado";
 export { resolverProximoConteo } from "./frecuencia-conteo";
 export { whereSeccionHabitualVigente } from "./seccion-habitual";
+export { ESTADO_STOCK_CONSOLIDADO_LABEL } from "./estado-consolidado-ui";
+export { ESTADO_STOCK_CONSOLIDADO_COLOR } from "./estado-consolidado-ui";

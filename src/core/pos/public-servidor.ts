@@ -12,3 +12,9 @@
 export { claveDeLineaDeVenta, lineasDeVenta } from "./cuenta";
 export { nombreDelMesero } from "./mesas";
 export { armarTicketImpresoEn, estadoDeTicket } from "./ticket";
+export { esEstadoMesa } from "./mesas";
+export { filtrarMesas } from "./mesas";
+export { obtenerMapaDeMesas } from "./mesas";
+export { obtenerDetalleDeMesa } from "./cuenta";
+export { obtenerTicketsRecientes } from "./ticket";
+export { cargarSelectorCartaPos } from "./selector-carta-consulta";

@@ -6,7 +6,7 @@ import { situacionDelRegistroDeModulos } from "@/core/permisos/modulos-de-empres
 import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import { Suspense } from "react";
 import { after } from "next/server";
-import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
+import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
 import { reportarErrorUnaVez } from "@/lib/reportar-error";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";

@@ -3,7 +3,7 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaPerdida } from "@/core/reportes/perdidas";
+import type { FilaPerdida } from "@/core/reportes/public";
 
 // `FilaPerdida.motivo` ya viene resuelto a su nombre legible (perdidas.ts, plan "motivos de Consumo/Merma como catálogo
 // administrable", P4) — ya no hace falta un Map enum→label acá.

@@ -1,17 +1,7 @@
 "use client";
 
 import { useEffect, useId, useReducer } from "react";
-import type { EntradaPromoSelectorCarta } from "@/core/pos/selector-carta";
-import {
-  cantidadElegida,
-  eleccionParaAgregar,
-  estadoInicialArmarPromo,
-  puedeConfirmarArmarPromo,
-  reducirArmarPromo,
-  totalElegidoDelCupo,
-  type EleccionParaAgregar,
-} from "@/core/pos/armar-promo-estado";
-import { formatearMonto } from "@/core/pos/formato";
+import { type EntradaPromoSelectorCarta, cantidadElegida, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo, type EleccionParaAgregar, formatearMonto } from "@/core/pos/public";
 import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
 
 /**

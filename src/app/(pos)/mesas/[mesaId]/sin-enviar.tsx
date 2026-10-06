@@ -2,7 +2,7 @@
 
 import { enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "@/server/actions/pos/cuenta-pedido";
 import { BOTON_CHICO, BOTON_PRIMARIO } from "./estilos";
-import { formatearCantidad, formatearMonto } from "@/core/pos/formato";
+import { formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 

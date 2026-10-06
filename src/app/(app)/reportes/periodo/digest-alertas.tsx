@@ -1,5 +1,5 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
-import type { FilaAlertaDigest } from "@/core/reportes/periodo";
+import type { FilaAlertaDigest } from "@/core/reportes/public";
 
 /**
  * Paso 3 del grounding (segunda pasada, docs/grounding-reportes-compras-

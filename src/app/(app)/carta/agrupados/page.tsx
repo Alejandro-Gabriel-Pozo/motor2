@@ -1,7 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
-import { cargarAdminItemsAgrupados, type ItemAgrupadoAdmin } from "@/core/carta/admin-consulta";
+import type { ItemAgrupadoAdmin } from "@/core/carta/public";
+import { cargarAdminItemsAgrupados } from "@/core/carta/public-servidor";
 import {
   actualizarActivoItemAgrupadoCarta,
   actualizarOrdenOpcionItemAgrupadoCarta,

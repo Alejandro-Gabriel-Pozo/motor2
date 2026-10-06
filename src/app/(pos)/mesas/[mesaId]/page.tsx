@@ -2,10 +2,8 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
-import { obtenerDetalleDeMesa, type ItemDeCuenta, type ItemEnEnvio } from "@/core/pos/cuenta";
-import { armarComandas } from "@/core/pos/comanda";
-import { obtenerTicketsRecientes } from "@/core/pos/ticket";
-import { cargarSelectorCartaPos } from "@/core/pos/selector-carta-consulta";
+import { type ItemDeCuenta, type ItemEnEnvio, armarComandas, formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/public";
+import { obtenerDetalleDeMesa, obtenerTicketsRecientes, cargarSelectorCartaPos } from "@/core/pos/public-servidor";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarClientesParaCuenta } from "@/server/actions/clientes/cliente";
 import { AvisoMesaProvider } from "./aviso-mesa";
@@ -20,7 +18,6 @@ import { AnularItem } from "./anular-item";
 import { AnularPromo } from "./anular-promo";
 import { CerrarCuenta } from "./cerrar-cuenta";
 import { LiberarMesa } from "./liberar-mesa";
-import { formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/formato";
 
 /**
  * Pantalla de una mesa del salón (módulo POS, pendiente «tomar pedido», docs/plan-tomar-pedido-2026-09-25.md paso 8). A ella llevan

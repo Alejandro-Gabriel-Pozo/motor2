@@ -1,7 +1,7 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaResumenConsolidado } from "@/core/reportes/resumen-consolidado";
+import type { FilaResumenConsolidado } from "@/core/reportes/public";
 
 const COLUMNAS: ColumnaReporte<FilaResumenConsolidado>[] = [
   { clave: "sucursal", etiqueta: "Sucursal", valor: (f) => f.sucursalNombre, render: (f) => f.sucursalNombre },

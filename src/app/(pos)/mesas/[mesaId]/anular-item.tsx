@@ -5,7 +5,7 @@ import { anularItemEnviado } from "@/server/actions/pos/cuenta-anulacion";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
-import { formatearCantidad } from "@/core/pos/formato";
+import { formatearCantidad } from "@/core/pos/public";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 

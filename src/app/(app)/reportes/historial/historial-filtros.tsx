@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
-import type { QueMostrar, RangoHistorial } from "@/core/reportes/historial-vistas";
+import type { QueMostrar, RangoHistorial } from "@/core/reportes/public";
 
 interface Props {
   secciones: { id: string; nombre: string }[];

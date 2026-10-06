@@ -1,13 +1,12 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { obtenerResumenOperativo } from "@/core/reportes/resumen-operativo";
-import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
+import { resolverRangoDeReporte } from "@/core/reportes/public";
+import { obtenerResumenOperativo, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
 import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-resumen";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
-import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 

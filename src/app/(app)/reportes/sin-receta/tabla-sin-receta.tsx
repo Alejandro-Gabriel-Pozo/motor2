@@ -2,7 +2,7 @@
 
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaVentaSinReceta } from "@/core/reportes/ventas-sin-receta";
+import type { FilaVentaSinReceta } from "@/core/reportes/public";
 
 const COLUMNAS: ColumnaReporte<FilaVentaSinReceta>[] = [
   {

@@ -1,9 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
-import { cargarAdminPortal, cargarPortalEmpresaAdmin, entradasVistaPreviaPortal, type SucursalPortalAdmin } from "@/core/carta/admin-consulta";
-import { CLAVES_PORTAL_V1 } from "@/core/carta/portal";
-import { urlCartaPublicaConEmpresaUnica } from "@/core/carta/carta-empresa-unica";
+import { type SucursalPortalAdmin, CLAVES_PORTAL_V1, urlCartaPublicaConEmpresaUnica } from "@/core/carta/public";
+import { cargarAdminPortal, cargarPortalEmpresaAdmin, entradasVistaPreviaPortal } from "@/core/carta/public-servidor";
 import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
 import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";

@@ -66,6 +66,16 @@ const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => 
   to: { path: `^src/core/${dominio}/`, pathNot: `^src/core/${dominio}/public(-servidor)?\\.ts$` },
 }));
 
+/** `ui-sin-internals-de-dominio` (Pureza Fase 2, paso 2.3): la UI importa un dominio de negocio SOLO por su fachada. */
+const reglaUiSinInternalsDeDominio = {
+  name: "ui-sin-internals-de-dominio",
+  comment:
+    "app/ y components/ importan de un dominio de negocio (core/<dominio>/) solo su fachada (public.ts o public-servidor.ts), nunca un archivo interno: así el dominio puede mover su código sin tocar 86 pantallas. Un componente de cliente usa public.ts; public-servidor.ts es para páginas y componentes de servidor. Excepciones (solo se achican): .dependency-cruiser-excepciones.cjs.",
+  severity: "error",
+  from: { path: "^src/(app|components)/", pathNot: excepcionesDe("ui-sin-internals-de-dominio") },
+  to: { path: `^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/`, pathNot: "^src/core/[^/]+/public(-servidor)?\.ts$" },
+};
+
 /**
  * Todos los archivos que forman los ciclos exceptuados (ver `sin-ciclos` más abajo), en UNA sola expresión regular: a
  * diferencia de `from.path`/`to.path`, dependency-cruiser 18 no normaliza un array en `to.via.pathNot` (lo pasaría a
@@ -169,6 +179,7 @@ module.exports = {
       to: { path: "^src/server/persistencia/" },
     },
     ...reglasSinInternalsDeOtroDominio,
+    reglaUiSinInternalsDeDominio,
     {
       name: "publico-puro",
       comment: "La fachada pública de un dominio (core/X/public.ts) no puede alcanzar src/lib/db.ts, ni directa ni transitivamente.",

@@ -1,4 +1,4 @@
-import type { OpcionRango } from "@/core/reportes/rango-por-defecto";
+import type { OpcionRango } from "@/core/reportes/public";
 
 /**
  * Selector de rango de fechas de los reportes — reemplaza el `<form>` con dos `<input type="date">` que había, copiado y pegado

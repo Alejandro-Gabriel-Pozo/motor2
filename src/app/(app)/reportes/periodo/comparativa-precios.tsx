@@ -1,4 +1,4 @@
-import type { ComparativaPreciosDelPeriodo } from "@/core/reportes/periodo";
+import type { ComparativaPreciosDelPeriodo } from "@/core/reportes/public";
 import { AyudaIcono } from "@/components/ayuda-campo";
 
 function formatoPct(v: number | null): string {

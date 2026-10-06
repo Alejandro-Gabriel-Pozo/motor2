@@ -11,3 +11,6 @@
  */
 export { calcularAlertasStock, obtenerResumenAlertasStock } from "./alertas";
 export { calcularStockConsolidado } from "./consolidado";
+export { calcularStockEnTransito } from "./en-transito";
+export { sugerirInsumosClaseA } from "./sugerencia-clase-a";
+export { calcularStockPorFamilia } from "./por-familia";

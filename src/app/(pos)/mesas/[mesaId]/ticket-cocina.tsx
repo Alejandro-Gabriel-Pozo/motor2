@@ -1,5 +1,4 @@
-import type { DocumentoImprimible } from "@/core/pos/impresion";
-import { formatearCantidad } from "@/core/pos/formato";
+import { type DocumentoImprimible, formatearCantidad } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 
 type DocumentoDeCocina = Extract<DocumentoImprimible, { comanda: unknown }>;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type ChangeEvent } from "react";
-import { ordenSugeridoAlElegirSeccion } from "@/core/carta/orden-sugerido";
+import { ordenSugeridoAlElegirSeccion } from "@/core/carta/public";
 
 const CLASE_INPUT = "rounded border px-2 py-1";
 

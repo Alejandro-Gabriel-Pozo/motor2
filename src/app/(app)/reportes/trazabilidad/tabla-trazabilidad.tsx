@@ -3,7 +3,7 @@
 import { IconoDeAccion } from "@/components/iconos";
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { OperacionEncontrada, ItemOperacion } from "@/core/reportes/trazabilidad";
+import type { OperacionEncontrada, ItemOperacion } from "@/core/reportes/public";
 
 const COLUMNAS_ENCONTRADAS: ColumnaReporte<OperacionEncontrada>[] = [
   { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (e) => e.fecha.toISOString().slice(0, 10), render: (e) => e.fecha.toISOString().slice(0, 10) },

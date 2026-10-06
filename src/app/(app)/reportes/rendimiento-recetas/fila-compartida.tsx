@@ -8,9 +8,8 @@ import { AyudaIcono } from "@/components/ayuda-campo";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/actions/catalogo/rendimiento-local";
-import { ETIQUETA_ROTULO, desvioEsNotable, type RotuloLinea } from "@/core/reportes/rendimiento-recetas-vistas";
+import { ETIQUETA_ROTULO, desvioEsNotable, type RotuloLinea, type MetodoRendimiento } from "@/core/reportes/public";
 // rendimiento-conciliado.ts es puro (sin @/lib/db) — importable desde un componente cliente sin arrastrar Prisma al bundle. Ver el docstring de este mapa en fila-simple.tsx.
-import type { MetodoRendimiento } from "@/core/reportes/rendimiento-conciliado";
 
 const ETIQUETA_METODO: Record<MetodoRendimiento, string> = {
   CONTEO: "Medido (Conteo Físico)",

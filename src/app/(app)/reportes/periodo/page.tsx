@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { obtenerReportePorPeriodo } from "@/core/reportes/periodo";
-import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
+import { resolverRangoDeReporte } from "@/core/reportes/public";
+import { obtenerReportePorPeriodo, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
 import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { DigestAlertas } from "./digest-alertas";
@@ -10,7 +10,6 @@ import { ComparativaPrecios } from "./comparativa-precios";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
-import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 export default async function PeriodoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {

@@ -2,9 +2,7 @@
 
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaCostoProducto, FilaImpactoInsumo } from "@/core/reportes/costos";
-import { resolverAccionFaltante } from "@/core/reportes/accion-faltante";
-import { FOOD_COST_OBJETIVO_PCT } from "@/core/reportes/margen-objetivo";
+import { type FilaCostoProducto, type FilaImpactoInsumo, resolverAccionFaltante, FOOD_COST_OBJETIVO_PCT } from "@/core/reportes/public";
 
 const LABEL_ESTADO: Record<string, string> = {
   MARGEN_NEGATIVO: "Margen negativo",

@@ -1,11 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { TicketDeCuenta } from "@/core/pos/ticket";
-import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
+import { type TicketDeCuenta, formatearNumeroTicket, formatearMonto } from "@/core/pos/public";
 import { emitirTicketCorregido } from "@/server/actions/pos/cuenta-cierre";
 import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
-import { formatearMonto } from "@/core/pos/formato";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
 

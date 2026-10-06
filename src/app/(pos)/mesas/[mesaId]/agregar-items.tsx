@@ -3,19 +3,8 @@
 import { useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
-import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/selector-carta";
-import { estadoInicialSelectorCarta, reducirSelectorCarta } from "@/core/pos/selector-carta-estado";
-import {
-  estadoInicialListaPorAgregar,
-  itemsDeListaPorAgregar,
-  listaPorAgregarLlena,
-  puedeConfirmarListaPorAgregar,
-  reducirListaPorAgregar,
-} from "@/core/pos/agregar-lista-estado";
-import type { EleccionParaAgregar } from "@/core/pos/armar-promo-estado";
-import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
+import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { BOTON_CHICO, BOTON_PRIMARIO, CAMPO } from "./estilos";
-import { formatearCantidad, formatearMonto } from "@/core/pos/formato";
 import { SelectorCarta } from "./selector-carta";
 import { ArmarPromo } from "./armar-promo";
 import { useAccionMesa } from "./usar-accion";

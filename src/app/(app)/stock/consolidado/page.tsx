@@ -1,9 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { calcularStockConsolidado } from "@/core/stock/consolidado";
-import { calcularStockEnTransito } from "@/core/stock/en-transito";
-import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR as ESTADO_COLOR } from "@/core/stock/estado-consolidado-ui";
+import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR as ESTADO_COLOR } from "@/core/stock/public";
+import { calcularStockConsolidado, calcularStockEnTransito } from "@/core/stock/public-servidor";
 
 export default async function StockConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();

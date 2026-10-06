@@ -1,8 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { calcularCostosYMargenes, calcularImpactoInsumos } from "@/core/reportes/costos";
-import { cargarObjetivosDeMargen } from "@/core/reportes/margen-objetivo-consulta";
+import { calcularCostosYMargenes, calcularImpactoInsumos, cargarObjetivosDeMargen } from "@/core/reportes/public-servidor";
 import { TablaCostosProductos, TablaImpactoInsumos } from "./tabla-costos";
 
 export default async function CostosPage() {

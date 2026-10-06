@@ -3,10 +3,9 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { listarTicketsEmitidos, leerFiltroTickets, obtenerNumeroDeMesa, serializarFiltroTickets } from "@/core/reportes/tickets-emitidos";
-import { formatearMonto, nombreDeMesa } from "@/core/pos/formato";
+import { listarTicketsEmitidos, leerFiltroTickets, obtenerNumeroDeMesa, serializarFiltroTickets } from "@/core/reportes/public-servidor";
+import { formatearMonto, nombreDeMesa, formatearNumeroTicket } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
-import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**

@@ -39,6 +39,7 @@ interface Excepciones {
   "db-solo-desde-auth-y-carta-publica": ExcepcionDeArchivo[];
   "base-solo-desde-lista": ExcepcionDeArchivo[];
   "sin-ciclos": ExcepcionDeCiclo[];
+  "ui-sin-internals-de-dominio": ExcepcionDeArchivo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
   ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
 }
@@ -59,6 +60,9 @@ const RE_CORE = /^src\/core\//;
 const RE_DB = /^src\/lib\/db\.ts$/;
 const RE_BASE = /^src\/core\/auth\/base\.ts$/;
 const RE_REACT_NEXT = /^node_modules\/(@types\/)?(react|react-dom|next)\//;
+const { DOMINIOS_DE_NEGOCIO } = requerir(join(RAIZ, ".dependency-cruiser-dominios.cjs")) as { DOMINIOS_DE_NEGOCIO: string[] };
+/** Un archivo de `core/<dominio de negocio>/` que NO es su fachada (`public.ts` / `public-servidor.ts`). */
+const RE_INTERNO_DE_DOMINIO = new RegExp(`^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/(?!public(-servidor)?[.]ts$)`);
 
 let modulos: IModule[] = [];
 
@@ -116,7 +120,7 @@ describe("dependency-cruiser: la config no se afloja por la puerta de atrás", (
 });
 
 describe(".dependency-cruiser-excepciones.cjs: toda excepción tiene motivo y apunta a algo que existe", () => {
-  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["ui-sin-prisma"], ...EXCEPCIONES["db-solo-desde-auth-y-carta-publica"], ...EXCEPCIONES["base-solo-desde-lista"]];
+  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["ui-sin-prisma"], ...EXCEPCIONES["db-solo-desde-auth-y-carta-publica"], ...EXCEPCIONES["base-solo-desde-lista"], ...EXCEPCIONES["ui-sin-internals-de-dominio"]];
 
   it("toda excepción lleva un motivo no vacío", () => {
     const sinMotivo = [
@@ -179,6 +183,15 @@ describe("base-solo-desde-lista: los importadores de core/auth/base.ts, en las d
     const faltan = diferencia(reales, listados);
     expect(sobran, `Estos ya no importan core/auth/base.ts: sacalos de base-solo-desde-lista en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
     expect(faltan, `Estos archivos importan core/auth/base.ts sin estar en la lista (reciban la base del contexto: ctx.db / db: Db):\n${faltan.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("ui-sin-internals-de-dominio: las excepciones, en las dos direcciones", () => {
+  it("el conjunto de archivos de app/ y components/ que importan un archivo interno de un dominio es exactamente el de la lista (ni uno nuevo, ni uno ya migrado)", () => {
+    const reales = modulosCon(RE_UI, (d) => RE_INTERNO_DE_DOMINIO.test(d.resolved));
+    const listadas = EXCEPCIONES["ui-sin-internals-de-dominio"].map((e) => e.ruta).sort();
+    expect(diferencia(reales, listadas), "Estos archivos de la UI importan un interno de un dominio y no están en la lista (importá la fachada):").toEqual([]);
+    expect(diferencia(listadas, reales), "Estos ya no importan un interno: sacalos de la lista (UI_CON_INTERNALS_DE_DOMINIO):").toEqual([]);
   });
 });
 

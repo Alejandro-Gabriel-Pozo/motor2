@@ -1,10 +1,8 @@
 "use client";
 
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { SIN_PROVEEDOR } from "@/core/reportes/compras-filtros";
+import { SIN_PROVEEDOR, type FilaMargenProducto, type FilaCompraPorProveedor, type FilaGastoPorInsumo, type FilaPrecioInsumo, type FilaImpactoRecetaPorPeriodo } from "@/core/reportes/public";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaMargenProducto, FilaCompraPorProveedor, FilaGastoPorInsumo, FilaPrecioInsumo } from "@/core/reportes/periodo";
-import type { FilaImpactoRecetaPorPeriodo } from "@/core/reportes/costos";
 
 const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   {

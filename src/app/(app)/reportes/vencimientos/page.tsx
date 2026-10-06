@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { diasAtrasDeUrl } from "@/core/reportes/dias-atras";
+import { diasAtrasDeUrl } from "@/core/reportes/public";
+import { obtenerReporteVencimientosDatos } from "@/core/reportes/public-servidor";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { obtenerReporteVencimientosDatos } from "@/core/reportes/vencimientos";
 import { TablaLotesVencimiento, TablaConciliacionVencimientos } from "./tabla-vencimientos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 

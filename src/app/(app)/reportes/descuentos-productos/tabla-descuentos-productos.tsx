@@ -1,7 +1,7 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaDescuentoProducto } from "@/core/reportes/descuentos-productos";
+import type { FilaDescuentoProducto } from "@/core/reportes/public";
 
 const COLUMNAS: ColumnaReporte<FilaDescuentoProducto>[] = [
   { clave: "producto", etiqueta: "Producto", valor: (f) => f.producto, render: (f) => f.producto },

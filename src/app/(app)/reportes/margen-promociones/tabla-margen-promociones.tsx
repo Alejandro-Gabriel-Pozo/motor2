@@ -1,7 +1,7 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaMargenPromocion } from "@/core/reportes/margen-promociones";
+import type { FilaMargenPromocion } from "@/core/reportes/public";
 
 const AYUDA_MARGEN =
   'Costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó (mismo criterio que Período/Descuentos por cliente). "parcial" si algún componente de esa promo no se pudo costear así.';
