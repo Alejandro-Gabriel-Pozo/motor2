@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { MensajeDeCorreo } from "@/core/correo/tipos";
-import { formatearCuit } from "@/core/fiscal/cuit";
+import { formatearCuit } from "@/core/fiscal/public";
 import type { EstadoEmpresa } from "./empresa.schema";
 
 /**

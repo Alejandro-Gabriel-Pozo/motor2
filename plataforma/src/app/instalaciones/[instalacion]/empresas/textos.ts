@@ -1,5 +1,5 @@
 import type { EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { formatearCuit } from "@/core/fiscal/cuit";
+import { formatearCuit } from "@/core/fiscal/public";
 import { esModuloDelCatalogo } from "@/core/modulos/catalogo";
 import { nombreDeModulo } from "@/core/modulos/vista-de-modulos";
 import type { FilaDeEmpresa } from "../../../../servidor/empresas";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatearCuit } from "@/core/fiscal/cuit";
+import { formatearCuit } from "@/core/fiscal/public";
 import { rutaDeAlta, rutaDeEmpresa, rutaDeEmpresas } from "../../../../rutas";
 import { contextoDePagina } from "../../../../servidor/contexto";
 import { FILTROS_DE_EMPRESAS, listarEmpresas, type FiltroDeEmpresas } from "../../../../servidor/empresas";

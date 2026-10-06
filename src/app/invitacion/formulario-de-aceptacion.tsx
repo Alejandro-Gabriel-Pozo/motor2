@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { FormConResultado } from "@/components/form-con-resultado";
-import { formatearCuit, validarCuit } from "@/core/fiscal/cuit";
+import { formatearCuit, validarCuit } from "@/core/fiscal/public";
 import { aceptarMiInvitacion } from "@/server/actions/auth/invitacion";
 
 const CAMPO = "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100";

@@ -10,7 +10,7 @@
  */
 import "dotenv/config";
 import { Client } from "pg";
-import { diagnosticarCuits, type DiagnosticoDeCuit, type FilaConCuit } from "../src/core/fiscal/diagnostico-cuit";
+import { diagnosticarCuits, type DiagnosticoDeCuit, type FilaConCuit } from "../src/core/fiscal/public";
 
 function imprimir(titulo: string, d: DiagnosticoDeCuit, conDetalle: boolean) {
   console.log(`${titulo}: ${d.total}`);
