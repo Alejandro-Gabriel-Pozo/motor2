@@ -564,10 +564,26 @@ export async function agregarPresentacionAlternativa(
     const factor = validarCantidad(factorConversion, producto.unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
     if (!factor.ok) return error(factor.mensaje);
 
-    await ctx.db.presentacion.upsert({
-      where: { productoId_unidadCompraId: { productoId, unidadCompraId } },
-      update: { factorConversion: factor.valor!, activa: true },
-      create: { productoId, unidadCompraId, factorConversion: factor.valor! },
+    const clave = { productoId_unidadCompraId: { productoId, unidadCompraId } };
+    const anterior = await ctx.db.presentacion.findUnique({ where: clave, select: { factorConversion: true } });
+    // La presentación y su rastro van en UNA transacción (Pureza 0.7): el factor de conversión mueve el costo por unidad de todo lo que se compre con ella.
+    await ctx.transaccion(async (tx) => {
+      const fila = await tx.presentacion.upsert({
+        where: clave,
+        update: { factorConversion: factor.valor!, activa: true },
+        create: { productoId, unidadCompraId, factorConversion: factor.valor! },
+      });
+      if (!anterior || Number(anterior.factorConversion) !== factor.valor!) {
+        await registrarCambioAuditado(tx, {
+          entidad: "Presentacion",
+          entidadId: fila.id,
+          campo: "factorConversion",
+          descripcion: `Producto "${producto.nombre}": factor de conversión de una presentación de compra`,
+          valorAnterior: anterior ? Number(anterior.factorConversion) : null,
+          valorNuevo: factor.valor!,
+          actorId: ctx.usuarioId,
+        });
+      }
     });
     return ok("Presentación agregada.");
   });

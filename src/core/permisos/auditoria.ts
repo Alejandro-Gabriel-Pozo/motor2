@@ -47,6 +47,14 @@ export const ENTIDADES_AUDITABLES = [
   "UsuarioSucursal",
   // "CartaSucursal": la carta propia de una sucursal se arma por copia de otra (`copiarCartaDeSucursal`) — `entidadId` es el id de la Sucursal, `campo: "cartaPropia"`, con `sucursalId`.
   "CartaSucursal",
+  // "PromoCarta" (Pureza 0.7): el precio de una promo de la carta — `entidadId` es el id de la promo, `campo: "precio"`, `sucursalId` null (la promo es de la empresa). Un alta lleva `valorAnterior: null`.
+  "PromoCarta",
+  // "PromoCartaSucursal" (Pureza 0.7): el precio propio de una promo en UNA sucursal — `entidadId` es `${promoCartaId}:${sucursalId}`, `campo: "precioLocal"`, con `sucursalId`. Vacío = vuelve al de la empresa (`valorNuevo: null`).
+  "PromoCartaSucursal",
+  // "Presentacion" (Pureza 0.7): el factor de conversión de una presentación de compra (cuántas unidades de stock trae una unidad de compra: mueve el costo por unidad) — `entidadId` es el id de la presentación, `campo: "factorConversion"`.
+  "Presentacion",
+  // "Unidad" (Pureza 0.7): los decimales de una unidad de medida (fijan la precisión de toda cantidad que la usa) — `entidadId` es el id de la unidad, `campo: "decimales"`, `sucursalId` null.
+  "Unidad",
   // "ModuloEmpresa": la plataforma activa o desactiva un módulo de la empresa (`cambiarModulosDeEmpresa`) — `entidadId` es `${empresaId}:${modulo}`, `campo: "estado"`, `valorAnterior: null` si el módulo no tenía fila, `sucursalId` null.
   "ModuloEmpresa",
 ] as const;
