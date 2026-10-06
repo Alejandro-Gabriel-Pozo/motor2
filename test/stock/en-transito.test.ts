@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, cr
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularStockEnTransito } from "../../src/server/consultas/stock/en-transito";
-import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
+import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import {
   crearEnvioDirectoTransferencia,
   crearSolicitudTransferencia,

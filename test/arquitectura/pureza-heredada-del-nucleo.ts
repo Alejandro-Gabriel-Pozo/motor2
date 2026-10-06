@@ -112,7 +112,5 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/reportes/valuacion.ts": { nivel: "P3", senales: ["leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/reportes/vencimientos.ts": { nivel: "P3", senales: ["leeLaBase", "reloj"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/reportes/ventas-sin-receta.ts": { nivel: "P3", senales: ["leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
-  "src/core/stock/alertas.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
-  "src/core/stock/consolidado.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/stock/seccion-habitual.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
 };

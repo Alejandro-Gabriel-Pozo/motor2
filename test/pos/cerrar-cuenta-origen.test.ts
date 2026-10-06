@@ -9,7 +9,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarVentaEnTx, type OrigenVenta } from "../../src/core/movimientos/registrar-venta";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
-import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
+import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 
 /**
  * De qué sección sale cada insumo al cerrar una cuenta (docs/plan-seccion-habitual-stock-2026-09-25.md, C5/C6): nadie la elige; el

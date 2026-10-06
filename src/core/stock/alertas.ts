@@ -1,7 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { elegirMinimo } from "./stock-minimo";
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 export type EstadoAlerta = "CRITICO" | "BAJO";
 
@@ -16,6 +13,27 @@ export interface FilaAlertaStock {
   diferencia: number;
   estado: EstadoAlerta;
   ultimaFecha: Date | null;
+}
+
+/** El saldo de un producto en una sección (sumando todos los lotes) y la fecha de su último movimiento, tal como lo lee la consulta. */
+export interface SaldoParaAlerta {
+  productoId: string;
+  seccionId: string;
+  saldo: number;
+  ultimaFecha: Date | null;
+}
+
+export interface ProductoParaAlerta {
+  id: string;
+  codigo: string;
+  nombre: string;
+}
+
+/** Un mínimo cargado: de una sección puntual (`seccionId`) o el global de la sucursal (`seccionId` null). */
+export interface MinimoCargado {
+  productoId: string;
+  seccionId: string | null;
+  minimo: number;
 }
 
 /**
@@ -39,29 +57,21 @@ export interface FilaAlertaStock {
  * deliberada de esta primera versión, el dato real (quién es el proveedor
  * habitual) ya está en la comparativa de precios de Catálogo.
  */
-export async function calcularAlertasStock(sucursalId: string, db: Db): Promise<FilaAlertaStock[]> {
-  const saldos = await db.movimientoStock.groupBy({
-    by: ["productoId", "seccionId"],
-    where: { seccion: { sucursalId } },
-    _sum: { cantidad: true },
-    _max: { creadoEn: true },
-  });
-  if (!saldos.length) return [];
-
-  const productoIds = Array.from(new Set(saldos.map((s) => s.productoId)));
-  const [productos, secciones, minimos] = await Promise.all([
-    db.producto.findMany({ where: { id: { in: productoIds } } }),
-    db.seccion.findMany({ where: { sucursalId } }),
-    db.stockMinimoProducto.findMany({ where: { sucursalId, productoId: { in: productoIds } } }),
-  ]);
+export function armarAlertasStock(entrada: {
+  saldos: readonly SaldoParaAlerta[];
+  productos: readonly ProductoParaAlerta[];
+  secciones: readonly { id: string; nombre: string }[];
+  minimos: readonly MinimoCargado[];
+}): FilaAlertaStock[] {
+  const { saldos, productos, secciones, minimos } = entrada;
   const productoPorId = new Map(productos.map((p) => [p.id, p]));
   const seccionPorId = new Map(secciones.map((s) => [s.id, s]));
 
   const minimoPorSeccion = new Map<string, number>(); // `${productoId}||${seccionId}`
   const minimoGlobal = new Map<string, number>(); // productoId
   for (const m of minimos) {
-    if (m.seccionId) minimoPorSeccion.set(`${m.productoId}||${m.seccionId}`, Number(m.minimo));
-    else minimoGlobal.set(m.productoId, Number(m.minimo));
+    if (m.seccionId) minimoPorSeccion.set(`${m.productoId}||${m.seccionId}`, m.minimo);
+    else minimoGlobal.set(m.productoId, m.minimo);
   }
 
   const alertas: FilaAlertaStock[] = [];
@@ -74,7 +84,7 @@ export async function calcularAlertasStock(sucursalId: string, db: Db): Promise<
     const stockMinimo = elegirMinimo(minimoPorSeccion.get(`${s.productoId}||${s.seccionId}`), minimoGlobal.get(s.productoId));
     if (stockMinimo == null) continue; // ninguna fila de mínimo cargada: no hay alerta posible
 
-    const saldoActual = Number(s._sum.cantidad ?? 0);
+    const saldoActual = s.saldo;
     if (saldoActual > stockMinimo) continue; // OK: no es una alerta
 
     alertas.push({
@@ -87,7 +97,7 @@ export async function calcularAlertasStock(sucursalId: string, db: Db): Promise<
       stockMinimo,
       diferencia: saldoActual - stockMinimo,
       estado: saldoActual <= 0 ? "CRITICO" : "BAJO",
-      ultimaFecha: s._max.creadoEn,
+      ultimaFecha: s.ultimaFecha,
     });
   }
 
@@ -101,13 +111,12 @@ export interface ResumenAlertasStock {
   items: FilaAlertaStock[];
 }
 
-/** Port de obtenerResumenAlertasStock (Stock.js:2329-2340). */
-export async function obtenerResumenAlertasStock(sucursalId: string, db: Db): Promise<ResumenAlertasStock> {
-  const data = await calcularAlertasStock(sucursalId, db);
+/** Port de obtenerResumenAlertasStock (Stock.js:2329-2340), sobre las alertas ya calculadas. */
+export function resumirAlertasStock(alertas: readonly FilaAlertaStock[]): ResumenAlertasStock {
   return {
-    total: data.length,
-    criticos: data.filter((a) => a.estado === "CRITICO").length,
-    bajos: data.filter((a) => a.estado === "BAJO").length,
-    items: data.slice(0, 10),
+    total: alertas.length,
+    criticos: alertas.filter((a) => a.estado === "CRITICO").length,
+    bajos: alertas.filter((a) => a.estado === "BAJO").length,
+    items: alertas.slice(0, 10),
   };
 }

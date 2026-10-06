@@ -20,9 +20,9 @@
 import "dotenv/config";
 import { prisma } from "./demo-seed/cliente";
 import { calcularSaldoTotal } from "../src/core/movimientos/stock";
-import { calcularStockConsolidado } from "../src/core/stock/consolidado";
+import { calcularStockConsolidado } from "../src/server/consultas/stock/consolidado";
 import { calcularStockPorFamilia } from "../src/server/consultas/stock/por-familia";
-import { calcularAlertasStock } from "../src/core/stock/alertas";
+import { calcularAlertasStock } from "../src/server/consultas/stock/alertas";
 import { obtenerHistorialProducto } from "../src/core/reportes/historial-producto";
 import { obtenerReportePorPeriodo } from "../src/core/reportes/periodo";
 

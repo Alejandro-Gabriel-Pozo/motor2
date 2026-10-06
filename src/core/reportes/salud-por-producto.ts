@@ -1,8 +1,4 @@
-import type { EstadoStockConsolidado } from "@/core/stock/public";
-import { calcularStockConsolidado, calcularAlertasStock } from "@/core/stock/public-servidor";
-import type { Db } from "./comun";
-import { generarReporteDiferenciasAjustes } from "./diferencias-ajustes";
-import { generarReporteInsumosSinRecetaVinculada } from "./insumos-sin-receta";
+import type { EstadoStockConsolidado, FilaAlertaStock, FilaStockConsolidado } from "@/core/stock/public";
 
 export interface FilaSaludProducto {
   productoId: string;
@@ -30,15 +26,15 @@ const ORDEN_CONSOLIDADO: Record<EstadoStockConsolidado, number> = { NEGATIVO: 0,
  * Diferencias de Ajuste e Insumos sin receta son señales A NIVEL DE
  * PRODUCTO (no varían por sección): se repiten a propósito en cada fila de
  * sección del mismo producto, para no perder la señal si se mira solo una.
+ *
+ * Puro: recibe lo que ya calcularon los cuatro (la consulta que los junta es `generarReporteSaludPorProducto` en `server/consultas/reportes/salud-por-producto.ts`).
  */
-export async function generarReporteSaludPorProducto(sucursalId: string, db: Db): Promise<FilaSaludProducto[]> {
-  const [consolidado, alertas, diferencias, sinReceta] = await Promise.all([
-    calcularStockConsolidado(sucursalId, db),
-    calcularAlertasStock(sucursalId, db),
-    generarReporteDiferenciasAjustes(sucursalId, db),
-    generarReporteInsumosSinRecetaVinculada(sucursalId, db),
-  ]);
-
+export function armarSaludPorProducto(
+  consolidado: readonly Pick<FilaStockConsolidado, "productoId" | "productoNombre" | "productoCodigo" | "seccionId" | "seccionNombre" | "estado">[],
+  alertas: readonly Pick<FilaAlertaStock, "productoId" | "seccionId" | "estado">[],
+  diferencias: readonly { productoId: string; estado: string }[],
+  sinReceta: readonly { productoId: string }[],
+): FilaSaludProducto[] {
   const alertaPorClave = new Map(alertas.map((a) => [`${a.productoId}||${a.seccionId}`, a.estado]));
   const diferenciasPorProducto = new Map(diferencias.map((d) => [d.productoId, d.estado]));
   const sinRecetaPorProducto = new Set(sinReceta.map((s) => s.productoId));

@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { setStockMinimoProducto } from "../../src/server/actions/stock/stock-minimo";
-import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/core/stock/alertas";
+import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/server/consultas/stock/alertas";
 import { prisma } from "../setup/test-db";
 
 describe("calcularAlertasStock", () => {

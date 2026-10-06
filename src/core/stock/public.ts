@@ -9,6 +9,10 @@
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio.
  */
 export type { EstadoStockConsolidado } from "./consolidado";
+export { armarAlertasStock, resumirAlertasStock } from "./alertas";
+export type { FilaAlertaStock, ResumenAlertasStock } from "./alertas";
+export { armarStockConsolidado, movimientosPorLeer } from "./consolidado";
+export type { FilaStockConsolidado, MovimientoPosteriorAlConteo } from "./consolidado";
 export { armarStockEnTransito } from "./en-transito";
 export type { FilaStockEnTransito } from "./en-transito";
 export { seleccionarClaseA } from "./sugerencia-clase-a";

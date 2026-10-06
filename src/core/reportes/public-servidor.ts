@@ -45,7 +45,6 @@ export { obtenerReportePorPeriodo } from "./periodo";
 export { calcularRendimientoRecetasSimples } from "./rendimiento-recetas";
 export { calcularRendimientoRecetasCompartidas } from "./rendimiento-recetas";
 export { generarReporteRotacionMesas } from "./rotacion-mesas";
-export { generarReporteSaludPorProducto } from "./salud-por-producto";
 export { generarReporteVentasSinReceta } from "./ventas-sin-receta";
 export { listarTicketsEmitidos } from "./tickets-emitidos";
 export { leerFiltroTickets } from "./tickets-emitidos";

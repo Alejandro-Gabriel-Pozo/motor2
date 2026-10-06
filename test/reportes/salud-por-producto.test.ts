@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { generarReporteSaludPorProducto } from "../../src/core/reportes/salud-por-producto";
+import { generarReporteSaludPorProducto } from "../../src/server/consultas/reportes/salud-por-producto";
 
 describe("generarReporteSaludPorProducto", () => {
   let sucursalId: string;

@@ -33,6 +33,7 @@ const CARPETAS_SIN_CONSULTAS: readonly string[] = [
   "src/core/navegacion",
   "src/core/precios",
   "src/core/seguridad",
+  "src/core/stock",
   "src/core/tiempo",
 ];
 

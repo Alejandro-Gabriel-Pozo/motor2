@@ -55,6 +55,7 @@ export type { RotuloLinea } from "./rendimiento-recetas-vistas";
 export type { MetodoRendimiento } from "./rendimiento-conciliado";
 export { explicarConfianza } from "./rendimiento-recetas-vistas";
 export type { Confianza } from "./rendimiento-recetas-vistas";
+export { armarSaludPorProducto } from "./salud-por-producto";
 export type { FilaSaludProducto } from "./salud-por-producto";
 export type { FilaVentaSinReceta } from "./ventas-sin-receta";
 export type { OperacionEncontrada } from "./trazabilidad";

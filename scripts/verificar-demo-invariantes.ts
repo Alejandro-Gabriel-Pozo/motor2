@@ -15,9 +15,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { prisma } from "../src/lib/db";
 import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../src/core/reportes/periodo";
-import { calcularStockConsolidado } from "../src/core/stock/consolidado";
+import { calcularStockConsolidado } from "../src/server/consultas/stock/consolidado";
 import { calcularValuacionInventario } from "../src/core/reportes/valuacion";
-import { calcularAlertasStock } from "../src/core/stock/alertas";
+import { calcularAlertasStock } from "../src/server/consultas/stock/alertas";
 import { tieneStockReal } from "../src/core/movimientos/transiciones";
 
 const NOMBRE_SUCURSAL = "La Cuadra";

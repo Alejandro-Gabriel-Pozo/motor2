@@ -1,4 +1,4 @@
-import { obtenerResumenAlertasStock } from "@/core/stock/public-servidor";
+import { armarAlertasStock, resumirAlertasStock } from "@/core/stock/public";
 import { redondearCantidad, type Db } from "./comun";
 import { obtenerReportePorPeriodo } from "./periodo";
 import { resolverRangoPorDefecto } from "./rango-por-defecto";
@@ -94,19 +94,28 @@ export async function obtenerResumenOperativo(sucursalId: string, db: Db, ahora:
     const r = resolverRangoPorDefecto(undefined, ahora);
     return { desde: new Date(r.desdeISO), hasta: new Date(r.hastaISO) };
   })();
-  const [saldos, movimientosPorProceso, alertas, financiero] = await Promise.all([
-    db.movimientoStock.groupBy({ by: ["productoId", "seccionId"], where: { seccion: { sucursalId } }, _sum: { cantidad: true } }),
+  const [saldos, movimientosPorProceso, financiero] = await Promise.all([
+    db.movimientoStock.groupBy({ by: ["productoId", "seccionId"], where: { seccion: { sucursalId } }, _sum: { cantidad: true }, _max: { creadoEn: true } }),
     db.movimientoStock.groupBy({ by: ["proceso"], where: { seccion: { sucursalId } }, _count: { _all: true } }),
-    obtenerResumenAlertasStock(sucursalId, db),
     obtenerResumenFinancieroDelRango(sucursalId, desdeFinanciero, hastaFinanciero, db),
   ]);
 
   const productoIds = Array.from(new Set(saldos.map((s) => s.productoId)));
   const seccionIds = Array.from(new Set(saldos.map((s) => s.seccionId)));
-  const [productos, secciones] = await Promise.all([
+  const [productos, secciones, minimos] = await Promise.all([
     db.producto.findMany({ where: { id: { in: productoIds } } }),
     db.seccion.findMany({ where: { id: { in: seccionIds } } }),
+    db.stockMinimoProducto.findMany({ where: { sucursalId, productoId: { in: productoIds } } }),
   ]);
+  // Las alertas se arman con los saldos que esta misma función ya leyó (antes: una segunda lectura de TODO el Kardex agrupado solo para las alertas).
+  const alertas = resumirAlertasStock(
+    armarAlertasStock({
+      saldos: saldos.map((s) => ({ productoId: s.productoId, seccionId: s.seccionId, saldo: Number(s._sum.cantidad ?? 0), ultimaFecha: s._max.creadoEn })),
+      productos,
+      secciones,
+      minimos: minimos.map((m) => ({ productoId: m.productoId, seccionId: m.seccionId, minimo: Number(m.minimo) })),
+    }),
+  );
   const productoPorId = new Map(productos.map((p) => [p.id, p]));
   const seccionPorId = new Map(secciones.map((s) => [s.id, s]));
 
