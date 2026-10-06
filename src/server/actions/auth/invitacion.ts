@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUsuarioActual } from "@/core/auth/session";
-import { requierePermiso } from "@/core/permisos/gate";
+import { requierePermiso } from "@/server/acceso/gate";
 import { aceptarInvitacionDelToken, aceptarInvitacionDeUsuarioDelToken, invitacionDelToken, nombreCookieInvitacion, opcionesCookieInvitacion } from "@/core/auth/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";

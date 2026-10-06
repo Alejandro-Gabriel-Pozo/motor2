@@ -65,8 +65,8 @@ describe("la invitación de usuario recibe el guard real", () => {
   });
 
   it("el detector (con fuentes sintéticas)", () => {
-    const real = 'import { requierePermiso } from "@/core/permisos/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, requierePermiso);';
-    const falso = 'import { requierePermiso } from "@/core/permisos/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, async () => ({ ok: true }));';
+    const real = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, requierePermiso);';
+    const falso = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, async () => ({ ok: true }));';
     const otro = 'import { requierePermiso } from "./mio";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, requierePermiso);';
     const nuevo = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, requierePermiso);';
     expect(llamadasDe(real, join(SRC, "x.ts"))[0]!.vieneDelGate).toBe(true);

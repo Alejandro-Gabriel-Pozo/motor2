@@ -3,7 +3,7 @@ import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import { IconoDeModulo } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { tarjetasDelUsuario } from "@/core/navegacion/inicio";
+import { tarjetasDelUsuario } from "@/server/acceso/menu";
 
 /**
  * Pantalla de inicio: una tarjeta por módulo que el rol puede abrir en la sucursal activa (la misma consulta de permisos que arma el

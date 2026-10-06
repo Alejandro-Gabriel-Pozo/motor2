@@ -5,7 +5,7 @@ import { RedirectType, redirect } from "next/navigation";
 import { COOKIE_SUCURSAL_ACTIVA, obtenerContextoUsuario, opcionesCookieActiva } from "@/core/auth/contexto";
 import { accionesDeNavegacion } from "@/core/navegacion/estructura";
 import { pantallaTrasCambiarSucursal } from "@/core/navegacion/pantalla-tras-cambio";
-import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
 
 /**
  * Cambia qué sucursal ve el usuario en esta sesión — solo entre las que YA

@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
-import { requierePermisoVer, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoVer, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 
 /**
  * Guarda de las LECTURAS de servidor (server actions que devuelven datos y no pasan por `conPermiso`, que es el

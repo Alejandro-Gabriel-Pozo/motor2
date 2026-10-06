@@ -11,10 +11,10 @@ import {
   requierePermisoDeEmpresa,
   requierePermisoVer,
   requierePermisoVerDeEmpresa,
-} from "../../src/core/permisos/gate";
+} from "../../src/server/acceso/gate";
 import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
 import { accionesDeNavegacion } from "../../src/core/navegacion/estructura";
-import { modulosEfectivosDeEmpresa } from "../../src/core/permisos/modulos-de-empresa";
+import { modulosEfectivosDeEmpresa } from "../../src/server/acceso/modulos-de-empresa";
 import { denegacionDeModulo } from "../../src/core/permisos/modulo-de-la-accion";
 
 /**
@@ -200,6 +200,6 @@ describe("`ModuloEmpresa` solo se consulta desde modulos-de-empresa.ts", () => {
       .filter((f) => /moduloEmpresa/.test(readFileSync(f, "utf8")))
       .map((f) => f.slice(raiz.length + 1).replace(/\\/g, "/"));
     // Además del guard, SOLO el escritor de la plataforma (`cambiarModulosDeEmpresa`, P9) toca la tabla: lee las filas de la empresa para diffear y las escribe. No decide acceso.
-    expect(lectores).toEqual(["core/features/empresa/cambiar-modulos-de-empresa.ts", "core/permisos/modulos-de-empresa.ts"]);
+    expect(lectores).toEqual(["core/features/empresa/cambiar-modulos-de-empresa.ts", "server/acceso/modulos-de-empresa.ts"]);
   });
 });

@@ -73,7 +73,7 @@ describe("mocks sin huérfanos", () => {
     expect(huerfanosDe(aqui, 'vi.mock("@/core/permisos/gate-que-no-existe", () => ({}));')).toHaveLength(1);
     expect(huerfanosDe(aqui, 'vi.mock("../../src/core/auth/session", () => ({}));')).toEqual([]);
     expect(huerfanosDe(aqui, 'const real = await importOriginal<typeof import("@/core/permisos/nunca")>();')).toHaveLength(1);
-    expect(huerfanosDe(aqui, 'await vi.importActual<typeof import("@/core/permisos/gate")>("@/core/permisos/gate");')).toEqual([]);
+    expect(huerfanosDe(aqui, 'await vi.importActual<typeof import("@/server/acceso/gate")>("@/server/acceso/gate");')).toEqual([]);
     expect(huerfanosDe(aqui, 'vi.mock("next/headers", () => ({}));')).toEqual([]); // paquete: no se mira
     expect(huerfanosDe(aqui, '// vi.mock("@/no/existe")')).toEqual([]); // comentado
   });

@@ -1,6 +1,6 @@
 import "server-only";
 import type { PrismaClient } from "@prisma/client";
-import { sucursalesDondeElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 import type { CambioAuditable } from "@/core/permisos/auditoria";
 import type { Db } from "@/lib/db-tipos";
 

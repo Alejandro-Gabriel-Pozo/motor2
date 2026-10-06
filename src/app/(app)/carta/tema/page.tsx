@@ -1,7 +1,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer } from "@/server/acceso/gate";
 import { type TemaAdmin, CLAVES_TEMA_V1 } from "@/core/carta/public";
 import { cargarTemaAdmin } from "@/server/consultas/carta/admin";
 import { cambiarAplicacionTema, guardarTemaCarta } from "@/server/actions/carta/tema";

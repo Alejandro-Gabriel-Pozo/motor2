@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { pantallaDeInicio } from "@/core/navegacion/inicio";
+import { pantallaDeInicio } from "@/server/acceso/menu";
 
 export default async function Home() {
   const ctx = await obtenerContextoUsuario();

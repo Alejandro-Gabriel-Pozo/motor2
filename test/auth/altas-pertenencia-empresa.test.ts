@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin }
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { agregarOActualizarUsuario } from "../../src/server/actions/auth/usuarios";
 import { aceptarInvitacionDeUsuarioDelToken } from "../../src/core/auth/invitacion";
-import { requierePermiso } from "../../src/core/permisos/gate";
+import { requierePermiso } from "../../src/server/acceso/gate";
 import { enviadorEnMemoriaDelCanal } from "../../src/core/correo/enviar";
 import { crearSucursalConAdmin } from "../../src/server/actions/auth/sucursales";
 

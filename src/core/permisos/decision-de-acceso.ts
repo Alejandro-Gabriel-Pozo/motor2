@@ -1,4 +1,5 @@
 import { moduloDeAccion, nivelMinimoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
+import { esGerenteDeEmpresa } from "./rol-empresa";
 import { rolAlcanzaLaAccion } from "./jerarquia";
 import { denegacionDeModulo } from "./modulo-de-la-accion";
 import { textoDeDenegacion, type Denegacion } from "./motivos";
@@ -111,11 +112,16 @@ export interface NivelEnEmpresa {
   sinModulo: Denegacion | null;
 }
 
+/** ¿Alguna de estas acciones es de piso gerente? Solo entonces hace falta leer el rol de empresa del usuario (`UsuarioEmpresa.rolEmpresa`). */
+export function algunaAccionEsDePisoGerente(claves: readonly AccionClave[]): boolean {
+  return claves.some((c) => nivelMinimoDeAccion(c) === "gerente");
+}
+
 /**
  * Qué puede hacer el usuario con cada acción de CONTEXTO EMPRESA (si la empresa tiene el módulo de la acción, antes que todo lo demás): una acción de empresa no
  * depende de la sucursal en la que está parado; vale si CUALQUIERA de sus membresías activas en esa empresa (sucursal activa, rol activo) tiene la clave Y la Central
  * no la deshabilitó en esa sucursal. El PISO de la acción manda sobre la fila. Una acción de piso gerente la tiene SOLO quien es gerente de la empresa
- * (`esGerente`), sin matriz ni capacidad de sucursal: la autoridad de empresa no se delega.
+ * (su `rolEmpresa` es el de gerente), sin matriz ni capacidad de sucursal: la autoridad de empresa no se delega.
  *
  * `habilitadas[i]` son las capacidades de `membresias[i]`; `efectivos` es null si no hay membresías o ninguna acción necesita el registro.
  */
@@ -123,10 +129,12 @@ export function nivelesEnLaEmpresa(hechos: {
   membresias: readonly MembresiaParaEmpresa[];
   habilitadas: readonly ReadonlySet<string>[];
   efectivos: ReadonlySet<string> | null;
-  esGerente: boolean;
+  /** `UsuarioEmpresa.rolEmpresa` del usuario (null si no se leyó o no tiene): solo cuenta para las acciones de piso gerente. */
+  rolEmpresa: string | null;
   claves: readonly AccionDeEmpresa[];
 }): { hayMembresia: boolean; roles: string[]; niveles: Map<AccionDeEmpresa, NivelEnEmpresa> } {
-  const { membresias, habilitadas, efectivos, esGerente } = hechos;
+  const { membresias, habilitadas, efectivos } = hechos;
+  const esGerente = esGerenteDeEmpresa(hechos.rolEmpresa);
   const niveles = new Map<AccionDeEmpresa, NivelEnEmpresa>();
   for (const clave of [...new Set(hechos.claves)]) {
     const nivel: NivelEnEmpresa = { ver: false, editar: false, bloqueadaPorLaCentral: false, sinModulo: efectivos ? denegacionDeModulo(moduloDeAccion(clave), efectivos) : null };

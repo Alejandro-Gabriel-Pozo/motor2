@@ -17,8 +17,8 @@ import {
   requierePermisoVerDeEmpresa,
   sucursalesDondeElUsuarioPuedeVer,
   type ResultadoGate,
-} from "../../src/core/permisos/gate";
-import { situacionDelRegistroDeModulos } from "../../src/core/permisos/modulos-de-empresa";
+} from "../../src/server/acceso/gate";
+import { situacionDelRegistroDeModulos } from "../../src/server/acceso/modulos-de-empresa";
 
 /**
  * CARACTERIZACIÓN DEL ACCESO (Pureza Fase 3, tramo B). Congela, contra Postgres real, TODO lo que el guard decide hoy: para cada acción del sistema, cada

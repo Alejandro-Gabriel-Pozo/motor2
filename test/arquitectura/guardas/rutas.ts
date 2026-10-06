@@ -6,12 +6,12 @@ import ts from "typescript";
  *
  * Qué protege: en Next una `page.tsx` o un `route.ts` nuevo nace PÚBLICO. El layout de `(app)`/`(pos)` redirige al login, pero (a) un
  * `route.ts` no pasa por ningún layout y (b) el layout solo decide si hay sesión: el permiso de cada pantalla lo decide la propia página.
- * Por eso cada página protegida tiene que abrir con la guarda de `core/permisos/gate` y cortar si no hay permiso, ANTES de leer nada, y cada
+ * Por eso cada página protegida tiene que abrir con la guarda de `server/acceso/gate` y cortar si no hay permiso, ANTES de leer nada, y cada
  * cron tiene que rechazar el pedido sin el secreto antes de tocar la base.
  */
 
 const GUARDAS_DE_PAGINA = ["requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"];
-const MODULO_GATE = "core/permisos/gate";
+const MODULO_GATE = "server/acceso/gate";
 const MODULO_SECRETO_CRON = "core/auth/secreto-cron";
 const MODULO_CONTEXTO = "core/auth/contexto";
 const MODULO_IR_AL_LOGIN = "core/auth/ir-al-login";

@@ -3,7 +3,7 @@
 import type { MagnitudUnidad } from "@prisma/client";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoDeEmpresa } from "@/server/acceso/gate";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 import { decimalesDelPaso } from "@/core/catalogo/public";

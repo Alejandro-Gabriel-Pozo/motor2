@@ -5,7 +5,7 @@ import {
   obtenerMiNivelPermisoDeEmpresa,
   requierePermisoDeEmpresa,
   requierePermisoVerDeEmpresa,
-} from "../../src/core/permisos/gate";
+} from "../../src/server/acceso/gate";
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 
 /**

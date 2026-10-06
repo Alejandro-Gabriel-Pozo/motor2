@@ -43,15 +43,15 @@ const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
  * la clave. Las que llegan por parámetro de un envoltorio se leen en cada llamada al envoltorio; las otras tienen su propio guardián.
  */
 const GUARDAS_CON_CLAVE_DINAMICA: Readonly<Record<string, string>> = {
-  "core/permisos/gate.ts|accionClave": "Implementación de `sucursalesDondeElUsuarioPuedeVer`: reenvía a `obtenerMiNivelPermiso` la clave que recibió; cada llamada a la primera se inventaría.",
-  "core/permisos/gate.ts|deSucursal": "Implementación de `accionesDelMenuQueElUsuarioPuedeVer`: reenvía a `accionesQueElUsuarioPuedeVer` las claves de sucursal que recibió; cada llamada al helper se inventaría.",
+  "server/acceso/gate.ts|accionClave": "Implementación de `sucursalesDondeElUsuarioPuedeVer`: reenvía a `obtenerMiNivelPermiso` la clave que recibió; cada llamada a la primera se inventaría.",
+  "server/acceso/gate.ts|deSucursal": "Implementación de `accionesDelMenuQueElUsuarioPuedeVer`: reenvía a `accionesQueElUsuarioPuedeVer` las claves de sucursal que recibió; cada llamada al helper se inventaría.",
   "server/actions/con-permiso.ts|accionClave": "Implementación de `conPermiso`: reenvía la clave que recibió; cada llamada a `conPermiso` se inventaría.",
   "server/actions/con-sesion.ts|accion": "Implementación de `requerirVer*`: reenvía la clave que recibió; cada llamada a `requerirVer*` se inventaría.",
   "app/(app)/movimientos/[proceso]/page.tsx|accionClave": "La acción se resuelve del proceso de la URL con `ACCION_POR_PROCESO`; sus valores se inventarían como mapa.",
   "server/actions/movimientos/movimientos.ts|accionClave": "La acción se resuelve del proceso con `ACCION_POR_PROCESO`; sus valores se inventarían como mapa.",
   "components/app-shell.tsx|accionesDeNavegacion()": "Las acciones del menú: cada ítem declara la suya y `menu-con-permiso.test.ts` comprueba que el menú use la misma clave que la página.",
-  "core/navegacion/inicio.ts|accionesDelMenu()": "Las acciones del menú (mismo origen que el de `app-shell`).",
-  "core/navegacion/inicio.ts|accionesDeNavegacion()": "Las acciones del menú más las de las rutas fuera del menú (mismo origen que `app-shell`): sirve para el enlace «Administración» del salón.",
+  "server/acceso/menu.ts|accionesDelMenu()": "Las acciones del menú (mismo origen que el de `app-shell`).",
+  "server/acceso/menu.ts|accionesDeNavegacion()": "Las acciones del menú más las de las rutas fuera del menú (mismo origen que `app-shell`): sirve para el enlace «Administración» del salón.",
   "server/actions/auth/sucursal-activa.ts|accionesDeNavegacion()": "Qué pantallas del menú ve el rol en la sucursal NUEVA al cambiar de sucursal (mismo origen que `app-shell`); la pantalla destino la vuelve a guardar su página.",
 };
 

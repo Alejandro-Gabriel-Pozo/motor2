@@ -2,7 +2,7 @@ import Link from "next/link";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import type { EstadoMesa } from "@/core/pos/public";
 import { esEstadoMesa, filtrarMesas } from "@/core/pos/public";
 import { obtenerMapaDeMesas } from "@/server/consultas/pos/mesas";

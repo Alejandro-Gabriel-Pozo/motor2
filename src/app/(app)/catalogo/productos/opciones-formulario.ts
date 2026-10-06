@@ -2,7 +2,7 @@ import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarInsumos } from "@/server/actions/catalogo/insumos";
 import { listarCategoriasProducto } from "@/server/actions/catalogo/categorias-producto";
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
-import { obtenerMiNivelPermisoDeEmpresa } from "@/core/permisos/gate";
+import { obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import type { PrismaClient } from "@prisma/client";
 
 /**

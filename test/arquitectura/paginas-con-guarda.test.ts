@@ -3,7 +3,7 @@ import { esDeGrupoProtegido, esPagina, leerDeApp, listarArchivosDeApp } from "./
 import { analizarPagina } from "./guardas/rutas";
 
 /**
- * Toda página de `(app)`/`(pos)` abre con la guarda de permiso de `core/permisos/gate` y corta si no hay permiso, ANTES de leer nada. El layout
+ * Toda página de `(app)`/`(pos)` abre con la guarda de permiso de `server/acceso/gate` y corta si no hay permiso, ANTES de leer nada. El layout
  * solo decide si hay sesión; sin esta guarda, una página nueva (o una anidada que olvidó copiarla) mostraría sus datos a cualquier usuario con
  * sesión, de cualquier rol, por URL directa. Los tests `reportes-con-permiso` y `menu-con-permiso` solo miran las pantallas del menú y de reportes.
  *

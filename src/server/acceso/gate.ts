@@ -1,26 +1,27 @@
+import "server-only";
 import type { PrismaClient } from "@prisma/client";
-import { capacidadesDeSucursal, sucursalTieneCapacidad } from "./capacidades-sucursal";
-import { contextoDeAccion, nivelMinimoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "./acciones";
+import { capacidadesDeSucursal, sucursalTieneCapacidad } from "@/core/permisos/capacidades-sucursal";
+import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "@/core/permisos/acciones";
 import {
   accesoDeSucursal,
   accionesVisiblesEnSucursal,
+  algunaAccionEsDePisoGerente,
   decidirEnEmpresa,
   decidirEnSucursal,
   membresiaVigente,
   nivelEnSucursal,
   nivelesEnLaEmpresa,
   type ResultadoGate,
-} from "./decision-de-acceso";
-import { algunaAccionNecesitaElRegistro } from "./modulo-de-la-accion";
-import { denegacionDeModuloDeAccion, modulosEfectivosDeEmpresa } from "./modulos-de-empresa";
-import { esGerenteDeEmpresa } from "./rol-empresa";
+} from "@/core/permisos/decision-de-acceso";
+import { algunaAccionNecesitaElRegistro } from "@/core/permisos/modulo-de-la-accion";
+import { denegacionDeModuloDeAccion, modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
 
 /**
  * LA CÁSCARA del guard (ADR-011): LEE de la base lo que hace falta y le pasa los hechos a la decisión pura (`decision-de-acceso.ts`). No compara ningún rol ni nivel
  * por su cuenta: eso lo exige `test/arquitectura/acceso-solo-por-el-guard.test.ts`. Las consultas, su cantidad y su orden son las de siempre
  * (`test/permisos/caracterizacion-del-acceso.test.ts` congela las respuestas de toda la matriz y cuántas consultas hace cada llamada).
  */
-export { denegado, type ResultadoGate } from "./decision-de-acceso";
+export { denegado, type ResultadoGate } from "@/core/permisos/decision-de-acceso";
 
 /**
  * Trae membresía + rol + el `PermisoRol` de ESTA acción en una sola consulta (join anidado). El PISO de la acción manda sobre la fila (lo decide
@@ -122,12 +123,12 @@ async function leerYCalcularNivelesEnLaEmpresa(usuarioId: string, empresaId: str
     Promise.all(membresias.map((m) => capacidadesDeSucursal(m.sucursalId, unicas, db))),
     membresias.length > 0 && algunaAccionNecesitaElRegistro(unicas) ? modulosEfectivosDeEmpresa(empresaId, db) : null,
   ]);
-  const hayDeGerente = unicas.some((c) => nivelMinimoDeAccion(c) === "gerente");
-  const esGerente =
-    hayDeGerente && membresias.length > 0
-      ? esGerenteDeEmpresa((await db.usuarioEmpresa.findFirst({ where: { usuarioId, empresaId, activo: true }, select: { rolEmpresa: true } }))?.rolEmpresa ?? null)
-      : false;
-  return nivelesEnLaEmpresa({ membresias, habilitadas, efectivos, esGerente, claves: unicas });
+  // El rol de empresa solo se lee si alguna acción es de piso gerente y el usuario tiene membresías; qué hacer con él lo decide la decisión pura.
+  const rolEmpresa =
+    algunaAccionEsDePisoGerente(unicas) && membresias.length > 0
+      ? ((await db.usuarioEmpresa.findFirst({ where: { usuarioId, empresaId, activo: true }, select: { rolEmpresa: true } }))?.rolEmpresa ?? null)
+      : null;
+  return nivelesEnLaEmpresa({ membresias, habilitadas, efectivos, rolEmpresa, claves: unicas });
 }
 
 /** Gate de EDITAR de una acción de empresa (ver `nivelesEnLaEmpresa`). Es el equivalente de `requierePermiso` para el contexto empresa. */

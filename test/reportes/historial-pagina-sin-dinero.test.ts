@@ -11,7 +11,7 @@ const PRECIO_UNIDAD = 4321.5;
 const mocks = vi.hoisted(() => ({ ver: false, historial: null as unknown }));
 
 vi.mock("@/core/auth/contexto", () => ({ obtenerContextoUsuario: async () => ({ usuarioId: "u1", sucursalId: "s1", db: {} }) }));
-vi.mock("@/core/permisos/gate", () => ({
+vi.mock("@/server/acceso/gate", () => ({
   requierePermisoVer: async () => ({ ok: true }),
   obtenerMiNivelPermiso: async () => ({ ver: mocks.ver, editar: false }),
 }));

@@ -1,9 +1,10 @@
+import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { cache } from "react";
-import { moduloDelCatalogo } from "../modulos/catalogo";
-import { moduloDeAccion, type AccionClave } from "./acciones";
-import { denegacionDeModulo, modulosEfectivosDeFilas, situacionDelRegistro, type SituacionDelRegistro } from "./modulo-de-la-accion";
-import type { Denegacion } from "./motivos";
+import { moduloDelCatalogo } from "@/core/modulos/catalogo";
+import { moduloDeAccion, type AccionClave } from "@/core/permisos/acciones";
+import { denegacionDeModulo, modulosEfectivosDeFilas, situacionDelRegistro, type SituacionDelRegistro } from "@/core/permisos/modulo-de-la-accion";
+import type { Denegacion } from "@/core/permisos/motivos";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 

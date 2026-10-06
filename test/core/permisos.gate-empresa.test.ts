@@ -6,7 +6,7 @@ import {
   accionesDelMenuQueElUsuarioPuedeVer,
   requierePermisoDeEmpresa,
   requierePermisoVerDeEmpresa,
-} from "../../src/core/permisos/gate";
+} from "../../src/server/acceso/gate";
 
 /**
  * Gate de las acciones de CONTEXTO EMPRESA: el permiso vale si CUALQUIER membresía activa del usuario en la empresa lo tiene, no solo la de
