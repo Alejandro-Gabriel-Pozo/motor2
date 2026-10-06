@@ -45,7 +45,6 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/catalogo/receta-propia-estado.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/catalogo/receta-validacion.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/catalogo/recetas-vigentes.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
-  "src/core/correo/enviar.ts": { nivel: "P2", senales: ["entorno"], pendiente: "Fase 1: la hora actual y la configuración entran por parámetro" },
   "src/core/datos/fecha-operacion.ts": { nivel: "P2", senales: ["reloj"], pendiente: "Fase 1: la hora actual y la configuración entran por parámetro" },
   "src/core/features/empresa/aceptar-invitacion-de-usuario.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase", "escribeEnLaBase"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
   "src/core/features/empresa/aceptar-invitacion.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase", "escribeEnLaBase"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },

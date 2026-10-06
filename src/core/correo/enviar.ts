@@ -49,27 +49,17 @@ function problemaDelMensaje(m: MensajeDeCorreo): string | null {
   return null;
 }
 
-let enviadoresDelProceso: Partial<Record<CanalDeCorreo, EnviadorDeCorreo>> = {};
-
-function enviadorDelProceso(canal: CanalDeCorreo): EnviadorDeCorreo {
-  return (enviadoresDelProceso[canal] ??= crearEnviadorDelCanal(canal, process.env));
-}
-
-/** Para los tests de la selección: olvida los enviadores ya armados con el entorno del proceso. */
-export function olvidarEnviadoresDelProceso(): void {
-  enviadoresDelProceso = {};
-}
-
 /**
- * Manda un mail por el canal. NO lanza: un fallo vuelve como `{ ok: false, motivo, detalle }` y también se reporta a Sentry (una vez por
+ * Manda un mail por el canal CON el enviador que se le pasa (Pureza 1.4: el dominio no lee `process.env`; el enviador del proceso, armado con el entorno,
+ * lo arma `src/lib/enviar-correo.ts`). NO lanza: un fallo vuelve como `{ ok: false, motivo, detalle }` y también se reporta a Sentry (una vez por
  * arranque y causa; el detalle no lleva contenido del mail ni destinatarios).
  *
  * Llamar SIEMPRE después del commit, nunca dentro de una transacción: una transacción serializable se reintenta entera y volvería a mandar el mail.
  * Canal de avisos: si falla, la acción ya quedó hecha y se reenvía a mano (sin cola). Canal operativo: quien llama decide el reintento según `motivo`.
  */
-export async function enviarCorreo(canal: CanalDeCorreo, mensaje: MensajeDeCorreo): Promise<ResultadoDeEnvio> {
+export async function enviarConEnviador(canal: CanalDeCorreo, enviador: EnviadorDeCorreo, mensaje: MensajeDeCorreo): Promise<ResultadoDeEnvio> {
   const problema = problemaDelMensaje(mensaje);
-  const resultado: ResultadoDeEnvio = problema ? { ok: false, motivo: "DEFINITIVO", detalle: `mensaje inválido: ${problema}` } : await enviadorDelProceso(canal).enviar(mensaje);
+  const resultado: ResultadoDeEnvio = problema ? { ok: false, motivo: "DEFINITIVO", detalle: `mensaje inválido: ${problema}` } : await enviador.enviar(mensaje);
   if (!resultado.ok) await reportarErrorUnaVez(`correo:${canal}:${resultado.motivo}:${resultado.detalle}`, new Error(`Correo ${canal} no enviado (${resultado.motivo}): ${resultado.detalle}`), "correo");
   return resultado;
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { enviarCorreo } from "@/core/correo/enviar";
+import { enviarCorreo } from "@/lib/enviar-correo";
 import { enlaceDeInvitacion, mensajeDeInvitacionDeUsuario, mensajeDeInvitacionDeVinculacion, urlPublicaDeLaApp, type TipoDeInvitacion } from "@/core/features/empresa/invitacion";
 import type { PrismaClient } from "@prisma/client";
 import { reportarErrorUnaVez } from "@/lib/reportar-error";
