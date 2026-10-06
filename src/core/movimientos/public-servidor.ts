@@ -2,7 +2,7 @@
  * Fachada PÚBLICA DE SERVIDOR del dominio `movimientos` (Task #41, Fase C2 — mismo patrón que el piloto C1 de `core/catalogo/`).
  *
  * Los módulos de `movimientos` que alcanzan la base (`@/lib/db`) o el runtime de Prisma, directa o transitivamente — o que
- * trabajan sobre una transacción de Prisma que les pasan (`idempotencia`, `producto-cache`). Separada de `public.ts` a
+ * trabajan sobre una transacción de Prisma que les pasan (`idempotencia`). Separada de `public.ts` a
  * propósito: esa la importan módulos que terminan en el bundle del cliente, y esta no puede llegar ahí. `reintentar` es
  * código puro, pero es el ciclo de reintento de `conTransaccionSerializable` (orquestación de escrituras del servidor): va acá
  * y no en `public.ts` para que la regla `accion-migrada-sin-orquestacion` no se pueda esquivar por la fachada pura.
@@ -31,6 +31,5 @@ export {
   seccionesConStock,
   validarStockSuficiente,
 } from "./stock";
-export { crearCacheProducto } from "./producto-cache";
 export type { AvisoStockNegativo } from "./registrar-venta";
 export { resolverPrecioVenta } from "./precio-venta";

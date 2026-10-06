@@ -11,7 +11,7 @@ import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type P
 import { cargarDatosDeOrigen, prepararOrigen } from "@/core/movimientos/origen-venta-datos";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/core/reportes/public-servidor";
-import { crearCacheProducto } from "@/core/movimientos/producto-cache";
+import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { escribirOperacionDeVenta } from "@/server/persistencia/movimientos/escribir-venta";

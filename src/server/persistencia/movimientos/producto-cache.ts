@@ -1,10 +1,11 @@
+import "server-only";
 import type { Prisma } from "@prisma/client";
 
 async function buscarProductoConUnidades(tx: Prisma.TransactionClient, id: string) {
   return tx.producto.findUnique({ where: { id }, include: { unidadStock: true, unidadCompra: true } });
 }
 
-export type ProductoConUnidades = Awaited<ReturnType<typeof buscarProductoConUnidades>>;
+type ProductoConUnidades = Awaited<ReturnType<typeof buscarProductoConUnidades>>;
 
 /**
  * Memoiza producto.findUnique DENTRO de una misma transacción — el mismo
