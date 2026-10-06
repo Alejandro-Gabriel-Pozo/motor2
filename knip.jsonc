@@ -34,6 +34,8 @@
     "scripts/*.ts",
     // Igual, en la subcarpeta de los scripts de la consola de plataforma (`npm run plataforma:crear-admin`).
     "scripts/plataforma/*.ts",
+    // Inventario y analizador de pureza del plan de pureza (PR 0.1, `npm run inventario:arquitectura`): el comando lo corre quien audita y lo importan los tests.
+    "scripts/arquitectura/*.ts",
 
     // Las 4 configs de Vitest que NO son la principal (seed de demo, seed de 6 meses, carta de "La Cuadra", invariantes
     // de la demo) y la config de Playwright de la demo. Se declaran como entradas a secas y NO en la sección `vitest` /
