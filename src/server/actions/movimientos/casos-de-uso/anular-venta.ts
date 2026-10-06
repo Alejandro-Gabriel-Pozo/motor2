@@ -36,6 +36,7 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic; el segundo intento ve "ya anulada" (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo).
+ * @ficha permiso=anular_venta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=NEW_DATE
  */
 export async function anularVentaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

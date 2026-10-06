@@ -38,6 +38,7 @@ import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribi
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (campo anuladaEn).
+ * @ficha permiso=anular_compra transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=NEW_DATE
  */
 export async function anularCompraCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

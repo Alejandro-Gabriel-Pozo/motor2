@@ -36,6 +36,7 @@ import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsigna
  * @idempotency I3 (claveIdempotencia + payloadHash) — índice único + catch de P2002, no conTransaccionSerializable (sin invariante de agregado que proteger bajo concurrencia).
  * @transaction prisma.$transaction simple (no SERIALIZABLE — la única carrera posible es el insert duplicado, que resuelve el índice único de PagoConsignante.claveIdempotencia).
  * @sideEffects registrarCambioAuditado (campo importe).
+ * @ficha permiso=pagar_consignante transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 export async function registrarPagoConsignanteCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "db" | "transaccion">,

@@ -34,6 +34,7 @@ import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ej
  * @idempotency No aplica (nunca la tuvo) — una segunda emisión ve el ejemplar ya vigente y se rechaza (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (campo ejemplarTicket).
+ * @ficha permiso=pos_emitir_ticket_corregido transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=NEW_DATE
  */
 export async function emitirTicketCorregidoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

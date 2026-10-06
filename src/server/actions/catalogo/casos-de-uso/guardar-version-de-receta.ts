@@ -49,6 +49,7 @@ import {
  * @idempotency No aplica — append-only, cada guardado crea una versión nueva; no hay un "duplicado" que detectar.
  * @transaction conTransaccionSerializable (SERIALIZABLE), reabierta hasta 5 veces vía conReintento si choca el UNIQUE(productoId, version) o hay conflicto de escritura.
  * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
+ * @ficha permiso=guardar_receta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 /** Dónde se guarda la versión: la serie CENTRAL (`sucursalId` null) o la PROPIA de una sucursal. */
 export type DestinoDeVersionDeReceta = { sucursalId: null } | { sucursalId: string; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };

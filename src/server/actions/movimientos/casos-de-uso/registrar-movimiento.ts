@@ -130,6 +130,7 @@ async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
  * @sideEffects registrarProveedoresDeLaCompra (Compra, best-effort, FUERA de la transacción, solo si no es repetida) — un upsertProveedorPorProducto por línea con unidad de compra conocida.
+ * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function registrarMovimientoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
