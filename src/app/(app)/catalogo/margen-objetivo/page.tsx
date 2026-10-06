@@ -3,6 +3,7 @@ import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { FOOD_COST_OBJETIVO_PCT, resolverObjetivoFoodCost } from "@/core/reportes/margen-objetivo";
 import { cargarObjetivosDeMargen } from "@/core/reportes/margen-objetivo-consulta";
 import { guardarMargenObjetivo } from "@/server/actions/reportes/margen-objetivo";
+import { listarCategoriasActivas } from "@/server/consultas/catalogo/categorias";
 import { FormConResultado } from "@/components/form-con-resultado";
 
 export default async function MargenObjetivoPage() {
@@ -12,7 +13,7 @@ export default async function MargenObjetivoPage() {
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "margen_objetivo_editar", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [objetivos, categorias] = await Promise.all([cargarObjetivosDeMargen(ctx.db), ctx.db.categoriaProducto.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } })]);
+  const [objetivos, categorias] = await Promise.all([cargarObjetivosDeMargen(ctx.db), listarCategoriasActivas(ctx.db)]);
 
   return (
     <div className="space-y-8">
