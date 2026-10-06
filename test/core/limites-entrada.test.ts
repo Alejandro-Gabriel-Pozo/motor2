@@ -27,11 +27,12 @@ import {
   guardComandoRechazarEnvioTraspaso,
   guardComandoRechazarSolicitudTraspaso,
 } from "../../src/core/features/traspasos/traspaso-comandos.guard";
-import { validarCabecera, validarIngredientes, validarPasos, type IngredienteInput } from "../../src/core/catalogo/receta-validacion";
+import { validarCabecera, validarIngredientes, validarPasos, type DatosParaValidarReceta, type IngredienteInput } from "../../src/core/catalogo/receta-validacion";
 import { crearEmpresaSchema } from "../../src/core/features/empresa/empresa.schema";
 
 const largo = (n: number) => "x".repeat(n);
-const sinDb = {} as never; // si algún chequeo de tope no cortara antes, tocar la base tira un TypeError
+// Sin catálogo leído: si algún chequeo de tope no cortara antes, la validación seguiría hasta buscar el producto y daría «no es una MP» en vez del mensaje del tope.
+const SIN_DATOS: DatosParaValidarReceta = { productos: new Map(), disponiblesEnAlguna: new Set(), insumos: new Map(), mensajeDeUnidadDeSustituto: new Map(), unidades: new Map() };
 
 describe("limites.ts (S-22/S-23)", () => {
   it("validarTextoLibre: recorta, vacío → null, pasado del tope → 'largo'", () => {
@@ -125,12 +126,12 @@ describe("recetas: topes (S-23)", () => {
   const ing = (extra: Partial<IngredienteInput> = {}): IngredienteInput => ({ insumoProductoId: "i", cantidad: 1, unidadId: "u", ...extra });
 
   it("cantidad de ingredientes, merma, observaciones y sustitutos", async () => {
-    expect(await validarIngredientes(sinDb, Array(MAXIMO_INGREDIENTES_RECETA + 1).fill(ing()), { seProduce: false })).toMatch(/no pueden ser más de/);
-    expect(await validarIngredientes(sinDb, [ing({ mermaPorcentaje: MERMA_PORCENTAJE_MAXIMA + 1 })], { seProduce: false })).toMatch(/La merma no puede superar/);
-    expect(await validarIngredientes(sinDb, [ing({ observaciones: largo(LARGO_MAXIMO_NOTAS + 1) })], { seProduce: false })).toMatch(/caracteres/);
+    expect(validarIngredientes(Array(MAXIMO_INGREDIENTES_RECETA + 1).fill(ing()), { seProduce: false }, SIN_DATOS)).toMatch(/no pueden ser más de/);
+    expect(validarIngredientes([ing({ mermaPorcentaje: MERMA_PORCENTAJE_MAXIMA + 1 })], { seProduce: false }, SIN_DATOS)).toMatch(/La merma no puede superar/);
+    expect(validarIngredientes([ing({ observaciones: largo(LARGO_MAXIMO_NOTAS + 1) })], { seProduce: false }, SIN_DATOS)).toMatch(/caracteres/);
     const sustitutos = Array(MAXIMO_SUSTITUTOS_POR_INGREDIENTE + 1).fill("s");
-    expect(await validarIngredientes(sinDb, [ing({ insumoSustitutoIds: sustitutos })], { seProduce: false })).toMatch(/no pueden ser más de/);
-    expect(await validarIngredientes(sinDb, [ing({ cantidad: 1e10 })], { seProduce: false })).toMatch(/demasiado grande/);
+    expect(validarIngredientes([ing({ insumoSustitutoIds: sustitutos })], { seProduce: false }, SIN_DATOS)).toMatch(/no pueden ser más de/);
+    expect(validarIngredientes([ing({ cantidad: 1e10 })], { seProduce: false }, SIN_DATOS)).toMatch(/demasiado grande/);
   });
 
   it("pasos: cantidad, orden, minutos y largo de la instrucción", () => {
@@ -145,9 +146,9 @@ describe("recetas: topes (S-23)", () => {
   });
 
   it("cabecera: textos y tiempos/raciones acotados", async () => {
-    expect(await validarCabecera(sinDb, { comentarios: largo(LARGO_MAXIMO_TEXTO_RECETA + 1) })).toMatch(/caracteres/);
-    expect(await validarCabecera(sinDb, { tiempoCoccionMinutos: ENTERO_MAXIMO_RAZONABLE + 1 })).toMatch(/no puede superar/);
-    expect(await validarCabecera(sinDb, { racionesCantidad: ENTERO_MAXIMO_RAZONABLE + 1 })).toMatch(/no puede superar/);
+    expect(validarCabecera({ comentarios: largo(LARGO_MAXIMO_TEXTO_RECETA + 1) }, SIN_DATOS)).toMatch(/caracteres/);
+    expect(validarCabecera({ tiempoCoccionMinutos: ENTERO_MAXIMO_RAZONABLE + 1 }, SIN_DATOS)).toMatch(/no puede superar/);
+    expect(validarCabecera({ racionesCantidad: ENTERO_MAXIMO_RAZONABLE + 1 }, SIN_DATOS)).toMatch(/no puede superar/);
   });
 });
 

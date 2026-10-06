@@ -9,6 +9,24 @@ export interface NodoDeGrupo {
 }
 
 /**
+ * Equivalente de creariaCicloGrupo_ (Catalogo.js:2483-2489) sobre el árbol YA LEÍDO: un grupo no puede ser su propio ancestro. Cubre la auto-referencia directa
+ * (`padreNuevoId === grupoId`) y el ciclo indirecto (el padre propuesto ya desciende de este grupo). Sin padre (`null`) pasa a ser raíz: nunca hay ciclo.
+ */
+export function creariaCicloEnArbol(arbol: ReadonlyMap<string, NodoDeGrupo>, grupoId: string, padreNuevoId: string | null): boolean {
+  if (!padreNuevoId) return false;
+  if (padreNuevoId === grupoId) return true;
+
+  const vistos = new Set<string>();
+  let actualId: string | null = padreNuevoId;
+  while (actualId && !vistos.has(actualId)) {
+    if (actualId === grupoId) return true;
+    vistos.add(actualId);
+    actualId = arbol.get(actualId)?.grupoPadreId ?? null;
+  }
+  return false;
+}
+
+/**
  * Breadcrumb legible "Bebidas > Bebidas sin alcohol" (raíz primero), equivalente de textoCadenaDeGrupos_ (Catalogo.js:2477-2480). Sube de hijo a raíz
  * siguiendo `grupoPadreId` y corta si repite un id ya visto (protección extra contra un ciclo colado a mano en la base) o si falta la fila: igual que
  * la versión que consulta. Un grupo que no está en el árbol da "".

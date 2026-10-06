@@ -1,7 +1,9 @@
 "use server";
 
 import { describirVueltaALaRecetaCentral } from "@/core/catalogo/public";
-import { ALCANCE_CENTRAL, cargarRecetaVigente, INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, obtenerEstadoDeRecetaPropia, type IngredienteInput, type PasoInput, type RecetaCompleta } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL, cargarRecetaVigente, INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type RecetaCompleta } from "@/core/catalogo/public-servidor";
+import { type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
+import { obtenerEstadoDeRecetaPropia } from "@/server/lecturas/catalogo/receta-propia";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";

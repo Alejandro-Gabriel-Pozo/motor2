@@ -1,7 +1,9 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
-import { esErrorDeUnicidad, validarCabecera, validarIngredientes, validarPasos } from "@/core/catalogo/public-servidor";
+import { validarCabecera, validarIngredientes, validarPasos } from "@/core/catalogo/public";
+import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import { cargarDatosParaValidarReceta } from "@/server/persistencia/catalogo/cargar-datos-para-validar-receta";
 import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-version.guard";
 import type { ComandoGuardarVersionDeReceta, ResultadoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.schema";
 import { conReintento, conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
@@ -70,13 +72,15 @@ export async function guardarVersionDeRecetaCasoDeUso(
     return fracaso("PRODUCTO_NO_ELEGIBLE", `"${producto.nombre}" no es elegible para tener receta — tiene que ser PV, o MP con "Se produce" activado.`);
   }
 
-  const invalidoIngredientes = await validarIngredientes(actor.db, items, producto);
+  // Lo del catálogo que la validación necesita, en lote (cuatro consultas); la validación en sí es pura.
+  const datosDeValidacion = await cargarDatosParaValidarReceta(actor.db, items, cabecera);
+  const invalidoIngredientes = validarIngredientes(items, producto, datosDeValidacion);
   if (invalidoIngredientes) return fracaso("INGREDIENTES_INVALIDOS", invalidoIngredientes);
 
   const invalidoPasos = validarPasos(pasos, items);
   if (invalidoPasos) return fracaso("PASOS_INVALIDOS", invalidoPasos);
 
-  const invalidoCabecera = await validarCabecera(actor.db, cabecera);
+  const invalidoCabecera = validarCabecera(cabecera, datosDeValidacion);
   if (invalidoCabecera) return fracaso("CABECERA_INVALIDA", invalidoCabecera);
 
   // Reintento con backoff y jitter (mismo ciclo de siempre, core/movimientos/reintentar.ts): dos ediciones simultáneas de la

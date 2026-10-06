@@ -1,6 +1,6 @@
-import type { PrismaClient } from "@prisma/client";
-import { whereDisponibleEn } from "./disponibilidad-producto-consulta";
-import { alcanceDeSucursal, cargarRecetasVigentes } from "./recetas-vigentes";
+import "server-only";
+import { alcanceDeSucursal, cargarRecetasVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import type { Db } from "@/lib/db-tipos";
 
 export interface DependenciasDeProducto {
   /** Platos cuya receta VIGENTE usa el producto y que están disponibles EN ESTA SUCURSAL, por nombre. */
@@ -21,7 +21,7 @@ export interface DependenciasDeProducto {
  * - saldo por sección, de ESTA sucursal únicamente. Se agrupa por sección y se ignoran las que suman cero (un +5 y un −5 en la
  *   misma sección no es saldo), pero no se netea entre secciones distintas.
  */
-export async function dependenciasParaDesactivar(productoId: string, sucursalId: string, db: PrismaClient): Promise<DependenciasDeProducto> {
+export async function dependenciasParaDesactivar(productoId: string, sucursalId: string, db: Db): Promise<DependenciasDeProducto> {
   const usos = await db.recetaIngrediente.findMany({
     where: { insumoProductoId: productoId, recetaVersion: { producto: whereDisponibleEn(sucursalId) } },
     select: { recetaVersion: { select: { id: true, productoId: true, producto: { select: { nombre: true } } } } },

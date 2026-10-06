@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, sembrarSeccion, prisma } from "../setup/test-db";
-import { dependenciasParaDesactivar } from "../../src/core/catalogo/desactivar-producto";
+import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
 
 /**
  * Qué depende de un producto antes de darlo de baja EN UNA SUCURSAL (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §6.2):
