@@ -16,7 +16,9 @@ export async function calcularMargenRealDelPeriodo(
   /** El catálogo ya cargado de la misma sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
   productos?: Map<string, InfoProductoReporte>,
   /** El índice de recetas ya cargado, mismo motivo (ver `obtenerReportePorPeriodoConCatalogo`). */
-  indiceRecetas?: IndiceRecetas
+  indiceRecetas?: IndiceRecetas,
+  /** Los costos de venta ya reconstruidos (clave `claveCostoHistorico`): quien costea MUCHOS grupos de ventas (p. ej. un grupo por cliente) los reconstruye UNA vez para todos y se los pasa, en vez de que cada llamada lea el historial de compras. Sin esto, se reconstruyen acá. */
+  costosReconstruidosDeAntemano?: ReadonlyMap<string, number | null>
 ): Promise<MargenRealDelPeriodo> {
   let ingresoConCostoReal = 0;
   let costoRealTotal = 0;
@@ -25,7 +27,7 @@ export async function calcularMargenRealDelPeriodo(
 
   const ventasSinPrecioExcluidas = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal <= 0).length;
   const ventasSinCosto = items.filter((it) => it.proceso === "VENTA" && !it.anulada && it.precioTotal > 0 && it.costoUnitarioVenta === null);
-  const costosReconstruidos = await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos, indiceRecetas);
+  const costosReconstruidos = costosReconstruidosDeAntemano ?? (await reconstruirCostosDeVenta(sucursalId, ventasSinCosto, db, productos, indiceRecetas));
 
   const porProducto = new Map<string, FilaMargenRealProducto>();
   const costoPorItem: (number | null)[] = new Array(items.length).fill(null);
