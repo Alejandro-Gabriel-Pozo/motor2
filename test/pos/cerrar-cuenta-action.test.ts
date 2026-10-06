@@ -11,9 +11,9 @@ import { registrarConteoFisico } from "../../src/server/actions/movimientos/cont
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/server/consultas/stock/alertas";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
-import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
-import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
-import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
+import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
+import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
+import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 
 /**
  * Cierre de cuenta (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 6): registra la venta con el núcleo

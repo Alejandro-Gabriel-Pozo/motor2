@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarSalon } from "./salon-fixture";
-import { cargarPromoCartaParaAgregar } from "../../src/core/pos/promo-combo-consulta";
-import { cargarSelectorCartaPos } from "../../src/core/pos/selector-carta-consulta";
+import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
+import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { pediblesDeEntrada } from "../../src/core/pos/selector-carta";
 
 /**

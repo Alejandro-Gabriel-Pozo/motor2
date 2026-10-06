@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { crearMozo, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
-import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
+import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
 import { listarRegistrosAuditoria } from "../../src/core/permisos/auditoria";
 
 /**

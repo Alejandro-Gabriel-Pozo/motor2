@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 import { cargarAdminCarta } from "../../src/core/carta/admin-consulta";
-import { cargarSelectorCartaPos } from "../../src/core/pos/selector-carta-consulta";
+import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 
 /**
  * Carta PROPIA de cada sucursal (ADR-009, C3/C4; decisión del dueño 2026-10-02). Este archivo era la caracterización «la estructura de la carta

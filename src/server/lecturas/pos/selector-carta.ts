@@ -1,17 +1,16 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal, resolverMenuCarta } from "@/core/carta/public-servidor";
 import { tieneStockReal } from "@/core/movimientos/public";
-import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "./selector-carta";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "@/core/pos/public";
+import type { Db } from "@/lib/db-tipos";
 
 /**
  * Capa de LECTURA del selector por sección de carta del POS (docs/plan-selector-carta-pos-2026-09-25.md) y por carpeta de género
  * (docs/plan-genero-carta-2026-09-26.md) — separada de `selector-carta.ts` (puro) por el mismo motivo que `menu-consulta.ts`.
- * Solo lee. Vive en `core/pos` y no en `core/carta`: es una necesidad del salón que REUSA la carta sin tocarla (mismo criterio
- * que `grupo-producto-consulta.ts`).
+ * Solo lee. Vive en `server/lecturas/pos` (ADR-026: la leen la pantalla de la mesa Y la acción de agregar ítems, que la revalida) y no en `core`: es una
+ * necesidad del salón que REUSA la carta sin tocarla (mismo criterio que `grupo-producto-consulta.ts`).
  *
  *  - La estructura: la carta pública de la sucursal, tal cual (`resolverMenuCarta`). Sucursal inactiva → `null` → todo a «Fuera de
  *    carta».

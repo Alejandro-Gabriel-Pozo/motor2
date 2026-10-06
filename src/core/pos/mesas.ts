@@ -1,4 +1,3 @@
-import type { PrismaClient } from "@prisma/client";
 import { esNumeroFinito } from "@/core/numero";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 
@@ -129,26 +128,22 @@ export interface MapaDeMesas {
   siguienteNumero: number;
 }
 
-/**
- * Todas las mesas de la sucursal, ordenadas por número, con su estado derivado — UNA sola consulta (mesas + cuenta abierta +
- * ítems + quién la abrió). La página la llama directo, después de `requierePermisoVer(…, "pos_mesas")`: no es una Server Action
- * de lectura (mismo patrón que stock/conteo-frecuencia/page.tsx con `sugerirInsumosClaseA`).
- */
-export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient, ahora: Date = new Date()): Promise<MapaDeMesas> {
-  const filas = await db.mesa.findMany({
-    where: { sucursalId },
-    orderBy: { numero: "asc" },
-    include: {
-      cuentas: {
-        where: { cerradaEn: null },
-        include: {
-          items: { select: { cantidad: true, precioUnitario: true, numeroEnvio: true } },
-          abiertaPor: { select: { name: true, email: true } },
-        },
-      },
-    },
-  });
+/** Una mesa de la sucursal con su cuenta abierta (si tiene), tal como la lee la consulta (`server/consultas/pos/mesas.ts`): importes ya en números. */
+export interface FilaDeMesa {
+  id: string;
+  numero: number;
+  cuentas: {
+    abiertaEn: Date;
+    items: { cantidad: number; precioUnitario: number; numeroEnvio: number | null }[];
+    abiertaPor: { name: string | null; email: string };
+  }[];
+}
 
+/**
+ * Todas las mesas de la sucursal, ordenadas por número, con su estado derivado, a partir de las filas ya leídas (mesas + cuenta abierta + ítems + quién la
+ * abrió). Puro: la lectura es `obtenerMapaDeMesas` en `server/consultas/pos/mesas.ts`, que la página llama directo después de `requierePermisoVer(…, "pos_mesas")`.
+ */
+export function armarMapaDeMesas(filas: readonly FilaDeMesa[], ahora: Date): MapaDeMesas {
   const mesas = filas.map((fila): MesaEnMapa => {
     const cuenta = fila.cuentas[0] ?? null; // el índice único parcial garantiza a lo sumo una abierta
     const items = cuenta?.items ?? [];
@@ -157,9 +152,9 @@ export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient, a
       numero: fila.numero,
       estado: resolverEstadoMesa(cuenta),
       // Redondeo a los 4 decimales de la columna (Decimal(14, 4)): la suma en coma flotante no deja «2,0000000001 productos».
-      productosSinEnviar: Math.round(items.filter((i) => i.numeroEnvio === null).reduce((suma, i) => suma + Number(i.cantidad), 0) * 10_000) / 10_000,
+      productosSinEnviar: Math.round(items.filter((i) => i.numeroEnvio === null).reduce((suma, i) => suma + i.cantidad, 0) * 10_000) / 10_000,
       // Mismo criterio que obtenerDetalleDeMesa/ticket/cerrarCuenta: Σ importeDeLinea, no la suma cruda re-redondeada.
-      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(Number(i.cantidad), Number(i.precioUnitario)), 0)),
+      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, i.precioUnitario), 0)),
       mesero: cuenta ? nombreDelMesero(cuenta.abiertaPor) : null,
       tiempoAbierta: cuenta ? tiempoDesde(cuenta.abiertaEn, ahora) : null,
       pedidosEnviados: new Set(items.flatMap((i) => (i.numeroEnvio === null ? [] : [i.numeroEnvio]))).size,

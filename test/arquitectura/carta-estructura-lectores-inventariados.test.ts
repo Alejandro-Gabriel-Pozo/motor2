@@ -21,7 +21,7 @@ const ARCHIVOS_PERMITIDOS = [
   "core/carta/menu-consulta.ts",
   "core/carta/admin-consulta.ts",
   "core/carta/grupo-producto-consulta.ts",
-  "core/pos/selector-carta-consulta.ts",
+  "server/lecturas/pos/selector-carta.ts",
   "server/actions/carta/secciones.ts",
   "server/actions/carta/generos.ts",
   "server/actions/carta/generos-compartido.ts",

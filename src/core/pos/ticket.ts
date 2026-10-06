@@ -1,11 +1,8 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { claveDeLineaDeVenta, lineasDeVenta } from "./cuenta";
 import { nombreDelMesero } from "./mesas";
 import type { NumeroDeTicket } from "./numeracion-ticket";
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Ticket de cierre de una cuenta: el documento para el CLIENTE, con precios (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B5/B8).
@@ -99,12 +96,12 @@ export function armarTicketImpresoEn(items: readonly ItemConVenta[], impresaEn: 
 }
 
 /**
- * Líneas y total de lo que sigue vendido AHORA: el caso «impresaEn = este instante» de `armarTicketImpresoEn` (ninguna anulación
+ * Líneas y total de lo que sigue vendido en `ahora` (el reloj entra por parámetro, Pureza Fase 3): el caso «impresaEn = este instante» de `armarTicketImpresoEn` (ninguna anulación
  * real puede ser posterior a "ahora", así que el filtro se reduce a `anuladaEn === null`). Funciona por línea porque `cerrarCuenta`
  * enlaza a la operación de su línea TODOS los ítems de esa línea (originales y filas espejo).
  */
-export function armarTicketVigente(items: readonly ItemConVenta[], descuentoPorcentaje: number | null = null): { lineas: LineaDeTicket[]; total: number } {
-  return armarTicketImpresoEn(items, new Date(), descuentoPorcentaje);
+export function armarTicketVigente(items: readonly ItemConVenta[], ahora: Date, descuentoPorcentaje: number | null = null): { lineas: LineaDeTicket[]; total: number } {
+  return armarTicketImpresoEn(items, ahora, descuentoPorcentaje);
 }
 
 /** Estado del último ejemplar impreso en `impresaEn` (sin número: el cierre de la cuenta), según las Operaciones VENTA de la cuenta. */
@@ -194,45 +191,48 @@ export function armarTicket(
   return { lineas, total };
 }
 
-/**
- * Las últimas cuentas cerradas CON VENTA de la mesa (al menos un ítem con `operacionId`: quedan afuera las liberadas sin ítems y las
- * cerradas sin venta), de la más nueva a la más vieja — una sola consulta. Aislada por sucursal: una mesa de otra sucursal no da nada.
- */
-export async function obtenerTicketsRecientes(sucursalId: string, mesaId: string, db: Db, limite: number = TICKETS_RECIENTES_POR_MESA): Promise<TicketDeCuenta[]> {
-  const cuentas = await db.cuenta.findMany({
-    where: { mesaId, mesa: { sucursalId }, cerradaEn: { not: null }, items: { some: { operacionId: { not: null } } } },
-    orderBy: [{ cerradaEn: "desc" }, { id: "desc" }],
-    take: limite,
-    include: {
-      abiertaPor: { select: { name: true, email: true } },
-      cliente: { select: { nombre: true } },
-      items: {
-        orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
-        include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } }, promoCuenta: { select: { id: true, titulo: true } } },
-      },
-      ejemplaresTicket: {
-        orderBy: { ejemplar: "desc" },
-        take: 1,
-        select: { numero: true, ejemplar: true, emitidoEn: true, corrigeA: { select: { numero: true, ejemplar: true } } },
-      },
-    },
-  });
+/** Una cuenta cerrada con venta, tal como la lee la consulta (`server/consultas/pos/tickets.ts`): importes ya en números. */
+export interface CuentaCerradaLeida {
+  id: string;
+  cerradaEn: Date | null;
+  descuentoPorcentaje: number | null;
+  abiertaPor: { name: string | null; email: string };
+  cliente: { nombre: string } | null;
+  items: {
+    productoId: string;
+    producto: { nombre: string };
+    cantidad: number;
+    precioUnitario: number;
+    precioCartaUnitario: number | null;
+    operacionId: string | null;
+    operacion: { anuladaEn: Date | null } | null;
+    promoCuenta: { id: string; titulo: string } | null;
+  }[];
+  ejemplaresTicket: {
+    numero: number;
+    ejemplar: number;
+    emitidoEn: Date;
+    corrigeA: { numero: number; ejemplar: number } | null;
+  }[];
+}
 
+/** Los tickets de las cuentas cerradas ya leídas, de la más nueva a la más vieja (el orden lo trae la consulta). Puro: no consulta la base. */
+export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ahora: Date): TicketDeCuenta[] {
   return cuentas.map((cuenta) => {
-    const cerradaEn = cuenta.cerradaEn ?? new Date(0); // el `where` ya exige cerradaEn no nulo
+    const cerradaEn = cuenta.cerradaEn ?? new Date(0); // la consulta ya exige cerradaEn no nulo
     const items: ItemConVenta[] = cuenta.items.map((i) => ({
       productoId: i.productoId,
       productoNombre: i.producto.nombre,
-      cantidad: Number(i.cantidad),
-      precioUnitario: Number(i.precioUnitario),
-      precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
+      cantidad: i.cantidad,
+      precioUnitario: i.precioUnitario,
+      precioCartaUnitario: i.precioCartaUnitario,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
     }));
     // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
-    const descuentoPorcentaje = cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null;
-    const { lineas, total } = armarTicketVigente(items, descuentoPorcentaje);
+    const descuentoPorcentaje = cuenta.descuentoPorcentaje;
+    const { lineas, total } = armarTicketVigente(items, ahora, descuentoPorcentaje);
     const ultimo = cuenta.ejemplaresTicket[0];
     return {
       cuentaId: cuenta.id,

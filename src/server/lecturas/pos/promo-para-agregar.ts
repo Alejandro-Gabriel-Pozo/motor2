@@ -1,11 +1,9 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import "server-only";
 import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { precioLocalActivoEn } from "@/core/catalogo/public-servidor";
-import { cargarSelectorCartaPos } from "./selector-carta-consulta";
-import { pediblesDeEntrada } from "./selector-carta";
-import type { CupoPromoDefinicion } from "./promo-combo";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { pediblesDeEntrada, type CupoPromoDefinicion } from "@/core/pos/public";
+import { cargarSelectorCartaPos } from "@/server/lecturas/pos/selector-carta";
+import type { Db } from "@/lib/db-tipos";
 
 /**
  * Capa de LECTURA de una promo ARMABLE para agregarla a una cuenta (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a) —

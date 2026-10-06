@@ -1,4 +1,3 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
 import { precioCobradoConDescuentos } from "@/core/carta/public";
@@ -7,10 +6,8 @@ import { nombreDelMesero, tiempoDesde } from "./mesas";
 import { validarCantidadPedido } from "./cantidad-pedido";
 
 // Re-exportada: quien ya la importaba de acá (test/pos/cuenta.test.ts, esta misma Server Action) sigue andando igual. Vive en
-// `cantidad-pedido.ts` porque ESTE archivo importa `@/lib/db` a nivel de módulo — un cliente no puede importarlo ni para esto solo.
+// `cantidad-pedido.ts` por historia: la lectura de la mesa vivía en este archivo y un cliente no podía importarlo.
 export { validarCantidadPedido };
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Cuenta de una mesa: núcleo puro y de consulta de «tomar pedido» (módulo POS, docs/plan-tomar-pedido-2026-09-25.md, paso 2).
@@ -211,31 +208,40 @@ export interface DetalleDeMesa {
   cuenta: DetalleDeCuenta | null;
 }
 
+/** La mesa pedida con su cuenta abierta (si tiene) y sus ítems, tal como la lee la consulta (`server/consultas/pos/detalle-de-mesa.ts`): importes ya en números. */
+export interface MesaConCuentaLeida {
+  id: string;
+  numero: number;
+  cuentas: {
+    id: string;
+    abiertaEn: Date;
+    comensales: number | null;
+    clienteId: string | null;
+    cliente: { nombre: string } | null;
+    descuentoPorcentaje: number | null;
+    abiertaPor: { name: string | null; email: string };
+    items: {
+      id: string;
+      productoId: string;
+      producto: { nombre: string; unidadStock: { decimales: number } };
+      cantidad: number;
+      precioUnitario: number;
+      precioCartaUnitario: number | null;
+      numeroEnvio: number | null;
+      anulaAItemId: string | null;
+      motivoAnulacion: string | null;
+      creadoPor: { name: string | null; email: string } | null;
+      creadoEn: Date;
+      promoCuenta: { id: string; titulo: string } | null;
+    }[];
+  }[];
+}
+
 /**
- * La mesa pedida con su cuenta abierta (si tiene), agrupada por envío — una sola consulta. `null` si la mesa no existe o no es de
- * esta sucursal (el aislamiento por sucursal vive acá, no en quien llama).
+ * La mesa pedida con su cuenta abierta (si tiene), agrupada por envío, a partir de las filas ya leídas. `null` si la mesa no existe o no es de esta sucursal
+ * (eso lo decide la consulta: `obtenerDetalleDeMesa` en `server/consultas/pos/detalle-de-mesa.ts`, donde vive el aislamiento por sucursal).
  */
-export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, db: Db, ahora: Date = new Date()): Promise<DetalleDeMesa | null> {
-  const mesa = await db.mesa.findFirst({
-    where: { id: mesaId, sucursalId },
-    include: {
-      cuentas: {
-        where: { cerradaEn: null },
-        include: {
-          abiertaPor: { select: { name: true, email: true } },
-          cliente: { select: { nombre: true } },
-          items: {
-            orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
-            include: {
-              producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } },
-              creadoPor: { select: { name: true, email: true } },
-              promoCuenta: { select: { id: true, titulo: true } },
-            },
-          },
-        },
-      },
-    },
-  });
+export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date): DetalleDeMesa | null {
   if (!mesa) return null;
 
   const fila = mesa.cuentas[0] ?? null; // el índice único parcial garantiza a lo sumo una abierta
@@ -246,9 +252,9 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
     productoId: i.productoId,
     productoNombre: i.producto.nombre,
     decimales: i.producto.unidadStock.decimales,
-    cantidad: Number(i.cantidad),
-    precioUnitario: Number(i.precioUnitario),
-    precioListaUnitario: !i.promoCuenta && i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
+    cantidad: i.cantidad,
+    precioUnitario: i.precioUnitario,
+    precioListaUnitario: !i.promoCuenta && i.precioCartaUnitario !== null ? i.precioCartaUnitario : null,
     numeroEnvio: i.numeroEnvio,
     anulaAItemId: i.anulaAItemId,
     motivoAnulacion: i.motivoAnulacion,
@@ -258,7 +264,7 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
     promoTitulo: i.promoCuenta?.titulo ?? null,
   }));
   const { sinEnviar, envios } = agruparPorEnvio(items);
-  const descuentoPorcentaje = fila.descuentoPorcentaje !== null ? Number(fila.descuentoPorcentaje) : null;
+  const descuentoPorcentaje = fila.descuentoPorcentaje;
 
   return {
     mesa: { id: mesa.id, numero: mesa.numero },

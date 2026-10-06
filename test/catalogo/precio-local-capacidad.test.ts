@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { preciosLocalesVigentes } from "../../src/core/catalogo/public-servidor";
 import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
-import { cargarSelectorCartaPos } from "../../src/core/pos/selector-carta-consulta";
+import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { construirMapaProductos } from "../../src/core/reportes/comun";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 

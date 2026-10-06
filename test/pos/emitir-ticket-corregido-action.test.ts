@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { cerrarCuenta, emitirTicketCorregido } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
+import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 
 /**
  * Ejemplar de corrección del ticket (src/server/actions/pos/cuenta.ts, docs/plan-numeracion-ticket-2026-09-25.md, paso 7): después de

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
-import { calcularMetricas, filtrarMesas, obtenerMapaDeMesas, resolverEstadoMesa, tiempoDesde, validarMaxMesasAbiertas, type MesaEnMapa } from "../../src/core/pos/mesas";
+import { calcularMetricas, filtrarMesas, resolverEstadoMesa, tiempoDesde, validarMaxMesasAbiertas, type MesaEnMapa } from "../../src/core/pos/mesas";
+import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
 
 /** Núcleo del mapa de mesas (src/core/pos/mesas.ts): derivación del estado, métricas, tiempos, filtros y la consulta real. */
 
