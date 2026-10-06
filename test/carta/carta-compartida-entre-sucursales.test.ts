@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
-import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 

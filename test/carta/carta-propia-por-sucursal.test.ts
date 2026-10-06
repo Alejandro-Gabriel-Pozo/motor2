@@ -17,7 +17,7 @@ import {
   quitarOpcionItemAgrupadoCarta,
 } from "../../src/server/actions/carta/items-agrupados";
 import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
-import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 
 /**
  * Carta PROPIA de cada sucursal (ADR-009, C3/C4; decisión del dueño 2026-10-02), contra Postgres real y a través de las Server Actions: escribir

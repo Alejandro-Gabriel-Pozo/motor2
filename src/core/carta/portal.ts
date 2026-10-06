@@ -271,3 +271,12 @@ export function avisoImagenSinMapa(hayImagen: boolean, modo: LayoutPortal<Sucurs
   if (totalSucursales === 0) return "La imagen está cargada, pero ninguna sucursal está publicada en el portal: sin sucursales publicadas no se ve el mapa.";
   return "La imagen está cargada, pero ninguna sucursal tiene posición en el mapa, por eso el portal se ve como lista. Cargá x, y y ancho en «Posición en el mapa del portal» de cada sucursal (más abajo).";
 }
+
+/** Una tarjeta del portal público de la empresa: lo que la UI dibuja y lo que la lectura (`server/lecturas/carta/publica.ts`) arma. */
+export interface EntradaPortalCarta {
+  slug: string;
+  etiqueta: string;
+  subtitulo: string | null;
+  /** Lugar de la tarjeta sobre el mapa del portal; `null` si `posX`/`posY`/`posW` no están los tres. */
+  posicion: PosicionPortal | null;
+}

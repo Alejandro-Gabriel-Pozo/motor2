@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * El camino con sesión (`obtenerContextoUsuario`) se niega a operar si el rol de la base salta el RLS y hay más de una empresa. La carta
- * pública (sin sesión) es el camino más expuesto: sus funciones (`core/carta/publica-sin-sesion.ts`) tienen que pasar por la misma
+ * pública (sin sesión) es el camino más expuesto: sus funciones (`server/carta-publica/sin-sesion.ts`) tienen que pasar por la misma
  * verificación. Dos controles: (1) de comportamiento, con el verificador rechazando; (2) estructural, por AST: toda exportación del
  * archivo es una función cuyo cuerpo es `conRolVerificado(...)`, así una exportación nueva que se olvide del chequeo falla.
  */
@@ -18,13 +18,13 @@ const { verificar, resolverEmpresaCarta, resolverPortalCarta, resolverConfigPort
 }));
 vi.mock("@/lib/db", () => ({ prisma: {} }));
 vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: () => ({}), verificarRolDeEjecucionDelProceso: verificar }));
-vi.mock("@/core/carta/empresa-carta", () => ({ resolverEmpresaCarta }));
-vi.mock("@/core/carta/publica-consulta", () => ({ resolverPortalCarta, resolverConfigPortal, resolverCartaPublica }));
+vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
+vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverConfigPortal, resolverCartaPublica }));
 
-import * as publica from "@/core/carta/publica-sin-sesion";
+import * as publica from "@/server/carta-publica/sin-sesion";
 
 const EMPRESA = { id: "e1", slug: "e1", nombre: "E1" };
-const ARCHIVO = join(__dirname, "../../src/core/carta/publica-sin-sesion.ts");
+const ARCHIVO = join(__dirname, "../../src/server/carta-publica/sin-sesion.ts");
 
 describe("la carta pública sin sesión verifica el rol de la base", () => {
   beforeEach(() => vi.clearAllMocks());

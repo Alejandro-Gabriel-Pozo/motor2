@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { decidirLayoutPortal, type EstiloPortal } from "@/core/carta/public";
-import type { EntradaPortalCarta } from "@/core/carta/public-servidor";
+import type { EntradaPortalCarta } from "@/core/carta/public";
 
 /**
  * Portal de sucursales de una empresa (ADR-006). Dos modos, decididos por `decidirLayoutPortal`:

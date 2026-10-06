@@ -1,8 +1,6 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { descuentosVigentes } from "@/core/carta/public";
 import { precioLocalActivoEn } from "@/core/catalogo/public-servidor";
-import { descuentosVigentes } from "./descuento-producto";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import type { Db } from "@/lib/db-tipos";
 
 /**
  * El ÚNICO lugar que lee `DescuentoProductoSucursal`. Los descuentos CONFIGURADOS de la sucursal (los que no tienen fila no están en el mapa = sin

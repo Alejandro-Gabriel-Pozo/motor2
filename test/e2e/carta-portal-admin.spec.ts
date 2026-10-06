@@ -1,7 +1,7 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
-import { resolverEmpresaCarta } from "../../src/core/carta/empresa-carta";
-import { resolverPortalCarta } from "../../src/core/carta/publica-consulta";
+import { resolverEmpresaCarta } from "../../src/server/lecturas/carta/empresa";
+import { resolverPortalCarta } from "../../src/server/lecturas/carta/publica";
 
 /**
  * Portal de sucursales (/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7) de punta a punta: agregar dos

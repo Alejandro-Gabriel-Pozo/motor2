@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Regla de arquitectura (docs/plan-carta-catalogo-2026-09-24.md, M5): la carta pública es un espejo de SOLO LECTURA del
- * catálogo. Ni la lógica de la carta (`src/core/carta/**`) ni las páginas que la sirven (`src/app/(carta-publica)/**`; Fase 8 del
+ * catálogo. Ni la lógica de la carta (`src/core/carta/**`, `src/server/lecturas/carta/**` y `src/server/carta-publica/**`, adonde se mudaron sus lecturas en la Fase 3 de pureza) ni las páginas que la sirven (`src/app/(carta-publica)/**`; Fase 8 del
  * ADR-006 borró el endpoint HTTP `src/app/api/carta/**`) pueden escribir en la base. Si alguna vez hiciera falta, la escritura va en una
  * Server Action con `conPermiso` (`src/server/actions/carta/`), nunca en el camino público — y esas acciones, a su vez, solo
  * pueden escribir en las 7 tablas de carta (SeccionCarta, ContenidoCartaProducto, PromoCarta,
@@ -27,9 +27,9 @@ import { describe, expect, it } from "vitest";
  * carta (paso 5, `guardarCuposPromoCarta`), nunca del camino público.
  */
 const SRC = join(__dirname, "../../src");
-const CARPETAS = ["core/carta", "app/(carta-publica)", "components/carta-publica"];
+const CARPETAS = ["core/carta", "server/lecturas/carta", "server/carta-publica", "app/(carta-publica)", "components/carta-publica"];
 /** Puntos de entrada de la carta sin sesión: de acá se calcula TODO lo que alcanza, no solo lo que vive en CARPETAS. */
-const ENTRADAS = (rel: string) => /^(app\/\(carta-publica\)\/|components\/carta-publica\/|core\/carta\/publica-sin-sesion\.ts$)/.test(rel);
+const ENTRADAS = (rel: string) => /^(app\/\(carta-publica\)\/|components\/carta-publica\/|server\/carta-publica\/sin-sesion\.ts$)/.test(rel);
 /** Escrituras toleradas fuera de CARPETAS (archivo → qué línea se acepta y por qué). Lista cerrada: agregar una acá exige un motivo. */
 const ESCRITURAS_TOLERADAS_EN_EL_ALCANCE: Record<string, { patron: RegExp; motivo: string }> = {
   "core/auth/base.ts": { patron: /\$executeRaw`SELECT set_config\('app\.(empresa_id|usuario_id|invitacion_hash)'/, motivo: "fija empresa/usuario/hash de invitación de la transacción (RLS, SET LOCAL); no escribe ningún dato" },
@@ -100,9 +100,9 @@ describe("carta: solo lectura", () => {
 
   it("encuentra los archivos de la carta (lógica y páginas públicas)", () => {
     const nombres = rutas.map((r) => relative(SRC, r).split(sep).join("/"));
-    expect(nombres).toContain("core/carta/menu-consulta.ts");
-    expect(nombres).toContain("core/carta/publica-consulta.ts");
-    expect(nombres).toContain("core/carta/publica-sin-sesion.ts");
+    expect(nombres).toContain("server/lecturas/carta/menu.ts");
+    expect(nombres).toContain("server/lecturas/carta/publica.ts");
+    expect(nombres).toContain("server/carta-publica/sin-sesion.ts");
     expect(nombres).toContain("app/(carta-publica)/carta-publica/[empresa]/page.tsx");
   });
 

@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVOS_PERMITIDOS = [
-  "core/carta/menu-consulta.ts",
+  "server/lecturas/carta/menu.ts",
   "server/consultas/carta/admin.ts",
   "server/lecturas/carta/grupo-de-producto.ts",
   "server/lecturas/pos/selector-carta.ts",

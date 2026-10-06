@@ -7,12 +7,12 @@ import { entrarComo, sembrarSalon } from "./salon-fixture";
 import { abrirCuenta } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
-import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
-import { descuentosConfiguradosEnSucursal } from "../../src/core/carta/descuento-producto-consulta";
-import { descuentosDeProductoEnSucursal } from "../../src/core/carta/public-servidor";
+import { descuentosConfiguradosEnSucursal } from "../../src/server/lecturas/carta/descuentos";
+import { descuentosDeProductoEnSucursal } from "../../src/server/lecturas/carta/descuentos";
 import { precioLocalActivoEn } from "../../src/core/catalogo/public-servidor";
 
 /**

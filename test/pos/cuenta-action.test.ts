@@ -7,7 +7,7 @@ import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon 
 import { abrirCuenta, corregirComensales, liberarMesa } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
 import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
-import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { crearMembresia } from "../setup/membresia";
 
 /** Toma de pedido (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 4): abrir, agregar, quitar, enviar, liberar. */

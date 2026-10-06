@@ -3,7 +3,7 @@ import { prisma } from "./fixtures/db";
 
 /**
  * Carta pública nueva (ADR-006, Fase 3): `/carta-publica/<empresa>/...`, sin sesión. La empresa `e2e` es la de
- * la base (fixtures/auth.ts, `asegurarBaseSeed`) y se resuelve por slug (src/core/carta/empresa-carta.ts).
+ * la base (fixtures/auth.ts, `asegurarBaseSeed`) y se resuelve por slug (src/server/lecturas/carta/empresa.ts).
  */
 const EMPRESA = "e2e";
 

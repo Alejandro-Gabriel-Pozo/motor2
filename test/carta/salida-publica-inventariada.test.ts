@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
-import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "../../src/core/carta/publica-consulta";
+import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "../../src/server/lecturas/carta/publica";
 
 /**
  * Lo que la carta pública devuelve SIN sesión está inventariado: cada clave que sale hacia el navegador figura en una lista cerrada

@@ -1,7 +1,8 @@
 import "server-only";
 import { disponibilidadDeProductos, precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
-import { descuentosConfiguradosEnSucursal, resolverMenuCartaConDiagnostico } from "@/core/carta/public-servidor";
+import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
+import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
 import type { Db } from "@/lib/db-tipos";
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */

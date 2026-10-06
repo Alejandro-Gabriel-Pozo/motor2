@@ -1,5 +1,5 @@
+import { esSlugPublicoValido } from "@/core/carta/public";
 import type { Db } from "@/lib/db-tipos";
-import { esSlugPublicoValido } from "./host";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`) y ADR-007 (A3): la empresa de la carta pública sale de la tabla

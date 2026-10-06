@@ -27,6 +27,10 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 const ALCANCE_CARTA_PUBLICA = [
   "^src/core/auth/(base|rol-de-ejecucion)\\.ts$",
   "^src/core/permisos/(acciones|capacidades-sucursal)\\.ts$",
+  // Pureza Fase 3 (PR de la carta pública): sus lecturas y el archivo que elige el cliente SIN sesión salieron de `core/carta` a `server/`. Misma lista cerrada, solo
+  // cambian las rutas: son EXACTAMENTE los cinco archivos de antes (menu-consulta, descuento-producto-consulta, empresa-carta, publica-consulta, publica-sin-sesion).
+  "^src/server/lecturas/carta/(menu|descuentos|empresa|publica)\\.ts$",
+  "^src/server/carta-publica/sin-sesion\\.ts$",
 ];
 
 /** Ruta literal (con `/`) → expresión regular anclada que matchea ESE archivo y nada más. */
@@ -221,16 +225,16 @@ module.exports = {
       comment:
         "La carta pública no alcanza —ni siquiera transitivamente— sesión, permisos, Server Actions ni lib/auth.ts, salvo lo de ALCANCE_CARTA_PUBLICA (lista cerrada, arriba). `carta-publica-aislada` solo mira imports directos: un helper intermedio los esquivaría.",
       severity: "error",
-      from: { path: "^src/(app/\\(carta-publica\\)/|components/carta-publica/|core/carta/publica-sin-sesion\\.ts$)" },
+      from: { path: "^src/(app/\\(carta-publica\\)/|components/carta-publica/|server/carta-publica/sin-sesion\\.ts$)" },
       to: { path: "^src/(core/auth/|core/permisos/|server/|lib/auth\\.ts$)", pathNot: ALCANCE_CARTA_PUBLICA, reachable: true },
     },
     {
       name: "publica-sin-sesion-solo-desde-carta-publica",
       comment:
-        "core/carta/publica-sin-sesion.ts elige el cliente de base SIN sesión (la empresa sale de la URL): solo lo importan las páginas de app/(carta-publica)/. Importarlo desde la app con sesión o un caso de uso saltearía el contexto de usuario.",
+        "server/carta-publica/sin-sesion.ts elige el cliente de base SIN sesión (la empresa sale de la URL): solo lo importan las páginas de app/(carta-publica)/. Importarlo desde la app con sesión o un caso de uso saltearía el contexto de usuario.",
       severity: "error",
-      from: { path: "^src/", pathNot: "^src/(app/\\(carta-publica\\)/|core/carta/publica-sin-sesion\\.ts$)" },
-      to: { path: "^src/core/carta/publica-sin-sesion\\.ts$" },
+      from: { path: "^src/", pathNot: "^src/(app/\\(carta-publica\\)/|server/carta-publica/sin-sesion\\.ts$)" },
+      to: { path: "^src/server/carta-publica/sin-sesion\\.ts$" },
     },
     {
       name: "carta-admin-sin-rutas-de-catalogo",

@@ -1,12 +1,7 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-import type { CartaV1 } from "./armar-menu";
-import type { EmpresaCarta } from "./empresa-carta";
-import { posicionCompleta, resolverEstiloPortal, type EstiloPortal, type PosicionPortal } from "./portal";
-import { estiloCartaPorDefecto, resolverEstiloCarta, type EstiloCarta } from "./estilo";
-import { resolverMenuCarta } from "./menu-consulta";
-import { esSlugPublicoValido } from "./host";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { esSlugPublicoValido, estiloCartaPorDefecto, posicionCompleta, resolverEstiloCarta, resolverEstiloPortal, type CartaV1, type EntradaPortalCarta, type EstiloCarta, type EstiloPortal } from "@/core/carta/public";
+import type { EmpresaCarta } from "@/server/lecturas/carta/empresa";
+import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
+import type { Db } from "@/lib/db-tipos";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: capa de LECTURA de la carta pública nueva
@@ -16,14 +11,6 @@ type Db = PrismaClient | Prisma.TransactionClient;
  */
 
 const numeroOnull = (d: { toNumber(): number } | null): number | null => (d === null ? null : d.toNumber());
-
-export interface EntradaPortalCarta {
-  slug: string;
-  etiqueta: string;
-  subtitulo: string | null;
-  /** Lugar de la tarjeta sobre el mapa del portal; `null` si `posX`/`posY`/`posW` no están los tres. */
-  posicion: PosicionPortal | null;
-}
 
 /**
  * El portal: solo las sucursales `publicada && sucursal.activo` (el registro HTTP anterior emitía TODAS con `activo: false` para que la

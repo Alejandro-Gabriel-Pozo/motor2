@@ -15,10 +15,10 @@ const { prismaFalso, resolverPortalCarta, resolverCartaPublica, resolverConfigPo
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
 vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
-vi.mock("@/core/carta/publica-consulta", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
-vi.mock("@/core/carta/empresa-carta", () => ({ resolverEmpresaCarta }));
-vi.mock("@/core/carta/publica-sin-sesion", async (importOriginal) => {
-  const real = await importOriginal<typeof import("@/core/carta/publica-sin-sesion")>();
+vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
+vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
+vi.mock("@/server/carta-publica/sin-sesion", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/server/carta-publica/sin-sesion")>();
   return { ...real, portalCartaPublico, configPortalPublica, cartaPublica };
 });
 vi.mock("@/components/carta-publica/portal-vista", () => ({ PortalVista: () => null }));
@@ -42,13 +42,13 @@ beforeEach(() => {
 
 describe("punto público sin sesión", () => {
   it("empresaCartaPublica resuelve el slug contra la base (el cliente sin sesión)", async () => {
-    const real = await vi.importActual<typeof import("@/core/carta/publica-sin-sesion")>("@/core/carta/publica-sin-sesion");
+    const real = await vi.importActual<typeof import("@/server/carta-publica/sin-sesion")>("@/server/carta-publica/sin-sesion");
     await real.empresaCartaPublica("la-cuadra");
     expect(resolverEmpresaCarta).toHaveBeenCalledWith("la-cuadra", prismaFalso);
   });
 
   it("portalCartaPublico y cartaPublica pasan la empresa recibida y la base DE ESA empresa (con contexto RLS) a la consulta", async () => {
-    const real = await vi.importActual<typeof import("@/core/carta/publica-sin-sesion")>("@/core/carta/publica-sin-sesion");
+    const real = await vi.importActual<typeof import("@/server/carta-publica/sin-sesion")>("@/server/carta-publica/sin-sesion");
 
     await real.portalCartaPublico(EMPRESA);
     await real.configPortalPublica(EMPRESA);

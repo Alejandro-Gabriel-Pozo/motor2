@@ -1,11 +1,7 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { armarMenuCarta, type CartaV1, type MenuArmado } from "./armar-menu";
-import { descuentosDeProductoEnSucursal } from "./descuento-producto-consulta";
-import { whereCartaDeSucursal } from "./carta-de-sucursal";
-import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { armarMenuCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type CartaV1, type MenuArmado } from "@/core/carta/public";
+import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
+import type { Db } from "@/lib/db-tipos";
 
 /**
  * Capa de LECTURA de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M3) — separada de `armar-menu.ts` (puro)

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
-import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 
 /**
  * resolverMenuCarta contra Postgres real (docs/plan-carta-catalogo-2026-09-24.md, M3): qué PV entran a la carta pública de

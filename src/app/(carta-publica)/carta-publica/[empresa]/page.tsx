@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { configPortalPublica, empresaCartaPublica, portalCartaPublico } from "@/core/carta/publica-sin-sesion";
+import { configPortalPublica, empresaCartaPublica, portalCartaPublico } from "@/server/carta-publica/sin-sesion";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 
 // Dinámico a propósito (sin caché): ver la nota de abajo.

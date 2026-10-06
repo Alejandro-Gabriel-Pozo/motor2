@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
-import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 import type { CartaV1 } from "../../src/core/carta/armar-menu";
 
 /**

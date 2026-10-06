@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProduc
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/movimientos/precio-local";
-import { resolverMenuCartaConDiagnostico } from "../../src/core/carta/menu-consulta";
+import { resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 
 /**
  * Sincronizar el precio de un producto agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): al cambiar el precio en
