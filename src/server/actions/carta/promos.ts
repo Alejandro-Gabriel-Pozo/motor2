@@ -1,6 +1,8 @@
 "use server";
 
 import { precioMinimoPromo } from "@/core/pos/promo-combo";
+import { seleccionDeSucursalDePromo } from "@/core/carta/promo-sucursal";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import {
   validarCantidadCupoPromo,
   validarOrdenCarta,
@@ -40,6 +42,7 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
     const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
     if (!titulo.ok) return error(titulo.mensaje);
     if (!titulo.valor) return error("La promo necesita un título.");
+    const tituloDePromo = titulo.valor;
     const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
     if (!descripcion.ok) return error(descripcion.mensaje);
     const precio = validarPrecioCarta(datos.precio);
@@ -54,12 +57,19 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
     if (datos.id) {
       const existente = await ctx.db.promoCarta.findUnique({ where: { id: datos.id } });
       if (!existente) return error("No se encontró la promo.");
-      await ctx.db.promoCarta.update({ where: { id: datos.id }, data });
+      // El cambio y su rastro van en UNA transacción (Pureza 0.7): un precio de promo cambiado sin dejar quién ni cuándo no puede existir.
+      await ctx.transaccion(async (tx) => {
+        await tx.promoCarta.update({ where: { id: existente.id }, data });
+        if (Number(existente.precio) !== precio.valor) await auditarPrecioDePromo(tx, ctx.usuarioId, existente.id, tituloDePromo, Number(existente.precio), precio.valor);
+      });
       revalidarCartasPublicas();
       return ok(`Promo "${titulo.valor}" guardada.`);
     }
     // La sucursal desde la que se crea la ofrece desde el primer momento; las demás la prenden cuando quieran (opt-in, sin fila = no la ofrecen).
-    await ctx.db.promoCarta.create({ data: { ...data, sucursales: { create: { sucursalId: ctx.sucursalId } } } });
+    await ctx.transaccion(async (tx) => {
+      const creada = await tx.promoCarta.create({ data: { ...data, sucursales: { create: { sucursalId: ctx.sucursalId } } } });
+      await auditarPrecioDePromo(tx, ctx.usuarioId, creada.id, tituloDePromo, null, precio.valor);
+    });
     revalidarCartasPublicas();
     return ok(`Promo "${titulo.valor}" creada en "${seccion.nombre}" y prendida en esta sucursal.`);
   });
@@ -109,10 +119,27 @@ export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioL
       const piso = pisoDePrecioDePromo(promo.cupos);
       if (piso !== null && valor < piso.minimo) return error(mensajePisoDePromo(promo.titulo, valor, piso));
     }
-    await ctx.db.promoCartaSucursal.upsert({
-      where: { promoCartaId_sucursalId: { promoCartaId, sucursalId: ctx.sucursalId } },
-      create: { promoCartaId, sucursalId: ctx.sucursalId, activa: false, precioLocal: valor },
-      update: { precioLocal: valor },
+    await ctx.transaccion(async (tx) => {
+      // El precio anterior se lee por la relación de la promo (el embudo `seleccionDeSucursalDePromo`, ver promo-sucursal-en-un-solo-lugar.test.ts), en la misma transacción que lo cambia.
+      const previa = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, select: { sucursales: seleccionDeSucursalDePromo(ctx.sucursalId) } });
+      const precioAnterior = previa?.sucursales[0]?.precioLocal != null ? Number(previa.sucursales[0].precioLocal) : null;
+      await tx.promoCartaSucursal.upsert({
+        where: { promoCartaId_sucursalId: { promoCartaId, sucursalId: ctx.sucursalId } },
+        create: { promoCartaId, sucursalId: ctx.sucursalId, activa: false, precioLocal: valor },
+        update: { precioLocal: valor },
+      });
+      if (precioAnterior !== valor) {
+        await registrarCambioAuditado(tx, {
+          entidad: "PromoCartaSucursal",
+          entidadId: `${promoCartaId}:${ctx.sucursalId}`,
+          campo: "precioLocal",
+          descripcion: `Promo "${promo.titulo}": precio en esta sucursal`,
+          valorAnterior: precioAnterior,
+          valorNuevo: valor,
+          actorId: ctx.usuarioId,
+          sucursalId: ctx.sucursalId,
+        });
+      }
     });
     revalidarCartasPublicas();
     return ok(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`);
@@ -200,5 +227,18 @@ export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readon
         ? `Cupos de "${promo.titulo}" guardados (${cuposValidados.length}): ahora es una promo armable en el POS.`
         : `"${promo.titulo}" volvió a ser informativa (sin cupos): el POS deja de ofrecerla para armar.`
     );
+  });
+}
+
+/** Deja en la auditoría quién cambió (o definió) el precio de una promo de la empresa y cuándo; va dentro de la transacción del cambio. */
+async function auditarPrecioDePromo(tx: Parameters<typeof registrarCambioAuditado>[0], actorId: string, promoCartaId: string, titulo: string, anterior: number | null, nuevo: number) {
+  await registrarCambioAuditado(tx, {
+    entidad: "PromoCarta",
+    entidadId: promoCartaId,
+    campo: "precio",
+    descripcion: `Promo "${titulo}": precio`,
+    valorAnterior: anterior,
+    valorNuevo: nuevo,
+    actorId,
   });
 }

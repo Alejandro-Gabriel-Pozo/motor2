@@ -40,6 +40,19 @@ describe("Presentaciones de compra alternativas", () => {
     expect(presentaciones[0]).toMatchObject({ unidadCompraId: unidadGId, factorConversion: 20, activa: true });
   });
 
+  it("audita el factor de conversión de la presentación: el alta (anterior null), el cambio y NO un reenvío sin cambio (Pureza 0.7)", async () => {
+    expect((await agregarPresentacionAlternativa(productoId, unidadGId, 20)).ok).toBe(true);
+    expect((await agregarPresentacionAlternativa(productoId, unidadGId, 20)).ok).toBe(true);
+    expect((await agregarPresentacionAlternativa(productoId, unidadGId, 25)).ok).toBe(true);
+
+    const presentacion = await prisma.presentacion.findFirstOrThrow({ where: { productoId, unidadCompraId: unidadGId } });
+    const registros = await prisma.registroAuditoria.findMany({ where: { entidad: "Presentacion", entidadId: presentacion.id }, orderBy: { creadoEn: "asc" } });
+    expect(registros.map((r) => [r.campo, r.valorAnterior, r.valorNuevo])).toEqual([
+      ["factorConversion", null, "20"],
+      ["factorConversion", "20", "25"],
+    ]);
+  });
+
   it("rechaza agregar la misma unidad que ya es la unidad de compra por defecto del producto", async () => {
     const resultado = await agregarPresentacionAlternativa(productoId, unidadKgId, 1);
     expect(resultado.ok).toBe(false);
