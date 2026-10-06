@@ -91,6 +91,49 @@ function esNombreNoReferencia(id: ts.Identifier): boolean {
   return false;
 }
 
+export interface LlamadaALaBase {
+  clase: "lectura" | "escritura";
+  /** `producto.findMany`, `$queryRaw`, `$transaction`… */
+  nombre: string;
+  linea: number;
+}
+
+function encontrarLlamadasALaBase(archivo: ts.SourceFile, delegados: ReadonlySet<string>): LlamadaALaBase[] {
+  const llamadas: LlamadaALaBase[] = [];
+  const linea = (nodo: ts.Node) => archivo.getLineAndCharacterOfPosition(nodo.getStart(archivo)).line + 1;
+  const sqlCrudo = (nodo: ts.Node, nombre: string) => {
+    if (SQL_CRUDO_DE_LECTURA.has(nombre)) llamadas.push({ clase: "lectura", nombre, linea: linea(nodo) });
+    if (SQL_CRUDO_DE_ESCRITURA.has(nombre)) llamadas.push({ clase: "escritura", nombre, linea: linea(nodo) });
+  };
+  const visitar = (nodo: ts.Node): void => {
+    if (ts.isCallExpression(nodo) && ts.isPropertyAccessExpression(nodo.expression)) {
+      const operacion = nodo.expression.name.text;
+      const dueño = nodo.expression.expression;
+      if (ts.isPropertyAccessExpression(dueño) && delegados.has(dueño.name.text)) {
+        const nombre = `${dueño.name.text}.${operacion}`;
+        if (OPERACIONES_DE_LECTURA.has(operacion)) llamadas.push({ clase: "lectura", nombre, linea: linea(nodo) });
+        if (OPERACIONES_DE_ESCRITURA.has(operacion)) llamadas.push({ clase: "escritura", nombre, linea: linea(nodo) });
+      }
+      sqlCrudo(nodo, operacion);
+    }
+    // SQL crudo con plantilla etiquetada: db.$queryRaw`select …` (no es una CallExpression).
+    if (ts.isTaggedTemplateExpression(nodo) && ts.isPropertyAccessExpression(nodo.tag)) sqlCrudo(nodo, nodo.tag.name.text);
+    ts.forEachChild(nodo, visitar);
+  };
+  visitar(archivo);
+  return llamadas;
+}
+
+/**
+ * Las llamadas a la base de un archivo: `x.<modelo>.<operación>` (el modelo sale de `delegadosDeModelos`) y el SQL crudo
+ * (`$queryRaw*`, `$executeRaw*`, `$transaction`, por llamada o por plantilla etiquetada). Es la fuente única de «esto toca la base»:
+ * la usan el inventario de pureza y las reglas de arquitectura (consultas solo de lectura, UI sin acceso a la base).
+ */
+export function llamadasALaBase(codigo: string, ruta: string, delegados: ReadonlySet<string>): LlamadaALaBase[] {
+  const archivo = ts.createSourceFile(ruta, codigo, ts.ScriptTarget.Latest, true, ruta.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  return encontrarLlamadasALaBase(archivo, delegados);
+}
+
 export function analizarFuente(codigo: string, ruta: string, delegados: ReadonlySet<string>): SenalesDeFuente {
   const tsx = ruta.endsWith(".tsx");
   const archivo = ts.createSourceFile(ruta, codigo, ts.ScriptTarget.Latest, true, tsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
@@ -132,8 +175,6 @@ export function analizarFuente(codigo: string, ruta: string, delegados: Readonly
   let azar = false;
   let entorno = false;
   let red = false;
-  let leeLaBase = false;
-  let escribeEnLaBase = false;
 
   const visitar = (nodo: ts.Node): void => {
     if (ts.isImportDeclaration(nodo)) return;
@@ -144,12 +185,6 @@ export function analizarFuente(codigo: string, ruta: string, delegados: Readonly
       if (ts.isPropertyAccessExpression(llamada)) {
         const operacion = llamada.name.text;
         const dueño = llamada.expression;
-        if (ts.isPropertyAccessExpression(dueño) && delegados.has(dueño.name.text)) {
-          if (OPERACIONES_DE_LECTURA.has(operacion)) leeLaBase = true;
-          if (OPERACIONES_DE_ESCRITURA.has(operacion)) escribeEnLaBase = true;
-        }
-        if (SQL_CRUDO_DE_LECTURA.has(operacion)) leeLaBase = true;
-        if (SQL_CRUDO_DE_ESCRITURA.has(operacion)) escribeEnLaBase = true;
         if (ts.isIdentifier(dueño) && dueño.text === "Date" && operacion === "now") reloj = true;
         if (ts.isIdentifier(dueño) && dueño.text === "Math" && operacion === "random") azar = true;
         if (FUNCIONES_DE_AZAR.has(operacion)) azar = true;
@@ -158,17 +193,15 @@ export function analizarFuente(codigo: string, ruta: string, delegados: Readonly
         if (FUNCIONES_DE_AZAR.has(llamada.text)) azar = true;
       }
     }
-    // SQL crudo con plantilla etiquetada: db.$queryRaw`select …` (no es una CallExpression).
-    if (ts.isTaggedTemplateExpression(nodo) && ts.isPropertyAccessExpression(nodo.tag)) {
-      if (SQL_CRUDO_DE_LECTURA.has(nodo.tag.name.text)) leeLaBase = true;
-      if (SQL_CRUDO_DE_ESCRITURA.has(nodo.tag.name.text)) escribeEnLaBase = true;
-    }
     if (ts.isNewExpression(nodo) && ts.isIdentifier(nodo.expression) && nodo.expression.text === "Date" && (nodo.arguments?.length ?? 0) === 0) reloj = true;
     if (ts.isPropertyAccessExpression(nodo) && ts.isIdentifier(nodo.expression) && nodo.expression.text === "process" && nodo.name.text === "env") entorno = true;
 
     ts.forEachChild(nodo, visitar);
   };
   visitar(archivo);
+  const llamadasALaBase = encontrarLlamadasALaBase(archivo, delegados);
+  const leeLaBase = llamadasALaBase.some((l) => l.clase === "lectura");
+  const escribeEnLaBase = llamadasALaBase.some((l) => l.clase === "escritura");
 
   // 3) Resolver cuáles imports declarados como valor lo son de verdad.
   const importsDeValor = new Set<string>(valorDeEfecto);
