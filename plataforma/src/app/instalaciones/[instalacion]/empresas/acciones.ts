@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { enviarCorreo } from "@/core/correo/enviar";
+import { enviarCorreo } from "@/lib/enviar-correo";
 import { esModuloDelCatalogo } from "@/core/modulos/catalogo";
 import { modulosDisponiblesParaActivar } from "@/core/modulos/vista-de-modulos";
 import { dbDeInstalacion } from "../../../../db";
