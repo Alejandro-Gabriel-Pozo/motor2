@@ -62,7 +62,7 @@ const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => 
   name: "sin-internals-de-otro-dominio",
   comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos. Las Server Actions de OTRO dominio también (las del propio dominio, server/actions/${dominio}/, sí pueden usar su core).`,
   severity: "error",
-  from: { path: `^src/(core/(?!${dominio}/)|server/actions/(?!${dominio}/)|server/(consultas|persistencia)/)` },
+  from: { path: `^src/(core/(?!${dominio}/)|server/actions/(?!${dominio}/)|server/(consultas|lecturas|persistencia)/)` },
   to: { path: `^src/core/${dominio}/`, pathNot: `^src/core/${dominio}/public(-servidor)?\\.ts$` },
 }));
 
@@ -137,6 +137,14 @@ module.exports = {
       severity: "error",
       from: { path: "^src/server/consultas/" },
       to: { path: ["^src/(app|components)/", "^src/server/actions/", "^src/server/persistencia/"] },
+    },
+    {
+      name: "lecturas-capa",
+      comment:
+        "server/lecturas/ (lecturas compartidas entre pantalla y escritura, ADR-026) no importa de la UI, de server/actions/, de server/consultas/ ni de server/persistencia/: una lectura compartida no puede depender de quien la usa.",
+      severity: "error",
+      from: { path: "^src/server/lecturas/" },
+      to: { path: ["^src/(app|components)/", "^src/server/actions/", "^src/server/consultas/", "^src/server/persistencia/"] },
     },
     {
       name: "persistencia-capa",

@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { sugerirInsumosClaseA } from "../../src/core/stock/sugerencia-clase-a";
+import { sugerirInsumosClaseA } from "../../src/server/consultas/stock/sugerencia-clase-a";
 import { prisma } from "../setup/test-db";
 
 describe("sugerirInsumosClaseA", () => {

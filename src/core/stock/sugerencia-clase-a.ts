@@ -1,7 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { redondearMoneda } from "@/core/moneda";
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 export interface InsumoClaseA {
   productoId: string;
@@ -23,21 +20,20 @@ export interface InsumoClaseA {
  * nombre de Insumo pero cada una tiene su propia fila de
  * `FrecuenciaConteoProducto`).
  */
-export async function sugerirInsumosClaseA(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<InsumoClaseA[]> {
-  const compras = await db.movimientoStock.groupBy({
-    by: ["productoId"],
-    where: { seccion: { sucursalId }, proceso: "COMPRA", operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null } },
-    _sum: { precioTotal: true },
-  });
+/** El gasto en Compras de un producto en la ventana elegida, tal como lo lee la consulta (`server/consultas/stock/sugerencia-clase-a.ts`). */
+export interface CompraDeProducto {
+  productoId: string;
+  importe: number;
+}
+
+/** El corte Pareto 80/20 sobre las compras ya leídas. Puro: no consulta la base. */
+export function seleccionarClaseA(compras: readonly CompraDeProducto[], nombrePorId: ReadonlyMap<string, string>): InsumoClaseA[] {
   if (compras.length === 0) return [];
 
-  const productos = await db.producto.findMany({ where: { id: { in: compras.map((c) => c.productoId) } }, select: { id: true, nombre: true } });
-  const nombrePorId = new Map(productos.map((p) => [p.id, p.nombre]));
-
-  const totalGastado = compras.reduce((acc, c) => acc + Number(c._sum.precioTotal ?? 0), 0);
+  const totalGastado = compras.reduce((acc, c) => acc + c.importe, 0);
   let acumulado = 0;
   const lista = compras
-    .map((c) => ({ productoId: c.productoId, nombre: nombrePorId.get(c.productoId) ?? "(producto eliminado)", importe: Number(c._sum.precioTotal ?? 0) }))
+    .map((c) => ({ productoId: c.productoId, nombre: nombrePorId.get(c.productoId) ?? "(producto eliminado)", importe: c.importe }))
     .sort((a, b) => b.importe - a.importe)
     .map((f) => {
       acumulado += f.importe;

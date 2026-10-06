@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { delegadosDeModelos, llamadasALaBase } from "../../scripts/arquitectura/analizar-fuente";
@@ -24,6 +24,7 @@ const RAIZ = join(__dirname, "../..");
 const DELEGADOS = delegadosDeModelos(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
 
 function archivosDe(dir: string, patron: RegExp): string[] {
+  if (!existsSync(dir)) return []; // `server/lecturas` nace en la Fase 3: hasta su primer archivo la carpeta no existe
   return readdirSync(dir).flatMap((nombre) => {
     const ruta = join(dir, nombre);
     if (statSync(ruta).isDirectory()) return nombre === "node_modules" || nombre === ".next" ? [] : archivosDe(ruta, patron);
@@ -63,7 +64,7 @@ describe("consultas solo de lectura y UI sin base: el detector ve las violacione
 });
 
 describe("consultas solo de lectura (src/server/consultas y core/**/*-consulta.ts)", () => {
-  const rutas = [...archivosDe(join(RAIZ, "src/server/consultas"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/core"), /-consulta\.ts$/)];
+  const rutas = [...archivosDe(join(RAIZ, "src/server/consultas"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/server/lecturas"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/core"), /-consulta\.ts$/)];
 
   it("encuentra las consultas (si dejan de encontrarse, la regla quedó vacía)", () => {
     expect(rutas.length).toBeGreaterThanOrEqual(18);

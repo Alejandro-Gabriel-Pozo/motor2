@@ -1,7 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-import { textoCadenaDeGrupos } from "@/core/catalogo/public-servidor";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { textoCadenaDeGruposEn, type NodoDeGrupo } from "@/core/catalogo/public";
 
 export interface FilaStockPorFamilia {
   insumoId: string;
@@ -16,6 +13,22 @@ export interface FilaStockPorFamilia {
   unidadesMezcladas: boolean;
 }
 
+/** El saldo (suma del Kardex) de un producto en una sección, tal como lo lee la consulta (`server/consultas/stock/por-familia.ts`). */
+export interface SaldoDeProductoEnSeccion {
+  productoId: string;
+  seccionId: string;
+  saldo: number;
+}
+
+/** Lo que el reporte necesita de un producto: su nombre, su unidad de stock y el Insumo (con su grupo) al que pertenece. */
+export interface ProductoDeFamilia {
+  id: string;
+  nombre: string;
+  unidadStockId: string | null;
+  unidadStock: { nombre: string };
+  insumo: { id: string; nombre: string; grupo: { id: string; nombre: string } | null } | null;
+}
+
 /**
  * Port de calcularStockPorFamilia_ (Stock.js:887-957) — "Familia" es
  * `Insumo` en el schema nuevo (porción Catálogo). Agrupa el saldo por
@@ -24,29 +37,25 @@ export interface FilaStockPorFamilia {
  * PV nunca se compra, sumar su saldo (negativo, artefacto de ventas) con
  * el de la MP que lo abastece daría un número sin sentido (mismo bugfix
  * que ya vale para resolverConsumoPorFamilia, porción Movimientos).
+ *
+ * Puro: recibe los saldos, los productos, las secciones y el árbol de grupos ya leídos (la consulta que los lee es
+ * `calcularStockPorFamilia` en `server/consultas/stock/por-familia.ts`).
  */
-export async function calcularStockPorFamilia(sucursalId: string, db: Db): Promise<FilaStockPorFamilia[]> {
-  const filas = await db.movimientoStock.groupBy({
-    by: ["productoId", "seccionId"],
-    where: { seccion: { sucursalId }, producto: { tipo: "MP" } },
-    _sum: { cantidad: true },
-  });
+export function armarStockPorFamilia(
+  filas: readonly SaldoDeProductoEnSeccion[],
+  productos: readonly ProductoDeFamilia[],
+  secciones: readonly { id: string; nombre: string }[],
+  arbolDeGrupos: ReadonlyMap<string, NodoDeGrupo>,
+): FilaStockPorFamilia[] {
   if (!filas.length) return [];
 
-  const productoIds = Array.from(new Set(filas.map((f) => f.productoId)));
-  const productos = await db.producto.findMany({
-    where: { id: { in: productoIds } },
-    include: { insumo: { include: { grupo: true } }, unidadStock: true },
-  });
   const productoPorId = new Map(productos.map((p) => [p.id, p]));
-
-  const seccionIds = Array.from(new Set(filas.map((f) => f.seccionId)));
-  const secciones = await db.seccion.findMany({ where: { id: { in: seccionIds } } });
   const seccionPorId = new Map(secciones.map((s) => [s.id, s]));
 
   interface Acumulado {
     insumoId: string;
     insumoNombre: string;
+    grupoId: string | null;
     grupoNombre: string | null;
     seccionId: string;
     seccionNombre: string;
@@ -68,6 +77,7 @@ export async function calcularStockPorFamilia(sucursalId: string, db: Db): Promi
       grupos.set(key, {
         insumoId: producto.insumo.id,
         insumoNombre: producto.insumo.nombre,
+        grupoId: producto.insumo.grupo?.id ?? null,
         grupoNombre: producto.insumo.grupo?.nombre ?? null,
         seccionId: f.seccionId,
         seccionNombre: seccion?.nombre ?? "",
@@ -79,7 +89,7 @@ export async function calcularStockPorFamilia(sucursalId: string, db: Db): Promi
       });
     }
     const g = grupos.get(key)!;
-    g.saldo += Number(f._sum.cantidad ?? 0);
+    g.saldo += f.saldo;
     g.productos.add(producto.nombre);
     // v2.3.0 (Apps Script) — dos unidades de stock distintas bajo el mismo
     // Insumo hacen que el total NO sea confiable: se marca en vez de
@@ -89,15 +99,11 @@ export async function calcularStockPorFamilia(sucursalId: string, db: Db): Promi
 
   const resultado: FilaStockPorFamilia[] = [];
   for (const g of grupos.values()) {
-    const grupoRow = g.grupoNombre
-      ? await db.grupo.findFirst({ where: { nombre: g.grupoNombre }, select: { id: true } })
-      : null;
-    const grupoCadena = grupoRow ? await textoCadenaDeGrupos(grupoRow.id, db) : "";
     resultado.push({
       insumoId: g.insumoId,
       insumoNombre: g.insumoNombre,
       grupoNombre: g.grupoNombre,
-      grupoCadena,
+      grupoCadena: g.grupoId ? textoCadenaDeGruposEn(arbolDeGrupos, g.grupoId) : "",
       seccionId: g.seccionId,
       seccionNombre: g.seccionNombre,
       unidadStockNombre: g.unidadesMezcladas ? null : g.unidadStockNombre,
@@ -111,7 +117,7 @@ export async function calcularStockPorFamilia(sucursalId: string, db: Db): Promi
   // criterio de orden que Apps Script (ver el caracter U+FFFF como "va al final").
   return resultado.sort(
     (a, b) =>
-      (a.grupoCadena || "￿").localeCompare(b.grupoCadena || "￿") ||
+      (a.grupoCadena || "\uffff").localeCompare(b.grupoCadena || "\uffff") ||
       a.insumoNombre.localeCompare(b.insumoNombre) ||
       a.seccionNombre.localeCompare(b.seccionNombre)
   );

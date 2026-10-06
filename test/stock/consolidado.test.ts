@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
+import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import { prisma } from "../setup/test-db";
 
 describe("calcularStockConsolidado", () => {

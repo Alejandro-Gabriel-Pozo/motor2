@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { generarReporteSaludPorProducto } from "@/core/reportes/public-servidor";
+import { generarReporteSaludPorProducto } from "@/server/consultas/reportes/salud-por-producto";
 import { TablaSaludPorProducto } from "./tabla-salud";
 
 export default async function SaludPage() {

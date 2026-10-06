@@ -4,7 +4,7 @@ import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarFrecuenciasConteo } from "@/server/actions/stock/frecuencia-conteo";
-import { sugerirInsumosClaseA } from "@/core/stock/public-servidor";
+import { sugerirInsumosClaseA } from "@/server/consultas/stock/sugerencia-clase-a";
 import { resolverRangoPorDefecto } from "@/core/reportes/public";
 import { ConteoFrecuenciaForm } from "./conteo-frecuencia-form";
 import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
