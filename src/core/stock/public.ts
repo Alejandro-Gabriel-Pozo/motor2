@@ -14,6 +14,8 @@ export type { FilaStockEnTransito } from "./en-transito";
 export { seleccionarClaseA } from "./sugerencia-clase-a";
 export type { InsumoClaseA } from "./sugerencia-clase-a";
 export { elegirMinimo } from "./stock-minimo";
+export { armarStockPorFamilia } from "./por-familia";
+export type { FilaStockPorFamilia } from "./por-familia";
 export { resolverProximoConteo } from "./frecuencia-conteo";
 export { whereSeccionHabitualVigente } from "./seccion-habitual";
 export { ESTADO_STOCK_CONSOLIDADO_LABEL } from "./estado-consolidado-ui";

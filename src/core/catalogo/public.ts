@@ -11,6 +11,8 @@
  */
 export { cumplePaso, decimalesDelPaso, mensajeCantidadNoCumplePaso, validarPasoVenta } from "./venta-fraccionada";
 export { rendimientoEfectivo } from "./rendimiento-local";
+export { textoCadenaDeGruposEn } from "./cadena-de-grupos";
+export type { NodoDeGrupo } from "./cadena-de-grupos";
 export { clasificarGruposNoComestibles } from "./no-comestibles";
 export type { ClasificacionNoComestibles } from "./no-comestibles";
 export type { FiltroSelectorProducto } from "./filtro-selector-producto";

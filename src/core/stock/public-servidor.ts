@@ -11,4 +11,3 @@
  */
 export { calcularAlertasStock, obtenerResumenAlertasStock } from "./alertas";
 export { calcularStockConsolidado } from "./consolidado";
-export { calcularStockPorFamilia } from "./por-familia";
