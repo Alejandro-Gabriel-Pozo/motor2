@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularVenta, ResultadoAnularVenta } from "@/core/features/ventas/venta.schema";
 import {
@@ -36,10 +36,10 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic; el segundo intento ve "ya anulada" (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo).
- * @ficha permiso=anular_venta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=NEW_DATE
+ * @ficha permiso=anular_venta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 export async function anularVentaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoAnularVenta
 ): Promise<ResultadoAnularVenta> {
   const { operacionId } = comando;
@@ -54,7 +54,7 @@ export async function anularVentaCasoDeUso(
     const hermanas = venta.promoCuentaId ? await cargarHermanasDePromo(tx, { promoCuentaId: venta.promoCuentaId, excluirOperacionId: venta.id }) : [];
     const aAnular = [venta, ...hermanas];
 
-    const ahora = new Date();
+    const ahora = actor.ahora;
     let movimientosRevertidos = 0;
     let huboLiquidacionConsignacion = false;
     const reversionIds: string[] = [];

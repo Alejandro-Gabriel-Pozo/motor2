@@ -17,8 +17,8 @@ import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
  *    `OPTIMISTA` (versión esperada) y `NO_APLICA` no pueden llamarla.
  *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado`; `DOCUMENTO_PROPIO` si no (el documento que escribe lleva su usuario y su fecha).
- *  - `reloj`: `INYECTADO` si el archivo no lee la hora actual (`new Date()` sin argumentos, `Date.now()`); `NEW_DATE` si la lee. Un caso de uso NUEVO tiene que ser
- *    `INYECTADO` (la hora entra por el comando: la necesitan el cierre de períodos y `fechaImputacion`); los 13 que hoy leen el reloj son deuda de la Fase 1, escrita abajo.
+ *  - `reloj`: `INYECTADO` si el archivo no lee la hora actual (`new Date()` sin argumentos, `Date.now()`); `NEW_DATE` si la lee. NINGÚN caso de uso lee el reloj (Pureza 1.2):
+ *    la hora entra por `actor.ahora`, que `conPermiso` fija una vez por pedido (`ContextoDeAccion`). Un test fija la hora, y el cierre de períodos y `fechaImputacion` la necesitan.
  *
  * Qué NO verifica: la prosa de los tags, ni qué modelos escribe (eso lo hace `escrituras-auditadas.test.ts` y `kardex-solo-agrega.test.ts`), ni que la idempotencia
  * funcione (la prueban los tests concurrentes de cada caso). Sí evita que la ficha diga una cosa y el código otra, y que un caso de uso nuevo nazca sin ficha.
@@ -30,25 +30,6 @@ const VOCABULARIO = {
   reloj: ["INYECTADO", "NEW_DATE"],
 } as const;
 const CAMPOS = ["permiso", "transaccion", "idempotencia", "auditoria", "reloj"] as const;
-
-/** Casos de uso que hoy leen la hora actual (`reloj=NEW_DATE`): deuda de la Fase 1 del plan (la hora entra por el comando). La lista solo puede achicarse. */
-const RELOJ_PENDIENTE: Record<string, string> = Object.fromEntries(
-  [
-    "server/actions/movimientos/casos-de-uso/anular-compra.ts",
-    "server/actions/movimientos/casos-de-uso/anular-venta.ts",
-    "server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico.ts",
-    "server/actions/movimientos/casos-de-uso/resolver-conteo-pendiente.ts",
-    "server/actions/pos/casos-de-uso/cerrar-cuenta.ts",
-    "server/actions/pos/casos-de-uso/emitir-ticket-corregido.ts",
-    "server/actions/traspasos/casos-de-uso/aceptar-traspaso.ts",
-    "server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso.ts",
-    "server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso.ts",
-    "server/actions/traspasos/casos-de-uso/confirmar-reingreso-de-traspaso.ts",
-    "server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso.ts",
-    "server/actions/traspasos/casos-de-uso/rechazar-envio-de-traspaso.ts",
-    "server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso.ts",
-  ].map((ruta) => [ruta, "Fase 1: la hora actual entra por el comando (ahora: Date) en lugar de leerse acá."])
-);
 
 interface Observado {
   transaccion: string;
@@ -197,13 +178,8 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
     expect(mentiras, `La ficha miente (o el código cambió y la ficha no):\n${mentiras.join("\n")}`).toEqual([]);
   });
 
-  it("un caso de uso nuevo nace con el reloj inyectado; los que hoy lo leen están en la lista de la Fase 1 y la lista solo se achica", () => {
-    const leenElReloj = casos.filter((c) => leerFicha(c.fuente)?.reloj === "NEW_DATE").map((c) => c.ruta);
-    expect(
-      leenElReloj.filter((r) => !(r in RELOJ_PENDIENTE)),
-      "Un caso de uso nuevo no lee la hora: recibe `ahora` por el comando (el cierre de períodos lo necesita)."
-    ).toEqual([]);
-    const sobrantes = Object.keys(RELOJ_PENDIENTE).filter((r) => !leenElReloj.includes(r));
-    expect(sobrantes, `Ya no leen el reloj (o ya no existen): sacalos de RELOJ_PENDIENTE.\n${sobrantes.join("\n")}`).toEqual([]);
+  it("ningún caso de uso lee el reloj: la hora entra por actor.ahora (Pureza 1.2)", () => {
+    const leenElReloj = casos.filter((c) => leerFicha(c.fuente)?.reloj !== "INYECTADO" || observar(c.fuente).reloj !== "INYECTADO").map((c) => c.ruta);
+    expect(leenElReloj, `Un caso de uso no lee la hora: recibe \`actor.ahora\` (ContextoDeAccion, src/server/actions/tipos.ts).\n${leenElReloj.join("\n")}`).toEqual([]);
   });
 });

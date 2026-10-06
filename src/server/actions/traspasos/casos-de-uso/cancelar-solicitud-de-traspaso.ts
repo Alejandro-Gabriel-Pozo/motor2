@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoCancelarSolicitudTraspaso, ResultadoCancelarSolicitudTraspaso } from "@/core/features/traspasos/traspaso.schema";
@@ -25,10 +25,10 @@ import { escribirCancelacionDeSolicitud } from "@/server/persistencia/traspasos/
  * @idempotency No aplica — sin Operación donde guardar una clave; el aislamiento SERIALIZABLE arbitra la carrera de estado.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno — solo el cambio de estado del traspaso (nunca tocó Kardex).
- * @ficha permiso=traspaso_cancelar_solicitud transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
+ * @ficha permiso=traspaso_cancelar_solicitud transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function cancelarSolicitudDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoCancelarSolicitudTraspaso
 ): Promise<ResultadoCancelarSolicitudTraspaso> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCancelarSolicitudTraspaso> => {
@@ -37,7 +37,7 @@ export async function cancelarSolicitudDeTraspasoCasoDeUso(
     const transicion = guardTransicionTraspaso(traspaso, "cancelar_solicitud", actor.sucursalId);
     if (!transicion.ok) return fracaso(transicion.motivo, transicion.mensaje);
 
-    await escribirCancelacionDeSolicitud(tx, { traspasoId: traspaso.id, estadoNuevo: transicion.estadoNuevo, usuarioId: actor.usuarioId, ahora: new Date() });
+    await escribirCancelacionDeSolicitud(tx, { traspasoId: traspaso.id, estadoNuevo: transicion.estadoNuevo, usuarioId: actor.usuarioId, ahora: actor.ahora });
 
     return exito("Solicitud cancelada.", { traspasoId: traspaso.id, estadoNuevo: transicion.estadoNuevo });
   });

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { DIA_MS, enElPasado } from "../setup/tiempo";
 import { beforeEach, describe, expect, it } from "vitest";
 import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-compra";
@@ -24,7 +25,7 @@ describe("anularCompraCasoDeUso", () => {
   let harinaId: string;
   let proveedorId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDeTest });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDeTest });
 
   /** Una compra con una línea de `cantidad` kg a $100/kg (el saldo del lote sale del propio Kardex). */
   async function compra(opciones: { cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {
@@ -91,6 +92,17 @@ describe("anularCompraCasoDeUso", () => {
     });
   });
 
+  it("la hora de la anulación es la que entra por actor.ahora, no la del reloj (Pureza 1.2)", async () => {
+    const op = await compra();
+    const fija = enElPasado(3 * DIA_MS); // otra hora que la del reloj: tres días atrás
+
+    const r = await anularCompraCasoDeUso({ ...actor(), ahora: fija }, { operacionId: op.id, claveIdempotencia: null });
+
+    expect(r.ok).toBe(true);
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).anuladaEn).toEqual(fija);
+    expect((await prisma.operacion.findFirstOrThrow({ where: { proceso: "AJUSTE", sucursalId } })).fecha).toEqual(fija);
+  });
+
   it("éxito sin N.º de factura ni proveedor: el mensaje y la auditoría no los mencionan (textos exactos de antes)", async () => {
     const op = await compra({ nroFactura: null });
     await prisma.operacion.update({ where: { id: op.id }, data: { proveedorId: null } });
@@ -151,7 +163,7 @@ describe("anularCompraCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDeTest }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
+    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDeTest }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
       ok: false,
       codigo: "NO_ENCONTRADA",
     });

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada } from "@/core/compras/anulacion";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularCompra, ResultadoAnularCompra } from "@/core/features/compras/compra.schema";
@@ -38,10 +38,10 @@ import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribi
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (campo anuladaEn).
- * @ficha permiso=anular_compra transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=NEW_DATE
+ * @ficha permiso=anular_compra transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 export async function anularCompraCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoAnularCompra
 ): Promise<ResultadoAnularCompra> {
   const { operacionId, claveIdempotencia } = comando;
@@ -58,7 +58,7 @@ export async function anularCompraCasoDeUso(
     const evaluacion = evaluarAnulacion({ proceso: compra.proceso, anuladaEn: compra.anuladaEn, lineas: compra.lineas }, compra.saldos);
     if (!evaluacion.ok) return fracaso(evaluacion.motivo, evaluacion.mensaje);
 
-    const ahora = new Date();
+    const ahora = actor.ahora;
     const escrita = await escribirAnulacionDeCompra(tx, {
       compraId: compra.id,
       sucursalId: actor.sucursalId,

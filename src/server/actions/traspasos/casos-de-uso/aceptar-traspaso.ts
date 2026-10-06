@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_SECCION_DESTINO_NO_PROPIA, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoAceptarTraspaso, ResultadoAceptarTraspaso } from "@/core/features/traspasos/traspaso.schema";
@@ -39,10 +39,10 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura de la entrada de Kardex y el cambio de estado del traspaso — sin auditoría de permisos propia.
- * @ficha permiso=traspaso_aceptar transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
+ * @ficha permiso=traspaso_aceptar transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function aceptarTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "ahora">,
   comando: ComandoAceptarTraspaso
 ): Promise<ResultadoAceptarTraspaso> {
   const { traspasoId, seccionDestinoId, claveIdempotencia } = comando;
@@ -73,7 +73,7 @@ export async function aceptarTraspasoCasoDeUso(
       cantidad: traspaso.cantidad,
       detalle: `Transferencia recibida de sucursal "${origen.nombre}".`,
       estadoNuevo: transicion.estadoNuevo,
-      ahora: new Date(),
+      ahora: actor.ahora,
       idempotencia: claveIdempotencia ? { claveIdempotencia, payloadHash } : null,
     });
 
