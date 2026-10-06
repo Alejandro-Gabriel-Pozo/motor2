@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { diasAtrasDeUrl } from "@/core/reportes/public";
-import { generarReporteDevoluciones } from "@/core/reportes/public-servidor";
+import { generarReporteDevoluciones } from "@/server/consultas/reportes/devoluciones";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { TablaDevolucionesClientes, TablaDevolucionesProveedor } from "./tabla-devoluciones";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

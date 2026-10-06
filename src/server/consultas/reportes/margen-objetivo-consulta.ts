@@ -1,5 +1,5 @@
-import type { Db } from "./comun";
-import type { ObjetivosDeMargen } from "./margen-objetivo";
+import type { Db } from "@/lib/db-tipos";
+import type { ObjetivosDeMargen } from "@/core/reportes/public";
 
 /** Los objetivos de food cost cargados en la empresa activa (el `db` ya viene acotado a ella por RLS). Una sola consulta: la tabla es chica. */
 export async function cargarObjetivosDeMargen(db: Db): Promise<ObjetivosDeMargen> {

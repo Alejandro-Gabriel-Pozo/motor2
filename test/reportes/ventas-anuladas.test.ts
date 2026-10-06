@@ -7,12 +7,12 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
-import { calcularRendimientoRecetasSimples } from "../../src/core/reportes/rendimiento-recetas";
-import { generarReporteHuecosCatalogo } from "../../src/core/reportes/huecos-catalogo";
-import { generarReporteVentasSinReceta } from "../../src/core/reportes/ventas-sin-receta";
-import { generarReportePerdidas } from "../../src/core/reportes/perdidas";
-import { generarReporteDiferenciasAjustes } from "../../src/core/reportes/diferencias-ajustes";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";
+import { generarReporteHuecosCatalogo } from "../../src/server/consultas/reportes/huecos-catalogo";
+import { generarReporteVentasSinReceta } from "../../src/server/consultas/reportes/ventas-sin-receta";
+import { generarReportePerdidas } from "../../src/server/consultas/reportes/perdidas";
+import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "../../src/core/movimientos/anulaciones";
 
 /**

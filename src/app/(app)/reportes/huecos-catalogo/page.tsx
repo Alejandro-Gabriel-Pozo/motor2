@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "@/core/reportes/public-servidor";
+import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "@/server/consultas/reportes/huecos-catalogo";
 
 export default async function HuecosCatalogoPage() {
   const ctx = await obtenerContextoUsuario();

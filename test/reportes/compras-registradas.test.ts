@@ -5,8 +5,9 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { listarComprasRegistradas, SIN_PROVEEDOR, TAMANO_PAGINA_COMPRAS } from "../../src/core/reportes/compras-registradas";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { SIN_PROVEEDOR, TAMANO_PAGINA_COMPRAS } from "../../src/core/reportes/compras-registradas";
+import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 
 /**
  * Listado de compras por factura: qué se compró, a quién, con qué factura, cuándo y por cuánto. Solo lectura.

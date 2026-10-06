@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { obtenerCostoActualPorMP } from "../../src/core/reportes/comun";
-import { claveCostoHistorico, reconstruirCostosDeVenta } from "../../src/core/reportes/costo-historico";
-import { listarComprasRegistradas } from "../../src/core/reportes/compras-registradas";
-import { obtenerOperacionPorId } from "../../src/core/reportes/trazabilidad";
+import { claveCostoHistorico } from "../../src/core/reportes/costo-historico";
+import { reconstruirCostosDeVenta } from "../../src/server/consultas/reportes/costo-historico";
+import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";
+import { obtenerOperacionPorId } from "../../src/server/consultas/reportes/trazabilidad";
 
 /**
  * K1c, Fase 0: una COMPRA anulada es una factura que no ocurrió, así que ningún reporte de dinero la cuenta. Hoy la aplicación todavía no puede

@@ -4,7 +4,7 @@ import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, obtenerMiNivelPermiso } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
-import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/core/reportes/public-servidor";
+import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/server/consultas/reportes/rendimiento-recetas";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";

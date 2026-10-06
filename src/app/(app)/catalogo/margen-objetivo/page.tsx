@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { FOOD_COST_OBJETIVO_PCT, resolverObjetivoFoodCost } from "@/core/reportes/public";
-import { cargarObjetivosDeMargen } from "@/core/reportes/public-servidor";
+import { cargarObjetivosDeMargen } from "@/server/consultas/reportes/margen-objetivo-consulta";
 import { guardarMargenObjetivo } from "@/server/actions/reportes/margen-objetivo";
 import { listarCategoriasActivas } from "@/server/consultas/catalogo/categorias";
 import { FormConResultado } from "@/components/form-con-resultado";

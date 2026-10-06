@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
-import { obtenerReporteDescuentosClientes } from "@/core/reportes/public-servidor";
+import { obtenerReporteDescuentosClientes } from "@/server/consultas/reportes/descuentos-clientes";
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaDescuentosClientes } from "./tabla-descuentos-clientes";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

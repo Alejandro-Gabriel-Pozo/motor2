@@ -228,8 +228,9 @@ async function main() {
   // Imports dinámicos DESPUÉS de resolver la URL del bench: si fueran estáticos, el hoisting de ESM los
   // evaluaría antes de este punto y algún módulo transitivo podría tocar el singleton de `src/lib/db.ts`
   // antes de que el guard de arriba corriera.
-  const { reconstruirCostosDeVenta, costosDeInsumosPorDia, diaUtc } = await import("../src/core/reportes/costo-historico");
-  const { obtenerReportePorPeriodo } = await import("../src/core/reportes/periodo");
+  const { costosDeInsumosPorDia, diaUtc } = await import("../src/core/reportes/costo-historico");
+  const { reconstruirCostosDeVenta } = await import("../src/server/consultas/reportes/costo-historico");
+  const { obtenerReportePorPeriodo } = await import("../src/server/consultas/reportes/periodo");
   const { construirIndiceRecetas, construirMapaProductos } = await import("../src/core/reportes/comun");
   const { resolverCostoRecetaCompleta } = await import("../src/core/reportes/costos");
 

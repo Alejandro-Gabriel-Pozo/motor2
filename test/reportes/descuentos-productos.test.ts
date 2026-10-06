@@ -11,7 +11,7 @@ import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
 import { altaCliente } from "../../src/server/actions/clientes/cliente";
-import { obtenerReporteDescuentosProductos } from "../../src/core/reportes/descuentos-productos";
+import { obtenerReporteDescuentosProductos } from "../../src/server/consultas/reportes/descuentos-productos";
 
 /**
  * Reporte de descuentos de productos (Fase 2): contra Postgres real y con las acciones reales del POS. El ahorro es lista − cobrado sobre los

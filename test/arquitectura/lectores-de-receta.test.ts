@@ -56,17 +56,17 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
       "cargarRecetaVigenteParaProducir (Task #41, M13a — antes en línea en calcularConsumosProduccion de movimientos.ts): trae las calibraciones locales (rendimientosLocales) DE LA SUCURSAL que produce; el caso de uso (armar-linea-de-movimiento.ts) resuelve rendimientoEfectivo con ellas — C2 (el consumo de receta al producir se resuelve con rendimientoEfectivo de ctx.sucursalId).",
   },
   {
-    ruta: "core/reportes/rendimiento-recetas.ts",
+    ruta: "server/consultas/reportes/rendimiento-recetas.ts",
     clase: "efectivo",
     motivo: "R2 (construirPools): cantidad/mermaPorcentaje de cada uso salen efectivos; el RÓTULO sigue usando los valores centrales a propósito.",
   },
   {
-    ruta: "core/reportes/historial-producto.ts",
+    ruta: "server/consultas/reportes/historial-producto.ts",
     clase: "efectivo",
     motivo: "R3 (obtenerIngredientesRecetaVigente): cantidad efectiva de la sucursal en el cartel de 'producto de reventa'.",
   },
   {
-    ruta: "core/reportes/rendimiento-por-sucursal.ts",
+    ruta: "server/consultas/reportes/rendimiento-por-sucursal.ts",
     clase: "central",
     motivo:
       "D8 (compararRendimientosPorSucursal) + R3: compara el rendimiento (calibraciones por sucursal) sobre la estructura de la receta CENTRAL; donde una sucursal tiene receta PROPIA habilitada (cargarRecetasPropiasHabilitadas) no hay calibración que mostrar y la celda se marca como 'receta propia' en vez de mezclar series.",

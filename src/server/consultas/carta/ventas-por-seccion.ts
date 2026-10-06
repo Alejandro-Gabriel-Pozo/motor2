@@ -2,14 +2,9 @@ import "server-only";
 import { whereCartaDeSucursal } from "@/core/carta/public";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
-import {
-  redondearCantidad,
-  agruparVentasPorCategoria,
-  obtenerReportePorPeriodoConCatalogo,
-  pvSinCategoriaDe,
-  type FilaCategoriaVenta,
-  type generarReporteVentasPorCategoria,
-} from "@/core/reportes/public-servidor";
+import { agruparVentasPorCategoria, pvSinCategoriaDe, type FilaCategoriaVenta } from "@/core/reportes/public-servidor";
+import { obtenerReportePorPeriodoConCatalogo, type generarReporteVentasPorCategoria } from "@/server/consultas/reportes/periodo";
+import { redondearCantidad } from "@/core/reportes/public";
 
 /**
  * Ventas por SECCIÓN DE CARTA (docs/plan-carta-catalogo-2026-09-24.md, M4; rehecho a nivel de PRODUCTO en

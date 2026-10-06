@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
-import { generarReporteVentasSinReceta } from "../../src/core/reportes/ventas-sin-receta";
+import { generarReporteVentasSinReceta } from "../../src/server/consultas/reportes/ventas-sin-receta";
 
 /**
  * El reporte de ventas sin receta no puede traer una fila por venta ni armar una lista con todos los `operacionId`: con ~60k ventas la

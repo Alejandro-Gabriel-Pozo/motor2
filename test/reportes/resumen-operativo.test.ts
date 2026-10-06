@@ -7,7 +7,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerResumenOperativo } from "../../src/core/reportes/resumen-operativo";
+import { obtenerResumenOperativo } from "../../src/server/consultas/reportes/resumen-operativo";
 
 describe("obtenerResumenOperativo", () => {
   let sucursalId: string;

@@ -8,7 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { clasificarGruposNoComestibles, normalizarNombreGrupo } from "../../src/core/catalogo/no-comestibles";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "../../src/core/reportes/costos";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 
 /**
  * «No comestibles» (USAR): packaging y limpieza no cuentan en el food cost ni en el ratio Compras/Ventas. Se reconocen por el árbol de

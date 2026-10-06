@@ -1,6 +1,7 @@
 import "server-only";
 import { armarSaludPorProducto, type FilaSaludProducto } from "@/core/reportes/public";
-import { generarReporteDiferenciasAjustes, generarReporteInsumosSinRecetaVinculada } from "@/core/reportes/public-servidor";
+import { generarReporteDiferenciasAjustes } from "@/server/consultas/reportes/diferencias-ajustes";
+import { generarReporteInsumosSinRecetaVinculada } from "@/server/consultas/reportes/insumos-sin-receta";
 import { calcularAlertasStock } from "@/server/consultas/stock/alertas";
 import { calcularStockConsolidado } from "@/server/consultas/stock/consolidado";
 import type { Db } from "@/lib/db-tipos";

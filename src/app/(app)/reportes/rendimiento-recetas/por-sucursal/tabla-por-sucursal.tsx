@@ -1,7 +1,7 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import { desvioEsNotable } from "@/core/reportes/rendimiento-por-sucursal";
+import { desvioEsNotable } from "@/core/reportes/public";
 
 export interface ValorPorSucursalPlano {
   cantidad: number;

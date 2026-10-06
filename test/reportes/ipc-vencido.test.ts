@@ -7,8 +7,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
-import { obtenerResumenOperativo } from "../../src/core/reportes/resumen-operativo";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { obtenerResumenOperativo } from "../../src/server/consultas/reportes/resumen-operativo";
 
 /**
  * 5c — serie del IPC vencida. Lo que se prueba: cuando la serie está parada hace más del máximo previsto (60 días desde el fin del último

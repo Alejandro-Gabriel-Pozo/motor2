@@ -2,7 +2,7 @@
 
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { obtenerReporteVencimientosDatos } from "@/core/reportes/public";
+import type { obtenerReporteVencimientosDatos } from "@/server/consultas/reportes/vencimientos";
 
 const AYUDA_ESTADO_CONCILIACION =
   "Un lote que tenía saldo contado y en el conteo siguiente desapareció (quedó en 0 o sin contar) — se compara cuánto desapareció contra cuánto se vendió/consumió en el mismo período. Consistente: las ventas+consumos alcanzan o superan lo desaparecido, explica la baja. Revisar: desapareció más de lo que se vendió o consumió — puede ser merma sin registrar, robo o un conteo mal cargado.";

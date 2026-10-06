@@ -9,7 +9,7 @@ import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { altaCliente } from "../../src/server/actions/clientes/cliente";
-import { obtenerReporteDescuentosClientes } from "../../src/core/reportes/descuentos-clientes";
+import { obtenerReporteDescuentosClientes } from "../../src/server/consultas/reportes/descuentos-clientes";
 
 /**
  * Reporte de descuentos por cliente (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 10): contra Postgres real, con

@@ -1,5 +1,6 @@
 import { redondearMoneda } from "@/core/moneda";
-import { redondearCantidad, type InfoProductoReporte } from "./comun";
+import { type InfoProductoReporte } from "./comun";
+import { redondearCantidad } from "./redondeo";
 import type { ItemPeriodo } from "./periodo-tipos";
 
 export interface FilaVentaProducto {

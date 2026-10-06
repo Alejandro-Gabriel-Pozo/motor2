@@ -1,7 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
-import { calcularValuacionInventario, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
+import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
+import { calcularValuacionInventario } from "@/server/consultas/reportes/valuacion";
 import { EnDolares } from "@/components/en-dolares";
 import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacion";
 

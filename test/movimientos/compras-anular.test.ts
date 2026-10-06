@@ -9,7 +9,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
 import { anularVenta, registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularSaldoPorLote, calcularSaldoTotal } from "../../src/core/movimientos/stock";
-import { obtenerReportePorPeriodo } from "../../src/core/reportes/periodo";
+import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 

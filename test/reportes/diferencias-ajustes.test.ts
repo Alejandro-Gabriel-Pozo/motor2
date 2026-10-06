@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { generarReporteDiferenciasAjustes } from "../../src/core/reportes/diferencias-ajustes";
+import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
 import { setFrecuenciaConteo } from "../../src/server/actions/stock/frecuencia-conteo";
 
 describe("generarReporteDiferenciasAjustes", () => {

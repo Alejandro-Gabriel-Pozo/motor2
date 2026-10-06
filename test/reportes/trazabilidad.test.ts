@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerOperacionPorId, buscarOperacionesPorProducto } from "../../src/core/reportes/trazabilidad";
+import { obtenerOperacionPorId, buscarOperacionesPorProducto } from "../../src/server/consultas/reportes/trazabilidad";
 
 describe("Trazabilidad", () => {
   let sucursalId: string;

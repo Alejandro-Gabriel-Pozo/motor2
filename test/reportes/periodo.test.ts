@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-objetivo";
-import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../../src/core/reportes/periodo";
+import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../../src/server/consultas/reportes/periodo";
 
 describe("obtenerReportePorPeriodo", () => {
   let sucursalId: string;
