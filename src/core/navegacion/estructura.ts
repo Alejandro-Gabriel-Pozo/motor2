@@ -36,6 +36,9 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/administracion/capacidades-sucursal", label: "Capacidades por sucursal", accion: "capacidades_sucursal", panel: "empresa" },
       { href: "/administracion/sucursales", label: "Sucursales", accion: "alta_sucursal", panel: "empresa" },
       { href: "/administracion/auditoria", label: "Auditoría", accion: "ver_auditoria", panel: "sucursal" },
+      // Las dos últimas son solo del gerente (la clave de la gerencia, sin migración; ver la nota de la página del perfil). Van al final a propósito: la tarjeta del inicio manda a
+      // la PRIMERA pantalla que la persona puede abrir, y un administrador que no es gerente tiene que caer en una que sí abre.
+      { href: "/administracion/empresa", label: "Perfil de la empresa", accion: "traspasar_gerencia", panel: "empresa" },
       { href: "/administracion/gerencia", label: "Gerencia", accion: "traspasar_gerencia", panel: "empresa" },
     ],
   },

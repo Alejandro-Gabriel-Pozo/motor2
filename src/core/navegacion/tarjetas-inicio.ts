@@ -2,7 +2,7 @@ import type { GrupoNav } from "./estructura";
 
 /** Una línea por módulo para la tarjeta de `/inicio`. Un test comprueba que todo grupo de `GRUPOS_NAV` tiene la suya. */
 export const DESCRIPCION_DE_MODULO: Record<string, string> = {
-  administracion: "Usuarios, roles, permisos, sucursales y auditoría.",
+  administracion: "El perfil de la empresa, usuarios, roles, permisos, sucursales y auditoría.",
   catalogo: "Productos, proveedores, clientes, recetas, categorías y unidades.",
   carta: "La carta pública, los ítems agrupados, el portal y el tema.",
   movimientos: "Compras, producción, ventas, mermas, ajustes y conteos físicos.",
