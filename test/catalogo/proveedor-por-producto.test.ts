@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
-import { upsertProveedorPorProducto } from "../../src/server/actions/catalogo/upsert-proveedor-por-producto";
+import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
   let sucursalId: string;

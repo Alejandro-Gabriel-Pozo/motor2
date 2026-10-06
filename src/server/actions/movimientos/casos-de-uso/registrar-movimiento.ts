@@ -23,7 +23,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
 import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
-import { upsertProveedorPorProducto } from "../../catalogo/upsert-proveedor-por-producto";
+import { upsertProveedorPorProducto } from "@/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
 
 /** Lo que necesita `registrarProveedoresDeLaCompra` (paso 6, más abajo) de cada línea ya armada. */
