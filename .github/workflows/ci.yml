@@ -9,10 +9,10 @@ name: CI
 
 on:
   push:
-    branches: [main, multitenancy-fase-a, "ci/**"]
+    branches: [main, "ci/**"]
   # `main` tiene una regla que exige el job `gate`: sin este disparador un pull request hacia `main` nunca lo ejecutaría y no se podría integrar.
   pull_request:
-    branches: [main, multitenancy-fase-a]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
